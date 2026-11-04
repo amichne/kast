@@ -1143,20 +1143,24 @@
       "purpose": "reader-task-or-contract"
     },
     {
-      "route": "explanation/value-journey-evidence",
-      "purpose": "recorded-illustration"
+      "route": "explanation",
+      "purpose": "reader-navigation"
     },
     {
       "route": "explanation/value-journey",
       "purpose": "recorded-illustration"
     },
     {
-      "route": "explanation",
-      "purpose": "reader-navigation"
+      "route": "explanation/value-journey-evidence",
+      "purpose": "recorded-illustration"
     },
     {
       "route": "glossary",
       "purpose": "generated-glossary"
+    },
+    {
+      "route": "how-to",
+      "purpose": "reader-navigation"
     },
     {
       "route": "how-to/complete-engineering-task",
@@ -1171,15 +1175,35 @@
       "purpose": "reader-task-or-contract"
     },
     {
-      "route": "how-to",
-      "purpose": "reader-navigation"
-    },
-    {
       "route": "index",
       "purpose": "reader-navigation"
     },
     {
+      "route": "reference",
+      "purpose": "reader-navigation"
+    },
+    {
       "route": "reference/api",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/callables/add-declaration",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/callables/check-diagnostics",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/callables/query-symbols",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/callables/replace-body",
+      "purpose": "reader-task-or-contract"
+    },
+    {
+      "route": "reference/callables/workspace-lifecycle",
       "purpose": "reader-task-or-contract"
     },
     {
@@ -1295,10 +1319,6 @@
       "purpose": "reader-task-or-contract"
     },
     {
-      "route": "reference",
-      "purpose": "reader-navigation"
-    },
-    {
       "route": "search",
       "purpose": "reader-navigation"
     },
@@ -1311,12 +1331,12 @@
       "purpose": "reader-task-or-contract"
     },
     {
-      "route": "tutorials/first-query",
-      "purpose": "reader-task-or-contract"
-    },
-    {
       "route": "tutorials",
       "purpose": "reader-navigation"
+    },
+    {
+      "route": "tutorials/first-query",
+      "purpose": "reader-task-or-contract"
     }
   ],
   "type": "ATTRIBUTED_OKF_PROJECTION"

@@ -27,6 +27,8 @@ def readability_commands(root: Path) -> tuple[tuple[str, ...], ...]:
 
 def commands(guides: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
     return (
+        ("python3", "docs/tooling/callables/build.py", "--check"),
+        ("node", "--test", "docs/tooling/callables/loader.test.mjs"),
         ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/tooling/markdown"),
         ("npm", "run", "check", "--prefix", "docs/tooling/markdown"),
         ("uv", "run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling"),

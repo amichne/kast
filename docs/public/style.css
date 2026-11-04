@@ -282,3 +282,16 @@
   .kast-sidebar-collapsed #kast-sidebar-toggle { left: 1rem; }
   .kast-sidebar-collapsed #kast-sidebar-toggle svg { transform: scaleX(-1); }
 }
+
+/* Callable schemas retain references and create deeper nodes only on expansion. */
+.ks-reference { min-width: 0; }
+.ks-node { margin: .5rem 0; min-width: 0; }
+.ks-toggle, .ks-label { font-weight: 600; overflow-wrap: anywhere; text-align: left; }
+.ks-toggle { border: 1px solid currentColor; border-radius: .35rem; padding: .35rem .6rem; }
+.ks-toggle:focus-visible { outline: 3px solid #3154c7; outline-offset: 3px; }
+.ks-facts { margin: .4rem 0 .6rem; font-size: .875rem; }
+.ks-facts > div { display: grid; grid-template-columns: minmax(0, 8rem) minmax(0, 1fr); gap: .5rem; }
+.ks-facts dt { font-weight: 600; }
+.ks-facts dd { margin: 0; min-width: 0; }
+.ks-facts code { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.ks-children { border-left: 1px solid currentColor; margin-left: .25rem; padding-left: .75rem; }

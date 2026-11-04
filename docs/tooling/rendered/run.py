@@ -36,6 +36,7 @@ from typing import Literal, NotRequired, TypedDict, TypeGuard
 from urllib.parse import urlsplit
 
 from jsonschema import ValidationError, validate
+from schema_scope import SchemaScope, expected_scope, measurement
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
@@ -161,8 +162,15 @@ class State:
     dom: DomEvidence | None
     screenshot: str | None
     failure: str | None
+    schemaScope: SchemaScope | None = None
 
     def __post_init__(self) -> None:
+        if (
+            self.name == "schema-depth-2-all-variants"
+            and self.status == "passed"
+            and (self.schemaScope is None or not self.schemaScope.complete)
+        ):
+            raise ValueError("A passed schema scope needs exact canonical node and fact coverage.")
         if self.status == "passed" and (
             self.footprint is None or self.dom is None or self.failure is not None
         ):
@@ -541,7 +549,13 @@ def owned_preview(
 
 
 def collect(
-    browser: Browser, route: str, name: str, output: Path, *, screenshot: bool = True
+    browser: Browser,
+    route: str,
+    name: str,
+    output: Path,
+    *,
+    screenshot: bool = True,
+    schema_scope: SchemaScope | None = None,
 ) -> State:
     try:
         dom = browser.evaluate(HERE.joinpath("inspect.js").read_text())
@@ -559,6 +573,12 @@ def collect(
             dom["focus"] is None or dom["focus"].get("focusVisible") is not True
         ):
             failures.append("KEYBOARD_FOCUS_NOT_VISIBLE")
+        if schema_scope is not None and not schema_scope.complete:
+            failures.append("SCHEMA_SCOPE_MISMATCH")
+        if schema_scope is not None and (
+            dom["focus"] is None or dom["focus"].get("focusVisible") is not True
+        ):
+            failures.append("SCHEMA_KEYBOARD_FOCUS_NOT_VISIBLE")
         return State(
             route,
             name,
@@ -567,6 +587,7 @@ def collect(
             dom,
             file.name if screenshot else None,
             ",".join(failures) or None,
+            schema_scope,
         )
     except BrowserFailure as error:
         return State(route, name, "failed", None, None, None, str(error))
@@ -617,6 +638,43 @@ def explorer_states(browser: Browser, output: Path) -> list[State]:
     return states
 
 
+def schema_state(browser: Browser, route: str, output: Path) -> State:
+    """Expand every canonical graph edge through depth two; refs count as one edge."""
+    source = (ROOT / "docs/public/reference/callables.openapi.json").read_bytes()
+    operation = route.rsplit("/", 1)[1].replace("-", "_")
+    expected = expected_scope(source, operation)
+    _ = browser.call(
+        "wait",
+        "--fn",
+        "document.querySelector('[data-schema-operation], [data-schema-error]') !== null",
+    )
+    for node in sorted(expected, key=lambda node: (node.depth, node.occurrence)):
+        if node.expanded is True:
+            selector = '[data-schema-toggle="' + node.occurrence + '"]'
+            _ = browser.call("focus", selector)
+            expanded = browser.evaluate(
+                "document.querySelector(" + json.dumps(selector) + ").getAttribute('aria-expanded')"
+            )
+            if expanded not in {"true", "false"}:
+                raise BrowserFailure("SCHEMA_TOGGLE_INVALID")
+            if expanded == "false":
+                _ = browser.call("press", "Enter")
+            _ = browser.call(
+                "wait",
+                "--fn",
+                "document.querySelector("
+                + json.dumps(selector)
+                + ").getAttribute('aria-expanded') === 'true'",
+            )
+    raw = browser.evaluate(HERE.joinpath("schema-inspect.js").read_text())
+    try:
+        scope = measurement(source, expected, raw)
+    except ValueError as error:
+        raise BrowserFailure(str(error)) from error
+    _ = browser.evaluate("window.scrollTo(0,0)")
+    return collect(browser, route, "schema-depth-2-all-variants", output, schema_scope=scope)
+
+
 def run_routes(browser: Browser, origin: str, routes: list[str], output: Path) -> list[State]:
     states: list[State] = []
     _ = browser.call("open", "about:blank")
@@ -639,6 +697,14 @@ def run_routes(browser: Browser, origin: str, routes: list[str], output: Path) -
         try:
             _ = browser.call("open", origin.rstrip("/") + route)
             _ = browser.call("wait", "--fn", "document.querySelector('#page-title') !== null")
+            if "/reference/callables/" in route:
+                _ = browser.call(
+                    "wait",
+                    "--fn",
+                    "document.querySelector('[data-schema-operation],[data-schema-error]') !== null",
+                )
+                if browser.evaluate("document.querySelector('[data-schema-error]') !== null"):
+                    raise BrowserFailure("SCHEMA_VIEWER_UNAVAILABLE")
             for theme in ("light", "dark"):
                 _ = browser.call("set", "media", theme, "reduced-motion")
                 _ = browser.evaluate(
@@ -663,11 +729,36 @@ def run_routes(browser: Browser, origin: str, routes: list[str], output: Path) -
             states.append(collect(browser, route, "keyboard-focus", output))
             if route == "/explanation/value-journey":
                 states.extend(explorer_states(browser, output))
+            if "/reference/callables/" in route:
+                states.append(schema_state(browser, route, output))
         except BrowserFailure as error:
             states.append(State(route, "initial", "failed", None, None, None, str(error)))
             if "/reference/callables/" in route:
                 unavailable = True
     return states
+
+
+def schema_scopes_complete(snapshot: Snapshot, states: list[State]) -> bool:
+    selected = [state for state in states if state.name == "schema-depth-2-all-variants"]
+    source = next(
+        (
+            item["sha256"]
+            for item in snapshot["inputs"]
+            if item["path"] == "docs/public/reference/callables.openapi.json"
+        ),
+        None,
+    )
+    return (
+        sorted(state.route for state in selected) == sorted(ROUTES[4:])
+        and source is not None
+        and all(
+            state.status == "passed"
+            and state.schemaScope is not None
+            and state.schemaScope.complete
+            and state.schemaScope.sourceSha256 == source
+            for state in selected
+        )
+    )
 
 
 def receipt(
@@ -739,24 +830,19 @@ def receipt(
         state.route for state in states if state.footprint is not None and state.status == "passed"
     }
     explorer = [state for state in states if state.name.startswith("example-")]
-    schemas = {
-        state.route
-        for state in states
-        if state.name == "schema-depth-2-all-variants" and state.status == "passed"
-    }
     bounded_complete = (
         input_match
         and measured_routes == set(ROUTES)
         and len(explorer) == 18
         and all(state.status == "passed" for state in explorer)
-        and schemas == set(ROUTES[4:])
+        and schema_scopes_complete(snapshot, states)
     )
     checks.append(
         {
             "name": "bounded-measurements",
             "status": "passed" if bounded_complete else "failed",
             "evidence": evidence,
-            "reason": "The explorer has all 18 declared step states. Every callable needs a rendered recursive scope before full measurement acceptance.",
+            "reason": "The explorer has all 18 declared step states. Every callable exposes all canonical nodes and variants through two graph edges, counting references as edges. Exact facts and visible DOM are checked; deeper recursive expansion remains outside this finite measurement.",
         }
     )
     checks.append(

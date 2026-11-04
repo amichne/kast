@@ -243,11 +243,32 @@ def test_content_closure_binds_nested_mdx_and_jsx(tmp_path: Path) -> None:
     assert before != after
 
 
-def test_callable_closure_binds_the_generated_artifact(tmp_path: Path) -> None:
+def test_callable_closure_binds_page_viewer_data_and_canonical_artifact(tmp_path: Path) -> None:
     fixture(tmp_path)
+    site = tmp_path / "docs/public"
+    (site / "reference/callables").mkdir()
+    (site / "assets").mkdir()
+    (site / "snippets").mkdir()
+    (site / "assets/callable-reference.txt").write_text("{}")
+    (site / "snippets/viewer.jsx").write_text("export const Viewer = () => null;")
+    (site / "reference/callables/query-symbols.mdx").write_text(
+        'import { Viewer } from "/snippets/viewer.jsx";\n<Viewer />'
+    )
     result = content_inputs(tmp_path, "/reference/callables/query-symbols")
     assert not isinstance(result, Failure)
-    assert tuple(item.path for item in result) == ("docs/public/reference/callables.openapi.json",)
+    assert tuple(item.path for item in result) == (
+        "docs/public/assets/callable-reference.txt",
+        "docs/public/reference/callables.openapi.json",
+        "docs/public/reference/callables/query-symbols.mdx",
+        "docs/public/snippets/viewer.jsx",
+    )
+    (site / "assets/callable-reference.txt").write_text('{"changed": true}')
+    assert content_inputs(tmp_path, "/reference/callables/query-symbols") != result
+
+
+def test_missing_callable_page_cannot_fall_back_to_the_contract(tmp_path: Path) -> None:
+    fixture(tmp_path)
+    assert isinstance(content_inputs(tmp_path, "/reference/callables/query-symbols"), Failure)
 
 
 @pytest.mark.parametrize("target", ["/../../../outside.mdx", "../../outside.mdx", "/missing.mdx"])
