@@ -114,7 +114,7 @@
           "claim": "claim_e33e1df867cd458cb285276411f1490d",
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L132-L178",
           "recordedVersion": "repo-lines-v1:sha256:3ac80e42341f13547313b8e283339d8501c1b8e297e9cc0656733291d81bb1d1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZDkxMzQ3YjJmZWZhNGU2YzA0YzFkM2IzZjg4ZWZkZGE5MjUyMTJlNWU4NWU1NDY0ZDJkMTNhODFhNmQ4MTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNmM3YjVkZWJjNTY1ZDQ5ODIzM2UwNWY4OWFiMTc2MmNlNDZhZjUwMDIwNmZjZThiOTE3YjhiNGE5YThiYTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxYjdlMjcwNWViY2Q5MTM4OTVkOGU3OTc1MzE4OTc4YTkzMzg1YmQ4MzcyYTliNmM3MzNlYzZhNDcyMGIzNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhZjRjZWM2YjNhMjc5YTA4MjhjODJlOTQ4OWIxNjU2N2MwMWZkNzUwYWNmOWI4ZjhmNjNkNjMyZDkwY2EwMzEifQ",
-          "currentVersion": "repo-file-v1:sha256:1df157cf5c203646259b39917285272889f22d82eb4659e741df289197f17035",
+          "currentVersion": "repo-file-v1:sha256:990daf6adee87ca63e2bdde3712d330f699ab6fa1753d804cd1c3bdc42f718be",
           "status": "NOT_ASSESSED"
         },
         {
@@ -695,8 +695,8 @@
           "claim": "claim_b0db390ee1024ec7b43f6f582a2fa2aa",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
           "recordedVersion": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43",
-          "currentVersion": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:6b944236f7831649794ed625cc85e34274de867d98fb7f23848dfd49b2030395",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_b0db390ee1024ec7b43f6f582a2fa2aa",
@@ -709,15 +709,15 @@
           "claim": "claim_b0db390ee1024ec7b43f6f582a2fa2aa",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt",
           "recordedVersion": "repo-file-v1:sha256:819372826ce26c2bcb1e64203cfb06dad6273c417ac453949a3653c82adc948e",
-          "currentVersion": "repo-file-v1:sha256:819372826ce26c2bcb1e64203cfb06dad6273c417ac453949a3653c82adc948e",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:7cb06c65bbc66c775cd64716160b0eb5b9abddeb28912b4b583fbcb8cd18ca39",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_fb51b4c2d102485aa991583169b152e7",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
           "recordedVersion": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43",
-          "currentVersion": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:6b944236f7831649794ed625cc85e34274de867d98fb7f23848dfd49b2030395",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_80d7cba10f654efa9a0f95eac3382f7b",
@@ -737,8 +737,8 @@
           "claim": "claim_6841e7e3c40a485aaee1af9d7abbb523",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
           "recordedVersion": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243",
-          "currentVersion": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:f972d6636b9626cd1f0c7fd3bd6de9135415d3b6f56df2085655f7f8106b1c71",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_6841e7e3c40a485aaee1af9d7abbb523",
@@ -751,8 +751,8 @@
           "claim": "claim_7734d5f14fe74d3bb4546106a864e74b",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
           "recordedVersion": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243",
-          "currentVersion": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:f972d6636b9626cd1f0c7fd3bd6de9135415d3b6f56df2085655f7f8106b1c71",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_7734d5f14fe74d3bb4546106a864e74b",
@@ -765,8 +765,8 @@
           "claim": "claim_922672bb50324e35aeec6d9d0651c996",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt",
           "recordedVersion": "repo-file-v1:sha256:1e785987b13330c23e92af50188ee7a43c91103f8255be46f689f5b731d35d7c",
-          "currentVersion": "repo-file-v1:sha256:1e785987b13330c23e92af50188ee7a43c91103f8255be46f689f5b731d35d7c",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:f01c13f015c843aca17900058f94b4a59b98ee19a1c3e5816901c4f6f57d6da9",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_922672bb50324e35aeec6d9d0651c996",
@@ -1094,8 +1094,8 @@
           "claim": "claim_9afc4ce3301b4badb9651eeb2f54f674",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
           "recordedVersion": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243",
-          "currentVersion": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:f972d6636b9626cd1f0c7fd3bd6de9135415d3b6f56df2085655f7f8106b1c71",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_e26a437aa26b41068e118b49725d068c",
