@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:704db34277bb3320e2d2541601fd6e4f033eff131066d16f0d3ba3864a0b7c96",
+  "pageVersion": "sha256:4455b83a98d2dc31d9239f67e330eec6c46126f22c861a888b6aaa20ccc41507",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -142,7 +142,7 @@
       "evidence": [
         {
           "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:f2998026d8da7a973648a0ddf55d7ba8f75da26cf5fdbd11f8a132f50d02521d"
+          "version": "repo-file-v1:sha256:fc96f7e447a3b03146c07d43b3ec340ecd40af6ef19f283c82f2d9196351c8cc"
         },
         {
           "resource": "repo://cli/src/main/native-launchers/bin/kast-mcp",
@@ -179,6 +179,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T17:39:06.252Z"
+    "at": "2026-11-04T18:05:12.445Z"
   }
 }

@@ -387,8 +387,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "dfe988992382ae9e39e19fb8bc4fc581d7b44b3a44e42273a4ba3d2ddf1aa594",
-      "claimsSha256": "47ee592d9117dd0292f50b36e2bb078fcc9aca1264db95411b45c637e4d0247a",
+      "sha256": "c70c86be2d7e1206c1da0181487f57c6ee306836b513b22dd86187e21ab2bdf4",
+      "claimsSha256": "8a0cafc20960ce2e329fe71603142c0cf75d7ba0c214e766b2aff7688aa9b93f",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -498,9 +498,9 @@
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
           "resource": "repo://cli/build.gradle.kts",
-          "recordedVersion": "repo-file-v1:sha256:f2998026d8da7a973648a0ddf55d7ba8f75da26cf5fdbd11f8a132f50d02521d",
+          "recordedVersion": "repo-file-v1:sha256:fc96f7e447a3b03146c07d43b3ec340ecd40af6ef19f283c82f2d9196351c8cc",
           "currentVersion": "repo-file-v1:sha256:fc96f7e447a3b03146c07d43b3ec340ecd40af6ef19f283c82f2d9196351c8cc",
-          "status": "CHANGED"
+          "status": "MATCHED"
         },
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4cd23deb5cd4885928d612fbb8125a2bacd622ebe22bbd5cc9d19492f9c65eb6",
+  "pageVersion": "sha256:743575ac6683fa5abc868f7fcfaeaa3a465483da10429a242dd3d5ffb2b1711a",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -32,7 +32,7 @@
       "evidence": [
         {
           "resource": "repo://AGENTS.md",
-          "version": "repo-file-v1:sha256:0030ac50ee9489e4765459d22a6b0f1d98e50e6d167d13a2fe37d9eb5da2e8fa"
+          "version": "repo-file-v1:sha256:92323ac3a16789052afd21d48aecceb612b690e78f07fbfd5dbb2aadecd2714c"
         }
       ]
     },
@@ -87,6 +87,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T06:05:09.838Z"
+    "at": "2026-11-04T18:05:12.445Z"
   }
 }
