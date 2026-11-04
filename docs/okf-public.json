@@ -5930,6 +5930,10 @@
           "sha256": "c0bb30263661150edf41567c65f074c7ce2328e6a2a8210b3f0476da26ed61e1"
         },
         {
+          "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
+          "sha256": "97100f5516adf5e952c4d32bed7cbb73ac85de7ab21030a7d55cb80b86733ed5"
+        },
+        {
           "path": "docs/public/reference/callables.openapi.json",
           "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
         },
@@ -5938,7 +5942,7 @@
           "sha256": "ec40d027fcb0cdf0efced88cd117ece7768c090c96a90b4dbeec18a14dc1f61e"
         }
       ],
-      "reviewedSourceRevision": "724de3bdb89da662f281aadab1f10a66b0f636ed"
+      "reviewedSourceRevision": "e51c5b01a1467be29c282d5f132019de51045256"
     },
     {
       "route": "reference/compatibility",
