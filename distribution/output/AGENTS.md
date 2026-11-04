@@ -4,8 +4,8 @@ title: "Kast CLI output"
 description: "Defines the shared JSON and TOON presentation adapter for public command modes."
 resource: "repo://distribution/output"
 tags: [kast, cli, serialization]
-timestamp: "2026-11-04T23:05:59Z"
-source_revision: 89e9bcf0de1ca8f338ffd629fd7ec4606266d4bc
+timestamp: "2026-11-04T23:47:43Z"
+source_revision: a40f353337068c7046aa4e9d2dbef161a21722ad
 code_sources:
   - path: distribution/output/build.gradle.kts
   - path: distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/CliOutput.kt
@@ -31,3 +31,5 @@ Do not apply the CLI format switch to stored records or internal protocols.
 
 Run `mise exec -- ./gradlew :distribution:output:scopedCheck` for this module.
 The public CLI process tests prove switch admission and the emitted result format.
+The CLI's native projection tests also cover decoder metadata for JDK collection types.
+Keep these tests passing after JDK or `JToon` upgrades.
