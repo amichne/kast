@@ -185,3 +185,13 @@ test('invalid JSON settles as failed after resource integrity succeeds', async (
   assertFailed(observation);
   observation.unmount();
 });
+
+test('timeout fails immediately even when a pending boundary ignores abort', async () => {
+  const observation = observe(graph(), { ignoreAbort: true });
+  observation.expire();
+  assertFailed(observation);
+  observation.complete();
+  await observation.settled();
+  assertFailed(observation);
+  observation.unmount();
+});
