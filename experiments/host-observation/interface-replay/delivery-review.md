@@ -11,6 +11,9 @@ That request excludes descendants that the task includes.
 The grader and fixture transitions now reject that narrower scope.
 Omitted, null, and true values preserve the production default.
 Finish decisions now reject contradictory or unknown fields.
+C3 also preserves the issued `CLASS` target when a request selects declaration families.
+C6 preserves all four original declaration families because its task forbids a changed query.
+The production decoder admits narrower requests, but independent target grades reject them.
 
 The shell concatenated individual byte chunks as strings.
 A split within `雪` produced replacement characters without a failure.
@@ -52,8 +55,8 @@ The 3× target remains `NOT_MET`.
 
 ## Checks
 
-- **PASSED:** 105 deterministic replay Node tests, with 11 optional integrations skipped without explicit SDK and adapter variables.
-- **PASSED:** All 31 opt-in integration tests, with zero skips.
+- **PASSED:** 107 deterministic replay Node tests, with 12 optional integrations skipped without explicit SDK and adapter variables.
+- **PASSED:** All 32 opt-in integration tests, with zero skips.
 - **PASSED:** All 332 host-experiment Python tests.
 - **PASSED:** The scope, byte-preservation, identity, and driver-diagnostic counterexamples failed before their repairs and passed afterward.
 - **ASSESSED:** Pinned prose reports preserve readability advisories for necessary technical terms.

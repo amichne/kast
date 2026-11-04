@@ -108,3 +108,28 @@ test('restricted shell cannot read evaluator files or start production Kast exec
   assert.match(receipt.captures[0].stderr,/Operation not permitted/);
  } finally {fs.rmSync(root,{recursive:true});}
 });
+
+test('production admission preserves declaration families and independent target grades reject changed intent',integration,async()=>{
+ const variants=[
+  {caseId:'C3',kinds:['FUNCTION'],correct:false},
+  {caseId:'C3',kinds:['CLASS'],correct:true},
+  {caseId:'C6',kinds:['FUNCTION'],correct:false},
+  {caseId:'C6',kinds:['CLASS'],correct:false},
+  {caseId:'C6',kinds:['TYPE_ALIAS','PROPERTY','FUNCTION','CLASS'],correct:true},
+ ];
+ for(const {caseId,kinds,correct}of variants){
+  const control=structuredClone(replayOracleControls(caseId).accept[0]);
+  control.admission.request.source.declarationKinds=kinds;
+  const stdin=JSON.stringify({request:control.admission.request});
+  const receipt=await shellTrial(`kast query --request - <<'REQUEST'\n${stdin}\nREQUEST`);
+  assert.equal(receipt.failed,false);assert.equal(receipt.entries,1);
+  const invocation=receipt.invocations[0],admitted=invocation.admission;
+  assert.equal(invocation.request.stdin,stdin+'\n');
+  assert.equal(admitted.type,'ADMITTED');assert.equal(admitted.nativeCalls,0);
+  assert.deepEqual(admitted.arguments.request.source.declarationKinds,kinds);
+  const grade=gradeReplayDecision(caseId,control.decision,admitted);
+  assert.equal(grade.correct,correct,`${caseId}:${kinds}`);
+  assert.equal(grade.dimensions.arguments,'PASS');assert.equal(grade.dimensions.scope,'PASS');
+  assert.equal(grade.dimensions.target,correct?'PASS':'FAIL');
+ }
+});

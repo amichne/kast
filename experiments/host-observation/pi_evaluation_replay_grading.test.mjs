@@ -148,3 +148,27 @@ test('closed decisions reject unknown keys and conflicting coverage claims',()=>
  }
  assert.ok(gradeReplayDecision('C5',{kind:'clarify',question:'Which scope?',answer:'absent'}).reasons.includes('MALFORMED_DECISION'));
 });
+
+test('declaration families preserve the known C3 class and the unrestricted C6 query',()=>{
+ const variants=[
+  {kinds:undefined,c3:true,c6:true},
+  {kinds:null,c3:true,c6:true},
+  {kinds:['CLASS'],c3:true,c6:false},
+  {kinds:['CLASS','PROPERTY'],c3:true,c6:false},
+  {kinds:['FUNCTION'],c3:false,c6:false},
+  {kinds:['PROPERTY','TYPE_ALIAS'],c3:false,c6:false},
+  {kinds:['CLASS','FUNCTION','PROPERTY','TYPE_ALIAS'],c3:true,c6:true},
+  {kinds:['TYPE_ALIAS','PROPERTY','FUNCTION','CLASS'],c3:true,c6:true},
+ ];
+ for(const caseId of ['C3','C6'])for(const variant of variants){
+  const control=replayOracleControls(caseId).accept[0],admission=structuredClone(control.admission);
+  if(variant.kinds!==undefined)admission.request.source.declarationKinds=variant.kinds;
+  const grade=gradeReplayDecision(caseId,control.decision,admission);
+  const expected=caseId==='C3'?variant.c3:variant.c6;
+  assert.equal(grade.dimensions.arguments,'PASS');
+  assert.equal(grade.correct,expected,`${caseId}:${JSON.stringify(variant.kinds)}`);
+  assert.equal(grade.dimensions.target,expected?'PASS':'FAIL');
+  assert.equal(grade.dimensions.scope,'PASS');
+  if(!expected)assert.ok(grade.reasons.includes('WRONG_TARGET'));
+ }
+});

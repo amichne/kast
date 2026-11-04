@@ -1,7 +1,7 @@
 {
   "type": "DELIVERY_REVIEW_REGRADE",
   "reviewedBase": "7e3bf755044279b619a081e27c06f3dc7f3ef657",
-  "newGraderSha256": "ba6638629b79d9e61e81508421a2589814f40eea3a390be6dd5b87fc29ed8dfe",
+  "newGraderSha256": "2a07451b472fcdba8dd5a1b4879fb515a51ef2a5063e7280b73a2e93c93e188c",
   "originalReceiptsChanged": false,
   "trialCount": 96,
   "changedGrades": 0,
@@ -1095,5 +1095,8 @@
       "status": "NOT_MET",
       "unchanged": true
     }
-  ]
+  ],
+  "previousReviewGraderSha256": "ba6638629b79d9e61e81508421a2589814f40eea3a390be6dd5b87fc29ed8dfe",
+  "declarationFamilyReviewBase": "839390b6b50e206f78dd13db61ba4c9d37a4f49b",
+  "unrestrictedAdmittedC3C6Requests": 31
 }

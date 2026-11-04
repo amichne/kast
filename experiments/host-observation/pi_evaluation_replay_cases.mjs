@@ -70,15 +70,17 @@ export function replayTransition(caseId,admission) {
     &&request.source.scope.relativeDirectoryPath==='services/orders'&&list(request.source.scope.sourceSetNames,['main'])
     &&[undefined,null,true].includes(request.source.scope.includeSubdirectories)
     &&(!request.steps||request.steps.length===0)&&request.terminalStep?.type==='EMIT';
+  const declarationKinds=request?.source?.declarationKinds;
+  const defaultFamilies=declarationKinds===undefined||declarationKinds===null;
   const supported={
     C1:request?.type==='RUN'&&request.source?.type==='SYMBOL_REFS'&&list(request.source.symbolRefs,['exact:v5:AAAAAAAAAAAAAAAAAAAAAQ'])
       &&request.steps?.length===1&&request.steps[0].type==='EXPAND_RELATION'&&request.steps[0].relation==='CALLERS'&&request.terminalStep?.type==='EMIT',
     C2:request?.type==='READ_SOURCE'&&request.candidateRef==='exact:v5:AAAAAAAAAAAAAAAAAAAAAg'&&request.region==='CALLABLE_BODY'&&request.text?.type==='COMPLETE',
-    C3:search,
+    C3:search&&(defaultFamilies||Array.isArray(declarationKinds)&&declarationKinds.includes('CLASS')),
     C4:request?.type==='READ_RESULT'&&request.result==='result:v1:00000000-0000-0000-0000-000000000004'&&request.cursor===1
       &&[undefined,null,0].includes(request.evidence_cursor),
     C5:false,
-    C6:search&&request.terminalStep.output?.type==='SYMBOLS'&&Array.isArray(request.terminalStep.output.fields)
+    C6:search&&(defaultFamilies||Array.isArray(declarationKinds)&&declarationKinds.length===4&&['CLASS','FUNCTION','PROPERTY','TYPE_ALIAS'].every(kind=>declarationKinds.includes(kind)))&&request.terminalStep.output?.type==='SYMBOLS'&&Array.isArray(request.terminalStep.output.fields)
       &&request.terminalStep.output.fields.length===2&&request.terminalStep.output.fields.includes('NAME')&&request.terminalStep.output.fields.includes('SIGNATURE'),
   };
   if(!Object.hasOwn(supported,caseId))throw Error('UNKNOWN_REPLAY_CASE');
