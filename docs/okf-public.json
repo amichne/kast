@@ -5063,6 +5063,211 @@
       "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
     },
     {
+      "route": "reference/callables/add-declaration",
+      "content": [
+        {
+          "path": "docs/public/assets/callable-reference.txt",
+          "sha256": "79c1bdffc5848b5eb6f715547ab5347e58bceccb0ad240e1fc41f9ca7a10cdc0"
+        },
+        {
+          "path": "docs/public/reference/callables.openapi.json",
+          "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+        },
+        {
+          "path": "docs/public/reference/callables/add-declaration.mdx",
+          "sha256": "29e01960c648e25feaeef022f246214229313368da10e4a7d3e6fd15f2ae2534"
+        },
+        {
+          "path": "docs/public/snippets/callable-reference.jsx",
+          "sha256": "161a264e7d34e6f8a1f1359f43f2ca887151e16466268fde087d66d322b5deb1"
+        }
+      ],
+      "claims": [],
+      "generatedOwners": [
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "sha256": "8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
+          "sha256": "e32818fe293f128cc4ff75e664d4f8a6103cfc5998313b8201a8ac8a091706e1"
+        },
+        {
+          "path": "docs/tooling/callables/build.py",
+          "sha256": "517007393451031332ae561c0ac54a09f0545a5b2490683cc55823bed3a30f09"
+        },
+        {
+          "path": "docs/tooling/callables/viewer.jsx",
+          "sha256": "c3321005d56dff78f9e845246154b278f7bec4c329c78da348d6b1d289b610dd"
+        }
+      ],
+      "reviewedSourceRevision": "e7c1cc47972875ec7beb00f436b74e67f693b0c8"
+    },
+    {
+      "route": "reference/callables/check-diagnostics",
+      "content": [
+        {
+          "path": "docs/public/assets/callable-reference.txt",
+          "sha256": "79c1bdffc5848b5eb6f715547ab5347e58bceccb0ad240e1fc41f9ca7a10cdc0"
+        },
+        {
+          "path": "docs/public/reference/callables.openapi.json",
+          "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+        },
+        {
+          "path": "docs/public/reference/callables/check-diagnostics.mdx",
+          "sha256": "ecb25fcb2fe8526cd91e976b105695d2eee1652947e6b44e572a9689310f597f"
+        },
+        {
+          "path": "docs/public/snippets/callable-reference.jsx",
+          "sha256": "161a264e7d34e6f8a1f1359f43f2ca887151e16466268fde087d66d322b5deb1"
+        }
+      ],
+      "claims": [],
+      "generatedOwners": [
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "sha256": "8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
+          "sha256": "e32818fe293f128cc4ff75e664d4f8a6103cfc5998313b8201a8ac8a091706e1"
+        },
+        {
+          "path": "docs/tooling/callables/build.py",
+          "sha256": "517007393451031332ae561c0ac54a09f0545a5b2490683cc55823bed3a30f09"
+        },
+        {
+          "path": "docs/tooling/callables/viewer.jsx",
+          "sha256": "c3321005d56dff78f9e845246154b278f7bec4c329c78da348d6b1d289b610dd"
+        }
+      ],
+      "reviewedSourceRevision": "e7c1cc47972875ec7beb00f436b74e67f693b0c8"
+    },
+    {
+      "route": "reference/callables/query-symbols",
+      "content": [
+        {
+          "path": "docs/public/assets/callable-reference.txt",
+          "sha256": "79c1bdffc5848b5eb6f715547ab5347e58bceccb0ad240e1fc41f9ca7a10cdc0"
+        },
+        {
+          "path": "docs/public/reference/callables.openapi.json",
+          "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+        },
+        {
+          "path": "docs/public/reference/callables/query-symbols.mdx",
+          "sha256": "8a984b0bfac3c121bf6c4ff2f254b33c5c2c11ecd12c2d2ac2d203ba329cee7b"
+        },
+        {
+          "path": "docs/public/snippets/callable-reference.jsx",
+          "sha256": "161a264e7d34e6f8a1f1359f43f2ca887151e16466268fde087d66d322b5deb1"
+        }
+      ],
+      "claims": [],
+      "generatedOwners": [
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "sha256": "8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
+          "sha256": "e32818fe293f128cc4ff75e664d4f8a6103cfc5998313b8201a8ac8a091706e1"
+        },
+        {
+          "path": "docs/tooling/callables/build.py",
+          "sha256": "517007393451031332ae561c0ac54a09f0545a5b2490683cc55823bed3a30f09"
+        },
+        {
+          "path": "docs/tooling/callables/viewer.jsx",
+          "sha256": "c3321005d56dff78f9e845246154b278f7bec4c329c78da348d6b1d289b610dd"
+        }
+      ],
+      "reviewedSourceRevision": "e7c1cc47972875ec7beb00f436b74e67f693b0c8"
+    },
+    {
+      "route": "reference/callables/replace-body",
+      "content": [
+        {
+          "path": "docs/public/assets/callable-reference.txt",
+          "sha256": "79c1bdffc5848b5eb6f715547ab5347e58bceccb0ad240e1fc41f9ca7a10cdc0"
+        },
+        {
+          "path": "docs/public/reference/callables.openapi.json",
+          "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+        },
+        {
+          "path": "docs/public/reference/callables/replace-body.mdx",
+          "sha256": "fd3851425d68338b2b4df837f7719310a7de6cb841e8b74023776db1e01d41b3"
+        },
+        {
+          "path": "docs/public/snippets/callable-reference.jsx",
+          "sha256": "161a264e7d34e6f8a1f1359f43f2ca887151e16466268fde087d66d322b5deb1"
+        }
+      ],
+      "claims": [],
+      "generatedOwners": [
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "sha256": "8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
+          "sha256": "e32818fe293f128cc4ff75e664d4f8a6103cfc5998313b8201a8ac8a091706e1"
+        },
+        {
+          "path": "docs/tooling/callables/build.py",
+          "sha256": "517007393451031332ae561c0ac54a09f0545a5b2490683cc55823bed3a30f09"
+        },
+        {
+          "path": "docs/tooling/callables/viewer.jsx",
+          "sha256": "c3321005d56dff78f9e845246154b278f7bec4c329c78da348d6b1d289b610dd"
+        }
+      ],
+      "reviewedSourceRevision": "e7c1cc47972875ec7beb00f436b74e67f693b0c8"
+    },
+    {
+      "route": "reference/callables/workspace-lifecycle",
+      "content": [
+        {
+          "path": "docs/public/assets/callable-reference.txt",
+          "sha256": "79c1bdffc5848b5eb6f715547ab5347e58bceccb0ad240e1fc41f9ca7a10cdc0"
+        },
+        {
+          "path": "docs/public/reference/callables.openapi.json",
+          "sha256": "d750a61fc74fc6ccd54e4ede410d5908b152bae636e22f3e480f36d9131c0d46"
+        },
+        {
+          "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
+          "sha256": "29c9987430e0cb0fb30b9c2d43d2befd5b3badf4164b448b4c31a19e4262c91d"
+        },
+        {
+          "path": "docs/public/snippets/callable-reference.jsx",
+          "sha256": "161a264e7d34e6f8a1f1359f43f2ca887151e16466268fde087d66d322b5deb1"
+        }
+      ],
+      "claims": [],
+      "generatedOwners": [
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
+          "sha256": "8a20cb06cdf3eb95f42a4f1d43eadc9de704f5adb34566cf9cc0e205aa3ad609"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/MintlifyCallableReference.kt",
+          "sha256": "e32818fe293f128cc4ff75e664d4f8a6103cfc5998313b8201a8ac8a091706e1"
+        },
+        {
+          "path": "docs/tooling/callables/build.py",
+          "sha256": "517007393451031332ae561c0ac54a09f0545a5b2490683cc55823bed3a30f09"
+        },
+        {
+          "path": "docs/tooling/callables/viewer.jsx",
+          "sha256": "c3321005d56dff78f9e845246154b278f7bec4c329c78da348d6b1d289b610dd"
+        }
+      ],
+      "reviewedSourceRevision": "e7c1cc47972875ec7beb00f436b74e67f693b0c8"
+    },
+    {
       "route": "reference/callback-observations",
       "content": [
         {

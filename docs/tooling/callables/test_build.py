@@ -2,6 +2,7 @@
 
 import html
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -127,9 +128,10 @@ def test_generated_pages_keep_operation_guidance_and_selected_route_inventory() 
     ):
         content = pages[f"docs/public/reference/callables/{name.replace('_', '-')}.mdx"]
         operation = source["paths"]["/callables/" + name]["post"]
-        assert operation["description"].replace("`", "") in html.unescape(content).replace(
-            "` ", ""
-        ).replace(" `", "").replace("`", "")
+        literal_text = re.sub(
+            r"(`+)(.*?)\1", lambda match: match.group(2).strip(" "), html.unescape(content)
+        )
+        assert operation["description"] in literal_text
         assert operation["x-mint"]["content"] in content
     for path, content in files.items():
         assert (ROOT / path).read_text() == content
