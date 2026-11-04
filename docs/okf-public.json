@@ -1606,7 +1606,7 @@
       "content": [
         {
           "path": "docs/public/agent-harnesses.mdx",
-          "sha256": "ea30832ef618dc0056d2f72cb04c0516906dbbb2e7634bd31e0823ed09a52d15"
+          "sha256": "6d934db52f09bb85e0f925a9d656141af4be407a63e4612b4d709b820103e4be"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -1715,7 +1715,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "architecture/change-lifecycle",
@@ -2165,7 +2165,7 @@
       "content": [
         {
           "path": "docs/public/explanation.mdx",
-          "sha256": "4aa19d344cea5379386a9d9661a5493ac1eab05a36338827bf4e395f0717b074"
+          "sha256": "ea09f320945f42ec71c5a4d9fadb3bd261a2ad9fc3a92654f264e186042fa808"
         }
       ],
       "claims": [
@@ -2500,7 +2500,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "explanation/query-lifecycle",
@@ -2864,7 +2864,7 @@
       "content": [
         {
           "path": "docs/public/how-to.mdx",
-          "sha256": "42266d176b87135e82ed5255b7bd0db45d59ea046d089920ccd18a81f2ac85a8"
+          "sha256": "cb463a9d0e9eee0c334e80a3f8b6807e6738655dd6818bc7eb179cd522139346"
         }
       ],
       "claims": [
@@ -3174,7 +3174,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "how-to/complete-engineering-task",
@@ -3877,7 +3877,7 @@
       "content": [
         {
           "path": "docs/public/index.mdx",
-          "sha256": "8842227698fdd7a5fe8182296ca4ec5e6336a9fff6f45dda08e895aff1ad6b4d"
+          "sha256": "0d8994d6c7e9eb63134621387e3b76faa1a4ea9f396d92f31072a87688ad44fb"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -4341,14 +4341,14 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "reference",
       "content": [
         {
           "path": "docs/public/reference.mdx",
-          "sha256": "4b0b98a1b99ae468ad438e6b09b825478fb69cead90207b90e6a4d1c47ab30c4"
+          "sha256": "9e463d65da4e310d53e854acb4ff5b682e4ef5c0f69d344248ba0d12380bee57"
         }
       ],
       "claims": [
@@ -4683,7 +4683,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "reference/api",
@@ -6320,7 +6320,7 @@
       "content": [
         {
           "path": "docs/public/reference/integrations.mdx",
-          "sha256": "02344004dee62b26a014622c20b50bb055440437728798f239f5998b7d77b581"
+          "sha256": "abeac0d98f21430f3c545336f1be24f2ef1dbfe497b6ae2b70186093617f81d2"
         }
       ],
       "claims": [
@@ -6425,7 +6425,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "reference/internals/architecture",
@@ -13828,7 +13828,7 @@
       "content": [
         {
           "path": "docs/public/reference/walkthrough.mdx",
-          "sha256": "2b80dff3f4b792a0e82037eb886bd494ba3ccc5b184169108c5ef829c4cc619a"
+          "sha256": "0fea15f5db89701f79327764534eb30f3f190d90147fd247cf5a9aaf19920c11"
         }
       ],
       "claims": [
@@ -14108,14 +14108,14 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "search",
       "content": [
         {
           "path": "docs/public/search.mdx",
-          "sha256": "a638a144d426a74387b9842d8d0f61d713e5c705fa765b03efa0441711badb1a"
+          "sha256": "b681dbafdc1089a7e96a050da261603c35ead4d64e646fcd0ec172ea13217446"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -14509,7 +14509,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "start",
@@ -14520,7 +14520,7 @@
         },
         {
           "path": "docs/public/start.mdx",
-          "sha256": "6a4dbe185118d0508fd1f6b2292593085909808876e7aaad903d6e2e946bb97e"
+          "sha256": "712cb80427c9fc5f28f0634f03a217faa66bdc92e1e759b2e7b456bef1baab22"
         }
       ],
       "claims": [
@@ -15035,7 +15035,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "314b0779e7bd0bffbc40238ab4fea063b08762f4"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "troubleshooting",
@@ -15303,7 +15303,7 @@
       "content": [
         {
           "path": "docs/public/tutorials.mdx",
-          "sha256": "c4ecbd1d60ebf8e41f286acd5b88bef70c9f2479c51230081cf40ca26c321065"
+          "sha256": "a6f303faa419d55cf33695a33b06577ea9d852129c8dd87147d74dcdd27cd2ab"
         }
       ],
       "claims": [
@@ -15583,7 +15583,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     },
     {
       "route": "tutorials/first-query",
@@ -15594,7 +15594,7 @@
         },
         {
           "path": "docs/public/tutorials/first-query.mdx",
-          "sha256": "37b6abb9343111e23905c489d5bd13845a94b0923cfb17e3d0d76275b89f39d9"
+          "sha256": "3121e2c6f37fddd1d1b40cbcb8655f4fad34639d01cf7f718af0f3322ab180ca"
         }
       ],
       "claims": [
@@ -15929,7 +15929,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
     }
   ]
 }

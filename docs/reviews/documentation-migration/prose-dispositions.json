@@ -5,25 +5,25 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/.mintlify/product-brief.md",
-        "sourceSha256": "15e7a08af1fa62aa647c4c5d1e209c49181cbe16401ae89ba29d0d785099456e",
+        "sourceSha256": "b4b8de82e8f732d040068c5ef48edbf39429e117b213e3502c3688e46cd37fa0",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 10.12 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 11.12 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep the remote bootstrap, current setup route, and explicit installation/update owners. Preserve exact identifiers `kast`, `--developer-latest --skip-codex-plugin`, `kast upgrade --channel main --restart-ide`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep the product direction, installation owners, exact bootstrap and upgrade commands, and the distinction between the product standard and current supported contracts. This internal brief guides later edits; its compiler and installation terms preserve meaning. The grade-8 advisory remains unmet and reader comprehension remains unmeasured."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/agent-harnesses.mdx",
-        "sourceSha256": "ea30832ef618dc0056d2f72cb04c0516906dbbb2e7634bd31e0823ed09a52d15",
+        "sourceSha256": "6d934db52f09bb85e0f925a9d656141af4be407a63e4612b4d709b820103e4be",
         "rule": "HowTo.Steps",
         "line": 1,
         "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
         "severity": "warning"
       },
-      "reason": "Lines 21-41 give one agent choice through three command tabs, then a fresh session. Lines 45-53 cover the separate refresh case. A single numbered sequence can falsely order alternative agents and refresh after every installation."
+      "reason": "The three agent tabs are alternative installation commands, followed by one fresh session. Refresh guidance is a separate maintenance case. A numbered Markdown list would imply an order among alternative agents. The existing sections and tabbed commands preserve the procedure."
     },
     {
       "finding": {
@@ -41,13 +41,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/explanation.mdx",
-        "sourceSha256": "4aa19d344cea5379386a9d9661a5493ac1eab05a36338827bf4e395f0717b074",
+        "sourceSha256": "ea09f320945f42ec71c5a4d9fadb3bd261a2ad9fc3a92654f264e186042fa808",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 9.10 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 9.97 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep source contribution versus transformation, callback evidence, and completion limits. Preserve exact identifiers `message`, `display`, `unrelated`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep exact declaration identity, completion scope, callback execution gaps, retained evidence, and the separation between source relationships and runtime behavior. These distinctions define the compiler-grounded evidence contract and the never-silently-wrong product standard. The grade advisory remains visible; reader comprehension remains unmeasured."
     },
     {
       "finding": {
@@ -161,13 +161,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/integrations.mdx",
-        "sourceSha256": "02344004dee62b26a014622c20b50bb055440437728798f239f5998b7d77b581",
+        "sourceSha256": "abeac0d98f21430f3c545336f1be24f2ef1dbfe497b6ae2b70186093617f81d2",
         "rule": "HowTo.Steps",
         "line": 1,
         "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
         "severity": "warning"
       },
-      "reason": "Numbered headings at lines 15,63,79 separate agent guidance, a query, and an optional canonical-skill export. The tabs contain alternative agents. The sequence exists as headings rather than a Markdown ordered list."
+      "reason": "Numbered headings order installation, ordinary project work, and optional skill export. Agent tabs are alternatives within installation; refresh guidance is a separate maintenance case. The rule detects numbered Markdown lists and misses these existing numbered headings."
     },
     {
       "finding": {
@@ -629,13 +629,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/start.mdx",
-        "sourceSha256": "6a4dbe185118d0508fd1f6b2292593085909808876e7aaad903d6e2e946bb97e",
+        "sourceSha256": "712cb80427c9fc5f28f0634f03a217faa66bdc92e1e759b2e7b456bef1baab22",
         "rule": "HowTo.Steps",
         "line": 1,
         "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
         "severity": "warning"
       },
-      "reason": "Numbered section headings provide the three ordered setup steps. Tabs select one existing agent, and the accordion holds the separate upgrade case. A Markdown ordered list is absent, so the structural advisory remains visible."
+      "reason": "Three numbered headings order installation, agent guidance, and ordinary project work. Alternative agents use tabs within the second step. The rule detects numbered Markdown lists and misses these headings; no query exercise is required for setup."
     },
     {
       "finding": {
@@ -653,13 +653,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/tutorials/first-query.mdx",
-        "sourceSha256": "37b6abb9343111e23905c489d5bd13845a94b0923cfb17e3d0d76275b89f39d9",
+        "sourceSha256": "3121e2c6f37fddd1d1b40cbcb8655f4fad34639d01cf7f718af0f3322ab180ca",
         "rule": "Tutorial.Steps",
         "line": 1,
         "message": "A tutorial walks the learner through numbered steps; there is no numbered list here.",
         "severity": "warning"
       },
-      "reason": "The <Steps> component at lines17-74 contains five <Step> children: add source, find target, find caller, search absent name, remove source. Each has an expected answer or safe cleanup. The Markdown-only rule misses the actual numbered Mintlify component."
+      "reason": "The optional fixture uses Mintlify Steps and Step components for source creation, declaration identity, caller evidence, absence, and cleanup. Those ordered rendered steps retain expected facts and evidence limits. The rule only detects numbered Markdown lists."
     },
     {
       "finding": {
@@ -3060,6 +3060,30 @@
         "severity": "suggestion"
       },
       "reason": "The source uses focused sections for source-universe constraints, exact identity, and compiler reacquisition. Its precise identifiers include IntellijScopedDeclarationEnumeration, IntellijPsiExactDeclarationLookup, and ExactRevalidationService. The prose distinguishes candidate location from identity and detached epochs from current authority. Keep those necessary terms and qualifications. Grade15 remains an advisory and does not prove reader comprehension."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/how-to.mdx",
+        "sourceSha256": "cb463a9d0e9eee0c334e80a3f8b6807e6738655dd6818bc7eb179cd522139346",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.18 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "This short index preserves precise destination labels for diagnostics, retained output, query composition, source changes, and installation management. The 8.18 grade narrowly exceeds the advisory on a small amount of linking prose. Keep the destination meanings; comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/search.mdx",
+        "sourceSha256": "b681dbafdc1089a7e96a050da261603c35ead4d64e646fcd0ec172ea13217446",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 10.84 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the capability distinctions among declaration identity, source relationships, value paths, diagnostics, and controlled source edits, including native CLI versus optional MCP or Tool RPC requirements. This page explains the evidence available during ordinary work without copied prompts. Domain precision is retained; the grade target remains unmet and reader comprehension remains unmeasured."
     }
   ]
 }
