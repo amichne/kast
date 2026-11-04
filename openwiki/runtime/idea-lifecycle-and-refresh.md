@@ -46,10 +46,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCompletion.kt
   - id: openwiki-source-c3d765f6a0f5ed9757d16a3a
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt
-generated: { by: "codex", at: "2026-11-04T23:27:44.986Z" }
+generated: { by: "codex", at: "2026-11-04T23:47:48.767Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-04T23:27:44.986Z
+    at: 2026-11-04T23:47:48.767Z
 ---
 
 # IDEA lifecycle and explicit refresh
@@ -126,14 +126,17 @@ Upgrades need new catalogs and the selected Host loaded before semantic admissio
 WorkspacePreparations owns one sequence per canonical root.
 Callers can share pending or completed preparation.
 One open effect precedes status reads for its issued operation.
+
 Preparation shares one configured allowance across open, import, VFS refresh, indexing, and final admission.
 The default is 17 minutes. `KAST_WORKSPACE_PREPARATION_WAIT` accepts positive milliseconds or `indefinite`.
 An indefinite wait has no elapsed-time deadline; cancellation, actual failure, and editor closure still end it.
 Lifecycle VFS refresh and its nested waiter receive the remaining allowance.
 They cannot replace it with a shorter fixed timeout.
+
 If an earlier shared native wait expires, `NativePreparationAwaiter` checks the same Host, root, and project.
 It then uses a fresh native request ID while keeping its original preparation deadline.
 Changed identity or a real lifecycle failure ends that wait.
+
 Lifecycle frames keep separate 5-second transport limits.
 EXCHANGE_DEADLINE_EXCEEDED reports command, stage, cause, and timing without proving that IDEA exited.
 Semantic execution has separate limits after preparation.
