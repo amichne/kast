@@ -5,13 +5,13 @@
       "finding": {
         "stage": "reader-prose-3.25.1",
         "path": "docs/public/reference/callables/query-symbols.mdx",
-        "sourceSha256": "8a984b0bfac3c121bf6c4ff2f254b33c5c2c11ecd12c2d2ac2d203ba329cee7b",
+        "sourceSha256": "56839b153c4e1c06e598d3f8769a9e464bd13c3b2868edf001cb5989763a0ca4",
         "rule": "Prose.ParagraphLength",
         "line": 15,
         "message": "This paragraph has 280.00 words. Look for a change of topic or a useful list.",
         "severity": "suggestion"
       },
-      "reason": "Keep the complete canonical query invocation description, including exact selectors, output continuations, source scope, completion, budgets, and recovery. It is available in an optional Invocation contract section on the schema reference page. The paragraph advisory remains unmet; projection parity and exact source text do not establish reader comprehension."
+      "reason": "Keep the complete canonical query invocation description, including exact selectors, output continuations, source scope, completion, budgets, and recovery. It is available in an optional Invocation contract section on the schema reference page. The paragraph advisory remains unmet; projection parity and exact source text do not establish reader comprehension. The download link now uses the public GitHub source; canonical invocation prose is unchanged."
     },
     {
       "finding": {
@@ -113,61 +113,61 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/callables/check-diagnostics.mdx",
-        "sourceSha256": "ecb25fcb2fe8526cd91e976b105695d2eee1652947e6b44e572a9689310f597f",
+        "sourceSha256": "55475c6661b63d5506a6be53f63ca96279a3fd03b5f422f1ac26f55ede4b6ebc",
         "rule": "Slopsentral.Diction",
         "line": 15,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
         "severity": "warning"
       },
-      "reason": "Keep the canonical diagnostics instruction to retain aggregate coverage when filtering by path or severity. This is generated callable guidance, bound to the unchanged contract; its coverage obligation must remain explicit."
+      "reason": "Keep the canonical diagnostics instruction to retain aggregate coverage when filtering by path or severity. This is generated callable guidance, bound to the unchanged contract; its coverage obligation must remain explicit. The download link now uses the public GitHub source; canonical invocation prose is unchanged."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/callables/query-symbols.mdx",
-        "sourceSha256": "8a984b0bfac3c121bf6c4ff2f254b33c5c2c11ecd12c2d2ac2d203ba329cee7b",
+        "sourceSha256": "56839b153c4e1c06e598d3f8769a9e464bd13c3b2868edf001cb5989763a0ca4",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 8.59 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep the source-owned callable instructions and their exact field identities, approval rules, cancellation boundaries, and recovery conditions. This technical reference remains above the grade-8 advisory. The overview and setup keep their separate reader roles, and comprehension remains unmeasured."
+      "reason": "Keep the source-owned callable instructions and their exact field identities, approval rules, cancellation boundaries, and recovery conditions. This technical reference remains above the grade-8 advisory. The overview and setup keep their separate reader roles, and comprehension remains unmeasured. The download link now uses the public GitHub source; canonical invocation prose is unchanged."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/callables/replace-body.mdx",
-        "sourceSha256": "fd3851425d68338b2b4df837f7719310a7de6cb841e8b74023776db1e01d41b3",
+        "sourceSha256": "5d2b5839ba74add4034f265a62d6163b668a124876a04bccf1bcc0d85bc55c26",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 8.13 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep the source-owned callable instructions and their exact field identities, approval rules, cancellation boundaries, and recovery conditions. This technical reference remains above the grade-8 advisory. The overview and setup keep their separate reader roles, and comprehension remains unmeasured."
+      "reason": "Keep the source-owned callable instructions and their exact field identities, approval rules, cancellation boundaries, and recovery conditions. This technical reference remains above the grade-8 advisory. The overview and setup keep their separate reader roles, and comprehension remains unmeasured. The download link now uses the public GitHub source; canonical invocation prose is unchanged."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
-        "sourceSha256": "29c9987430e0cb0fb30b9c2d43d2befd5b3badf4164b448b4c31a19e4262c91d",
+        "sourceSha256": "07a63691bc70951c81cca5cd259e9ce792b8976919839268ac0f5c13d8a51a7f",
         "rule": "Slopsentral.Claims",
         "line": 15,
         "message": "Avoid the unverifiable claim 'best'.",
         "severity": "warning"
       },
-      "reason": "The canonical workspace instruction prohibits treating close as best effort cleanup. It does not claim that Kast is best. Preserve this close-approval and cleanup boundary from the source-owned callable contract."
+      "reason": "The canonical workspace instruction prohibits treating close as best effort cleanup. It does not claim that Kast is best. Preserve this close-approval and cleanup boundary from the source-owned callable contract. The download link now uses the public GitHub source; canonical invocation prose is unchanged."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
-        "sourceSha256": "29c9987430e0cb0fb30b9c2d43d2befd5b3badf4164b448b4c31a19e4262c91d",
+        "sourceSha256": "07a63691bc70951c81cca5cd259e9ce792b8976919839268ac0f5c13d8a51a7f",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 8.87 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep the source-owned callable instructions and their exact field identities, approval rules, cancellation boundaries, and recovery conditions. This technical reference remains above the grade-8 advisory. The overview and setup keep their separate reader roles, and comprehension remains unmeasured."
+      "reason": "Keep the source-owned callable instructions and their exact field identities, approval rules, cancellation boundaries, and recovery conditions. This technical reference remains above the grade-8 advisory. The overview and setup keep their separate reader roles, and comprehension remains unmeasured. The download link now uses the public GitHub source; canonical invocation prose is unchanged."
     },
     {
       "finding": {

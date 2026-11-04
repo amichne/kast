@@ -1,5 +1,7 @@
 """Lossless graph projection and finite reference regressions."""
 
+import base64
+import gzip
 import html
 import json
 import re
@@ -135,4 +137,13 @@ def test_generated_pages_keep_operation_guidance_and_selected_route_inventory() 
         assert operation["x-mint"]["content"] in content
     for path, content in files.items():
         assert (ROOT / path).read_text() == content
-    assert len(files[Path("docs/public/snippets/callable-reference.jsx")]) < 10000
+    snippet = files[Path("docs/public/snippets/callable-reference.jsx")]
+    payload = re.search(r'const compressedGraphBase64 = ("[A-Za-z0-9+/=]+");', snippet)
+    assert payload is not None
+    encoded = json.loads(payload.group(1))
+    assert len(encoded) < 1_000_000
+    assert len(snippet.replace(payload.group(1), '"payload"')) < 10000
+    assert (
+        gzip.decompress(base64.b64decode(encoded, validate=True))
+        == (ROOT / "docs/public/assets/callable-reference.txt").read_bytes()
+    )

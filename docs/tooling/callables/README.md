@@ -13,12 +13,15 @@ The viewer creates deeper nodes only when readers expand a control.
 Cycles and repeated references remain available without eager graph traversal.
 Operation descriptions and the existing five callable URLs remain available.
 
-The data resource uses `.txt` because the locked Mintlify build step reserves `.json` files for specifications.
-Its body is JSON. The generated component checks its exact SHA-256 before admitting the versioned graph.
-Failed loading, changed bytes, malformed data, and cyclic pointer ancestry leave an explicit error and a complete-contract download.
-Closing the page cancels pending loading and prevents late state updates.
+The component embeds a deterministic `gzip` stream of the graph as one base64 string.
+The browser decodes it before checking its exact SHA-256 and versioned shape.
+This avoids both eager schema traversal and reliance on hosted data-file delivery.
+Mintlify serves `.txt` files only on Enterprise plans; public source downloads use GitHub.
+The checked-in `.txt` file remains the exact generated graph source for tests and review.
+Corrupt data, unsupported decoding, malformed data, and cyclic pointer ancestry leave an explicit error and a complete-contract download.
+Closing the page cancels pending decoding and prevents late state updates.
 
 `pytest docs/tooling/callables` checks graph projection, pointer packing, exact facts, and source generation.
-`node --test docs/tooling/callables/loader.test.mjs` checks the actual asynchronous loader with controlled browser boundaries.
+`node --test docs/tooling/callables/loader.test.mjs` checks the actual asynchronous decoder with controlled browser boundaries.
 The full rendered publication runner measures all five callable pages and their declared finite expansion scope.
 These checks do not prove complete accessibility or reader comprehension.
