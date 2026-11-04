@@ -52,6 +52,27 @@ kast describe query --section examples --json > examples.json
 
 Full exports can be large. Use schema pages for discovery and export only when you need the whole contract.
 
+## Wait for the workspace
+
+Session hooks start preparation in the background. Their context tells the agent when the workspace is being prepared.
+Wait explicitly when the next task needs a ready workspace:
+
+```shell
+kast workspace wait --wait 30000
+kast workspace wait --wait indefinite
+```
+
+The first command waits for up to 30000 milliseconds. The second has no preparation deadline.
+Both print the selected mode before waiting and return a JSON outcome.
+Failure, cancellation, a changed host or project, and editor closure can end either wait.
+A preparation timeout returns exit status `124`. Cancellation returns `130`.
+A timeout does not prove that native import work stopped.
+
+Set `KAST_WORKSPACE_PREPARATION_WAIT` to positive milliseconds or `indefinite` for the default policy.
+Saved installation and workspace settings support the same key. An explicit `--wait` overrides those settings.
+Without a setting or flag, preparation permits 1020000 milliseconds, or 17 minutes.
+See [workspace lifecycles](/reference/lifecycles#workspace-preparation-lifecycle) for ownership and failure rules.
+
 ## Find a declaration
 
 Replace `submitOrder` and `checkout` with your function name and its directory.
@@ -82,6 +103,25 @@ kast source read --ref "$SYMBOL_REF"
 
 A caller result describes source relationships. It does not prove that those calls ran.
 Keep the result's scope and qualifications with your conclusion.
+Source reads and queries from issued references use the existing workspace authority.
+They do not start another preparation that can reload the model.
+A model change can still make a reference stale.
+
+## Check file diagnostics
+
+Select a Kotlin file or directory explicitly:
+
+```shell
+kast diagnostic check --path checkout/src/main/kotlin --max-diagnostics 100 --json
+kast diagnostic check --path checkout/src/main/kotlin --max-diagnostics 100 \
+  --continuation "$DIAGNOSTIC_TOKEN" --json
+```
+
+Keep the same path and diagnostic limit when you resume.
+Use `--path .` explicitly for the whole workspace.
+Keep incomplete coverage and qualifications with the result. An incomplete empty result does not prove a clean scope.
+This command reads IDEA file diagnostics. It does not build the project.
+Use `kast diagnostic check --help` or `kast describe diagnostic.check` for the installed contract.
 
 ## Read retained output
 
