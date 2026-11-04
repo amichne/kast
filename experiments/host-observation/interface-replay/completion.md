@@ -25,7 +25,7 @@ No live acceptance criterion remains blocked.
 The current screen excludes no invalid trial and misses no usage record or pair.
 The incorrect command remains unsuccessful in the correctness denominator.
 Repetitions cover six tasks and do not supply twelve independent tasks.
-The final delivery still needs the exact-head hosted checks before the authorized merge.
+The final delivery still needs exact-head hosted checks, the authorized merge, and the requested development release.
 
 ## Implementation and protected facts
 
@@ -81,6 +81,8 @@ No failed trial received a hidden retry or separate calibration request.
 ## Source and artifacts
 
 The tested implementation source is `eaa4efbb528be4652409f2de32915e67ed8826a0`.
+The delivery integrates current main `7d4d88f6aedd88aa4f19e8ae4d5cde38319e952c` without changes to its native release-catalog repair.
+That repair changes management HTTPS transport and native-image support. Replay inputs, rendering, parsing, and admission remain unchanged.
 The working-tree digest is `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945` for the clean tree.
 The adapter aggregate digest is `4b5083255f505afc2682a6c69732c35c130249f07429cd2def97370eeab3fd4d`.
 The plan digest is `636180077f6a7885041230bdc8555db4b1c9a86a389efd5c7b14d1c287cb1a8c`.
@@ -117,7 +119,8 @@ node build/interface-v3-report.mjs
 - **PASSED:** Scoped glossary and prose guards. Pinned Vale and Repository Knowledge reports remain under `build/`.
 - **ASSESSED:** Prose keeps grade-8 advisories for necessary technical names. Experimental reports sit outside the glossary's declared terminology scope.
 - **NOT_MET:** The independently derived 3× assessment preserves all six cases and complete failed spend.
-- **NOT RUN:** Live Host qualification, compiler semantic fixtures, workflow confirmation, later interface experiments, deployment, release, or a broader model sweep.
+- **NOT RUN:** Live Host qualification, compiler semantic fixtures, workflow confirmation, later interface experiments, deployment, or a broader model sweep.
+- **PENDING:** The separately requested development release after merge and green hosted checks.
 
 Earlier failed runs record an expired Pi credential, the old decoder mismatch, and shared Gradle-cache damage.
 The task-owned Gradle home resolves the local cache problem without changes to shared caches.

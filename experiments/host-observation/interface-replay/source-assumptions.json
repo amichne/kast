@@ -39,8 +39,8 @@
     "implementationInThisScope": false
   },
   "deliveryReview": {
-    "mainIntegrated": "3fd593d3d05ce304c8b849787011d6e5222c730d",
-    "changesSinceInspectedRevision": "The merged relation-inventory stop-cause repair remains unchanged. Production defaults, renderer, public parser, and admission stay authoritative.",
+    "mainIntegrated": "7d4d88f6aedd88aa4f19e8ae4d5cde38319e952c",
+    "changesSinceInspectedRevision": "The merged relation-inventory stop-cause and native release-catalog transport repairs remain unchanged. The latter changes management HTTPS transport and native-image support only. Replay cases, Kotlin rendering, public parsing, and admission remain identical to the measured implementation.",
     "currentGuidanceVersion": "4.0.10",
     "guidanceFiles": [
       {
