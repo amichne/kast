@@ -15,7 +15,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -190,29 +189,10 @@ internal class WorkspacePreparations(
                     is Refinement.Refined -> admitted.value
                     is Refinement.Rejected -> return admitted.failure
                 }
-        val requestId = entry.id.value.toString()
-        val remaining =
-            when (val observed = entry.deadline.remaining(nanoTime())) {
-                is Refinement.Refined -> observed.value
-                is Refinement.Rejected ->
-                    return WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.DEADLINE_EXCEEDED)
+        return NativePreparationAwaiter(entry, exchange, nanoTime, interval, newId, observer) {
+                publish(entry, it)
             }
-        var response =
-            exchange(WorkspaceLifecycleRequest.Open(entry.root.path.toString(), requestId, remaining.protocolMillis()))
-        var progress: NativePreparationProgress? = null
-        while (response is IdeLifecycleResult.Pending) {
-            progress =
-                when (val admitted = admitPreparationProgress(response, entry.id, progress)) {
-                    is Refinement.Refined -> admitted.value
-                    is Refinement.Rejected -> return WorkspacePreparationOutcome.Rejected(admitted.failure)
-                }
-            if (inspectedHost != null && progress.host != inspectedHost)
-                return WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
-            publish(entry, WorkspacePreparationOutcome.Pending(progress.stage))
-            delay(interval)
-            response = exchange(WorkspaceLifecycleRequest.Status(progress.host.toString(), requestId))
-        }
-        return completion(entry, response, inspectedHost ?: progress?.host)
+            .await(inspectedHost)
     }
 
     private suspend fun inspectRecovery(
@@ -248,25 +228,5 @@ internal class WorkspacePreparations(
             )
         )
         return Refinement.Refined(host)
-    }
-
-    private fun completion(
-        entry: WorkspacePreparation,
-        response: IdeLifecycleResult,
-        host: UUID?,
-    ): WorkspacePreparationOutcome {
-        return when (response) {
-            is IdeLifecycleResult.Opened ->
-                when (val admitted = PreparedWorkspace.admit(entry.root, response.target)) {
-                    is Refinement.Rejected -> WorkspacePreparationOutcome.Rejected(admitted.failure)
-                    is Refinement.Refined ->
-                        if (host == null || host == admitted.value.host)
-                            WorkspacePreparationOutcome.Complete(admitted.value)
-                        else WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
-                }
-            is IdeLifecycleResult.Blocked ->
-                WorkspacePreparationOutcome.Blocked(response.reason, response.preparation, response.exchange)
-            else -> WorkspacePreparationOutcome.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
-        }
     }
 }

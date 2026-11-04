@@ -737,7 +737,7 @@
           "claim": "claim_6841e7e3c40a485aaee1af9d7abbb523",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
           "recordedVersion": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243",
-          "currentVersion": "repo-file-v1:sha256:f972d6636b9626cd1f0c7fd3bd6de9135415d3b6f56df2085655f7f8106b1c71",
+          "currentVersion": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4",
           "status": "CHANGED"
         },
         {
@@ -751,7 +751,7 @@
           "claim": "claim_7734d5f14fe74d3bb4546106a864e74b",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
           "recordedVersion": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243",
-          "currentVersion": "repo-file-v1:sha256:f972d6636b9626cd1f0c7fd3bd6de9135415d3b6f56df2085655f7f8106b1c71",
+          "currentVersion": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4",
           "status": "CHANGED"
         },
         {
@@ -1094,7 +1094,7 @@
           "claim": "claim_9afc4ce3301b4badb9651eeb2f54f674",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
           "recordedVersion": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243",
-          "currentVersion": "repo-file-v1:sha256:f972d6636b9626cd1f0c7fd3bd6de9135415d3b6f56df2085655f7f8106b1c71",
+          "currentVersion": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4",
           "status": "CHANGED"
         },
         {

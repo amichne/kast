@@ -185,7 +185,7 @@ private fun acceptedHookOutput(host: HookHost, state: HookPreparation): PublicPr
             is HookPreparation.Ready -> "Kast workspace is ready. Wait mode: $mode."
             is HookPreparation.Preparing ->
                 "Kast workspace is being prepared (${state.stage}); this is pending. " +
-                    "Startup continues in the background. Native preparation allowance: $mode. " +
+                    "Startup continues in the background. Requested preparation allowance: $mode. " +
                     "Use kast workspace wait --wait TIMEOUT_MS for a bounded wait, " +
                     "or kast workspace wait --wait indefinite. " +
                     "Waiting observes native failure, lifecycle changes, editor closure and cancellation."

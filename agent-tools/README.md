@@ -45,6 +45,7 @@ A preparation timeout returns exit status 124. It does not prove that native imp
 Inspect current workspace state before repeating an uncertain lifecycle effect.
 
 Set `KAST_WORKSPACE_PREPARATION_WAIT` to positive milliseconds or `indefinite` for the default allowance.
+Each wait keeps its own allowance when it joins existing preparation.
 The setting also supports saved installation and workspace configuration. Explicit `--wait` takes precedence.
 Without a setting or flag, the existing 1020000-millisecond allowance applies.
 Background hooks return after native admission; their launch deadline does not bound an explicit workspace wait.
