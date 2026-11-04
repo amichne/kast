@@ -2,10 +2,15 @@ package io.github.amichne.kast.distribution.cli
 
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.MalformedURLException
+import java.net.SocketTimeoutException
 import java.net.URI
+import java.nio.charset.CharacterCodingException
+import javax.net.ssl.SSLException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 private const val BUILD_CATALOG_URL = "https://raw.githubusercontent.com/amichne/kast/developer-latest/builds.json"
@@ -17,23 +22,56 @@ private val releaseJson = Json { ignoreUnknownKeys = true }
 internal sealed interface ReleaseDocumentRead {
     data class Read(val text: String) : ReleaseDocumentRead
 
-    data object Unavailable : ReleaseDocumentRead
+    data class Unavailable(val observation: ReleaseReadObservation.Unavailable) : ReleaseDocumentRead
 }
 
 internal fun readReleaseDocument(url: String): ReleaseDocumentRead =
-    try {
-        val connection = URI(url).toURL().openConnection() as HttpURLConnection
-        configureReleaseConnection(connection)
+    readReleaseDocumentObserved(url) { System.err.println(managementJson.encodeToString(it)) }
+
+internal fun readReleaseDocumentObserved(
+    url: String,
+    observe: (ReleaseReadObservation) -> Unit,
+): ReleaseDocumentRead {
+    var stage = ReleaseReadStage.OPEN
+    val result =
         try {
-            readReleaseResponse(connection)
-        } finally {
-            connection.disconnect()
+            val connection = URI(url).toURL().openConnection() as HttpURLConnection
+            configureReleaseConnection(connection)
+            try {
+                stage = ReleaseReadStage.RESPONSE
+                if (connection.responseCode != HttpURLConnection.HTTP_OK)
+                    unavailable(stage, ReleaseReadFailure.HTTP_REJECTED)
+                else {
+                    stage = ReleaseReadStage.BODY
+                    readReleaseBody(connection)
+                }
+            } finally {
+                connection.disconnect()
+            }
+        } catch (_: MalformedURLException) {
+            unavailable(stage, ReleaseReadFailure.URL_REJECTED)
+        } catch (_: SSLException) {
+            unavailable(stage, ReleaseReadFailure.TLS_FAILURE)
+        } catch (_: SocketTimeoutException) {
+            unavailable(stage, ReleaseReadFailure.TIMED_OUT)
+        } catch (_: CharacterCodingException) {
+            unavailable(stage, ReleaseReadFailure.INVALID_ENCODING)
+        } catch (_: IOException) {
+            unavailable(stage, ReleaseReadFailure.IO_FAILURE)
+        } catch (_: IllegalArgumentException) {
+            unavailable(stage, ReleaseReadFailure.INVALID_ARGUMENT)
         }
-    } catch (_: IOException) {
-        ReleaseDocumentRead.Unavailable
-    } catch (_: IllegalArgumentException) {
-        ReleaseDocumentRead.Unavailable
-    }
+    observe(
+        when (result) {
+            is ReleaseDocumentRead.Read -> ReleaseReadObservation.Read(result.text.toByteArray().size)
+            is ReleaseDocumentRead.Unavailable -> result.observation
+        }
+    )
+    return result
+}
+
+private fun unavailable(stage: ReleaseReadStage, failure: ReleaseReadFailure) =
+    ReleaseDocumentRead.Unavailable(ReleaseReadObservation.Unavailable(stage, failure))
 
 private fun configureReleaseConnection(connection: HttpURLConnection) {
     connection.connectTimeout = RELEASE_READ_TIMEOUT_MILLIS
@@ -43,11 +81,11 @@ private fun configureReleaseConnection(connection: HttpURLConnection) {
     connection.setRequestProperty("Accept", "application/vnd.github+json")
 }
 
-private fun readReleaseResponse(connection: HttpURLConnection): ReleaseDocumentRead {
-    if (connection.responseCode != HttpURLConnection.HTTP_OK) return ReleaseDocumentRead.Unavailable
+private fun readReleaseBody(connection: HttpURLConnection): ReleaseDocumentRead {
     return connection.inputStream.use { input ->
         val bytes = input.readNBytes(RELEASE_DOCUMENT_BYTES + 1)
-        if (bytes.size > RELEASE_DOCUMENT_BYTES) ReleaseDocumentRead.Unavailable
+        if (bytes.size > RELEASE_DOCUMENT_BYTES)
+            unavailable(ReleaseReadStage.BODY, ReleaseReadFailure.DOCUMENT_TOO_LARGE)
         else ReleaseDocumentRead.Read(bytes.decodeToString(throwOnInvalidSequence = true))
     }
 }
@@ -63,7 +101,7 @@ internal fun latestStable(read: (String) -> ReleaseDocumentRead): SelectionAdmis
     val raw =
         when (val result = read(STABLE_RELEASE_URL)) {
             is ReleaseDocumentRead.Read -> result.text
-            ReleaseDocumentRead.Unavailable ->
+            is ReleaseDocumentRead.Unavailable ->
                 return SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
         }
     return try {
@@ -79,5 +117,5 @@ internal fun latestStable(read: (String) -> ReleaseDocumentRead): SelectionAdmis
 internal fun captureMainCatalog(read: (String) -> ReleaseDocumentRead): SelectionAdmission<AdmittedBuildCatalog> =
     when (val result = read(BUILD_CATALOG_URL)) {
         is ReleaseDocumentRead.Read -> AdmittedBuildCatalog.decode(result.text)
-        ReleaseDocumentRead.Unavailable -> SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
+        is ReleaseDocumentRead.Unavailable -> SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
     }
