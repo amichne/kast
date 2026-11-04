@@ -1,0 +1,2284 @@
+{
+  "type": "HOSTED_REVIEW_REGRADE",
+  "sourceRevision": "f2333d7a28dbedfeaea43202fb83397ff991862c",
+  "graderSha256": "cb995a94c04d7a98da43199160c063199236a12cbf410b90361463ca899efacb",
+  "adapterManifestSha256": "fec16cf0b7a53acb23a6039a7d88584fa6443b8bc1b4cc3cdd354a49dc5502bc",
+  "artifactSha256": "7da57996f5bde66457c6f62600ce4aa6544892cc9942a5a4c5837a2cdc7ee419",
+  "trialCount": 96,
+  "changedGrades": 0,
+  "originalReceiptsChanged": false,
+  "actualProviderSends": 0,
+  "workers": 8,
+  "qualifications": [
+    "OFFLINE_REGRADE_NOT_NEW_INFERENCE",
+    "LEGACY_COMMAND_FACTS_REACQUIRED_THROUGH_PRODUCTION_PARSER",
+    "ORIGINAL_USAGE_LATENCY_SOURCE_AND_OUTCOMES_UNCHANGED",
+    "RAW_ASSISTANT_AND_RECORDED_EVENTS_AGREE_ON_PROPOSAL_COUNTS"
+  ],
+  "trials": [
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C1-r1-JSON",
+      "originalReceiptSha256": "ca3a32f1ac84a921c7e9a215229519e56333d9520d24a0d189255e0b5c566ef8",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "a1d38ccca915e9d6dc6303f985b8eb18b05c9760b8e5580626791efb1e55e844",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C1-r1-TOON",
+      "originalReceiptSha256": "604237f741d06ee1519970e733e46ed637f8760ab46242de4dcac9a763160aa5",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "fa638adce4f594788c201b97b5210abba66749da9ae950e05ba76687e91cd719",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C1-r2-JSON",
+      "originalReceiptSha256": "7e0ac40cd3dfc0045c8ce55e4a7cc7e8f6f8f94d5f3945724f9eae9c919a3a09",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "24cf841140f47fca4e08a6db851614e5defcfccf8ca353acb134753a47ca5881",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C1-r2-TOON",
+      "originalReceiptSha256": "17cbae6d876a2dc0796a2571aabfdadf8afa55a380ea1b1e73a4f4d806b0042a",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "30aeb5cd2d455d03b8d34b33faec458d4c579228e5c627e9a0909b33351a30c5",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C2-r1-JSON",
+      "originalReceiptSha256": "77bfa49e447632b4f959cd73cd61c8f3b342c8585c90aa51721b5e189f4f5b6b",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "cbc6e764d89179acc2ab407df9bddbcff9bbaf21b06b44af3689f8d35315d009",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C2-r1-TOON",
+      "originalReceiptSha256": "43e7d49a93d3e6b39795dc5ba72469f718adb5873412213edf1da568bde7d0c6",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "fe201cda9171aed4cd685b7438fe176fb6090f30724c12751116f50873538a74",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C2-r2-JSON",
+      "originalReceiptSha256": "db9a5b22370a741444531c88e911485891ac0780801545238df33d37fb65c303",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "5d616a1c5ea41ed973c5893672e06b342a98937b1f5100dae12ba1a8bfe96f53",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C2-r2-TOON",
+      "originalReceiptSha256": "86a61ac7665fb7c3a8d2a58fae15269a10a31cadaca0be772b80762049bee4ea",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c4fe3f993b5b746260d7c8c77a1a8e31dea9a32fd3dfab0338659f9d4b2b7072",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C3-r1-JSON",
+      "originalReceiptSha256": "a90c26b9388d6712ad4b29b9697efc901e597555e168edb9fd91422331709852",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "3a2329784f0e5b321aa5f0abb9de486143bc7dd64c193ffa984189483afd57bd",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C3-r1-TOON",
+      "originalReceiptSha256": "2893045a984a55aa249d36d1c496ae55786051fec546051f974bf859151cf86f",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "1e661ff7c1aeefa28d3b0d8c2878fabf185a8353881a22956f7291d47f5a6477",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C3-r2-JSON",
+      "originalReceiptSha256": "253a7e575058f09e4cfdbe6803471cade4970c96364e35b77da83d4dddb2b8fb",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "6a715dbaa41d4078d2cd8cc72cf5820f9f516746abe86643fb8a956736527235",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C3-r2-TOON",
+      "originalReceiptSha256": "e7cdcff391cef25a7472888c8b30613a099364d2ffccc273c5436dd7449dd8a6",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "5fd9a5406a2dceb6330a43a7cbc135245e21aca46865e9fc94aa05734df836eb",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C4-r1-JSON",
+      "originalReceiptSha256": "86dc467647f6371cd97f6f6a696bec4dad15ba5cc46f76e9cafe84aaf5508c41",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "abbe316bb9c46e8deecb4c32c55dc2b7dc2d9688181458ffc26cfc67626ae96d",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C4-r1-TOON",
+      "originalReceiptSha256": "ef1d69221b45c52197d51c12ebe3cb4042e890c6d2578225d47d10a9261cf276",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "602b4450f0981e34dbd6c8f9297fe461b2570bbc55163322ed5acababa2b8a6f",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C4-r2-JSON",
+      "originalReceiptSha256": "d687ed2b2e4270274d0ed76d3ab27386c0ed37337394adde614ddd5d1331a155",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c7fa06530f7f8704629cb44a334d5b128a4abf318cdd15898a6888eddf429a96",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C4-r2-TOON",
+      "originalReceiptSha256": "a22b377305f774aeb9ab756f666f2c7710933bc700d602f44514f7a80d8b22de",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "5063d125228c418a0a0877cec376fe0f3e08e2ea6f509511fe33c25c6ac59c6b",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C5-r1-JSON",
+      "originalReceiptSha256": "24eb0e5d0e0fd093659949d2fd0e5f7e296e9560c3f03d61a2f90bcf990d07b2",
+      "originalOutcome": "incorrect",
+      "regradedCorrect": false,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "FAIL"
+      },
+      "reasons": [
+        "WRONG_COVERAGE"
+      ],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C5-r1-TOON",
+      "originalReceiptSha256": "5c065385b29a9c63175b74e340d34f0cde4abc82eea26e2f3229bebdf4e33b9d",
+      "originalOutcome": "incorrect",
+      "regradedCorrect": false,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "FAIL"
+      },
+      "reasons": [
+        "WRONG_COVERAGE"
+      ],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C5-r2-JSON",
+      "originalReceiptSha256": "b72156b90602bfba0070fef06aa603636f170159bdde93ae9e569ad615b45882",
+      "originalOutcome": "incorrect",
+      "regradedCorrect": false,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "FAIL"
+      },
+      "reasons": [
+        "WRONG_COVERAGE"
+      ],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C5-r2-TOON",
+      "originalReceiptSha256": "bba10f07bc7500557d6fe13d3b66751d3b972d23ccff303b2c1d1a2e6fc6905d",
+      "originalOutcome": "incorrect",
+      "regradedCorrect": false,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "FAIL"
+      },
+      "reasons": [
+        "WRONG_COVERAGE"
+      ],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C6-r1-JSON",
+      "originalReceiptSha256": "6b46e1ab566860b61ba4d7530fa792ed64bc4cfa6e90bdd07cf93ac15b725455",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "bc5b3b303d6f72b8fc51c2f57b0d071c7e91e4758efc4bfd29cf8f89e6a53abc",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C6-r1-TOON",
+      "originalReceiptSha256": "a5009c887ddc5198ad3f37a2a161ac185168898fac24cd1461553b4c77d1f221",
+      "originalOutcome": "incorrect",
+      "regradedCorrect": false,
+      "dimensions": {
+        "arguments": "FAIL",
+        "action": "FAIL",
+        "target": "NOT_APPLICABLE",
+        "scope": "NOT_APPLICABLE",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [
+        "ARGUMENT_REJECTED",
+        "WRONG_ACTION"
+      ],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "a840af290f842b67e7ef59bc9385b8876a4ac00b350ae774e1472c7e06fc942c",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C6-r2-JSON",
+      "originalReceiptSha256": "2f561b5984fae23c4d997a7ffc30a6ee0f1f854ef7434fc5d66f7ed1d52c308a",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "aff0690c60963c2cb394a3ab5b1ddb0be92e0a24ee0b88bcd5eb5b57453ab9da",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-screen-002",
+      "type": "RECHECKED",
+      "trialId": "C6-r2-TOON",
+      "originalReceiptSha256": "92992dbd5e921960b5d3b9eaa092fed5db694721cad2ec6bf72c02ce1622817f",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "f5ac70cac3481f4f965ea8716b4299b5c2d385b5f1c9144db5fe0fb599334785",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r1-JSON",
+      "originalReceiptSha256": "e122825483b31216c1922c895d039293b289aa9d157b5858a06cbc566f6d9127",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "49e0d33a6debfd071335aed07f39b601a377f66491ec66823f4aaa1a0253934b",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r1-TOON",
+      "originalReceiptSha256": "79b88add6b7e00b3f7ca0e1a694a1bd065b80b7f31680113d91416defab1c632",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "183dbf501dbb3769cb7a8edf11867d1e238f12f7a53223a2bdad1b2bcc9347a6",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r2-JSON",
+      "originalReceiptSha256": "0348d17c72b51ed51bdd05068ca6fa129166e46e15a0fb29ebdcb1ab59c655de",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "b48cd53e49b1da053a74778dd1a107f6207250e32dd4ab4f0afc5ef4217fccf4",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r2-TOON",
+      "originalReceiptSha256": "5b5257136e7e0eeeb64eeed2b72b17f2ac25e91cbff8f2aa868c0ddabf198d20",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "8e41df4771bd3a8301ba59eb27e727ae6dc3540967a6c8e3d0f463fa7ec20b09",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r1-JSON",
+      "originalReceiptSha256": "48148e44126b3909ec13469cddbe660ce5ab4d68e84dc179ef8e2e1dc216eeb4",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "12b6a8b37e31fdcf354d7c61fe52ebd5bfd45ee20de9cec12d579b7df301c17a",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r1-TOON",
+      "originalReceiptSha256": "397d88af9be1790b92172c7a9a9b9fb7174d8cc4325bbc09bcce80d0ebc81453",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "1ceb641acd74ec7d8003844265161765ed38971589d11b25a18340ac1ae17755",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r2-JSON",
+      "originalReceiptSha256": "1819cc326192e9e05b80e6c51f025126925c18da783ee7eeab7502920167f551",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "1e05d229f0f7f9b2ebbd3d511096f65d796c137226399b3ec7f71686cfd01a20",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r2-TOON",
+      "originalReceiptSha256": "eb41d34df1627c7d209ba02070bceae13d7aac081671b72999106e1667e4b729",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "0cdc88a6bf42ce635200707de7d9eb5c6bece34af6c961f9c27a7c4487f4962c",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r1-JSON",
+      "originalReceiptSha256": "b0e7b492c3aaa1866cd667bd6abc2f72fd67ca33a24749e803640050f9ed83f8",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "4f767682cea23d267ab086cba2d3b30b5a51a359c0bf2f1de2d86ad2cfba4f3b",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r1-TOON",
+      "originalReceiptSha256": "fec703015e6b2ca432c2c88d38a21ac0aa12502bfd6495d7b0224a8475a427cb",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "b53335eb90404f51e1b99940b0225a04bc2dbe05cc75480f9678a28b05b39eb1",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r2-JSON",
+      "originalReceiptSha256": "cfc2e73b7b064f69ac5b495f188130745d47727f3a18376820fe2d6d31087285",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "bcb68c77007bf1fad1bcc0665ede58f61b23a9d9f0d0b116d149b760416311fd",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r2-TOON",
+      "originalReceiptSha256": "454f1446ab3907751e42921526168bd6681df925894a09cda4582e4ef23ced7d",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "e76b203b1cc4b099f3ed6ecfb33675ee7883a3e70f5e4461916f7dc40cbb2bb4",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r1-JSON",
+      "originalReceiptSha256": "54655c67b71e81af49eb7495e4e5c6c40f4f4246b2a45374475f1c2fb66fbf1e",
+      "originalOutcome": "incorrect",
+      "regradedCorrect": false,
+      "dimensions": {
+        "arguments": "FAIL",
+        "action": "FAIL",
+        "target": "NOT_APPLICABLE",
+        "scope": "NOT_APPLICABLE",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [
+        "ARGUMENT_REJECTED",
+        "WRONG_ACTION"
+      ],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "19ac2740a561776557d37019d36bcc61127333fa29146f14addbc6bfcde7275f",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r1-TOON",
+      "originalReceiptSha256": "84bc92286759ceb7eed8e4c2d6a1416ad28c5c478fe8b54796ce3a44cde56272",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "87696fb8f94271e39b489d4a084eeace0057b905c1aadc9eb255aa602adc9459",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r2-JSON",
+      "originalReceiptSha256": "b424965f4c091cb862268c57225ae72798b334405cdf1227912e2fc019ba2ca2",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "1506247a1f4a92477f409efd48f91aac5020b1c7266b3e167b278a8576a309a4",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r2-TOON",
+      "originalReceiptSha256": "f167df0f02c6aa80912cfb9d0495d5b708b3e2ef1b039de4bee574a12fe0a118",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "3dc64b1f3cff60dce3c28167c7b4b392d4b7e6626958f562c62ea319fbca13f6",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r1-JSON",
+      "originalReceiptSha256": "25378ce5e8c143c35bfe23f97983a3e561e45cea65200b176da250917e997ece",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r1-TOON",
+      "originalReceiptSha256": "4301e1967cff3627ddb539d00071a59185ffe5b78540a0eb23613ee0695e868e",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r2-JSON",
+      "originalReceiptSha256": "14b5421769029733c6385c6b5fc3755ee2a7a306ddd68c10ee70637e071be2af",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r2-TOON",
+      "originalReceiptSha256": "970bdd461078f6d8df71559ed11a8eba56e0a75dd6f9b0066e10ff04120ae0b6",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r1-JSON",
+      "originalReceiptSha256": "82680b51198c24d3e4353b9432d67bbd451c7feddd2aa6020c32e3741abcdb99",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "854ef60609e21e3d600a5067860ccb4de4006d21dc9e49afb3d2d084f69600e0",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r1-TOON",
+      "originalReceiptSha256": "4cb1239ddea0af37b5eedace89321e25ec808ea58d494dd37ccee3cc785e7e3d",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "d5fcc5deecb5a32010d280f8705888e1f77e2e2738cb78b79a4143b9d4a4e9ad",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r2-JSON",
+      "originalReceiptSha256": "17a2c8e414acb17321bc6ef5845ff9bfd6fa4e73502086d84422006753993947",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "6a9ab6910109332b128f60220ef5973233eaf7b06506141713ab4c86ed9521b0",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-baseline-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r2-TOON",
+      "originalReceiptSha256": "e05a177ed9d2d8d66faa5cb550cd047acc54a42eff9dc7e4ee59e856adc73f23",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "9b129102b0b700ab33227533fce3be586410d9cb9d2058d33050356df7202cd2",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r1-JSON",
+      "originalReceiptSha256": "bad85c97a2fe927a4106c90f6fb62c02ee6c0a3dcfdda4db863e8d8c2936b93f",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "150273603f85e9c01a3dd956374dff9511afebb7e0df0db36a46e52ce2b91a2e",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r1-TOON",
+      "originalReceiptSha256": "1e2fe9fb357236be6e322c39ae496b35ec2414b46745fb8dafa8a539b0cda8a2",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "8c0c56f93dbf370b5883a2fe60564f8843b733d86611586bbd3a68ed4d13d1e7",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r2-JSON",
+      "originalReceiptSha256": "ce21eacd8c57b1bc4e4c9cbaa2a3136ec73ee268cd048796bd8105ed1892c61d",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "0b3eec9ad2e8f0951342b66437a4c65190d411c219cfaf007b56d9a6e2c86004",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r2-TOON",
+      "originalReceiptSha256": "6732954543e03c26ca022a30fb17b08146420675d058655381596fb03ab105b4",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "68eed9f8d8f664d2e237b40795f06867b50538abfb310d6433808f18dddf737c",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r1-JSON",
+      "originalReceiptSha256": "f495de026422d1d6cd7fa1ffce1b661d49d63b91c321677caaf2f3b7a64bad90",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "e2393a5bb0804782b009f579536505a508765c44d19191abc7539e4f40a51405",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r1-TOON",
+      "originalReceiptSha256": "77335ab0ebc4ff02f1c3758121a451b44e905e52d362750c9ed5cdfaf6a1b86e",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "35edee251af1b58179a93927e074f2816cbfd88097b5a9ea33ffa6eef6fc4a1b",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r2-JSON",
+      "originalReceiptSha256": "b303cec635400a6d900da26b963172ea8ed0f1224fdcbfe096c4f87c8608f689",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "f53f74669a966c37ad85e446731c47b88fbf262e2cd992db14bcb93202bdc283",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r2-TOON",
+      "originalReceiptSha256": "6f9d0ce99a7c8476dc747ba3d1c332fe2637913bc4a59ecebd388f523a66323f",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "d53c479a36de4b01abab03d96b8d8e887afc0c6af29a9aba500e6ae83a4a2a3b",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r1-JSON",
+      "originalReceiptSha256": "27f6e42ef42f7de6c65f0f8355de9328a477f9e9f1d9eaad5859af9c58b1a4ac",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "fc2ae5d111157bbe8531b47d472edf49d4a715f12a02e9fd74faa4a73a0f4d75",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r1-TOON",
+      "originalReceiptSha256": "b89c08ca9ee90ce811040df417f667ce4c18269c6a63b8583987e94611546d0b",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "9495e12b72e37bc1e6d683282bb9a13376d0c0cfc9afef4c42fdde778603b1e7",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r2-JSON",
+      "originalReceiptSha256": "76ea85be869a17d53fbd5a5fcbb71f1f48a84b99c623c63564642524d7f96bb4",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "204ddd170492d8fdc65ee90f9527e75f725fcaee76578ae4b64f400a484ad632",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r2-TOON",
+      "originalReceiptSha256": "d9d9f8a08de7e9957eb9b398711f1751dc15c69bc94395c6594ded4ff3d351eb",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "ebbd8bea3a316952722defcdfa22574c1f5681cd387290496c91e9c9f964e652",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r1-JSON",
+      "originalReceiptSha256": "72b1a1bde53d6ccb1eee83aaa7a0e9c299c8643d642e0834ae94e8d6f5a45980",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "8468ce0cbf4c116845c9cf444242f71653bb593f81dabb1e80226e893128795d",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r1-TOON",
+      "originalReceiptSha256": "e2204f0a8f4d137e936712acc607cd6b836f9534f5b09b46c60472e38e6ebc7c",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "236a9d2496d2d7dbc878039f21b611e164189517e903ff1efd97f5df31623453",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r2-JSON",
+      "originalReceiptSha256": "a6112cc37c54995dfe034e6c8d7fcde8f8cd532f673489bbe9e37abdde0f4f83",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "3e6efa68a18db5957fed171f73653ef1965ce470c2890f3e485298a8841547fb",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r2-TOON",
+      "originalReceiptSha256": "f23c0a939e4af3acf5c58bf3d6b709fdf4c59e8883ea8c660c91fc5599dc6131",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "ec20e6724557c63f93e141fdcaf0cda1e32d1d1b2bd0738c5a90b5447e86d986",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r1-JSON",
+      "originalReceiptSha256": "619a8e6460a45c412bc3516680fd617b1f498361c7ddd3ede313373bef9521f4",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r1-TOON",
+      "originalReceiptSha256": "6ee2ba4cef6821a255b0a5e0aef47994aaac3bee48686a751f71924facf55104",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r2-JSON",
+      "originalReceiptSha256": "1f42d85ba900f827f649e23df66747c2e370c42dd21da4dfcf83bf479f8e61fe",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r2-TOON",
+      "originalReceiptSha256": "6502969c802f3edbc3def0772fc1fcd99929e1225a45e728011cc631343e4d0e",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r1-JSON",
+      "originalReceiptSha256": "4f8bc3355bd67a847db57ee53deecc267743419c8597c07a2bf6dc41934e9a44",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "00e938b6eab51a4a86060a4f8bc0694dce90ca19533b3c143fa468fd1bc38489",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r1-TOON",
+      "originalReceiptSha256": "d80119384584abcbef637197d9ca08231682ecf7a29fea800a9380c366aa339c",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "602591315db112e8d3576bdf0a8981c605a93ddfef7794851f192594e392bfbc",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r2-JSON",
+      "originalReceiptSha256": "f1add09af281f02bfac0c42405cfb2e2b5a31105f821b27101dbd539751048de",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "349d4a46a7367a885ec0b6fbcdd552510b2bf87cb721784cdff530fc9b204513",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-session-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r2-TOON",
+      "originalReceiptSha256": "90ecacfd8125853f50c62d972d67fe6b929f083fb33c6ecc14c2216175f892ad",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "f9232f93c1b0ec45433968ecca7a914100d09f914d4eeeae1a99b9145af2cad3",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r1-JSON",
+      "originalReceiptSha256": "f747ed84e4b173db6f374d92a4e27a32e713498b720c96eee34c634cbd0afaec",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "4d6315b4d4818d31ee81bdc56070d91feac2b50ddf21ca44f9f62addb52527e0",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r1-TOON",
+      "originalReceiptSha256": "14395a3cdec1115ae065875a36e01322f55266407c86616b6baeb656b2c2e5f5",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "37fb17451d9d8e6051142c321847c6f75e277a5f0150bb8b09d8b5a3bacc0bf3",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r2-JSON",
+      "originalReceiptSha256": "5e1c2ac579d61163f70c4bc1fd15a93970ec2967120cdd29ceced2de5b10258a",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "97666d95c7b00917924839ce00486100f573016ddfa91fde0f645fb09434278f",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C1-r2-TOON",
+      "originalReceiptSha256": "3ef313cb3aa116ee556664968b08d345e796d8be2e13769a3dae840ce65d7acc",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "b363b2485a35840bde4c80105b54eed70208cf961f64dfbdc52c22ca5b217a3c",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r1-JSON",
+      "originalReceiptSha256": "6ce63529987a0ef873f6ba89397ad5cdfb1412bc0c054451d04b27ac6987ec83",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "0de1fe59fc6e2547d2684925b8564ff9df0dc1cf2871535a1decd6228d16bcdd",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r1-TOON",
+      "originalReceiptSha256": "c721ef17960112364b105a6d68beefdfb03683edd060a3a467cdbaf87541dbed",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c8b72f43a735c9c9e001a7212c053d122d76c5798bce486a0b8ead413594f152",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r2-JSON",
+      "originalReceiptSha256": "c23dd762a1f4e9581c9a51db975fee5a102e760c69dfb35682b239aeea001fd7",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "2584cdcfa5423445680a46f0f6e1333744dd6b309973864f7cb6e067caba3f19",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C2-r2-TOON",
+      "originalReceiptSha256": "44757a1f4b85567d50e95b0c3e3e36884fd87cfc2a0cc5071a79fb340a0713ca",
+      "originalOutcome": "incorrect",
+      "regradedCorrect": false,
+      "dimensions": {
+        "arguments": "FAIL",
+        "action": "FAIL",
+        "target": "NOT_APPLICABLE",
+        "scope": "NOT_APPLICABLE",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [
+        "ARGUMENT_REJECTED",
+        "WRONG_ACTION"
+      ],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "3d5c9510f00264329200050f52e32d8dfce0feeaa7da4dd17b9a9d70ad7e199e",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r1-JSON",
+      "originalReceiptSha256": "7130114a9412d9d81ba306533632bd3102b3e06ed238aa31b4a850b71be0e613",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "12810cea673fac18c82b9bb8338b81407f74302b417725bec5c7d4e6231f10b0",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r1-TOON",
+      "originalReceiptSha256": "947f95ee2abb644737ae55dfc71af995a260b55112055ba17e19b46b2059c7d4",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "278ca2500d747ad5747015b146ee9255040690e27f7b9a9734994c6deb4ea400",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r2-JSON",
+      "originalReceiptSha256": "f7697be5cc6ccd4635cca6805e72b15a6a0e118026622b2d2a1cab025fe64bbd",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "a057c5113daacd90de5d7450d83b25360930ef27982056d72bf43fc26891f91d",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C3-r2-TOON",
+      "originalReceiptSha256": "d7e8d9224a64e3702be84e93e590c6fb8212354d4b67d9c47420ed425a1bac77",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "813bcd684a6a8ea1409eb6420201dd2d97ead353f6616b6da28d55b6dafd9cf5",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r1-JSON",
+      "originalReceiptSha256": "369dd47e00e81ec59769f05f4c87bc7c59ba473bf6267024fa82298b26162c28",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "ae4993f79fa41f653cb8540002fa0562608a7dc365fc1b1e2a4cfed4ed6c102b",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r1-TOON",
+      "originalReceiptSha256": "75de958fb43c3f1764acb8681700dd30c6515fb9b81f268186f1522314ff7277",
+      "originalOutcome": "incorrect",
+      "regradedCorrect": false,
+      "dimensions": {
+        "arguments": "FAIL",
+        "action": "FAIL",
+        "target": "NOT_APPLICABLE",
+        "scope": "NOT_APPLICABLE",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [
+        "ARGUMENT_REJECTED",
+        "WRONG_ACTION"
+      ],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "9ae5f73f9fdde9497b8aee1688a4c1243f3c213006088268bb785c04e25321e6",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r2-JSON",
+      "originalReceiptSha256": "4d8e2a142f70a635480d9ada57d4e0286ea3ddc4035deaac69fd31fa70b59129",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "f0464fefd9db74b060b64eb3adcdd9c646d3f76f1cff996384c9eb50379b81b9",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C4-r2-TOON",
+      "originalReceiptSha256": "fbe62f84ce02b399347edaf17735f308622ac29e7300aee261de8b12dff61710",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "NOT_APPLICABLE",
+        "reference": "PASS",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "77f1303b72fcab5bbbad42ddca97892fb13bf5b1ff83c5fe67e76ea45aa3a77a",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r1-JSON",
+      "originalReceiptSha256": "6b1abbaf80d97474b2c28ebcb37598f39367219c2f2121b7a7769e748d008a80",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r1-TOON",
+      "originalReceiptSha256": "e418561e091c141529a6067e0bc2d93d310271f636252de7174f02d74371d6a8",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r2-JSON",
+      "originalReceiptSha256": "db5f6d085690707ba55c21552c147371518d1189b063d8c719a85d8ba0e64cbe",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C5-r2-TOON",
+      "originalReceiptSha256": "d1611c77df2586c473b3f897b245a32ec649df9f748bc0835873c31dd58db256",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "NOT_APPLICABLE",
+        "action": "PASS",
+        "target": "NOT_APPLICABLE",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "PASS"
+      },
+      "reasons": [],
+      "toolProposals": 0,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "c9fcd4f153831a04a15a92146095b4c3c28a404a1a6173955a67824aa958f481",
+      "invocation": null
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r1-JSON",
+      "originalReceiptSha256": "722c866993df6ec891ba65860c148b14f864d5400e256b3776a216a1ee19f567",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "65c6b7dc5c82570792b022b200bcd8f73f1195c2c102d2e6f8661c4649561bb9",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r1-TOON",
+      "originalReceiptSha256": "cb824bc37207182c439a14014d9b1db9e89e836acc2bacd3ae50c7e16fdfb875",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "ee3cb5fad9060487f346be93b2009d67d0d1e590ddc1e979abfef844d641f469",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r2-JSON",
+      "originalReceiptSha256": "16ff43b320b6e742caad520a3846a1098faa48bad4cc36e503e8f81e7db45138",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "2e90a55909ec6393f31e23628abf24dab4e32f76e05f8f01c939ad59e0644320",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    },
+    {
+      "run": "interface-codex-concise-v2",
+      "type": "RECHECKED",
+      "trialId": "C6-r2-TOON",
+      "originalReceiptSha256": "96f0bd4aa5b4df285acfd607df493f5a245f5b7a17f16675a63928931f425c8a",
+      "originalOutcome": "correct",
+      "regradedCorrect": true,
+      "dimensions": {
+        "arguments": "PASS",
+        "action": "PASS",
+        "target": "PASS",
+        "scope": "PASS",
+        "reference": "NOT_APPLICABLE",
+        "coverage": "NOT_APPLICABLE"
+      },
+      "reasons": [],
+      "toolProposals": 1,
+      "blockedToolProposals": 0,
+      "admissionProofSha256": "21e7c3d14b04aaad05bf6466bbd56a5600e282a4725651f92e54304f243fdf7b",
+      "invocation": {
+        "operation": "EXECUTE",
+        "workspace": "fixture"
+      }
+    }
+  ]
+}

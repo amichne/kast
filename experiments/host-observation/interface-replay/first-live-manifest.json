@@ -1,0 +1,35 @@
+{
+  "run": "interface-codex-screen-002",
+  "sourceCommit": "e76c008f45cca6193a474aac08684b1f5206a7b3",
+  "sourceCommitEvidence": "Every staged source file matched the hashes in the recorded uncommitted run manifest before commit.",
+  "recordedBase": "d9559f40b0a740b7413298ff30a47f033df039a3",
+  "recordedDiffSha256": "a2f2512c9ef0a92b8d8521edd8007dffb373460303e66df6312196fdf11520bb",
+  "adapterManifestSha256": "040197df123a9d19c80502b0e2c58e155ada69bdfaaff67ad016bf85fb158d8f",
+  "credentialSource": "CODEX_CHATGPT",
+  "credentialFilesUnchanged": true,
+  "model": {
+    "provider": "openai-codex",
+    "id": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  "caps": {
+    "maximumProviderPayloadBytes": 262144,
+    "maximumProviderResponseBytes": 65536,
+    "maximumOutputTokens": 2000,
+    "maximumShellCalls": 1,
+    "maximumInvocations": 1,
+    "maximumNativeCalls": 0
+  },
+  "settings": {
+    "retries": 0,
+    "compaction": false,
+    "cacheWarming": "off",
+    "transport": "sse"
+  },
+  "caseVersion": "interface-replay-v1",
+  "actualProviderSends": 24,
+  "plannedPairs": 12,
+  "caseCount": 6,
+  "privateRun": "build/interface-codex-screen-002.json.run",
+  "planSha256": "9030f6c553de58cf5616edc3e7af622de1618dd1f6ea53fb1119ccd2b5c06bdc"
+}

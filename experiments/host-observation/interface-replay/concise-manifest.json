@@ -1,0 +1,123 @@
+{
+  "run": "interface-codex-concise-v2",
+  "sourceRevision": "2a29147498efc94fc848aa441191472d0167b101",
+  "diffSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "sourceFiles": [],
+  "planSha256": "69abdf1b77127de5f2089e71478170b848fc22bea6a9bbaf18e3fd7cb8db71e9",
+  "adapterManifestSha256": "81f5f6df1be0077efef67301308644cdad53586fa92fffad4af07efc20a2c9c8",
+  "adapterAggregateSha256": "dab8bbe75ef31fe8de957306a137fcd11d6d3d5300ac78bc2e2851c9489c8971",
+  "sdkIdentity": [
+    {
+      "file": "package.json",
+      "sha256": "df6883685382d6a914e5797232744c26579fe7db5576ea0e9c859d018ca2d54e"
+    },
+    {
+      "file": "dist/core/sdk.js",
+      "sha256": "992a539079e42f9dc577064e971afa9972a01dbffedb035f7cb68ab204d36964"
+    },
+    {
+      "file": "dist/core/session-manager.js",
+      "sha256": "046b6a1109ac3f0ed893bb85bf0648709362fa926a5da75761216cf2fcf9d926"
+    },
+    {
+      "file": "dist/core/tools/bash.js",
+      "sha256": "f32e87a42f66276b2eafaaf0848babf52523d37ab0fd448439586376747f03c4"
+    },
+    {
+      "file": "dist/core/extensions/runner.js",
+      "sha256": "0e659fb4338069d91c4d0a3b032b51bf8d179a99e6417bc3e39e59b672aaec76"
+    },
+    {
+      "file": "../pi-ai/package.json",
+      "sha256": "36df91142c18a5912eafab0f2783bb4d88cdd101c5c5e7fd9173d4387cc5cced"
+    },
+    {
+      "file": "../pi-ai/dist/api/openai-codex-responses.js",
+      "sha256": "339c75c5799ec3baca669114e3779988f819a5479e2b2c43dfa0b0f05b921c92"
+    },
+    {
+      "file": "../pi-ai/dist/api/openai-responses-shared.js",
+      "sha256": "eed025a4821b1e017dd024b930caf8fa11c7fe053a81efe11bd7d846fdc641d3"
+    },
+    {
+      "file": "../pi-agent-core/package.json",
+      "sha256": "3ee9a0f81587b917e7a010e4391fc10d2b04fa48091b693bffebe3b9b55e9f14"
+    },
+    {
+      "file": "../pi-agent-core/dist/agent.js",
+      "sha256": "f45ae001e2b14fced8ae151f0a00303b5fbdb5fc4b25418d45de6a5546f48a8c"
+    }
+  ],
+  "caseIdentities": [
+    {
+      "id": "C1",
+      "version": "interface-replay-v2",
+      "canonicalSha256": "009fbdfdbe5693c5583272c3e2e8b0b72ec5d3dd72ba419041eb8d0c37c35013",
+      "promptSha256": "3d8ef3a70cdf049f78aabf89eca7a63d1135cd240ce22005be08b48fab234b7b",
+      "contractSha256": "30ed93ae7a21c9979e3b45441ce95876433da746f3449bb88283fdfc94f6c051"
+    },
+    {
+      "id": "C2",
+      "version": "interface-replay-v2",
+      "canonicalSha256": "44466d1e4e3e9f2cd582097596ec11c402ab27a47379750a5ab3904a07934813",
+      "promptSha256": "854e07c10c4d52b3800506a43fc23ab6ca5c86a6a6f80b6c36e48020fbeb0465",
+      "contractSha256": "30ed93ae7a21c9979e3b45441ce95876433da746f3449bb88283fdfc94f6c051"
+    },
+    {
+      "id": "C3",
+      "version": "interface-replay-v2",
+      "canonicalSha256": "56b683456527b96af998c87c293691fb1eea58f965f406449a09b15267ff8edb",
+      "promptSha256": "e86d4f6641400191e0e83ec81a498858f031152b8c85dbd5606faa18b0ec9b10",
+      "contractSha256": "30ed93ae7a21c9979e3b45441ce95876433da746f3449bb88283fdfc94f6c051"
+    },
+    {
+      "id": "C4",
+      "version": "interface-replay-v2",
+      "canonicalSha256": "3221d73adca04305ebe39bc7bf3bf74d254d2ac98a715186995d8451616cda8d",
+      "promptSha256": "4e6b7ded9947ac13198df5f91aae6edb3d9231df45d22688cf65392a9401b3d4",
+      "contractSha256": "30ed93ae7a21c9979e3b45441ce95876433da746f3449bb88283fdfc94f6c051"
+    },
+    {
+      "id": "C5",
+      "version": "interface-replay-v2",
+      "canonicalSha256": "45b976fb37854635ab1a996021017c6603c528035d42f136f37ce2e64868af74",
+      "promptSha256": "86f9cabbc07d432abe95a448a7199c2e0969874370f70ca967f5d21fc0b2a649",
+      "contractSha256": "30ed93ae7a21c9979e3b45441ce95876433da746f3449bb88283fdfc94f6c051"
+    },
+    {
+      "id": "C6",
+      "version": "interface-replay-v2",
+      "canonicalSha256": "f824d1bc9cdda76945580dc0b03c12d8ac5b4e4143e9357f48169b912cd94ca3",
+      "promptSha256": "d5c0a29273eacafc295a8e2189f2e321c66dbd830c77381fcc313354909620da",
+      "contractSha256": "30ed93ae7a21c9979e3b45441ce95876433da746f3449bb88283fdfc94f6c051"
+    }
+  ],
+  "publicContractSha256": "3e0b8ebad589fe0917762fc1274ccf51e52ce8bac2274175a0a0c20840ef3491",
+  "model": {
+    "provider": "openai-codex",
+    "id": "gpt-6.1-sol",
+    "effort": "high"
+  },
+  "credentialSource": "CODEX_CHATGPT",
+  "instructionProfile": "concise",
+  "executionProfile": "session",
+  "caps": {
+    "maximumProviderPayloadBytes": 262144,
+    "maximumProviderResponseBytes": 65536,
+    "maximumOutputTokens": 2000,
+    "maximumShellCalls": 1,
+    "maximumInvocations": 1,
+    "maximumNativeCalls": 0
+  },
+  "settings": {
+    "retries": 0,
+    "compaction": false,
+    "cacheWarming": "off",
+    "transport": "sse"
+  },
+  "privateRun": "build/interface-codex-concise-v2.json.run",
+  "actualProviderSends": 24,
+  "completePreflightInputs": 24,
+  "qualifiedPairs": 12,
+  "protectedFilesUnchanged": true
+}

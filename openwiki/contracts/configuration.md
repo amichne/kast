@@ -90,7 +90,7 @@ sources:
 generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T17:39:06.252Z
+    at: 2026-11-04T18:05:12.445Z
 ---
 
 # Installation configuration

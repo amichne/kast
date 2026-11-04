@@ -1,0 +1,26 @@
+{
+  "type": "SYNTHETIC_REPLAY_REFERENCE_MAP",
+  "fixtureVersion": "interface-replay-v1",
+  "nativeAuthority": false,
+  "source": "Orders.kt",
+  "declarations": [
+    {
+      "identity": "submit-string",
+      "reference": "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+      "line": 4,
+      "signature": "submit(String)"
+    },
+    {
+      "identity": "submit-long",
+      "reference": "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+      "line": 5,
+      "signature": "submit(Long)"
+    },
+    {
+      "identity": "submit-string-retries",
+      "reference": "exact:v5:AAAAAAAAAAAAAAAAAAAAAg",
+      "line": 6,
+      "signature": "submit(String,Int)"
+    }
+  ]
+}

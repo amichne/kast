@@ -62,7 +62,7 @@ export function restoreReceivedMessage(policy,message) {
 
 // Shared real-SDK construction boundary. A no-inference SDK check can supply
 // synthetic in-memory auth/catalog storage; it cannot replace these rules.
-export async function createEvaluationSession({sdk,plan,directory,modelRuntime,policy,record,manager,projectProviderInput}) {
+export async function createEvaluationSession({sdk,plan,directory,modelRuntime,policy,record,manager,projectProviderInput,replay}) {
   if(policy.config.finalPresentation==='compact'&&typeof projectProviderInput!=='function')return failure('FINAL_PROVIDER_PROJECTION','PROJECTION_UNAVAILABLE');
   const {createAgentSession,SettingsManager,DefaultResourceLoader}=sdk;
   let observationFailure;
@@ -87,13 +87,13 @@ export async function createEvaluationSession({sdk,plan,directory,modelRuntime,p
     })}),
     logPath:path.join(directory,'mcp.log'),
   })(pi);
-  const resources=effect('RESOURCE_CREATE',()=>new DefaultResourceLoader({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,noExtensions:true,additionalExtensionPaths:[plan.kastAdapter],extensionFactories:[evaluationGuard(policy,observeRecord,projectProviderInput),nativeMcp],noSkills:true,noPromptTemplates:true,noThemes:true,noContextFiles:true}));
+  const resources=effect('RESOURCE_CREATE',()=>new DefaultResourceLoader({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,noExtensions:true,additionalExtensionPaths:replay?[]:[plan.kastAdapter],extensionFactories:replay?[replay.guard]:[evaluationGuard(policy,observeRecord,projectProviderInput),nativeMcp],noSkills:true,noPromptTemplates:true,noThemes:true,noContextFiles:true}));
   if(failed(resources)) return resources;
   const loader=resources.value;
   const loaded=await asyncEffect('RESOURCE_LOAD',()=>loader.reload());if(failed(loaded)) return loaded;
   const extensions=effect('RESOURCE_EXTENSIONS',()=>loader.getExtensions());if(failed(extensions)) return extensions;
   if(!Array.isArray(extensions.value?.errors)||extensions.value.errors.length!==0)return failure('RESOURCE_EXTENSIONS','EXTENSION_LOAD_FAILED');
-  const created=await asyncEffect('SESSION_CREATE',()=>createAgentSession({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,resourceLoader:loader,modelRuntime,model,thinkingLevel:'high',tools:[...READ_TOOL_IDENTITIES],sessionManager:manager}));
+  const created=await asyncEffect('SESSION_CREATE',()=>createAgentSession({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,resourceLoader:loader,modelRuntime,model,thinkingLevel:'high',tools:replay?['bash']:[...READ_TOOL_IDENTITIES],...(replay?{customTools:[replay.shellTool]}:{}),sessionManager:manager}));
   if(failed(created)) return created;
   const session=created.value?.session;
   if(!session)return failure('SESSION_CREATE','SESSION_UNAVAILABLE');

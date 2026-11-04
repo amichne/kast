@@ -1,0 +1,110 @@
+{
+  "type": "DERIVED_COMPARISON_METADATA",
+  "originalSource": "e6b08bd8b8a840c74602104a54e6f713fa854557",
+  "originalPlanSha256": "0b26a4da9d4899762fadec7caaafb02839d08d357e84f98a6ebb58bf32718625",
+  "addedIdentity": {
+    "instructionProfile": "full",
+    "executionProfile": "fresh",
+    "publicContractSha256": "3e0b8ebad589fe0917762fc1274ccf51e52ce8bac2274175a0a0c20840ef3491"
+  },
+  "evidence": "The recorded clean source uses the full v2 contract and fresh spawnSync adapter path. The public schema digest comes from git show at that exact source. Original receipt values, grades, payloads, and measurements remain unchanged.",
+  "receipts": [
+    {
+      "trialId": "C1-r1-JSON",
+      "originalReceiptSha256": "e122825483b31216c1922c895d039293b289aa9d157b5858a06cbc566f6d9127"
+    },
+    {
+      "trialId": "C1-r1-TOON",
+      "originalReceiptSha256": "79b88add6b7e00b3f7ca0e1a694a1bd065b80b7f31680113d91416defab1c632"
+    },
+    {
+      "trialId": "C1-r2-JSON",
+      "originalReceiptSha256": "0348d17c72b51ed51bdd05068ca6fa129166e46e15a0fb29ebdcb1ab59c655de"
+    },
+    {
+      "trialId": "C1-r2-TOON",
+      "originalReceiptSha256": "5b5257136e7e0eeeb64eeed2b72b17f2ac25e91cbff8f2aa868c0ddabf198d20"
+    },
+    {
+      "trialId": "C2-r1-JSON",
+      "originalReceiptSha256": "48148e44126b3909ec13469cddbe660ce5ab4d68e84dc179ef8e2e1dc216eeb4"
+    },
+    {
+      "trialId": "C2-r1-TOON",
+      "originalReceiptSha256": "397d88af9be1790b92172c7a9a9b9fb7174d8cc4325bbc09bcce80d0ebc81453"
+    },
+    {
+      "trialId": "C2-r2-JSON",
+      "originalReceiptSha256": "1819cc326192e9e05b80e6c51f025126925c18da783ee7eeab7502920167f551"
+    },
+    {
+      "trialId": "C2-r2-TOON",
+      "originalReceiptSha256": "eb41d34df1627c7d209ba02070bceae13d7aac081671b72999106e1667e4b729"
+    },
+    {
+      "trialId": "C3-r1-JSON",
+      "originalReceiptSha256": "b0e7b492c3aaa1866cd667bd6abc2f72fd67ca33a24749e803640050f9ed83f8"
+    },
+    {
+      "trialId": "C3-r1-TOON",
+      "originalReceiptSha256": "fec703015e6b2ca432c2c88d38a21ac0aa12502bfd6495d7b0224a8475a427cb"
+    },
+    {
+      "trialId": "C3-r2-JSON",
+      "originalReceiptSha256": "cfc2e73b7b064f69ac5b495f188130745d47727f3a18376820fe2d6d31087285"
+    },
+    {
+      "trialId": "C3-r2-TOON",
+      "originalReceiptSha256": "454f1446ab3907751e42921526168bd6681df925894a09cda4582e4ef23ced7d"
+    },
+    {
+      "trialId": "C4-r1-JSON",
+      "originalReceiptSha256": "54655c67b71e81af49eb7495e4e5c6c40f4f4246b2a45374475f1c2fb66fbf1e"
+    },
+    {
+      "trialId": "C4-r1-TOON",
+      "originalReceiptSha256": "84bc92286759ceb7eed8e4c2d6a1416ad28c5c478fe8b54796ce3a44cde56272"
+    },
+    {
+      "trialId": "C4-r2-JSON",
+      "originalReceiptSha256": "b424965f4c091cb862268c57225ae72798b334405cdf1227912e2fc019ba2ca2"
+    },
+    {
+      "trialId": "C4-r2-TOON",
+      "originalReceiptSha256": "f167df0f02c6aa80912cfb9d0495d5b708b3e2ef1b039de4bee574a12fe0a118"
+    },
+    {
+      "trialId": "C5-r1-JSON",
+      "originalReceiptSha256": "25378ce5e8c143c35bfe23f97983a3e561e45cea65200b176da250917e997ece"
+    },
+    {
+      "trialId": "C5-r1-TOON",
+      "originalReceiptSha256": "4301e1967cff3627ddb539d00071a59185ffe5b78540a0eb23613ee0695e868e"
+    },
+    {
+      "trialId": "C5-r2-JSON",
+      "originalReceiptSha256": "14b5421769029733c6385c6b5fc3755ee2a7a306ddd68c10ee70637e071be2af"
+    },
+    {
+      "trialId": "C5-r2-TOON",
+      "originalReceiptSha256": "970bdd461078f6d8df71559ed11a8eba56e0a75dd6f9b0066e10ff04120ae0b6"
+    },
+    {
+      "trialId": "C6-r1-JSON",
+      "originalReceiptSha256": "82680b51198c24d3e4353b9432d67bbd451c7feddd2aa6020c32e3741abcdb99"
+    },
+    {
+      "trialId": "C6-r1-TOON",
+      "originalReceiptSha256": "4cb1239ddea0af37b5eedace89321e25ec808ea58d494dd37ccee3cc785e7e3d"
+    },
+    {
+      "trialId": "C6-r2-JSON",
+      "originalReceiptSha256": "17a2c8e414acb17321bc6ef5845ff9bfd6fa4e73502086d84422006753993947"
+    },
+    {
+      "trialId": "C6-r2-TOON",
+      "originalReceiptSha256": "e05a177ed9d2d8d66faa5cb550cd047acc54a42eff9dc7e4ee59e856adc73f23"
+    }
+  ],
+  "derivedReceiptSetSha256": "0194aeb423a6387c5c4d6cb933db716373123eda5bdba56954f6e2125cc59a5a"
+}

@@ -4,8 +4,8 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-11-03T00:02:20Z"
-source_revision: 974ee2f06564da9532382a97aef401affb308700
+timestamp: "2026-11-04T15:48:12Z"
+source_revision: e76c008f45cca6193a474aac08684b1f5206a7b3
 code_sources:
   - path: build.gradle.kts
   - path: .github/scripts/ci/fast_checks.py
@@ -74,6 +74,8 @@ This guide owns repository rules and routes source investigation.
 - Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
 - The opt-in CI rollout compares frozen changes before affected selection becomes the default. Read `.github/scripts/ci/README.md` for its evidence limits.
 - Cross-platform CI handoff: `.github/scripts/ci/native_handoff.py` binds the transferred Control executable to source identity and digest. Mac jobs compile and exercise that image.
+- Interface decision replay: read `experiments/host-observation/interface-replay/README.md` for the no-inference plan and restricted-shell adapter.
+- Replay performance targets: use `run_pi_evaluation.mjs --assess-target` with the contract in `experiments/host-observation/interface-replay/hill-climb.md`.
 - Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
