@@ -64,6 +64,14 @@ class PublicLauncherCompositionTest {
                     Json.parseToJsonElement(Files.readString(temporary.resolve("json-$index.stdout"))),
                     Json.parseToJsonElement(JToon.decodeToJson(encoded)),
                 )
+                if (arguments.first() in setOf("query", "describe")) {
+                    val explicit = fixture.start("explicit-json-$index", arguments + "--json", environment = emptyMap())
+                    fixture.assertExit(explicit, exit, "explicit-json-$index")
+                    assertEquals(
+                        Json.parseToJsonElement(Files.readString(temporary.resolve("json-$index.stdout"))),
+                        Json.parseToJsonElement(Files.readString(temporary.resolve("explicit-json-$index.stdout"))),
+                    )
+                }
             }
         }
     }
@@ -76,6 +84,8 @@ class PublicLauncherCompositionTest {
             val commands =
                 listOf(
                     listOf("query", "--help") to 0,
+                    listOf("source", "--help") to 0,
+                    listOf("result", "--help") to 0,
                     listOf("describe") to 0,
                     listOf("describe", "query", "--section", "input") to 0,
                     listOf("describe", "query", "--section", "examples") to 0,

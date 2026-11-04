@@ -18,12 +18,15 @@ The persistent IntelliJ IDEA Host supplies compiler analysis. CLI queries need n
 
 ```shell
 kast describe
+kast source --help
+kast result --help
 kast describe query --section input
 kast describe query --section examples
 ```
 
 These commands read packaged contracts without workspace preparation.
 Use the installed examples before unfamiliar arguments.
+For source and result schemas, use `kast describe source.read --section input` and `kast describe result.read --section input`.
 
 ## Find a declaration
 
@@ -36,6 +39,8 @@ kast query --name submitOrder --in checkout --source-set main \
 ```
 
 Use `--workspace PATH` when your current directory differs from the target worktree.
+The `--fields` option accepts unique values from `name,location,signature,source` with `--output symbols`.
+For `--output occurrences`, omit `--fields`.
 
 Examine the owner, signature, and location before you select an exact reference.
 An exact name can match several overloads.
@@ -79,17 +84,37 @@ kast query --request - < query.json
 ```
 
 The document contains the public `request` field, without an RPC envelope.
+The `--request` value names a file or selects stdin with `-`. It does not accept inline JSON.
 Do not combine `--request` with semantic flags or `--verbose`.
 
 ## Read the outcome
 
 Semantic commands emit TOON on stdout by default.
-Set `KAST_OUTPUT_TOON=0` for JSON.
+Use `--json` for JSON output from one command.
+This flag overrides `KAST_OUTPUT_TOON`.
+Set `KAST_OUTPUT_TOON=0` for JSON output across commands.
+The input document remains JSON with either output format.
 Progress and diagnostics use stderr.
 Read the outer outcome and its qualifications before a semantic conclusion.
 An unfinished search with no matches does not prove absence.
 
 `--max-results` limits presentation. It does not establish semantic completion.
 A complete page can still have an issued continuation.
+
+If `COMPLETION_UNPROVEN` includes `UNRESOLVED_ARGUMENT_MAPPING`, Kast cannot prove the requested callback relationships.
+Keep the reported cause and original coverage with your conclusion.
+If the response supplies `nextQuery`, save that argument document as `evidence.json`:
+
+```shell
+kast query --request evidence.json --json
+```
+
+This request reads retained evidence. It does not establish a complete callee list or repeat semantic work.
+Use the issued result reference and both cursors for later pages.
+
+The `--max-elapsed-ms` option sets an explicit elapsed budget.
+If that budget expires, the CLI returns status `124`.
+A longer grant does not resolve missing callback proof.
+Keep the reported stage and readiness evidence before a new query.
 
 Use [query contracts](/reference/api), [result contracts](/reference/responses), and [source identity](/reference/symbols) for detailed evidence rules.

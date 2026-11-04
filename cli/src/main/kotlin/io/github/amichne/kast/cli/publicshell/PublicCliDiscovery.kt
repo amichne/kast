@@ -132,17 +132,29 @@ internal fun encodePublicCliDescriptor(descriptor: PublicCliDescriptor): String 
         is PublicCliDescriptor.Examples -> discoveryJson.encodeToString(descriptor.value)
     }
 
-internal fun publicCliHelp(command: PublicCliCommandId?): String {
-    val commands = command?.let(::listOf) ?: PublicCliCommandId.entries
-    return commands.joinToString("\n") { selected ->
+internal fun publicCliHelp(command: PublicCliCommandId?): String =
+    publicCliHelp(command?.let(::listOf) ?: PublicCliCommandId.entries)
+
+internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
+    commands.joinToString("\n") { selected ->
         "kast ${selected.argv.joinToString(" ")} " +
             flagsFor(selected).joinToString(" ") { flag ->
                 listOf("[", flag.spelling, if (flag.takesValue) " VALUE" else "", "]").joinToString("")
-            }
+            } +
+            "\nSchema: kast describe ${selected.id} --section input"
     } +
-        "\nSemantic commands emit one TOON document. Set KAST_OUTPUT_TOON=0 for JSON results. " +
-        "Use kast describe COMMAND for the selected catalog contract."
-}
+        "\nSemantic commands emit one TOON document. Use --json or KAST_OUTPUT_TOON=0 for JSON results.\n" +
+        "Use kast describe COMMAND for the selected catalog contract.\n" +
+        "Use kast describe query --section examples for full request documents.\n" +
+        "--request FILE reads a JSON argument document from a file. --request - reads that document from stdin.\n" +
+        "Example: kast query --request query.json --json\n" +
+        "Example: kast query --request - --json < query.json\n" +
+        "--fields accepts unique, comma-separated values: ${CliField.entries.joinToString(",") { it.spelling }}. " +
+        "Use --fields with --output symbols.\n" +
+        "Use kast source read --ref SYMBOL_REF with an issued source reference.\n" +
+        "Use kast result read --ref RESULT_REF --cursor CURSOR with the issued result reference and cursor.\n" +
+        "For COMPLETION_UNPROVEN, inspect the cause and nextQuery. Retained rows remain evidence only.\n" +
+        "--max-elapsed-ms sets an explicit elapsed budget. A longer budget does not repair unresolved callback mappings."
 
 private fun commandDescriptor(command: PublicCliCommandId, catalog: PublicToolCatalog): PublicCliCommandDescriptor {
     val input = PublicToolContract.parameters(PublicToolIdentity.QUERY_SYMBOLS, catalog)

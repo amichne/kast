@@ -34,6 +34,13 @@ internal sealed interface PublicCliCommand {
     ) : PublicCliCommand
 
     data class Help(val command: PublicCliCommandId?) : PublicCliCommand
+
+    data class NamespaceHelp(val namespace: PublicCliNamespace) : PublicCliCommand
+}
+
+internal enum class PublicCliNamespace(val word: String, val commands: List<PublicCliCommandId>) {
+    SOURCE("source", listOf(PublicCliCommandId.SOURCE_READ)),
+    RESULT("result", listOf(PublicCliCommandId.RESULT_READ, PublicCliCommandId.RESULT_RESUME)),
 }
 
 @Serializable
@@ -64,6 +71,8 @@ internal enum class PublicCliArgumentFailure {
     MIXED_INPUT_MODES,
     INVALID_SOURCE,
     IRRELEVANT_OPTION,
+    INVALID_FIELDS,
+    FIELDS_WITH_OCCURRENCES,
 }
 
 internal fun parsePublicCliArguments(argv: List<String>): Refinement<PublicCliCommand, PublicCliArgumentFailure> =
@@ -100,9 +109,16 @@ private fun findCommand(arguments: LexicalArguments): PublicCliCommandId? =
         .sortedByDescending { it.argv.size }
         .firstOrNull { arguments.words.take(it.argv.size) == it.argv }
 
-private fun missingCommand(arguments: LexicalArguments): Refinement<PublicCliCommand, PublicCliArgumentFailure> =
-    if (arguments.words.isEmpty() && arguments.has(PublicCliFlag.HELP)) Refinement.Refined(PublicCliCommand.Help(null))
-    else Refinement.Rejected(PublicCliArgumentFailure.INVALID_COMMAND)
+private fun missingCommand(arguments: LexicalArguments): Refinement<PublicCliCommand, PublicCliArgumentFailure> {
+    val namespace = PublicCliNamespace.entries.singleOrNull { arguments.words == listOf(it.word) }
+    return when {
+        !arguments.has(PublicCliFlag.HELP) -> Refinement.Rejected(PublicCliArgumentFailure.INVALID_COMMAND)
+        arguments.words.isEmpty() -> Refinement.Refined(PublicCliCommand.Help(null))
+        namespace != null && arguments.options.keys.all { it in processFlags } ->
+            Refinement.Refined(PublicCliCommand.NamespaceHelp(namespace))
+        else -> Refinement.Rejected(PublicCliArgumentFailure.INVALID_COMMAND)
+    }
+}
 
 private fun executionCommand(
     command: PublicCliCommandId,
