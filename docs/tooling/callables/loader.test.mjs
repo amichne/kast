@@ -3,9 +3,11 @@ import { createHash, webcrypto } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { gzipSync } from 'node:zlib';
 
-// Exercise the real loader, before the JSX-only render functions, with owned
-// network/effect boundaries. No fetch reaches the network and no real timer runs.
+// Run the actual loader before its JSX render functions. Native gzip, streams,
+// UTF-8, and crypto remain real; effects, timers, and pending body settlement
+// are controlled. A network request is always a test failure.
 const viewer = readFileSync(new URL('viewer.jsx', import.meta.url), 'utf8');
 const marker = 'function SchemaNode';
 assert.equal(viewer.split(marker).length, 2, 'The loader boundary must remain explicit.');
@@ -25,27 +27,68 @@ function graph() {
 }
 
 async function waitFor(predicate) {
-  const deadline = performance.now() + 2000;
+  const deadline = performance.now() + 5000;
   while (!predicate()) {
     assert.ok(performance.now() < deadline, 'The bounded loader observation did not settle.');
     await new Promise(resolve => setImmediate(resolve));
   }
 }
 
-function observe(value = graph(), { ignoreAbort = false, expectedDigest, rawBody } = {}) {
+function observe(value = graph(), {
+  expectedDigest,
+  rawBody,
+  compressedBytes,
+  holdBody = false,
+  ignoreAbort = false,
+  unsupportedDecompressor = false,
+} = {}) {
   const bytes = new TextEncoder().encode(rawBody ?? JSON.stringify(value));
   const updates = [];
   const effects = [];
-  const requests = [];
+  const signals = [];
   const timers = new Map();
   let cleared = 0;
-  let resolveFetch;
-  let rejectFetch;
+  let networkCalls = 0;
+  let releaseBody;
+  let bodyPending = false;
+  let nativeBodies = 0;
+
+  class ObservedAbortController extends AbortController {
+    constructor() {
+      super();
+      signals.push(this.signal);
+    }
+  }
+
+  class ControlledResponse extends Response {
+    async arrayBuffer() {
+      // Consume the real decompression stream first. The optional hold models
+      // an in-flight completion boundary after bytes exist but before admission.
+      const result = await super.arrayBuffer();
+      nativeBodies++;
+      if (!holdBody) return result;
+      return new Promise((resolve, reject) => {
+        const signal = signals[0];
+        releaseBody = () => resolve(result);
+        bodyPending = true;
+        if (!ignoreAbort) {
+          if (signal.aborted) reject(signal.reason);
+          else signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+        }
+      });
+    }
+  }
+
   const context = {
-    AbortController,
+    AbortController: ObservedAbortController,
+    atob,
+    Blob,
+    DecompressionStream: unsupportedDecompressor ? undefined : DecompressionStream,
+    Response: ControlledResponse,
     TextDecoder,
     Uint8Array,
     crypto: webcrypto,
+    compressedGraphBase64: Buffer.from(compressedBytes ?? gzipSync(bytes)).toString('base64'),
     expectedDataSha: expectedDigest ?? createHash('sha256').update(bytes).digest('hex'),
     useState: initial => [initial, state => updates.push(state)],
     useEffect: effect => effects.push(effect()),
@@ -59,31 +102,31 @@ function observe(value = graph(), { ignoreAbort = false, expectedDigest, rawBody
       assert.equal(id, 1);
       cleared++;
     },
-    fetch: (url, { signal }) => {
-      requests.push({ url, signal });
-      return new Promise((resolve, reject) => {
-        resolveFetch = resolve;
-        rejectFetch = reject;
-        if (!ignoreAbort) {
-          signal.addEventListener('abort', () => reject(signal.reason), { once: true });
-        }
-      });
+    fetch: () => {
+      networkCalls++;
+      throw new Error('Bundled schema loading must not request a hosted resource.');
     },
   };
   vm.runInNewContext(loader, context, { timeout: 1000 });
-  assert.equal(requests.length, 1);
-  assert.equal(requests[0].url, '/assets/callable-reference.txt');
-  assert.equal(requests[0].signal.aborted, false);
+  assert.equal(signals.length, 1);
+  assert.equal(signals[0].aborted, false);
   assert.equal(effects.length, 1);
   assert.equal(typeof effects[0], 'function');
   return {
     updates,
-    signal: requests[0].signal,
-    complete: (status = 200) => resolveFetch(new Response(bytes, { status })),
-    reject: () => rejectFetch(new Error('Case-owned network rejection')),
+    signal: signals[0],
+    pending: () => waitFor(() => bodyPending),
+    complete: () => {
+      assert.equal(typeof releaseBody, 'function', 'The controlled body must be pending.');
+      releaseBody();
+    },
     expire: () => timers.get(1)(),
     unmount: () => effects[0](),
-    settled: (clears = 1) => waitFor(() => cleared >= clears),
+    settled: async (clears = 1) => {
+      await waitFor(() => cleared >= clears);
+      assert.equal(networkCalls, 0, 'No loader branch may request a hosted schema asset.');
+    },
+    nativeBodies: () => nativeBodies,
   };
 }
 
@@ -92,10 +135,10 @@ function assertFailed(observation) {
   assert.equal(observation.updates[0].kind, 'failed');
 }
 
-test('valid recursive references load without eager reference traversal or integer loss', async () => {
+test('valid bundled gzip preserves self references and exact integer text without network access', async () => {
   const observation = observe();
-  observation.complete();
   await observation.settled();
+  assert.equal(observation.nativeBodies(), 1);
   assert.equal(observation.updates.length, 1);
   const ready = observation.updates[0];
   assert.equal(ready.kind, 'ready');
@@ -105,64 +148,48 @@ test('valid recursive references load without eager reference traversal or integ
   observation.unmount();
 });
 
-test('a rejected fetch settles as an explicit failure', async () => {
-  const observation = observe();
-  observation.reject();
+test('corrupt gzip settles as an explicit failure', async () => {
+  const observation = observe(graph(), { compressedBytes: Buffer.from('not a gzip stream') });
   await observation.settled();
   assertFailed(observation);
   observation.unmount();
 });
 
-test('an unsuccessful HTTP response cannot become a ready graph', async () => {
-  const observation = observe();
-  observation.complete(503);
+test('truncated gzip cannot become a ready graph', async () => {
+  const observation = observe(graph(), { compressedBytes: gzipSync('partial body').subarray(0, 12) });
   await observation.settled();
   assertFailed(observation);
   observation.unmount();
 });
 
-test('malformed fact values reject after matching resource integrity', async () => {
+test('changed decoded bytes cannot pass the injected build digest', async () => {
+  const observation = observe(graph(), { expectedDigest: '0'.repeat(64) });
+  await observation.settled();
+  assertFailed(observation);
+  observation.unmount();
+});
+
+test('invalid JSON rejects after gzip and resource integrity succeed', async () => {
+  const observation = observe(graph(), { rawBody: '{' });
+  await observation.settled();
+  assert.equal(observation.nativeBodies(), 1);
+  assertFailed(observation);
+  observation.unmount();
+});
+
+test('malformed graph facts reject after matching resource integrity', async () => {
   const document = graph();
   document.nodes[0].facts[0].value = 9223372036854776000;
   const observation = observe(document);
-  observation.complete();
   await observation.settled();
   assertFailed(observation);
   observation.unmount();
 });
 
-test('pointer ancestry cycles reject while schema reference cycles remain valid', async () => {
+test('pointer ancestry cycles reject while recursive schema edges remain valid', async () => {
   const document = graph();
   document.nodes[0].parent = 0;
   const observation = observe(document);
-  observation.complete();
-  await observation.settled();
-  assertFailed(observation);
-  observation.unmount();
-});
-
-test('a response resolving after unmount cannot publish a state', async () => {
-  const observation = observe(graph(), { ignoreAbort: true });
-  observation.unmount();
-  assert.equal(observation.signal.aborted, true);
-  observation.complete();
-  // Cleanup clears once; the detached request must still reach its own finally.
-  await observation.settled(2);
-  assert.deepEqual(observation.updates, []);
-});
-
-test('the finite timeout aborts pending fetch and settles as failed', async () => {
-  const observation = observe();
-  observation.expire();
-  assert.equal(observation.signal.aborted, true);
-  await observation.settled();
-  assertFailed(observation);
-  observation.unmount();
-});
-
-test('stale or changed response bytes cannot pass the injected build digest', async () => {
-  const observation = observe(graph(), { expectedDigest: '0'.repeat(64) });
-  observation.complete();
   await observation.settled();
   assertFailed(observation);
   observation.unmount();
@@ -172,22 +199,50 @@ test('unknown graph versions reject even with a matching build digest', async ()
   const document = graph();
   document.schemaVersion = 2;
   const observation = observe(document);
-  observation.complete();
   await observation.settled();
   assertFailed(observation);
   observation.unmount();
 });
 
-test('invalid JSON settles as failed after resource integrity succeeds', async () => {
-  const observation = observe(graph(), { rawBody: '{' });
-  observation.complete();
+test('unsupported browser decompression leaves a finite failure', async () => {
+  const observation = observe(graph(), { unsupportedDecompressor: true });
   await observation.settled();
   assertFailed(observation);
   observation.unmount();
 });
 
-test('timeout fails immediately even when a pending boundary ignores abort', async () => {
-  const observation = observe(graph(), { ignoreAbort: true });
+test('unmount aborts pending decoding and prevents late state updates', async () => {
+  const observation = observe(graph(), { holdBody: true });
+  await observation.pending();
+  observation.unmount();
+  assert.equal(observation.signal.aborted, true);
+  await observation.settled(2);
+  assert.deepEqual(observation.updates, []);
+});
+
+test('a decoding boundary resolving after unmount cannot publish a state', async () => {
+  const observation = observe(graph(), { holdBody: true, ignoreAbort: true });
+  await observation.pending();
+  observation.unmount();
+  assert.equal(observation.signal.aborted, true);
+  observation.complete();
+  await observation.settled(2);
+  assert.deepEqual(observation.updates, []);
+});
+
+test('timeout aborts pending decoding and settles as failed', async () => {
+  const observation = observe(graph(), { holdBody: true });
+  await observation.pending();
+  observation.expire();
+  assert.equal(observation.signal.aborted, true);
+  await observation.settled();
+  assertFailed(observation);
+  observation.unmount();
+});
+
+test('timeout fails immediately even when the pending decoding boundary ignores abort', async () => {
+  const observation = observe(graph(), { holdBody: true, ignoreAbort: true });
+  await observation.pending();
   observation.expire();
   assertFailed(observation);
   observation.complete();

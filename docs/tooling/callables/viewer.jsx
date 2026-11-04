@@ -3,10 +3,14 @@ useEffect(() => {
   let disposed = false;
   const controller = new AbortController();
   const timeout = setTimeout(() => { controller.abort(); if (!disposed) setLoad({ kind: "failed" }); }, 20000);
-  fetch("/assets/callable-reference.txt", { signal: controller.signal })
-    .then(async response => {
-      if (!response.ok) throw new Error("SCHEMA_LOAD_FAILED");
-      const bytes = await response.arrayBuffer();
+  Promise.resolve()
+    .then(() => {
+      if (typeof DecompressionStream !== "function") throw new Error("SCHEMA_DECODER_UNAVAILABLE");
+      const compressed = Uint8Array.from(atob(compressedGraphBase64), value => value.charCodeAt(0));
+      const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("gzip"), { signal: controller.signal });
+      return new Response(stream).arrayBuffer();
+    })
+    .then(async bytes => {
       if (bytes.byteLength > 20000000) throw new Error("SCHEMA_DATA_INVALID");
       const digest = await crypto.subtle.digest("SHA-256", bytes);
       const sha = Array.from(new Uint8Array(digest)).map(value => value.toString(16).padStart(2, "0")).join("");
