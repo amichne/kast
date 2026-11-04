@@ -36,11 +36,11 @@ const conciseContract=[
 ].join('\n');
 const instructionContracts=Object.freeze({full:contract,concise:conciseContract});
 const metadata=[
-  {id:'C1',name:'overload',task:'Find the callers of submit(id: Long) in services/orders/src/main/kotlin/Orders.kt. The declaration search already returned the overloads. Select that declaration with its issued reference.',command:'kast query --name submit --in services/orders --source-set main --kind function',permittedDecisions:['invoke']},
-  {id:'C2',name:'source',task:'Read the complete callable body of submit(id: String, retries: Int). The declaration was selected in the previous result. Use its issued reference.',command:'kast query --ref exact:v5:AAAAAAAAAAAAAAAAAAAAAg',permittedDecisions:['invoke']},
-  {id:'C3',name:'scope',task:'Find declarations named OrderService only under services/orders and only in the main source set. The previous broad discovery returned a test declaration. Preserve both requested constraints in the next discovery.',command:'kast query --name OrderService --kind class',permittedDecisions:['invoke']},
-  {id:'C4',name:'retained',task:'Read the next output page of the retained result from the previous call. Use the issued result reference and next_cursor. Do not execute a new semantic query.',command:'kast result read --ref result:v1:00000000-0000-0000-0000-000000000004 --cursor 0 --max-results 1',permittedDecisions:['invoke']},
-  {id:'C5',name:'coverage',task:'Does the supplied result prove that MissingOrder is absent from services/orders in the main source set? Answer from the supplied evidence, without another command. Preserve the scope and limitations.',command:'kast query --name MissingOrder --in services/orders --source-set main --kind class',permittedDecisions:['finish']},
+  {id:'C1',name:'overload',task:'Find the callers of submit(id: Long) in services/orders/src/main/kotlin/Orders.kt. The declaration search already returned the overloads. Select that declaration with its issued reference.',command:'kast query --name submit --in services/orders --source-set main --kind function --fields name,location,signature',permittedDecisions:['invoke']},
+  {id:'C2',name:'source',task:'Read the complete callable body of submit(id: String, retries: Int). The declaration was selected in the previous result. Use its issued reference.',command:'kast query --ref exact:v5:AAAAAAAAAAAAAAAAAAAAAg --fields name,location,signature',permittedDecisions:['invoke']},
+  {id:'C3',name:'scope',task:'Find declarations named OrderService only under services/orders and only in the main source set. The previous broad discovery returned a test declaration. Preserve both requested constraints in the next discovery.',command:'kast query --name OrderService --kind class --fields name,location,signature',permittedDecisions:['invoke']},
+  {id:'C4',name:'retained',task:'Read the next output page of the retained result from the previous call. Use the issued result reference and next_cursor. Do not execute a new semantic query.',command:'kast result read --ref result:v1:00000000-0000-0000-0000-000000000004 --cursor 0 --max-results 1 --fields name,location,signature',permittedDecisions:['invoke']},
+  {id:'C5',name:'coverage',task:'Does the supplied result prove that MissingOrder is absent from services/orders in the main source set? Answer from the supplied evidence, without another command. Preserve the scope and limitations.',command:'kast query --name MissingOrder --in services/orders --source-set main --kind class --fields name,location,signature',permittedDecisions:['finish']},
   {id:'C6',name:'repair',task:'Find declarations named OrderService only under services/orders in the main source set, and return name and signature. Repair the failed command without changing the intended query.',command:"kast query --name OrderService --in services/orders --source-set main --fields 'name, signature'",permittedDecisions:['invoke'],stderr:'kast: INVALID_FIELDS. Use unique, comma-separated --fields values: name,location,signature,source.\n',exitStatus:2},
 ];
 
@@ -50,7 +50,9 @@ export function replayCases(profile='full') {
   if(typeof profile!=='string'||!Object.hasOwn(instructionContracts,profile))throw Error('REPLAY_INSTRUCTION_PROFILE_REJECTED');
   return freeze(metadata.map(item=>{
     const canonicalResponse=readFileSync(fixturePath(item.id),'utf8');
-    return {...item,version:'interface-replay-v2',instructionProfile:profile,canonicalResponse,canonicalSha256:sha(canonicalResponse),canonicalPath:fixturePath(item.id).pathname,producer:{type:'SYNTHETIC_PUBLIC_CONTRACT_FIXTURE',source:'protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultRowCliDocuments.kt',sourceRevision:'0decbfa874a21fc70592992bc12eaa6939980af2'},visibleContract:instructionContracts[profile],prefixCall:{toolName:'bash',toolCallId:`replay-prefix-${item.id}`,input:{command:item.command}},stderr:item.stderr??'',exitStatus:item.exitStatus??(item.id==='C3'||item.id==='C5'?10:0),limits:{providerRequests:1,shellCalls:1,kastInvocations:1,nativeCalls:0,wallSeconds:60}};
+    const prefixCall={toolName:'bash',toolCallId:`replay-prefix-${item.id}`,input:{command:item.command}},stderr=item.stderr??'',exitStatus=item.exitStatus??(item.id==='C3'||item.id==='C5'?10:0);
+    const replayStateSha256=sha(JSON.stringify({prefixCall,stderr,exitStatus}));
+    return {...item,version:'interface-replay-v3',instructionProfile:profile,canonicalResponse,canonicalSha256:sha(canonicalResponse),canonicalPath:fixturePath(item.id).pathname,producer:{type:'SYNTHETIC_PUBLIC_CONTRACT_FIXTURE',source:'protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultRowCliDocuments.kt',sourceRevision:'0decbfa874a21fc70592992bc12eaa6939980af2'},visibleContract:instructionContracts[profile],prefixCall,stderr,exitStatus,replayStateSha256,limits:{providerRequests:1,shellCalls:1,kastInvocations:1,nativeCalls:0,wallSeconds:60}};
   }));
 }
 export function replayCase(id,profile='full') {
@@ -72,13 +74,19 @@ export function replayTransition(caseId,admission) {
     &&(!request.steps||request.steps.length===0)&&request.terminalStep?.type==='EMIT';
   const declarationKinds=request?.source?.declarationKinds;
   const defaultFamilies=declarationKinds===undefined||declarationKinds===null;
+  const symbolFields=(output,available)=>output?.type==='SYMBOLS'&&Array.isArray(output.fields)&&new Set(output.fields).size===output.fields.length&&output.fields.every(field=>available.includes(field));
+  const callerProjection=request?.terminalStep?.output;
+  const callerProjectionAvailable=callerProjection===undefined||callerProjection===null||symbolFields(callerProjection,['NAME','LOCATION','SIGNATURE','SOURCE'])||['OCCURRENCES','TRAVERSAL_RECORDS'].includes(callerProjection?.type);
+  const retainedProjectionAvailable=request?.output===undefined||request.output===null||symbolFields(request.output,['NAME','LOCATION','SIGNATURE']);
+  const expansion=request?.steps?.[0]?.expansionScope;
+  const workspaceExpansion=expansion===undefined||expansion===null||expansion.type==='WORKSPACE';
   const supported={
     C1:request?.type==='RUN'&&request.source?.type==='SYMBOL_REFS'&&list(request.source.symbolRefs,['exact:v5:AAAAAAAAAAAAAAAAAAAAAQ'])
-      &&request.steps?.length===1&&request.steps[0].type==='EXPAND_RELATION'&&request.steps[0].relation==='CALLERS'&&request.terminalStep?.type==='EMIT',
-    C2:request?.type==='READ_SOURCE'&&request.candidateRef==='exact:v5:AAAAAAAAAAAAAAAAAAAAAg'&&request.region==='CALLABLE_BODY'&&request.text?.type==='COMPLETE',
+      &&request.steps?.length===1&&request.steps[0].type==='EXPAND_RELATION'&&request.steps[0].relation==='CALLERS'&&workspaceExpansion&&request.terminalStep?.type==='EMIT'&&callerProjectionAvailable,
+    C2:request?.type==='READ_SOURCE'&&request.candidateRef==='exact:v5:AAAAAAAAAAAAAAAAAAAAAg'&&request.region==='CALLABLE_BODY'&&(request.text===undefined||request.text===null||request.text?.type==='COMPLETE'),
     C3:search&&(defaultFamilies||Array.isArray(declarationKinds)&&declarationKinds.includes('CLASS')),
     C4:request?.type==='READ_RESULT'&&request.result==='result:v1:00000000-0000-0000-0000-000000000004'&&request.cursor===1
-      &&[undefined,null,0].includes(request.evidence_cursor),
+      &&[undefined,null,0].includes(request.evidence_cursor)&&retainedProjectionAvailable,
     C5:false,
     C6:search&&(defaultFamilies||Array.isArray(declarationKinds)&&declarationKinds.length===4&&['CLASS','FUNCTION','PROPERTY','TYPE_ALIAS'].every(kind=>declarationKinds.includes(kind)))&&request.terminalStep.output?.type==='SYMBOLS'&&Array.isArray(request.terminalStep.output.fields)
       &&request.terminalStep.output.fields.length===2&&request.terminalStep.output.fields.includes('NAME')&&request.terminalStep.output.fields.includes('SIGNATURE'),

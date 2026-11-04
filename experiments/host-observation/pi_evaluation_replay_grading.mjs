@@ -17,6 +17,9 @@ const arrayEqual=(a,b)=>Array.isArray(a)&&a.length===b.length&&a.every((value,in
 const setEqual=(a,b)=>Array.isArray(a)&&a.length===new Set(a).size&&a.length===b.length&&a.every(value=>b.includes(value));
 const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const exactKeys=(value,keys)=>plain(value)&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
+const symbolOutput=(output,fields)=>output?.type==='SYMBOLS'&&Array.isArray(output.fields)&&output.fields.length===new Set(output.fields).size&&output.fields.every(field=>fields.includes(field));
+const callerOutput=output=>output===undefined||output===null||symbolOutput(output,['NAME','LOCATION','SIGNATURE','SOURCE'])||['OCCURRENCES','TRAVERSAL_RECORDS'].includes(output?.type);
+const retainedOutput=output=>output===undefined||output===null||symbolOutput(output,['NAME','LOCATION','SIGNATURE']);
 const decisionShape=decision=>{
   switch(decision.kind) {
     case 'invoke':return exactKeys(decision,['kind']);
@@ -44,12 +47,13 @@ export function gradeReplayDecision(caseId,decision,admission) {
         case 'C1':
           dimensions.target=dimension(request.source?.type==='SYMBOL_REFS'&&arrayEqual(request.source.symbolRefs,[oracle.target]));
           dimensions.reference=dimension(request.source?.type==='SYMBOL_REFS'&&arrayEqual(request.source.symbolRefs,[oracle.target]));
-          dimensions.action=dimension(request.type==='RUN'&&request.terminalStep?.type==='EMIT'&&Array.isArray(request.steps)&&request.steps.length===1&&request.steps[0].type==='EXPAND_RELATION'&&request.steps[0].relation===oracle.relation);
+          dimensions.action=dimension(request.type==='RUN'&&request.terminalStep?.type==='EMIT'&&callerOutput(request.terminalStep.output)&&Array.isArray(request.steps)&&request.steps.length===1&&request.steps[0].type==='EXPAND_RELATION'&&request.steps[0].relation===oracle.relation);
+          if(request.steps?.[0]?.type==='EXPAND_RELATION')dimensions.scope=dimension(request.steps[0].expansionScope===undefined||request.steps[0].expansionScope===null||request.steps[0].expansionScope.type==='WORKSPACE');
           break;
         case 'C2':
           dimensions.target=dimension(request.candidateRef===oracle.target);
           dimensions.reference=dimension(request.candidateRef===oracle.target);
-          dimensions.action=dimension(request.type==='READ_SOURCE'&&request.region===oracle.region&&request.text?.type===oracle.text);
+          dimensions.action=dimension(request.type==='READ_SOURCE'&&request.region===oracle.region&&(request.text===undefined||request.text===null||request.text?.type===oracle.text));
           break;
         case 'C3':
         case 'C6':
@@ -63,6 +67,7 @@ export function gradeReplayDecision(caseId,decision,admission) {
           if(caseId==='C6')dimensions.action=dimension(dimensions.action==='PASS'&&request.terminalStep.output?.type==='SYMBOLS'&&setEqual(request.terminalStep.output.fields,oracle.fields));
           break;
         case 'C4':
+          dimensions.action=dimension(request.type==='READ_RESULT'&&retainedOutput(request.output));
           dimensions.target=dimension(request.result===oracle.target);
           dimensions.reference=dimension(request.result===oracle.target&&request.cursor===oracle.cursor&&(request.evidence_cursor===undefined||request.evidence_cursor===null||request.evidence_cursor===0));
           break;

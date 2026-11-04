@@ -29,7 +29,7 @@ export function prepareReplayPlan(planPath,root,caseId,{credentialSource='PI_OAU
   piPackageRoot,piVersion:version,credentialSource,authPath:credentialSource==='CODEX_CHATGPT'?path.join(process.env.CODEX_HOME??path.join(home,'.codex'),'auth.json'):path.join(home,'.pi/agent/auth.json'),modelsStorePath:path.join(home,'.pi/agent/models-store.json'),
   adapterManifest,adapterManifestSha256:sha(fs.readFileSync(adapterManifest)),outputRoot:planPath+'.run',
   ...identity,sdkIdentity:sdkFiles.map(file=>({file,sha256:sha(fs.readFileSync(path.join(piPackageRoot,file)))})),
-  cases:cases.map(item=>({id:item.id,version:item.version,canonicalSha256:item.canonicalSha256,promptSha256:sha(item.task),contractSha256:sha(item.visibleContract)})),heldOut:heldOutManifest(),
+  cases:cases.map(item=>({id:item.id,version:item.version,canonicalSha256:item.canonicalSha256,replayStateSha256:item.replayStateSha256,promptSha256:sha(item.task),contractSha256:sha(item.visibleContract)})),heldOut:heldOutManifest(),
   model:{provider:'openai-codex',id:'gpt-6.1-sol',effort:'high'},
   caps:{maximumProviderPayloadBytes:262144,maximumProviderResponseBytes:65536,maximumOutputTokens:2000,maximumShellCalls:1,maximumInvocations:1,maximumNativeCalls:0},
   settings:{retries:0,compaction:false,cacheWarming:'off',transport:'sse'}};
@@ -45,6 +45,6 @@ export function examineReplayPins(plan,{root=fileURLToPath(new URL('../..',impor
  if(plan.publicContractSha256&&sha(fs.readFileSync(new URL('../../agent-tools/references/query-schema.json',import.meta.url)))!==plan.publicContractSha256)throw Error('PUBLIC_CONTRACT_CHANGED');
  for(const item of replayCases(plan.instructionProfile??'full')){
   const expected=plan.cases.find(c=>c.id===item.id);
-  if(!expected||expected.canonicalSha256!==item.canonicalSha256||expected.promptSha256!==sha(item.task)||expected.contractSha256!==sha(item.visibleContract))throw Error('CASE_IDENTITY_CHANGED');
+  if(!expected||expected.version!==item.version||expected.replayStateSha256!==item.replayStateSha256||expected.canonicalSha256!==item.canonicalSha256||expected.promptSha256!==sha(item.task)||expected.contractSha256!==sha(item.visibleContract))throw Error('CASE_IDENTITY_CHANGED');
  }
 }

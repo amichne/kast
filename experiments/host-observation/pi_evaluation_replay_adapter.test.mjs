@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { createReplayShell } from './pi_evaluation_replay_shell.mjs';
 import { replayOracleControls, gradeReplayDecision } from './pi_evaluation_replay_grading.mjs';
-import { replayTransition } from './pi_evaluation_replay_cases.mjs';
+import { replayCases, replayTransition } from './pi_evaluation_replay_cases.mjs';
 
 const manifestPath=process.env.KAST_REPLAY_ADAPTER_MANIFEST;
 const integrationAvailable=process.platform==='darwin'&&typeof manifestPath==='string'&&path.isAbsolute(manifestPath)&&fs.existsSync(manifestPath);
@@ -32,6 +32,57 @@ async function shellTrial(command,{format='JSON',caseId}={}) {
  } finally {await shell.dispose();fs.rmSync(root,{recursive:true});}
 }
 const integration={skip:integrationAvailable?false:'Set KAST_REPLAY_ADAPTER_MANIFEST to the prepared JVM adapter manifest on macOS'};
+
+test('declared preceding commands explicitly request the captured signature fields',integration,async()=>{
+ for(const item of replayCases()){
+  const row=await shellTrial(item.prefixCall.input.command);
+  const receipt=row.invocations[0].admission;
+  if(item.id==='C6'){
+   assert.equal(receipt.type,'ARGUMENT_REJECTED');assert.equal(receipt.cause,'INVALID_FIELDS');assert.equal(receipt.stderr,item.stderr);
+  }else{
+   assert.equal(receipt.type,'ADMITTED');
+   const request=receipt.arguments.request;
+   assert.deepEqual(request.type==='RUN'?request.terminalStep.output:request.output,{type:'SYMBOLS',fields:['NAME','LOCATION','SIGNATURE']},item.id);
+  }
+  assert.equal(receipt.nativeCalls,0);
+ }
+});
+
+test('production admission keeps caller domains retained projections and complete-text defaults',integration,async()=>{
+ const caller=replayOracleControls('C1').accept[0].admission.request;
+ const retained=replayOracleControls('C4').accept[0].admission.request;
+ const stdinCommand=request=>`kast query --request - <<'REQUEST'\n${JSON.stringify({request})}\nREQUEST`;
+ const cases=[
+  ['C1',{...caller,steps:[{...caller.steps[0],expansionScope:{type:'SOURCE_DOMAIN',sourceSets:['test'],directory:'services/unrelated',sourcePolicy:'PRODUCTION_AND_TEST',generatedSources:'EXCLUDE'}}]},'scope'],
+  ...['BINDING_ROWS','VALUE_PATHS'].map(type=>['C1',{...caller,terminalStep:{type:'EMIT',output:{type}}},'action']),
+  ...[{type:'OCCURRENCES'},{type:'TRAVERSAL_RECORDS'},{type:'SYMBOLS',fields:['SOURCE']}].map(output=>['C4',{...retained,output},'action']),
+ ];
+ for(const [caseId,request,dimension]of cases){
+  const row=await shellTrial(stdinCommand(request),{caseId});
+  const receipt=row.invocations[0].admission;
+  assert.equal(receipt.type,'ADMITTED');assert.equal(receipt.nativeCalls,0);
+  const grade=gradeReplayDecision(caseId,{kind:'invoke'},receipt);
+  assert.equal(grade.dimensions.arguments,'PASS');assert.equal(grade.dimensions.target,'PASS');assert.equal(grade.dimensions.reference,'PASS');assert.equal(grade.dimensions[dimension],'FAIL');
+  assert.equal(row.captures[0].stdout,'');assert.equal(row.captures[0].exitStatus,2);
+ }
+ const positives=[
+  ['C1',{...caller,steps:[{...caller.steps[0],expansionScope:{type:'WORKSPACE'}}]}],
+  ...[{type:'SYMBOLS',fields:[]},{type:'OCCURRENCES'},{type:'TRAVERSAL_RECORDS'}].map(output=>['C1',{...caller,terminalStep:{type:'EMIT',output}}]),
+  ...[[],['NAME'],['SIGNATURE','LOCATION']].map(fields=>['C4',{...retained,output:{type:'SYMBOLS',fields}}]),
+  ...[undefined,null].map(text=>['C2',{...replayOracleControls('C2').accept[0].admission.request,text}]),
+ ];
+ for(const [caseId,request]of positives){
+  const row=await shellTrial(stdinCommand(request));
+  const receipt=row.invocations[0].admission;
+  assert.equal(receipt.type,'ADMITTED');assert.equal(receipt.nativeCalls,0);
+  assert.equal(gradeReplayDecision(caseId,{kind:'invoke'},receipt).correct,true,JSON.stringify(receipt));
+  assert.equal(replayTransition(caseId,receipt).type,'supported');
+ }
+ const occurrence=await shellTrial(replayOracleControls('C4').accept[0].command+' --output occurrences',{caseId:'C4'});
+ assert.equal(occurrence.invocations[0].admission.type,'ADMITTED');
+ assert.equal(gradeReplayDecision('C4',{kind:'invoke'},occurrence.invocations[0].admission).correct,false);
+ assert.equal(occurrence.captures[0].exitStatus,2);
+});
 
 test('production planning and foreign workspaces cannot supply successful fixture reads',integration,async()=>{
  for(const caseId of ['C3','C6']) {

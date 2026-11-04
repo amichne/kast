@@ -158,7 +158,7 @@ export function assessReplayTarget({target,baseline,candidate}={}) {
  };
  const controls=index(baseline),candidates=index(candidate);
  if(invalid.size)return rejected('COHORT_REJECTED');
- const identityFields=['provider','model','effort','piVersion','fixtureVersion','canonicalSha256','promptSha256','contractSha256','graderSha256','sdkIdentity','budgetSha256','timingMethod','credentialSource','principalSha256'].filter(key=>variation?.type!=='INSTRUCTIONS'||key!=='contractSha256');
+ const identityFields=['provider','model','effort','piVersion','fixtureVersion','replayStateSha256','canonicalSha256','promptSha256','contractSha256','graderSha256','sdkIdentity','budgetSha256','timingMethod','credentialSource','principalSha256'].filter(key=>variation?.type!=='INSTRUCTIONS'||key!=='contractSha256');
  const modelIdentity=row=>{
   const value=row?.identity;
   if(!value)return null;
@@ -220,7 +220,7 @@ export function assessReplayTarget({target,baseline,candidate}={}) {
      :instructions[0]!==instructions[1]))invalid.add('PROFILE_MISMATCH');
     const execution=profiles('executionProfile',['fresh','session'],'LEGACY_EXECUTION_PROFILE_UNRECORDED');
     if(execution&&execution[0]!==execution[1]&&(variation?.type!=='EXECUTION'||execution[0]!=='fresh'||execution[1]!=='session'))invalid.add('PROFILE_MISMATCH');
-    const sourceFields=['canonicalSha256','promptSha256','contractSha256','graderSha256','budgetSha256','principalSha256'];
+    const sourceFields=['replayStateSha256','canonicalSha256','promptSha256','contractSha256','graderSha256','budgetSha256','principalSha256'];
     for(const identity of [left,right])if(sourceFields.some(key=>! /^[a-f0-9]{64}$/.test(identity[key]))
      ||!Array.isArray(identity.sdkIdentity)||!identity.sdkIdentity.length
      ||identity.sdkIdentity.some(item=>typeof item.file!=='string'||! /^[a-f0-9]{64}$/.test(item.sha256)))issues.add('IDENTITY_UNAVAILABLE');

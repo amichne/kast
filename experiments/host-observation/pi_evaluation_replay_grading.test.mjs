@@ -1,8 +1,74 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { replayCases, replayCase, heldOutManifest, replayTransition } from './pi_evaluation_replay_cases.mjs';
 import { gradeReplayDecision, replayOracleControls } from './pi_evaluation_replay_grading.mjs';
+
+test('v3 preserves every original task canonical value and visible decision contract',()=>{
+ const previous=JSON.parse(readFileSync(new URL('./interface-replay/session-manifest.json',import.meta.url),'utf8')).caseIdentities;
+ const sha=value=>createHash('sha256').update(value).digest('hex');
+ for(const item of replayCases()){
+  const pinned=previous.find(value=>value.id===item.id);
+  assert.equal(item.version,'interface-replay-v3');
+  assert.equal(item.canonicalSha256,pinned.canonicalSha256);
+  assert.equal(sha(item.task),pinned.promptSha256);assert.equal(sha(item.visibleContract),pinned.contractSha256);
+ }
+});
+
+test('caller expansion preserves the workspace domain independently of target and relation',()=>{
+ const base=replayOracleControls('C1').accept[0].admission;
+ for(const expansionScope of [undefined,null,{type:'WORKSPACE'}]){
+  const admission=structuredClone(base);admission.request.steps[0].expansionScope=expansionScope;
+  const grade=gradeReplayDecision('C1',{kind:'invoke'},admission);
+  assert.equal(grade.correct,true);assert.equal(grade.dimensions.scope,'PASS');
+  assert.equal(replayTransition('C1',admission).type,'supported');
+ }
+ for(const expansionScope of [{type:'RETAINED_SEED'},{type:'SOURCE_DOMAIN',sourceSets:['test'],directory:'services/unrelated',sourcePolicy:'PRODUCTION_AND_TEST',generatedSources:'EXCLUDE'}]){
+  const admission=structuredClone(base);admission.request.steps[0].expansionScope=expansionScope;
+  const grade=gradeReplayDecision('C1',{kind:'invoke'},admission);
+  assert.equal(grade.dimensions.arguments,'PASS');assert.equal(grade.dimensions.target,'PASS');assert.equal(grade.dimensions.reference,'PASS');assert.equal(grade.dimensions.scope,'FAIL');
+  assert.equal(replayTransition('C1',admission).type,'unsupported');
+ }
+});
+
+test('empty caller results permit compatible output families and reject incompatible families',()=>{
+ const base=replayOracleControls('C1').accept[0].admission;
+ for(const output of [undefined,null,{type:'SYMBOLS',fields:[]},{type:'SYMBOLS',fields:['SOURCE','SIGNATURE','NAME','LOCATION']},{type:'OCCURRENCES'},{type:'TRAVERSAL_RECORDS'}]){
+  const admission=structuredClone(base);admission.request.terminalStep.output=output;
+  assert.equal(gradeReplayDecision('C1',{kind:'invoke'},admission).correct,true);
+  assert.equal(replayTransition('C1',admission).type,'supported');
+ }
+ for(const type of ['BINDING_ROWS','VALUE_PATHS','IMPACT_WITNESS']){
+  const admission=structuredClone(base);admission.request.terminalStep.output={type};
+  assert.equal(gradeReplayDecision('C1',{kind:'invoke'},admission).dimensions.action,'FAIL');
+  assert.equal(replayTransition('C1',admission).type,'unsupported');
+ }
+});
+
+test('retained symbol pages accept available fields and reject unavailable output kinds',()=>{
+ const base=replayOracleControls('C4').accept[0].admission;
+ for(const output of [undefined,null,...[[],['NAME'],['LOCATION'],['SIGNATURE'],['LOCATION','NAME'],['SIGNATURE','NAME','LOCATION']].map(fields=>({type:'SYMBOLS',fields}))]){
+  const admission={...base,request:{...base.request,output}};
+  assert.equal(gradeReplayDecision('C4',{kind:'invoke'},admission).correct,true);
+  assert.equal(replayTransition('C4',admission).type,'supported');
+ }
+ for(const output of [{type:'SYMBOLS',fields:['SOURCE']},...['OCCURRENCES','TRAVERSAL_RECORDS','BINDING_ROWS','VALUE_PATHS','IMPACT_WITNESS'].map(type=>({type}))]){
+  const admission={...base,request:{...base.request,output}};
+  const grade=gradeReplayDecision('C4',{kind:'invoke'},admission);
+  assert.equal(grade.dimensions.arguments,'PASS');assert.equal(grade.dimensions.target,'PASS');assert.equal(grade.dimensions.reference,'PASS');assert.equal(grade.dimensions.action,'FAIL');
+  assert.equal(replayTransition('C4',admission).type,'unsupported');
+ }
+});
+
+test('omitted and null source text retain the complete-text production default',()=>{
+ const base=replayOracleControls('C2').accept[0].admission;
+ for(const text of [undefined,null,{type:'COMPLETE'}]){
+  const admission={...base,request:{...base.request,text}};
+  assert.equal(gradeReplayDecision('C2',{kind:'invoke'},admission).correct,true);
+  assert.equal(replayTransition('C2',admission).type,'supported');
+ }
+});
 
 test('production admission preserves planning and workspace independently of request validity',()=>{
  const request=replayOracleControls('C3').accept[0].admission.request;
@@ -125,7 +191,7 @@ test('declared fixture transitions preserve supported requests and reject unreco
 test('finish decisions declare exact issued limitation codes without exposing expected answers',()=>{
  const item=replayCases().find(value=>value.id==='C5');
  assert.match(item.visibleContract,/Copy only the issued qualification\.limitations codes verbatim/);
- assert.equal(item.version,'interface-replay-v2');
+ assert.equal(item.version,'interface-replay-v3');
  const control=replayOracleControls('C5').accept[0];
  const grade=gradeReplayDecision('C5',{...control.decision,limitations:[]},{type:'unavailable'});
  assert.equal(grade.correct,false);assert.equal(grade.productionCause,undefined,'A finish decision never entered CLI admission');

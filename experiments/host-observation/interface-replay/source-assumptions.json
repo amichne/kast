@@ -20,6 +20,12 @@
     {
       "type": "LIVE_ACCESS_UNAVAILABLE",
       "finding": "Configured OAuth credential expired. No refresh or replacement provider occurred."
+    },
+    {
+      "type": "DISCOVERED_PREFIX_OUTPUT_MISMATCH",
+      "source": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt:PublicToolDefaults.output",
+      "finding": "The public default includes NAME and LOCATION. C1 through C5 preserve canonical fixtures with SIGNATURE as well. Their preceding commands must explicitly request all three fields. Canonical values and original tasks remain unchanged.",
+      "followUp": "Record corrected state as interface-replay-v3 before inference. Preserve prior screen records as historical development evidence."
     }
   ],
   "followUp": {

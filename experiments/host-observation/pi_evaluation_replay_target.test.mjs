@@ -12,7 +12,7 @@ const rows=(tokens,millis)=>target.caseIds.flatMap(caseId=>[1,2].map(repetition=
  latency:{trialMs:millis,queueMs:0,providerMs:millis-1,shellMs:0},
  grade:{correct:true,misuse:[],dimensions:{coverage:caseId==='C5'?'PASS':'NOT_APPLICABLE'}},
  identity:{provider:'openai-codex',model:'gpt-6.1-sol',effort:'high',piVersion:'1.4.0',fixtureVersion:'interface-replay-v1',
-  canonicalSha256:caseId==='C5'?hash('a'):hash('b'),promptSha256:hash('c'),contractSha256:hash('d'),graderSha256:hash('e'),
+  canonicalSha256:caseId==='C5'?hash('a'):hash('b'),promptSha256:hash('c'),contractSha256:hash('d'),graderSha256:hash('e'),replayStateSha256:caseId==='C5'?hash('8'):hash('9'),
   sdkIdentity:[{file:'package.json',sha256:hash('f')}],budgetSha256:hash('0'),timingMethod:'CONTROLLER_REAPED_WALL_V1',credentialSource:'CODEX_CHATGPT',principalSha256:hash('2')},
  projection:{type:'projected',complete:true,encodingEquivalent:true,presentationOccurrences:1,payloadSha256:hash('1')},
  actualProviderProjection:{type:'projected',complete:true,presentationOccurrences:1,payloadSha256:hash('1')},
@@ -21,6 +21,15 @@ const assess=(baseline,candidate,extra={})=>{
  assert.equal(typeof accounting.assessReplayTarget,'function','The existing accounting owner needs an explicit performance target gate');
  return accounting.assessReplayTarget({target,...extra,baseline,candidate});
 };
+
+test('a changed or missing preceding replay state cannot support a performance claim',()=>{
+ const candidate=rows(300,300);candidate[0].identity.replayStateSha256=hash('a');
+ const changed=assess(rows(900,900),candidate);
+ assert.equal(changed.status,'INVALID_COMPARISON');assert.ok(changed.reasons.includes('IDENTITY_MISMATCH'));
+ delete candidate[0].identity.replayStateSha256;
+ const missing=assess(rows(900,900),candidate);
+ assert.equal(missing.status,'UNMEASURED');assert.ok(missing.reasons.includes('IDENTITY_UNAVAILABLE'));
+});
 
 test('a correct label cannot hide a recorded excess tool proposal',()=>{
  const candidate=rows(300,300);

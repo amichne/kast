@@ -1,25 +1,28 @@
 # Interface replay delivery
 
-The specified first scope passes A1–A10 after the [delivery review repairs](delivery-review.md).
+The corrected first scope now uses case version 3.
+The [projection and state review](projection-review.md) records a preceding-command mismatch and the corrected inputs.
+The current bounded screen remains `NOT_RUN` until the required offline gate passes.
+Earlier acceptance and performance reports remain historical development evidence.
 The later [hosted review repairs](hosted-review.md) add controls for command facts and tool proposals without changes to recorded verdicts.
 Codex credentials supplied actual provider access through the existing Pi SDK runner.
 The later 3× target remains `NOT_MET`. The tested candidates supply no 3× token or latency claim.
-No live acceptance criterion remains blocked by authentication.
+The local Codex credential check succeeds. Current provider access remains unproved until the version-3 screen.
 
 ## Acceptance evidence
 
 | Criterion | Status | Evidence |
 | --- | --- | --- |
-| A1 | PASS | Source commits, case digests, SDK digests, model settings, adapter artifacts, and plans appear in the versioned manifests. |
+| A1 | PENDING | Source commits, case digests, SDK digests, model settings, adapter artifacts, and plans appear in the versioned manifests. |
 | A2 | PASS | Six independent graders accept correct controls and reject changes to syntax, target, scope, reference, and coverage. |
 | A3 | PASS | The production renderer and independent decoder preserve complete canonical values, exact strings, arrays, and large integers. |
 | A4 | PASS | Real restricted Bash reaches production parsing, lowering, input decoding, and admission. Raw commands and effects remain unchanged. |
 | A5 | PASS | The replay path starts no Host, MCP connection, or native semantic call. |
 | A6 | PASS | Deterministic pool and child tests cover isolation, request limits, cancellation, report delivery, and child cleanup. |
-| A7 | PASS | Each measured screen admitted 24 complete SDK inputs before inference. Each actual payload contained the intended result exactly once. |
+| A7 | PENDING | Each measured screen admitted 24 complete SDK inputs before inference. Each actual payload contained the intended result exactly once. |
 | A8 | PASS | Every planned trial appears in its report. Failed work, cache tokens, missing usage, and excluded trials preserve separate meanings. |
-| A9 | PASS | Four declared screens produced 96 actual sends. Each screen kept six cases, two formats, two repetitions, and eight workers. |
-| A10 | PASS | Focused Kotlin, Node, real-shell, SDK, contract, graph, knowledge, prose, and fast repository guards passed. |
+| A9 | NOT_RUN | Four declared screens produced 96 actual sends. Each screen kept six cases, two formats, two repetitions, and eight workers. |
+| A10 | PENDING | Focused Kotlin, Node, real-shell, SDK, contract, graph, knowledge, prose, and fast repository guards passed. |
 
 The original offline report remains historical evidence of expired Pi access and a decoder failure.
 The [first live screen](first-live.md) preserves the original decisions and strict grades.
@@ -135,7 +138,7 @@ The [first live report](first-live.md) preserves the incomplete limitation-code 
 
 ## Remaining limits
 
-The first-scope implementation and its bounded comparison are complete. The 3× goal is not complete.
+The implementation remains available for offline qualification. Version 3 needs its bounded screen. The 3× goal is not complete.
 The measured candidates supply no general performance evidence outside these six fixed synthetic states.
 The session candidate improves local replay latency. It supplies no faster native semantic query claim.
 The concise candidate loses accuracy and supplies no accepted improvement.

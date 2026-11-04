@@ -12,7 +12,7 @@ test('instruction profiles preserve every original task and replay-state fact',(
   assert.deepEqual(full.map(withoutInstructions),concise.map(withoutInstructions));
   assert.deepEqual(replayCases(),full);
   for(const item of full) {
-    assert.equal(item.version,'interface-replay-v2');
+    assert.equal(item.version,'interface-replay-v3');
     assert.equal(item.instructionProfile,'full');
     const other=replayCase(item.id,'concise');
     assert.equal(other.instructionProfile,'concise');

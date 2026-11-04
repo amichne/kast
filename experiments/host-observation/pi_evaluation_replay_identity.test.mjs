@@ -16,7 +16,7 @@ function setup(t){
  git('init','-q');fs.writeFileSync(path.join(root,'worker.mjs'),'original source\n');git('add','worker.mjs');
  const commit=()=>git('-c','user.name=Replay Test','-c','user.email=replay@example.invalid','commit','-qm','owned fixture');commit();
  const adapterManifest=path.join(owned,'adapter.json');fs.writeFileSync(adapterManifest,JSON.stringify({artifacts:[]}));
- const plan={...replaySourceIdentity(root),adapterManifest,adapterManifestSha256:sha(fs.readFileSync(adapterManifest)),sdkIdentity:[],cases:replayCases().map(item=>({id:item.id,canonicalSha256:item.canonicalSha256,promptSha256:sha(item.task),contractSha256:sha(item.visibleContract)}))};
+ const plan={...replaySourceIdentity(root),adapterManifest,adapterManifestSha256:sha(fs.readFileSync(adapterManifest)),sdkIdentity:[],cases:replayCases().map(item=>({id:item.id,version:item.version,replayStateSha256:item.replayStateSha256,canonicalSha256:item.canonicalSha256,promptSha256:sha(item.task),contractSha256:sha(item.visibleContract)}))};
  return {root,plan,git,commit};
 }
 
@@ -27,6 +27,12 @@ test('source pin rejects tracked, staged, and committed changes before replay ef
  assert.throws(()=>examineReplayPins(plan,{root}),/REPLAY_SOURCE_CHANGED/);
  git('add','worker.mjs');assert.throws(()=>examineReplayPins(plan,{root}),/REPLAY_SOURCE_CHANGED/);
  commit();assert.throws(()=>examineReplayPins(plan,{root}),/REPLAY_SOURCE_CHANGED/);
+});
+
+test('case pins reject a changed preceding call even when task and canonical values match',t=>{
+ const {root,plan}=setup(t);
+ plan.cases[0].replayStateSha256='f'.repeat(64);
+ assert.throws(()=>examineReplayPins(plan,{root}),/CASE_IDENTITY_CHANGED/);
 });
 
 test('only the owned untracked plan file is excluded from source identity',t=>{
