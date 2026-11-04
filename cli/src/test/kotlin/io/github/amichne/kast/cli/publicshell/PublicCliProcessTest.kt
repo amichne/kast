@@ -24,17 +24,20 @@ import org.junit.jupiter.api.io.TempDir
 class PublicCliProcessTest {
     @TempDir lateinit var temporary: Path
 
+    private val children
+        get() = PublicCliProcessFixture(temporary)
+
     @Test
     fun `session hook skips a non project with one empty host envelope`() {
         val result =
-            child(
+            children.child(
                 listOf("hook", "session-start", "--workspace", temporary.toString()),
                 environment = emptyMap(),
             )
         assertEquals(0, result.first)
         assertEquals(emptySet<String>(), Json.parseToJsonElement(result.second).jsonObject.keys)
         val toon =
-            child(
+            children.child(
                 listOf("hook", "session-start", "--workspace", temporary.toString()),
                 environment = mapOf("KAST_OUTPUT_TOON" to "1"),
             )
@@ -44,7 +47,7 @@ class PublicCliProcessTest {
     @Test
     fun `session hook preserves missing installation evidence`() {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "")
-        val result = child(listOf("hook", "session-start", "--workspace", temporary.toString()))
+        val result = children.child(listOf("hook", "session-start", "--workspace", temporary.toString()))
         assertEquals(4, result.first)
         val cause = Json.parseToJsonElement(result.second).jsonObject.getValue("cause").jsonObject
         assertEquals("installation", cause.getValue("type").jsonPrimitive.content)
@@ -61,8 +64,8 @@ class PublicCliProcessTest {
                 listOf("source", "read"),
                 listOf("result", "read"),
             )) {
-            val standard = child(args)
-            val toon = child(args, environment = mapOf("KAST_OUTPUT_TOON" to "1"))
+            val standard = children.child(args)
+            val toon = children.child(args, environment = mapOf("KAST_OUTPUT_TOON" to "1"))
             assertEquals(standard.first, toon.first, args.toString())
             assertFalse(toon.second.trimStart().startsWith("{"), args.toString())
             assertEquals(
@@ -75,13 +78,13 @@ class PublicCliProcessTest {
     @Test
     fun `zero keeps JSON and unknown TOON settings reject before planning`() {
         val args = listOf("query", "plan", "--name", "OrderService")
-        val standard = child(args, environment = mapOf("KAST_OUTPUT_TOON" to "0"))
+        val standard = children.child(args, environment = mapOf("KAST_OUTPUT_TOON" to "0"))
         assertEquals(
             "planned",
             Json.parseToJsonElement(standard.second).jsonObject.getValue("type").jsonPrimitive.content,
         )
         for (environment in listOf(emptyMap(), mapOf("KAST_OUTPUT_TOON" to ""), mapOf("KAST_OUTPUT_TOON" to "1"))) {
-            val toon = child(args, environment = environment)
+            val toon = children.child(args, environment = environment)
             assertEquals(standard.first, toon.first)
             assertFalse(toon.second.trimStart().startsWith("{"))
             assertEquals(
@@ -89,7 +92,7 @@ class PublicCliProcessTest {
                 Json.parseToJsonElement(JToon.decodeToJson(toon.second)),
             )
         }
-        val invalid = child(args, environment = mapOf("KAST_OUTPUT_TOON" to "typo"))
+        val invalid = children.child(args, environment = mapOf("KAST_OUTPUT_TOON" to "typo"))
         assertEquals(2, invalid.first)
         assertEquals(
             "INVALID_OUTPUT_FORMAT",
@@ -109,7 +112,9 @@ class PublicCliProcessTest {
 
     private fun assertPlanOutputDescriptor(catalog: PublicToolCatalog) {
         val (process, stdout, stderr) =
-            start(listOf("describe", "query.plan", "--section", "output", "--catalog", catalog.name.lowercase()))
+            children.start(
+                listOf("describe", "query.plan", "--section", "output", "--catalog", catalog.name.lowercase())
+            )
         val text =
             try {
                 assertTrue(process.waitFor(20, TimeUnit.SECONDS), "Plan metadata waited for stdin EOF")
@@ -124,7 +129,8 @@ class PublicCliProcessTest {
         val validator =
             SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
                 .getSchema(descriptor.getValue("content").toString())
-        val plan = child(listOf("query", "plan", "--name", "OrderService", "--catalog", catalog.name.lowercase()))
+        val plan =
+            children.child(listOf("query", "plan", "--name", "OrderService", "--catalog", catalog.name.lowercase()))
         assertEquals(0, plan.first)
         assertTrue(validator.validate(plan.second, InputFormat.JSON).isEmpty())
         assertFalse(
@@ -211,10 +217,10 @@ class PublicCliProcessTest {
                 .getValue("runByName")
                 .value
                 .toString()
-        val file = temporary.resolve("request with spaces.json")
+        val file = temporary.resolve("{request with spaces}.json")
         Files.writeString(file, raw)
-        val fromFile = child(listOf("query", "plan", "--request", file.toString()))
-        val fromStdin = child(listOf("query", "plan", "--request", "-"), raw.toByteArray())
+        val fromFile = children.child(listOf("query", "plan", "--request", file.toString()))
+        val fromStdin = children.child(listOf("query", "plan", "--request", "-"), raw.toByteArray())
         assertEquals(0, fromFile.first)
         assertEquals(fromFile, fromStdin)
         assertEquals(
@@ -227,7 +233,7 @@ class PublicCliProcessTest {
 
     @Test
     fun `real metadata child does not wait for stdin EOF`() {
-        val (process, stdout, stderr) = start(listOf("describe", "query", "--section", "examples"))
+        val (process, stdout, stderr) = children.start(listOf("describe", "query", "--section", "examples"))
         try {
             assertTrue(process.waitFor(20, TimeUnit.SECONDS), "Metadata child waited for stdin")
             assertEquals(0, process.exitValue(), Files.readString(stderr))
@@ -244,54 +250,12 @@ class PublicCliProcessTest {
 
     @Test
     fun `real invalid child emits one JSON document with nonzero status`() {
-        val result = child(listOf("query", "--name", "OrderService", "--fields", "name,name"))
+        val result = children.child(listOf("query", "--name", "OrderService", "--fields", "name,name"))
         assertEquals(2, result.first)
         assertEquals(
             "rejected",
             Json.parseToJsonElement(result.second).jsonObject.getValue("type").jsonPrimitive.content,
         )
         assertEquals(1, result.second.count { it == '\n' })
-    }
-
-    private fun child(
-        args: List<String>,
-        bytes: ByteArray = byteArrayOf(),
-        environment: Map<String, String> = mapOf("KAST_OUTPUT_TOON" to "0"),
-    ): Pair<Int, String> {
-        val (process, stdout, stderr) = start(args, environment)
-        try {
-            process.outputStream.use { it.write(bytes) }
-            assertTrue(process.waitFor(20, TimeUnit.SECONDS), Files.readString(stderr))
-            return process.exitValue() to Files.readString(stdout)
-        } finally {
-            if (process.isAlive) process.destroyForcibly().waitFor()
-        }
-    }
-
-    private fun start(
-        args: List<String>,
-        environment: Map<String, String> = mapOf("KAST_OUTPUT_TOON" to "0"),
-    ): Triple<Process, Path, Path> {
-        val stdout = Files.createTempFile(temporary, "stdout", ".json")
-        val stderr = Files.createTempFile(temporary, "stderr", ".txt")
-        val process =
-            ProcessBuilder(
-                    listOf(
-                        Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-                        "-Duser.home=$temporary",
-                        "-cp",
-                        System.getProperty("java.class.path"),
-                        KastPublicCliMain::class.java.name,
-                    ) + args
-                )
-                .directory(temporary.toFile())
-                .redirectOutput(stdout.toFile())
-                .redirectError(stderr.toFile())
-                .apply {
-                    environment().clear()
-                    environment().putAll(environment)
-                }
-                .start()
-        return Triple(process, stdout, stderr)
     }
 }
