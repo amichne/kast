@@ -16,6 +16,7 @@ const contract=[
   'kast result resume --continuation OUTPUT_CONTINUATION',
   'The --request - form takes the public JSON request envelope on stdin instead of semantic flags.',
   'A finish response uses JSON: {"kind":"finish","conclusion":"insufficient-evidence"|"absent"|"present","scope":{"directory":"...","sourceSets":["..."]},"exhaustive":true|false,"limitations":["..."]}.',
+  'Copy only the issued qualification.limitations codes verbatim into finish limitations. Do not replace codes with prose or add other evidence fields.',
   'A clarification uses JSON: {"kind":"clarify","question":"..."}. Only the task determines whether a final answer or clarification is justified.',
   'Choose the next decision for the original task. The last bash result belongs to the preceding call. References are synthetic and fixture-local.',
 ].join('\n');
@@ -33,7 +34,7 @@ const metadata=[
 export function replayCases() {
   return freeze(metadata.map(item=>{
     const canonicalResponse=readFileSync(fixturePath(item.id),'utf8');
-    return {...item,version:'interface-replay-v1',canonicalResponse,canonicalSha256:sha(canonicalResponse),canonicalPath:fixturePath(item.id).pathname,producer:{type:'SYNTHETIC_PUBLIC_CONTRACT_FIXTURE',source:'protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultRowCliDocuments.kt',sourceRevision:'0decbfa874a21fc70592992bc12eaa6939980af2'},visibleContract:contract,prefixCall:{toolName:'bash',toolCallId:`replay-prefix-${item.id}`,input:{command:item.command}},stderr:item.stderr??'',exitStatus:item.exitStatus??(item.id==='C3'||item.id==='C5'?10:0),limits:{providerRequests:1,shellCalls:1,kastInvocations:1,nativeCalls:0,wallSeconds:60}};
+    return {...item,version:'interface-replay-v2',canonicalResponse,canonicalSha256:sha(canonicalResponse),canonicalPath:fixturePath(item.id).pathname,producer:{type:'SYNTHETIC_PUBLIC_CONTRACT_FIXTURE',source:'protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultRowCliDocuments.kt',sourceRevision:'0decbfa874a21fc70592992bc12eaa6939980af2'},visibleContract:contract,prefixCall:{toolName:'bash',toolCallId:`replay-prefix-${item.id}`,input:{command:item.command}},stderr:item.stderr??'',exitStatus:item.exitStatus??(item.id==='C3'||item.id==='C5'?10:0),limits:{providerRequests:1,shellCalls:1,kastInvocations:1,nativeCalls:0,wallSeconds:60}};
   }));
 }
 export function replayCase(id) {

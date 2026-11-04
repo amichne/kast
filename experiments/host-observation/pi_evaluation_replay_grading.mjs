@@ -62,7 +62,7 @@ export function gradeReplayDecision(caseId,decision,admission) {
     dimensions.coverage=dimension(decision.conclusion===oracle.conclusion&&decision.exhaustive===oracle.exhaustive&&setEqual(decision.limitations,oracle.limitations));
   } else dimensions.action='FAIL';
   const reasons=Object.entries(dimensions).filter(([,value])=>value==='FAIL').map(([name])=>reasonFor[name]);
-  return Object.freeze({type:reasons.length===0?'GRADED_CORRECT':'GRADED_INCORRECT',correct:reasons.length===0,dimensions:Object.freeze(dimensions),reasons:Object.freeze(reasons),...(admission&&!['ADMITTED','admitted'].includes(admission.type)?{productionCause:admission.cause??'UNAVAILABLE'}:{})});
+  return Object.freeze({type:reasons.length===0?'GRADED_CORRECT':'GRADED_INCORRECT',correct:reasons.length===0,dimensions:Object.freeze(dimensions),reasons:Object.freeze(reasons),...(decision.kind==='invoke'&&typeof admission?.cause==='string'?{productionCause:admission.cause}:{})});
 }
 
 // Independent controls are explicit annotations. No expected value is derived

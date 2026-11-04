@@ -1,12 +1,12 @@
 # Interface performance target
 
-The goal stays active. No measured baseline or 3× improvement exists yet.
-Expired access to the configured provider blocks live inference.
+The goal stays active. The first Codex-backed screen supplies measured evidence, but no 3× improvement exists yet.
+The v2 response contract declares exact limitation codes before the next baseline.
 The initial comparison and its failures remain historical evidence at their recorded source revisions.
 
 ## Acceptance contract
 
-The provisional target uses one-third the total provider tokens per correct decision and one-third the paired median latency.
+The user-selected target uses one-third the total provider tokens per correct decision and one-third the paired median latency.
 The candidate must preserve accuracy for each declared case. Each case needs a successful candidate decision.
 All failed model work counts toward total tokens. Invalid trials block a performance claim.
 Missing usage, timing, identities, or provider evidence produce `UNMEASURED`.
@@ -66,12 +66,15 @@ The command loads no credentials, SDK sessions, or native services.
 
 ## Next measured iteration
 
-The first live baseline must use the current pinned model and existing 24-request screen.
+The next baseline must use the current pinned model and existing 24-request screen.
+The v1 screen remains intact as [measured diagnostic evidence](first-live.md).
 Both complete inputs must pass local limits and encoding equivalence before either arm sends.
 The screen keeps six cases, two formats, two repetitions, eight workers, and a 60-second deadline per trial.
 Later candidates change one declared factor at a time.
 The next factor depends on measured failures and resource use. A smaller response alone does not establish a token or latency improvement.
 The held-out cases remain outside development decisions and supply later confirmation.
 
-A valid login for the configured `openai-codex` provider remains the external condition for live progress.
+The runner can read the current Codex ChatGPT login with `--auth=codex`.
+The credential stays in memory during execution. Neither credential file changes.
+This uses the existing SDK runner and provider route. It does not launch another Codex agent loop.
 The experiment does not substitute another provider or weaken a grader to manufacture a gain.

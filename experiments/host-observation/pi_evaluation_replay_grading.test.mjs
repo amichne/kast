@@ -108,3 +108,12 @@ test('declared fixture transitions preserve supported requests and reject unreco
   }
   assert.equal(replayTransition('C1',{type:'admitted',request:{type:'RUN',source:{type:'SYMBOL_REFS',symbolRefs:['exact:v5:AAAAAAAAAAAAAAAAAAAAAA']},steps:[{type:'EXPAND_RELATION',relation:'CALLERS'}],terminalStep:{type:'EMIT'}}}).type,'unsupported');
 });
+
+test('finish decisions declare exact issued limitation codes without exposing expected answers',()=>{
+ const item=replayCases().find(value=>value.id==='C5');
+ assert.match(item.visibleContract,/Copy only the issued qualification\.limitations codes verbatim/);
+ assert.equal(item.version,'interface-replay-v2');
+ const control=replayOracleControls('C5').accept[0];
+ const grade=gradeReplayDecision('C5',{...control.decision,limitations:[]},{type:'unavailable'});
+ assert.equal(grade.correct,false);assert.equal(grade.productionCause,undefined,'A finish decision never entered CLI admission');
+});

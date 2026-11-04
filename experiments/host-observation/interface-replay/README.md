@@ -20,6 +20,7 @@ node experiments/host-observation/run_pi_evaluation.mjs --execute /absolute/init
 ```
 
 For one case, append `C6` to `--prepare-replay`.
+For the current Codex login, append `--auth=codex`. The default remains the Pi credential source.
 This plan declares four trials and at most four provider sends.
 Each execution needs a new output directory.
 The planner reads artifact identities without credentials, SDK sessions, or network calls.
@@ -65,7 +66,9 @@ Missing usage remains unavailable. Cache tokens count once. Reasoning remains wi
 ## Current limits
 
 The initial run uses `openai-codex/gpt-6.1-sol` with high effort through Pi 1.4.0.
-The configured `OAuth` credential expired before inference. The initial live screen has status `NOT_RUN`.
+The original offline report used an expired Pi credential and has status `NOT_RUN`.
+The first Codex-backed screen completed 24 measured trials.
+[The live report](first-live.md) keeps its original results and response-contract findings.
 The current hill climb uses the [performance target](hill-climb.md).
 The report selects no format winner.
 
