@@ -52,12 +52,11 @@ internal class NativeRelationSearchScopeTest : RelationFileEnumerationFixture() 
             inventory.finish(false) { error("Stopped native search cannot publish an inventory") },
         )
         val result = collector.finish(IntellijRelationTermination.Terminal) as RelationCompilation.Qualified
-        assertTrue(RelationLimitation.TIME_LIMIT_REACHED in result.coverage.limitations)
-        assertTrue(RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE in result.coverage.limitations)
+        assertEquals(setOf(RelationLimitation.TIME_LIMIT_REACHED), result.coverage.limitations)
         assertEquals(1, observation.halted)
         assertEquals(IntellijReadCallOutcome.CANCELLED, observation.finished.last().second)
         assertEquals(
-            listOf(IntellijReadTermination.TIME_LIMIT, IntellijReadTermination.RELATION_PROVIDER_INCOMPLETE),
+            listOf(IntellijReadTermination.TIME_LIMIT),
             observation.terminations,
         )
     }

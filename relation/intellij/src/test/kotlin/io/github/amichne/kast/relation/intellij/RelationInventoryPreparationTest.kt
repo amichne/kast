@@ -10,6 +10,7 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationProviderLocator
 import io.github.amichne.kast.relation.contract.RelationProviderState
 import io.github.amichne.kast.relation.contract.RelationPublishedSnapshotIdentity
+import io.github.amichne.kast.relation.contract.RelationRemediation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadContributor
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadGauge
@@ -136,8 +137,8 @@ class RelationInventoryPreparationTest {
             inventory.finish(exhausted, RelationProviderState::references),
         )
         val result = terminal(collector)
-        assertTrue(RelationLimitation.CANDIDATE_LIMIT_REACHED in result.coverage.limitations)
-        assertTrue(RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE in result.coverage.limitations)
+        assertEquals(setOf(RelationLimitation.CANDIDATE_LIMIT_REACHED), result.coverage.limitations)
+        assertEquals(listOf(RelationRemediation.INCREASE_READ_LIMIT), result.batch.omissions.map { it.remediation })
         assertEquals(2, observation.candidates)
         assertEquals(0, observation.prepared)
         assertEquals(listOf(512L + locator(0).retainedBytes + locator(1).retainedBytes), observation.retentionEstimates)
@@ -157,7 +158,7 @@ class RelationInventoryPreparationTest {
             inventory.finish(false, RelationProviderState::references),
         )
         val result = terminal(collector)
-        assertTrue(RelationLimitation.RETENTION_LIMIT_REACHED in result.coverage.limitations)
+        assertEquals(setOf(RelationLimitation.RETENTION_LIMIT_REACHED), result.coverage.limitations)
         assertEquals(0, observation.prepared)
         assertEquals(listOf(512L + first.retainedBytes), observation.retentionEstimates)
         assertEquals(0L, result.batch.examinedWorkUnits.value)
@@ -177,9 +178,46 @@ class RelationInventoryPreparationTest {
             inventory.finish(true, RelationProviderState::references),
         )
         val result = terminal(collector)
-        assertTrue(RelationLimitation.TIME_LIMIT_REACHED in result.coverage.limitations)
+        assertEquals(setOf(RelationLimitation.TIME_LIMIT_REACHED), result.coverage.limitations)
+        assertEquals(listOf(RelationRemediation.INCREASE_READ_LIMIT), result.batch.omissions.map { it.remediation })
         assertEquals(0, observation.prepared)
         assertEquals(0L, result.batch.examinedWorkUnits.value)
+    }
+
+    @Test
+    fun `unexplained provider stop preserves repair guidance even if its deadline later expires`() {
+        var now = 0L
+        val observation = Observation()
+        val collector = IntellijRelationCollector(request, { now }, observation)
+        val inventory =
+            IntellijRelationInventory<RelationProviderLocator.Reference>(collector, ReadLimits.Default, observation)
+        // The provider returned false without any collector admission or callback rejecting its work.
+        now = request.budget.resources.bounded().elapsedTimeLimit.value * 1_000_000L
+        assertEquals(
+            RelationInventoryPreparation.Unavailable,
+            inventory.finish(false) { error("An unexplained provider stop cannot publish an inventory") },
+        )
+        val result = terminal(collector)
+        assertEquals(setOf(RelationLimitation.PARTITION_INVENTORY_UNAVAILABLE), result.coverage.limitations)
+        assertEquals(listOf(RelationRemediation.REPAIR_PROVIDER), result.batch.omissions.map { it.remediation })
+        assertEquals(listOf(IntellijReadTermination.RELATION_PROVIDER_INCOMPLETE), observation.terminations)
+    }
+
+    @Test
+    fun `recorded provider failure remains retryable without acquiring a second provider diagnosis`() {
+        val observation = Observation()
+        val collector = IntellijRelationCollector(request, { 0L }, observation)
+        val inventory =
+            IntellijRelationInventory<RelationProviderLocator.Reference>(collector, ReadLimits.Default, observation)
+        collector.blockPartition(RelationLimitation.PROVIDER_FAILURE)
+        assertEquals(
+            RelationInventoryPreparation.Unavailable,
+            inventory.finish(false) { error("A failed provider cannot publish an inventory") },
+        )
+        val result = terminal(collector)
+        assertEquals(setOf(RelationLimitation.PROVIDER_FAILURE), result.coverage.limitations)
+        assertEquals(listOf(RelationRemediation.RETRY_PROVIDER), result.batch.omissions.map { it.remediation })
+        assertEquals(listOf(IntellijReadTermination.PROVIDER_FAILURE), observation.terminations)
     }
 
     @Test
