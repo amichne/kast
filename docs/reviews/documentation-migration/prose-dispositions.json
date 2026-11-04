@@ -41,10 +41,10 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/explanation.mdx",
-        "sourceSha256": "ea09f320945f42ec71c5a4d9fadb3bd261a2ad9fc3a92654f264e186042fa808",
+        "sourceSha256": "d2346f01ae69da32fa0424c148378622be4a7dae65b87ee8cde4e68f765c895a",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 9.97 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 9.98 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
       "reason": "Keep exact declaration identity, completion scope, callback execution gaps, retained evidence, and the separation between source relationships and runtime behavior. These distinctions define the compiler-grounded evidence contract and the never-silently-wrong product standard. The grade advisory remains visible; reader comprehension remains unmeasured."
@@ -629,7 +629,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/start.mdx",
-        "sourceSha256": "712cb80427c9fc5f28f0634f03a217faa66bdc92e1e759b2e7b456bef1baab22",
+        "sourceSha256": "37aa97bf81dc649802fbfa11f995bbc7925f1b829c5235f3e1471a41488380ad",
         "rule": "HowTo.Steps",
         "line": 1,
         "message": "A how-to guide is a sequence of steps; there is no numbered list here.",

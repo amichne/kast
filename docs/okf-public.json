@@ -2165,7 +2165,7 @@
       "content": [
         {
           "path": "docs/public/explanation.mdx",
-          "sha256": "ea09f320945f42ec71c5a4d9fadb3bd261a2ad9fc3a92654f264e186042fa808"
+          "sha256": "d2346f01ae69da32fa0424c148378622be4a7dae65b87ee8cde4e68f765c895a"
         }
       ],
       "claims": [
@@ -2500,7 +2500,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
+      "reviewedSourceRevision": "0b5d8a0e813e665ab71f29086616085f59eb6d7f"
     },
     {
       "route": "explanation/query-lifecycle",
@@ -2591,7 +2591,7 @@
       "content": [
         {
           "path": "docs/public/explanation/value-journey.mdx",
-          "sha256": "984645816938a3e0f4609e19fbb9717c88c1a2ba5ed39fcb3a23724b6bc0a694"
+          "sha256": "29aaba65b436328f70e34ed8fd5dca26efa92d59dbfe14828e93c1553c26aef5"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -2688,7 +2688,7 @@
           "sha256": "6e948fb730e4b47985f1d7397f7020a5c4dc68dd78d6d8a922761d4b53f04c48"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "0b5d8a0e813e665ab71f29086616085f59eb6d7f"
     },
     {
       "route": "explanation/value-journey-evidence",
@@ -3877,7 +3877,7 @@
       "content": [
         {
           "path": "docs/public/index.mdx",
-          "sha256": "0d8994d6c7e9eb63134621387e3b76faa1a4ea9f396d92f31072a87688ad44fb"
+          "sha256": "8781c3ad8ed7f539ac00059804dee8b4088679b241ba38b0e8f0a8df7de73fae"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -4341,7 +4341,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
+      "reviewedSourceRevision": "0b5d8a0e813e665ab71f29086616085f59eb6d7f"
     },
     {
       "route": "reference",
@@ -14520,7 +14520,7 @@
         },
         {
           "path": "docs/public/start.mdx",
-          "sha256": "712cb80427c9fc5f28f0634f03a217faa66bdc92e1e759b2e7b456bef1baab22"
+          "sha256": "37aa97bf81dc649802fbfa11f995bbc7925f1b829c5235f3e1471a41488380ad"
         }
       ],
       "claims": [
@@ -15035,7 +15035,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d38486c1b27fe7bd14501a51019f46619bde795b"
+      "reviewedSourceRevision": "0b5d8a0e813e665ab71f29086616085f59eb6d7f"
     },
     {
       "route": "troubleshooting",

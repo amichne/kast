@@ -9,10 +9,15 @@ hideFooterPagination: true
 Kast gives your coding agent access to IntelliJ IDEA's compiler analysis of your Kotlin project.
 It resolves declarations and source relationships while your agent works on the task you describe.
 
+<span id="start-with-a-declaration-and-a-source-question" />
+
 ## From text to source meaning
 
 Compiler analysis establishes which declaration a call resolves to, including its owner and signature.
 That identity lets your agent follow the selected code through callers, references, and supported value transfers.
+
+Imagine two calls spelled `send`: one sends an invoice, the other records an analytics event.
+Compiler resolution identifies their different declarations.
 
 A symbol identifies a code element in compiler analysis.
 Kast issues an **exact reference** for a selected declaration so later operations can preserve that identity.
