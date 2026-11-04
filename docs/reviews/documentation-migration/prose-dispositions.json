@@ -1133,13 +1133,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/development/knowledge-upkeep.md",
-        "sourceSha256": "cb6ce4e086b80eb495ff970ba90efcd31a026974ea5c2c01287fdc918245cce6",
+        "sourceSha256": "4cd23deb5cd4885928d612fbb8125a2bacd622ebe22bbd5cc9d19492f9c65eb6",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.00 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep source-impact assessment, native Claim review, and publication evidence. Preserve exact identifiers `AGENTS.md`, `knowledgeImpact`, `verifyKnowledgeBase`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Native reconciliation changes only the verification timestamp. Independent review confirms identical canonical prose. Keep the grade-12 advisory and the reader-comprehension limit."
+      "reason": "Keep source-impact assessment, native Claim review, and publication evidence. Preserve exact identifiers `AGENTS.md`, `knowledgeImpact`, `verifyKnowledgeBase`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Native reconciliation changes only the verification timestamp. Independent review confirms identical canonical prose. Keep the grade-12 advisory and the reader-comprehension limit. Rechecked after the OpenWiki lifecycle refreshed evidence and provenance. The complete page body, Claim identities, and Claim statements remain unchanged; this source hash records that metadata update without removing the advisory."
     },
     {
       "finding": {
@@ -1193,13 +1193,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/management-and-connections.md",
-        "sourceSha256": "3b2347d6a004f1b1ea0693847d93ad511c79bc06f3b012ce8c7432bd011f4c26",
+        "sourceSha256": "6dd11657dad3ffec03d2df39921d479b343836d56f2e897e6ea65b3dd8e74b0c",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.80 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep native management commands and explicit optional MCP registration. Preserve exact identifiers `KastManagementMain`, `kast`, `cli`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep native management commands and explicit optional MCP registration. Preserve exact identifiers `KastManagementMain`, `kast`, `cli`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Rechecked after the OpenWiki lifecycle refreshed evidence and provenance. The complete page body, Claim identities, and Claim statements remain unchanged; this source hash records that metadata update without removing the advisory."
     },
     {
       "finding": {
