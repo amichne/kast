@@ -31,6 +31,7 @@ internal sealed interface PublicCliCommand {
         val catalog: PublicToolCatalog,
         val command: PublicCliCommandId?,
         val section: PublicCliDescribeSection,
+        val selection: PublicSchemaSelection? = null,
     ) : PublicCliCommand
 
     data class Help(val command: PublicCliCommandId?) : PublicCliCommand
@@ -73,6 +74,7 @@ internal enum class PublicCliArgumentFailure {
     IRRELEVANT_OPTION,
     INVALID_FIELDS,
     FIELDS_WITH_OCCURRENCES,
+    INVALID_SCHEMA_SELECTION,
 }
 
 internal fun parsePublicCliArguments(argv: List<String>): Refinement<PublicCliCommand, PublicCliArgumentFailure> =
@@ -175,5 +177,35 @@ private fun describeCommand(
         }
     if (selected == null && section != PublicCliDescribeSection.INVENTORY)
         return Refinement.Rejected(PublicCliArgumentFailure.INVALID_COMMAND)
-    return Refinement.Refined(PublicCliCommand.Describe(catalog, selected, section))
+    return describeSelection(arguments, catalog, selected, section)
+}
+
+private fun describeSelection(
+    arguments: LexicalArguments,
+    catalog: PublicToolCatalog,
+    selected: PublicCliCommandId?,
+    section: PublicCliDescribeSection,
+): Refinement<PublicCliCommand, PublicCliArgumentFailure> {
+    val browseFlags =
+        setOf(PublicCliFlag.POINTER, PublicCliFlag.CURSOR, PublicCliFlag.MAX_RESULTS, PublicCliFlag.MAX_BYTES)
+    if (arguments.options.keys.none { it in browseFlags })
+        return Refinement.Refined(PublicCliCommand.Describe(catalog, selected, section))
+    if (
+        section !in setOf(PublicCliDescribeSection.INPUT, PublicCliDescribeSection.OUTPUT) ||
+            !arguments.has(PublicCliFlag.POINTER)
+    )
+        return Refinement.Rejected(PublicCliArgumentFailure.INVALID_SCHEMA_SELECTION)
+    return when (
+        val selection =
+            PublicSchemaSelection.parse(
+                requireNotNull(arguments[PublicCliFlag.POINTER]),
+                arguments[PublicCliFlag.CURSOR] ?: "0",
+                arguments[PublicCliFlag.MAX_RESULTS] ?: "16",
+                arguments[PublicCliFlag.MAX_BYTES] ?: "16384",
+            )
+    ) {
+        is Refinement.Rejected -> selection
+        is Refinement.Refined ->
+            Refinement.Refined(PublicCliCommand.Describe(catalog, selected, section, selection.value))
+    }
 }

@@ -184,18 +184,6 @@
     {
       "finding": {
         "stage": "root-vale-3.24.0",
-        "path": "docs/public/reference/cli.mdx",
-        "sourceSha256": "a7938fa848f741d64991fe3eb25894d9b9057f524fa73566fba2ade9619e23c3",
-        "rule": "Slopsentral.Grade",
-        "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 8.78 exceeds the shared advisory target of 8.",
-        "severity": "warning"
-      },
-      "reason": "Keep public CLI syntax, exact workspace selection, retained-reference qualifications, and the current output-format switch. Preserve exact identifiers kast, KAST_OUTPUT_TOON=0, TOON, and JSON. The grade advisory remains visible. Reader comprehension remains unmeasured."
-    },
-    {
-      "finding": {
-        "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/compatibility.mdx",
         "sourceSha256": "51a1f57246aee9466a1c08549bf20eb23b51abc22975ddc570ed57ec8676e48c",
         "rule": "Slopsentral.Grade",

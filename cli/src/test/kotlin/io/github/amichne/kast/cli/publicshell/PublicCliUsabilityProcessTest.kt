@@ -2,7 +2,11 @@ package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -16,6 +20,60 @@ class PublicCliUsabilityProcessTest {
         get() = PublicCliProcessFixture(temporary)
 
     @Test
+    fun `schema discovery pipes bounded JSON without preparing a workspace`() {
+        val args =
+            listOf(
+                "describe",
+                "query",
+                "--section",
+                "input",
+                "--pointer",
+                "",
+                "--json",
+                "--max-results",
+                "1",
+                "--max-returned-bytes",
+                "1024",
+            )
+        var stderr = ""
+        val first = children.child(args, diagnostics = { stderr = it })
+        assertEquals(0, first.first)
+        assertEquals("", stderr)
+        assertTrue(first.second.toByteArray(Charsets.UTF_8).size <= 1024)
+        val content = Json.parseToJsonElement(first.second).jsonObject.getValue("content").jsonObject
+        assertEquals("page", content.getValue("type").jsonPrimitive.content)
+        assertEquals("false", content.getValue("complete").jsonPrimitive.content)
+        assertEquals(
+            0,
+            children.child(args + listOf("--cursor", content.getValue("next_cursor").jsonPrimitive.content)).first,
+        )
+        val missing =
+            children.child(listOf("describe", "query", "--section", "input", "--pointer", "/absent", "--json"))
+        assertEquals(2, missing.first)
+        assertTrue(missing.second.contains("POINTER_NOT_FOUND"))
+    }
+
+    @Test
+    fun `stdin request and file request produce the same JSON plan`() {
+        val input =
+            PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS)
+                .examples
+                .getValue("runByName")
+                .value
+                .toString()
+        val file = temporary.resolve("request.json")
+        Files.writeString(file, input)
+        val fromFile = children.child(listOf("query", "plan", "--request", file.toString(), "--json"))
+        val fromPipe = children.child(listOf("query", "plan", "--request", "-", "--json"), bytes = input.toByteArray())
+        assertEquals(0, fromPipe.first)
+        assertEquals(fromFile, fromPipe)
+        assertEquals(
+            "planned",
+            Json.parseToJsonElement(fromPipe.second).jsonObject.getValue("type").jsonPrimitive.content,
+        )
+    }
+
+    @Test
     fun `namespace help exposes read commands without host effects`() {
         for ((namespace, commands) in
             listOf("source" to listOf("source read"), "result" to listOf("result read", "result resume"))) {
@@ -24,7 +82,9 @@ class PublicCliUsabilityProcessTest {
             for (command in commands) {
                 assertTrue(result.second.contains("kast $command"), result.second)
                 assertTrue(
-                    result.second.contains("kast describe ${command.replace(' ', '.')} --section input"),
+                    result.second.contains(
+                        "kast describe ${command.replace(' ', '.')} --section input --pointer '' --json"
+                    ),
                     result.second,
                 )
             }

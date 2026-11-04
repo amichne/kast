@@ -10,13 +10,16 @@ Use the installed package to discover the active interface:
 
 ```sh
 kast describe
-kast describe query --section input
-kast describe query --section output
+kast describe query --section input --pointer '' --json
+kast describe query --section output --pointer '' --json
 kast describe query --section examples
 kast query plan --name OrderService --in services/orders
 ```
 
 Discovery reads packaged contracts.
+Schema pages default to 16 entries and 16384 bytes. Follow returned JSON Pointers and cursors to inspect more.
+Omit `--pointer` to export the full schema into a file.
+Use `--json` for JSON pipelines; progress and diagnostics stay on stderr.
 Planning admits a request and reports `REQUEST_SHAPE_ONLY` advice with `NOT_MEASURED` estimates.
 These commands do not prepare a workspace or start the Host.
 A plan does not prove workspace readiness or semantic completion.

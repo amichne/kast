@@ -31,6 +31,8 @@ internal sealed interface PublicCliDescriptor {
 
     data class Schema(val value: DescribeDocument<JsonObject>) : PublicCliDescriptor
 
+    data class SchemaPage(val value: DescribeDocument<PublicSchemaPageReply>) : PublicCliDescriptor
+
     data class Examples(val value: DescribeDocument<List<PublicToolExample>>) : PublicCliDescriptor
 }
 
@@ -81,6 +83,7 @@ internal data class PublicCliFlagDescriptor(
 
 internal fun describePublicCli(command: PublicCliCommand.Describe): PublicCliDescriptor {
     val selected = command.command
+    if (command.selection != null) return describeSchemaPage(command)
     return when (command.section) {
         PublicCliDescribeSection.INVENTORY ->
             PublicCliDescriptor.Inventory(
@@ -124,37 +127,25 @@ internal fun describePublicCli(command: PublicCliCommand.Describe): PublicCliDes
     }
 }
 
+private fun describeSchemaPage(command: PublicCliCommand.Describe): PublicCliDescriptor.SchemaPage {
+    val selected = requireNotNull(command.command)
+    val schema =
+        when (command.section) {
+            PublicCliDescribeSection.INPUT -> inputSchema(selected, command.catalog)
+            PublicCliDescribeSection.OUTPUT -> outputSchema(selected)
+            else -> error("Schema selection requires input or output")
+        }
+    return PublicCliDescriptor.SchemaPage(browsePublicSchema(schema, command))
+}
+
 internal fun encodePublicCliDescriptor(descriptor: PublicCliDescriptor): String =
     when (descriptor) {
         is PublicCliDescriptor.Inventory -> discoveryJson.encodeToString(descriptor.value)
         is PublicCliDescriptor.Summary -> discoveryJson.encodeToString(descriptor.value)
         is PublicCliDescriptor.Schema -> discoveryJson.encodeToString(descriptor.value)
+        is PublicCliDescriptor.SchemaPage -> discoveryJson.encodeToString(descriptor.value)
         is PublicCliDescriptor.Examples -> discoveryJson.encodeToString(descriptor.value)
     }
-
-internal fun publicCliHelp(command: PublicCliCommandId?): String =
-    publicCliHelp(command?.let(::listOf) ?: PublicCliCommandId.entries)
-
-internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
-    commands.joinToString("\n") { selected ->
-        "kast ${selected.argv.joinToString(" ")} " +
-            flagsFor(selected).joinToString(" ") { flag ->
-                listOf("[", flag.spelling, if (flag.takesValue) " VALUE" else "", "]").joinToString("")
-            } +
-            "\nSchema: kast describe ${selected.id} --section input"
-    } +
-        "\nSemantic commands emit one TOON document. Use --json or KAST_OUTPUT_TOON=0 for JSON results.\n" +
-        "Use kast describe COMMAND for the selected catalog contract.\n" +
-        "Use kast describe query --section examples for full request documents.\n" +
-        "--request FILE reads a JSON argument document from a file. --request - reads that document from stdin.\n" +
-        "Example: kast query --request query.json --json\n" +
-        "Example: kast query --request - --json < query.json\n" +
-        "--fields accepts unique, comma-separated values: ${CliField.entries.joinToString(",") { it.spelling }}. " +
-        "Use --fields with --output symbols.\n" +
-        "Use kast source read --ref SYMBOL_REF with an issued source reference.\n" +
-        "Use kast result read --ref RESULT_REF --cursor CURSOR with the issued result reference and cursor.\n" +
-        "For COMPLETION_UNPROVEN, inspect the cause and nextQuery. Retained rows remain evidence only.\n" +
-        "--max-elapsed-ms sets an explicit elapsed budget. A longer budget does not repair unresolved callback mappings."
 
 private fun commandDescriptor(command: PublicCliCommandId, catalog: PublicToolCatalog): PublicCliCommandDescriptor {
     val input = PublicToolContract.parameters(PublicToolIdentity.QUERY_SYMBOLS, catalog)
@@ -165,7 +156,7 @@ private fun commandDescriptor(command: PublicCliCommandId, catalog: PublicToolCa
         else PublicCliEffect.READ,
         if (command == PublicCliCommandId.QUERY || command == PublicCliCommandId.QUERY_PLAN) PublicCliInputMode.entries
         else listOf(PublicCliInputMode.FLAGS),
-        flagsFor(command).map { flag -> flagDescriptor(flag, input, catalog) },
+        flagsFor(command).map { flag -> flagDescriptor(flag, input, catalog, command) },
         "kast.cli.${command.id}.input.v1:${catalog.name}",
         when (command) {
             PublicCliCommandId.QUERY_PLAN -> "kast.query.plan.v1"
@@ -184,7 +175,9 @@ private fun flagDescriptor(
     flag: PublicCliFlag,
     input: JsonObject,
     catalog: PublicToolCatalog,
+    command: PublicCliCommandId,
 ): PublicCliFlagDescriptor {
+    if (command == PublicCliCommandId.DESCRIBE) return describeFlag(flag)
     val definitions = input.getValue("\$defs").jsonObject
     fun property(complete: String, common: String, property: String): JsonObject? =
         ((definitions[if (catalog == PublicToolCatalog.COMPLETE) complete else common] as? JsonObject)?.get(
@@ -223,7 +216,8 @@ private fun flagDescriptor(
             PublicCliFlag.TERMINAL,
             PublicCliFlag.OUTPUT,
             PublicCliFlag.TEXT,
-            PublicCliFlag.SECTION -> null
+            PublicCliFlag.SECTION,
+            PublicCliFlag.POINTER -> null
         }
     val values =
         when (flag) {
@@ -236,6 +230,19 @@ private fun flagDescriptor(
         }
     return PublicCliFlagDescriptor(flag.spelling, flag.takesValue, flag.repeated, schema, values)
 }
+
+private fun describeFlag(flag: PublicCliFlag): PublicCliFlagDescriptor =
+    PublicCliFlagDescriptor(
+        flag.spelling,
+        flag.takesValue,
+        flag.repeated,
+        valueSpellings =
+            when (flag) {
+                PublicCliFlag.SECTION -> listOf("input", "output", "examples")
+                PublicCliFlag.CATALOG -> PublicToolCatalog.entries.map { it.name.lowercase() }
+                else -> emptyList()
+            },
+    )
 
 private fun enumSpellings(schema: JsonObject?): List<String> {
     val values = schema?.get("enum") as? JsonArray ?: (schema?.get("items") as? JsonObject)?.get("enum") as? JsonArray
@@ -278,6 +285,7 @@ private fun outputSchema(command: PublicCliCommandId): JsonObject =
                                 DescribeDocument.serializer(ListSerializer(PublicCliCommandDescriptor.serializer()))
                             ),
                             generatedRequestSchema(DescribeDocument.serializer(JsonObject.serializer())),
+                            generatedRequestSchema(DescribeDocument.serializer(PublicSchemaPageReply.serializer())),
                             generatedRequestSchema(
                                 DescribeDocument.serializer(ListSerializer(PublicToolExample.serializer()))
                             ),
@@ -368,7 +376,14 @@ private data class ReplyDocumentSchema(
 @Serializable private data class ActionInputProperties(val request: ReplyTypeSchema)
 
 @Serializable
-private data class DescribeInput(val command: PublicCliCommandId? = null, val section: DescribeInputSection? = null)
+private data class DescribeInput(
+    val command: PublicCliCommandId? = null,
+    val section: DescribeInputSection? = null,
+    val pointer: String? = null,
+    val cursor: Int? = null,
+    @SerialName("max_results") val maxResults: Int? = null,
+    @SerialName("max_returned_bytes") val maxReturnedBytes: Int? = null,
+)
 
 @Serializable
 private enum class DescribeInputSection {
@@ -377,7 +392,7 @@ private enum class DescribeInputSection {
     @SerialName("examples") EXAMPLES,
 }
 
-private val discoveryJson = Json {
+internal val discoveryJson = Json {
     encodeDefaults = true
     explicitNulls = false
 }

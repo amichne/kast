@@ -11,6 +11,8 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiscovery.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliHelp.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliSchemaPage.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiagnostics.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliInvocation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt
@@ -62,6 +64,8 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - [KastPublicCliMain.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt) - public semantic commands through shared admission and direct execution.
 - [PublicCliArguments.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt) - flags, JSON input modes, and exact catalog selection.
 - [PublicCliDiscovery.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiscovery.kt) - descriptors, schemas, and examples from packaged contracts.
+- [PublicCliSchemaPage.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliSchemaPage.kt) - literal schema locations, direct-child pages, and exact output budgets.
+- [PublicCliHelp.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliHelp.kt) - command and namespace guidance.
 - [PublicCliDiagnostics.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiagnostics.kt) - bounded stderr guidance for argument and input failures.
 - [PublicInvocationOwner.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt) - public terminal-event precedence and output delivery.
 - [PublicShellExit.kt](src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt) - public shell status codes and outcome classification.
@@ -132,6 +136,7 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - Read the [candidate evidence guide](../docs/reviews/managed-installation-cli.md) before release qualification.
 
 - Public shell commands default to `COMPLETE`. Keep explicit `COMMON` restrictions without promotion.
+- Schema discovery uses literal JSON Pointers and bounded direct-child pages. Keep full exports explicit, preserve exact scalar facts, and never imply that a page is a complete validation schema.
 - Public shell `--json` overrides `KAST_OUTPUT_TOON`. Request documents remain JSON with either output format.
 - `source --help` and `result --help` list their commands without workspace preparation.
 - Keep parser diagnostics on stderr. Preserve the response contract and exclude request payloads and paths from those diagnostics.

@@ -88,6 +88,16 @@ class PublicLauncherCompositionTest {
                     listOf("result", "--help") to 0,
                     listOf("describe") to 0,
                     listOf("describe", "query", "--section", "input") to 0,
+                    listOf(
+                        "describe",
+                        "query",
+                        "--section",
+                        "input",
+                        "--pointer",
+                        "",
+                        "--max-returned-bytes",
+                        "1024",
+                    ) to 0,
                     listOf("describe", "query", "--section", "examples") to 0,
                     listOf("query", "plan", "--name", "OrderService") to 0,
                     listOf("query", "--name", "OrderService", "--max-returned-bytes", "4095") to 2,
@@ -100,7 +110,7 @@ class PublicLauncherCompositionTest {
                 fixture.assertExit(parent, exit, label)
                 val text = Files.readString(temporary.resolve("$label.stdout"))
                 if (arguments.contains("--help")) {
-                    assertTrue(text.contains("query"), text)
+                    assertTrue(text.contains("kast ${arguments.first()}"), text)
                 } else {
                     val document = oneDocument(text)
                     when {

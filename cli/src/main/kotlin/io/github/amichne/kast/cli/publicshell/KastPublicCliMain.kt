@@ -124,11 +124,7 @@ internal fun preparePublicCli(
                             PublicShellExit.COMPLETE,
                             PublicOutputContent.HELP,
                         )
-                    is PublicCliCommand.Describe ->
-                        PublicPreparedOutput(
-                            encodePublicCliDescriptor(describePublicCli(command)),
-                            PublicShellExit.COMPLETE,
-                        )
+                    is PublicCliCommand.Describe -> preparePublicDescriptor(command)
                     is PublicCliCommand.Query ->
                         prepareQuery(command.input, command.catalog, input, diagnostic) { admitted ->
                             prepareInstalledQuery(command, directory, admitted, session, invoke)
@@ -137,6 +133,16 @@ internal fun preparePublicCli(
                         prepareQuery(command.input, command.catalog, input, diagnostic, ::preparePlan)
                 }
         }
+
+private fun preparePublicDescriptor(command: PublicCliCommand.Describe): PublicPreparedOutput {
+    val descriptor = describePublicCli(command)
+    val rejected =
+        descriptor is PublicCliDescriptor.SchemaPage && descriptor.value.content is PublicSchemaPageReply.Rejected
+    return PublicPreparedOutput(
+        encodePublicCliDescriptor(descriptor),
+        if (rejected) PublicShellExit.INPUT else PublicShellExit.COMPLETE,
+    )
+}
 
 private fun prepareInstalledQuery(
     command: PublicCliCommand.Query,
