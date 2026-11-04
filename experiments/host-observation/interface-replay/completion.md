@@ -124,6 +124,10 @@ node build/interface-v3-report.mjs
 
 Earlier failed runs record an expired Pi credential, the old decoder mismatch, and shared Gradle-cache damage.
 The task-owned Gradle home resolves the local cache problem without changes to shared caches.
+A later combined gate failed one child-fixture shutdown assertion under a 50-millisecond allowance.
+The same focused case passed alone with both 50-millisecond and production-default allowances.
+The success fixture now uses the production default and reports complete finite exit evidence on failure.
+The uncooperative-child control keeps its explicit short allowance. This change establishes no recurring production defect.
 These failures do not count as product failures or unrecorded provider sends.
 
 ## Smallest failure reproductions

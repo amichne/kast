@@ -7,7 +7,7 @@ import { startReplayAdapter } from './pi_evaluation_replay_adapter_session.mjs';
 const child=body=>({command:[process.execPath,'--input-type=module','-e',body]});
 const prefix=`import readline from 'node:readline';const lines=readline.createInterface({input:process.stdin});const emit=v=>process.stdout.write(JSON.stringify(v)+'\\n');`;
 const echo=child(prefix+`emit({type:'ready'});lines.on('line',line=>{const request=JSON.parse(line);if(request.type==='render')emit({type:'rendered',text:request.document});else emit({type:'admission',receipt:{type:'ADMITTED',argv:request.argv,stdin:request.stdin,directory:request.directory}});});`);
-const options={readyMillis:2000,responseMillis:2000,shutdownMillis:50};
+const options={readyMillis:2000,responseMillis:2000};
 const input={argv:['query','--ref','exact:v5:with 雪'],stdin:'{"large":9223372036854775807,"text":"雪\\n"}',directory:'/fixture'};
 
 test('one owned child preserves raw strings and serial admission/render receipts',async()=>{
@@ -16,7 +16,7 @@ test('one owned child preserves raw strings and serial admission/render receipts
  assert.deepEqual(admitted,{type:'admission',receipt:{type:'ADMITTED',...input}});
  const document='{"integer":9223372036854775807,"decimal":1.230000,"negative":-0,"text":"雪\\n\\\"","empty":[]}';
  assert.deepEqual(await started.session.render(document,'TOON'),{type:'rendered',text:document});
- const end=await started.session.close();assert.equal(end.type,'closed');assert.equal(end.ownedChildReaped,true);assert.equal(end.exitCode,0);
+ const end=await started.session.close();assert.equal(end.type,'closed',JSON.stringify(end));assert.equal(end.ownedChildReaped,true);assert.equal(end.exitCode,0);
  assert.deepEqual(await started.session.close(),end);
 });
 
@@ -89,7 +89,7 @@ test('readiness and response waits have finite deadlines',async()=>{
 test('uncooperative child receives bounded termination and reaping preserves cancellation',async()=>{
  const controller=new AbortController();
  const body=prefix+`process.on('SIGTERM',()=>{});setInterval(()=>{},1000);emit({type:'ready'});`;
- const started=await startReplayAdapter(child(body),{...options,signal:controller.signal});
+ const started=await startReplayAdapter(child(body),{...options,shutdownMillis:50,signal:controller.signal});
  controller.abort();
  const end=await started.session.close();assert.equal(end.type,'failure');assert.equal(end.failure.reason,'CANCELLED');assert.equal(end.ownedChildReaped,true);assert.equal(end.signal,'SIGKILL');
 });
