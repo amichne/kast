@@ -56,9 +56,26 @@ class NativeHandoffTest(unittest.TestCase):
                 control = source / f"kast-control-v{identity.version}-macos-aarch64.tar.gz"
                 with tarfile.open(control, "w:gz") as archive:
                     archive.add(image, arcname="share/kast/libexec/kast-management")
-                (source / f"kast-ide-hosted-v{identity.version}-idea-262.zip").write_bytes(
-                    b"host fixture"
+                profile = native_handoff.host_targets.Profile(
+                    1,
+                    "262",
+                    tuple(
+                        native_handoff.host_targets.SdkTarget(
+                            line, f"{line}.123.45", f"{line}.123.45-IJ"
+                        )
+                        for line in ("262", "263")
+                    ),
                 )
+                (root / "config").mkdir()
+                (root / "config/intellij-targets.json").write_text(json.dumps(asdict(profile)))
+                for target in profile.targets:
+                    line = target.intellijReleaseLine
+                    (source / f"kast-ide-hosted-v{identity.version}-idea-{line}.zip").write_bytes(
+                        b"host fixture"
+                    )
+                    (
+                        source / native_handoff.host_targets.record_name(identity.version, line)
+                    ).write_bytes(b"record fixture")
                 pack(
                     source,
                     root / "bundle",
@@ -80,9 +97,27 @@ class NativeHandoffTest(unittest.TestCase):
                             / "share/kast/libexec/kast-management"
                         ).read_bytes(),
                     )
-                    observed.append("product")
+                    line = environment["KAST_HOSTED_IDE_RELEASE_LINE"]
+                    self.assertTrue(
+                        environment["KAST_HOSTED_PLUGIN_ARCHIVE"].endswith(f"idea-{line}.zip")
+                    )
+                    observed.append("product-" + line)
                     if code:
                         raise subprocess.CalledProcessError(code, command)
+                    target = next(
+                        target for target in profile.targets if target.intellijReleaseLine == line
+                    )
+                    expected = native_handoff.installed_target_evidence.expected(
+                        root,
+                        Path(environment["KAST_CONTROL_ARCHIVE"]).parent,
+                        target,
+                        native_handoff.host_evidence.BuildIdentity(
+                            identity.version, identity.revision, identity.tree
+                        ),
+                    )
+                    Path(environment["KAST_INSTALLED_PRODUCT_REPORT"]).write_text(
+                        json.dumps(asdict(expected))
+                    )
 
                 def native_effect(
                     observed_identity, *arguments, observed=effects, code=native_exit
@@ -113,13 +148,14 @@ class NativeHandoffTest(unittest.TestCase):
                             native_handoff.qualify(payload)
                     else:
                         native_handoff.qualify(payload)
-                    product.assert_called_once()
                     if product_exit:
+                        product.assert_called_once()
                         native.assert_not_called()
-                        self.assertEqual(["product"], effects)
+                        self.assertEqual(["product-262"], effects)
                     else:
+                        self.assertEqual(2, product.call_count)
                         native.assert_called_once()
-                        self.assertEqual(["product", "native"], effects)
+                        self.assertEqual(["product-262", "product-263", "native"], effects)
 
     def test_inputs_and_native_stage_preserve_the_single_executable_identity(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
@@ -341,6 +377,7 @@ class NativeHandoffTest(unittest.TestCase):
                 patch.object(native_handoff, "ROOT", root),
                 patch.object(native_handoff, "gradle") as gradle,
                 patch.object(native_handoff, "run") as run,
+                patch.object(native_handoff, "qualify_hosts") as hosts,
                 patch.object(native_handoff, "pack") as seal,
             ):
                 native_handoff.assemble(payload, root / "release")
@@ -353,6 +390,7 @@ class NativeHandoffTest(unittest.TestCase):
                     "generateKastModuleKnowledge",
                 )
                 self.assertEqual(1, run.call_count)
+                hosts.assert_called_once_with(identity)
                 self.assertEqual(1, seal.call_count)
                 for name in ("kast",):
                     self.assertEqual((binaries / name).read_bytes(), (imported / name).read_bytes())

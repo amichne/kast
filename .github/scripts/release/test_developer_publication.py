@@ -14,13 +14,12 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from unittest.mock import patch
 
-from validation_outcome import Outcome, ProductValidated, SourceValidated, ValidationRecord
-from validation_scope import Scope
-
 import build_candidate as candidate
 import developer_catalog as catalog
 import publish_developer as publisher
 from test_developer_catalog import entry
+from validation_outcome import Outcome, ProductValidated, SourceValidated, ValidationRecord
+from validation_scope import Scope
 
 REPOSITORY = "amichne/kast"
 BUILD = "a" * 40
@@ -396,6 +395,14 @@ class CandidateFixture(unittest.TestCase):
             Path(value.split("#", 1)[0]).name for value in arguments[3 : arguments.index("--repo")]
         }
         self.assertEqual({asset.name for asset in self.value.assets}, observed)
+
+    def test_stable_publisher_rejects_a_263_only_payload_before_upload(self) -> None:
+        original = self.payload / f"kast-ide-hosted-v{VERSION}-idea-262.zip"
+        original.rename(self.payload / f"kast-ide-hosted-v{VERSION}-idea-263.zip")
+        result, uploaded = self.run_stable_publisher()
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("stable release supports only IDEA 262", result.stderr)
+        self.assertFalse(uploaded.exists())
 
     def test_missing_control_record_rejects_before_release_creation(self) -> None:
         name = f"kast-control-release-v{VERSION}.json"

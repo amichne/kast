@@ -144,7 +144,21 @@ def run(
     )
     decisions = (
         (Stage.CI_DECISIONS, (*pytest, ".github/scripts/ci")),
-        (Stage.CANDIDATE, (*pytest, ".github/scripts/release/test_build_candidate.py")),
+        (
+            Stage.CANDIDATE,
+            (
+                *pytest,
+                ".github/scripts/release/test_build_candidate.py",
+                ".github/scripts/release/test_dual_candidate.py",
+                ".github/scripts/release/test_dual_producer.py",
+                ".github/scripts/release/test_dual_catalog.py",
+                ".github/scripts/release/test_dual_publication.py",
+                ".github/scripts/release/test_host_evidence.py",
+                ".github/scripts/release/test_host_staging.py",
+                ".github/scripts/release/test_host_target_validation.py",
+                ".github/scripts/release/test_installed_target_evidence.py",
+            ),
+        ),
         (
             Stage.RELEASE_PREFLIGHT,
             (

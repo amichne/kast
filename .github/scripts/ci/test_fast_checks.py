@@ -54,7 +54,18 @@ class FastChecksTest(unittest.TestCase):
             self.assertEqual(7 if mode is fast.Mode.PRE_PUSH else 0, result)
             self.assertEqual(expected_count, len(observed))
             self.assertEqual(".github/scripts/ci", observed[0][0][-1])
-            self.assertEqual(".github/scripts/release/test_build_candidate.py", observed[1][0][-1])
+            for name in (
+                "test_build_candidate",
+                "test_dual_candidate",
+                "test_dual_catalog",
+                "test_dual_publication",
+                "test_dual_producer",
+                "test_host_evidence",
+                "test_host_staging",
+                "test_host_target_validation",
+                "test_installed_target_evidence",
+            ):
+                self.assertIn(f".github/scripts/release/{name}.py", observed[1][0])
             self.assertEqual(
                 (
                     "distribution/release/test_resolve_version.py",
@@ -124,6 +135,19 @@ class FastChecksProcessTest(unittest.TestCase):
             "distribution/release/test_ci_candidate.py": "def test_candidate(): assert 2 + 3 == 5\n",
             "distribution/release/test_verify_environment.py": "def test_environment(): assert 2 + 3 == 5\n",
         }
+        for name in (
+            "dual_candidate",
+            "dual_catalog",
+            "dual_publication",
+            "dual_producer",
+            "host_evidence",
+            "host_staging",
+            "host_target_validation",
+            "installed_target_evidence",
+        ):
+            tests[f".github/scripts/release/test_{name}.py"] = (
+                "def test_owned_candidate(): assert 2 + 3 == 5\n"
+            )
         for relative, source in tests.items():
             destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)

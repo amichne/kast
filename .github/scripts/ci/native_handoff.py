@@ -16,6 +16,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 from dataclasses import asdict, dataclass
@@ -24,6 +25,13 @@ from pathlib import Path, PurePosixPath
 from typing import TypeGuard
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / ".github/scripts/release"))
+import gradle_graph
+import host_evidence
+import host_target_validation
+import dual_candidate
+import host_targets
+import installed_target_evidence
 
 
 class Kind(str, Enum):
@@ -389,6 +397,7 @@ def assemble(payload: Admitted, destination: Path) -> None:
         "assembleRelease",
         "generateKastModuleKnowledge",
     )
+    qualify_hosts(payload.record.identity)
     run(
         [
             "uv",
@@ -400,6 +409,7 @@ def assemble(payload: Admitted, destination: Path) -> None:
             payload.record.identity.version,
             "--source-revision",
             payload.record.identity.revision,
+            "--dual-hosts",
         ]
     )
     pack(
@@ -409,6 +419,41 @@ def assemble(payload: Admitted, destination: Path) -> None:
         Kind.RELEASE,
         payload.record.toolchainReleaseSha256,
     )
+
+
+def qualify_hosts(identity: Identity) -> None:
+    def target_gradle(*arguments: str) -> Path:
+        target = next(
+            argument.removeprefix("-PintellijTarget=")
+            for argument in arguments
+            if argument.startswith("-PintellijTarget=")
+        )
+        destination = ROOT / "build/reports/host-targets" / target / "execution"
+        command = (
+            "./gradlew",
+            "--no-daemon",
+            "--no-parallel",
+            "--max-workers=2",
+            "-Dorg.gradle.jvmargs=-Xmx5g",
+            f"-Pversion={identity.version}",
+            f"-PkastSourceRevision={identity.revision}",
+            *arguments,
+            "--console=plain",
+            "--info",
+        )
+        result = gradle_graph.run(command, ROOT, destination, gradle_graph.Budget(1200))
+        if result.outcome is not gradle_graph.Outcome.SUCCEEDED:
+            raise SystemExit(result.exitCode)
+        return destination / "task-graph.log"
+
+    result = host_target_validation.qualify(
+        ROOT,
+        ROOT / f"build/release/v{identity.version}",
+        host_evidence.BuildIdentity(identity.version, identity.revision, identity.tree),
+        target_gradle,
+    )
+    if isinstance(result, host_target_validation.Failure):
+        raise SystemExit(result.value)
 
 
 def qualify(payload: Admitted) -> None:
@@ -423,8 +468,18 @@ def qualify(payload: Admitted) -> None:
     if isinstance(failure, Failure):
         raise SystemExit(failure.value)
     control = release / f"kast-control-v{identity.version}-macos-aarch64.tar.gz"
-    plugins = list(release.glob(f"kast-ide-hosted-v{identity.version}-idea-*.zip"))
-    if len(plugins) != 1:
+    profile = host_targets.decode_profile(
+        dual_candidate.read_json(ROOT / "config/intellij-targets.json")
+    )
+    if isinstance(profile, host_targets.Failure):
+        raise SystemExit(Failure.INVALID_RECORD.value)
+    plugins = {
+        path.name for path in release.glob(f"kast-ide-hosted-v{identity.version}-idea-*.zip")
+    }
+    if plugins != {
+        f"kast-ide-hosted-v{identity.version}-idea-{target.intellijReleaseLine}.zip"
+        for target in profile.targets
+    }:
         raise SystemExit(Failure.INVALID_RECORD.value)
     with tempfile.TemporaryDirectory(prefix="kast-qualification-") as temporary:
         product = Path(temporary)
@@ -433,24 +488,48 @@ def qualify(payload: Admitted) -> None:
             if not safe_members(members):
                 raise SystemExit(Failure.UNSAFE_ARCHIVE.value)
             archive.extractall(product, members=members, filter="data")
-        run(
-            ["python3", "packaging/run-installed-product.py"],
-            environment={
-                **os.environ,
-                "KAST_INSTALLED_PRODUCT": str(product),
-                "KAST_CONTROL_ARCHIVE": str(control),
-                "KAST_HOSTED_PLUGIN_ARCHIVE": str(plugins[0]),
-                "KAST_HOST_RELEASE_RECORD": str(
-                    release / f"kast-host-release-v{identity.version}.json"
-                ),
-                "KAST_ACCEPTANCE_JAVA_EXECUTABLE": str(Path(os.environ["JAVA_HOME"]) / "bin/java"),
-            },
-        )
+        qualify_installations(identity, release, product, profile)
         gradle(
             identity,
             f"-PkastNativeExecutable={product / 'share/kast/libexec/kast-management'}",
             "publicLauncherTest",
         )
+
+
+def qualify_installations(
+    identity: Identity, release: Path, product: Path, profile: host_targets.Profile
+) -> None:
+    for target in profile.targets:
+        report = (
+            ROOT
+            / "build/reports/host-targets"
+            / target.intellijReleaseLine
+            / "installed-product.json"
+        )
+        if report.exists() or report.is_symlink():
+            raise SystemExit(Failure.INVALID_RECORD.value)
+        report.parent.mkdir(parents=True, exist_ok=True)
+        expected = installed_target_evidence.expected(
+            ROOT,
+            release,
+            target,
+            host_evidence.BuildIdentity(identity.version, identity.revision, identity.tree),
+        )
+        run(
+            ["python3", "packaging/run-installed-product.py"],
+            environment={
+                **os.environ,
+                "KAST_INSTALLED_PRODUCT": str(product),
+                "KAST_CONTROL_ARCHIVE": str(release / expected.controlArtifact.fileName),
+                "KAST_HOSTED_PLUGIN_ARCHIVE": str(release / expected.hostArtifact.fileName),
+                "KAST_HOST_RELEASE_RECORD": str(release / expected.hostReleaseRecord.fileName),
+                "KAST_HOSTED_IDE_RELEASE_LINE": target.intellijReleaseLine,
+                "KAST_INSTALLED_PRODUCT_REPORT": str(report.resolve()),
+                "KAST_ACCEPTANCE_JAVA_EXECUTABLE": str(Path(os.environ["JAVA_HOME"]) / "bin/java"),
+            },
+        )
+        if isinstance(installed_target_evidence.admit(report, expected), dual_candidate.Failure):
+            raise SystemExit(Failure.PAYLOAD_MISMATCH.value)
 
 
 def main() -> None:

@@ -320,6 +320,7 @@ jobs:
       - name: Admit native output and assemble the release
         env:
           GH_TOKEN: ${{ github.token }}
+          KAST_SEMANTIC_FIXTURES: "true"
         run: uv run --locked --script .github/scripts/ci/native_handoff.py assemble --version "0.0.$GITHUB_RUN_NUMBER"
       - uses: actions/upload-artifact@v7.0.2
         with:
@@ -331,7 +332,10 @@ jobs:
         if: always()
         with:
           name: assembly-reports-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/reports/
+          path: |
+            build/reports/
+            **/build/ide-targets/*/test-results/
+            **/build/ide-targets/*/reports/
           if-no-files-found: warn
           retention-days: 14
 
