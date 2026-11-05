@@ -46,10 +46,6 @@ import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import java.nio.file.Files
 import java.nio.file.Path
-import org.jetbrains.kotlin.cli.extensionsStorage
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
@@ -239,17 +235,17 @@ class DirectInterfaceMemberSourcePsiTest {
         System.setProperty("idea.system.path", home.resolve("system").toString())
         val disposable = Disposer.newDisposable()
         try {
-            val environment =
-                KotlinCoreEnvironment.createForTests(
-                    disposable,
-                    CompilerConfiguration().apply { extensionsStorage = CompilerPluginRegistrar.ExtensionStorage() },
-                    EnvironmentConfigFiles.JVM_CONFIG_FILES,
-                )
+            val project = io.github.amichne.kast.workspace.intellij.read.kotlinParserProject(disposable)
             val path = home.resolve("Cache.kt")
             Files.writeString(path, text)
-            val virtual = checkNotNull(environment.findLocalFile(path.toRealPath().toString()))
+            val virtual =
+                checkNotNull(
+                    com.intellij.openapi.vfs.VirtualFileManager.getInstance()
+                        .getFileSystem("file")
+                        .findFileByPath(path.toRealPath().toString())
+                )
             ApplicationManager.getApplication().runReadAction {
-                val file = PsiManager.getInstance(environment.project).findFile(virtual) as KtFile
+                val file = PsiManager.getInstance(project).findFile(virtual) as KtFile
                 val snapshot = snapshot(home, path, text)
                 assertion(file, snapshot)
             }

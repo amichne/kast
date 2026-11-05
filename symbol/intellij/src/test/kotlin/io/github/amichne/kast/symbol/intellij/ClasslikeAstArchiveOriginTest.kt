@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.KtNodeTypes
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -43,7 +44,19 @@ class ClasslikeAstArchiveOriginTest {
         val loader = owner.classLoader.javaClass
         println("SDK_DEFINING_LOADER type=${loader.name}")
         val origin = requireNotNull(IntellijClassArchiveOrigin.resolve(owner))
-        assertEquals("kotlinc.kotlin-compiler-common.jar", origin.archive.fileName.toString())
+        assertEquals(ClasslikeAstSdkExpectation.selected.archiveName, origin.archive.fileName.toString())
+        val legacyOwner = "org.jetbrains.kotlin.psi.stubs.elements.KtStubElementType"
+        when (ClasslikeAstSdkExpectation.selected) {
+            ClasslikeAstSdkExpectation.AUDITED_262 ->
+                assertSame(
+                    owner.classLoader,
+                    Class.forName(legacyOwner, false, owner.classLoader).classLoader,
+                )
+            ClasslikeAstSdkExpectation.UNQUALIFIED_263 ->
+                assertThrows(ClassNotFoundException::class.java) {
+                    Class.forName(legacyOwner, false, owner.classLoader)
+                }
+        }
     }
 
     @Test

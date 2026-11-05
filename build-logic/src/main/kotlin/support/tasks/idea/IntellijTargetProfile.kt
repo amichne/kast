@@ -8,6 +8,7 @@ import org.gradle.api.Project
 import org.gradle.api.file.Directory
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.provider.Provider
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.File
 
 /** One source-declared SDK tuple; a supplied installation cannot silently retarget another module. */
@@ -72,6 +73,14 @@ class SelectedIntellijTarget internal constructor(
     val suppliedHome: File?,
     val scopedOutputs: Boolean,
 ) {
+    fun configureModule(project: Project) {
+        configureBuildDirectory(project)
+        if (profile.intellijReleaseLine == "263") project.tasks.withType(KotlinCompile::class.java).configureEach {
+            if (name == "compileTestKotlin" || name == "compileNativeTestKotlin" || name == "compileTestFixturesKotlin")
+                compilerOptions.optIn.add("org.jetbrains.kotlin.CoreEnvironmentDeprecation")
+        }
+    }
+
     fun configureBuildDirectory(project: Project) {
         if (scopedOutputs)
             project.layout.buildDirectory.set(project.layout.projectDirectory.dir("build/ide-targets/${profile.intellijReleaseLine}"))

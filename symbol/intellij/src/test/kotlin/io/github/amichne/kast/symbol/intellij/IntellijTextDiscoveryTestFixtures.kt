@@ -5,10 +5,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import java.nio.file.Files
 import java.nio.file.Path
-import org.jetbrains.kotlin.cli.extensionsStorage
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CompilerConfiguration
 
 /** Two native boundary test consumers share ownership of the disposable parser application. */
@@ -26,13 +22,8 @@ internal fun withTextDiscoveryParser(home: Path, assertion: (Project) -> Unit) {
     System.setProperty("idea.system.path", home.resolve("system").toString())
     val disposable = Disposer.newDisposable()
     try {
-        val environment =
-            KotlinCoreEnvironment.createForTests(
-                disposable,
-                CompilerConfiguration().apply { extensionsStorage = CompilerPluginRegistrar.ExtensionStorage() },
-                EnvironmentConfigFiles.JVM_CONFIG_FILES,
-            )
-        ApplicationManager.getApplication().runReadAction { assertion(environment.project) }
+        val project = io.github.amichne.kast.workspace.intellij.read.kotlinParserProject(disposable)
+        ApplicationManager.getApplication().runReadAction { assertion(project) }
     } finally {
         ApplicationManager.getApplication().runWriteAction { Disposer.dispose(disposable) }
         properties.forEach { (key, value) ->

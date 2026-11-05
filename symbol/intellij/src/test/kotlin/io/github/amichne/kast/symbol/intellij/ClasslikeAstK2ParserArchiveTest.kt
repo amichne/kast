@@ -54,6 +54,7 @@ class ClasslikeAstK2ParserArchiveTest {
             listOf(
                 Path.of(System.getProperty("java.home"), "bin", "java").toString(),
                 "-Djava.awt.headless=true",
+                ClasslikeAstSdkExpectation.childArgument,
                 "-cp",
                 if (changed) "$ownedArchive${java.io.File.pathSeparator}$classpath" else classpath,
                 ClasslikeAstK2ParserArchiveWitness::class.java.name,
@@ -105,10 +106,10 @@ object ClasslikeAstK2ParserArchiveWitness {
                     candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_PARSER_FALLBACKS] ?: 0,
                 )
                 assertEquals(
-                    if (changed) 1 else 0,
+                    if (changed || !ClasslikeAstSdkExpectation.selected.optimized) 1 else 0,
                     candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_LEGACY_FALLBACKS] ?: 0,
                 )
-                if (changed)
+                if (changed || !ClasslikeAstSdkExpectation.selected.optimized)
                     assertEquals(
                         0,
                         candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED] ?: 0,
@@ -128,9 +129,15 @@ object ClasslikeAstK2ParserArchiveWitness {
             assertSame(IntellijClasslikeAstBinding.Unsupported, binding)
             assertEquals(0, observation.counters[IntellijReadCounter.DECLARATION_AST_MAPPING_PSI_PROBES] ?: 0)
         } else {
-            assertTrue(binding is IntellijClasslikeAstBinding.Supported)
-            assertEquals(116, observation.counters[IntellijReadCounter.DECLARATION_AST_MAPPING_PSI_PROBES])
+            ClasslikeAstSdkExpectation.selected.assertBinding(binding)
+            assertEquals(
+                if (ClasslikeAstSdkExpectation.selected.optimized) 116 else 0,
+                observation.counters[IntellijReadCounter.DECLARATION_AST_MAPPING_PSI_PROBES] ?: 0,
+            )
         }
-        assertEquals(173_712, observation.counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ])
+        assertEquals(
+            if (ClasslikeAstSdkExpectation.selected.optimized) 173_712 else 0,
+            observation.counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ] ?: 0,
+        )
     }
 }

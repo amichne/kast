@@ -2,6 +2,7 @@ package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.intellij.ClasslikeAstDispatcherFixture.Controls
 import io.github.amichne.kast.symbol.intellij.ClasslikeAstDispatcherFixture.discover
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.io.TempDir
 
 /** A no-op startup agent in an owned child proves conservative fallback, without installing or attaching an agent. */
@@ -42,6 +44,7 @@ class ClasslikeAstStartupAgentTest {
         command +=
             listOf(
                 "-Djava.awt.headless=true",
+                ClasslikeAstSdkExpectation.childArgument,
                 "-cp",
                 System.getProperty("java.class.path"),
                 ClasslikeAstStartupAgentWitness::class.java.name,
@@ -104,7 +107,7 @@ object ClasslikeAstStartupAgentWitness {
     private fun verify(project: Project, home: Path, agent: Boolean) {
         val binding = IntellijClasslikeAstBinding.Owner().acquire({ true }, IntellijReadObservation.None)
         if (agent) assertSame(IntellijClasslikeAstBinding.StartupAgent, binding)
-        else assertTrue(binding is IntellijClasslikeAstBinding.Supported)
+        else ClasslikeAstSdkExpectation.selected.assertBinding(binding)
         val source =
             fixture(
                 project,
@@ -119,6 +122,14 @@ object ClasslikeAstStartupAgentWitness {
                 listOf("Target", "Target"),
                 candidate.outcome.batch().candidates.map { it.name.value },
             )
+            assertEquals(
+                listOf(0, 27),
+                candidate.outcome.batch().candidates.map {
+                    assertEquals(source.scope.lease, it.lease)
+                    assertEquals(home.resolve("source/Input.kt").toRealPath().toString(), it.location.file.stableValue)
+                    assertInstanceOf<SymbolDiscoveryCandidateLocation.Declaration>(it.location).offset.value
+                },
+            )
             val baseline = withUnsupportedParser {
                 discover(project, source, "Target", Controls(indexed = false))
             }
@@ -129,7 +140,7 @@ object ClasslikeAstStartupAgentWitness {
                 counters[IntellijReadCounter.DECLARATION_AST_STARTUP_AGENT_FALLBACKS] ?: 0,
             )
             assertEquals(0, counters[IntellijReadCounter.DECLARATION_AST_PARSER_FALLBACKS] ?: 0)
-            if (agent) {
+            if (agent || !ClasslikeAstSdkExpectation.selected.optimized) {
                 assertEquals(1, counters[IntellijReadCounter.DECLARATION_AST_LEGACY_FALLBACKS])
                 assertEquals(0, counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED] ?: 0)
                 assertEquals(0, counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ] ?: 0)

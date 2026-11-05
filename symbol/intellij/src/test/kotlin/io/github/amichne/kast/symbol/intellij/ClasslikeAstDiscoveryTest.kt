@@ -19,7 +19,7 @@ import org.junit.jupiter.api.io.TempDir
 /** Real dispatcher, parser, admission and projection; only native indexes and clock are supplied. */
 class ClasslikeAstDiscoveryTest {
     @Test
-    fun `dense dispatcher materializes only bounded declaration and projection PSI`(@TempDir home: Path) =
+    fun `dense dispatcher preserves output and the selected traversal PSI policy`(@TempDir home: Path) =
         withParser(home) { project ->
             val source = fixture(project, home.resolve("source"), denseSources(), setOf(CompilerSymbolKind.CLASSLIKE))
             val before = ClasslikeAstPsiWork.census(source.files)
@@ -34,10 +34,15 @@ class ClasslikeAstDiscoveryTest {
                 "CLASSLIKE_PIPELINE_WORK nodes=${after.nodes} newCompositePsi=$created " +
                     "candidateBytes=${result.outcome.batch().encodedBytes.value} counters=${result.observation.counters}"
             )
-            assertTrue(
-                created <= 32,
-                "CLASSLIKE_PIPELINE_PSI: expected <=32 new composite PSI wrappers, observed $created",
-            )
+            if (ClasslikeAstSdkExpectation.selected.optimized)
+                assertTrue(
+                    created <= 32,
+                    "CLASSLIKE_PIPELINE_PSI: expected <=32 new composite PSI wrappers, observed $created",
+                )
+            else {
+                assertEquals(6_025, created)
+                ClasslikeAstSdkExpectation.selected.assertFallback(result.observation, files = 2)
+            }
         }
 
     @Test
@@ -48,8 +53,10 @@ class ClasslikeAstDiscoveryTest {
             assertTrue(result.outcome is SymbolDiscoveryOutcome.Complete)
             assertEquals(listOf("Target"), result.outcome.batch().candidates.map { it.name.value })
             assertEquals(1L, result.outcome.batch().examinedWorkUnits.value)
-            assertEquals(18_063, result.observation.counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED])
-            assertEquals(2, result.observation.counters[IntellijReadCounter.DECLARATION_AST_PSI_REQUESTS])
+            assertEquals(18_063, result.observation.counters[ClasslikeAstSdkExpectation.selected.traversalCounter])
+            if (ClasslikeAstSdkExpectation.selected.optimized)
+                assertEquals(2, result.observation.counters[IntellijReadCounter.DECLARATION_AST_PSI_REQUESTS])
+            else ClasslikeAstSdkExpectation.selected.assertFallback(result.observation, files = 2)
         }
 
     @Test

@@ -2,7 +2,41 @@ package io.github.amichne.kast.symbol.intellij
 
 /** Independently specified declarations; syntax/recovery authority comes from the real bundled parser. */
 internal object ClasslikeAstDifferentialCases {
-    data class Case(val label: String, val source: String, val names: List<String?>)
+    data class Case(val label: String, val source: String, val names: List<String?>) {
+        fun expectedOffsets(name: String): List<Int> {
+            val starts = sourceStarts.getValue(label)
+            check(starts.size == names.size)
+            return names.zip(starts).filter { it.first == name }.map { it.second }
+        }
+    }
+
+    // Literal declaration-range starts, independent of either product traversal.
+    private val sourceStarts =
+        mapOf(
+            "ordinary" to listOf(0),
+            "interface" to listOf(0),
+            "enum" to listOf(0, 28),
+            "enum recovery" to listOf(0),
+            "modifiers" to listOf(0, 28, 69),
+            "objects and companions" to listOf(0, 13, 27, 46, 63, 77),
+            "object expression" to listOf(12, 21),
+            "function body" to listOf(14, 41),
+            "property body" to listOf(14),
+            "accessors" to listOf(19, 72),
+            "constructor and init" to listOf(0, 21, 62),
+            "enum entry body" to listOf(0, 37),
+            "backtick unicode" to listOf(0, 21),
+            "annotation expression" to listOf(0, 12),
+            "type annotation" to listOf(19),
+            "string interpolation" to listOf(17),
+            "comments strings" to listOf(44),
+            "error body" to listOf(19),
+            "missing name" to listOf(0, 8),
+            "unterminated" to listOf(0, 28),
+            "function type" to listOf(20),
+            "dense target" to listOf(32),
+            "dense wrapper" to listOf(75),
+        )
 
     val values =
         listOf(

@@ -21,7 +21,7 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val intellij = selectedIntellijTarget(project).also { it.configureModule(project) }
 private val ideHostBuild = intellij.profile.ideBuild
 
 val workspaceReadIdeaDistribution =
@@ -73,6 +73,9 @@ dependencies {
     testFixturesApi(project(":workspace:contract"))
     testFixturesApi(project(":protocol:contract"))
     testFixturesApi(catalog.findLibrary("coroutines-core").get())
+    testFixturesCompileOnly(ideaLibraries)
+    testFixturesCompileOnly(kotlinPluginLibraries)
+    testFixturesCompileOnly(javaPluginLibraries)
     testFixturesImplementation(project(":symbol:contract"))
     testFixturesImplementation(testFixtures(project(":workspace:contract")))
 }

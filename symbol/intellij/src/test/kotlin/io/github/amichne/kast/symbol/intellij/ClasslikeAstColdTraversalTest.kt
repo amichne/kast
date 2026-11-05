@@ -43,18 +43,23 @@ class ClasslikeAstColdTraversalTest {
                             candidate.outcome.batch().candidates.map { it.name.value },
                         )
                         assertTrue(
-                            (candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED] ?: 0) > 0
+                            (candidate.observation.counters[ClasslikeAstSdkExpectation.selected.traversalCounter]
+                                ?: 0) > 0
                         )
-                        assertTrue(
-                            (candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_PSI_FALLBACKS] ?: 0) > 0
-                        )
+                        if (ClasslikeAstSdkExpectation.selected.optimized)
+                            assertTrue(
+                                (candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_PSI_FALLBACKS]
+                                    ?: 0) > 0
+                            )
                         val baseline = withUnsupportedParser {
                             discover(project, source, name, Controls(indexed = false))
                         }
                         assertEquals(baseline.outcome, candidate.outcome)
+                        if (!ClasslikeAstSdkExpectation.selected.optimized)
+                            ClasslikeAstSdkExpectation.selected.assertFallback(candidate.observation)
                         assertEquals(
                             baseline.observation.counters[IntellijReadCounter.DECLARATION_PSI_NODES_VISITED],
-                            candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED],
+                            candidate.observation.counters[ClasslikeAstSdkExpectation.selected.traversalCounter],
                         )
                     }
                 }

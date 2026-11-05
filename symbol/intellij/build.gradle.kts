@@ -17,7 +17,7 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val intellij = selectedIntellijTarget(project).also { it.configureModule(project) }
 private val ideaPlatformBuild = intellij.profile.ideBuild
 private val sdkLibraries =
     intellij.libraries(
@@ -40,6 +40,12 @@ dependencies {
 
     compileOnly(sdkLibraries)
     testImplementation(sdkLibraries)
+    testImplementation(catalog.findLibrary("serialization-json").get())
+    testImplementation(testFixtures(project(":workspace:intellij-read")))
+}
+
+tasks.named<Test>("test") {
+    systemProperty("kast.astFixtureTarget", intellij.profile.intellijReleaseLine)
 }
 
 // Indexed Platform fixtures own a separate process and task; parser/pure tests stay fast.

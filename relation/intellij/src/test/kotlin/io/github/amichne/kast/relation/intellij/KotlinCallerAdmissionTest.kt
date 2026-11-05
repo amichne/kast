@@ -13,10 +13,6 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import java.nio.file.Files
 import java.nio.file.Path
-import org.jetbrains.kotlin.cli.extensionsStorage
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.idea.references.KtInvokeFunctionReference
 import org.jetbrains.kotlin.idea.references.KtReference
@@ -326,13 +322,8 @@ class KotlinCallerAdmissionTest {
         System.setProperty("idea.system.path", home.resolve("system").toString())
         val disposable = Disposer.newDisposable()
         try {
-            val environment =
-                KotlinCoreEnvironment.createForTests(
-                    disposable,
-                    CompilerConfiguration().apply { extensionsStorage = CompilerPluginRegistrar.ExtensionStorage() },
-                    EnvironmentConfigFiles.JVM_CONFIG_FILES,
-                )
-            assertion(KtPsiFactory(environment.project))
+            val project = io.github.amichne.kast.workspace.intellij.read.kotlinParserProject(disposable)
+            assertion(KtPsiFactory(project))
         } finally {
             ApplicationManager.getApplication().runWriteAction { Disposer.dispose(disposable) }
             properties.forEach { (key, value) ->

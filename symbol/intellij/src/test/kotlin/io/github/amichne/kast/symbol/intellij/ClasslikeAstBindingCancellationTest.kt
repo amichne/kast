@@ -34,7 +34,8 @@ class ClasslikeAstBindingCancellationTest {
                             assertThrows(ProcessCanceledException::class.java) {
                                 owner.acquire(
                                     {
-                                        if (stopped) throw cancellation
+                                        if (stopped || !ClasslikeAstSdkExpectation.selected.optimized)
+                                            throw cancellation
                                         true
                                     },
                                     observation,
@@ -59,7 +60,8 @@ class ClasslikeAstBindingCancellationTest {
                         var stopped = false
                         val observation =
                             onCounter(IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ) { stopped = true }
-                        val outcome = owner.acquire({ !stopped }, observation)
+                        val outcome =
+                            owner.acquire({ !stopped && ClasslikeAstSdkExpectation.selected.optimized }, observation)
                         assertSame(IntellijClasslikeAstBinding.Halted, outcome)
                         assertFreshRetryAndMemo(owner, variant)
                     }
@@ -77,12 +79,14 @@ class ClasslikeAstBindingCancellationTest {
     private fun assertFreshRetryAndMemo(owner: IntellijClasslikeAstBinding.Owner, variant: KotlinAstParserVariant) {
         val retry = RecordingDiscoveryObservation { 0L }
         val result = owner.acquire({ true }, retry)
-        assertTrue(result is IntellijClasslikeAstBinding.Supported)
-        assertEquals(
-            if (variant == KotlinAstParserVariant.BASE) 169_937 else 173_712,
-            retry.counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ],
-        )
-        assertEquals(116, retry.counters[IntellijReadCounter.DECLARATION_AST_MAPPING_PSI_PROBES])
+        ClasslikeAstSdkExpectation.selected.assertBinding(result)
+        if (ClasslikeAstSdkExpectation.selected.optimized) {
+            assertEquals(
+                if (variant == KotlinAstParserVariant.BASE) 169_937 else 173_712,
+                retry.counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ],
+            )
+            assertEquals(116, retry.counters[IntellijReadCounter.DECLARATION_AST_MAPPING_PSI_PROBES])
+        } else assertTrue(retry.counters.isEmpty())
         val memo = RecordingDiscoveryObservation { 0L }
         assertSame(result, owner.acquire({ true }, memo))
         assertEquals(0, memo.counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ] ?: 0)

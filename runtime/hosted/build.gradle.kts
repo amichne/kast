@@ -17,7 +17,7 @@ val repositoryRoot = project.isolated.rootProject.projectDirectory
 base { archivesName.set("kast-ide-hosted") }
 
 val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+val intellij = selectedIntellijTarget(project).also { it.configureModule(project) }
 val platform = intellij.libraries(project, IntellijSdkLibraryFamily.PLATFORM, IntellijSdkLibraryFamily.GRADLE)
 val ideBuild = intellij.profile.ideBuild
 val ideReleaseLine = intellij.profile.intellijReleaseLine

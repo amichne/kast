@@ -1,6 +1,8 @@
 package io.github.amichne.kast.symbol.intellij
 
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.intellij.ClasslikeAstDispatcherFixture.Controls
 import io.github.amichne.kast.symbol.intellij.ClasslikeAstDispatcherFixture.discover
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.io.TempDir
 
 class ClasslikeAstDifferentialTest {
@@ -41,16 +44,34 @@ class ClasslikeAstDifferentialTest {
                             List(case.names.count { it == name }) { name },
                             candidate.outcome.batch().candidates.map { it.name.value },
                         )
+                        val candidates = candidate.outcome.batch().candidates
+                        assertEquals(
+                            case.expectedOffsets(name),
+                            candidates.map {
+                                assertEquals(source.scope.lease, it.lease)
+                                assertEquals(SymbolDiscoveryKind.CLASS, it.kind)
+                                assertEquals(
+                                    home.resolve("source-$index/Input.kt").toRealPath().toString(),
+                                    it.location.file.stableValue,
+                                )
+                                assertInstanceOf<SymbolDiscoveryCandidateLocation.Declaration>(it.location).offset.value
+                            },
+                        )
                         assertEquals(baseline.outcome, candidate.outcome)
+                        if (!ClasslikeAstSdkExpectation.selected.optimized)
+                            ClasslikeAstSdkExpectation.selected.assertFallback(candidate.observation)
                         assertEquals(
                             baseline.observation.counters[IntellijReadCounter.DECLARATION_PSI_NODES_VISITED],
-                            candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED],
+                            candidate.observation.counters[ClasslikeAstSdkExpectation.selected.traversalCounter],
                         )
                         assertEquals(
                             1,
                             baseline.observation.counters[IntellijReadCounter.DECLARATION_AST_LEGACY_FALLBACKS],
                         )
-                        if (case.label in setOf("enum recovery", "function body", "property body", "error body")) {
+                        if (
+                            ClasslikeAstSdkExpectation.selected.optimized &&
+                                case.label in setOf("enum recovery", "function body", "property body", "error body")
+                        ) {
                             assertTrue(
                                 (candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_PSI_FALLBACKS]
                                     ?: 0) > 0,

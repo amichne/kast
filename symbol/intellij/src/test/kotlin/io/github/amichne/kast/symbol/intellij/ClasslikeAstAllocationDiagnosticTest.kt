@@ -58,7 +58,11 @@ class ClasslikeAstAllocationDiagnosticTest {
                 val legacyWrappers = legacyAfter.cachedCompositePsi - legacyBefore.cachedCompositePsi
                 val currentWrappers = currentAfter.cachedCompositePsi - currentBefore.cachedCompositePsi
                 assertEquals(6_025, legacyWrappers)
-                assertTrue(currentWrappers <= 32)
+                if (ClasslikeAstSdkExpectation.selected.optimized) assertTrue(currentWrappers <= 32)
+                else {
+                    assertEquals(legacyWrappers, currentWrappers)
+                    ClasslikeAstSdkExpectation.selected.assertFallback(candidate.value.observation, files = 2)
+                }
                 println(
                     "CLASSLIKE_ALLOCATION attempt=$attempt nodes=${currentAfter.nodes} " +
                         "legacyNewPsi=$legacyWrappers currentNewPsi=$currentWrappers " +

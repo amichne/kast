@@ -2,8 +2,10 @@ package io.github.amichne.kast.symbol.intellij
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.impl.PsiManagerEx
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidateLocation
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryOutcome
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryQualification
 import io.github.amichne.kast.symbol.intellij.ClasslikeAstDispatcherFixture.Controls
@@ -13,13 +15,14 @@ import io.github.amichne.kast.symbol.intellij.IntellijDeclarationDiscoveryTestFi
 import io.github.amichne.kast.symbol.intellij.IntellijDeclarationDiscoveryTestFixture.fixture
 import io.github.amichne.kast.symbol.intellij.IntellijDeclarationDiscoveryTestFixture.withParser
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import java.nio.file.Files
 import java.nio.file.Path
-import javax.swing.SwingUtilities
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.io.TempDir
 
 class ClasslikeAstFiniteOutcomeTest {
@@ -33,16 +36,22 @@ class ClasslikeAstFiniteOutcomeTest {
                     mapOf("Input.kt" to "class Target\nfun outer() { class Target; val v = run { class Target; 0 } }"),
                     setOf(CompilerSymbolKind.CLASSLIKE),
                 )
-            for (controls in
+            for ((controls, expected) in
                 listOf(
-                    Controls(work = 1),
-                    Controls(records = 1),
-                    Controls(bytes = 1, expectedFileCalls = 0),
-                    Controls(namedComplete = false, expectedFileCalls = 0),
+                    Controls(work = 1) to SymbolDiscoveryQualification.WORK_LIMIT_REACHED,
+                    Controls(records = 1) to SymbolDiscoveryQualification.RESULT_LIMIT_REACHED,
+                    Controls(bytes = 1, expectedFileCalls = 0) to SymbolDiscoveryQualification.BYTE_LIMIT_REACHED,
+                    Controls(namedComplete = false, expectedFileCalls = 0) to
+                        SymbolDiscoveryQualification.PROVIDER_FAILURE,
                 )) {
                 val baseline = withUnsupportedParser { discover(project, source, "Target", controls).outcome }
                 val candidate = discover(project, source, "Target", controls).outcome
                 assertTrue(candidate is SymbolDiscoveryOutcome.Qualified)
+                assertEquals(setOf(expected), (candidate as SymbolDiscoveryOutcome.Qualified).qualifications.values)
+                assertEquals(
+                    if (controls.bytes == 1L) emptyList() else listOf("Target"),
+                    candidate.batch.candidates.map { it.name.value },
+                )
                 assertEquals(baseline, candidate)
             }
         }
@@ -62,7 +71,7 @@ class ClasslikeAstFiniteOutcomeTest {
                 Controls(
                     clock = IntellijReadNanoClock { now },
                     onCounter = { counter ->
-                        if (counter == IntellijReadCounter.DECLARATION_AST_NODES_VISITED) now = 10_000_000_000L
+                        if (counter == ClasslikeAstSdkExpectation.selected.traversalCounter) now = 10_000_000_000L
                     },
                 )
             val result = discover(project, source, "Target", controls)
@@ -94,7 +103,7 @@ class ClasslikeAstFiniteOutcomeTest {
                     Controls(
                         environment = { state },
                         onCounter = {
-                            if (it == IntellijReadCounter.DECLARATION_AST_NODES_VISITED)
+                            if (it == ClasslikeAstSdkExpectation.selected.traversalCounter)
                                 state = IntellijDiscoveryEnvironmentState.DUMB
                         },
                     ),
@@ -108,7 +117,7 @@ class ClasslikeAstFiniteOutcomeTest {
         }
 
     @Test
-    fun `cancelled read action restarts with current PSI and fresh admission state`(@TempDir home: Path) =
+    fun `cancelled read action restarts with reacquired changed PSI and fresh admission state`(@TempDir home: Path) =
         withParser(home) { project ->
             val source =
                 fixture(
@@ -122,7 +131,7 @@ class ClasslikeAstFiniteOutcomeTest {
             val controls =
                 Controls(
                     onCounter = {
-                        if (it == IntellijReadCounter.DECLARATION_AST_NODES_VISITED) interrupted = true
+                        if (it == ClasslikeAstSdkExpectation.selected.traversalCounter) interrupted = true
                     },
                     cancellation = { if (interrupted) throw cancellation },
                 )
@@ -131,20 +140,40 @@ class ClasslikeAstFiniteOutcomeTest {
                     discover(project, source, "Target", controls)
                 }
             assertSame(cancellation, caught)
-            val documents = PsiDocumentManager.getInstance(project)
-            SwingUtilities.invokeAndWait {
-                ApplicationManager.getApplication().runWriteAction {
-                    val document = requireNotNull(documents.getDocument(source.files.single()))
-                    document.setText("fun outer() { class Target }\nclass New")
-                    documents.commitAllDocuments()
-                }
+            Files.writeString(home.resolve("source/Input.kt"), "fun outer() { class Target }\nclass New")
+            ApplicationManager.getApplication().runWriteAction {
+                // The compiler VFS is read-only and has no live editor/reload synchronization.
+                // Reacquire the changed file through a fresh real PSI view for the next read.
+                PsiManagerEx.getInstanceEx(project).fileManager.setViewProvider(source.files.single().virtualFile, null)
             }
-            val restarted = discover(project, source, "Target", Controls(indexed = false))
-            val baseline = withUnsupportedParser { discover(project, source, "Target", Controls(indexed = false)) }
+            val current =
+                fixture(
+                    project,
+                    home.resolve("source"),
+                    mapOf("Input.kt" to "fun outer() { class Target }\nclass New"),
+                    setOf(CompilerSymbolKind.CLASSLIKE),
+                )
+            assertEquals("fun outer() { class Target }\nclass New", current.files.single().text)
+            assertEquals(source.scope.lease, current.scope.lease)
+            val restarted = discover(project, current, "Target", Controls(indexed = false))
+            val baseline = withUnsupportedParser { discover(project, current, "Target", Controls(indexed = false)) }
             assertTrue(restarted.outcome is SymbolDiscoveryOutcome.Complete)
             assertEquals(1, restarted.outcome.batch().candidates.size)
+            val candidate = restarted.outcome.batch().candidates.single()
+            assertEquals(source.scope.lease, candidate.lease)
+            assertEquals("Target", candidate.name.value)
+            assertEquals(SymbolDiscoveryKind.CLASS, candidate.kind)
+            assertEquals(home.resolve("source/Input.kt").toRealPath().toString(), candidate.location.file.stableValue)
+            assertEquals(
+                14,
+                assertInstanceOf<SymbolDiscoveryCandidateLocation.Declaration>(
+                        restarted.outcome.batch().candidates.single().location
+                    )
+                    .offset
+                    .value,
+            )
             assertEquals(baseline.outcome, restarted.outcome)
-            assertTrue((restarted.observation.counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED] ?: 0) > 0)
+            assertTrue((restarted.observation.counters[ClasslikeAstSdkExpectation.selected.traversalCounter] ?: 0) > 0)
         }
 
     @Test

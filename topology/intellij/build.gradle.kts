@@ -13,7 +13,7 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val intellij = selectedIntellijTarget(project).also { it.configureModule(project) }
 private val ideaPlatformBuild = intellij.profile.ideBuild
 private val sdkLibraries =
     intellij.libraries(
@@ -28,6 +28,10 @@ val extractTopologyKotlinPlugin =
     tasks.register("extractTopologyKotlinPlugin") {
         dependsOn(sdkLibraries)
     }
+
+tasks.named<Test>("test") {
+    systemProperty("kast.compilerModelTarget", intellij.profile.intellijReleaseLine)
+}
 
 dependencies {
     implementation(project(":protocol:contract"))

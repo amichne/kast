@@ -15,7 +15,7 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val intellij = selectedIntellijTarget(project).also { it.configureModule(project) }
 private val ideaLibs = intellij.libraries(project, IntellijSdkLibraryFamily.PLATFORM)
 private val kotlinPluginLibs = intellij.libraries(project, IntellijSdkLibraryFamily.KOTLIN)
 private val javaPluginLibs = intellij.libraries(project, IntellijSdkLibraryFamily.JAVA)

@@ -21,10 +21,6 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceOffset
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.file.Files
 import java.nio.file.Path
-import org.jetbrains.kotlin.cli.extensionsStorage
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.psi.KtFile
 import org.junit.jupiter.api.Assertions.assertAll
@@ -209,14 +205,9 @@ class IntellijExactDeclarationPhysicalPsiTest {
         System.setProperty("idea.system.path", home.resolve("system").toString())
         val disposable = Disposer.newDisposable()
         try {
-            val environment =
-                KotlinCoreEnvironment.createForTests(
-                    disposable,
-                    CompilerConfiguration().apply { extensionsStorage = CompilerPluginRegistrar.ExtensionStorage() },
-                    EnvironmentConfigFiles.JVM_CONFIG_FILES,
-                )
+            val project = io.github.amichne.kast.workspace.intellij.read.kotlinParserProject(disposable)
             registerJavaSyntaxTokens(disposable)
-            assertion(environment.project)
+            assertion(project)
         } finally {
             val application = ApplicationManager.getApplication()
             if (application == null) Disposer.dispose(disposable)

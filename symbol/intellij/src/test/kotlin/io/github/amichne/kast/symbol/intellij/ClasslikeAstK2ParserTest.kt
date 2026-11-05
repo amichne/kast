@@ -62,10 +62,15 @@ class ClasslikeAstK2ParserTest {
                 val after = ClasslikeAstPsiWork.census(source.files)
                 assertTrue(candidate.outcome is SymbolDiscoveryOutcome.Complete)
                 assertEquals(listOf("Target"), candidate.outcome.batch().candidates.map { it.name.value })
-                assertEquals(18_063, candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED])
-                assertEquals(2, candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_PSI_REQUESTS])
                 assertEquals(
-                    0,
+                    18_063,
+                    candidate.observation.counters[ClasslikeAstSdkExpectation.selected.traversalCounter],
+                )
+                if (ClasslikeAstSdkExpectation.selected.optimized)
+                    assertEquals(2, candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_PSI_REQUESTS])
+                else ClasslikeAstSdkExpectation.selected.assertFallback(candidate.observation, files = 2)
+                assertEquals(
+                    if (ClasslikeAstSdkExpectation.selected.optimized) 0 else 2,
                     candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_LEGACY_FALLBACKS] ?: 0,
                 )
                 assertEquals(
@@ -73,7 +78,9 @@ class ClasslikeAstK2ParserTest {
                     candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_PARSER_FALLBACKS] ?: 0,
                 )
                 assertEquals(2, candidate.observation.calls[IntellijReadCall.DECLARATION_AST_BINDING])
-                assertTrue(after.cachedCompositePsi - before.cachedCompositePsi <= 32)
+                if (ClasslikeAstSdkExpectation.selected.optimized)
+                    assertTrue(after.cachedCompositePsi - before.cachedCompositePsi <= 32)
+                else assertEquals(6_025, after.cachedCompositePsi - before.cachedCompositePsi)
                 println(
                     "K2_PIPELINE_WORK nodes=${after.nodes} " +
                         "newCompositePsi=${after.cachedCompositePsi - before.cachedCompositePsi} " +
@@ -107,8 +114,8 @@ class ClasslikeAstK2ParserTest {
                     setOf(CompilerSymbolKind.CLASSLIKE),
                 )
             val owner = IntellijClasslikeAstBinding.Owner()
-            assertTrue(
-                owner.acquire({ true }, RecordingDiscoveryObservation { 0L }) is IntellijClasslikeAstBinding.Supported
+            ClasslikeAstSdkExpectation.selected.assertBinding(
+                owner.acquire({ true }, RecordingDiscoveryObservation { 0L })
             )
             val baseline = withUnsupportedParser { discover(project, source, "Target", Controls(indexed = false)) }
             withParserDefinition(shadow) {
@@ -143,14 +150,23 @@ class ClasslikeAstK2ParserTest {
             val owner = IntellijClasslikeAstBinding.Owner()
             val baseObservation = RecordingDiscoveryObservation { 0L }
             val base = owner.acquire({ true }, baseObservation)
-            assertTrue(base is IntellijClasslikeAstBinding.Supported)
-            assertEquals(169_937, baseObservation.counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ])
+            ClasslikeAstSdkExpectation.selected.assertBinding(base)
+            assertEquals(
+                if (ClasslikeAstSdkExpectation.selected.optimized) 169_937 else 0,
+                baseObservation.counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ] ?: 0,
+            )
             withParserDefinition(ClasslikeAstK2ParserFixture.definition()) {
                 val first = RecordingDiscoveryObservation { 0L }
                 val k2 = owner.acquire({ true }, first)
-                assertTrue(k2 is IntellijClasslikeAstBinding.Supported)
-                assertEquals(173_712, first.counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ])
-                assertEquals(116, first.counters[IntellijReadCounter.DECLARATION_AST_MAPPING_PSI_PROBES])
+                ClasslikeAstSdkExpectation.selected.assertBinding(k2)
+                assertEquals(
+                    if (ClasslikeAstSdkExpectation.selected.optimized) 173_712 else 0,
+                    first.counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ] ?: 0,
+                )
+                assertEquals(
+                    if (ClasslikeAstSdkExpectation.selected.optimized) 116 else 0,
+                    first.counters[IntellijReadCounter.DECLARATION_AST_MAPPING_PSI_PROBES] ?: 0,
+                )
                 val memo = RecordingDiscoveryObservation { 0L }
                 assertSame(k2, owner.acquire({ true }, memo))
                 assertEquals(0, memo.counters[IntellijReadCounter.DECLARATION_AST_BINDING_BYTES_READ] ?: 0)
@@ -183,16 +199,18 @@ class ClasslikeAstK2ParserTest {
                                 candidate.outcome.batch().candidates.map { it.name.value },
                             )
                             assertTrue(
-                                (candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED]
+                                (candidate.observation.counters[ClasslikeAstSdkExpectation.selected.traversalCounter]
                                     ?: 0) > 0
                             )
                             val baseline = withUnsupportedParser {
                                 discover(project, source, name, Controls(indexed = false))
                             }
                             assertEquals(baseline.outcome, candidate.outcome)
+                            if (!ClasslikeAstSdkExpectation.selected.optimized)
+                                ClasslikeAstSdkExpectation.selected.assertFallback(candidate.observation)
                             assertEquals(
                                 baseline.observation.counters[IntellijReadCounter.DECLARATION_PSI_NODES_VISITED],
-                                candidate.observation.counters[IntellijReadCounter.DECLARATION_AST_NODES_VISITED],
+                                candidate.observation.counters[ClasslikeAstSdkExpectation.selected.traversalCounter],
                             )
                         }
                     }

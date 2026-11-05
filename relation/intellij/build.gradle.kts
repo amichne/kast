@@ -21,7 +21,7 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val intellij = selectedIntellijTarget(project).also { it.configureModule(project) }
 private val ideaPlatformBuild = intellij.profile.ideBuild
 private val sdkLibraries =
     intellij.libraries(
@@ -55,6 +55,7 @@ dependencies {
     }
     compileOnly(sdkLibraries)
     testImplementation(sdkLibraries)
+    testImplementation(testFixtures(project(":workspace:intellij-read")))
 }
 
 // The native call oracle must compile with the repository's compiler before IDE acceptance.

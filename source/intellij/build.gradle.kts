@@ -12,7 +12,7 @@ base {
     archivesName.set("source-intellij")
 }
 
-private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val intellij = selectedIntellijTarget(project).also { it.configureModule(project) }
 private val sdkLibraries =
     intellij.libraries(
         project,
@@ -29,4 +29,5 @@ dependencies {
 
     compileOnly(sdkLibraries)
     testImplementation(sdkLibraries)
+    testImplementation(testFixtures(project(":workspace:intellij-read")))
 }

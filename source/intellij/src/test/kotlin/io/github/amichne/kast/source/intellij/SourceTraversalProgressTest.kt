@@ -46,10 +46,6 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.test.runTest
-import org.jetbrains.kotlin.cli.extensionsStorage
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.psi.KtFile
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -282,16 +278,16 @@ class SourceTraversalProgressTest {
         System.setProperty("idea.system.path", home.resolve("system").toString())
         val disposable = Disposer.newDisposable()
         try {
-            val environment =
-                KotlinCoreEnvironment.createForTests(
-                    disposable,
-                    CompilerConfiguration().apply { extensionsStorage = CompilerPluginRegistrar.ExtensionStorage() },
-                    EnvironmentConfigFiles.JVM_CONFIG_FILES,
-                )
+            val project = io.github.amichne.kast.workspace.intellij.read.kotlinParserProject(disposable)
             val path = home.resolve("Page.kt")
             Files.writeString(path, text)
-            val virtual = checkNotNull(environment.findLocalFile(path.toRealPath().toString()))
-            val file = PsiManager.getInstance(environment.project).findFile(virtual) as KtFile
+            val virtual =
+                checkNotNull(
+                    com.intellij.openapi.vfs.VirtualFileManager.getInstance()
+                        .getFileSystem("file")
+                        .findFileByPath(path.toRealPath().toString())
+                )
+            val file = PsiManager.getInstance(project).findFile(virtual) as KtFile
             val root = CanonicalWorkspaceRoot.fromCanonicalPath(home.toRealPath()).value()
             val snapshot =
                 SourceSnapshot.create(

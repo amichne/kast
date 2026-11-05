@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.io.TempDir
 import org.gradle.testfixtures.ProjectBuilder
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import java.nio.file.Path
 
 class IntellijTargetProfileTest {
@@ -76,6 +79,20 @@ class IntellijTargetProfileTest {
             SelectedIntellijTarget(profile, null, true).nativeFixtureHome(project).get().asFile)
         assertEquals(project.projectDir.resolve("relation/intellij/build/native-test/idea"),
             SelectedIntellijTarget(profile, null, false).nativeFixtureHome(project).get().asFile)
+    }
+
+    @Test
+    fun `new compiler environment API acknowledgement is confined to 263 test compilation`() {
+        val project = ProjectBuilder.builder().withProjectDir(directory.toFile()).build()
+        project.pluginManager.apply("org.jetbrains.kotlin.jvm")
+        project.pluginManager.apply("java-test-fixtures")
+        val profile = (IntellijTargetProfiles.select(json.encodeToString(Configuration(targets = profiles)), "263")
+            as IntellijTargetSelection.Selected).profile
+        SelectedIntellijTarget(profile, null, true).configureModule(project)
+        val marker = "org.jetbrains.kotlin.CoreEnvironmentDeprecation"
+        assertFalse(marker in (project.tasks.getByName("compileKotlin") as KotlinCompile).compilerOptions.optIn.get())
+        assertTrue(marker in (project.tasks.getByName("compileTestKotlin") as KotlinCompile).compilerOptions.optIn.get())
+        assertTrue(marker in (project.tasks.getByName("compileTestFixturesKotlin") as KotlinCompile).compilerOptions.optIn.get())
     }
 }
 
