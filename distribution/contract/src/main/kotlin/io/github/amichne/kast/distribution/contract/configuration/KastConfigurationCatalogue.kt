@@ -308,7 +308,12 @@ enum class ConfigurationParameter(
         mutability = ConfigurationMutability.DERIVED,
     ),
     ASCII("KAST_ASCII", ConfigurationSyntax.SWITCH, ConfigurationScope.INSTALLATION, defaultValue = "0"),
-    OUTPUT_TOON("KAST_OUTPUT_TOON", ConfigurationSyntax.SWITCH, ConfigurationScope.REQUEST, defaultValue = "1"),
+    OUTPUT_TOON(
+        "KAST_OUTPUT_TOON",
+        ConfigurationSyntax.SWITCH,
+        ConfigurationScope.REQUEST,
+        defaultValue = CliOutputFormat.DEFAULT.switchValue,
+    ),
     WORKSPACE_PREPARATION_WAIT(
         "KAST_WORKSPACE_PREPARATION_WAIT",
         ConfigurationSyntax.OWNER_INPUT,

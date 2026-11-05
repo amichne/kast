@@ -36,7 +36,12 @@ internal class PublicJqProcess(
     override fun execute(request: PublicJqProcessRequest): Refinement<PublicJqCapture, PublicJqRejection> {
         if (Thread.currentThread().isInterrupted) throw InterruptedException("jq invocation cancelled before start")
         if (request.input.length > request.limits.bytes) return rejected(request, PublicJqFailure.BYTE_LIMIT)
-        val bytes = request.input.toByteArray(Charsets.UTF_8)
+        val bytes =
+            try {
+                request.input.encodeToByteArray(throwOnInvalidSequence = true)
+            } catch (_: CharacterCodingException) {
+                return rejected(request, PublicJqFailure.OUTPUT_INVALID)
+            }
         if (bytes.size > request.limits.bytes) return rejected(request, PublicJqFailure.BYTE_LIMIT)
         val child =
             try {

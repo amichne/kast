@@ -36,14 +36,11 @@ class CliOutputTest {
 
     @Test
     fun `environment admission accepts only the documented switch values`() {
-        assertEquals(
+        for (value in listOf(null, "", "0")) assertEquals(
             Refinement.Refined(CliOutputFormat.JSON),
-            selectCliOutputFormat("0"),
-        )
-        for (value in listOf(null, "", "1")) assertEquals(
-            Refinement.Refined(CliOutputFormat.TOON),
             selectCliOutputFormat(value),
         )
+        assertEquals(Refinement.Refined(CliOutputFormat.TOON), selectCliOutputFormat("1"))
         for (value in listOf("true", "2", " 1", "toon")) {
             assertEquals(Refinement.Rejected(CliOutputFailure.INVALID_OUTPUT_FORMAT), selectCliOutputFormat(value))
         }

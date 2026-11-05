@@ -14,10 +14,29 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.CleanupMode
 import org.junit.jupiter.api.io.TempDir
 
-/** Real jq over actual native documents; these local plans establish no compiler semantics. */
+/** Embedded JVM jq over actual native documents with PATH empty; local plans establish no compiler semantics. */
 @Tag("public-launcher")
 class NativeJqCompositionTest {
     @TempDir(cleanup = CleanupMode.ON_SUCCESS) lateinit var temporary: Path
+
+    @Test
+    fun `native default is JSON for projected values and structured failures with PATH empty`() {
+        NativePublicFixture(temporary).use { fixture ->
+            val base = listOf("query", "plan", "--name", "Order")
+            val success = fixture.start("default-json", base + jq("{type}"), environment = mapOf("PATH" to ""))
+            fixture.assertExit(success, 0, "default-json")
+            val value = Json.parseToJsonElement(Files.readString(temporary.resolve("default-json.stdout"))).jsonObject
+            assertEquals("planned", value.getValue("type").jsonPrimitive.content)
+            val rejected = fixture.start("default-error", base + jq("empty"), environment = mapOf("PATH" to ""))
+            fixture.assertExit(rejected, 2, "default-error")
+            val error = Json.parseToJsonElement(Files.readString(temporary.resolve("default-error.stdout"))).jsonObject
+            assertEquals("OUTPUT_CARDINALITY", error.getValue("failure").jsonPrimitive.content)
+            val unicode = Json.encodeToString("Ω𐀀😀\uDBFF\uDFFF")
+            val literal = fixture.start("unicode-program", base + jq(unicode), environment = mapOf("PATH" to ""))
+            fixture.assertExit(literal, 0, "unicode-program")
+            assertEquals(unicode + "\n", Files.readString(temporary.resolve("unicode-program.stdout")))
+        }
+    }
 
     @Test
     fun `native filtering preserves singleton values and exact JSON numbers before encoding`() {
@@ -43,12 +62,24 @@ class NativeJqCompositionTest {
                     ),
                     NativeProjection("false", false, "false\n"),
                     NativeProjection("null", false, "null\n"),
-                    NativeProjection("1.2345678901234567890123456789", true, "1.2345678901234567890123456789\n"),
+                    NativeProjection("[128512] | implode", true, Json.encodeToString("😀") + "\n"),
+                    NativeProjection(
+                        Json.encodeToString("😀") + " | explode | implode",
+                        true,
+                        Json.encodeToString("😀") + "\n",
+                    ),
+                    NativeProjection(Json.encodeToString("1.25") + " | fromjson", true, "1.25\n"),
+                    NativeProjection(
+                        Json.encodeToString("1.2345678901234567890123456789") + " | fromjson",
+                        true,
+                        "1.2345678901234567890123456789\n",
+                    ),
                 )
             cases.forEachIndexed { index, case ->
                 val label = "projection-$index"
                 val arguments = plan + jq(case.program) + if (case.json) listOf("--json") else emptyList()
-                val child = fixture.start(label, arguments, environment = emptyMap())
+                val child =
+                    fixture.start(label, arguments, environment = mapOf("PATH" to "", "KAST_OUTPUT_TOON" to "1"))
                 fixture.assertExit(child, 0, label)
                 assertEquals(case.expected, Files.readString(temporary.resolve("$label.stdout")))
                 assertEquals("", Files.readString(temporary.resolve("$label.stderr")))
@@ -64,15 +95,33 @@ class NativeJqCompositionTest {
             val cases =
                 listOf(
                     ".[" to "PROGRAM_INVALID",
+                    ")" to "PROGRAM_INVALID",
+                    "1)" to "PROGRAM_INVALID",
                     "error(\"private native payload\")" to "EVALUATION_FAILED",
                     "empty" to "OUTPUT_CARDINALITY",
                     "1,2" to "OUTPUT_CARDINALITY",
-                    "1.2345678901234567890123456789" to "OUTPUT_VALUE_LOSS",
+                    "1.2345678901234567890123456789" to "NUMERIC_LITERAL_LIMIT",
+                    (Json.encodeToString("1.2345678901234567890123456789") + " | fromjson") to "OUTPUT_VALUE_LOSS",
+                    "has(4294967296)" to "NUMERIC_LITERAL_LIMIT",
+                    "setpath([4294967296]; \"changed\")" to "NUMERIC_LITERAL_LIMIT",
+                    "100e2147483647" to "NUMERIC_LITERAL_LIMIT",
+                    "\"\\ud800\"" to "OUTPUT_INVALID",
+                    (Json.encodeToString(Json.encodeToString(listOf(9007199254740992L, 9007199254740993L))) +
+                        " | fromjson | unique") to "NUMERIC_VALUE_LOSS",
                 )
             cases.forEachIndexed { index, (program, failure) ->
                 val label = "rejection-$index"
-                val child = fixture.start(label, plan + jq(program), environment = emptyMap())
-                fixture.assertExit(child, if (failure == "OUTPUT_VALUE_LOSS") 6 else 2, label)
+                val child =
+                    fixture.start(
+                        label,
+                        plan + jq(program),
+                        environment = mapOf("PATH" to "", "KAST_OUTPUT_TOON" to "1"),
+                    )
+                fixture.assertExit(
+                    child,
+                    if (failure in setOf("NUMERIC_VALUE_LOSS", "OUTPUT_VALUE_LOSS", "OUTPUT_INVALID")) 6 else 2,
+                    label,
+                )
                 val output = Files.readString(temporary.resolve("$label.stdout"))
                 val diagnostic = Files.readString(temporary.resolve("$label.stderr"))
                 val document = Json.parseToJsonElement(JToon.decodeToJson(output)).jsonObject
@@ -83,14 +132,7 @@ class NativeJqCompositionTest {
         }
     }
 
-    private fun jq(program: String): List<String> = listOf("--jq", program, "--jq-executable", executable().toString())
-
-    private fun executable(): Path =
-        System.getenv("PATH")
-            .split(java.io.File.pathSeparatorChar)
-            .map { Path.of(it).resolve("jq") }
-            .first { Files.isRegularFile(it) && Files.isExecutable(it) }
-            .toRealPath()
+    private fun jq(program: String): List<String> = listOf("--jq", program)
 
     private data class NativeProjection(val program: String, val json: Boolean, val expected: String)
 }

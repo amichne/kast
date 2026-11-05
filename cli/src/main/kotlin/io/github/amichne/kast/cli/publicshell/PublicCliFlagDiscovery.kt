@@ -60,7 +60,6 @@ private fun queryFlagSchema(flag: PublicCliFlag, input: JsonObject, catalog: Pub
         PublicCliFlag.CATALOG,
         PublicCliFlag.JSON,
         PublicCliFlag.JQ,
-        PublicCliFlag.JQ_EXECUTABLE,
         PublicCliFlag.JQ_TIMEOUT,
         PublicCliFlag.JQ_BYTES,
         PublicCliFlag.HELP,

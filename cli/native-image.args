@@ -2,6 +2,7 @@
 --enable-native-access=ALL-UNNAMED
 --enable-url-protocols=https
 -H:IncludeResources=management/bootstrap-install.sh
+-H:IncludeResources=jq-engine[.]properties
 --exact-reachability-metadata
 -Os
 --emit

@@ -387,8 +387,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "ba37233296a4ada3eed3adeff38415efd2eb43cfdafa909f6e64c9876f5b1826",
-      "claimsSha256": "6e06aae401a9d536cce0032a9b2086ba12146c7e2543b96deb4bf4cd4136bd1c",
+      "sha256": "48a73c55975eea9277c069d267b861f7edfac1779b329a5b20705beb4f3ab534",
+      "claimsSha256": "3beb7f8adb3de87f016a82a0bf89302af2df326af9d20581360be0b453561c3e",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -498,8 +498,8 @@
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
           "resource": "repo://cli/build.gradle.kts",
-          "recordedVersion": "repo-file-v1:sha256:fc96f7e447a3b03146c07d43b3ec340ecd40af6ef19f283c82f2d9196351c8cc",
-          "currentVersion": "repo-file-v1:sha256:fc96f7e447a3b03146c07d43b3ec340ecd40af6ef19f283c82f2d9196351c8cc",
+          "recordedVersion": "repo-file-v1:sha256:d31ae1e1069157e9210b4a304c3d6f8bcad56d5305574448535b9f82ad8e2381",
+          "currentVersion": "repo-file-v1:sha256:d31ae1e1069157e9210b4a304c3d6f8bcad56d5305574448535b9f82ad8e2381",
           "status": "MATCHED"
         },
         {
@@ -751,7 +751,7 @@
           "claim": "claim_6841e7e3c40a485aaee1af9d7abbb523",
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L312-L322",
           "recordedVersion": "repo-lines-v1:sha256:6235ce096d62b7956d1f2e3de890c24abbc17400cca664ed0f7748547cbf8b13:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyY2RkNTFjNGY3YWZjYzllZmJlNmU5ZWQzM2JjZTMyZmE5YzA4ZjA2ZGM2YzkzYTcxNjc3ZThkZTBhOWMyZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1Mjg5ZWQ0ODg4ZDRmMWI0MDQwNjRiZmEyYjg3YTg1M2IxN2YzYjYzNTAyZGNiZGU0YmZjOThiNDA0ZDdlZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNhODdkY2JiM2UwZjg4NDBiNDRiNTc4OGMyZDA4OWE4MjJkNjRiMDgzZTE1MjZlZmIyZWY4YzhkZDAxOWQyN2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4YTE4N2MxMzgyOGYxYmRkZThlNTlhNGUyZjQwODkyNmFmMjU0NzBhYmJjZjVkOGM3MDhhMWIxZDIyMWI1ZWUifQ",
-          "currentVersion": "repo-file-v1:sha256:d2b6a205ba4b0ec735b3ae190f59493b48a5973fc00e880c9940748d7d14b2a6",
+          "currentVersion": "repo-file-v1:sha256:bc5b0b095fb2ee95b93d433cf18d4065116ecde59cc8a4e39f17dff565f11c00",
           "status": "NOT_ASSESSED"
         },
         {

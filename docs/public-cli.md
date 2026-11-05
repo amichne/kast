@@ -76,22 +76,22 @@ The CLI reads stdin only for an explicit `--request -`.
 
 ## Select presentation
 
-CLI result documents use [TOON](https://toonformat.dev/guide/getting-started) by default:
+Semantic CLI result documents use JSON by default:
 
 ```sh
 kast query --name OrderService --in services/orders
 kast describe query --section input --pointer ''
-kast status
+kast status --json
 ```
 
 The switch covers semantic results, descriptors, plans, startup rejections, and management results.
-Management commands select structured results without `--json` when TOON is selected.
+Management commands keep their human output unless `--json` or TOON is selected.
 For semantic commands, plans, and discovery, `--json` selects JSON even when the switch selects TOON.
 Help, version text, and stderr diagnostics keep their existing formats.
 JSON requests, stored records, Host messages, MCP, and tool RPC keep their existing JSON contracts.
 
-Set `KAST_OUTPUT_TOON=0` to select JSON.
-An unset or empty variable selects TOON, as does `KAST_OUTPUT_TOON=1`.
+Set `KAST_OUTPUT_TOON=1` to select [TOON](https://toonformat.dev/guide/getting-started).
+An unset or empty variable selects JSON, as does `KAST_OUTPUT_TOON=0`.
 Other values reject before command effects with exit `2` and a JSON `INVALID_OUTPUT_FORMAT` result, unless semantic `--json` selects JSON explicitly.
 `JToon` encodes the existing JSON projection, so the same result fields and qualifications remain present.
 An encoding rejection returns `OUTPUT_ENCODING_REJECTED` with exit `6` instead of a successful result.
@@ -139,9 +139,9 @@ A selected row subset keeps its incomplete-input qualification.
 
 ## Read output and exit status
 
-Semantic commands emit the existing RPC outcome in TOON with a final newline by default.
+Semantic commands emit the existing RPC outcome in JSON with a final newline by default.
 The output shape stays the same in terminals and pipes.
-`KAST_OUTPUT_TOON=0` changes the encoding to JSON.
+`KAST_OUTPUT_TOON=1` changes the encoding to TOON.
 For semantic commands, `--json` preserves the result contract and overrides the environment switch.
 Progress and bounded diagnostics use stderr.
 
@@ -169,7 +169,7 @@ For a pipeline that depends on the producer status, enable `pipefail`:
 
 ```sh
 set -o pipefail
-KAST_OUTPUT_TOON=0 kast query --request query.json | jq .
+kast query --request query.json | jq .
 ```
 
 A formatter does not preserve the producer status by itself.

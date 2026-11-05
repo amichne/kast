@@ -58,7 +58,7 @@ class PublicLauncherCompositionTest {
                 val (arguments, exit) = case
                 val standard = fixture.start("json-$index", arguments)
                 fixture.assertExit(standard, exit, "json-$index")
-                val toon = fixture.start("toon-$index", arguments, environment = emptyMap())
+                val toon = fixture.start("toon-$index", arguments, environment = mapOf("KAST_OUTPUT_TOON" to "1"))
                 fixture.assertExit(toon, exit, "toon-$index")
                 val encoded = Files.readString(temporary.resolve("toon-$index.stdout"))
                 assertFalse(encoded.trimStart().startsWith("{"))

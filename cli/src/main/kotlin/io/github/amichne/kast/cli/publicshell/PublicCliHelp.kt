@@ -5,7 +5,7 @@ internal fun publicCliHelp(command: PublicCliCommandId?): String =
         "Kast: compiler-grounded Kotlin queries.\n" +
             PublicCliCommandId.entries.joinToString("\n") { "  kast ${it.argv.joinToString(" ")}" } +
             "\nUse kast COMMAND --help for flags, or kast describe COMMAND for the contract summary.\n" +
-            "Semantic commands emit one TOON document. Use --json for piping JSON; diagnostics use stderr."
+            "Semantic commands emit one JSON document. Set KAST_OUTPUT_TOON=1 for TOON; diagnostics use stderr."
     } else publicCliHelp(listOf(command))
 
 internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
@@ -18,10 +18,11 @@ internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
             "\nSchema page: kast describe ${selected.id} --section input --pointer '' --json"
     } +
         "\nUse --json for JSON stdout. Progress and diagnostics use stderr.\n" +
-        "--jq FILTER uses installed jq >=1.8.2,<2 before encoding, on successful documents only. " +
+        "--jq FILTER uses bundled jackson-jq $embeddedJqVersion before encoding, on successful documents only. " +
         "Return exactly one JSON value; collect generators with [FILTER]. For streams use --json | jq.\n" +
-        "--jq-executable PATH selects an absolute executable. --jq-timeout-ms defaults to 5000 (1..60000); " +
+        "No external jq is needed. --jq-timeout-ms defaults to 5000 (1..60000); " +
         "--jq-max-bytes defaults to 16777216 (1..67108864). Limits are independent of semantic work.\n" +
+        "Embedded jq supports navigation, map, select and composition; see describe for numeric and builtin limits.\n" +
         "Schema pages default to 16 entries and 16384 bytes. Follow pointers and next_cursor for more.\n" +
         when {
             commands.singleOrNull() == PublicCliCommandId.DIAGNOSTIC_CHECK ->

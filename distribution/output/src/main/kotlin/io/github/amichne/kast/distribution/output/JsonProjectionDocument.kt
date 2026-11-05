@@ -11,6 +11,15 @@ import kotlinx.serialization.json.JsonPrimitive
 /** One strict JSON value at the dynamic user-projection boundary; no canonical response schema is implied. */
 class JsonProjectionDocument
 private constructor(val text: String, internal val tree: JsonElement, internal val depth: Int) {
+    /** Admit a codec's re-encoding only after exact values, signed zero and shape have survived it. */
+    fun reencoded(text: String): Refinement<JsonProjectionDocument, CliOutputFailure> =
+        when (val decoded = parse(text)) {
+            is Refinement.Rejected -> decoded
+            is Refinement.Refined ->
+                if (sameJsonValues(tree, decoded.value.tree)) decoded
+                else Refinement.Rejected(CliOutputFailure.OUTPUT_VALUE_LOSS)
+        }
+
     companion object {
         fun parse(text: String): Refinement<JsonProjectionDocument, CliOutputFailure> =
             try {

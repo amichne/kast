@@ -161,6 +161,7 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
                             NativeControlEntry.MCP,
                             NativeControlEntry.RPC -> Unit
                             NativeControlEntry.MANAGEMENT,
+                            NativeControlEntry.JQ,
                             NativeControlEntry.SERVICE,
                             NativeControlEntry.DAEMON,
                             NativeControlEntry.CODEX,

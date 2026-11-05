@@ -1,0 +1,223 @@
+package io.github.amichne.kast.cli.publicshell
+
+import com.fasterxml.jackson.core.JsonFactory
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.core.StreamReadConstraints
+import com.fasterxml.jackson.core.StreamWriteConstraints
+import com.fasterxml.jackson.core.exc.StreamConstraintsException
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature
+import com.fasterxml.jackson.databind.json.JsonMapper
+import io.github.amichne.kast.distribution.output.JsonProjectionDocument
+import io.github.amichne.kast.kernel.Refinement
+import java.io.StringReader
+import java.nio.charset.CharacterCodingException
+import net.thisptr.jackson.jq.BuiltinFunctionLoader
+import net.thisptr.jackson.jq.JsonQuery
+import net.thisptr.jackson.jq.Scope
+import net.thisptr.jackson.jq.Versions
+import net.thisptr.jackson.jq.exception.JsonQueryException
+import net.thisptr.jackson.jq.internal.javacc.ExpressionParserConstants
+import net.thisptr.jackson.jq.internal.javacc.ExpressionParserTokenManager
+import net.thisptr.jackson.jq.internal.javacc.SimpleCharStream
+import net.thisptr.jackson.jq.internal.javacc.TokenMgrError
+
+/** An embedded program whose syntax and numeric literals have been admitted before workspace effects. */
+internal class PublicJqProgram private constructor(private val query: JsonQuery) {
+    fun evaluate(document: String, maxBytes: Int): Refinement<JsonProjectionDocument, PublicJqFailure> {
+        val mapper = exactJqMapper()
+        val input =
+            when (val admitted = parseExactJqJson(document, mapper)) {
+                is Refinement.Rejected -> return admitted
+                is Refinement.Refined -> admitted.value
+            }
+        val root = Scope.newEmptyScope()
+        // Core builtins only: no CLI I/O extensions, environment access or filesystem module loader.
+        BuiltinFunctionLoader.getInstance().loadFunctions(Versions.JQ_1_7, root)
+        installExactJsonConversions(root, mapper)
+        PublicJqUnicode.install(root)
+        val result = JqSingleResult(mapper, maxBytes)
+        return try {
+            query.apply(Scope.newChildScope(root), input, result::emit)
+            result.finish()
+        } catch (rejected: JqEmissionRejected) {
+            Refinement.Rejected(rejected.failure)
+        } catch (_: JqNumericValueLoss) {
+            Refinement.Rejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
+        } catch (_: CharacterCodingException) {
+            Refinement.Rejected(PublicJqFailure.OUTPUT_INVALID)
+        } catch (_: JsonQueryException) {
+            // Discard any earlier emission, including errors after the first result. Never publish the payload.
+            Refinement.Rejected(PublicJqFailure.EVALUATION_FAILED)
+        } catch (failure: JsonProcessingException) {
+            Refinement.Rejected(jqJsonFailure(failure))
+        }
+    }
+
+    companion object {
+        fun compile(program: String): Refinement<PublicJqProgram, PublicJqFailure> =
+            try {
+                when (val literals = admitJqLiterals(program)) {
+                    is Refinement.Rejected -> literals
+                    is Refinement.Refined ->
+                        Refinement.Refined(PublicJqProgram(JsonQuery.compile(program, Versions.JQ_1_7)))
+                }
+            } catch (_: JsonQueryException) {
+                Refinement.Rejected(PublicJqFailure.PROGRAM_INVALID)
+            } catch (_: NumberFormatException) {
+                Refinement.Rejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
+            }
+    }
+}
+
+private fun exactJqMapper(): ObjectMapper =
+    JsonMapper.builder(
+            JsonFactory.builder()
+                .streamReadConstraints(
+                    StreamReadConstraints.builder()
+                        .maxNestingDepth(PublicJqLimits.JSON_NESTING)
+                        .maxNumberLength(PublicJqLimits.JSON_NUMBER_CHARACTERS)
+                        .maxStringLength(PublicJqLimits.MAXIMUM_BYTES)
+                        .build()
+                )
+                .streamWriteConstraints(
+                    StreamWriteConstraints.builder().maxNestingDepth(PublicJqLimits.JSON_NESTING).build()
+                )
+                .build()
+        )
+        .nodeFactory(PublicJqNumberFactory)
+        .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+        .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+        .build()
+
+/** Use the pinned engine's lexer rather than a second jq grammar or a regular-expression approximation. */
+private fun admitJqLiterals(program: String): Refinement<Unit, PublicJqFailure> {
+    val tokens = ExpressionParserTokenManager(SimpleCharStream(StringReader(program)))
+    return try {
+        var token = tokens.nextToken
+        while (token.kind != ExpressionParserConstants.EOF) {
+            if (token.kind == ExpressionParserConstants.OPEN_INTERP)
+                return Refinement.Rejected(PublicJqFailure.PROGRAM_UNSUPPORTED)
+            if (
+                token.kind in
+                    setOf(ExpressionParserConstants.INTEGER_LITERAL, ExpressionParserConstants.FLOAT_LITERAL) &&
+                    !boundedJqLiteral(token.image)
+            )
+                return Refinement.Rejected(PublicJqFailure.NUMERIC_LITERAL_LIMIT)
+            token = tokens.nextToken
+        }
+        Refinement.Refined(Unit)
+    } catch (_: TokenMgrError) {
+        Refinement.Rejected(PublicJqFailure.PROGRAM_INVALID)
+    } catch (_: IllegalStateException) {
+        // The pinned lexer uses this for unmatched closing parentheses before its parser can reject them.
+        Refinement.Rejected(PublicJqFailure.PROGRAM_INVALID)
+    }
+}
+
+private class JqEmissionRejected(val failure: PublicJqFailure) : RuntimeException()
+
+/** The stock conversions use a different mapper. Keep nested JSON and tonumber under the same exact codec guard. */
+private fun installExactJsonConversions(scope: Scope, mapper: ObjectMapper) {
+    scope.addFunction("fromjson", 0) { _, _, value, _, output, _ ->
+        output.emit(parseJqString(value, mapper), null)
+    }
+    scope.addFunction("tonumber", 0) { _, _, value, _, output, _ ->
+        val number = if (value.isNumber) value else parseJqString(value, mapper)
+        if (!number.isNumber) throw JsonQueryException("tonumber requires a number")
+        output.emit(number, null)
+    }
+}
+
+private fun parseJqString(value: JsonNode, mapper: ObjectMapper): JsonNode {
+    if (!value.isTextual) throw JsonQueryException("JSON conversion requires a string")
+    return when (val parsed = parseExactJqJson(value.textValue(), mapper)) {
+        is Refinement.Refined -> parsed.value
+        is Refinement.Rejected -> rejectJqConversion(parsed.failure)
+    }
+}
+
+private fun rejectJqConversion(failure: PublicJqFailure): Nothing =
+    if (failure == PublicJqFailure.OUTPUT_INVALID) throw JsonQueryException("Invalid JSON text")
+    else throw JqEmissionRejected(failure)
+
+private fun parseExactJqJson(text: String, mapper: ObjectMapper): Refinement<JsonNode, PublicJqFailure> {
+    val original =
+        when (val admitted = JsonProjectionDocument.parse(text)) {
+            is Refinement.Rejected -> return Refinement.Rejected(PublicJqFailure.OUTPUT_INVALID)
+            is Refinement.Refined -> admitted.value
+        }
+    return try {
+        val node = mapper.readTree(text)
+        if (original.reencoded(mapper.writeValueAsString(node)) is Refinement.Rejected)
+            Refinement.Rejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
+        else Refinement.Refined(node)
+    } catch (failure: JsonProcessingException) {
+        Refinement.Rejected(jqJsonFailure(failure))
+    }
+}
+
+private fun jqJsonFailure(failure: JsonProcessingException): PublicJqFailure =
+    if (
+        generateSequence<Throwable>(failure) { it.cause }
+            .take(MAX_JSON_ERROR_CAUSES)
+            .any { it is StreamConstraintsException }
+    )
+        PublicJqFailure.JSON_LIMIT
+    else PublicJqFailure.OUTPUT_INVALID
+
+private const val MAX_JSON_ERROR_CAUSES = 8
+
+private fun boundedJqLiteral(text: String): Boolean {
+    val original = text.toBigDecimalOrNull() ?: return false
+    return try {
+        original.abs().compareTo(Int.MAX_VALUE.toBigDecimal()) <= 0 && original.stripTrailingZeros().scale() <= 0
+    } catch (_: ArithmeticException) {
+        false
+    }
+}
+
+private sealed interface JqEmission {
+    data object Empty : JqEmission
+
+    data class Single(val document: JsonProjectionDocument) : JqEmission
+}
+
+private class JqSingleResult(private val mapper: ObjectMapper, private val maxBytes: Int) {
+    private var state: JqEmission = JqEmission.Empty
+
+    fun emit(value: JsonNode) {
+        if (state is JqEmission.Single) throw JqEmissionRejected(PublicJqFailure.OUTPUT_CARDINALITY)
+        rejectNonFiniteNumbers(value)
+        state = JqEmission.Single(encode(value))
+    }
+
+    fun finish(): Refinement<JsonProjectionDocument, PublicJqFailure> =
+        when (val captured = state) {
+            JqEmission.Empty -> Refinement.Rejected(PublicJqFailure.OUTPUT_CARDINALITY)
+            is JqEmission.Single -> Refinement.Refined(captured.document)
+        }
+
+    private fun encode(value: JsonNode): JsonProjectionDocument {
+        val text = mapper.writeValueAsString(value)
+        if (text.encodeToByteArray(throwOnInvalidSequence = true).size > maxBytes)
+            throw JqEmissionRejected(PublicJqFailure.BYTE_LIMIT)
+        return when (val parsed = JsonProjectionDocument.parse(text)) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> throw JqEmissionRejected(PublicJqFailure.OUTPUT_INVALID)
+        }
+    }
+}
+
+private fun rejectNonFiniteNumbers(value: JsonNode) {
+    val pending = ArrayDeque<JsonNode>()
+    pending.add(value)
+    while (pending.isNotEmpty()) {
+        val node = pending.removeLast()
+        if ((node.isDouble || node.isFloat) && !node.doubleValue().isFinite())
+            throw JqEmissionRejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
+        if (node.isContainerNode) node.forEach { pending.add(it) }
+    }
+}

@@ -26,16 +26,15 @@ class ManagementToonProcessTest {
     }
 
     @Test
-    fun `unset and empty output settings select TOON by default`() {
-        val standard = child(listOf("status", "--json"))
+    fun `unset and empty output settings preserve the JSON mode management baseline`() {
+        val standard = child(listOf("status"), "0")
         for (flag in listOf(null, "")) {
-            val toon = child(listOf("status"), flag)
-            assertEquals(standard.first, toon.first)
-            assertTrue(toon.second.startsWith("commandPath:"))
-            assertEquals(
-                Json.parseToJsonElement(standard.second),
-                Json.parseToJsonElement(JToon.decodeToJson(toon.second)),
-            )
+            val actual = child(listOf("status"), flag)
+            assertEquals(standard.first, actual.first)
+            assertEquals(standard.second, actual.second)
+            val structured = child(listOf("status", "--json"), flag)
+            assertEquals(0, structured.first)
+            assertTrue(Json.parseToJsonElement(structured.second).jsonObject.containsKey("commandPath"))
         }
     }
 

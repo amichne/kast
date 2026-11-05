@@ -14,6 +14,22 @@ import org.junit.jupiter.api.Test
 
 class LosslessCliOutputTest {
     @Test
+    fun `reencoding admits equal decimals and rejects changed numeric values signs and array shape`() {
+        val decimal = (JsonProjectionDocument.parse("1.2300") as Refinement.Refined).value
+        assertTrue(decimal.reencoded("1.23") is Refinement.Refined)
+        for ((before, after) in
+            listOf(
+                "9223372036854775807" to "9223372036854776000",
+                "-0.0" to "0.0",
+                Json.encodeToString(listOf(listOf(1), emptyList())) to Json.encodeToString(listOf(1)),
+                "null" to "false",
+            )) {
+            val original = (JsonProjectionDocument.parse(before) as Refinement.Refined).value
+            assertEquals(Refinement.Rejected(CliOutputFailure.OUTPUT_VALUE_LOSS), original.reencoded(after))
+        }
+    }
+
+    @Test
     @OptIn(ExperimentalSerializationApi::class)
     fun `TOON rejects exact decimal loss instead of rounding a jq projection`() {
         val decimal = "1.2345678901234567890123456789"

@@ -11,7 +11,7 @@ class NativeControlResetSelectionTest {
 
     @Test
     fun `force reset selects each native worker mode with its exact process identity`() {
-        for (mode in listOf("query", "mcp", "rpc", "service", "daemon", "codex")) {
+        for (mode in listOf("query", "mcp", "rpc", "jq", "service", "daemon", "codex")) {
             val snapshot =
                 snapshot(
                     listOf("-Duser.home=/fixture/home", "-XX:ActiveProcessorCount=2", "--internal-entrypoint=$mode")
@@ -50,6 +50,8 @@ class NativeControlResetSelectionTest {
                 snapshot(listOf("-DnotAProperty", "--internal-entrypoint=mcp")),
                 snapshot(listOf("-XXpremain:Example", "--internal-entrypoint=mcp")),
                 snapshot(listOf("--internal-entrypoint=mcp"))
+                    .copy(command = "/foreign/share/kast/libexec/kast-management"),
+                snapshot(listOf("-Xmx512m", "--internal-entrypoint=jq", "FILTER", "1024", "Lg=="))
                     .copy(command = "/foreign/share/kast/libexec/kast-management"),
                 snapshot(listOf("--internal-entrypoint=mcp"))
                     .copy(command = "$root/../foreign/share/kast/libexec/kast-management"),

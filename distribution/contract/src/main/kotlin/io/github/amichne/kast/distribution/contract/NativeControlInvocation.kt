@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 enum class NativeControlEntry(val selector: String) {
     MANAGEMENT("management"),
     QUERY("query"),
+    JQ("jq"),
     MCP("mcp"),
     RPC("rpc"),
     SERVICE("service"),

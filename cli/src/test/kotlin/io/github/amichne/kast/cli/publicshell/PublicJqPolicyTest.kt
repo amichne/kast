@@ -2,7 +2,6 @@ package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.kernel.Refinement
 import java.io.ByteArrayInputStream
-import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -38,6 +37,7 @@ class PublicJqPolicyTest {
             listOf(
                 listOf("--jq-executable", "/bin/jq"),
                 listOf("--jq", ""),
+                listOf("--jq", "\uD800"),
                 listOf("--jq", ".", "--jq-timeout-ms", "0"),
                 listOf("--jq", ".", "--jq-max-bytes", "67108865"),
                 listOf("--jq", ".", "--jq-executable", "./jq"),
@@ -50,10 +50,10 @@ class PublicJqPolicyTest {
 
     @Test
     fun `syntax rejection occurs before workspace composition without exposing stderr payloads`() {
-        val executor = scripted(listOf(PublicJqCapture(0, "jq-1.8.2\n"), PublicJqCapture(3, "")))
+        val executor = scripted(listOf(PublicJqCapture(21, "")))
         val prepared =
             preparePublicCli(
-                listOf("query", "--name", "Order", "--jq", ".[", "--jq-executable", executable().toString()),
+                listOf("query", "--name", "Order", "--jq", ".["),
                 ByteArrayInputStream(byteArrayOf()),
                 temporary,
                 session = { _, _ -> error("workspace effects forbidden") },
@@ -75,8 +75,7 @@ class PublicJqPolicyTest {
                 "1.2345678901234567890123456789",
                 Json.encodeToString(listOf(listOf(1, 2), emptyList())),
             )) {
-            val executor =
-                scripted(listOf(PublicJqCapture(0, "jq-1.8.2"), PublicJqCapture(0, ""), PublicJqCapture(0, "$value\n")))
+            val executor = scripted(listOf(PublicJqCapture(0, ""), PublicJqCapture(0, "$value\n")))
             val result = engine(executor).project(PublicPreparedOutput("null", PublicShellExit.COMPLETE))
             assertTrue(result is Refinement.Refined)
             val prepared = (result as Refinement.Refined).value
@@ -90,12 +89,12 @@ class PublicJqPolicyTest {
     fun `empty and multiple streams reject and late runtime errors discard their prefix`() {
         for ((capture, cause) in
             listOf(
-                PublicJqCapture(0, "") to PublicJqFailure.OUTPUT_CARDINALITY,
-                PublicJqCapture(0, "1\n2\n") to PublicJqFailure.OUTPUT_CARDINALITY,
-                PublicJqCapture(5, "1\n") to PublicJqFailure.EVALUATION_FAILED,
+                PublicJqCapture(23, "") to PublicJqFailure.OUTPUT_CARDINALITY,
+                PublicJqCapture(23, "") to PublicJqFailure.OUTPUT_CARDINALITY,
+                PublicJqCapture(22, "1\n") to PublicJqFailure.EVALUATION_FAILED,
                 PublicJqCapture(0, "invalid") to PublicJqFailure.OUTPUT_INVALID,
             )) {
-            val executor = scripted(listOf(PublicJqCapture(0, "jq-1.8.2"), PublicJqCapture(0, ""), capture))
+            val executor = scripted(listOf(PublicJqCapture(0, ""), capture))
             val result = engine(executor).project(PublicPreparedOutput("null", PublicShellExit.COMPLETE))
             assertEquals(cause, (result as Refinement.Rejected).failure.failure)
             executor.settled()
@@ -112,24 +111,11 @@ class PublicJqPolicyTest {
                 PublicShellExit.DELIVERY,
                 PublicShellExit.ELAPSED,
             )) {
-            val executor = scripted(listOf(PublicJqCapture(0, "jq-1.8.2"), PublicJqCapture(0, "")))
+            val executor = scripted(listOf(PublicJqCapture(0, "")))
             val original = PublicPreparedOutput("original failure evidence", exit)
             assertSame(original, (engine(executor).project(original) as Refinement.Refined).value)
             executor.settled()
         }
-    }
-
-    @Test
-    fun `automatic lookup excludes project executables while explicit selection remains available`() {
-        val projectExecutable = executable()
-        val options =
-            (parse("query", "plan", "--name", "Order", "--jq", ".").projection as PublicOutputProjection.Jq).options
-        val forbidden = PublicJqExecutor { error("project PATH execution forbidden") }
-        val result =
-            PublicJqEngine.prepare(options, temporary, mapOf("PATH" to ".:${temporary}"), forbidden)
-                as Refinement.Rejected
-        assertEquals(PublicJqFailure.ENGINE_UNAVAILABLE, result.failure.failure)
-        assertTrue(Files.isExecutable(projectExecutable))
     }
 
     @Test
@@ -175,7 +161,7 @@ class PublicJqPolicyTest {
                 io.github.amichne.kast.cli.rpc.ToolRpcReply.Complete(reply.jsonObject.getValue("document").jsonObject)
             )
         assertEquals(PublicShellExit.COMPLETE, original.exit)
-        val failed = scripted(listOf(PublicJqCapture(0, "jq-1.8.2"), PublicJqCapture(0, ""), PublicJqCapture(5, "1\n")))
+        val failed = scripted(listOf(PublicJqCapture(0, ""), PublicJqCapture(22, "1\n")))
         val rejection = (engine(failed).project(original) as Refinement.Rejected).failure
         assertEquals("result:v1:c9f421f8-a7c1-4b38-b737-21fd8f7e2fc1", rejection.recovery?.request?.result?.value)
         assertEquals(
@@ -189,7 +175,6 @@ class PublicJqPolicyTest {
         val decimal =
             scripted(
                 listOf(
-                    PublicJqCapture(0, "jq-1.8.2"),
                     PublicJqCapture(0, ""),
                     PublicJqCapture(0, "1.2345678901234567890123456789\n"),
                 )
@@ -206,16 +191,10 @@ class PublicJqPolicyTest {
         decimal.settled()
     }
 
-    private fun executable(): Path =
-        temporary.resolve("jq").also {
-            Files.writeString(it, "fixture executable")
-            check(it.toFile().setExecutable(true))
-        }
-
     private fun engine(executor: ScriptedJq): PublicJqEngine {
-        val command = parse("query", "plan", "--name", "Order", "--jq", ".", "--jq-executable", executable().toString())
+        val command = parse("query", "plan", "--name", "Order", "--jq", ".")
         val options = (command.projection as PublicOutputProjection.Jq).options
-        return (PublicJqEngine.prepare(options, temporary, emptyMap(), executor) as Refinement.Refined).value
+        return (PublicJqEngine.prepare(options, temporary, executor) as Refinement.Refined).value
     }
 
     private fun parse(vararg words: String): PublicCliCommand =
@@ -231,7 +210,7 @@ private class ScriptedJq(private val captures: List<PublicJqCapture>) : PublicJq
 
     override fun execute(request: PublicJqProcessRequest): Refinement<PublicJqCapture, PublicJqRejection> {
         check(index < captures.size) { "unexpected jq call: ${request.stage}" }
-        assertEquals(listOf(PublicJqStage.VERSION, PublicJqStage.COMPILE, PublicJqStage.FILTER)[index], request.stage)
+        assertEquals(listOf(PublicJqStage.COMPILE, PublicJqStage.FILTER)[index], request.stage)
         if (request.stage == PublicJqStage.COMPILE) assertEquals("", request.input)
         return Refinement.Refined(captures[index++])
     }

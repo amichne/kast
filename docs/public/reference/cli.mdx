@@ -154,16 +154,18 @@ Do not combine `--request` with semantic flags or `--verbose`.
 
 ## Read the outcome
 
-Semantic commands emit TOON on stdout by default.
-Use `--json` for JSON output from one command.
-This flag overrides `KAST_OUTPUT_TOON`.
-Set `KAST_OUTPUT_TOON=0` for JSON output across commands.
+Semantic commands emit JSON on stdout by default.
+Set `KAST_OUTPUT_TOON=1` to select TOON.
+Use `--json` to select JSON even when this variable selects TOON.
+An unset, empty, or `0` value selects JSON.
 The input document remains JSON with either output format.
-For pipelines, select `--json` explicitly and keep stderr separate.
+For pipelines, keep stderr separate from the JSON result.
+
 Use `--max-results`, `--max-returned-bytes`, and a narrow `--fields` selection before the query.
 These limits bound presentation without stripping completion or recovery evidence.
 Query byte limits measure canonical JSON presentation before TOON encoding. The outer envelope, newline, and stderr are outside that allowance.
 An explicit `--request` document owns its execution budget; do not add semantic budget flags beside it.
+
 Progress and diagnostics use stderr.
 Read the outer outcome and its qualifications before a semantic conclusion.
 An unfinished search with no matches does not prove absence.
@@ -189,7 +191,7 @@ Keep the reported stage and readiness evidence before a new query.
 
 ## Filter structured output
 
-Use `--jq FILTER` to run an installed jq on one successful JSON result before Kast encodes it as TOON or JSON:
+Use `--jq FILTER` to project one successful JSON result with bundled jackson-jq before Kast encodes it as TOON or JSON:
 
 ```shell
 kast query plan --name OrderService --fields name,location \
@@ -199,7 +201,7 @@ kast query plan --name OrderService --fields name,location \
 The filter must emit exactly one JSON value. Use `map(...)` or `[FILTER]` to collect a generator explicitly.
 An empty stream rejects; an empty array, `false`, and `null` are valid results.
 Kast does not add an array, flatten nested arrays, select the first result, or enable jq's `-e` option.
-For ordinary jq streams, raw strings, variable bindings, or other jq command options, use a JSON pipeline:
+For ordinary jq streams, raw strings, `--arg` bindings, or other jq command options, use a JSON pipeline:
 
 ```shell
 set -o pipefail
@@ -211,7 +213,7 @@ Filtering does not request missing fields, read another page, follow a continuat
 Keep `--fields` and semantic scope constraints on the original request when they can reduce its work.
 Preserve completion, qualifications, and recovery evidence when interpreting a projection.
 
-Kast checks the jq version and compiles the filter before workspace effects.
+Kast checks filter syntax and numeric literals before workspace effects. Unknown functions and input types reject during evaluation.
 Workspace failures, qualified results, time limits, and other nonzero Kast statuses keep their original documents without filtering.
 After successful semantic work, a jq runtime failure discards any partial filter output and reports its stage and child exit status.
 Use the retained result authority for recovery when available; projection failure does not retry semantic work.
@@ -223,20 +225,51 @@ kast query --request recovery.json --json
 
 The recovery preserves the issued reference and original output kind. A normal retained result is read from its beginning; an issued detail request remains unchanged.
 
-Supported engines are stable jq versions `>=1.8.2,<2`. The qualification pin lives in `mise.toml`; newer supported versions can run without changing that pin.
-Kast does not install or download jq. Automatic executable lookup ignores relative PATH entries and executables inside the current working directory.
-Use `--jq-executable /absolute/path/to/jq` to select an executable explicitly, including when PATH contains a tool-manager shim.
-Filters are trusted code: jq can read its environment, import modules or data, and consume substantial memory. This option does not provide a sandbox.
-Kast passes the filter as one argument without a shell. It does not echo filter text, source payloads, or jq stderr in its rejection documents.
+### Embedded engine
+
+Kast embeds jackson-jq `1.6.5` with jq `1.7` compatibility. No external jq, JVM installation, PATH lookup, or runtime download is needed.
+The native Control image contains the library. `--jq-executable` is no longer accepted.
+The version catalog in `gradle/libs.versions.toml` owns the library and compatible Jackson pins; installed discovery reads generated version metadata.
+The separate jq pin in `mise.toml` supplies the independent qualification oracle.
+
+Navigation, optional paths, `map`, `select`, sorting, grouping, function definitions and composition are supported.
+This is a library subset, not full jq parity. CLI I/O functions such as `input`, `inputs` and `halt_error` are unavailable.
+`implode` preserves complete Unicode scalars, including supplementary characters. Invalid scalars reject.
+Environment access and external module or data loading are disabled. String interpolation rejects; use string concatenation or a JSON pipeline.
+Kast passes the program as one argument without a shell. It does not echo program text, source payloads, or worker stderr in rejection documents.
+
+### Numeric values
+
+Input JSON and `fromjson` or `tonumber` conversions keep exact decimal values. An encoding change, including lost negative zero, rejects with `NUMERIC_VALUE_LOSS`.
+Direct numeric literals must be whole numbers with magnitude at most `2147483647`.
+Whole decimal and exponent forms such as `2147483647.0` and `1e3` are accepted.
+The minus sign is a separate token, so `-2147483648` also needs quoted conversion.
+For larger or fractional constants, use quoted JSON with `fromjson` or `tonumber`, such as `("1.25" | fromjson)`.
+Unsupported literals report `NUMERIC_LITERAL_LIMIT` before workspace effects. Non-finite results reject.
+
+Kast rejects input numeric conversions that change values during comparison, grouping or array indexing. Exact navigation and conversion to strings remain available.
+
+Arithmetic follows jackson-jq: integral operators use signed 64-bit arithmetic, including overflow, and other numeric operators use doubles.
+With input `9007199254740993`, `. + 1` produces `9007199254740994`. With input `9223372036854775807`, `. + 1` wraps to `-9223372036854775808`.
+These arithmetic rules differ from native jq and do not provide exact arithmetic. The conversion checks do not verify intermediate arithmetic results. Keep opaque identifiers as strings when filtering them.
+
+Before TOON publication, the existing guard separately rejects any changed value, key, null, or array shape with `OUTPUT_VALUE_LOSS`; use `--json` for values TOON cannot preserve.
+
+### Limits and cancellation
 
 | Option | Default | Accepted values |
 | --- | --- | --- |
-| `--jq-timeout-ms` | `5000` | `1..60000`, for each version, compilation, and filtering child |
-| `--jq-max-bytes` | `16777216` | `1..67108864`, for filter input, stdout, and successful encoded projections including their newline |
+| `--jq-timeout-ms` | `5000` | `1..60000`, for each syntax-checking and filtering worker |
+| `--jq-max-bytes` | `16777216` | `1..67108864`, for input, worker stdout, and successful encoded projections including their newline |
 
 These options require `--jq` and have no effect on workspace waiting or semantic budgets.
-The version response has a separate 1024-byte bound, and each child's stderr has a 32768-byte bound.
-On expiry or cancellation, Kast terminates and reaps its owned jq child. These limits bound capture and publication; they do not impose an operating-system memory limit on jq.
+Each worker has a private 512 MiB heap and a 32768-byte stderr bound. Programs are limited to 32768 UTF-8 bytes.
+JSON nesting is limited to 1000 levels, and numeric tokens to 1000 characters. Exceeding these limits reports `JSON_LIMIT`.
+
+A worker exits before workspace waiting starts; no filter process is kept alive while the workspace is being prepared.
+On expiry or cancellation, Kast terminates and reaps its owned worker and joins its pipe readers before returning.
+
+Heap or stack exhaustion reports `RESOURCE_LIMIT`; a smaller input or projection can still need more working memory than its encoded size.
 `kast describe COMMAND` includes the default filter limits and a standalone schema for fixed filter rejections.
 Its normal output schema describes unfiltered results; a successful user projection can be any JSON value.
 

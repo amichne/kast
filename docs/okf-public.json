@@ -4240,7 +4240,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "e46aaca46353352c1032105acf9a1c82163b4381a74b8453729d0fe3a9109e06"
+          "statementSha256": "67e4bc3a89f0ad574f28a04f9fe3424fe8c4a42ec1ea776bb3e02340aabab98f"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -4378,7 +4378,7 @@
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
     },
     {
       "route": "reference",
@@ -5549,7 +5549,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "296e3e55ddf23eb6deb0bafa9626b15d01f6045fa3d3ca8550963af58a3eb351"
+          "sha256": "22285edfe4428ae35a62ad4940383dadc753f95f0b3c5c71cae3b41c2056b367"
         }
       ],
       "claims": [
@@ -5932,8 +5932,20 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         },
         {
+          "path": "cli/build.gradle.kts",
+          "sha256": "d31ae1e1069157e9210b4a304c3d6f8bcad56d5305574448535b9f82ad8e2381"
+        },
+        {
+          "path": "cli/native-image.args",
+          "sha256": "5ffc60ee390eb4710222880114b87867a5e48c1cd949faaae5e2865961f37700"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt",
+          "sha256": "6ccb75e39b897cea90f090e5905fd44d52e40c4818e7df532b1fc66372284413"
+        },
+        {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt",
-          "sha256": "dde907c9602b0876528ac41b052b1ef77b25826b4784c8df1156fd9cb0f12d44"
+          "sha256": "9b98cee4aaf49e5374d16a105678fcfb6c38e4d6b95c4e70fcd1b8badd21898c"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt",
@@ -5941,7 +5953,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiagnostics.kt",
-          "sha256": "bb691f3092eee802086fa7c46daa64fff3957b0476d92b9518a9d9659c6056be"
+          "sha256": "6a0924fe79675a983faf14d89b09ed2837fd57170973645c3ef814d053d2801b"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiscovery.kt",
@@ -5949,11 +5961,11 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliFlagDiscovery.kt",
-          "sha256": "e0e34b724c2ef0048106aba053bec8ab4d67b7ea10f16437cc9c8156e6cb2818"
+          "sha256": "ee3bbe9c94f61a083aaaa51efd746cfbb762c95a336fdeeafc5a36f3e5567bc1"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliHelp.kt",
-          "sha256": "d6aeaac379c0638264742a5f1b729dce94eae5cf9bc0ce841222f19fd63655e7"
+          "sha256": "facf89bc336a5f94e95255806e7df571072b0912f7bc200f2e90a44e8a94eead"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliInvocation.kt",
@@ -5965,11 +5977,11 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliOptions.kt",
-          "sha256": "9154dbe14954587e29e03182084f0fa1ab7adc0ba472d20ac91bc17614a5f626"
+          "sha256": "4912d5e6e6dc3a007339d2134e3e316104f5532c7b6df0b76af000e176e1dc97"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliProjectionContract.kt",
-          "sha256": "79fba6fe5ae7a925d78003c62cbc91730737b70b3bc88f2527de42601aacfead"
+          "sha256": "5dc7b21ea48ee31b3691b4ffa32d051e7cfd918a18373a7d2486337d2285bf6b"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliSchemaPage.kt",
@@ -5989,35 +6001,59 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqEngine.kt",
-          "sha256": "0d40a1e2208b948ffabf1bcd0bcac9334e298888c6088c37fbdae738094e4946"
+          "sha256": "81c01e9e4a477e60f72a3d90ce69422664062911223add92a802d594d3383bf1"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqFailure.kt",
-          "sha256": "f6de1b0a6d64985bb6f6c35fc495bfe4d49140902aa67d48f1a1252b80a83a24"
+          "sha256": "c4927a51098fe77824da346cc094ebfc5ccf1f047bbf508c2219aff4bddad823"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqNumberFactory.kt",
+          "sha256": "de34d38c70e4b314016b109aeb90b4d3869dd5bc45ea9269728d50c729b40ff6"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqOptions.kt",
-          "sha256": "0c6ccb1b3de71cec6458ded3a02ebc13eeb4710ea58026cb718ec1edefd195c4"
+          "sha256": "b672a88f2cf7b5980e7be91d835b5e6ccfdfedddbaa8ea4ef60892706dfa1b11"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqProcess.kt",
-          "sha256": "5172cdc4c16f07d8c292f93e3b8a96fa316f2910253beca56d077bbb22ea5a10"
+          "sha256": "3f3c98602eaf3bd4f2762376bbf2b4facfb2c179a34c2ec3e8c2192701b7c7f0"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqProgram.kt",
+          "sha256": "ca33b0df44ab8cda43c98e77158ae2a183e79c2a46fc676542d9ad84119a0888"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqRecovery.kt",
           "sha256": "59140cc5bb593f1073c072f8662de43f84a2084b13abcc4f830b159b2f3171ec"
         },
         {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqUnicode.kt",
+          "sha256": "5a7a731b6106aaa130413af1a86bd01c678e18452f50c9190ebe27a5cff64712"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqWorker.kt",
+          "sha256": "5d891f9ad579b86eb529d0d27143c973f275116239d83942e3bbf55e9057851b"
+        },
+        {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
           "sha256": "51e0da7567f086f692a0a33b4ff6ef1ad2ba3217246ccdbbb7000aa3e92b7cb6"
         },
         {
+          "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt",
+          "sha256": "ed31c7f56720d26b66625d79ed0c38b31d107798c35cb80335d54de6ec8464f5"
+        },
+        {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/CliOutputConfiguration.kt",
-          "sha256": "313cb675de348019c06087ffd9368b0a72441b445eeecb9fa04ffb63052bbeb1"
+          "sha256": "aaac157eb580cfd1a07faa62b5aaa5fceff026fef71a9bc0223aa654388ca938"
+        },
+        {
+          "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationParameterDeclaration.kt",
+          "sha256": "e7934a20020cfa601f0b6f442cb1ee3bebb9480acf82ce87f315f6560396c7bf"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "sha256": "d2b6a205ba4b0ec735b3ae190f59493b48a5973fc00e880c9940748d7d14b2a6"
+          "sha256": "bc5b0b095fb2ee95b93d433cf18d4065116ecde59cc8a4e39f17dff565f11c00"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
@@ -6029,15 +6065,23 @@
         },
         {
           "path": "distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/JsonProjectionDocument.kt",
-          "sha256": "346c5658338d5b5baf169374083a91c549c2de32eb152408daa5dd373958e463"
+          "sha256": "a7d6be92c0aac8573cdb3cb57667fade588a88fa42ea21c51169fe8e472f9d6d"
         },
         {
           "path": "distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/LosslessCliOutput.kt",
-          "sha256": "8704ce507bba296dd07775ddec8f7ed45068c074cfc563743936751dae868b6a"
+          "sha256": "0df30a34258903ebcad9bae89b5840cb20d5fb12f37e10ae2981ce99cdb1b8fc"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+        },
+        {
+          "path": "gradle/libs.versions.toml",
+          "sha256": "39ebc210d38a5d88a048f12c2a1790a19fb1615f534c194cacbd378b0a0685b4"
+        },
+        {
+          "path": "gradle/verification-metadata.xml",
+          "sha256": "60ca42f93a47194cc0d78dfa889cfb91e907a80273c06c110e85a610655d410a"
         },
         {
           "path": "mise.toml",
@@ -6045,10 +6089,10 @@
         },
         {
           "path": "packaging/configuration-schema.json",
-          "sha256": "9294c3eb4260e0ef2ef77315231fa74635fbf11ae0c7a41a1cf8a68c81a10c99"
+          "sha256": "7a91c9ec680c599ea0db811c207f1c1cb955c3257adcc6649b3bb02a48c7c511"
         }
       ],
-      "reviewedSourceRevision": "751bf2d9544145cc1e02662dff5d7a0e3a1b7507"
+      "reviewedSourceRevision": "9610c6e88c05873145116432bdeb734ba309a99b"
     },
     {
       "route": "reference/compatibility",
@@ -6187,7 +6231,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "e46aaca46353352c1032105acf9a1c82163b4381a74b8453729d0fe3a9109e06"
+          "statementSha256": "67e4bc3a89f0ad574f28a04f9fe3424fe8c4a42ec1ea776bb3e02340aabab98f"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -6305,7 +6349,7 @@
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
     },
     {
       "route": "reference/composition",
@@ -6592,7 +6636,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "e46aaca46353352c1032105acf9a1c82163b4381a74b8453729d0fe3a9109e06"
+          "statementSha256": "67e4bc3a89f0ad574f28a04f9fe3424fe8c4a42ec1ea776bb3e02340aabab98f"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -6680,7 +6724,7 @@
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
     },
     {
       "route": "reference/integrations",
@@ -7073,7 +7117,7 @@
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "sha256": "d2b6a205ba4b0ec735b3ae190f59493b48a5973fc00e880c9940748d7d14b2a6"
+          "sha256": "bc5b0b095fb2ee95b93d433cf18d4065116ecde59cc8a4e39f17dff565f11c00"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
@@ -7084,7 +7128,7 @@
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "751bf2d9544145cc1e02662dff5d7a0e3a1b7507"
+      "reviewedSourceRevision": "f771eded1ebbeb5b283caa14442713cbc0a86345"
     },
     {
       "route": "reference/limits",
@@ -7413,7 +7457,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "e46aaca46353352c1032105acf9a1c82163b4381a74b8453729d0fe3a9109e06"
+          "statementSha256": "67e4bc3a89f0ad574f28a04f9fe3424fe8c4a42ec1ea776bb3e02340aabab98f"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -7551,7 +7595,7 @@
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
     },
     {
       "route": "reference/management",
@@ -7665,7 +7709,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "e46aaca46353352c1032105acf9a1c82163b4381a74b8453729d0fe3a9109e06"
+          "statementSha256": "67e4bc3a89f0ad574f28a04f9fe3424fe8c4a42ec1ea776bb3e02340aabab98f"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -7753,7 +7797,7 @@
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
     },
     {
       "route": "reference/mcp-catalog",
@@ -13408,7 +13452,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "e46aaca46353352c1032105acf9a1c82163b4381a74b8453729d0fe3a9109e06"
+          "statementSha256": "67e4bc3a89f0ad574f28a04f9fe3424fe8c4a42ec1ea776bb3e02340aabab98f"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -13856,7 +13900,7 @@
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
     },
     {
       "route": "reference/staleness",
@@ -14125,7 +14169,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "e46aaca46353352c1032105acf9a1c82163b4381a74b8453729d0fe3a9109e06"
+          "statementSha256": "67e4bc3a89f0ad574f28a04f9fe3424fe8c4a42ec1ea776bb3e02340aabab98f"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -14243,7 +14287,7 @@
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
     },
     {
       "route": "reference/walkthrough",
@@ -15269,7 +15313,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "e46aaca46353352c1032105acf9a1c82163b4381a74b8453729d0fe3a9109e06"
+          "statementSha256": "67e4bc3a89f0ad574f28a04f9fe3424fe8c4a42ec1ea776bb3e02340aabab98f"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -15467,7 +15511,7 @@
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
     },
     {
       "route": "troubleshooting",
@@ -15610,7 +15654,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "e46aaca46353352c1032105acf9a1c82163b4381a74b8453729d0fe3a9109e06"
+          "statementSha256": "67e4bc3a89f0ad574f28a04f9fe3424fe8c4a42ec1ea776bb3e02340aabab98f"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -15728,7 +15772,7 @@
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
     },
     {
       "route": "tutorials",
