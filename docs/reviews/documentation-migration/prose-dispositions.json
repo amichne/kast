@@ -1157,37 +1157,37 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/installation-and-managed-files.md",
-        "sourceSha256": "3d8a0d12adbd02709b88abf971c1a13270856c8e6356fa01d7d4c70c12424982",
+        "sourceSha256": "e5aef20ea5ded5d078890df7c40e9281d0dc79612a3c5d8b92185eb51f1738ab",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 12.21 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 12.17 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep physical identity admission and closed managed-file ownership. Preserve exact identifiers `ControlInstallationInput`, `InstallationWorkflow`, `installation`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep physical identity admission and closed managed-file ownership. Preserve exact identifiers `ControlInstallationInput`, `InstallationWorkflow`, `installation`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Rechecked the new immutable Python helper-import paragraph and preserved the inode, owner and device mapping constraints."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/installation-and-managed-files.md",
-        "sourceSha256": "3d8a0d12adbd02709b88abf971c1a13270856c8e6356fa01d7d4c70c12424982",
+        "sourceSha256": "e5aef20ea5ded5d078890df7c40e9281d0dc79612a3c5d8b92185eb51f1738ab",
         "rule": "Slopsentral.LongSentence",
-        "line": 101,
+        "line": 105,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
-      "reason": "Keep changed-device handling constrained by inode, owner, and consistent identity mapping. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep changed-device handling constrained by inode, owner, and consistent identity mapping. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/management-and-connections.md",
-        "sourceSha256": "e8125d69a1e097f9d19dccb12ee82a9216b95f2f095c8dbf78d8ea7be7b21256",
+        "sourceSha256": "59a7cc18b85f19cae9d437bbf3711ec4617f73db26cb28be9645fdfe68c986f3",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 12.80 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 13.10 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep native management commands and explicit optional MCP registration. Preserve exact identifiers `KastManagementMain`, `kast`, `cli`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Rechecked after the OpenWiki lifecycle refreshed evidence and provenance. The complete page body, Claim identities, and Claim statements remain unchanged; this source hash records that metadata update without removing the advisory."
+      "reason": "Keep native management ownership, captured release selection and optional MCP registration. The new physical temporary-file rule explains how aliased macOS temporary directories produce physical record paths while consumers retain strict ownership checks. Exact KastManagementMain and CLI identifiers are source routes. The grade-8 advisory remains unmet and reader comprehension is unmeasured."
     },
     {
       "finding": {
@@ -1205,13 +1205,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
-        "sourceSha256": "d3f7b71af20ebe89bd67718c6b971b133297554ec6800f248b44f965e588941f",
+        "sourceSha256": "06c18c80c0e6d0fa62e687df9ecb4292d9d858dd3d5bdd4c68ba863cb3f6eb82",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 11.90 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 11.85 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep upgrade recovery, daemon retirement, and guarded reset ownership. Preserve exact identifiers `InstalledDaemonUpgrade`, `ManagedUpgrade`, `--recover-only`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep upgrade recovery, daemon retirement, and guarded reset ownership. Preserve exact identifiers `InstalledDaemonUpgrade`, `ManagedUpgrade`, `--recover-only`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Rechecked the new post-STOP settlement paragraph: unavailable metadata is pending only after acknowledged STOP and within the existing deadline; changed identities and other native failures still reject."
     },
     {
       "finding": {
@@ -1973,169 +1973,169 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 12.94 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 12.92 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep archive identity, installation ownership, upgrade recovery, and native qualification limits. Preserve exact identifiers `agent-tools`, `kast install <harness>`, `--mcp`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep archive identity, installation ownership, upgrade recovery, and native qualification limits. Preserve exact identifiers `agent-tools`, `kast install <harness>`, `--mcp`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Rechecked archive and installation ownership, managed-composition evidence, and current native-handoff sources. Removed the obsolete Gradle profile-report assertion while preserving native metrics, finite build outcomes and native qualification limits."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 362,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
-      "reason": "Keep the historical removed-runtime inventory distinct from IDEA's current import/trust ownership. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep the historical removed-runtime inventory distinct from IDEA's current import/trust ownership. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 364,
         "message": "Long sentence: 36 words.",
         "severity": "warning"
       },
-      "reason": "Keep archive admission before atomic replacement and preserve the dry-run exclusion of plugin-state writes. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep archive admission before atomic replacement and preserve the dry-run exclusion of plugin-state writes. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 364,
         "message": "Long sentence: 41 words.",
         "severity": "warning"
       },
-      "reason": "Keep the native uninstall fixture's real setup, exact owned removals, and unrelated sentinel protection. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep the native uninstall fixture's real setup, exact owned removals, and unrelated sentinel protection. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 498,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
-      "reason": "Keep typed retirement stages and admitted exit status beside the explicit exclusion of command and child-output data. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep typed retirement stages and admitted exit status beside the explicit exclusion of command and child-output data. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 500,
         "message": "Long sentence: 29 words.",
         "severity": "warning"
       },
-      "reason": "Keep the shared producer/consumer entry limit and its pre-publication release rejection. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep the shared producer/consumer entry limit and its pre-publication release rejection. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 514,
         "message": "Long sentence: 37 words.",
         "severity": "warning"
       },
-      "reason": "Keep historical paired maintenance distinct from the next control-only recovery receipt and unchanged plugin bytes. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep historical paired maintenance distinct from the next control-only recovery receipt and unchanged plugin bytes. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 517,
         "message": "Long sentence: 39 words.",
         "severity": "warning"
       },
-      "reason": "Keep activation-lock fencing, alias cleanup, and recovery staging ordered before another payload stage. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep activation-lock fencing, alias cleanup, and recovery staging ordered before another payload stage. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 594,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
-      "reason": "Keep exact runtime identity and launchd retirement before removal of the reviewed login item. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep exact runtime identity and launchd retirement before removal of the reviewed login item. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 608,
         "message": "Long sentence: 35 words.",
         "severity": "warning"
       },
-      "reason": "Keep exact property-list reconstruction and Codex-home profile binding, including the qualified older form. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep exact property-list reconstruction and Codex-home profile binding, including the qualified older form. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 638,
         "message": "Long sentence: 35 words.",
         "severity": "warning"
       },
-      "reason": "Keep all three real compiler witnesses and the different Control-only and Host-only identity invariants. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep all three real compiler witnesses and the different Control-only and Host-only identity invariants. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 653,
         "message": "Long sentence: 32 words.",
         "severity": "warning"
       },
-      "reason": "Keep the unavailable legacy version projection visible and keep the conjunctive fresh epoch/generation evidence. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep the unavailable legacy version projection visible and keep the conjunctive fresh epoch/generation evidence. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 675,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
-      "reason": "Keep the closed cleanup inventory beside the receipt/journal lifetime constraint. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep the closed cleanup inventory beside the receipt/journal lifetime constraint. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
+        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
         "rule": "Slopsentral.LongSentence",
         "line": 677,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
-      "reason": "Keep addressed SQLite inspection read-only, with explicit exclusions of initialization, checkpointing, and invented recovery. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep addressed SQLite inspection read-only, with explicit exclusions of initialization, checkpointing, and invented recovery. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
     },
     {
       "finding": {
