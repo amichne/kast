@@ -116,11 +116,11 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
                         NativeControlEntry.QUERY,
                         NativeControlEntry.MCP,
                         NativeControlEntry.RPC,
+                        NativeControlEntry.JQ,
                         NativeControlEntry.SERVICE,
                         NativeControlEntry.DAEMON,
                         NativeControlEntry.CODEX -> admitSnapshot(snapshot, root)
                         NativeControlEntry.MANAGEMENT,
-                        NativeControlEntry.JQ,
                         NativeControlEntry.INSTALLER -> ResetProcessSelection.Unrelated
                     }
             }

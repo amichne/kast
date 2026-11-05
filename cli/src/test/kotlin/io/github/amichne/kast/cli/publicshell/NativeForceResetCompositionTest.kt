@@ -24,6 +24,35 @@ import org.junit.jupiter.api.io.TempDir
 @Tag("public-launcher")
 class NativeForceResetCompositionTest {
     @Test
+    fun `force uninstall retires a live native jq worker and preserves a foreign installation`(
+        @TempDir evidence: Path
+    ) {
+        NativePublicFixture(Files.createDirectory(evidence.resolve("selected"))).use { selected ->
+            NativePublicFixture(Files.createDirectory(evidence.resolve("foreign"))).use { foreign ->
+                withJqWorker(selected, evidence.resolve("selected-jq.stderr")) { worker ->
+                    withJqWorker(foreign, evidence.resolve("foreign-jq.stderr")) { unrelated ->
+                        // Both genuine FILTER workers have an open stdin; EOF is deliberately withheld.
+                        assertEquals(selected.payload.toString(), worker.toHandle().info().command().orElseThrow())
+                        assertNotNull(worker.toHandle().info().startInstant().orElseThrow())
+                        assertTrue(worker.isAlive)
+                        assertTrue(unrelated.isAlive)
+                        val reset =
+                            selected.start(
+                                "force",
+                                listOf("-Duser.home=${selected.home}", "uninstall", "--force", "--json"),
+                            )
+                        selected.assertExit(reset, 0, "force")
+                        assertTrue(worker.waitFor(5, TimeUnit.SECONDS), "Native jq worker survived force uninstall")
+                        assertTrue(unrelated.isAlive, "Force uninstall signalled a foreign installation")
+                        assertFalse(Files.exists(selected.installation))
+                        assertTrue(Files.exists(foreign.installation))
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `force uninstall retires a live native MCP client before it removes Control`(@TempDir evidence: Path) {
         NativePublicFixture(evidence).use { fixture ->
             val client = startMcp(fixture, evidence)
@@ -59,6 +88,21 @@ class NativeForceResetCompositionTest {
                 reader.shutdownNow()
                 assertTrue(reader.awaitTermination(5, TimeUnit.SECONDS))
             }
+        }
+    }
+
+    private fun withJqWorker(fixture: NativePublicFixture, stderr: Path, block: (Process) -> Unit) {
+        val child =
+            ProcessBuilder(fixture.payload.toString(), "-Xmx512m", "--internal-entrypoint=jq", "FILTER", "1024", "Lg==")
+                .directory(fixture.home.toFile())
+                .redirectError(stderr.toFile())
+                .apply { environment().clear() }
+                .start()
+        try {
+            block(child)
+        } finally {
+            if (child.isAlive) child.destroyForcibly()
+            assertTrue(child.waitFor(5, TimeUnit.SECONDS))
         }
     }
 
