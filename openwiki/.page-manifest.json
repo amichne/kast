@@ -86,11 +86,11 @@
       "completedRunId": "010d223c-9789-48c0-838d-ae8e93930f03"
     },
     "/openwiki/development/knowledge-upkeep.md": {
-      "gitHead": "8e72170cfead603d15de95be0a9ddea8516cb061",
-      "sourceFingerprint": "sha256:bfd6e70cbb7091bb4a2d15269c2fba2f92d7972a7c286b5084e725679aa21714",
-      "pageVersion": "sha256:743575ac6683fa5abc868f7fcfaeaa3a465483da10429a242dd3d5ffb2b1711a",
+      "pageVersion": "sha256:83015799c0c6a19d3a44a58c087bdb5d8a883edb042010127483e0e0addd00fe",
       "completedBy": "codex",
-      "completedRunId": "010d223c-9789-48c0-838d-ae8e93930f03"
+      "completedRunId": "45393049-d535-40cc-a395-ac03369da1cb",
+      "gitHead": "add84c7619080a5b50513cf01e047d5381385873",
+      "sourceFingerprint": "sha256:54b8a85d316868b4eaf6bae083f25ea5b8148c9668a0d874c167a592daa4bfcb"
     },
     "/openwiki/development/testing-and-native-qualification.md": {
       "gitHead": "7de04069e2a4a781a603ff51b3f9016b66108790",
@@ -205,11 +205,11 @@
       "completedRunId": "192ffb55-7ede-4cd8-89b0-7b7e855dfa57"
     },
     "/openwiki/modules/architecture.md": {
-      "gitHead": "8e72170cfead603d15de95be0a9ddea8516cb061",
-      "sourceFingerprint": "sha256:bfd6e70cbb7091bb4a2d15269c2fba2f92d7972a7c286b5084e725679aa21714",
-      "pageVersion": "sha256:c70c86be2d7e1206c1da0181487f57c6ee306836b513b22dd86187e21ab2bdf4",
+      "pageVersion": "sha256:ba37233296a4ada3eed3adeff38415efd2eb43cfdafa909f6e64c9876f5b1826",
       "completedBy": "codex",
-      "completedRunId": "010d223c-9789-48c0-838d-ae8e93930f03"
+      "completedRunId": "45393049-d535-40cc-a395-ac03369da1cb",
+      "gitHead": "add84c7619080a5b50513cf01e047d5381385873",
+      "sourceFingerprint": "sha256:54b8a85d316868b4eaf6bae083f25ea5b8148c9668a0d874c167a592daa4bfcb"
     },
     "/openwiki/modules/change.md": {
       "gitHead": "8e72170cfead603d15de95be0a9ddea8516cb061",
@@ -219,11 +219,11 @@
       "completedRunId": "bb7d762b-e640-426b-bae8-f8fa41505944"
     },
     "/openwiki/modules/distribution.md": {
-      "pageVersion": "sha256:bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+      "pageVersion": "sha256:d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
       "completedBy": "codex",
-      "completedRunId": "cb8f1fe0-8e83-4331-92cd-6acfca4beca9",
-      "gitHead": "7dfe8f44dd6885858d2ebd0053ee7320e9a073b2",
-      "sourceFingerprint": "sha256:3ddd99bf6064d0aa07f2810f7a0bfcdad990c1c5ae04650293acae92cbb1e28c"
+      "completedRunId": "45393049-d535-40cc-a395-ac03369da1cb",
+      "gitHead": "add84c7619080a5b50513cf01e047d5381385873",
+      "sourceFingerprint": "sha256:54b8a85d316868b4eaf6bae083f25ea5b8148c9668a0d874c167a592daa4bfcb"
     },
     "/openwiki/modules/kernel.md": {
       "gitHead": "c00f3bfa71dd40e9897d714e378b21eacf673073",

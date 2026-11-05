@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c70c86be2d7e1206c1da0181487f57c6ee306836b513b22dd86187e21ab2bdf4",
+  "pageVersion": "sha256:ba37233296a4ada3eed3adeff38415efd2eb43cfdafa909f6e64c9876f5b1826",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -36,7 +36,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
+          "version": "repo-file-v1:sha256:7aed52fede75f3767e228416c3e64ec7af6e93d6b85ee4c931e57cab6bdad809"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
@@ -50,7 +50,7 @@
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
+          "version": "repo-file-v1:sha256:7aed52fede75f3767e228416c3e64ec7af6e93d6b85ee4c931e57cab6bdad809"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
@@ -115,6 +115,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T18:05:12.445Z"
+    "at": "2026-11-05T06:37:09.283Z"
   }
 }

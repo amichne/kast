@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+  "pageVersion": "sha256:d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -76,7 +76,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
+          "version": "repo-file-v1:sha256:7aed52fede75f3767e228416c3e64ec7af6e93d6b85ee4c931e57cab6bdad809"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -158,7 +158,7 @@
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
+          "version": "repo-file-v1:sha256:7aed52fede75f3767e228416c3e64ec7af6e93d6b85ee4c931e57cab6bdad809"
         },
         {
           "resource": "repo://packaging/installer_fixture.py",
@@ -334,23 +334,19 @@
     },
     {
       "id": "claim_5f7d796cedca49cca3847f961bb82235",
-      "statement": "CI pins GraalVM and retains Gradle task outputs, native reachability metadata, encrypted configuration-cache state where a secret is available, and bounded build/native metrics for matched comparisons. The cli module produces one unified native executable with -Os and the native handoff transfers its exact bytes.",
+      "statement": "CI pins GraalVM and configures Gradle cache transport with routine PR reads and main push/dispatch writes. Native handoff retains native metrics and finite build outcomes, produces one unified executable with -Os, and transfers its exact bytes; configured cache transport does not prove an observed cache hit.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/build_execution.py",
           "version": "repo-file-v1:sha256:0a03e166df92557b9de822f5a682334b5bbec1d1582aba64314f694ddf96fe93"
         },
         {
-          "resource": "repo://.github/scripts/ci/native_handoff.py",
-          "version": "repo-file-v1:sha256:469e3d78dbf42f619e96ee6cee81ace3c5dca250d5ba78024bb52530e1c95c13"
+          "resource": "repo://.github/scripts/ci/native_handoff.py#L307-L342",
+          "version": "repo-lines-v1:sha256:c5584eba3bd4655f48a278bca246bcda76e2b1ab12dd454b93f1d58f41afe5a0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkNTg4ODYyYWFiZTkzMjRlMDJjMzI5ZWNkYzIzNTg1NzM3MDAxOTcxOWRlZWQ4ZDIwZDA5MzA4YzFmMTI1NTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkZGNmMGE4ZDkwYmRiNjI2Yjc3ZmNlNzViZWNlNzk0OWExY2JiNDUwMjgzYmU5MWE5YWI5ZGVhMTU3ODRhYTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzMTFjNWI3ODVmNDc3NzUzMDY2NzUxZGQ1OGE4ODliNzRkYWE4OGIyNGFjODBjNjc0YzRlMWZmNmZhYmUwOWMifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
-        },
-        {
-          "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:fc96f7e447a3b03146c07d43b3ec340ecd40af6ef19f283c82f2d9196351c8cc"
+          "resource": "repo://.github/workflows/ci.yml#L125-L168",
+          "version": "repo-lines-v1:sha256:783195e7969bb4f6f5b181596777a5b797b80fe7c07fd710c76afd874f1d2790:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzliMjU4NDhlYzM1NmFkYjM4OGE5YjhhNzBkMDdlZTBiMWUxMGQxMTYxYjMzYjIwZjlhYmRlMDY3NzYyNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMmNmNDFjMmUyMGM4MmJkYTRkZTY2ZGIzNjA2YjdmZGEwMTk0OWVlNjQ5MWExODFhYTA0Y2M4NzA2YjVmMzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4ODc1NGM1ZTAwOTk5MjE5MjExNWZmNjA0MGU3ZmViOGFlMWZhMDM0ZmUyNTIwZWU1M2I1NjM1NDllOGQyZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjYmQwMzg4ZWY5MjJlMDhmZDAzNmYyNjA0ZGEyN2VjNWNlYzFmODZmZTVjMTMxY2IyYTQzZTVhZTE2MjliYmUifQ"
         },
         {
           "resource": "repo://cli/native-image.args",
@@ -476,13 +472,59 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:24cc3cead19f374d4a12fdfd14f7918441befa75b182e9cdcc5c2816b43f213d"
+          "version": "repo-file-v1:sha256:7aed52fede75f3767e228416c3e64ec7af6e93d6b85ee4c931e57cab6bdad809"
+        }
+      ]
+    },
+    {
+      "id": "claim_d7030ee9deeb4a909cd0e559b8f83efc",
+      "statement": "The local product gate qualifies clean source under validation-only version 0.0.0 and full commit/tree identity, explicitly fixes component versions, rechecks source after Gradle succeeds, and requires matching staged Control metadata before VALIDATED. Dry-run and rejection cannot claim completed qualification or inherit prior success.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/release/run_product_gate.py",
+          "version": "repo-file-v1:sha256:ab90ce4ffc8755f67b867b588b15bcb3e12b5ff9289b6d01a5f039dafae2251d"
+        },
+        {
+          "resource": "repo://distribution/release/test_run_product_gate.py#L94-L229",
+          "version": "repo-lines-v1:sha256:6f27cda6bee36b2fd8baca95e363efa94be6ad0c20fe372e0b7c903e620e108e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlY2JiNjA4MWIyZGU2NWY5ZjJlYjFiYWZhYmRhMzg1ZGZhYWNlYTZlZTliODQ1ZTBlNDY3YjI0Yzg3NjhjMjU1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhYzdkODEzZTAxZTAyODMwOGY1MGVmNzBiMjNjMGYyYTBlOGEzNGU0NGZjYzFiNWMwNTdlMDFlNTM4MDcwMDJhIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkNTUxOTE1MGQxMjZmOTI1YWY2MTNkOTQ1NDFkODMzYTZjNmRhNjA3YzM4NTA5MzJjZmU1OWEwNDY1MjlhMTAyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzY2VhOWUyNWZmOWY1MWQxNjdhNzFlMWJjNDY0ZTY5OWY2NTY4NTBmN2YzODM5OGQyMTYyZWUyMTk2YzBlNjY3In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_196f8c4502634a779997d94b29a480fd",
+      "statement": "Full and affected source validation and local product qualification request single-use Gradle daemons while retaining disk caches; client cleanup does not prove synchronous daemon retirement.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/gradle_graph.py#L127-L150",
+          "version": "repo-lines-v1:sha256:701ce4258831dca764eea5fbb9cced14252b0c291b12e3e71e3f5881f119981b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzNDkyY2Q1ODcwM2NkNGYwNjA1ZmZkNDdiYWU4NWEzYTZkZTM4YzQ3YTI3YmJiZDVmZjk1MmQ3ZWQ3YjE4YjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTVjNjZlMTdiMTQ1Mzk3ODM0YjhjODU0ZGM0MTkzZTIxMjUxODBhODk5NmExNGMzMTg4MzMyNmIyZWZiY2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmYzQzNGYwMjc1NWMzMTc4ZmIxY2JhYTY5NDkxODhlMjAyYjBmMTVjMTVhMmY5MGRjYjQzNTVlM2FjODAxZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0MWY5NTA4ZjFlM2E2ZjE0YzEwNjgwYjJmMmVjYmY3ZjU1NTU4MmY1MjAwMWZlNTc4YWQ0MzBmMTUwZjM5ZTEifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/source_validation.py#L20-L35",
+          "version": "repo-lines-v1:sha256:6a2e9231780b99c28316b0dd637cb95a7b2125a1ad4237e63e30cddfcb305139:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmN2NmMDIxNzAwYjdlMDAxMTJiOWI4ODZmYjNkZmZlNmY0MTg0ODQ4ZWRjNDFkYzM3ZWNmZDFhMTE3YjMxY2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJiZTU4YTY5MDZhYjQ0ZTVmNDAwYmU1YTJkMTdiMmQ1Y2M5ZTc2NWYyZmEyNzViYmZkNGJkZDBkZGY0NTI2MGYifQ"
+        },
+        {
+          "resource": "repo://distribution/release/run_product_gate.py#L98-L134",
+          "version": "repo-lines-v1:sha256:5d468d4a8feb15fca72c35d8aa6d934f59ee8d73ce7c16c18635683033f1219b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5ZjgyZDliMmQxZDRlZWI5NDNhNTAyNTY3ZGVhOWZlOTYzZTM4Yjk0YWEzMDQyYmE2YjMxNzgwZWNlODJkNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExYjJjNThiMTBiZGIzZmIxYzM4NjE1MzM3OTdiMzBmZTBiOGYwMjBiYTJmOGFkNTU0ZDA5ODMzMjkxNDFhZmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY0MjkzMTA4NWU4Y2E4MDNmZjExNWMxMDQzOWRiMGJiMjg1N2E3OGQyOTY4ZDRhYTE2YmY0Y2U1ZDY0MTI4YTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1MzM1NzE4NDA2YWQ2YTU0OTNhN2MxZjQ4MDZmY2YwNDM4ZTQ3NWMxM2Q5ZDA2NGM1N2Q4MmJiNTc4ZTY3NDkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_361eea6c47ce493f91032f3b7eccd437",
+      "statement": "On graph timeout or cancellation, optional daemon diagnostics bound helper time and output, check invocation association and process start identity before and after attachment, and publish only complete confirmed output without replacing the graph failure or preventing client cleanup.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/gradle_diagnostics.py",
+          "version": "repo-file-v1:sha256:3d1826242e692d96e18917d93739e37266627aa13de1ffba6504030990bbea75"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/gradle_graph.py#L244-L292",
+          "version": "repo-lines-v1:sha256:851bcc11215fd8a8b42d5db0b64f17c54c59f9505cab07010cc84177889dec63:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwNGQ1MDg2MzIwMWM2OTFkOTRhMGU4NTI1YWEwNzRiODhlMzU4NzJhNWI4Y2ZjOWNjNmM5M2IwYmIxMjAwNDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4Mzk0N2E1MDFmZTJhYmZmODcxMDliMTg5ZWIxMDRiMTQxOWYwNDQxNjljMjE2OWIzNzkzMGEwNzA3OTA4YzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIyZjk1ZDI4MGIyNmQ5ZDAwNmFiNTBjYmUzY2ZhMGQwMWMxNDFhMjY0NDg1MTk3NmIzZjlkNWEyZWY2ODI5ZjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1OTQ5NWUzZGNhMDg4YmJkODU1YWJiYTIxY2Y1ZGRkMmQyZTU5ZmI3YzE5Y2RkODEyM2IxY2Y5NjNmYTFhZjAifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T04:51:53.442Z"
+    "at": "2026-11-05T06:37:09.283Z"
   }
 }

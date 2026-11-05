@@ -1121,13 +1121,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/development/knowledge-upkeep.md",
-        "sourceSha256": "743575ac6683fa5abc868f7fcfaeaa3a465483da10429a242dd3d5ffb2b1711a",
+        "sourceSha256": "83015799c0c6a19d3a44a58c087bdb5d8a883edb042010127483e0e0addd00fe",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.00 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep source-impact assessment, native Claim review, and publication evidence. Preserve exact identifiers `AGENTS.md`, `knowledgeImpact`, `verifyKnowledgeBase`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Native reconciliation changes only the verification timestamp. Independent review confirms identical canonical prose. Keep the grade-12 advisory and the reader-comprehension limit. Rechecked after the OpenWiki lifecycle refreshed evidence and provenance. The complete page body, Claim identities, and Claim statements remain unchanged; this source hash records that metadata update without removing the advisory."
+      "reason": "Keep source-impact assessment, native Claim review, and publication evidence with exact identifiers AGENTS.md, knowledgeImpact, and verifyKnowledgeBase. Comparison with merged main proves the complete page body is unchanged; only the native verification timestamp changed. This disposition binds the current bytes, retains the grade-12 advisory, and makes no reader-comprehension claim."
     },
     {
       "finding": {
@@ -1913,25 +1913,25 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/architecture.md",
-        "sourceSha256": "c70c86be2d7e1206c1da0181487f57c6ee306836b513b22dd86187e21ab2bdf4",
+        "sourceSha256": "ba37233296a4ada3eed3adeff38415efd2eb43cfdafa909f6e64c9876f5b1826",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 13.08 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep verified module responsibilities and exact Gradle architecture guards. Preserve exact identifiers `generateKastModuleKnowledge`, `AGENTS.md`, `query:protocol`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+      "reason": "Keep verified module responsibilities and exact Gradle architecture guards. Preserve exact identifiers `generateKastModuleKnowledge`, `AGENTS.md`, `query:protocol`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Rechecked the current page against merged main: the complete body is unchanged and only the native verification timestamp differs. Bind this review to the current bytes without removing the advisory."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/architecture.md",
-        "sourceSha256": "c70c86be2d7e1206c1da0181487f57c6ee306836b513b22dd86187e21ab2bdf4",
+        "sourceSha256": "ba37233296a4ada3eed3adeff38415efd2eb43cfdafa909f6e64c9876f5b1826",
         "rule": "Slopsentral.LongSentence",
         "line": 117,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
-      "reason": "Keep the task dependency inventory and its two distinct production/test line limits. Keep this as an assessed length exception, without a reader-comprehension claim."
+      "reason": "Keep the task dependency inventory and its two distinct production/test line limits. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the current page against merged main: the complete body is unchanged and only the native verification timestamp differs. Bind this review to the current bytes without removing the advisory."
     },
     {
       "finding": {
@@ -1973,169 +1973,169 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 12.92 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 12.84 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep archive identity, installation ownership, upgrade recovery, and native qualification limits. Preserve exact identifiers `agent-tools`, `kast install <harness>`, `--mcp`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Rechecked archive and installation ownership, managed-composition evidence, and current native-handoff sources. Removed the obsolete Gradle profile-report assertion while preserving native metrics, finite build outcomes and native qualification limits."
+      "reason": "Keep archive identity, installation ownership, upgrade recovery, and native qualification limits. Reviewed the added short sentences against the source-bound local gate and bounded daemon diagnostics: local validation is not publication, before/after admission is not continuous isolation, and client reaping is not daemon-retirement proof. The cache paragraph now distinguishes a supplied encryption key from observed capture. The grade estimate decreased from 12.92 to 12.84 but remains above the advisory target; reader comprehension remains unmeasured."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 362,
+        "line": 372,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
-      "reason": "Keep the historical removed-runtime inventory distinct from IDEA's current import/trust ownership. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep the historical removed-runtime inventory distinct from IDEA's current import/trust ownership. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 364,
+        "line": 374,
         "message": "Long sentence: 36 words.",
         "severity": "warning"
       },
-      "reason": "Keep archive admission before atomic replacement and preserve the dry-run exclusion of plugin-state writes. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep archive admission before atomic replacement and preserve the dry-run exclusion of plugin-state writes. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 364,
+        "line": 374,
         "message": "Long sentence: 41 words.",
         "severity": "warning"
       },
-      "reason": "Keep the native uninstall fixture's real setup, exact owned removals, and unrelated sentinel protection. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep the native uninstall fixture's real setup, exact owned removals, and unrelated sentinel protection. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 498,
+        "line": 522,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
-      "reason": "Keep typed retirement stages and admitted exit status beside the explicit exclusion of command and child-output data. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep both bounded retirement observation after bootout and typed retirement stages with admitted exit status. Preserve the explicit exclusion of command arguments, service labels, and child output. Both flagged 27-word sentences remain unchanged from merged main; the current hash and shifted line identify this assessed length exception without a reader-comprehension claim."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 500,
+        "line": 524,
         "message": "Long sentence: 29 words.",
         "severity": "warning"
       },
-      "reason": "Keep the shared producer/consumer entry limit and its pre-publication release rejection. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep the shared producer/consumer entry limit and its pre-publication release rejection. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 514,
+        "line": 538,
         "message": "Long sentence: 37 words.",
         "severity": "warning"
       },
-      "reason": "Keep historical paired maintenance distinct from the next control-only recovery receipt and unchanged plugin bytes. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep historical paired maintenance distinct from the next control-only recovery receipt and unchanged plugin bytes. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 517,
+        "line": 541,
         "message": "Long sentence: 39 words.",
         "severity": "warning"
       },
-      "reason": "Keep activation-lock fencing, alias cleanup, and recovery staging ordered before another payload stage. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep activation-lock fencing, alias cleanup, and recovery staging ordered before another payload stage. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 594,
+        "line": 618,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
-      "reason": "Keep exact runtime identity and launchd retirement before removal of the reviewed login item. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep exact runtime identity and launchd retirement before removal of the reviewed login item. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 608,
+        "line": 632,
         "message": "Long sentence: 35 words.",
         "severity": "warning"
       },
-      "reason": "Keep exact property-list reconstruction and Codex-home profile binding, including the qualified older form. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep exact property-list reconstruction and Codex-home profile binding, including the qualified older form. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 638,
+        "line": 662,
         "message": "Long sentence: 35 words.",
         "severity": "warning"
       },
-      "reason": "Keep all three real compiler witnesses and the different Control-only and Host-only identity invariants. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep all three real compiler witnesses and the different Control-only and Host-only identity invariants. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 653,
+        "line": 677,
         "message": "Long sentence: 32 words.",
         "severity": "warning"
       },
-      "reason": "Keep the unavailable legacy version projection visible and keep the conjunctive fresh epoch/generation evidence. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep the unavailable legacy version projection visible and keep the conjunctive fresh epoch/generation evidence. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 675,
+        "line": 699,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
-      "reason": "Keep the closed cleanup inventory beside the receipt/journal lifetime constraint. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep the closed cleanup inventory beside the receipt/journal lifetime constraint. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
+        "sourceSha256": "d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
         "rule": "Slopsentral.LongSentence",
-        "line": 677,
+        "line": 701,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
-      "reason": "Keep addressed SQLite inspection read-only, with explicit exclusions of initialization, checkpointing, and invented recovery. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception."
+      "reason": "Keep addressed SQLite inspection read-only, with explicit exclusions of initialization, checkpointing, and invented recovery. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line."
     },
     {
       "finding": {

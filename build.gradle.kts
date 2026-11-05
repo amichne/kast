@@ -474,9 +474,9 @@ val localInstallationTest = tasks.register<VerificationReportTask>("localInstall
 
 val productGateVersionTest = tasks.register<Exec>("productGateVersionTest") {
     group = "verification"
-    description = "Proves routine gates refresh published release authority before invoking Gradle."
+    description = "Proves local gates bind clean source to staged build identity."
     inputs.files(
-        "distribution/release/resolve_version.py",
+        ".github/scripts/release/admit-source.sh",
         "distribution/release/run_product_gate.py",
         "distribution/release/test_run_product_gate.py",
     )
