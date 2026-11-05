@@ -54,6 +54,7 @@ internal data class PublicCliCommandDescriptor(
     @SerialName("input_schema") val inputSchema: String,
     @SerialName("output_schema") val outputSchema: String,
     @SerialName("catalog_restriction") val catalogRestriction: String,
+    val projection: PublicCliProjectionContract,
 )
 
 @Serializable
@@ -68,16 +69,6 @@ internal enum class PublicCliInputMode {
     FILE,
     STDIN,
 }
-
-@Serializable
-internal data class PublicCliFlagDescriptor(
-    val name: String,
-    @SerialName("takes_value") val takesValue: Boolean,
-    val repeated: Boolean,
-    /** The packaged JSON Schema fragment is dynamic schema data, not a second semantic contract. */
-    val schema: JsonObject? = null,
-    @SerialName("value_spellings") val valueSpellings: List<String> = emptyList(),
-)
 
 internal fun describePublicCli(command: PublicCliCommand.Describe): PublicCliDescriptor {
     val selected = command.command
@@ -170,6 +161,7 @@ private fun commandDescriptor(command: PublicCliCommandId, catalog: PublicToolCa
                 "COMMON admits only the packaged common grammar. Unsupported options reject without catalog promotion."
             PublicToolCatalog.COMPLETE -> "COMPLETE admits the complete packaged query_symbols grammar."
         },
+        PublicCliProjectionContract(generatedRequestSchema(PublicJqRejection.serializer())),
     )
 }
 

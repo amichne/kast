@@ -7,6 +7,10 @@ internal enum class PublicCliFlag(val spelling: String, val takesValue: Boolean 
     WORKSPACE("--workspace"),
     CATALOG("--catalog"),
     JSON("--json", false),
+    JQ("--jq"),
+    JQ_EXECUTABLE("--jq-executable"),
+    JQ_TIMEOUT("--jq-timeout-ms"),
+    JQ_BYTES("--jq-max-bytes"),
     HELP("--help", false),
     REQUEST("--request"),
     NAME("--name"),
@@ -40,7 +44,7 @@ internal enum class PublicCliFlag(val spelling: String, val takesValue: Boolean 
 }
 
 internal val processFlags =
-    setOf(PublicCliFlag.WORKSPACE, PublicCliFlag.CATALOG, PublicCliFlag.JSON, PublicCliFlag.HELP)
+    setOf(PublicCliFlag.WORKSPACE, PublicCliFlag.CATALOG, PublicCliFlag.JSON, PublicCliFlag.HELP) + jqFlags
 private val queryFlags =
     setOf(
         PublicCliFlag.REQUEST,
@@ -109,16 +113,17 @@ internal fun flagsFor(command: PublicCliCommandId): Set<PublicCliFlag> =
                 )
         PublicCliCommandId.DIAGNOSTIC_CHECK -> processFlags + diagnosticFlags
         PublicCliCommandId.DESCRIBE ->
-            setOf(
-                PublicCliFlag.CATALOG,
-                PublicCliFlag.JSON,
-                PublicCliFlag.HELP,
-                PublicCliFlag.SECTION,
-                PublicCliFlag.POINTER,
-                PublicCliFlag.CURSOR,
-                PublicCliFlag.MAX_RESULTS,
-                PublicCliFlag.MAX_BYTES,
-            )
+            jqFlags +
+                setOf(
+                    PublicCliFlag.CATALOG,
+                    PublicCliFlag.JSON,
+                    PublicCliFlag.HELP,
+                    PublicCliFlag.SECTION,
+                    PublicCliFlag.POINTER,
+                    PublicCliFlag.CURSOR,
+                    PublicCliFlag.MAX_RESULTS,
+                    PublicCliFlag.MAX_BYTES,
+                )
     }
 
 internal data class LexicalArguments(val words: List<String>, val options: Map<PublicCliFlag, List<String>>) {

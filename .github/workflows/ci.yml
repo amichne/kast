@@ -140,6 +140,9 @@ jobs:
         if: steps.reuse.outputs.candidate != 'REUSED'
         run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
 
+      - uses: ./.github/actions/jq-oracle
+        if: steps.reuse.outputs.candidate != 'REUSED'
+
       - name: Set up documentation parser runtime
         if: steps.reuse.outputs.candidate != 'REUSED'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -378,6 +381,8 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: true
+      - uses: ./.github/actions/jq-oracle
+        if: needs.source-work.outputs.candidate != 'REUSED'
       - name: Exercise the assembled Mac product
         if: needs.source-work.outputs.candidate != 'REUSED'
         run: uv run --locked --script .github/scripts/ci/native_handoff.py qualify --version "0.0.$GITHUB_RUN_NUMBER"
@@ -513,6 +518,8 @@ jobs:
 
       - name: Install host protocol and semantic test tools
         run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
+
+      - uses: ./.github/actions/jq-oracle
 
       - name: Set up documentation parser runtime
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

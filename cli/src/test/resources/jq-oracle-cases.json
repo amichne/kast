@@ -1,0 +1,491 @@
+{
+  "schema": "kast.jq.oracle.v1",
+  "oracle": "jq-1.8.2",
+  "fixture_kind": "JSON_NAVIGATION_ONLY",
+  "cases": [
+    {
+      "name": "identity",
+      "program": ".",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        {
+          "type": "complete",
+          "document": {
+            "items": [
+              {
+                "type": "exact-symbol",
+                "kind": "function",
+                "name": "run",
+                "ref": "exact:v5:issued-token-with:punctuation,unchanged",
+                "signature": null,
+                "source": "fun run() {\n  println(\"a,b: c\")\n}\n"
+              },
+              {
+                "type": "exact-symbol",
+                "kind": "class",
+                "name": "ΩService",
+                "ref": "exact:v5:second"
+              },
+              {
+                "type": "exact-symbol",
+                "kind": "function",
+                "name": "run",
+                "ref": "exact:v5:third",
+                "signature": {
+                  "text": "run(Int)"
+                }
+              }
+            ],
+            "coverage": {
+              "exhaustive": true
+            },
+            "next_cursor": null,
+            "generation": 9223372036854775807,
+            "empty": [],
+            "false": false
+          },
+          "a/b": {
+            "~key": [
+              false,
+              null,
+              9223372036854775807
+            ]
+          }
+        }
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "map_names",
+      "program": ".document.items | map(.name)",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        [
+          "run",
+          "ΩService",
+          "run"
+        ]
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "select_project",
+      "program": ".document.items | map(select(.kind == \"function\") | {name,ref})",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        [
+          {
+            "name": "run",
+            "ref": "exact:v5:issued-token-with:punctuation,unchanged"
+          },
+          {
+            "name": "run",
+            "ref": "exact:v5:third"
+          }
+        ]
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "reduce",
+      "program": "reduce .document.items[] as $x (0; . + 1)",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        3
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "group_by",
+      "program": ".document.items | group_by(.name) | map({name:.[0].name,n:length})",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        [
+          {
+            "name": "run",
+            "n": 2
+          },
+          {
+            "name": "ΩService",
+            "n": 1
+          }
+        ]
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "sort_by",
+      "program": ".document.items | sort_by(.name) | map(.name)",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        [
+          "run",
+          "run",
+          "ΩService"
+        ]
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "unique_by",
+      "program": ".document.items | unique_by(.name) | map(.name)",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        [
+          "run",
+          "ΩService"
+        ]
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "nested_array_shape",
+      "program": "[.document.items | map([.name])]",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        [
+          [
+            [
+              "run"
+            ],
+            [
+              "ΩService"
+            ],
+            [
+              "run"
+            ]
+          ]
+        ]
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "missing",
+      "program": ".document.absent",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        null
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "null",
+      "program": ".document.next_cursor",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        null
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "has_null",
+      "program": ".document | has(\"next_cursor\")",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        true
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "has_missing",
+      "program": ".document | has(\"absent\")",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        false
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "false_default",
+      "program": ".document.false",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        false
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "fallback_false",
+      "program": ".document.false // \"fallback\"",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        "fallback"
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "optional_type",
+      "program": ".document.items[] | .signature.text?",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        null,
+        null,
+        "run(Int)"
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "empty_stream",
+      "program": "empty",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [],
+      "expected_exit": 0
+    },
+    {
+      "name": "no_matches",
+      "program": ".document.items[] | select(.name == \"absent\")",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [],
+      "expected_exit": 0
+    },
+    {
+      "name": "collect_no_matches",
+      "program": "[.document.items[] | select(.name == \"absent\")]",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        []
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "multiple_results",
+      "program": ".document.items[].name",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        "run",
+        "ΩService",
+        "run"
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "comma_results",
+      "program": ".type, .document.items[0].name",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        "complete",
+        "run"
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "empty_array",
+      "program": ".document.empty",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        []
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "empty_object",
+      "program": "{}",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        {}
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "empty_string",
+      "program": "\"\"",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        ""
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "negative_index",
+      "program": ".document.items[-1].ref",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        "exact:v5:third"
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "out_of_range_index",
+      "program": ".document.items[99]",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        null
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "slice",
+      "program": ".document.items[1:2] | map(.name)",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        [
+          "ΩService"
+        ]
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "quoted_keys",
+      "program": ".[\"a/b\"][\"~key\"][0:2]",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        [
+          false,
+          null
+        ]
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "getpath",
+      "program": "getpath([\"a/b\",\"~key\",2])",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        9223372036854775807
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "reference_identity",
+      "program": ".document.items[0].ref",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        "exact:v5:issued-token-with:punctuation,unchanged"
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "source_escape",
+      "program": ".document.items[0].source",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        "fun run() {\n  println(\"a,b: c\")\n}\n"
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "large_integer_identity",
+      "program": ".document.generation",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        9223372036854775807
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "large_integer_arithmetic",
+      "program": ". + 1",
+      "input_json": "9007199254740993",
+      "expected_values": [
+        9007199254740992
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "try_catch",
+      "program": "try (.document.items | .field) catch \"type-error\"",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        "type-error"
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "function_definition",
+      "program": "def sparse(f): map(f); .document.items | sparse({name})",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        [
+          {
+            "name": "run"
+          },
+          {
+            "name": "ΩService"
+          },
+          {
+            "name": "run"
+          }
+        ]
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "regex",
+      "program": ".document.items | map(select(.name | test(\"^run$\")) | .name)",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        [
+          "run",
+          "run"
+        ]
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "inputs_eof",
+      "program": "[inputs]",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        []
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "scalar_boolean",
+      "program": ".",
+      "input_json": "false",
+      "expected_values": [
+        false
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "compile_error",
+      "program": ".document[",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [],
+      "expected_exit": 3
+    },
+    {
+      "name": "runtime_type_error",
+      "program": ".document.items | .field",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [],
+      "expected_exit": 5
+    },
+    {
+      "name": "partial_before_error",
+      "program": "1, error(\"probe failure\")",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        1
+      ],
+      "expected_exit": 5
+    },
+    {
+      "name": "halt_error",
+      "program": "\"probe failure\" | halt_error(7)",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [],
+      "expected_exit": 7
+    },
+    {
+      "name": "leading_dash_filter",
+      "program": "-1",
+      "input_json": "{\"type\":\"complete\",\"document\":{\"items\":[{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:issued-token-with:punctuation,unchanged\",\"signature\":null,\"source\":\"fun run() {\\n  println(\\\"a,b: c\\\")\\n}\\n\"},{\"type\":\"exact-symbol\",\"kind\":\"class\",\"name\":\"ΩService\",\"ref\":\"exact:v5:second\"},{\"type\":\"exact-symbol\",\"kind\":\"function\",\"name\":\"run\",\"ref\":\"exact:v5:third\",\"signature\":{\"text\":\"run(Int)\"}}],\"coverage\":{\"exhaustive\":true},\"next_cursor\":null,\"generation\":9223372036854775807,\"empty\":[],\"false\":false},\"a/b\":{\"~key\":[false,null,9223372036854775807]}}",
+      "expected_values": [
+        -1
+      ],
+      "expected_exit": 0
+    },
+    {
+      "name": "large_decimal_identity",
+      "program": ".",
+      "input_json": "1.2345678901234567",
+      "expected_values": [
+        1.2345678901234567
+      ],
+      "expected_exit": 0
+    }
+  ]
+}

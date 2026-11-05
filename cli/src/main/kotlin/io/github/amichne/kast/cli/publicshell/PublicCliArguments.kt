@@ -22,21 +22,30 @@ internal sealed interface PublicCliInput {
 }
 
 internal sealed interface PublicCliCommand {
+    val projection: PublicOutputProjection
+        get() = PublicOutputProjection.Unfiltered
+
     data class Query(
         val catalog: PublicToolCatalog,
         val workspace: PublicCliWorkspace,
         val input: PublicCliInput,
         val identity: PublicToolIdentity = PublicToolIdentity.QUERY_SYMBOLS,
+        override val projection: PublicOutputProjection = PublicOutputProjection.Unfiltered,
     ) : PublicCliCommand
 
-    data class Plan(val catalog: PublicToolCatalog, val workspace: PublicCliWorkspace, val input: PublicCliInput) :
-        PublicCliCommand
+    data class Plan(
+        val catalog: PublicToolCatalog,
+        val workspace: PublicCliWorkspace,
+        val input: PublicCliInput,
+        override val projection: PublicOutputProjection = PublicOutputProjection.Unfiltered,
+    ) : PublicCliCommand
 
     data class Describe(
         val catalog: PublicToolCatalog,
         val command: PublicCliCommandId?,
         val section: PublicCliDescribeSection,
         val selection: PublicSchemaSelection? = null,
+        override val projection: PublicOutputProjection = PublicOutputProjection.Unfiltered,
     ) : PublicCliCommand
 
     data class Help(val command: PublicCliCommandId?) : PublicCliCommand
@@ -82,13 +91,36 @@ internal enum class PublicCliArgumentFailure {
     INVALID_FIELDS,
     FIELDS_WITH_OCCURRENCES,
     INVALID_SCHEMA_SELECTION,
+    INVALID_JQ_OPTIONS,
 }
 
 internal fun parsePublicCliArguments(argv: List<String>): Refinement<PublicCliCommand, PublicCliArgumentFailure> =
     when (val lexed = lexPublicCliArguments(argv)) {
         is Refinement.Rejected -> lexed
-        is Refinement.Refined -> lowerCommand(lexed.value)
+        is Refinement.Refined -> projectCommand(lexed.value)
     }
+
+private fun projectCommand(arguments: LexicalArguments): Refinement<PublicCliCommand, PublicCliArgumentFailure> {
+    val command =
+        when (val lowered = lowerCommand(arguments)) {
+            is Refinement.Rejected -> return lowered
+            is Refinement.Refined -> lowered.value
+        }
+    val projection =
+        when (val selected = PublicJqOptions.parse(arguments)) {
+            is Refinement.Rejected -> return selected
+            is Refinement.Refined -> selected.value
+        }
+    return when (command) {
+        is PublicCliCommand.Query -> Refinement.Refined(command.copy(projection = projection))
+        is PublicCliCommand.Plan -> Refinement.Refined(command.copy(projection = projection))
+        is PublicCliCommand.Describe -> Refinement.Refined(command.copy(projection = projection))
+        is PublicCliCommand.Help,
+        is PublicCliCommand.NamespaceHelp ->
+            if (projection == PublicOutputProjection.Unfiltered) Refinement.Refined(command)
+            else Refinement.Rejected(PublicCliArgumentFailure.INVALID_JQ_OPTIONS)
+    }
+}
 
 private fun lowerCommand(arguments: LexicalArguments): Refinement<PublicCliCommand, PublicCliArgumentFailure> {
     val command = findCommand(arguments)

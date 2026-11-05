@@ -446,7 +446,7 @@
         },
         {
             "path": "mise.toml",
-            "sha256": "5ee3f428caabc44a4b6a8c1cfd24b0df25fd4a9c6b8f583cd3aaf07b1e5037ff"
+            "sha256": "531d6af3dc9cccdc74f22a1801a26e982ce214ca026940ef9f0bc11f8c038195"
         },
         {
             "path": "protocol/contract/build.gradle.kts",

@@ -3132,6 +3132,18 @@
         "severity": "warning"
       },
       "reason": "Keep invocation fences, durable thread identity, and finite recovery. Preserve exact identifiers `InvocationFence`, `invocationTransition`, `FileInvocationRecords`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/cli.mdx",
+        "sourceSha256": "3f840c3f0e34ec2977793b72b9288a0f75ab2bfd82d511c990f1ac96ca2e8b12",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.78 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the exact jq options, one-result contract, version range, capture limits, retained-result recovery, and numeric preservation guarantees. The new section uses short paragraphs and concrete tested commands. Necessary terms include cardinality, executable, projection, and precision. The grade-8 advisory remains unmet; these metrics and author review do not establish reader comprehension."
     }
   ]
 }

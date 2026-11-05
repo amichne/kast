@@ -38,6 +38,7 @@ jobs:
         with:
           python-version-file: .python-version
       - run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
+      - uses: ./.github/actions/jq-oracle
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.21.0'

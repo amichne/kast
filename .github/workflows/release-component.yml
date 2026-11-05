@@ -56,6 +56,7 @@ jobs:
           "$RUNNER_TOOL_CACHE/kast-ci-python/bin/python3" -m pip install uv==0.12.9
 
       - run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt
+      - uses: ./.github/actions/jq-oracle
       - name: Resolve selected service version
         id: release_version
         run: >-

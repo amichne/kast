@@ -13,6 +13,7 @@ enum class CliOutputFailure {
     INVALID_OUTPUT_FORMAT,
     OUTPUT_ENCODING_REJECTED,
     OUTPUT_LIMIT_EXCEEDED,
+    OUTPUT_VALUE_LOSS,
 }
 
 fun selectCliOutputFormat(value: String?): Refinement<CliOutputFormat, CliOutputFailure> =

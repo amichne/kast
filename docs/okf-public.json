@@ -5956,6 +5956,10 @@
           "sha256": "203b80f4b2e72e57ebdeff1f5bb85d49b3026395af8aac7516993103ef494763"
         },
         {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliProjectionContract.kt",
+          "sha256": "79fba6fe5ae7a925d78003c62cbc91730737b70b3bc88f2527de42601aacfead"
+        },
+        {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliSchemaPage.kt",
           "sha256": "c0bb30263661150edf41567c65f074c7ce2328e6a2a8210b3f0476da26ed61e1"
         },
@@ -5972,16 +5976,56 @@
           "sha256": "9424848e876a1ad4128943a09c7e62185a3cc918fa74fd32a9814e1703b26c07"
         },
         {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqEngine.kt",
+          "sha256": "0d40a1e2208b948ffabf1bcd0bcac9334e298888c6088c37fbdae738094e4946"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqFailure.kt",
+          "sha256": "f6de1b0a6d64985bb6f6c35fc495bfe4d49140902aa67d48f1a1252b80a83a24"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqOptions.kt",
+          "sha256": "0c6ccb1b3de71cec6458ded3a02ebc13eeb4710ea58026cb718ec1edefd195c4"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqProcess.kt",
+          "sha256": "5172cdc4c16f07d8c292f93e3b8a96fa316f2910253beca56d077bbb22ea5a10"
+        },
+        {
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqRecovery.kt",
+          "sha256": "59140cc5bb593f1073c072f8662de43f84a2084b13abcc4f830b159b2f3171ec"
+        },
+        {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
           "sha256": "51e0da7567f086f692a0a33b4ff6ef1ad2ba3217246ccdbbb7000aa3e92b7cb6"
+        },
+        {
+          "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/CliOutputConfiguration.kt",
+          "sha256": "313cb675de348019c06087ffd9368b0a72441b445eeecb9fa04ffb63052bbeb1"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
           "sha256": "d2b6a205ba4b0ec735b3ae190f59493b48a5973fc00e880c9940748d7d14b2a6"
         },
         {
+          "path": "distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/CliOutput.kt",
+          "sha256": "64854b2a4e42c05092bc025d96cf3856b9d2171e311644c16306fa0878957202"
+        },
+        {
+          "path": "distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/JsonProjectionDocument.kt",
+          "sha256": "346c5658338d5b5baf169374083a91c549c2de32eb152408daa5dd373958e463"
+        },
+        {
+          "path": "distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/LosslessCliOutput.kt",
+          "sha256": "8704ce507bba296dd07775ddec8f7ed45068c074cfc563743936751dae868b6a"
+        },
+        {
           "path": "docs/public/reference/callables.openapi.json",
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+        },
+        {
+          "path": "mise.toml",
+          "sha256": "531d6af3dc9cccdc74f22a1801a26e982ce214ca026940ef9f0bc11f8c038195"
         },
         {
           "path": "packaging/configuration-schema.json",
