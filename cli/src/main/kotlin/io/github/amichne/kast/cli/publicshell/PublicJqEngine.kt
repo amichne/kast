@@ -37,7 +37,7 @@ private constructor(
 
     private fun request(stage: PublicJqStage, input: String): PublicJqProcessRequest =
         PublicJqProcessRequest(
-            command.arguments + listOf(stage.name, options.limits.bytes.toString(), options.program),
+            command.arguments + listOf(stage.name, options.limits.bytes.toString(), options.workerArgument),
             input,
             stage,
             options.limits,

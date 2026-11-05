@@ -31,6 +31,10 @@ class NativeJqCompositionTest {
             fixture.assertExit(rejected, 2, "default-error")
             val error = Json.parseToJsonElement(Files.readString(temporary.resolve("default-error.stdout"))).jsonObject
             assertEquals("OUTPUT_CARDINALITY", error.getValue("failure").jsonPrimitive.content)
+            val unicode = Json.encodeToString("Ω𐀀😀\uDBFF\uDFFF")
+            val literal = fixture.start("unicode-program", base + jq(unicode), environment = mapOf("PATH" to ""))
+            fixture.assertExit(literal, 0, "unicode-program")
+            assertEquals(unicode + "\n", Files.readString(temporary.resolve("unicode-program.stdout")))
         }
     }
 

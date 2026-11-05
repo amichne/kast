@@ -37,6 +37,7 @@ class PublicJqPolicyTest {
             listOf(
                 listOf("--jq-executable", "/bin/jq"),
                 listOf("--jq", ""),
+                listOf("--jq", "\uD800"),
                 listOf("--jq", ".", "--jq-timeout-ms", "0"),
                 listOf("--jq", ".", "--jq-max-bytes", "67108865"),
                 listOf("--jq", ".", "--jq-executable", "./jq"),

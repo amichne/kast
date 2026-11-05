@@ -137,7 +137,11 @@ class PublicJqOracleTest {
         val points = listOf(0x10000, 0x1F600, 0x10FFFF)
         val text = points.joinToString("") { String(Character.toChars(it)) }
         for ((program, input) in
-            listOf("implode" to Json.encodeToString(points), "explode | implode" to Json.encodeToString(text))) {
+            listOf(
+                "implode" to Json.encodeToString(points),
+                "explode | implode" to Json.encodeToString(text),
+                Json.encodeToString(text) to "null",
+            )) {
             val expected = Json.encodeToString(text)
             verifyIndependentOracle(
                 JqOracleCase(

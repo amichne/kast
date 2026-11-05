@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
+import java.util.Base64
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -23,6 +24,34 @@ open class PublicJqWorkerProcessTest {
         val result =
             PublicJqProcess(Path.of("/"), emptyMap()).execute(request("map(. + 1)", Json.encodeToString(listOf(1, 2))))
         assertEquals(PublicJqCapture(0, Json.encodeToString(listOf(2, 3))), (result as Refinement.Refined).value)
+    }
+
+    @Test
+    fun `worker protocol preserves UTF-8 when the runtime text output encoding is ASCII`() {
+        val runtime = runtimeArguments()
+        val asciiOutput = listOf(runtime.first(), "-Dstdout.encoding=US-ASCII") + runtime.drop(1)
+        val input = Json.encodeToString("Ω𐀀😀\uDBFF\uDFFF")
+        for (program in listOf(".", "explode | implode", input)) {
+            val result =
+                PublicJqProcess(Path.of("/"), emptyMap()).execute(request(program, input, runtime = asciiOutput))
+            assertEquals(PublicJqCapture(0, input), (result as Refinement.Refined).value, program)
+        }
+    }
+
+    @Test
+    fun `worker rejects malformed or oversized encoded programs before evaluation`() {
+        val oversized = Base64.getEncoder().encodeToString(ByteArray(MAX_PROGRAM_BYTES + 1) { 32 })
+        val invalidUtf8 = Base64.getEncoder().encodeToString(byteArrayOf(0xFF.toByte()))
+        for (argument in listOf("?", "", "AA==", invalidUtf8, oversized, "a".repeat(oversized.length + 1))) {
+            val valid = request(".")
+            val result =
+                PublicJqProcess(Path.of("/"), emptyMap())
+                    .execute(valid.copy(arguments = valid.arguments.dropLast(1) + argument))
+            assertEquals(
+                PublicJqCapture(PublicJqWorkerExit.INVALID_REQUEST.code, ""),
+                (result as Refinement.Refined).value,
+            )
+        }
     }
 
     @Test
@@ -70,16 +99,22 @@ open class PublicJqWorkerProcessTest {
         }
     }
 
-    private fun request(program: String, input: String = "null", timeout: String = "5000"): PublicJqProcessRequest {
+    private fun request(
+        program: String,
+        input: String = "null",
+        timeout: String = "5000",
+        runtime: List<String> = runtimeArguments(),
+    ): PublicJqProcessRequest {
         val command =
             (parsePublicCliArguments(
                     listOf("query", "plan", "--name", "Order", "--jq", program, "--jq-timeout-ms", timeout)
                 )
                     as Refinement.Refined)
                 .value
-        val limits = (command.projection as PublicOutputProjection.Jq).options.limits
+        val options = (command.projection as PublicOutputProjection.Jq).options
+        val limits = options.limits
         return PublicJqProcessRequest(
-            runtimeArguments() + listOf("FILTER", limits.bytes.toString(), program),
+            runtime + listOf("FILTER", limits.bytes.toString(), options.workerArgument),
             input,
             PublicJqStage.FILTER,
             limits,

@@ -1,6 +1,8 @@
 package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.charset.CharacterCodingException
+import java.util.Base64
 
 internal sealed interface PublicOutputProjection {
     data object Unfiltered : PublicOutputProjection
@@ -12,6 +14,7 @@ internal sealed interface PublicOutputProjection {
 internal class PublicJqOptions
 private constructor(
     val program: String,
+    val workerArgument: String,
     val limits: PublicJqLimits,
 ) {
     companion object {
@@ -22,16 +25,22 @@ private constructor(
                     Refinement.Rejected(PublicCliArgumentFailure.INVALID_JQ_OPTIONS)
                 else Refinement.Refined(PublicOutputProjection.Unfiltered)
             }
-            if (
-                program.isBlank() || '\u0000' in program || program.toByteArray(Charsets.UTF_8).size > MAX_PROGRAM_BYTES
-            )
+            val bytes =
+                try {
+                    program.encodeToByteArray(throwOnInvalidSequence = true)
+                } catch (_: CharacterCodingException) {
+                    return Refinement.Rejected(PublicCliArgumentFailure.INVALID_JQ_OPTIONS)
+                }
+            if (program.isBlank() || '\u0000' in program || bytes.size > MAX_PROGRAM_BYTES)
                 return Refinement.Rejected(PublicCliArgumentFailure.INVALID_JQ_OPTIONS)
             val limits =
                 when (val parsed = PublicJqLimits.parse(arguments)) {
                     is Refinement.Refined -> parsed.value
                     is Refinement.Rejected -> return parsed
                 }
-            return Refinement.Refined(PublicOutputProjection.Jq(PublicJqOptions(program, limits)))
+            return Refinement.Refined(
+                PublicOutputProjection.Jq(PublicJqOptions(program, Base64.getEncoder().encodeToString(bytes), limits))
+            )
         }
     }
 }
