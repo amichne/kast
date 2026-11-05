@@ -1,11 +1,10 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
-import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
-import io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget
 import io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadline
 import io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadlineOwner
 import io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming
@@ -60,7 +59,7 @@ private constructor(
         deadline.timing(stage, WorkspacePreparationDeadlineOwner.NATIVE_PREPARATION, nanoTime())
 
     fun remaining():
-        Refinement<ElapsedTimeLimitMillis, io.github.amichne.kast.protocol.contract.WorkspacePreparationExpiry> =
+        Refinement<ElapsedTimeAllowance, io.github.amichne.kast.protocol.contract.WorkspacePreparationExpiry> =
         deadline.remaining(nanoTime())
 
     private fun record(
@@ -72,14 +71,12 @@ private constructor(
     companion object {
         fun admit(
             requestId: String,
-            allowanceMillis: Long,
+            allowanceMillis: Long?,
             nanoTime: () -> Long = System::nanoTime,
             observe: (NativePreparationObservation) -> Unit = {},
             admittedAtNanos: Long = nanoTime(),
         ): Refinement<NativeWorkspacePreparation, IdeLifecycleFailure> =
-            when (
-                val limit = ElapsedTimeLimitMillis.parse(minOf(allowanceMillis, WorkspacePreparationBudget.limit.value))
-            ) {
+            when (val limit = ElapsedTimeAllowance.admitMillis(allowanceMillis)) {
                 is Refinement.Rejected -> Refinement.Rejected(IdeLifecycleFailure.DEADLINE_EXCEEDED)
                 is Refinement.Refined ->
                     Refinement.Refined(
@@ -98,7 +95,7 @@ private constructor(
 /** The application captures admission before dispatch; an expired queued operation cannot start native effects. */
 internal suspend fun prepareNativeWorkspace(
     requestId: String,
-    allowanceMillis: Long,
+    allowanceMillis: Long?,
     admittedAtNanos: Long,
     observe: (NativePreparationObservation) -> Unit = {},
     nanoTime: () -> Long = System::nanoTime,

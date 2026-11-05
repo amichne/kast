@@ -28,6 +28,10 @@ private fun uniqueRefreshObject(reader: JsonReader, nestedRuleAllowed: Boolean) 
                 require(name == "preparationMillis" && nestedRuleAllowed)
                 reader.nextLong()
             }
+            JsonToken.NULL -> {
+                require(name == "preparationMillis" && nestedRuleAllowed)
+                reader.nextNull()
+            }
             JsonToken.BEGIN_OBJECT -> {
                 require(nestedRuleAllowed)
                 uniqueRefreshObject(reader, nestedRuleAllowed = false)

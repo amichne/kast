@@ -44,6 +44,14 @@ internal sealed interface WorkspacePreparationActivityOutcome {
     @Serializable
     @SerialName("retrying_host")
     data class RetryingHost(val previousRequestId: String) : WorkspacePreparationActivityOutcome
+
+    @Serializable
+    @SerialName("waiting_after_shared_deadline")
+    data class WaitingAfterSharedDeadline(
+        val previousRequestId: String,
+        val nextRequestId: String,
+        val expired: WorkspacePreparationTiming,
+    ) : WorkspacePreparationActivityOutcome
 }
 
 internal fun interface WorkspacePreparationObserver {

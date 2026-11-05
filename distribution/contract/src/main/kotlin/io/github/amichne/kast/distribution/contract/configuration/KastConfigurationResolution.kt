@@ -104,6 +104,7 @@ private constructor(
     private val suppliedCandidates: List<ResolvedAssignment>,
     val debug: ConfigurationSwitch,
     val readLimits: ReadLimits,
+    val workspacePreparationWait: io.github.amichne.kast.kernel.ElapsedTimeAllowance,
     private val delegatedEnvironment: GradleImportEnvironment,
 ) {
     val selectedIdeHome: ConfigurationPathSelection
@@ -283,6 +284,20 @@ private constructor(
             }
             val byKey = resolved.associateBy { it.parameter }
             val debug = (byKey.getValue(ConfigurationParameter.DEBUG).value as ConfigurationValue.Switch).value
+            val preparationWait =
+                when (
+                    val parsed =
+                        io.github.amichne.kast.kernel.ElapsedTimeAllowance.parseSetting(
+                            byKey.getValue(ConfigurationParameter.WORKSPACE_PREPARATION_WAIT).value.boundaryValue()
+                        )
+                ) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return rejected(
+                            ConfigurationParameter.WORKSPACE_PREPARATION_WAIT.key,
+                            ConfigurationFailure.INVALID_VALUE,
+                        )
+                }
             val rawNames = byKey.getValue(ConfigurationParameter.GRADLE_IMPORT_VARIABLES).value.boundaryValue()
             val gradleHome = byKey[ConfigurationParameter.GRADLE_USER_HOME]?.value?.boundaryValue()
             val names =
@@ -321,6 +336,7 @@ private constructor(
                     admitted.values.flatten().toList(),
                     debug,
                     readLimits,
+                    preparationWait,
                     delegated,
                 )
             )

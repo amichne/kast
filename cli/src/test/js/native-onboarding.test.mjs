@@ -22,9 +22,9 @@ test('Pi CLI hook preserves workspace arguments and reports preparation failure 
     });
     const cwd = '/project with spaces/$literal;value';
     await handlers.get('session_start')({}, { cwd, ui: { notify: (...args) => notices.push(args) } });
-    assert.deepEqual(calls, [['kast', ['hook', 'session-start', '--workspace', cwd], { timeout: 3_780_000 }]]);
+    assert.deepEqual(calls, [['kast', ['hook', 'session-start', '--workspace', cwd, '--wait', 'none'], { timeout: 90_000 }]]);
     assert.equal(notices.length, code === 0 ? 0 : 1);
-    assert.deepEqual([...handlers.keys()], ['session_start']);
+    assert.deepEqual([...handlers.keys()], ['session_start', 'before_agent_start']);
   }
 });
 
@@ -110,7 +110,7 @@ for (const composition of ['CLI', 'MCP']) {
       }
       const startup = session({}, ctx);
       assert.equal(startup, undefined, 'The session handler must return while preparation is pending');
-      assert.deepEqual(calls, [['kast', ['hook', 'session-start', '--workspace', ctx.cwd], { timeout: 3_780_000 }]]);
+      assert.deepEqual(calls, [['kast', ['hook', 'session-start', '--workspace', ctx.cwd, '--wait', 'none'], { timeout: 90_000 }]]);
       assert.deepEqual(notifications, []);
       if (composition === 'MCP') {
         assert.ok(handlers.get('before_agent_start')({ systemPrompt: 'base' }).systemPrompt.includes('Kast shared context'));
@@ -120,8 +120,8 @@ for (const composition of ['CLI', 'MCP']) {
       await preparation.promise.catch(() => {});
       assert.deepEqual(notifications, outcome === 'complete' ? [] : [[
         outcome === 'launch-failed'
-          ? 'Kast workspace preparation failed to start.'
-          : 'Kast workspace preparation failed. ' + 'x'.repeat(2048),
+          ? 'Kast workspace preparation could not be observed. Inspect kast status and retry explicit workspace preparation when appropriate.'
+          : 'Kast workspace preparation was rejected. ' + 'x'.repeat(4096),
         'warning',
       ]]);
     });
@@ -234,7 +234,7 @@ function assertContinuesWithoutContext(f, reason) {
     'Kast session context is unavailable (' + reason + '). Native MCP remains registered.', 'warning',
   ]]);
   for (let turn = 0; turn < 2; turn++) {
-    assert.equal(f.handlers.get('before_agent_start')({ systemPrompt: 'Other extension context' }), undefined);
+    assert.equal(f.handlers.get('before_agent_start')({ systemPrompt: 'Other extension context' }).systemPrompt, 'Other extension context\n\n{}');
   }
   assert.equal(f.notifications.length, 1, 'A context failure does not repeat on every turn');
 }
@@ -244,14 +244,14 @@ test('Pi registers native MCP and delegates preparation to the public executable
   assert.deepEqual(f.servers, [['kast', {
     command: 'uv', args: ['run', '--locked', '--script', join(f.installation, 'share/kast/agent-tools/compositions/mcp/plugins/kast/skills/kast/scripts/server.py')], timeout: 3780,
   }]]);
-  assert.equal(f.handlers.get('before_agent_start')({ systemPrompt: 'base' }), undefined);
+  assert.match(f.handlers.get('before_agent_start')({ systemPrompt: 'base' }).systemPrompt, /preparation is starting in the background/);
   await f.handlers.get('session_start')({}, f.ctx);
-  assert.deepEqual(f.preparations, [['kast', ['hook', 'session-start', '--workspace', f.workspace], { timeout: 3_780_000 }]]);
+  assert.deepEqual(f.preparations, [['kast', ['hook', 'session-start', '--workspace', f.workspace, '--wait', 'none'], { timeout: 90_000 }]]);
   const expected = 'Other extension context\n\nKast shared context' +
     '\nWorkspace: ' + JSON.stringify(f.workspace) +
     '\nKast skill: ' + JSON.stringify(join(f.references, '../skills/kast/SKILL.md')) +
     '\nAdvanced query schema: ' + JSON.stringify(join(f.references, 'query-schema.json')) +
-    '\nQuery examples: ' + JSON.stringify(join(f.references, 'query-examples.json'));
+    '\nQuery examples: ' + JSON.stringify(join(f.references, 'query-examples.json')) + '\n\n{}';
   unlinkSync(join(f.references, 'onboarding.md'));
   for (let turn = 0; turn < 2; turn++) {
     assert.equal(f.handlers.get('before_agent_start')({ systemPrompt: 'Other extension context' }).systemPrompt, expected);
@@ -294,7 +294,7 @@ test('Pi admits exactly 8192 context bytes and rejects the next byte', async t =
   writeFileSync(join(f.references, 'onboarding.md'), brief);
   await f.handlers.get('session_start')({}, f.ctx);
   assert.equal(f.handlers.get('before_agent_start')({ systemPrompt: 'base' }).systemPrompt,
-    'base\n\n' + brief + suffix.trimEnd());
+    'base\n\n' + brief + suffix.trimEnd() + '\n\n{}');
   assert.deepEqual(f.notifications, []);
   writeFileSync(join(f.references, 'onboarding.md'), brief + 'x');
   await f.handlers.get('session_start')({}, f.ctx);
@@ -340,3 +340,80 @@ test('optional plugin MCP entries select the bundled task server and skill', () 
   assert.doesNotMatch(mcp.mcpServers.kast.args.join(' '), /kast-mcp-complete/);
   assert.match(readFileSync(new URL('skills/kast/SKILL.md', root), 'utf8'), /name: kast/);
 });
+
+test("background startup gives the model pending context before and after native admission", async () => {
+  const handlers = new Map();
+  const calls = [];
+  let settle;
+  const pi = {
+    on: (event, handler) => handlers.set(event, handler),
+    exec: (...args) => {
+      calls.push(args);
+      return new Promise(resolve => { settle = resolve; });
+    },
+  };
+  const hook = readFileSync(new URL('../../../../agent-tools/hooks/pi.ts', import.meta.url), 'utf8');
+  const { default: register } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(hook)).toString('base64'));
+  register(pi);
+  handlers.get("session_start")({}, { cwd: "/workspace with spaces", ui: { notify() { assert.fail("Pending is not failure"); } } });
+  assert.deepEqual(calls, [["kast", ["hook", "session-start", "--workspace", "/workspace with spaces", "--wait", "none"], { timeout: 90_000 }]]);
+  const prompt = () => handlers.get("before_agent_start")({ systemPrompt: "original" }).systemPrompt;
+  assert.match(prompt(), /preparation is starting in the background/);
+  assert.match(prompt(), /--wait indefinite/);
+  const nativeOutput = "Kast workspace is being prepared (IMPORTING); this is pending.";
+  settle({ code: 0, stdout: nativeOutput, stderr: "" });
+  await Promise.resolve();
+  assert.equal(prompt(), "original\n\n" + nativeOutput);
+});
+
+test("native rejection is kept in model context and produces a visible warning", async () => {
+  const handlers = new Map();
+  const notifications = [];
+  const hook = readFileSync(new URL('../../../../agent-tools/hooks/pi.ts', import.meta.url), 'utf8');
+  const { default: register } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(hook)).toString('base64'));
+  register({
+    on: (event, handler) => handlers.set(event, handler),
+    exec: async () => ({ code: 4, stdout: "TRUST_REQUIRED", stderr: "" }),
+  });
+  handlers.get("session_start")({}, { cwd: "/workspace", ui: { notify: (...args) => notifications.push(args) } });
+  await Promise.resolve();
+  assert.match(handlers.get("before_agent_start")({ systemPrompt: "original" }).systemPrompt, /TRUST_REQUIRED/);
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0][1], "warning");
+});
+
+for (const composition of ['CLI', 'MCP']) {
+  for (const staleOutcome of ['rejected', 'launch-failed']) {
+    test('Pi ' + composition + ' ignores a prior session completion: ' + staleOutcome, async t => {
+      const pending = [], handlers = new Map(), notices = [];
+      const exec = () => {
+        const result = Promise.withResolvers();
+        pending.push(result);
+        return result.promise;
+      };
+      let ctx;
+      if (composition === 'MCP') {
+        const f = await fixture(t, 'Kast shared context\n', exec);
+        ctx = f.ctx;
+        ctx.ui.notify = (...args) => notices.push(args);
+        for (const event of ['session_start', 'before_agent_start']) handlers.set(event, f.handlers.get(event));
+      } else {
+        const hook = readFileSync(new URL('../../../../agent-tools/hooks/pi.ts', import.meta.url), 'utf8');
+        const { default: register } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(hook)).toString('base64'));
+        register({ on: (event, handler) => handlers.set(event, handler), exec });
+        ctx = { cwd: '/workspace', ui: { notify: (...args) => notices.push(args) } };
+      }
+      handlers.get('session_start')({}, ctx);
+      handlers.get('session_start')({}, ctx);
+      pending[1].resolve({ code: 0, stdout: 'CURRENT_ADMISSION', stderr: '' });
+      await Promise.resolve();
+      if (staleOutcome === 'launch-failed') pending[0].reject(new Error('old launch failed'));
+      else pending[0].resolve({ code: 4, stdout: 'STALE_REJECTION', stderr: '' });
+      await Promise.resolve();
+      const prompt = handlers.get('before_agent_start')({ systemPrompt: 'original' }).systemPrompt;
+      assert.match(prompt, /CURRENT_ADMISSION/);
+      assert.doesNotMatch(prompt, /STALE_REJECTION|could not be observed/);
+      assert.equal(notices.length, 0);
+    });
+  }
+}

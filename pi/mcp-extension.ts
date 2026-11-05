@@ -70,12 +70,23 @@ export default function (pi: ExtensionAPI) {
     timeout: 3780,
   });
   let context: ContextResult | { type: "not_started" } = { type: "not_started" };
+  let activeSession = {};
+  let preparation = "Kast workspace preparation is starting in the background. Use kast workspace wait --wait TIMEOUT_MS or --wait indefinite when readiness is needed.";
   pi.on("session_start", (_event, ctx) => {
-    void pi.exec("kast", ["hook", "session-start", "--workspace", ctx.cwd], { timeout: 3_780_000 }).then(
+    const session = {};
+    activeSession = session;
+    preparation = "Kast workspace preparation is starting in the background. Use kast workspace wait --wait TIMEOUT_MS or --wait indefinite when readiness is needed.";
+    void pi.exec("kast", ["hook", "session-start", "--workspace", ctx.cwd, "--wait", "none"], { timeout: 90_000 }).then(
       result => {
-        if (result.code !== 0) ctx.ui.notify("Kast workspace preparation failed. " + result.stdout.slice(0, 2048), "warning");
+        if (activeSession !== session) return;
+        preparation = result.stdout.trim() ? result.stdout.slice(0, 8192) : "Kast workspace preparation returned no observable state. Inspect kast status before relying on readiness.";
+        if (result.code !== 0) ctx.ui.notify("Kast workspace preparation was rejected. " + preparation, "warning");
       },
-      () => ctx.ui.notify("Kast workspace preparation failed to start.", "warning"),
+      () => {
+        if (activeSession !== session) return;
+        preparation = "Kast workspace preparation could not be observed. Inspect kast status and retry explicit workspace preparation when appropriate.";
+        ctx.ui.notify(preparation, "warning");
+      },
     );
     context = { type: "not_started" };
     context = readContext(installation, ctx.cwd);
@@ -85,9 +96,9 @@ export default function (pi: ExtensionAPI) {
   });
   pi.on("before_agent_start", event => {
     switch (context.type) {
-      case "ready": return { systemPrompt: event.systemPrompt + "\n\n" + context.text };
+      case "ready": return { systemPrompt: event.systemPrompt + "\n\n" + context.text + "\n\n" + preparation };
       case "not_started":
-      case "rejected": return;
+      case "rejected": return { systemPrompt: event.systemPrompt + "\n\n" + preparation };
     }
   });
 }

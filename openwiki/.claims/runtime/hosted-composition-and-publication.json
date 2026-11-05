@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0b1cbcd645a4fb7377a73fd820e434afae8841a64e40b9b0ffc8c2b869cf4618",
+  "pageVersion": "sha256:1cdcb7c6407dac81785b70daa7031310f5f63d9efb1b0f197e61d1e5a395a4d9",
   "claims": [
     {
       "id": "claim_cef6aa14cee14d75b0fedd02c53e9033",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
-          "version": "repo-file-v1:sha256:8695035e11eb486b9581d7463c37266533ae35fedc8ede97507c228797b80536"
+          "version": "repo-file-v1:sha256:bacdc82c21c19caca7ad495c4074fada1d98ca8f026897d5542e7d13194456e4"
         },
         {
           "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
@@ -47,6 +47,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-02T17:10:25.214Z"
+    "at": "2026-11-04T23:27:44.986Z"
   }
 }

@@ -19,6 +19,7 @@ internal fun lowerFlags(
             PublicCliFlag.CURSOR,
             PublicCliFlag.EVIDENCE_CURSOR,
             PublicCliFlag.OFFSET,
+            PublicCliFlag.MAX_DIAGNOSTICS,
         )) {
         val raw = arguments[flag]
         if (raw != null && raw.toLongOrNull() == null)
@@ -31,6 +32,7 @@ internal fun lowerFlags(
                 arguments[PublicCliFlag.MAX_BYTES]?.toLong(),
             )
             .takeUnless { it == CliBudget() }
+    if (command == PublicCliCommandId.DIAGNOSTIC_CHECK) return lowerDiagnosticFlags(arguments, budget)
     val output =
         when (val parsed = parseOutput(arguments)) {
             is Refinement.Rejected -> return parsed
@@ -45,6 +47,28 @@ internal fun lowerFlags(
         flagJson.encodeToJsonElement(CliEnvelope(action, arguments.has(PublicCliFlag.VERBOSE))).jsonObject
     )
 }
+
+private fun lowerDiagnosticFlags(
+    arguments: LexicalArguments,
+    budget: CliBudget?,
+): Refinement<JsonObject, PublicCliArgumentFailure> =
+    when (val path = arguments[PublicCliFlag.PATH]) {
+        null -> Refinement.Rejected(PublicCliArgumentFailure.MISSING_VALUE)
+        else ->
+            Refinement.Refined(
+                flagJson
+                    .encodeToJsonElement(
+                        CliDiagnosticInput(
+                            path,
+                            arguments[PublicCliFlag.MAX_DIAGNOSTICS]?.toLong(),
+                            arguments[PublicCliFlag.CONTINUATION],
+                            budget,
+                            arguments.has(PublicCliFlag.VERBOSE),
+                        )
+                    )
+                    .jsonObject
+            )
+    }
 
 private fun lowerAction(
     command: PublicCliCommandId,
@@ -62,7 +86,8 @@ private fun lowerAction(
             else Refinement.Refined(CliAction.Resume(continuation, budget))
         }
         PublicCliCommandId.SOURCE_READ -> lowerReadSource(arguments, budget)
-        PublicCliCommandId.DESCRIBE -> Refinement.Rejected(PublicCliArgumentFailure.INVALID_COMMAND)
+        PublicCliCommandId.DESCRIBE,
+        PublicCliCommandId.DIAGNOSTIC_CHECK -> Refinement.Rejected(PublicCliArgumentFailure.INVALID_COMMAND)
     }
 
 private fun lowerRun(

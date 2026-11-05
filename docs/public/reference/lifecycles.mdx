@@ -73,7 +73,16 @@ The sequence opens the project once. It then reads status for the issued operati
 
 <AccordionGroup>
   <Accordion title="Preparation and transport deadlines">
-Preparation has a 17-minute budget. The project open, import, indexing, and final admission share that budget. Each lifecycle frame has a separate 5-second transport limit. A frame timeout reports `EXCHANGE_DEADLINE_EXCEEDED` with its command, stage, cause, and timing. `HOST_UNAVAILABLE` alone does not prove that IDEA exited. Semantic execution has its own limits after preparation.
+Preparation permits 17 minutes by default. Set `KAST_WORKSPACE_PREPARATION_WAIT` to positive milliseconds or `indefinite` to select another policy. Saved installation and workspace settings support this key. An explicit `kast workspace wait --wait TIMEOUT_MS` or `--wait indefinite` overrides the saved policy.
+
+```shell
+kast workspace wait --wait 30000
+kast workspace wait --wait indefinite
+```
+
+Project open, import, indexing, VFS completion, and final admission share the caller's allowance. Indefinite waiting has no preparation deadline. Failure, cancellation, a changed host or project, and editor closure still end the wait. A caller with remaining allowance can continue observing the same workspace after an earlier shared native waiter expires. That continuation preserves the caller's original deadline and checks the host and project identity.
+
+Each lifecycle frame has a separate 5-second transport limit. Indefinite preparation does not disable transport health checks. A frame timeout reports `EXCHANGE_DEADLINE_EXCEEDED` with its command, stage, cause, and timing. `HOST_UNAVAILABLE` alone does not prove that IDEA exited. Semantic execution has its own limits after preparation.
   </Accordion>
   <Accordion title="Recovery after a settled import">
 After an import settles, the current model can still need a reload. The settled refresh then reports `MODEL_RELOAD_REQUIRED`. Preparation can reload once for recovery if its budget permits. A later input change remains pending until an import covers it. Inspection distinguishes pending input changes from rejection of the imported model. Retained model evidence describes the state from an earlier read.

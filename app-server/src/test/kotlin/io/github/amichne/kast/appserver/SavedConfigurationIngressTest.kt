@@ -92,6 +92,31 @@ class SavedConfigurationIngressTest {
     }
 
     @Test
+    fun `workspace configuration rejects unavailable and aliased explicit selections without fallback`(
+        @TempDir temporary: Path
+    ) {
+        val root = temporary.toRealPath()
+        val installation = Files.createDirectory(root.resolve("installation"))
+        val workspace = Files.createDirectory(root.resolve("workspace"))
+        val defaultFile = Files.createDirectories(installation.resolve("config")).resolve("environment")
+        Files.writeString(defaultFile, "KAST_WORKSPACE_PREPARATION_WAIT=17\n")
+        val target = Files.writeString(root.resolve("selected"), "KAST_WORKSPACE_PREPARATION_WAIT=41\n")
+        val alias = Files.createSymbolicLink(root.resolve("alias"), target)
+        for ((path, expected) in listOf(root.resolve("missing") to "UNAVAILABLE", alias to "NOT_REGULAR")) {
+            val result =
+                InstalledWorkspaceConfigurationIngress.load(
+                    installation,
+                    workspace,
+                    mapOf("KAST_CONFIGURATION_FILE" to path.toString()),
+                ) as SavedConfigurationIngress.Rejected
+            assertEquals(expected, result.rejection.reason())
+        }
+        assertEquals("KAST_WORKSPACE_PREPARATION_WAIT=41\n", Files.readString(target))
+        assertEquals("KAST_WORKSPACE_PREPARATION_WAIT=17\n", Files.readString(defaultFile))
+        assertFalse(Files.exists(installation.resolve("config/workspaces")))
+    }
+
+    @Test
     fun `literal shell expressions are data and never executed`(@TempDir temporary: Path) {
         val directory = temporary.toRealPath()
         val marker = directory.resolve("executed")

@@ -19,6 +19,31 @@ import org.junit.jupiter.api.Test
 /** Real readiness policy and coroutine deadline; detached observations do not reproduce an IDE. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class IdeLifecycleReadinessTest {
+    @Test
+    fun `indefinite readiness stops when the editor project is disposed`() = runTest {
+        val operation =
+            (NativeWorkspacePreparation.admit("parent", null, { testScheduler.currentTime * NANOS_PER_MILLI })
+                    as Refinement.Refined)
+                .value
+        val result =
+            IdeLifecycleReadiness(
+                    { testScheduler.currentTime >= 200 },
+                    target,
+                    {
+                        WorkspaceCapabilityReadiness.Pending(
+                            facts.identity,
+                            WorkspaceReadinessReason.INDEXING,
+                            WorkspaceReadinessNextAction.OBSERVE_AGAIN,
+                        )
+                    },
+                    { error("Indexing cannot select a reload") },
+                    operation,
+                )
+                .await()
+        assertEquals(IdeLifecycleResult.Blocked(IdeLifecycleFailure.DISPOSED), result)
+        assertEquals(200, testScheduler.currentTime)
+    }
+
     private val facts =
         WorkspaceReadinessFixture(
             (CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")) as Refinement.Refined).value
@@ -48,7 +73,7 @@ class IdeLifecycleReadinessTest {
                     { current },
                     {
                         reloads++
-                        assertEquals(600, (operation.remaining() as Refinement.Refined).value.value)
+                        assertEquals(600, (operation.remaining() as Refinement.Refined).value.protocolMillis())
                         delay(100)
                         current = facts.ready()
                         IdeLifecycleResult.Synced(target)

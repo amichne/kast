@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:aa2ca8986fb58fead4bf1411bd974ad8ed6d66b8a998e35ec929d174236ec59d",
+  "pageVersion": "sha256:411a7ac1f15c0b2563af3c762d7232519e9dcd5b029281c0f1211371985e244b",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -310,7 +310,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:dfe280b3b220654a757a0a78e2af03ef28d1ac3eb17ee30b3fc31217dbbec442"
+          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
         }
       ]
     },
@@ -346,7 +346,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:dfe280b3b220654a757a0a78e2af03ef28d1ac3eb17ee30b3fc31217dbbec442"
+          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
         },
         {
           "resource": "repo://cli/build.gradle.kts",
@@ -354,7 +354,7 @@
         },
         {
           "resource": "repo://cli/native-image.args",
-          "version": "repo-file-v1:sha256:8aabe6244ca61b8f71d175909ebd42a44d9859d6a256425ee200c9d640b9563c"
+          "version": "repo-file-v1:sha256:0eefa72b46cef5c8370a91e6f9da7b9f677254d985e97a0585d7938f18e96511"
         }
       ]
     },
@@ -368,7 +368,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:dfe280b3b220654a757a0a78e2af03ef28d1ac3eb17ee30b3fc31217dbbec442"
+          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
@@ -472,7 +472,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:dfe280b3b220654a757a0a78e2af03ef28d1ac3eb17ee30b3fc31217dbbec442"
+          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
         },
         {
           "resource": "repo://build.gradle.kts",
@@ -483,6 +483,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T18:05:12.445Z"
+    "at": "2026-11-05T00:37:28.525Z"
   }
 }

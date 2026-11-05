@@ -48,6 +48,8 @@ internal fun ConfigurationParameter.baseDeclaration(): ConfigurationDeclaration 
                 "Coordinator socket namespace owned by the physical installation state/run directory."
             ConfigurationParameter.OUTPUT_TOON ->
                 "CLI result encoding. The value 0 selects JSON. The value 1 or an empty value selects TOON."
+            ConfigurationParameter.WORKSPACE_PREPARATION_WAIT ->
+                "Workspace preparation wait: positive milliseconds or indefinite. Lifecycle failures, cancellation and editor closure still terminate waiting."
             else -> key.lowercase().replace('_', ' ')
         },
         syntax,

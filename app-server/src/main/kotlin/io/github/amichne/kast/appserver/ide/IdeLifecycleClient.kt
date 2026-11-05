@@ -164,10 +164,10 @@ internal constructor(
         root: String,
         requestId: String,
         client: String,
-        preparationMillis: Long = io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit.value,
+        preparationMillis: Long? = io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit.value,
     ): IdeLifecycleResult {
         val limit =
-            when (val admitted = io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(preparationMillis)) {
+            when (val admitted = io.github.amichne.kast.kernel.ElapsedTimeAllowance.admitMillis(preparationMillis)) {
                 is io.github.amichne.kast.kernel.Refinement.Refined -> admitted.value
                 is io.github.amichne.kast.kernel.Refinement.Rejected ->
                     return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
@@ -190,7 +190,7 @@ internal constructor(
                                 requestId = requestId,
                                 client = client,
                                 root = root,
-                                preparationMillis = remaining.value.value,
+                                preparationMillis = remaining.value.protocolMillis(),
                             ),
                         )
                     is io.github.amichne.kast.kernel.Refinement.Rejected ->

@@ -3,7 +3,7 @@
 Shared [OKF source](https://github.com/amichne/kast/blob/main/openwiki/runtime/idea-lifecycle-and-refresh.md) and [recorded Claims](https://github.com/amichne/kast/blob/main/openwiki/.claims/runtime/idea-lifecycle-and-refresh.json).
 
 <Info>
-Recorded evidence matches current file bytes. This comparison does not prove behavior.
+Recorded evidence differs from current source or needs further assessment. This explanation does not prove current behavior.
 </Info>
 
 <a id="okf-runtime-idea-lifecycle-and-refresh" />
@@ -90,7 +90,17 @@ Upgrades need new catalogs and the selected Host loaded before semantic admissio
 WorkspacePreparations owns one sequence per canonical root.
 Callers can share pending or completed preparation.
 One open effect precedes status reads for its issued operation.
-Preparation has a 17-minute allowance shared by open, import, indexing, and final admission.
+
+Preparation shares one configured allowance across open, import, VFS refresh, indexing, and final admission.
+The default is 17 minutes. `KAST_WORKSPACE_PREPARATION_WAIT` accepts positive milliseconds or `indefinite`.
+An indefinite wait has no elapsed-time deadline; cancellation, actual failure, and editor closure still end it.
+Lifecycle VFS refresh and its nested waiter receive the remaining allowance.
+They cannot replace it with a shorter fixed timeout.
+
+If an earlier shared native wait expires, `NativePreparationAwaiter` checks the same Host, root, and project.
+It then uses a fresh native request ID while keeping its original preparation deadline.
+Changed identity or a real lifecycle failure ends that wait.
+
 Lifecycle frames keep separate 5-second transport limits.
 EXCHANGE_DEADLINE_EXCEEDED reports command, stage, cause, and timing without proving that IDEA exited.
 Semantic execution has separate limits after preparation.

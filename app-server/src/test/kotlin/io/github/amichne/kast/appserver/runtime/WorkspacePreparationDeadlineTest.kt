@@ -19,6 +19,35 @@ import org.junit.jupiter.api.Test
 
 class WorkspacePreparationDeadlineTest {
     @Test
+    fun `indefinite preparation retains native shutdown without waiting for a synthetic deadline`() = runTest {
+        val fixture = WorkspaceRecoveryNativeFixture()
+        val calls = mutableListOf<WorkspaceLifecycleRequest>()
+        var closed = false
+        val preparations =
+            WorkspacePreparations(
+                this,
+                { request ->
+                    calls += request
+                    if (closed) IdeLifecycleResult.Blocked(IdeLifecycleFailure.SHUTDOWN) else fixture.pending(1)
+                },
+                budget = kotlin.time.Duration.INFINITE,
+                newId = { fixture.id(1) },
+                nanoTime = { currentTime * 1_000_000 },
+            )
+        val entry = (preparations.prepare(fixture.root) as Refinement.Refined).value
+        runCurrent()
+        org.junit.jupiter.api.Assertions.assertNull((calls.first() as WorkspaceLifecycleRequest.Open).preparationMillis)
+        advanceTimeBy(18 * 60_000L)
+        runCurrent()
+        org.junit.jupiter.api.Assertions.assertTrue(entry.state.value is WorkspacePreparationOutcome.Pending)
+        closed = true
+        advanceTimeBy(100)
+        runCurrent()
+        assertEquals(WorkspacePreparationOutcome.Blocked(IdeLifecycleFailure.SHUTDOWN), entry.state.value)
+        preparations.close()
+    }
+
+    @Test
     fun `dispatch delay is charged before native open and expiry preserves last preparation stage`() = runTest {
         val fixture = WorkspaceRecoveryNativeFixture()
         val calls = mutableListOf<WorkspaceLifecycleRequest>()

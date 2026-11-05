@@ -93,6 +93,12 @@ private fun classifyOperation(document: JsonObject, grant: PublicElapsedGrant): 
             classifySemantic(CanonicalQueryCliDocuments.classificationFacts(document), grant)
         PublicSemanticOperation.SOURCE ->
             classifySource(CanonicalSourceReadCliDocuments.classificationFacts(document), grant)
+        PublicSemanticOperation.DIAGNOSTIC ->
+            when (classificationJson.decodeFromJsonElement<PublicDiagnosticFacts>(document).status) {
+                io.github.amichne.kast.protocol.wire.presentation.ReadOutcomeStatus.COMPLETE -> PublicShellExit.COMPLETE
+                io.github.amichne.kast.protocol.wire.presentation.ReadOutcomeStatus.QUALIFIED,
+                io.github.amichne.kast.protocol.wire.presentation.ReadOutcomeStatus.REJECTED -> PublicShellExit.SEMANTIC
+            }
         null -> classifyReadRejection(classificationJson.decodeFromJsonElement(document), grant)
     }
 
@@ -144,6 +150,11 @@ private fun classifyHeaderDelivery(header: QueryPresentationHeaderDocument): Pub
 
 @Serializable private data class PublicOperationFacts(val operation: PublicSemanticOperation? = null)
 
+@Serializable
+private data class PublicDiagnosticFacts(
+    val status: io.github.amichne.kast.protocol.wire.presentation.ReadOutcomeStatus
+)
+
 /** Recognizes the host's caller timeout before an operation document exists; other shapes fail closed. */
 @Serializable
 private data class PublicReadRejectionFacts(val failure: PublicReadFailure, val detail: PublicReadRejectionDetail)
@@ -164,6 +175,7 @@ private enum class PublicReadCause {
 private enum class PublicSemanticOperation {
     @SerialName("query.run") QUERY,
     @SerialName("source.read") SOURCE,
+    @SerialName("diagnostic.check") DIAGNOSTIC,
 }
 
 /** Narrow typed projections of schema-admitted results. They neither rewrite nor remove output fields. */
