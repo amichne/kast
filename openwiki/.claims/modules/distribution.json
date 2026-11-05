@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
+  "pageVersion": "sha256:866e7afb900d49faf69aefa08247efca0f67a76a200c5685538d5fcaa7904eb5",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -262,7 +262,7 @@
       "evidence": [
         {
           "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:fc96f7e447a3b03146c07d43b3ec340ecd40af6ef19f283c82f2d9196351c8cc"
+          "version": "repo-file-v1:sha256:d31ae1e1069157e9210b4a304c3d6f8bcad56d5305574448535b9f82ad8e2381"
         },
         {
           "resource": "repo://cli/src/main/native-launchers/bin/kast",
@@ -350,7 +350,7 @@
         },
         {
           "resource": "repo://cli/native-image.args",
-          "version": "repo-file-v1:sha256:0eefa72b46cef5c8370a91e6f9da7b9f677254d985e97a0585d7938f18e96511"
+          "version": "repo-file-v1:sha256:5ffc60ee390eb4710222880114b87867a5e48c1cd949faaae5e2865961f37700"
         }
       ]
     },
@@ -402,7 +402,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:5db08fefde02a9e5c862313225a9d811ccfd750a42db6e1da4eb8b83dc7e0f9c"
+          "version": "repo-file-v1:sha256:f5ae4bf77c94c2bc7172077434e0d283c0e70c480e2979232a6cb5e7a198766d"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt",
@@ -442,7 +442,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:5db08fefde02a9e5c862313225a9d811ccfd750a42db6e1da4eb8b83dc7e0f9c"
+          "version": "repo-file-v1:sha256:f5ae4bf77c94c2bc7172077434e0d283c0e70c480e2979232a6cb5e7a198766d"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt",
@@ -454,7 +454,7 @@
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt",
-          "version": "repo-file-v1:sha256:f71a80f07cd8b750b140955cb8c66a1d7b670f46cb13a8101f373627c7cc744b"
+          "version": "repo-file-v1:sha256:ed31c7f56720d26b66625d79ed0c38b31d107798c35cb80335d54de6ec8464f5"
         }
       ]
     },
@@ -525,6 +525,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T06:37:09.283Z"
+    "at": "2026-11-05T10:28:11.464Z"
   }
 }
