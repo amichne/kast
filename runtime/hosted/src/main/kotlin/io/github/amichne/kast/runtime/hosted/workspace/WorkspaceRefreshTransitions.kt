@@ -33,7 +33,7 @@ internal class WorkspaceRefreshEntry(
     val started: Long,
     var status: WorkspaceRefreshStatus,
     val complete: (WorkspaceRefreshStatus) -> Unit = {},
-    val allowanceNanos: Long,
+    val allowance: kotlin.time.Duration,
 ) {
     var deadlineTiming: io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming? = null
 }
@@ -43,6 +43,13 @@ internal fun WorkspaceRefreshWaiter.identity(): WorkspaceRefreshWaiterIdentity =
         is WorkspaceRefreshWaiter.Explicit -> WorkspaceRefreshWaiterIdentity.Request(id)
         is WorkspaceRefreshWaiter.Read -> WorkspaceRefreshWaiterIdentity.ReadPreparation
     }
+
+internal fun Map<WorkspaceRefreshWaiter, WorkspaceRefreshEntry>.retirePendingRefreshWaiters() {
+    values.toList().forEach {
+        if (it.status is WorkspaceRefreshStatus.Pending)
+            it.transition(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DISPOSED))
+    }
+}
 
 internal fun WorkspaceRefreshAttempt.inspection(
     entries: Map<WorkspaceRefreshWaiter, WorkspaceRefreshEntry>
@@ -141,3 +148,7 @@ private fun WorkspaceReadinessNextAction.settledAdmissionStatus(): WorkspaceRefr
     if (this == WorkspaceReadinessNextAction.REFRESH_MODEL)
         WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.MODEL_RELOAD_REQUIRED)
     else WorkspaceRefreshStatus.Pending(WorkspaceRefreshStage.ADMISSION)
+
+internal fun ArrayDeque<WorkspaceRefreshAttempt>.pruneUnobserved(entries: Collection<WorkspaceRefreshEntry>) {
+    removeAll { attempt -> entries.none { it.attempt === attempt && it.status is WorkspaceRefreshStatus.Pending } }
+}

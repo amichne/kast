@@ -11,6 +11,7 @@ import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
 import io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient
 import io.github.amichne.kast.appserver.ide.observeExistingIdeStage
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
+import io.github.amichne.kast.appserver.runtime.ExistingWorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.JsonLineWorkspacePreparationObserver
 import io.github.amichne.kast.appserver.runtime.PreparedWorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
@@ -40,9 +41,33 @@ internal constructor(
     private val delegate: DaemonOperationClient,
     private val preparations: WorkspacePreparations?,
     private val lifecycle: WorkspaceLifecycleClient = WorkspaceLifecycleClient.Unavailable,
+    private val preparationWait: io.github.amichne.kast.kernel.ElapsedTimeAllowance =
+        io.github.amichne.kast.kernel.ElapsedTimeAllowance.Bounded(
+            io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit
+        ),
 ) : DaemonOperationClient by delegate {
     /** Explicit session lifecycle effect; semantic reads never call this path. */
     fun lifecycle(request: WorkspaceLifecycleRequest): IdeLifecycleResult = lifecycle.execute(request, "kast-mcp")
+
+    fun preparationAllowance(): Refinement<io.github.amichne.kast.kernel.ElapsedTimeAllowance, DaemonOperationFailure> =
+        if (preparations == null)
+            Refinement.Rejected(DaemonOperationFailure.Host(ExistingIdeFailure.CONFIGURATION_REJECTED))
+        else Refinement.Refined(preparationWait)
+
+    /** Submit the native operation synchronously; the persistent IDE owns it after this client exits. */
+    fun beginPreparation(root: CanonicalRoot): Refinement<IdeLifecycleResult, DaemonOperationFailure> {
+        if (preparations == null)
+            return Refinement.Rejected(DaemonOperationFailure.Host(ExistingIdeFailure.CONFIGURATION_REJECTED))
+        val requestId = java.util.UUID.randomUUID().toString()
+        val result =
+            lifecycle.execute(
+                WorkspaceLifecycleRequest.Open(root.path.toString(), requestId, preparationWait.protocolMillis()),
+                "kast-hook",
+            )
+        return if (result is IdeLifecycleResult.Pending && result.requestId != requestId)
+            Refinement.Rejected(DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.RESPONSE_REJECTED))
+        else Refinement.Refined(result)
+    }
 
     fun start(root: CanonicalRoot): Refinement<Unit, DaemonOperationFailure> {
         val owner =
@@ -81,10 +106,28 @@ internal constructor(
 }
 
 /** Session-owned MCP adapter. The existing IDEA lifecycle and compiler host retain semantic authority. */
+fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): McpWorkspaceOperationClient =
+    configuredMcpWorkspaceOperationClient(home, InstalledSavedConfigurationIngress.load(environment))
+
+/** Explicit workspace waiting includes that physical workspace's saved configuration overlay. */
+fun mcpWorkspaceOperationClient(
+    home: Path,
+    environment: Map<String, String>,
+    installation: Path,
+    workspace: CanonicalRoot,
+): McpWorkspaceOperationClient =
+    configuredMcpWorkspaceOperationClient(
+        home,
+        InstalledWorkspaceConfigurationIngress.load(installation, workspace.path, environment),
+    )
+
 @Suppress("LongMethod")
-fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): McpWorkspaceOperationClient {
+private fun configuredMcpWorkspaceOperationClient(
+    home: Path,
+    saved: SavedConfigurationIngress,
+): McpWorkspaceOperationClient {
     val sources =
-        when (val saved = InstalledSavedConfigurationIngress.load(environment)) {
+        when (saved) {
             is SavedConfigurationIngress.Loaded -> saved.sources
             is SavedConfigurationIngress.Rejected -> return rejectedMcpConfiguration()
         }
@@ -107,6 +150,7 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): M
                 }
             },
             observer = JsonLineWorkspacePreparationObserver(System.err, config.debug),
+            budget = config.workspacePreparationWait.duration,
         )
     val demand =
         PreparedWorkspaceDemand(
@@ -132,7 +176,12 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): M
                         DaemonOperationClientRejection.Server(DaemonOperationFailure.Host(admitted.failure))
                     )
             }
-        when (val result = runBlocking { demand.query(root, operation) }) {
+        val selected =
+            when (call.workspaceAdmission()) {
+                WorkspaceOperationAdmission.PREPARE -> demand
+                WorkspaceOperationAdmission.EXISTING_AUTHORITY -> ExistingWorkspaceDemand(native, dispatcher)
+            }
+        when (val result = runBlocking { selected.query(root, operation) }) {
             is WorkspaceDemandResult.Native -> mcpResult(result.exchange)
             is WorkspaceDemandResult.Rejected ->
                 DaemonOperationResult.Rejected(
@@ -146,7 +195,7 @@ fun mcpWorkspaceOperationClient(home: Path, environment: Map<String, String>): M
                 )
         }
     }
-    return McpWorkspaceOperationClient(delegate, preparations, lifecycle)
+    return McpWorkspaceOperationClient(delegate, preparations, lifecycle, config.workspacePreparationWait)
 }
 
 private fun rejectedMcpConfiguration() =

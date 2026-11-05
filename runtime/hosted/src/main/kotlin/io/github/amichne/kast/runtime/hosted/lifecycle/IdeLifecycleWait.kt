@@ -18,7 +18,7 @@ internal suspend fun awaitLifecycleCondition(
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return false
         }
-    return withTimeoutOrNull(remaining.value) {
+    return withTimeoutOrNull(remaining.duration) {
         while (!condition()) delay(POLL_MILLIS)
         true
     } ?: false

@@ -36,7 +36,9 @@ class PublicLauncherCompositionTest {
                         environment = mapOf("KAST_OUTPUT_TOON" to toon),
                     )
                 fixture.assertExit(child, 0, label)
-                assertTrue(oneDocument(Files.readString(temporary.resolve("$label.stdout"))).isEmpty())
+                val document = oneDocument(Files.readString(temporary.resolve("$label.stdout")))
+                assertEquals(setOf("additionalContext"), document.keys)
+                assertTrue(document.getValue("additionalContext").jsonPrimitive.content.contains("skipped"))
                 assertEquals("", Files.readString(temporary.resolve("$label.stderr")))
             }
         }
@@ -76,28 +78,7 @@ class PublicLauncherCompositionTest {
         NativePublicFixture(temporary).use { fixture ->
             // A stopped installation may still serve local metadata and reject local input.
             Files.writeString(fixture.installation.parent.resolve(INSTALLATION_SHUTDOWN_FENCE), "fenced\n")
-            val commands =
-                listOf(
-                    listOf("query", "--help") to 0,
-                    listOf("source", "--help") to 0,
-                    listOf("result", "--help") to 0,
-                    listOf("describe") to 0,
-                    listOf("describe", "query", "--section", "input") to 0,
-                    listOf(
-                        "describe",
-                        "query",
-                        "--section",
-                        "input",
-                        "--pointer",
-                        "",
-                        "--max-returned-bytes",
-                        "1024",
-                    ) to 0,
-                    listOf("describe", "query", "--section", "examples") to 0,
-                    listOf("query", "plan", "--name", "OrderService") to 0,
-                    listOf("query", "--name", "OrderService", "--max-returned-bytes", "4095") to 2,
-                    listOf("query", "--name", "OrderService", "--unknown") to 2,
-                )
+            val commands = nativeMetadataCommands()
             commands.forEachIndexed { index, (arguments, exit) ->
                 val label = "local-$index"
                 val parent = fixture.start(label, arguments)
@@ -256,3 +237,32 @@ class PublicLauncherCompositionTest {
         return Json.parseToJsonElement(text).jsonObject
     }
 }
+
+private fun nativeMetadataCommands(): List<Pair<List<String>, Int>> =
+    listOf(
+        listOf("query", "--help") to 0,
+        listOf("source", "--help") to 0,
+        listOf("result", "--help") to 0,
+        listOf("diagnostic", "--help") to 0,
+        listOf("diagnostic", "check", "--help") to 0,
+        listOf("workspace", "wait", "--help") to 0,
+        listOf("describe") to 0,
+        listOf("describe", "query", "--section", "input") to 0,
+        listOf(
+            "describe",
+            "query",
+            "--section",
+            "input",
+            "--pointer",
+            "",
+            "--max-returned-bytes",
+            "1024",
+        ) to 0,
+        listOf("describe", "query", "--section", "examples") to 0,
+        listOf("describe", "diagnostic.check", "--section", "input") to 0,
+        listOf("describe", "diagnostic.check", "--section", "examples") to 0,
+        listOf("query", "plan", "--name", "OrderService") to 0,
+        listOf("query", "--name", "OrderService", "--max-returned-bytes", "4095") to 2,
+        listOf("query", "--name", "OrderService", "--unknown") to 2,
+        listOf("diagnostic", "check", "--path", ".", "--max-diagnostics", "0") to 2,
+    )

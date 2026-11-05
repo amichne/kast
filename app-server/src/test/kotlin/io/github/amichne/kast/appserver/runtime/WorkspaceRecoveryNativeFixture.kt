@@ -99,7 +99,9 @@ internal fun Refinement<WorkspacePreparation, WorkspacePreparationFailure>.recov
 /** State/recovery scripts assert exact identity; deadline tests independently assert the propagated allowance. */
 internal fun WorkspaceLifecycleRequest.matchesPreparationIdentity(actual: WorkspaceLifecycleRequest): Boolean =
     if (this is WorkspaceLifecycleRequest.Open && actual is WorkspaceLifecycleRequest.Open)
-        actual.preparationMillis in
-            1..io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit.value &&
+        (if (preparationMillis == null) actual.preparationMillis == null
+        else
+            actual.preparationMillis in
+                1..io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit.value) &&
             copy(preparationMillis = actual.preparationMillis) == actual
     else this == actual

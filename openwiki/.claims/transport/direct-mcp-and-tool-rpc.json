@@ -1,14 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:09fdba06d0da0c82bd44752fcc9e13349b8ea7e9de19c67e32c59a80cfaed2ba",
+  "pageVersion": "sha256:591205ae88cc7bc40dc9bcadde3379a6cb56de4e28fde2ea1f2d6cd1dc5e5fbf",
   "claims": [
     {
       "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
-      "statement": "KastDirectToolSession shares compiled registration, installation admission, and existing-IDE invocation between direct transports. MCP initialization or the first admitted modern request starts one preparation owner reused by later demand.",
+      "statement": "KastDirectToolSession shares compiled registration, installation admission, and existing-IDE invocation between direct transports. MCP initialization or its first admitted modern request starts one preparation owner; CLI and one-shot RPC leave preparation to typed operation demand, preserving existing authority for issued source and retained-reference reads.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
-          "version": "repo-file-v1:sha256:a51e529cf43e7b9d36daa1594ede426bb1fa9b25a81c406d668c451cd2a3e48e"
+          "version": "repo-file-v1:sha256:c5c97d429d5bd65a66dbae64b23004d409e55dca81cd46f8e7e8d3dc7c20a138"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt",
+          "version": "repo-file-v1:sha256:4d82773260bd18012d8f498f15aeac740dd68d2d01bb17304213aef09249b978"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt",
@@ -17,6 +21,14 @@
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt",
           "version": "repo-file-v1:sha256:978bf5c6857886a1e45e1ef740e40a898f802550019120e92386828b78f82f8d"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt",
+          "version": "repo-file-v1:sha256:dde907c9602b0876528ac41b052b1ef77b25826b4784c8df1156fd9cb0f12d44"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L169-L180",
+          "version": "repo-lines-v1:sha256:f206e4c39cf8abeb0fc4bb4f3f8417c64541c894f219273bbe0abb69981da47f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMzdmYmZlYmU4ZTYxZGE2NmZjZGNmZmE5YjkxZGFhM2JlZmEwMzBjMzVkNjBkNDZhNzExMDI3OTk4MDgxZDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNzQ1NDRhMjYxYTdjYWI3MDA1N2M5MDVlOTMwYmNlZDBkMTZiN2NhYzY2YWMwMmZkODAzYWMxZWI3ZmZlOWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzYzQ4N2U1ZmNmYTU4YTA5NWZkNTVlZjIyNjNhYjYxOGQ5OGQ3NDVlMzkwM2YyNDFmNzZlNTBmMDI4M2VjYTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyNzczYWU5NTM0M2RmNTg4NGFhZmFlYmI3Y2EzMjAxNDA2YTZmYmUyMDdhY2I0MDIzOWEyOTAyNWQ4N2JjNGQifQ"
         }
       ]
     },
@@ -36,7 +48,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:1df157cf5c203646259b39917285272889f22d82eb4659e741df289197f17035"
+          "version": "repo-file-v1:sha256:990daf6adee87ca63e2bdde3712d330f699ab6fa1753d804cd1c3bdc42f718be"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt",
@@ -50,7 +62,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:1df157cf5c203646259b39917285272889f22d82eb4659e741df289197f17035"
+          "version": "repo-file-v1:sha256:990daf6adee87ca63e2bdde3712d330f699ab6fa1753d804cd1c3bdc42f718be"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt",
@@ -61,6 +73,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T05:16:29.521Z"
+    "at": "2026-11-05T00:37:28.525Z"
   }
 }

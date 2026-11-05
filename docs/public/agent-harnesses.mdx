@@ -40,6 +40,9 @@ After [installing Kast](/start), connect your agent to Kast with CLI guidance. T
 
 Start a fresh agent session in your Kotlin repository or worktree.
 
+Session hooks start workspace preparation in the background. They tell the agent when the workspace is being prepared.
+The agent can continue other work or [wait explicitly](/reference/cli#wait-for-the-workspace) with a timeout or no preparation deadline.
+
 For optional MCP, add `--mcp` to your agent's command. See the [MCP runtime requirements](/reference/integrations#optional-mcp).
 
 ## Refresh guidance

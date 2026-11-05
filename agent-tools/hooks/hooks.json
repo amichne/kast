@@ -5,9 +5,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PATH=\"${HOME}/.local/bin:${PATH}\" kast hook session-start",
-            "timeout": 3780,
-            "statusMessage": "Prepare the Kast workspace"
+            "command": "PATH=\"${HOME}/.local/bin:${PATH}\" kast hook session-start --wait none --host codex",
+            "timeout": 90,
+            "statusMessage": "Start Kast workspace preparation; continue while IntelliJ prepares it"
           }
         ]
       }

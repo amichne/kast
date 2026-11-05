@@ -1,11 +1,15 @@
 package io.github.amichne.kast.runtime.hosted.workspace
 
+import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget
 import io.github.amichne.kast.protocol.contract.WorkspacePreparationTiming
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.nanoseconds
 
 /** Project-owned transitions and one thin native effect boundary, independent of semantic request budgets. */
 internal class WorkspaceRefreshService(
@@ -32,6 +36,24 @@ internal class WorkspaceRefreshService(
         id: WorkspaceRefreshRequestId,
         effect: WorkspaceRefreshEffect,
         allowance: ElapsedTimeLimitMillis = WorkspacePreparationBudget.limit,
+    ): WorkspaceRefreshStatus =
+        submit(
+            id,
+            effect,
+            minOf(pendingTimeoutNanos.nanoseconds, allowance.value.milliseconds),
+        )
+
+    @Synchronized
+    fun submit(
+        id: WorkspaceRefreshRequestId,
+        effect: WorkspaceRefreshEffect,
+        allowance: ElapsedTimeAllowance,
+    ): WorkspaceRefreshStatus = submit(id, effect, allowance.duration)
+
+    private fun submit(
+        id: WorkspaceRefreshRequestId,
+        effect: WorkspaceRefreshEffect,
+        duration: Duration,
     ): WorkspaceRefreshStatus {
         entries[WorkspaceRefreshWaiter.Explicit(id)]?.let {
             return submit(id, effect, it.attempt.work.stamp)
@@ -56,11 +78,7 @@ internal class WorkspaceRefreshService(
                 stamp = equivalent.work.stamp,
                 observation = observed,
                 selectedAttempt = equivalent,
-                allowanceNanos =
-                    minOf(
-                        pendingTimeoutNanos,
-                        allowance.value.coerceAtMost(WorkspacePreparationBudget.limit.value) * NANOS_PER_MILLI,
-                    ),
+                allowance = duration,
             )
         else
             when (val stamp = nextStamp()) {
@@ -71,11 +89,7 @@ internal class WorkspaceRefreshService(
                         stamp.value,
                         observed,
                         selectedAttempt = null,
-                        allowanceNanos =
-                            minOf(
-                                pendingTimeoutNanos,
-                                allowance.value.coerceAtMost(WorkspacePreparationBudget.limit.value) * NANOS_PER_MILLI,
-                            ),
+                        allowance = duration,
                     )
                 is Refinement.Rejected -> WorkspaceRefreshStatus.Rejected(stamp.failure)
             }
@@ -96,7 +110,7 @@ internal class WorkspaceRefreshService(
         stamp: WorkspaceRefreshStamp,
         observation: WorkspaceCapabilityReadiness.Ready?,
         selectedAttempt: WorkspaceRefreshAttempt?,
-        allowanceNanos: Long = pendingTimeoutNanos,
+        allowance: Duration = pendingTimeoutNanos.nanoseconds,
     ): WorkspaceRefreshStatus {
         if (disposed) return WorkspaceRefreshStatus.Rejected(WorkspaceRefreshRejection.DISPOSED)
         val work = WorkspaceRefreshWork(WorkspaceRefreshEffectKind.Explicit(effect), stamp)
@@ -118,7 +132,7 @@ internal class WorkspaceRefreshService(
                     work,
                     observation = observation,
                     selectedAttempt = selectedAttempt,
-                    allowanceNanos = allowanceNanos,
+                    allowance = allowance,
                 )
         ) {
             is Refinement.Rejected -> return WorkspaceRefreshStatus.Rejected(added.failure)
@@ -130,7 +144,14 @@ internal class WorkspaceRefreshService(
 
     /** Incremental read preparation joins equivalent demand and leaves final semantic admission to the query owner. */
     @Synchronized
-    fun refreshForRead(complete: (WorkspaceRefreshStatus) -> Unit): () -> Unit {
+    fun refreshForRead(complete: (WorkspaceRefreshStatus) -> Unit): () -> Unit =
+        refreshForRead(pendingTimeoutNanos.nanoseconds, complete)
+
+    @Synchronized
+    fun refreshForRead(allowance: ElapsedTimeAllowance, complete: (WorkspaceRefreshStatus) -> Unit): () -> Unit =
+        refreshForRead(allowance.duration, complete)
+
+    private fun refreshForRead(allowance: Duration, complete: (WorkspaceRefreshStatus) -> Unit): () -> Unit {
         if (disposed) {
             complete(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DISPOSED))
             return {}
@@ -159,7 +180,7 @@ internal class WorkspaceRefreshService(
                     }
                 }
         val waiter = WorkspaceRefreshWaiter.Read()
-        when (val added = add(waiter, work, complete, selectedAttempt = equivalent)) {
+        when (val added = add(waiter, work, complete, selectedAttempt = equivalent, allowance = allowance)) {
             is Refinement.Rejected -> {
                 complete(WorkspaceRefreshStatus.Rejected(added.failure))
                 return {}
@@ -180,7 +201,7 @@ internal class WorkspaceRefreshService(
         complete: (WorkspaceRefreshStatus) -> Unit = {},
         observation: WorkspaceCapabilityReadiness.Ready? = null,
         selectedAttempt: WorkspaceRefreshAttempt? = null,
-        allowanceNanos: Long = pendingTimeoutNanos,
+        allowance: Duration = pendingTimeoutNanos.nanoseconds,
     ): Refinement<Unit, WorkspaceRefreshRejection> {
         val equivalent =
             entries.values.firstOrNull {
@@ -209,7 +230,7 @@ internal class WorkspaceRefreshService(
                         if (retainedActive != null) WorkspaceRefreshStage.EFFECT else WorkspaceRefreshStage.QUEUED
                     ),
                 complete,
-                allowanceNanos,
+                allowance,
             )
         return Refinement.Refined(Unit)
     }
@@ -226,7 +247,7 @@ internal class WorkspaceRefreshService(
             if (entry.status is WorkspaceRefreshStatus.Pending)
                 entry.transition(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.CANCELLED))
         }
-        pruneQueue()
+        queue.pruneUnobserved(entries.values)
     }
 
     @Synchronized
@@ -270,23 +291,14 @@ internal class WorkspaceRefreshService(
     fun dispose() {
         disposed = true
         queue.clear()
-        entries.values.toList().forEach {
-            if (it.status is WorkspaceRefreshStatus.Pending)
-                it.transition(WorkspaceRefreshStatus.Failed(WorkspaceRefreshFailure.DISPOSED))
-        }
+        entries.retirePendingRefreshWaiters()
     }
 
     private fun expire() {
         val now = nanoTime()
         entries.toList().forEach { (waiter, entry) -> entry.expire(waiter, now, observeDeadline) }
-        pruneQueue()
+        queue.pruneUnobserved(entries.values)
         // The native attempt remains active even after every waiting deadline expires.
-    }
-
-    private fun pruneQueue() {
-        queue.removeAll { attempt ->
-            entries.values.none { it.attempt === attempt && it.status is WorkspaceRefreshStatus.Pending }
-        }
     }
 
     private fun advance() {

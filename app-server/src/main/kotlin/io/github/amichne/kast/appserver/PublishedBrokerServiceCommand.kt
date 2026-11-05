@@ -157,7 +157,7 @@ object PublishedBrokerServiceCommand {
 
     private fun readArguments(bytes: ByteArray, label: String): List<String>? {
         val document =
-            DocumentBuilderFactory.newInstance()
+            DocumentBuilderFactory.newDefaultInstance()
                 .apply {
                     setFeature("http://apache.org/xml/features/disallow-doctype-decl", false)
                     setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)

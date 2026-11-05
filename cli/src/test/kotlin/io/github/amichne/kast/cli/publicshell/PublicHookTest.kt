@@ -22,6 +22,36 @@ import org.junit.jupiter.api.io.TempDir
 @Serializable private class MissingHookWorkspace
 
 class PublicHookTest {
+    @Test
+    fun `preparation expiry differs from a closed editor and preserves native cause`() {
+        Files.writeString(directory.resolve("settings.gradle.kts"), "")
+        for ((reason, expected) in
+            listOf(
+                io.github.amichne.kast.protocol.contract.IdeLifecycleFailure.DEADLINE_EXCEEDED to
+                    PublicShellExit.ELAPSED,
+                io.github.amichne.kast.protocol.contract.IdeLifecycleFailure.HOST_UNAVAILABLE to
+                    PublicShellExit.RUNTIME,
+            )) {
+            val output =
+                preparePublicHook(listOf("workspace", "wait", "--workspace", directory.toString()), input()) { _, _ ->
+                    Refinement.Rejected(
+                        HookPreparationFailure.Lifecycle(
+                            io.github.amichne.kast.protocol.contract.IdeLifecycleResult.Blocked(reason)
+                        )
+                    )
+                }
+            assertEquals(expected, output.exit)
+            val cause =
+                Json.parseToJsonElement(output.text)
+                    .jsonObject
+                    .getValue("cause")
+                    .jsonObject
+                    .getValue("result")
+                    .jsonObject
+            assertEquals(reason.name, cause.getValue("reason").jsonPrimitive.content)
+        }
+    }
+
     @TempDir lateinit var directory: Path
 
     @Test
@@ -30,23 +60,32 @@ class PublicHookTest {
         val nested = Files.createDirectories(directory.resolve("module/src"))
         val roots = mutableListOf<Path>()
         val output =
-            preparePublicHook(listOf("hook", "session-start", "--workspace", nested.toString()), input()) {
-                roots.add(it.path)
-                Refinement.Refined(Unit)
+            preparePublicHook(listOf("hook", "session-start", "--workspace", nested.toString()), input()) { root, _ ->
+                roots.add(root.path)
+                Refinement.Refined(HookPreparation.Ready(HookWaitDocument(HookWaitMode.BOUNDED, 1000)))
             }
         assertEquals(listOf(directory.toRealPath()), roots)
         assertEquals(PublicShellExit.COMPLETE, output.exit)
-        assertEquals(emptySet<String>(), Json.parseToJsonElement(output.text).jsonObject.keys)
+        assertEquals(
+            "ready",
+            Json.parseToJsonElement(output.text)
+                .jsonObject
+                .getValue("preparation")
+                .jsonObject
+                .getValue("type")
+                .jsonPrimitive
+                .content,
+        )
     }
 
     @Test
     fun `non projects skip preparation and invalid events reject before effects`() {
         val skipped =
-            preparePublicHook(listOf("hook", "session-start", "--workspace", directory.toString()), input()) {
+            preparePublicHook(listOf("hook", "session-start", "--workspace", directory.toString()), input()) { _, _ ->
                 error("Non-project preparation")
             }
         assertEquals(PublicShellExit.COMPLETE, skipped.exit)
-        assertEquals(emptySet<String>(), Json.parseToJsonElement(skipped.text).jsonObject.keys)
+        assertEquals(setOf("additionalContext"), Json.parseToJsonElement(skipped.text).jsonObject.keys)
         for (event in
             listOf(
                 Json.encodeToString(MissingHookWorkspace()),
@@ -55,7 +94,9 @@ class PublicHookTest {
                 "{} {}",
             )) {
             val rejected =
-                preparePublicHook(listOf("hook", "session-start"), input(event)) { error("Invalid event effect") }
+                preparePublicHook(listOf("hook", "session-start"), input(event)) { _, _ ->
+                    error("Invalid event effect")
+                }
             assertEquals(PublicShellExit.INPUT, rejected.exit, event)
         }
     }
@@ -65,7 +106,7 @@ class PublicHookTest {
         Files.writeString(directory.resolve("settings.gradle"), "")
         val event = Json.encodeToString(TestHookEvent(directory.toString(), "1"))
         val output =
-            preparePublicHook(listOf("hook", "session-start"), input(event)) {
+            preparePublicHook(listOf("hook", "session-start"), input(event)) { _, _ ->
                 Refinement.Rejected(
                     HookPreparationFailure.Native(DaemonOperationFailure.Root(CanonicalRootFailure.START_UNAVAILABLE))
                 )
@@ -81,7 +122,7 @@ class PublicHookTest {
     fun `invalid settings marker rejects instead of skipping`() {
         Files.createDirectory(directory.resolve("settings.gradle.kts"))
         val output =
-            preparePublicHook(listOf("hook", "session-start", "--workspace", directory.toString()), input()) {
+            preparePublicHook(listOf("hook", "session-start", "--workspace", directory.toString()), input()) { _, _ ->
                 error("Invalid marker effect")
             }
         assertEquals(PublicShellExit.WORKSPACE, output.exit)
@@ -103,7 +144,8 @@ class PublicHookTest {
             ) + ClientInstallationFailure.entries.map { HookPreparationFailure.Installation(it) to "installation" }
         for ((failure, expected) in cases) {
             val output =
-                preparePublicHook(listOf("hook", "session-start", "--workspace", directory.toString()), input()) {
+                preparePublicHook(listOf("hook", "session-start", "--workspace", directory.toString()), input()) { _, _
+                    ->
                     Refinement.Rejected(failure)
                 }
             assertEquals(PublicShellExit.RUNTIME, output.exit)
@@ -119,4 +161,79 @@ class PublicHookTest {
     }
 
     private fun input(text: String = "") = ByteArrayInputStream(text.toByteArray())
+
+    @Test
+    fun `background hook returns preparing context for both model hosts`() {
+        Files.writeString(directory.resolve("settings.gradle.kts"), "")
+        for (host in listOf("codex", "copilot")) {
+            val output =
+                preparePublicHook(
+                    listOf(
+                        "hook",
+                        "session-start",
+                        "--workspace",
+                        directory.toString(),
+                        "--wait",
+                        "none",
+                        "--host",
+                        host,
+                    ),
+                    input(),
+                ) { _, wait ->
+                    assertEquals(HookWait.Background, wait)
+                    Refinement.Refined(
+                        HookPreparation.Preparing(
+                            "request",
+                            "host",
+                            io.github.amichne.kast.protocol.contract.IdeLifecycleStage.IMPORTING,
+                            HookWaitDocument(HookWaitMode.INDEFINITE, null),
+                        )
+                    )
+                }
+            val document = Json.parseToJsonElement(output.text).jsonObject
+            val context = if (host == "codex") document.getValue("hookSpecificOutput").jsonObject else document
+            val text = context.getValue("additionalContext").jsonPrimitive.content
+            org.junit.jupiter.api.Assertions.assertTrue(text.contains("being prepared (IMPORTING)"))
+            org.junit.jupiter.api.Assertions.assertTrue(text.contains("indefinite"))
+            org.junit.jupiter.api.Assertions.assertTrue(text.contains("kast workspace wait"))
+            assertEquals(PublicShellExit.COMPLETE, output.exit)
+        }
+    }
+
+    @Test
+    fun `wait selection is visible before preparation starts and rejects invalid settings before effects`() {
+        Files.writeString(directory.resolve("settings.gradle.kts"), "")
+        for (setting in listOf("1250", "indefinite")) {
+            val progress = mutableListOf<String>()
+            val output =
+                preparePublicHook(
+                    listOf("workspace", "wait", "--workspace", directory.toString(), "--wait", setting),
+                    input(),
+                    diagnostic = progress::add,
+                ) { _, wait ->
+                    assertEquals(1, progress.size)
+                    val selected = (wait as HookWait.Selected).allowance
+                    assertEquals(if (setting == "indefinite") null else 1250, selected.protocolMillis())
+                    Refinement.Refined(
+                        HookPreparation.Ready(
+                            HookWaitDocument(
+                                if (setting == "indefinite") HookWaitMode.INDEFINITE else HookWaitMode.BOUNDED,
+                                selected.protocolMillis(),
+                            )
+                        )
+                    )
+                }
+            assertEquals(PublicShellExit.COMPLETE, output.exit)
+        }
+        for (setting in listOf("0", "-1", "forever", "none")) {
+            val rejected =
+                preparePublicHook(
+                    listOf("workspace", "wait", "--workspace", directory.toString(), "--wait", setting),
+                    input(),
+                ) { _, _ ->
+                    error("Invalid wait started preparation")
+                }
+            assertEquals(PublicShellExit.INPUT, rejected.exit)
+        }
+    }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:aab678f1401a6d16f1abad5238248676b9238ca588475c2cf47dce3b5b1e3627",
+  "pageVersion": "sha256:90451653af5d10f381f9414eb62a1a6888825925aa9393299e046b311aa857e1",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -148,7 +148,7 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt",
-          "version": "repo-file-v1:sha256:a1bb570346384c58e153f1dcea6e5540f20c2da74b90e96f3737ec0d9aa00c3a"
+          "version": "repo-file-v1:sha256:c5741248e41c34af177617e1c7bd5635bdc92d130cc8ce0118ed521677ad9c86"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
@@ -159,6 +159,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T06:09:31.584Z"
+    "at": "2026-11-04T23:27:44.986Z"
   }
 }

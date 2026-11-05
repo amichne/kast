@@ -1,5 +1,7 @@
 package io.github.amichne.kast.runtime.hosted
 
+import io.github.amichne.kast.kernel.ElapsedTimeAllowance
+import io.github.amichne.kast.kernel.Refinement
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.advanceTimeBy
@@ -11,6 +13,65 @@ import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HostedVfsRefreshTest {
+    @Test
+    fun `explicit lifecycle allowance keeps waiting beyond the read default`() = runTest {
+        for (allowance in
+            listOf(
+                (ElapsedTimeAllowance.admitMillis(30_000) as Refinement.Refined).value,
+                ElapsedTimeAllowance.Unlimited,
+            )) {
+            var complete: ((HostedVfsRefreshOutcome) -> Unit)? = null
+            val pending = async {
+                awaitVfsRefresh({ false }, allowance) { callback ->
+                    complete = callback
+                    return@awaitVfsRefresh {}
+                }
+            }
+            runCurrent()
+            advanceTimeBy(if (allowance == ElapsedTimeAllowance.Unlimited) 18 * 60_000L else 20_000L)
+            runCurrent()
+            assertEquals(false, pending.isCompleted, allowance.toString())
+            complete!!(HostedVfsRefreshOutcome.READY)
+            assertEquals(HostedVfsRefreshOutcome.READY, pending.await())
+        }
+    }
+
+    @Test
+    fun `explicit finite lifecycle allowance expires at its own bound`() = runTest {
+        val allowance = (ElapsedTimeAllowance.admitMillis(30_000) as Refinement.Refined).value
+        var detached = 0
+        val pending = async { awaitVfsRefresh({ false }, allowance) { { detached++ } } }
+        runCurrent()
+        advanceTimeBy(29_999)
+        runCurrent()
+        assertEquals(false, pending.isCompleted)
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(HostedVfsRefreshOutcome.DEADLINE_EXCEEDED, pending.await())
+        assertEquals(1, detached)
+    }
+
+    @Test
+    fun `indefinite lifecycle VFS wait cancels and preserves late completion safety`() = runTest {
+        var complete: ((HostedVfsRefreshOutcome) -> Unit)? = null
+        var detached = 0
+        val pending = async {
+            awaitVfsRefresh({ false }, ElapsedTimeAllowance.Unlimited) { callback ->
+                complete = callback
+                return@awaitVfsRefresh { detached++ }
+            }
+        }
+        runCurrent()
+        advanceTimeBy(18 * 60_000L)
+        runCurrent()
+        assertEquals(false, pending.isCompleted)
+        pending.cancel()
+        runCurrent()
+        assertEquals(1, detached)
+        complete!!(HostedVfsRefreshOutcome.READY)
+        assertEquals(true, pending.isCancelled)
+    }
+
     @Test
     fun `automatic refresh telemetry records finite success and timeout outcomes`() {
         assertEquals(

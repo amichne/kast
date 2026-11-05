@@ -3,6 +3,8 @@ package io.github.amichne.kast.runtime.hosted
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
+import io.github.amichne.kast.kernel.ElapsedTimeAllowance
+import io.github.amichne.kast.kernel.Refinement
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -34,10 +36,11 @@ internal fun HostedVfsRefreshOutcome.failure(): HostedEndpointFailure? =
 internal suspend fun awaitHostedVfsRefresh(
     project: Project,
     start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> (() -> Unit),
+    allowance: ElapsedTimeAllowance = DEFAULT_VFS_REFRESH_WAIT,
 ): HostedVfsRefreshOutcome {
     val outcome =
         try {
-            refreshProjectVfs(project, start)
+            refreshProjectVfs(project, start, allowance)
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (cancellation: ProcessCanceledException) {
@@ -52,20 +55,22 @@ internal suspend fun awaitHostedVfsRefresh(
 private suspend fun refreshProjectVfs(
     project: Project,
     start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> (() -> Unit),
+    allowance: ElapsedTimeAllowance,
 ): HostedVfsRefreshOutcome {
     if (project.isDisposed) return HostedVfsRefreshOutcome.PROJECT_DISPOSED
-    return awaitVfsRefresh(disposed = { project.isDisposed }, start = start)
+    return awaitVfsRefresh(disposed = { project.isDisposed }, allowance = allowance, start = start)
 }
 
 /** The callback is the native completion boundary; timeout never authorizes a stale read. */
 internal suspend fun awaitVfsRefresh(
     disposed: () -> Boolean,
+    allowance: ElapsedTimeAllowance = DEFAULT_VFS_REFRESH_WAIT,
     start: (completed: (HostedVfsRefreshOutcome) -> Unit) -> (() -> Unit),
 ): HostedVfsRefreshOutcome {
     if (disposed()) return HostedVfsRefreshOutcome.PROJECT_DISPOSED
     val result =
         try {
-            withTimeoutOrNull(VFS_REFRESH_WAIT_MILLIS) {
+            withTimeoutOrNull(allowance.duration) {
                 suspendCancellableCoroutine<HostedVfsRefreshOutcome> { continuation ->
                     val cancelWaiter = start { outcome -> if (continuation.isActive) continuation.resume(outcome) }
                     continuation.invokeOnCancellation { cancelWaiter() }
@@ -82,3 +87,9 @@ internal suspend fun awaitVfsRefresh(
 }
 
 private const val VFS_REFRESH_WAIT_MILLIS = 10_000L
+
+private val DEFAULT_VFS_REFRESH_WAIT =
+    when (val admitted = ElapsedTimeAllowance.admitMillis(VFS_REFRESH_WAIT_MILLIS)) {
+        is Refinement.Refined -> admitted.value
+        is Refinement.Rejected -> error("The default VFS refresh wait must be positive and finite")
+    }

@@ -36,20 +36,24 @@ code_sources:
 sources:
   - id: openwiki-source-a856ab1fe259496cbf44bc53
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
+  - id: openwiki-source-eee64eb8ca3aa3550601ed99
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt
   - id: openwiki-source-7685e27063adfdefffa21252
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - id: openwiki-source-59b559d53d91096a82b485a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
+  - id: openwiki-source-a566d74d2962e0f1901a1d38
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
   - id: openwiki-source-1d161f3eb7933044519fd33a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - id: openwiki-source-021e60454b473f51dc29603a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
   - id: openwiki-source-210e5a1fdf9d35bc022594a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
-generated: { by: "codex", at: "2026-11-03T05:16:29.521Z" }
+generated: { by: "codex", at: "2026-11-04T23:27:44.986Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:16:29.521Z
+    at: 2026-11-05T00:37:28.525Z
 ---
 
 # Direct MCP and tool RPC
@@ -64,6 +68,9 @@ A stopped or unproved installation returns a typed rejection.
 
 The session routes public changes to the shared change owner.
 Read operations use the existing-IDE client and admitted public request.
+CLI and one-shot RPC invocation leave preparation to the typed operation demand.
+Fresh discovery and diagnostics prepare the workspace.
+Issued source and retained-reference reads use existing authority without an eager preparation step.
 MCP and harness-neutral RPC choose different client protocols around that same session.
 Neither transport creates another semantic implementation.
 

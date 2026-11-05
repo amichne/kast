@@ -5,6 +5,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget
 import io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadline
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure as PublicFailure
@@ -53,7 +54,16 @@ internal class HostedWorkspaceRefresh(
         )
     private val triggers = WorkspaceRefreshTaskTrigger(project, root, scope) { command -> execute(command) }
 
-    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit): () -> Unit {
+    fun refreshForRead(complete: (HostedVfsRefreshOutcome) -> Unit): () -> Unit =
+        refreshForRead(
+            io.github.amichne.kast.kernel.ElapsedTimeAllowance.Bounded(WorkspacePreparationBudget.limit),
+            complete,
+        )
+
+    fun refreshForRead(
+        allowance: io.github.amichne.kast.kernel.ElapsedTimeAllowance,
+        complete: (HostedVfsRefreshOutcome) -> Unit,
+    ): () -> Unit {
         val admitted = hostAdmission.enter()
         if (admitted is io.github.amichne.kast.runtime.hosted.lifecycle.HostedApplicationAdmission.Admission.Fenced) {
             complete(HostedVfsRefreshOutcome.FAILED)
@@ -61,7 +71,7 @@ internal class HostedWorkspaceRefresh(
         }
         check(admitted is io.github.amichne.kast.runtime.hosted.lifecycle.HostedApplicationAdmission.Admission.Admitted)
         return admitted.lease.use {
-            service.refreshForRead { status ->
+            service.refreshForRead(allowance) { status ->
                 complete(
                     when (status) {
                         WorkspaceRefreshStatus.Complete -> HostedVfsRefreshOutcome.READY
@@ -92,7 +102,7 @@ internal class HostedWorkspaceRefresh(
                             WorkspaceRefreshCommand.Request(
                                 requestId,
                                 io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect.GRADLE_MODEL_RELOAD,
-                                remaining.value.value,
+                                remaining.value.protocolMillis(),
                             )
                         )
                 }
@@ -137,13 +147,7 @@ internal class HostedWorkspaceRefresh(
     private fun admittedRequest(command: WorkspaceRefreshCommand.Request): WorkspaceRefreshResult =
         // Native admission or observation of an existing import occurs when the effect reaches its turn.
         when (
-            val allowance =
-                io.github.amichne.kast.kernel.ElapsedTimeLimitMillis.parse(
-                    minOf(
-                        command.preparationMillis,
-                        io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit.value,
-                    )
-                )
+            val allowance = io.github.amichne.kast.kernel.ElapsedTimeAllowance.admitMillis(command.preparationMillis)
         ) {
             is Refinement.Rejected -> WorkspaceRefreshResult.Failed(command.requestId, PublicFailure.DEADLINE_EXCEEDED)
             is Refinement.Refined -> withId(command.requestId) { service.submit(it, command.effect, allowance.value) }

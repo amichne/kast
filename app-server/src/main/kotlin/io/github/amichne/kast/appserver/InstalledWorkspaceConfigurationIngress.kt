@@ -42,15 +42,15 @@ object InstalledWorkspaceConfigurationIngress {
         if (!physicalDirectory(workspaceRoot)) return rejected(SavedConfigurationIngressFailure.INVALID_WORKSPACE)
         val installationFile = installationRoot.resolve("config/environment")
         val explicit = environment[ConfigurationParameter.CONFIGURATION_FILE.key]
-        if (explicit != null && explicit != installationFile.toString())
-            return rejected(SavedConfigurationIngressFailure.INVALID_SELECTOR)
         val installation =
-            when (val read = optional(installationRoot, installationFile, environment)) {
+            when (
+                val read =
+                    if (explicit == null) optional(installationRoot, installationFile, environment)
+                    else InstalledSavedConfigurationIngress.read(explicit, environment)
+            ) {
                 is SavedConfigurationIngress.Rejected -> return read
                 is SavedConfigurationIngress.Loaded -> read
             }
-        if (explicit != null && installation.observation == SavedConfigurationObservation.ABSENT)
-            return rejected(SavedConfigurationIngressFailure.UNAVAILABLE)
         val identity =
             MessageDigest.getInstance("SHA-256")
                 .digest(workspaceRoot.toString().toByteArray(Charsets.UTF_8))

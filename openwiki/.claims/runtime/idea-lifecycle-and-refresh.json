@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a513d1f926aca105a7a40bf068ca6af596107fc337f9a918d82d19c11fd67071",
+  "pageVersion": "sha256:b97e9c08517cb5da0e544e6feba523a9d094d62565f6de25c8a36e1311b1cb8e",
   "claims": [
     {
       "id": "claim_06e2aac3fd894966a82caf7cfced11b7",
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
-          "version": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43"
+          "version": "repo-file-v1:sha256:a86d9c32723266e3313c819f212d1c37817fa19b5b9c312520caca2abf30ba55"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCompletion.kt",
@@ -26,7 +26,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt",
-          "version": "repo-file-v1:sha256:819372826ce26c2bcb1e64203cfb06dad6273c417ac453949a3653c82adc948e"
+          "version": "repo-file-v1:sha256:0e7a0a35983d4353c2ccf7b373963869f28d5e8b62a0e6833e05f31f517e6226"
         }
       ]
     },
@@ -36,7 +36,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt",
-          "version": "repo-file-v1:sha256:b8950ae3e025b2924f5632198a7fe058fb5fa5317365dfa9c7ba1e3aed51dd43"
+          "version": "repo-file-v1:sha256:a86d9c32723266e3313c819f212d1c37817fa19b5b9c312520caca2abf30ba55"
         }
       ]
     },
@@ -56,25 +56,41 @@
     },
     {
       "id": "claim_6841e7e3c40a485aaee1af9d7abbb523",
-      "statement": "WorkspacePreparations coalesces work per canonical root, opens once and polls issued status within a 17-minute readiness allowance, while lifecycle frame deadlines remain separate from later semantic execution.",
+      "statement": "WorkspacePreparations coalesces work per canonical root under one configured bounded or indefinite allowance, defaulting to 17 minutes and propagated through native preparation and VFS refresh. After an earlier shared native deadline expires, NativePreparationAwaiter checks the same Host, root, and project before continuing with a fresh native request ID under the original owner deadline; lifecycle frame and later semantic limits remain separate.",
       "evidence": [
         {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/NativePreparationAwaiter.kt",
+          "version": "repo-file-v1:sha256:0e29c05f9cfb8d5000694ab755de3f7fee37b73fac0ea793d7e441687700b374"
+        },
+        {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
-          "version": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243"
+          "version": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L312-L322",
+          "version": "repo-lines-v1:sha256:6235ce096d62b7956d1f2e3de890c24abbc17400cca664ed0f7748547cbf8b13:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyY2RkNTFjNGY3YWZjYzllZmJlNmU5ZWQzM2JjZTMyZmE5YzA4ZjA2ZGM2YzkzYTcxNjc3ZThkZTBhOWMyZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1Mjg5ZWQ0ODg4ZDRmMWI0MDQwNjRiZmEyYjg3YTg1M2IxN2YzYjYzNTAyZGNiZGU0YmZjOThiNDA0ZDdlZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNhODdkY2JiM2UwZjg4NDBiNDRiNTc4OGMyZDA4OWE4MjJkNjRiMDgzZTE1MjZlZmIyZWY4YzhkZDAxOWQyN2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4YTE4N2MxMzgyOGYxYmRkZThlNTlhNGUyZjQwODkyNmFmMjU0NzBhYmJjZjVkOGM3MDhhMWIxZDIyMWI1ZWUifQ"
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationExecutionBudget.kt",
           "version": "repo-file-v1:sha256:74f0a6c45de95fa10be39413fc52fb46c0d67c9b0a7341a50338e2cbe6154b0a"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt#L115-L129",
+          "version": "repo-lines-v1:sha256:1c0404fc8c4fd2fb37792944ccdeb7126ca16b8df74c3078e3bb1e5b7e340506:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhYTk1ZWUyMGZjZDJiNGFmZTQxZTZhYWEwZTkxNDY2OTY4MWY2NzE1M2NmYWQ1ZmZiNzhmNzMxNGI3MTZiNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4NzUzOGIyYjE0MTcwZDRkM2Y1ZTIyOWUwM2QwNDQ5NzUzMGFmMDdhOGI5YTM3NjA4MGQ4ODIzMWQxM2MzMmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVhMmNkZjBkZTljMmJjMTEyMTkwNjcwY2Y3YjVkNWVlOGIzMDI1NmQxYTBmMThlYTNhYWM0ZWE1YTdiY2Y1NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxMTY5ODRkMWMwN2NjMzQwNWJiMTQzMjMzYjkwNWFiM2RmNDU4ZWM1NzE5NmU5ZDVkZWE3ODM4MWM3MDhjZTQifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/HostedWorkspaceRefresh.kt#L62-L99",
+          "version": "repo-lines-v1:sha256:8078a8ad16e5c0d914d59ac32339dd2460c60aa9ee92ae16ff246387a7df013c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2NmU2Y2MyZTM4MzVjYjAyZTkyMTE0MzcwZDBkODAwNTRjNDk5MjNiZDJiYWU3MjdhMTg3ZjMwNzEyOWI1NDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZGFmMzNmYjFkNDk3ODFlNTgxMGNkOTY5M2U3ZjY5ZmRjODcxYWY3NzZjODcyZDc1ZWI4NzA3MzdiMmMyNWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiZDJjYzUzMWY1YWM5ZDQwZDYzZmYzZDU2NjExMjAzODMxNzQ0ZjVhZmZhZDg3MjNhZGNmZTU2ZTE5OWU3ZGQifQ"
         }
       ]
     },
     {
       "id": "claim_7734d5f14fe74d3bb4546106a864e74b",
-      "statement": "Settled preparation can request one bounded model-reload recovery, while later input changes stay pending until import covers them and finite operation history returns UNKNOWN_OPERATION after reclamation.",
+      "statement": "Settled preparation can request one model-reload recovery within its admitted allowance, while later input changes stay pending until import covers them and finite operation history returns UNKNOWN_OPERATION after reclamation.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
-          "version": "repo-file-v1:sha256:6ffa943ad7cd1a814f1ac83b09bb32704500fb98c25f84e1181632761a938243"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L194-L242",
+          "version": "repo-lines-v1:sha256:b819793296757651324a215ed36bc818f987ad4f8e9450e3323968e5941754bc:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjNWVkZjBlNzQ3MDRlYzhkZGMwM2U1MmU5YzRkMjEyNzcyMzFmMTAyMjU4OTVhMzQ4YWEyNjM3NGMyMjZjNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiNjk3ZTNhOGIyZTI3Nzc1YmI4MDZlMjVhYjRhZjY0ZGUyY2U3ZjZkZTc1NTQ1OTg0YTViNmE1MDVjZTVmOTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBjMGVkOTE1OGFlMjY5YjhkOGQ5OTJiNWQwZjQ1MGI2NzBjMTc2Y2IyNTIxZDE5ZDUyYzA2NTlhNTc0Y2M0MTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjYjQzNmRjZDAwNzE3NDE1OWM2ODlhM2FhMzMxNWM3Njk3MzJjODdhYjA1Njk1YzkxNGY4MDdlZjQwNGNlNTMifQ"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleState.kt",
@@ -88,7 +104,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt",
-          "version": "repo-file-v1:sha256:1e785987b13330c23e92af50188ee7a43c91103f8255be46f689f5b731d35d7c"
+          "version": "repo-file-v1:sha256:f01c13f015c843aca17900058f94b4a59b98ee19a1c3e5816901c4f6f57d6da9"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt",
@@ -99,6 +115,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T05:45:59.282Z"
+    "at": "2026-11-04T23:47:48.767Z"
   }
 }

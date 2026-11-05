@@ -20,6 +20,8 @@ code_sources:
 sources:
   - id: openwiki-source-88f09847a1cc4b4d806ffe37
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt
+  - id: openwiki-source-9c073d03ec5fb55608850dd9
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/NativePreparationAwaiter.kt
   - id: openwiki-source-d5cbfb02164ed016b4a98505
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecution.kt
   - id: openwiki-source-8ae73fa39bc2bae22080593c
@@ -28,8 +30,14 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
   - id: openwiki-source-d49b78c58a23da108be9efe5
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt
+  - id: openwiki-source-681368e4942d2fb35f298a68
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - id: openwiki-source-beadba0f0b5f11f102a7ab98
     resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationExecutionBudget.kt
+  - id: openwiki-source-b711ac75af08966d13a95b22
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
+  - id: openwiki-source-9713af85ff6a629a6ce68bf3
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt
   - id: openwiki-source-594b73dd64e36b813f7ed5b2
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleState.kt
   - id: openwiki-source-91a4a9e4b4052c946d881372
@@ -38,10 +46,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCompletion.kt
   - id: openwiki-source-c3d765f6a0f5ed9757d16a3a
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+generated: { by: "codex", at: "2026-11-04T23:47:48.767Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:45:59.282Z
+    at: 2026-11-04T23:47:48.767Z
 ---
 
 # IDEA lifecycle and explicit refresh
@@ -118,7 +126,17 @@ Upgrades need new catalogs and the selected Host loaded before semantic admissio
 WorkspacePreparations owns one sequence per canonical root.
 Callers can share pending or completed preparation.
 One open effect precedes status reads for its issued operation.
-Preparation has a 17-minute allowance shared by open, import, indexing, and final admission.
+
+Preparation shares one configured allowance across open, import, VFS refresh, indexing, and final admission.
+The default is 17 minutes. `KAST_WORKSPACE_PREPARATION_WAIT` accepts positive milliseconds or `indefinite`.
+An indefinite wait has no elapsed-time deadline; cancellation, actual failure, and editor closure still end it.
+Lifecycle VFS refresh and its nested waiter receive the remaining allowance.
+They cannot replace it with a shorter fixed timeout.
+
+If an earlier shared native wait expires, `NativePreparationAwaiter` checks the same Host, root, and project.
+It then uses a fresh native request ID while keeping its original preparation deadline.
+Changed identity or a real lifecycle failure ends that wait.
+
 Lifecycle frames keep separate 5-second transport limits.
 EXCHANGE_DEADLINE_EXCEEDED reports command, stage, cause, and timing without proving that IDEA exited.
 Semantic execution has separate limits after preparation.
