@@ -6077,7 +6077,7 @@
         },
         {
           "path": "gradle/verification-metadata.xml",
-          "sha256": "16f7e8ac17acb92ed3f8b8887d70a25a4c1e0acb40b7ed9e4594bf67d05c42a3"
+          "sha256": "60ca42f93a47194cc0d78dfa889cfb91e907a80273c06c110e85a610655d410a"
         },
         {
           "path": "mise.toml",
@@ -6088,7 +6088,7 @@
           "sha256": "de9404699e24e207135e9ff55865e252a18acd9cba051fc0c3d3eb974b98f6b3"
         }
       ],
-      "reviewedSourceRevision": "f771eded1ebbeb5b283caa14442713cbc0a86345"
+      "reviewedSourceRevision": "b652745594a1560a85a8faef3a51385bc389d8b2"
     },
     {
       "route": "reference/compatibility",
