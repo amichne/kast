@@ -67,7 +67,7 @@ Cleanup runs after successful builds, and existing encrypted configuration-cache
 
 A successful main candidate reuse skips Gradle setup and retains the existing fast path.
 The separate `Populate Gradle caches` workflow supplies cache entries after main pushes and daily at 08:00 UTC.
-Its Linux job runs the complete source gate with the stable version `0.0.0`.
+Its Linux job runs the complete source gate with the fixed validation version `0.0.0`.
 Its macOS job runs the three reset-adapter suites when native compilation is enabled.
 Both jobs use the same platform, toolchain, cache owner and job identifiers as their CI consumers.
 The workflow also accepts a manual dispatch on main.
@@ -79,7 +79,7 @@ The cache producer adds runner work to populate shared entries even when main re
 Keep setup restore/save reports, build task outcomes, native metrics and job timestamps from necessary runs.
 A transport hit does not prove task-output reuse or a speedup.
 Candidate versions keep the workflow run number.
-Source validation uses the stable version `0.0.0` for product, control, and hosted-plugin resources.
+Source validation uses the fixed validation version `0.0.0` for product, control, and hosted-plugin resources.
 Source identities can still invalidate outputs. Measure their effect.
 Source and candidate invocations use `--info` to keep configuration-cache rejection reasons and task input changes.
 Source logs stay in the existing source reports; candidate logs stay in the Actions build step.
@@ -305,7 +305,7 @@ Candidate qualification keeps those tasks, actual release versions, acceptance, 
 Source feedback waits for the selected source, documentation, and portable jobs.
 Linux owns the source result through `source-work`.
 The stable `Source validation` check needs that job, independently of native compilation.
-Source-only changes use affected selection with stable versions.
+Source-only changes use affected selection with fixed validation versions.
 Product changes run the complete source gate before the native input archive is prepared.
 A reused candidate keeps its original successful source proof and exact source tree.
 Failed, cancelled, missing, and skipped source results reject the source aggregate.
