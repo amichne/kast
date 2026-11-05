@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4d46a5c54b1659f0b1254d689e18be291378f438e770f8b365b3bec39346ef3d",
+  "pageVersion": "sha256:591205ae88cc7bc40dc9bcadde3379a6cb56de4e28fde2ea1f2d6cd1dc5e5fbf",
   "claims": [
     {
       "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
@@ -24,7 +24,7 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt",
-          "version": "repo-file-v1:sha256:c20844d118650031d77dabe479e828543d5727097374af2b779d9a01f2c766fd"
+          "version": "repo-file-v1:sha256:dde907c9602b0876528ac41b052b1ef77b25826b4784c8df1156fd9cb0f12d44"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L169-L180",
@@ -73,6 +73,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T23:27:44.986Z"
+    "at": "2026-11-05T00:37:28.525Z"
   }
 }
