@@ -340,7 +340,7 @@ sources:
 generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T00:37:28.525Z
+    at: 2026-11-05T06:25:54.221Z
 ---
 
 # Distribution and packaging

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:00c8349c22d18d00170f349ed4650c20897ac323075d864f07a6c52f547c8066",
+  "pageVersion": "sha256:e933296039ad4b6937b3f1ad54d1d341b1d7414dd55de029d8219b6081d2590a",
   "claims": [
     {
       "id": "claim_33e6522130644483961b71cc571e663b",
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:fc96f7e447a3b03146c07d43b3ec340ecd40af6ef19f283c82f2d9196351c8cc"
+          "version": "repo-file-v1:sha256:d31ae1e1069157e9210b4a304c3d6f8bcad56d5305574448535b9f82ad8e2381"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
@@ -47,6 +47,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T18:05:12.445Z"
+    "at": "2026-11-05T06:25:54.221Z"
   }
 }
