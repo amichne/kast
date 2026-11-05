@@ -44,6 +44,47 @@ class ReceiptFixture:
     guidance: tuple[install.Guidance, ...] = ()
 
 
+class BootstrapImportTest(unittest.TestCase):
+    def test_first_bootstrap_import_preserves_the_exact_payload_inventory(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kast-bootstrap-import-") as temporary:
+            root = Path(temporary).resolve()
+            bundle = root / "payload"
+            bundle.mkdir()
+            names = (
+                "managed_installation.py",
+                "managed_release.py",
+                "managed_update_contract.py",
+                "managed_update_journal.py",
+                "reload_hosted.py",
+                "host-installation.py",
+                "installation-recovery.py",
+                "installation-lifecycle.py",
+                "host_directory_exchange.py",
+            )
+            for name in names:
+                _ = shutil.copyfile(Path(__file__).with_name(name), bundle / name)
+            before = {
+                name: hashlib.sha256((bundle / name).read_bytes()).hexdigest() for name in names
+            }
+            environment = dict(os.environ)
+            _ = environment.pop("PYTHONDONTWRITEBYTECODE", None)
+            _ = environment.pop("PYTHONPYCACHEPREFIX", None)
+            result = subprocess.run(
+                [sys.executable, str(bundle / "managed_installation.py"), "--help"],
+                cwd=root,
+                env=environment,
+                capture_output=True,
+                timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            after = {
+                path.relative_to(bundle).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in bundle.rglob("*")
+                if path.is_file()
+            }
+            self.assertEqual(before, after)
+
+
 class ManagementRegistrationTest(unittest.TestCase):
     def receipt(self, registration: install.Registration | LegacyRegistrationFixture) -> bytes:
         return install.encoded(
@@ -122,6 +163,148 @@ class CoordinatorTest(unittest.TestCase):
             {"PATH": os.environ["PATH"]},
         )
         self.identity = journal.BuildIdentity("v2.0.0", "2.0.0", "a" * 40, "b" * 40)
+
+    def stop_case(self, inspections: list[bytes]) -> tuple[contract.Loaded, "HostActionRunner"]:
+        self.adapter.limits = install.Limits(1.0, 1.0, 2.0)
+        process = contract.ProcessIdentity(41, 123, str(self.idea.home / "MacOS/idea"))
+        runtime = contract.RuntimeIdentity(
+            str(self.idea.home),
+            str(self.idea.profile),
+            41,
+            123,
+            "stop-host",
+            contract.RuntimeBuild("1.0.0", "a" * 40, "b" * 40),
+            "ENABLED",
+        )
+        capabilities = (
+            "workspace.lifecycle",
+            "query.run",
+            "source.read",
+            "diagnostic.check",
+            "change.plan",
+            "change.apply",
+            "change.recover",
+        )
+        hosted = install.release.HostedContract(
+            "kast.ide-hosted.runtime.v3",
+            "sha256:" + "a" * 64,
+            "sha256:" + "b" * 64,
+            capabilities,
+        )
+        loaded = contract.Loaded(process, runtime, hosted)
+        runner = HostActionRunner(
+            [
+                ExpectedHostCall(
+                    "SETTLE",
+                    install.encoded(
+                        InspectionFixture(
+                            (process,),
+                            HostAcknowledgementFixture(
+                                "stop-host",
+                                "stop-transaction",
+                                runtime,
+                                "host_settled",
+                            ),
+                        )
+                    ),
+                    "stop-host",
+                    "stop-transaction",
+                ),
+                ExpectedHostCall(
+                    "STOP",
+                    install.encoded(
+                        InspectionFixture(
+                            (process,),
+                            HostAcknowledgementFixture(
+                                "stop-host",
+                                "stop-transaction",
+                                runtime,
+                                "host_stop_requested",
+                            ),
+                        )
+                    ),
+                    "stop-host",
+                    "stop-transaction",
+                ),
+                *(ExpectedHostCall("INSPECT", frame) for frame in inspections),
+            ]
+        )
+        self.adapter.runner = runner
+        self.adapter.stage = contract.Stage.HOST_SETTLEMENT
+        return loaded, runner
+
+    def test_stop_waits_for_positive_absence_after_unavailable_process_metadata(self) -> None:
+        unavailable = install.encoded(InspectionRejectedFixture("PROCESS_IDENTITY_UNAVAILABLE"))
+        loaded, runner = self.stop_case([unavailable, install.encoded(InspectionFixture())])
+        output = io.StringIO()
+        with (
+            contextlib.redirect_stderr(output),
+            patch.object(install.time, "monotonic", side_effect=[0.0, 0.0, 0.1]) as clock,
+            patch.object(install.time, "sleep") as wait,
+        ):
+            self.adapter.stop(loaded, "stop-transaction")
+        self.assertEqual(3, clock.call_count)
+        wait.assert_called_once_with(0.1)
+        self.assertIn('"outcome":"WAITING"', output.getvalue())
+        self.assertNotIn('"outcome":"REJECTED"', output.getvalue())
+        runner.finished()
+
+    def test_stop_keeps_metadata_failure_when_the_settlement_deadline_expires(self) -> None:
+        unavailable = install.encoded(InspectionRejectedFixture("PROCESS_IDENTITY_UNAVAILABLE"))
+        loaded, runner = self.stop_case([unavailable])
+        with (
+            patch.object(install.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
+            patch.object(install.time, "sleep") as wait,
+            self.assertRaises(install.StageRejected) as rejected,
+        ):
+            self.adapter.stop(loaded, "stop-transaction")
+        self.assertEqual(
+            contract.Failure.HOST_SETTLEMENT_TIMEOUT, rejected.exception.failure.reason
+        )
+        self.assertEqual("PROCESS_IDENTITY_UNAVAILABLE", rejected.exception.failure.adapterCode)
+        wait.assert_not_called()
+        runner.finished()
+
+    def test_stop_rejects_a_different_process_without_waiting(self) -> None:
+        different = contract.ProcessIdentity(42, 124, str(self.idea.home / "MacOS/idea"))
+        loaded, runner = self.stop_case([install.encoded(InspectionFixture((different,)))])
+        with (
+            patch.object(install.time, "monotonic", side_effect=[0.0, 0.0]),
+            patch.object(install.time, "sleep") as wait,
+            self.assertRaises(install.StageRejected) as rejected,
+        ):
+            self.adapter.stop(loaded, "stop-transaction")
+        self.assertEqual(contract.Failure.CONCURRENT_CHANGE, rejected.exception.failure.reason)
+        wait.assert_not_called()
+        runner.finished()
+
+    def test_stop_does_not_retry_a_host_identity_rejection(self) -> None:
+        loaded, runner = self.stop_case(
+            [
+                install.encoded(InspectionRejectedFixture("HOST_IDENTITY_MISMATCH")),
+            ]
+        )
+        with (
+            patch.object(install.time, "monotonic", side_effect=[0.0, 0.0]),
+            patch.object(install.time, "sleep") as wait,
+            self.assertRaises(install.StageRejected) as rejected,
+        ):
+            self.adapter.stop(loaded, "stop-transaction")
+        self.assertEqual(contract.Failure.HOST_REJECTED, rejected.exception.failure.reason)
+        self.assertEqual("HOST_IDENTITY_MISMATCH", rejected.exception.failure.adapterCode)
+        wait.assert_not_called()
+        runner.finished()
+
+    def test_stop_wait_for_process_metadata_remains_interruptible(self) -> None:
+        unavailable = install.encoded(InspectionRejectedFixture("PROCESS_IDENTITY_UNAVAILABLE"))
+        loaded, runner = self.stop_case([unavailable])
+        with (
+            patch.object(install.time, "monotonic", side_effect=[0.0, 0.0, 0.1]),
+            patch.object(install.time, "sleep", side_effect=KeyboardInterrupt),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            self.adapter.stop(loaded, "stop-transaction")
+        runner.finished()
 
     def reservation_only(self) -> tuple[Path, Path]:
         stage = self.root / ".install-selected"
@@ -759,6 +942,12 @@ class RejectedHostFixture:
     result: BlockedInspectionFixture
     reason: str = "HOST_REJECTED"
     type: str = "REJECTED"
+
+
+@dataclass(frozen=True)
+class InspectionRejectedFixture:
+    reason: Literal["PROCESS_IDENTITY_UNAVAILABLE", "HOST_IDENTITY_MISMATCH"]
+    type: Literal["REJECTED"] = "REJECTED"
 
 
 @dataclass(frozen=True)

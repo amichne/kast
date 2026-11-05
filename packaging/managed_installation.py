@@ -37,6 +37,10 @@ from pathlib import Path
 from types import ModuleType
 from typing import Literal, Protocol, runtime_checkable
 
+# Imported helpers belong to the immutable installed payload, including on first invocation.
+if not sys.dont_write_bytecode:
+    sys.dont_write_bytecode = True
+
 import managed_release as release
 import managed_update_contract as contract
 import managed_update_journal as journal_types
@@ -258,6 +262,13 @@ class StageEvidence:
     stage: contract.Stage
     outcome: Literal["STARTED", "COMPLETED", "REJECTED"]
     reason: contract.Failure | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ProcessInspectionPending:
+    stage: contract.Stage
+    outcome: Literal["WAITING"] = "WAITING"
+    adapterCode: Literal["PROCESS_IDENTITY_UNAVAILABLE"] = "PROCESS_IDENTITY_UNAVAILABLE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -684,6 +695,10 @@ class NativeComposition:
                     and isinstance(result.get("reason"), str)
                 ):
                     code = result["reason"]
+                if isinstance(code, str) and code == "PROCESS_IDENTITY_UNAVAILABLE":
+                    raise StageRejected(
+                        contract.Rejected(self.stage, contract.Failure.HOST_REJECTED, code)
+                    )
                 raise reject(
                     self.stage,
                     contract.Failure.HOST_REJECTED,
@@ -832,7 +847,25 @@ class NativeComposition:
                 raise reject(self.stage, contract.Failure.HOST_REJECTED)
         deadline = time.monotonic() + self.limits.settlement
         while True:
-            processes = self.processes()
+            try:
+                processes = self.processes()
+            except StageRejected as problem:
+                if not (
+                    problem.failure.reason == contract.Failure.HOST_REJECTED
+                    and problem.failure.adapterCode == "PROCESS_IDENTITY_UNAVAILABLE"
+                ):
+                    raise
+                if time.monotonic() >= deadline:
+                    raise reject(
+                        self.stage,
+                        contract.Failure.HOST_SETTLEMENT_TIMEOUT,
+                        problem.failure.adapterCode,
+                    ) from None
+                print(
+                    encoded(ProcessInspectionPending(self.stage)).decode().rstrip(), file=sys.stderr
+                )
+                time.sleep(0.1)
+                continue
             if not processes:
                 return
             if processes != (snapshot.process,):
