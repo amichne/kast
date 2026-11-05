@@ -387,8 +387,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "db06efd47bbbfd87ec4664cdfe3914009b2f09b0ac1a812c4ded1dadc1555e79",
-      "claimsSha256": "f94735564deef9fae1eb3802de30f5ceeba4fc6e0e02ad0a0fbf589b4c3aa7c9",
+      "sha256": "ba37233296a4ada3eed3adeff38415efd2eb43cfdafa909f6e64c9876f5b1826",
+      "claimsSha256": "6e06aae401a9d536cce0032a9b2086ba12146c7e2543b96deb4bf4cd4136bd1c",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",

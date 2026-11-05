@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9a91091bfee3cecbfa799472f40ba7ed93e5db6498dabc14cc7d3b7290017186",
+  "pageVersion": "sha256:d72d7f63e700db7627fca0abf4e5a5ee073120d7d14cd53e27b35412a37d17b2",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -424,11 +424,11 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
-          "version": "repo-file-v1:sha256:ff7df8f1e028ce4c451aa96cb88be6c6e100d7df4084508c8cf6722bff13df13"
+          "version": "repo-file-v1:sha256:998e70fde7d4f7340ad28cdf4d256b726dd135ee60ada82c0533ed690bd8add3"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:2759ef309ef3da936d790837d099e37e826bebf0da30a47f61bb69a77d1cd4a0"
+          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
         }
       ]
     },
@@ -525,6 +525,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T05:25:39.361Z"
+    "at": "2026-11-05T06:37:09.283Z"
   }
 }
