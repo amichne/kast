@@ -1,10 +1,12 @@
 """Exercise assembled Host archive admission without Java, installation, or IDE effects."""
 from dataclasses import asdict, dataclass
 import importlib.util
+import gzip
 import io
 import json
 from pathlib import Path
 import sys
+import stat
 import tarfile
 import tempfile
 import unittest
@@ -233,6 +235,85 @@ class InstalledProductArtifactTest(unittest.TestCase):
         (staged / 'share/kast/unreported.py').write_bytes(b'unreported code')
         with self.assertRaises(AssertionError):
             product.verify_artifacts(staged, control, self.archive, record, '263')
+
+    def raw_mode_archive_fixture(self, directory_mode, file_mode):
+        """Encode the actual mode field: tarfile's writer otherwise masks POSIX type bits."""
+        root = self.archive.parent.resolve()
+        staged = root / 'raw-mode-product'
+        (staged / 'bin').mkdir(parents=True, mode=0o755, exist_ok=True)
+        (staged / 'bin').chmod(0o755)
+        content = b'owned fixture bytes, not executed\n'
+        path = staged / 'bin/kast'
+        path.write_bytes(content)
+        path.chmod(0o755)
+
+        def member(name, mode, kind, raw=b''):
+            item = tarfile.TarInfo(name)
+            item.type, item.size = kind, len(raw)
+            header = bytearray(item.tobuf(format=tarfile.USTAR_FORMAT))
+            header[100:108] = f'{mode:07o}\0'.encode('ascii')
+            header[148:156] = b' ' * 8
+            header[148:156] = f'{sum(header):06o}\0 '.encode('ascii')
+            return bytes(header) + raw + b'\0' * (-len(raw) % 512)
+
+        encoded = member('bin', directory_mode, tarfile.DIRTYPE) + member('bin/kast', file_mode, tarfile.REGTYPE, content) + b'\0' * 1024
+        archive = root / 'raw-mode-control.tar.gz'
+        archive.write_bytes(gzip.compress(encoded))
+        with tarfile.open(archive, 'r:gz') as observed:
+            self.assertEqual(directory_mode, observed.getmember('bin').mode)
+            self.assertEqual(file_mode, observed.getmember('bin/kast').mode)
+        return staged, archive
+
+    def test_gradle_raw_regular_and_directory_modes_bind_exact_permissions(self):
+        staged, archive = self.raw_mode_archive_fixture(0o40755, 0o100755)
+        before = archive.read_bytes()
+        product.verify_control_archive_matches_product(staged, archive)
+        self.assertEqual(before, archive.read_bytes())
+
+    def test_permission_only_tar_modes_remain_admitted(self):
+        staged, archive = self.raw_mode_archive_fixture(0o755, 0o755)
+        product.verify_control_archive_matches_product(staged, archive)
+
+    def test_raw_tar_mode_rejects_wrong_file_kinds_and_special_permissions(self):
+        cases = (
+            (0o100755, 0o100755),  # directory header falsely says regular
+            (0o40755, 0o40755),  # regular header falsely says directory
+            (0o40755, 0o120755),  # regular header with symlink kind
+            (0o40755, 0o10755),  # regular header with FIFO kind
+            (0o40755, 0o140755),  # regular header with socket kind
+            (0o40755, 0o4000755),  # undeclared high mode bits
+            (0o40755, -1),  # a signed mode field must not reach platform stat conversion
+        ) + tuple(
+            modes
+            for special in (stat.S_ISUID, stat.S_ISGID, stat.S_ISVTX)
+            for modes in ((0o40755 | special, 0o100755), (0o40755, 0o100755 | special))
+        )
+        for directory_mode, file_mode in cases:
+            with self.subTest(directory_mode=oct(directory_mode), file_mode=oct(file_mode)):
+                staged, archive = self.raw_mode_archive_fixture(directory_mode, file_mode)
+                before = archive.read_bytes()
+                with self.assertRaisesRegex(AssertionError, 'Control archive mode'):
+                    product.verify_control_archive_matches_product(staged, archive)
+                self.assertEqual(before, archive.read_bytes())
+
+    def test_gradle_raw_modes_cannot_mask_changed_permissions_bytes_or_inventory(self):
+        for changed in ('directory-permissions', 'file-permissions', 'bytes', 'inventory'):
+            with self.subTest(changed=changed):
+                staged, archive = self.raw_mode_archive_fixture(0o40755, 0o100755)
+                if changed == 'directory-permissions':
+                    (staged / 'bin').chmod(0o700)
+                elif changed == 'file-permissions':
+                    (staged / 'bin/kast').chmod(0o700)
+                elif changed == 'bytes':
+                    content = (staged / 'bin/kast').read_bytes()
+                    (staged / 'bin/kast').write_bytes(b'X' * len(content))
+                else:
+                    (staged / 'bin/unreported').write_bytes(b'owned unreported bytes')
+                reason = 'Control product mode' if 'permissions' in changed else 'Control product bytes' if changed == 'bytes' else 'Control product inventory'
+                with self.assertRaisesRegex(AssertionError, reason):
+                    product.verify_control_archive_matches_product(staged, archive)
+                if changed == 'inventory':
+                    (staged / 'bin/unreported').unlink()
 
 
 if __name__ == '__main__':
