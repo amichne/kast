@@ -83,8 +83,7 @@ class NativeJqCompositionTest {
         }
     }
 
-    private fun jq(program: String): List<String> =
-        listOf("--jq", program, "--jq-executable", executable().toString())
+    private fun jq(program: String): List<String> = listOf("--jq", program, "--jq-executable", executable().toString())
 
     private fun executable(): Path =
         System.getenv("PATH")
