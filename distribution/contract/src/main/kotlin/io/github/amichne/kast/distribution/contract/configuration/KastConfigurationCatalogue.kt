@@ -409,6 +409,20 @@ enum class ConfigurationParameter(
         ":build-logic",
         mutability = ConfigurationMutability.TEST_ONLY,
     ),
+    HOSTED_IDE_RELEASE_LINE(
+        "KAST_HOSTED_IDE_RELEASE_LINE",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.TEST,
+        ":build-logic",
+        mutability = ConfigurationMutability.TEST_ONLY,
+    ),
+    INSTALLED_PRODUCT_REPORT(
+        "KAST_INSTALLED_PRODUCT_REPORT",
+        ConfigurationSyntax.ABSOLUTE_PATH,
+        ConfigurationScope.TEST,
+        ":build-logic",
+        mutability = ConfigurationMutability.TEST_ONLY,
+    ),
     CONTROL_ARCHIVE(
         "KAST_CONTROL_ARCHIVE",
         ConfigurationSyntax.ABSOLUTE_PATH,

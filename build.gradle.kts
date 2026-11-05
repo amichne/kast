@@ -127,6 +127,10 @@ val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("g
 }
 
 val controlProductDirectory = layout.buildDirectory.dir("control-product")
+val controlExecutablePaths = setOf(
+    "bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc", "bin/kast-query",
+    "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management",
+)
 val agentToolsDirectory = layout.buildDirectory.dir("generated/agent-tools")
 val generateKastAgentTools = tasks.register<GenerateAgentToolsTask>("generateKastAgentTools") {
     group = "distribution"
@@ -145,6 +149,9 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     description = "Stages the Kast control installation for the existing IDE."
     dependsOn(generateKastControlMetadata, generateKastAgentTools)
     into(controlProductDirectory)
+    eachFile {
+        if (relativePath.pathString in controlExecutablePaths) permissions { unix("755") }
+    }
     from(cliInstallation)
     from(generatedControlMetadata) {
         into("share/kast")
@@ -199,17 +206,7 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
     eachFile {
-        if (relativePath.pathString in setOf(
-                "bin/kast",
-                "bin/kast-codex",
-                "bin/kast-mcp",
-                "bin/kast-tool-rpc",
-                "bin/kast-query",
-                "share/kast/libexec/kast-daemon",
-                "share/kast/libexec/kast-service",
-                "share/kast/libexec/kast-management",
-            )
-        ) permissions { unix("755") }
+        if (relativePath.pathString in controlExecutablePaths) permissions { unix("755") }
     }
 }
 
