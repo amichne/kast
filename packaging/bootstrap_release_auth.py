@@ -12,7 +12,9 @@ import hashlib
 import json
 import os
 import re
+import stat
 import sys
+import tarfile
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
@@ -22,6 +24,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard
 
 MAX_RECORD = 65_536
+MAX_ENTRIES = 16_384
 MAX_PAYLOAD = 1_073_741_824
 REPOSITORY = "amichne/kast"
 
@@ -445,6 +448,105 @@ def qualify(
     return CodeAuthenticated(selected, control)
 
 
+class TreeAdmission(str, Enum):
+    ADMITTED = "ADMITTED"
+
+
+def tree_file_digest(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while data := stream.read(65_536):
+            digest.update(data)
+    return digest.hexdigest()
+
+
+class TreeFailure(str, Enum):
+    BOUNDS = "Control archive bounds"
+    PATH = "Control archive path or type"
+    PRODUCT_PATH = "Control product path"
+    ARCHIVE_MODE = "Control archive mode"
+    PRODUCT_MODE = "Control product mode"
+    DIRECTORY = "Control product directory"
+    SIZE = "Control product file size"
+    ARCHIVE_FILE = "Control archive file"
+    BYTES = "Control product bytes"
+    ENTRY = "Control product entry"
+    INVENTORY = "Control product inventory"
+    FILESYSTEM = "Control filesystem unavailable"
+
+
+@dataclass(frozen=True)
+class TreeRejected:
+    reason: TreeFailure
+    path: str = ""
+
+
+def admit_control_tree(archive_path: Path, product: Path) -> TreeAdmission | TreeRejected:
+    names: set[str] = set()
+    files: set[str] = set()
+    total = 0
+    try:
+        with tarfile.open(archive_path, "r:gz") as archive:
+            for member in archive:
+                name = member.name.rstrip("/") if member.isdir() else member.name
+                parts = name.split("/")
+                total += member.size
+                if len(names) >= MAX_ENTRIES or not 0 <= total <= MAX_PAYLOAD:
+                    return TreeRejected(TreeFailure.BOUNDS)
+                if (
+                    name in names
+                    or member.size < 0
+                    or len(name) > 4096
+                    or len(parts) > 32
+                    or "\\" in name
+                    or any(part in ("", ".", "..") for part in parts)
+                    or parts[0] not in ("bin", "lib", "share")
+                    or not (member.isdir() or member.isfile())
+                ):
+                    return TreeRejected(TreeFailure.PATH)
+                names.add(name)
+                path = product.joinpath(*parts)
+                if path.resolve(strict=True) != path or path.is_symlink():
+                    return TreeRejected(TreeFailure.PRODUCT_PATH, name)
+                if not 0 <= member.mode <= 0o177777:
+                    return TreeRejected(TreeFailure.ARCHIVE_MODE, name)
+                permissions = stat.S_IMODE(member.mode)
+                kind = stat.S_IFDIR if member.isdir() else stat.S_IFREG
+                if permissions & ~0o777 or member.mode not in (permissions, kind | permissions):
+                    return TreeRejected(TreeFailure.ARCHIVE_MODE, name)
+                if stat.S_IMODE(path.stat().st_mode) != permissions:
+                    return TreeRejected(TreeFailure.PRODUCT_MODE, name)
+                if member.isdir():
+                    if not path.is_dir():
+                        return TreeRejected(TreeFailure.DIRECTORY, name)
+                    continue
+                if not path.is_file() or path.stat().st_size != member.size:
+                    return TreeRejected(TreeFailure.SIZE, name)
+                opened = archive.extractfile(member)
+                if opened is None:
+                    return TreeRejected(TreeFailure.ARCHIVE_FILE, name)
+                digest = hashlib.sha256()
+                with opened:
+                    while block := opened.read(65_536):
+                        digest.update(block)
+                if tree_file_digest(path) != digest.hexdigest():
+                    return TreeRejected(TreeFailure.BYTES, name)
+                files.add(name)
+        actual: set[str] = set()
+        for index, path in enumerate(product.rglob("*"), 1):
+            if index > MAX_ENTRIES or path.is_symlink() or not (path.is_file() or path.is_dir()):
+                return TreeRejected(TreeFailure.ENTRY)
+            if path.is_file():
+                actual.add(path.relative_to(product).as_posix())
+        return (
+            TreeAdmission.ADMITTED
+            if files and files == actual
+            else TreeRejected(TreeFailure.INVENTORY)
+        )
+    except (OSError, ValueError, tarfile.TarError):
+        return TreeRejected(TreeFailure.FILESYSTEM)
+
+
 def read_record(path: Path) -> bytes:
     if (
         path.is_symlink()
@@ -473,22 +575,32 @@ def read_control(path: Path) -> Artifact:
 
 def main(arguments: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    _ = parser.add_argument("phase", choices=("select", "authenticate"))
+    _ = parser.add_argument("phase", choices=("select", "authenticate", "readmit-control"))
     _ = parser.add_argument("--catalog", type=Path, required=True)
+    _ = parser.add_argument("--catalog-sha256")
     _ = parser.add_argument("--tag", required=True)
     _ = parser.add_argument("--version", required=True)
     _ = parser.add_argument("--source", required=True)
     _ = parser.add_argument("--idea-line", required=True)
-    _ = parser.add_argument("--output", type=Path, required=True)
+    _ = parser.add_argument("--output", type=Path)
     _ = parser.add_argument("--records", type=Path)
     _ = parser.add_argument("--control", type=Path)
+    _ = parser.add_argument("--control-root", type=Path)
+    _ = parser.add_argument("--print-selection-sha256", action="store_true")
     args = parser.parse_args(arguments)
     try:
-        selected = select_catalog(
-            read_record(args.catalog), args.tag, args.version, args.source, args.idea_line
+        catalog_raw = read_record(args.catalog)
+        selected = (
+            Failure.SOURCE_CHANGED
+            if args.catalog_sha256 is not None
+            and (
+                not digest(args.catalog_sha256)
+                or hashlib.sha256(catalog_raw).hexdigest() != args.catalog_sha256
+            )
+            else select_catalog(catalog_raw, args.tag, args.version, args.source, args.idea_line)
         )
         outcome: Selection | CodeAuthenticated | Failure = selected
-        if not isinstance(selected, Failure) and args.phase == "authenticate":
+        if not isinstance(selected, Failure) and args.phase in ("authenticate", "readmit-control"):
             if (
                 args.records is None
                 or args.control is None
@@ -513,10 +625,26 @@ def main(arguments: list[str]) -> int:
         if isinstance(outcome, Failure):
             print(f"kast-install: versioned release rejected ({outcome.value})", file=sys.stderr)
             return 1
+        if args.phase == "readmit-control":
+            if not isinstance(outcome, CodeAuthenticated) or args.control_root is None:
+                raise ValueError("Control tree input unavailable")
+            tree = admit_control_tree(args.control, args.control_root)
+            if isinstance(tree, TreeRejected):
+                print(
+                    "kast-install: versioned Control tree rejected "
+                    f"({Failure.CONTROL_MISMATCH.value}; {tree.reason.value} {tree.path})",
+                    file=sys.stderr,
+                )
+                return 1
+            return 0
+        if args.output is None:
+            raise ValueError("selection output unavailable")
         admitted = outcome.selection if isinstance(outcome, CodeAuthenticated) else outcome
-        with args.output.open("x") as output:
-            json.dump(asdict(admitted), output)
-            output.write("\n")
+        raw = json.dumps(asdict(admitted)).encode() + b"\n"
+        with args.output.open("xb") as output:
+            _ = output.write(raw)
+        if args.print_selection_sha256:
+            print(hashlib.sha256(raw).hexdigest())
         return 0
     except (OSError, ValueError):
         print(

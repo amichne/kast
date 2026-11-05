@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import io
 import json
+import os
+import shlex
+import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -14,7 +19,9 @@ from pathlib import Path
 from typing import override
 from urllib.parse import urlsplit
 
+import bootstrap_release_auth as bootstrap
 import managed_release as release
+import public_force_admission as force
 
 BUILD = "a" * 40
 MAIN = "b" * 40
@@ -203,6 +210,8 @@ def archive_bytes(
     ide_build: str | None = None,
     kotlin_build: str | None = None,
     target_profile: TargetProfileFixture | None = PROFILE,
+    control_files: dict[str, bytes] | None = None,
+    host_revision: str = BUILD,
 ) -> tuple[bytes, bytes]:
     sdk = ide_build if ide_build is not None else idea_line + ".1"
     kotlin = kotlin_build if kotlin_build is not None else sdk + "-IJ"
@@ -214,6 +223,8 @@ def archive_bytes(
     }
     if target_profile is not None:
         files["share/kast/intellij-targets.json"] = encoded(target_profile)
+    if control_files is not None:
+        files.update(control_files)
     if marker:
         files["share/kast/managed-install-v1"] = b"1\n"
     if native:
@@ -236,7 +247,7 @@ def archive_bytes(
         plugin.writestr("hosted-contract.json", encoded(contract))
         plugin.writestr(
             "kast-hosted-query.properties",
-            f"version={version}\nsourceRevision={BUILD}\nsourceTree={source_tree}\n"
+            f"version={version}\nsourceRevision={host_revision}\nsourceTree={source_tree}\n"
             f"ideBuild={sdk}\nkotlinBuild={kotlin}\n",
         )
     host = io.BytesIO()
@@ -315,6 +326,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         source_tree: str = TREE,
         unified: bool = False,
         target_profile: TargetProfileFixture | None = PROFILE,
+        control_files: dict[str, bytes] | None = None,
     ) -> Source:
         control, host = archive_bytes(
             version,
@@ -324,6 +336,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
             source_tree=source_tree,
             unified=unified,
             target_profile=target_profile,
+            control_files=control_files,
         )
         control_name = f"kast-control-v{version}-{release.PLATFORM}.tar.gz"
         host_name = f"kast-ide-hosted-v{version}-idea-262.zip"
@@ -387,7 +400,12 @@ class ReleaseAdmissionTest(unittest.TestCase):
         return entry
 
     def dual_main(
-        self, source: Source, host_sdk: str = "263.2", host_kotlin: str = "263.2-IJ"
+        self,
+        source: Source,
+        host_sdk: str = "263.2",
+        host_kotlin: str = "263.2-IJ",
+        host_tree: str = TREE,
+        host_revision: str = BUILD,
     ) -> release.MainEntryV2:
         version = "0.0.123"
         entry = self.main(source, version)
@@ -397,6 +415,8 @@ class ReleaseAdmissionTest(unittest.TestCase):
             idea_line="263",
             ide_build=host_sdk,
             kotlin_build=host_kotlin,
+            source_tree=host_tree,
+            host_revision=host_revision,
         )
         archive_name = f"kast-ide-hosted-v{version}-idea-263.zip"
         record_name = f"kast-host-release-v{version}-idea-263.json"
@@ -406,6 +426,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
                 Artifact(archive_name, "sha256:" + digest(host), len(host)),
                 self.contract,
                 supportedIntellijReleaseLine="263",
+                sourceRevision=host_revision,
             )
         )
         for name, raw in ((archive_name, host), (record_name, record)):
@@ -499,6 +520,277 @@ class ReleaseAdmissionTest(unittest.TestCase):
                 if isinstance(result, release.Rejected):
                     self.assertEqual(release.Stage.CONTRACT, result.stage)
                 self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
+
+    def force_files(self, source: Source, entry: release.MainEntryV2) -> tuple[Path, Path, Path]:
+        assets = self.root / "force-assets"
+        assets.mkdir(mode=0o700)
+        for name, raw in source.assets.items():
+            if "://" not in name:
+                _ = (assets / name).write_bytes(raw)
+        selection = assets / "captured-selection.json"
+        _ = selection.write_bytes(
+            encoded(release.MainSelection(entry.identity(), release.TrackMain(), entry))
+        )
+        control = self.root / "force-control"
+        self.assertIs(
+            release.Admission.ADMITTED,
+            release.extract_control(
+                assets / f"kast-control-v{entry.version}-{release.PLATFORM}.tar.gz", control
+            ),
+        )
+        return selection, assets, control
+
+    def test_public_force_locally_admits_both_exact_captured_targets_before_binding(self) -> None:
+        source = self.source("0.0.123")
+        entry = self.dual_main(source)
+        selection_file, assets, control = self.force_files(source, entry)
+        selection = force.captured_selection(selection_file)
+        assert isinstance(selection, release.MainSelection)
+        for line in ("262", "263"):
+            with self.subTest(line=line):
+                admitted = force.admit_pair(selection, assets, control, line)
+                assert isinstance(admitted, force.AdmittedPair), admitted
+                self.assertEqual(entry.identity(), admitted.binding.identity)
+                self.assertEqual(release.TrackMain(), admitted.binding.policy)
+                self.assertIs(release.Admission.ADMITTED, force.write_binding(admitted, assets))
+                actual: object = json.loads((assets / force.BINDING_NAME).read_bytes())
+                self.assertTrue(release.mapping(actual))
+                if release.mapping(actual):
+                    self.assertEqual({"identity", "policy"}, set(actual))
+                    self.assertEqual(entry.identity(), release.parse_identity(actual["identity"]))
+                self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
+
+    def test_public_force_captured_record_or_archive_tamper_never_creates_binding(self) -> None:
+        source = self.source("0.0.123")
+        entry = self.dual_main(source)
+        selection_file, assets, control = self.force_files(source, entry)
+        selection = force.captured_selection(selection_file)
+        assert isinstance(selection, release.MainSelection)
+        for line in ("262", "263"):
+            target = release.select_host_target(selection, line)
+            assert isinstance(target, release.HostTarget)
+            for name in (
+                target.record.name,
+                f"kast-ide-hosted-v{entry.version}-idea-{line}.zip",
+                f"kast-control-release-v{entry.version}.json",
+                "candidate-v2.json",
+                "promotion.json",
+            ):
+                with self.subTest(line=line, name=name):
+                    path = assets / name
+                    before = path.read_bytes()
+                    _ = path.write_bytes(b"changed actual captured bytes")
+                    self.assertIsInstance(
+                        force.admit_pair(selection, assets, control, line), release.Failure
+                    )
+                    self.assertFalse((assets / force.BINDING_NAME).exists())
+                    _ = path.write_bytes(before)
+                    self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
+
+    def test_public_force_rejects_ledger_bound_wrong_sdk_or_source_metadata(self) -> None:
+        for changed in ("sdk", "kotlin", "tree", "source"):
+            with (
+                self.subTest(changed=changed),
+                tempfile.TemporaryDirectory(dir=self.root) as directory,
+            ):
+                source = self.source("0.0.123")
+                entry = self.dual_main(
+                    source,
+                    host_sdk="263.999" if changed == "sdk" else "263.2",
+                    host_kotlin="263.999-IJ" if changed == "kotlin" else "263.2-IJ",
+                    host_tree="f" * 40 if changed == "tree" else TREE,
+                    host_revision="f" * 40 if changed == "source" else BUILD,
+                )
+                # Candidate bytes honestly bind the fixture; its SDK disagrees with hostTargets.
+                assets = Path(directory) / "assets"
+                assets.mkdir(mode=0o700)
+                for name, raw in source.assets.items():
+                    if "://" not in name:
+                        _ = (assets / name).write_bytes(raw)
+                control = Path(directory) / "control"
+                self.assertIs(
+                    release.Admission.ADMITTED,
+                    release.extract_control(
+                        assets / "kast-control-v0.0.123-macos-aarch64.tar.gz", control
+                    ),
+                )
+                result = force.admit_pair(
+                    release.MainSelection(entry.identity(), release.TrackMain(), entry),
+                    assets,
+                    control,
+                    "263",
+                )
+                self.assertIsInstance(result, release.Failure)
+                self.assertFalse((assets / force.BINDING_NAME).exists())
+
+    def test_public_force_readmission_rejects_changed_control_tree_or_binding(self) -> None:
+        source = self.source("0.0.123")
+        entry = self.dual_main(source)
+        _, assets, control = self.force_files(source, entry)
+        selection = release.MainSelection(entry.identity(), release.TrackMain(), entry)
+        admitted = force.admit_pair(selection, assets, control, "263")
+        assert isinstance(admitted, force.AdmittedPair), admitted
+        self.assertIs(release.Admission.ADMITTED, force.write_binding(admitted, assets))
+        binding = assets / force.BINDING_NAME
+        _ = binding.write_bytes(b"changed binding")
+        self.assertIsInstance(force.write_binding(admitted, assets), release.Failure)
+        extra = control / "share/kast/unadmitted.py"
+        _ = extra.write_bytes(b"unadmitted code")
+        self.assertIsInstance(force.admit_pair(selection, assets, control, "263"), release.Failure)
+        self.assertEqual(b"changed binding", binding.read_bytes())
+
+    def test_local_force_source_denies_discovery_and_other_releases(self) -> None:
+        source = self.source("0.0.123")
+        entry = self.dual_main(source)
+        _, assets, _ = self.force_files(source, entry)
+        local = force.LocalRecords(
+            assets, release.MainSelection(entry.identity(), release.TrackMain(), entry)
+        )
+        for url in (
+            release.CATALOG_V2_URL,
+            release.CATALOG_URL,
+            release.STABLE_URL,
+            release.RELEASE_URL + "/other/candidate-v2.json",
+            release.asset_url(local.selection, "../candidate-v2.json"),
+        ):
+            self.assertIs(release.TransferFailure.UNAVAILABLE, local.read(url, 65536))
+
+    def test_force_code_and_selection_readmission_remain_bound_to_original_capture(self) -> None:
+        source = self.source("0.0.123")
+        entry = self.dual_main(source)
+        selection_file, assets, control = self.force_files(source, entry)
+        catalog = assets / "builds-v2.json"
+        catalog_raw = source.assets[CATALOG_V2_URL]
+        _ = catalog.write_bytes(catalog_raw)
+        arguments = [
+            "readmit-control",
+            "--catalog",
+            str(catalog),
+            "--catalog-sha256",
+            digest(catalog_raw),
+            "--tag",
+            entry.releaseTag,
+            "--version",
+            entry.version,
+            "--source",
+            BUILD,
+            "--idea-line",
+            "263",
+            "--records",
+            str(assets),
+            "--control",
+            str(assets / "kast-control-v0.0.123-macos-aarch64.tar.gz"),
+            "--control-root",
+            str(control),
+        ]
+        self.assertEqual(0, bootstrap.main(arguments))
+        extra = control / "share/kast/changed-helper.py"
+        _ = extra.write_bytes(b"unadmitted helper code")
+        with contextlib.redirect_stderr(io.StringIO()) as errors:
+            self.assertEqual(1, bootstrap.main(arguments))
+        self.assertIn("CONTROL_MISMATCH", errors.getvalue())
+        extra.unlink()
+        _ = catalog.write_bytes(catalog_raw + b" ")
+        with contextlib.redirect_stderr(io.StringIO()) as errors:
+            self.assertEqual(1, bootstrap.main(arguments))
+        self.assertIn("SOURCE_CHANGED", errors.getvalue())
+        capture_sha = digest(selection_file.read_bytes())
+        _ = selection_file.write_bytes(selection_file.read_bytes() + b" ")
+        self.assertIsInstance(
+            force.captured_selection(selection_file, capture_sha), release.Failure
+        )
+
+    def test_private_force_cli_admits_real_pair_without_home_or_recovery_entry(self) -> None:
+        source = self.source("0.0.123")
+        entry = self.dual_main(source)
+        selection, assets, control = self.force_files(source, entry)
+        command = [
+            sys.executable,
+            str(Path(__file__).with_name("managed_installation.py")),
+            "--public-force-admission",
+            "admit",
+            "--selection",
+            str(selection),
+            "--selection-sha256",
+            digest(selection.read_bytes()),
+            "--assets",
+            str(assets),
+            "--control-root",
+            str(control),
+            "--idea-line",
+            "263",
+        ]
+        result = subprocess.run(
+            command,
+            env={"PYTHONDONTWRITEBYTECODE": "1"},
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("no reset invoked", result.stdout)
+        self.assertTrue((assets / force.BINDING_NAME).is_file())
+        self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
+
+    def test_force_idea_preflight_adapter_observes_reserved_arguments_then_stops(self) -> None:
+        source = self.source("0.0.123")
+        entry = self.dual_main(source)
+        _, assets, control = self.force_files(source, entry)
+        _ = (assets / "builds-v2.json").write_bytes(source.assets[CATALOG_V2_URL])
+        observation = self.root / "native-arguments"
+        # A failed external child observation; it grants no admission or reset authority.
+        child = self.root / "failed-native-observation.sh"
+        _ = child.write_text(
+            '#!/bin/sh\nprintf \'%s\\n\' "$1" "$2" "$HOME" "$KAST_INSTALL_IDEA_HOME" > '
+            + shlex.quote(str(observation))
+            + "\nexit 47\n"
+        )
+        child.chmod(0o700)
+        idea = self.root / "owned-idea-path"
+        prefix = (
+            Path(__file__)
+            .parent.parent.joinpath("install.sh")
+            .read_text()
+            .partition("\nunset KAST_PUBLIC_RESET_RECOVERY\n")[0]
+        )
+        values = {
+            "temporary_root": assets,
+            "control_root": control,
+            "control_name": "kast-control-v0.0.123-macos-aarch64.tar.gz",
+            "release": entry.releaseTag,
+            "version": entry.version,
+            "developer_source": BUILD,
+            "versioned_catalog_digest": digest(source.assets[CATALOG_V2_URL]),
+            "idea_build": "263.2",
+            "idea_home": idea,
+            "management_executable": child,
+        }
+        script = (
+            prefix
+            + "\n"
+            + "\n".join(key + "=" + shlex.quote(str(value)) for key, value in values.items())
+            + "\npreflight_captured_force_idea\n"
+        )
+        home = self.root / "owned-home"
+        result = subprocess.run(
+            ["/bin/bash", "-c", script],
+            env={
+                "HOME": str(home),
+                "PATH": str(Path(sys.executable).parent) + os.pathsep + os.defpath,
+                "NO_COLOR": "1",
+            },
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("selected IDEA preflight rejected before force effects", result.stderr)
+        self.assertEqual(
+            ["--internal-install", "preflight-idea", str(home), str(idea)],
+            observation.read_text().splitlines(),
+        )
+        self.assertFalse((assets / force.BINDING_NAME).exists())
+        self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
 
     def test_dual_main_preserves_legacy262_reader_view_and_common_payloads(self) -> None:
         source = self.source("0.0.123")

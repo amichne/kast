@@ -260,7 +260,9 @@ class BootstrapAuthenticationTests(unittest.TestCase):
             self.assertIn("CONTROL_MISMATCH", errors.getvalue())
             self.assertFalse(output.exists())
             _ = (root / case.control.name).write_bytes(CONTROL)
-            self.assertEqual(0, auth.main(arguments))
+            with contextlib.redirect_stdout(io.StringIO()) as capture:
+                self.assertEqual(0, auth.main(arguments + ["--print-selection-sha256"]))
+            self.assertEqual(sha(output.read_bytes()), capture.getvalue().strip())
             self.assertEqual(json.loads(encoded(case.selected)), json.loads(output.read_bytes()))
             before = output.read_bytes()
             with contextlib.redirect_stderr(io.StringIO()):

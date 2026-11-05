@@ -9,7 +9,6 @@ import re
 import shlex
 import shutil
 import sqlite3
-import stat
 import subprocess
 import tarfile
 import zipfile
@@ -18,6 +17,7 @@ from typing import Literal
 
 from installer_fixture import InstallerFixture, FixtureFailure, FixtureRejected, admitted_tools
 import managed_release as release
+import public_force_admission as force_admission
 
 
 @dataclass(frozen=True)
@@ -84,57 +84,10 @@ def require(condition: bool, detail: str) -> None:
 
 
 def verify_control_archive_matches_product(product: Path, control: Path) -> None:
-    """Bind the exercised private tree to every reported archive file and mode."""
-    names: set[str] = set()
-    files: set[str] = set()
-    total = 0
-    with tarfile.open(control, 'r:gz') as archive:
-        for member in archive:
-            name = member.name.rstrip('/') if member.isdir() else member.name
-            parts = name.split('/')
-            total += member.size
-            require(len(names) < release.MAXIMUM_ENTRIES and 0 <= total <= release.MAXIMUM_PAYLOAD_BYTES,
-                    'Control archive bounds')
-            require(name not in names and member.size >= 0 and len(name) <= 4096
-                    and len(parts) <= 32 and '\\' not in name
-                    and all(part not in ('', '.', '..') for part in parts)
-                    and parts[0] in ('bin', 'lib', 'share')
-                    and (member.isdir() or member.isfile()), 'Control archive path or type')
-            names.add(name)
-            path = product.joinpath(*parts)
-            require(path.resolve(strict=True) == path and not path.is_symlink(),
-                    'Control product path')
-            require(0 <= member.mode <= 0o177777, 'Control archive mode ' + name)
-            permissions = stat.S_IMODE(member.mode)
-            encoded_kind = stat.S_IFDIR if member.isdir() else stat.S_IFREG
-            require(permissions & ~0o777 == 0
-                    and member.mode in (permissions, encoded_kind | permissions),
-                    'Control archive mode ' + name)
-            require(stat.S_IMODE(path.stat().st_mode) == permissions,
-                    'Control product mode ' + name)
-            if member.isdir():
-                require(path.is_dir(), 'Control product directory ' + name)
-                continue
-            require(path.is_file() and path.stat().st_size == member.size,
-                    'Control product file size ' + name)
-            opened = archive.extractfile(member)
-            require(opened is not None, 'Control archive file ' + name)
-            digest = hashlib.sha256()
-            with opened:
-                while block := opened.read(65536):
-                    digest.update(block)
-            require(release.file_digest(path) == digest.hexdigest(),
-                    'Control product bytes ' + name)
-            files.add(name)
-    actual: set[str] = set()
-    entries = 0
-    for path in product.rglob('*'):
-        entries += 1
-        require(entries <= release.MAXIMUM_ENTRIES and not path.is_symlink()
-                and (path.is_file() or path.is_dir()), 'Control product entry')
-        if path.is_file():
-            actual.add(path.relative_to(product).as_posix())
-    require(bool(files) and files == actual, 'Control product inventory')
+    """Bind the exercised private tree through the shared product admission rule."""
+    admitted = force_admission.admit_control_tree(control, product)
+    if isinstance(admitted, force_admission.TreeRejected):
+        require(False, admitted.reason.value + (" " + admitted.path if admitted.path else ""))
 
 
 def verify_artifacts(product: Path, control: Path, plugin: Path, host_record: Path,

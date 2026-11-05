@@ -259,15 +259,18 @@ and --stage-only skip plugin installation without prompting.
 The legacy --register-codex-mcp and --skip-codex-mcp options select the same plugin behavior.
 After installation, use kast status, kast connect, kast upgrade, or kast uninstall.
 Versioned developer releases select a qualified 262 or 263 Host from their paired
-publication records. They use the recoverable installer; --restart-ide explicitly
-permits a normal IDE restart if required. Without it, RESTART_REQUIRED is reported.
+publication records. Ordinary installs use the recoverable installer; --restart-ide
+explicitly permits a normal IDE restart if required. Without it, RESTART_REQUIRED is reported.
 Stable and legacy developer releases support 262 only. Older Controls that reject
 263 must use this new public --developer-latest bootstrap explicitly.
-`--force` is a legacy installation option; versioned developer releases reject it.
-For legacy releases, `--force` uses the fresh archive to stop Kast and remove its old installation,
+Explicit `--force` uses the fresh archive to stop Kast and remove its old installation,
 legacy `$HOME/.kast` state, historical `.kast-*` artifacts, and public command.
 It preserves stable lock files and repairs recorded harness connections after installation. It does not change
 source workspaces or the selected IDEA application. `--dry-run` remains read-only.
+For versioned developer releases, the full captured Control/Host pair is admitted
+before force/reset, then selected identity is published through the existing installer.
+--force cannot be combined with --restart-ide. Automatic developer update selection
+does not imply force/reset for versioned releases.
 USAGE
 }
 
@@ -391,7 +394,9 @@ import hashlib
 import json
 import os
 import re
+import stat
 import sys
+import tarfile
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
@@ -401,6 +406,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard
 
 MAX_RECORD = 65_536
+MAX_ENTRIES = 16_384
 MAX_PAYLOAD = 1_073_741_824
 REPOSITORY = "amichne/kast"
 
@@ -824,6 +830,105 @@ def qualify(
     return CodeAuthenticated(selected, control)
 
 
+class TreeAdmission(str, Enum):
+    ADMITTED = "ADMITTED"
+
+
+def tree_file_digest(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while data := stream.read(65_536):
+            digest.update(data)
+    return digest.hexdigest()
+
+
+class TreeFailure(str, Enum):
+    BOUNDS = "Control archive bounds"
+    PATH = "Control archive path or type"
+    PRODUCT_PATH = "Control product path"
+    ARCHIVE_MODE = "Control archive mode"
+    PRODUCT_MODE = "Control product mode"
+    DIRECTORY = "Control product directory"
+    SIZE = "Control product file size"
+    ARCHIVE_FILE = "Control archive file"
+    BYTES = "Control product bytes"
+    ENTRY = "Control product entry"
+    INVENTORY = "Control product inventory"
+    FILESYSTEM = "Control filesystem unavailable"
+
+
+@dataclass(frozen=True)
+class TreeRejected:
+    reason: TreeFailure
+    path: str = ""
+
+
+def admit_control_tree(archive_path: Path, product: Path) -> TreeAdmission | TreeRejected:
+    names: set[str] = set()
+    files: set[str] = set()
+    total = 0
+    try:
+        with tarfile.open(archive_path, "r:gz") as archive:
+            for member in archive:
+                name = member.name.rstrip("/") if member.isdir() else member.name
+                parts = name.split("/")
+                total += member.size
+                if len(names) >= MAX_ENTRIES or not 0 <= total <= MAX_PAYLOAD:
+                    return TreeRejected(TreeFailure.BOUNDS)
+                if (
+                    name in names
+                    or member.size < 0
+                    or len(name) > 4096
+                    or len(parts) > 32
+                    or "\\" in name
+                    or any(part in ("", ".", "..") for part in parts)
+                    or parts[0] not in ("bin", "lib", "share")
+                    or not (member.isdir() or member.isfile())
+                ):
+                    return TreeRejected(TreeFailure.PATH)
+                names.add(name)
+                path = product.joinpath(*parts)
+                if path.resolve(strict=True) != path or path.is_symlink():
+                    return TreeRejected(TreeFailure.PRODUCT_PATH, name)
+                if not 0 <= member.mode <= 0o177777:
+                    return TreeRejected(TreeFailure.ARCHIVE_MODE, name)
+                permissions = stat.S_IMODE(member.mode)
+                kind = stat.S_IFDIR if member.isdir() else stat.S_IFREG
+                if permissions & ~0o777 or member.mode not in (permissions, kind | permissions):
+                    return TreeRejected(TreeFailure.ARCHIVE_MODE, name)
+                if stat.S_IMODE(path.stat().st_mode) != permissions:
+                    return TreeRejected(TreeFailure.PRODUCT_MODE, name)
+                if member.isdir():
+                    if not path.is_dir():
+                        return TreeRejected(TreeFailure.DIRECTORY, name)
+                    continue
+                if not path.is_file() or path.stat().st_size != member.size:
+                    return TreeRejected(TreeFailure.SIZE, name)
+                opened = archive.extractfile(member)
+                if opened is None:
+                    return TreeRejected(TreeFailure.ARCHIVE_FILE, name)
+                digest = hashlib.sha256()
+                with opened:
+                    while block := opened.read(65_536):
+                        digest.update(block)
+                if tree_file_digest(path) != digest.hexdigest():
+                    return TreeRejected(TreeFailure.BYTES, name)
+                files.add(name)
+        actual: set[str] = set()
+        for index, path in enumerate(product.rglob("*"), 1):
+            if index > MAX_ENTRIES or path.is_symlink() or not (path.is_file() or path.is_dir()):
+                return TreeRejected(TreeFailure.ENTRY)
+            if path.is_file():
+                actual.add(path.relative_to(product).as_posix())
+        return (
+            TreeAdmission.ADMITTED
+            if files and files == actual
+            else TreeRejected(TreeFailure.INVENTORY)
+        )
+    except (OSError, ValueError, tarfile.TarError):
+        return TreeRejected(TreeFailure.FILESYSTEM)
+
+
 def read_record(path: Path) -> bytes:
     if (
         path.is_symlink()
@@ -852,22 +957,32 @@ def read_control(path: Path) -> Artifact:
 
 def main(arguments: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    _ = parser.add_argument("phase", choices=("select", "authenticate"))
+    _ = parser.add_argument("phase", choices=("select", "authenticate", "readmit-control"))
     _ = parser.add_argument("--catalog", type=Path, required=True)
+    _ = parser.add_argument("--catalog-sha256")
     _ = parser.add_argument("--tag", required=True)
     _ = parser.add_argument("--version", required=True)
     _ = parser.add_argument("--source", required=True)
     _ = parser.add_argument("--idea-line", required=True)
-    _ = parser.add_argument("--output", type=Path, required=True)
+    _ = parser.add_argument("--output", type=Path)
     _ = parser.add_argument("--records", type=Path)
     _ = parser.add_argument("--control", type=Path)
+    _ = parser.add_argument("--control-root", type=Path)
+    _ = parser.add_argument("--print-selection-sha256", action="store_true")
     args = parser.parse_args(arguments)
     try:
-        selected = select_catalog(
-            read_record(args.catalog), args.tag, args.version, args.source, args.idea_line
+        catalog_raw = read_record(args.catalog)
+        selected = (
+            Failure.SOURCE_CHANGED
+            if args.catalog_sha256 is not None
+            and (
+                not digest(args.catalog_sha256)
+                or hashlib.sha256(catalog_raw).hexdigest() != args.catalog_sha256
+            )
+            else select_catalog(catalog_raw, args.tag, args.version, args.source, args.idea_line)
         )
         outcome: Selection | CodeAuthenticated | Failure = selected
-        if not isinstance(selected, Failure) and args.phase == "authenticate":
+        if not isinstance(selected, Failure) and args.phase in ("authenticate", "readmit-control"):
             if (
                 args.records is None
                 or args.control is None
@@ -892,10 +1007,26 @@ def main(arguments: list[str]) -> int:
         if isinstance(outcome, Failure):
             print(f"kast-install: versioned release rejected ({outcome.value})", file=sys.stderr)
             return 1
+        if args.phase == "readmit-control":
+            if not isinstance(outcome, CodeAuthenticated) or args.control_root is None:
+                raise ValueError("Control tree input unavailable")
+            tree = admit_control_tree(args.control, args.control_root)
+            if isinstance(tree, TreeRejected):
+                print(
+                    "kast-install: versioned Control tree rejected "
+                    f"({Failure.CONTROL_MISMATCH.value}; {tree.reason.value} {tree.path})",
+                    file=sys.stderr,
+                )
+                return 1
+            return 0
+        if args.output is None:
+            raise ValueError("selection output unavailable")
         admitted = outcome.selection if isinstance(outcome, CodeAuthenticated) else outcome
-        with args.output.open("x") as output:
-            json.dump(asdict(admitted), output)
-            output.write("\n")
+        raw = json.dumps(asdict(admitted)).encode() + b"\n"
+        with args.output.open("xb") as output:
+            _ = output.write(raw)
+        if args.print_selection_sha256:
+            print(hashlib.sha256(raw).hexdigest())
         return 0
     except (OSError, ValueError):
         print(
@@ -963,7 +1094,9 @@ capture_versioned_main() {
     fail 'versioned developer catalog is unavailable (CATALOG_UNAVAILABLE); legacy fallback was not admitted'
   case "$status" in
     200)
+      versioned_catalog_digest="$(shasum -a 256 "$temporary_root/builds-v2.json" | awk '{ print $1 }')"
       bootstrap_release_auth select --catalog "$temporary_root/builds-v2.json" \
+        --catalog-sha256 "$versioned_catalog_digest" \
         --tag "$release" --version "$version" --source "$developer_source" \
         --idea-line "${idea_build%%.*}" --output "$temporary_root/unqualified-selection.json" ||
         fail 'versioned developer selection was rejected before code download'
@@ -979,12 +1112,45 @@ authenticate_versioned_control() {
   for name in candidate-v2.json promotion-v2.json candidate.json promotion.json; do
     fetch_asset "$name" "$temporary_root/$name" '' 65536
   done
-  bootstrap_release_auth authenticate --catalog "$temporary_root/builds-v2.json" \
+  versioned_selection_digest="$(bootstrap_release_auth authenticate --catalog "$temporary_root/builds-v2.json" \
+    --catalog-sha256 "$versioned_catalog_digest" \
     --tag "$release" --version "$version" --source "$developer_source" \
     --idea-line "${idea_build%%.*}" --records "$temporary_root" \
-    --control "$temporary_root/$control_name" --output "$temporary_root/resolved-selection.json" ||
+    --control "$temporary_root/$control_name" --output "$temporary_root/resolved-selection.json" \
+    --print-selection-sha256)" ||
     fail 'versioned publication or Control bytes were rejected before code execution'
+  [[ "$versioned_selection_digest" =~ ^[0-9a-f]{64}$ ]] || fail 'captured selection digest is invalid'
   info 'Paired publication and exact Control bytes authenticated before installer execution.'
+}
+
+readmit_versioned_control() {
+  bootstrap_release_auth readmit-control --catalog "$temporary_root/builds-v2.json" \
+    --catalog-sha256 "$versioned_catalog_digest" \
+    --tag "$release" --version "$version" --source "$developer_source" \
+    --idea-line "${idea_build%%.*}" --records "$temporary_root" \
+    --control "$temporary_root/$control_name" --control-root "$control_root" ||
+    fail 'captured Control bytes changed before execution'
+}
+
+captured_force_admission() {
+  local action="$1"
+  readmit_versioned_control
+  uv run --locked --script "$control_root/share/kast/managed_installation.py" \
+    --public-force-admission "$action" --selection "$temporary_root/resolved-selection.json" \
+    --selection-sha256 "$versioned_selection_digest" \
+    --assets "$temporary_root" --control-root "$control_root" --idea-line "${idea_build%%.*}"
+}
+
+readmit_captured_force_pair() {
+  run_installer_step 'Captured force-pair admission' '' captured_force_admission admit
+}
+
+preflight_captured_force_idea() {
+  local selected_home
+  readmit_versioned_control
+  selected_home="$(KAST_INSTALL_IDEA_HOME="$idea_home" "$management_executable" --internal-install preflight-idea)" ||
+    fail 'selected IDEA preflight rejected before force effects'
+  [[ "$selected_home" == "$idea_home" ]] || fail 'selected IDEA changed during force preflight'
 }
 
 verify_checksum() {
@@ -1204,6 +1370,7 @@ fi
 [[ "$developer_latest" == 0 || -z "$version" ]] || fail "--developer-latest cannot be combined with --version or KAST_VERSION"
 [[ "$developer_latest" == 0 || -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] ||
   fail "--developer-latest cannot be combined with local assets"
+[[ "$restart_ide" == 0 || "$explicit_force" == 0 ]] || fail '--restart-ide cannot be combined with explicit --force'
 if [[ "$developer_latest" == 1 && "$stage_only" == 0 ]]; then force=1; fi
 if [[ "$stage_only" == 1 ]]; then
   # Cold reset staging owns only control; its lifecycle owner activates the candidate later.
@@ -1498,6 +1665,9 @@ cleanup() {
     if [[ "$stage_only" == 1 ]]; then
       success "staged Kast Control $version"
       info "The verified lifecycle owner will activate control."
+    elif [[ "$versioned_force" == 1 ]]; then
+      success "installed the authenticated Kast $version pair through public force/reset"
+      info "Restart IntelliJ IDEA, then start a fresh agent session."
     elif [[ "$versioned_main" == 1 ]]; then
       success "completed the captured Kast $version installation"
       info "The coordinator reports whether the Host is activated or installed but not running."
@@ -1516,13 +1686,17 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 versioned_main=0
+versioned_force=0
 if [[ "$developer_latest" == 1 ]]; then capture_versioned_main; fi
 if [[ "${idea_build%%.*}" != 262 && "$versioned_main" == 0 ]]; then
   [[ "$stage_only" == 1 && -n "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] ||
     fail 'HOST_TARGET_UNAVAILABLE: this legacy publication has no admitted IDEA 263 target'
 fi
 if [[ "$versioned_main" == 1 ]]; then
-  [[ "$explicit_force" == 0 ]] || fail '--force is legacy-only; omit it to use recoverable versioned installation'
+  if [[ "$explicit_force" == 1 ]]; then
+    [[ "$stage_only" == 0 ]] || fail 'versioned explicit --force cannot be combined with --stage-only'
+    versioned_force=1
+  fi
 elif [[ "$restart_ide" == 1 ]]; then
   fail '--restart-ide requires a versioned developer publication'
 fi
@@ -1534,7 +1708,17 @@ if [[ "$component" != host ]]; then
 fi
 if [[ "$versioned_main" == 1 ]]; then
   authenticate_versioned_control
-  if [[ "$stage_only" == 0 ]]; then
+  if [[ "$versioned_force" == 1 ]]; then
+    require_command uv
+    control_root="$temporary_root/control"
+    extract_control "$temporary_root/$control_name" "$control_root"
+    for helper in managed_installation.py managed_installation.py.lock public_force_admission.py bootstrap_release_auth.py; do
+      [[ -f "$control_root/share/kast/$helper" && ! -L "$control_root/share/kast/$helper" ]] ||
+        fail 'authenticated Control lacks captured force-pair admission'
+    done
+    host_record_name="$(captured_force_admission target)" || fail 'captured Host target was rejected'
+    info 'Explicit force selected: authenticated captured pair, existing public reset/cleanup owner.'
+  elif [[ "$stage_only" == 0 ]]; then
     require_command uv
     [[ "$mode" != apply || "$codex_plugin_choice" != register ]] || require_command codex
     control_root="$temporary_root/control"
@@ -1572,7 +1756,7 @@ if [[ "$component" != control ]]; then
   fetch_asset "$plugin_name" "$temporary_root/$plugin_name" "$idea_mismatch"
   fetch_asset "$plugin_name.sha256" "$temporary_root/$plugin_name.sha256" "$idea_mismatch"
   plugin_digest="$(verify_checksum "$temporary_root/$plugin_name" "$temporary_root/$plugin_name.sha256" "$plugin_name")"
-  host_record_name="kast-host-release-v$host_version.json"
+  if [[ "$versioned_force" == 0 ]]; then host_record_name="kast-host-release-v$host_version.json"; fi
   fetch_asset "$host_record_name" "$temporary_root/$host_record_name"
   fetch_asset "$host_record_name.sha256" "$temporary_root/$host_record_name.sha256"
   verify_checksum "$temporary_root/$host_record_name" "$temporary_root/$host_record_name.sha256" "$host_record_name" >/dev/null
@@ -1591,8 +1775,15 @@ if [[ "$component" != control ]]; then
   fi
   release_url="$control_release_url"
 fi
-control_root="$temporary_root/control"
-extract_control "$temporary_root/$control_name" "$control_root"
+if [[ "$versioned_force" == 1 ]]; then
+  for name in "kast-control-release-v$version.json" "kast-control-release-v$version.json.sha256"; do
+    fetch_asset "$name" "$temporary_root/$name" '' 65536
+  done
+  readmit_captured_force_pair
+else
+  control_root="$temporary_root/control"
+  extract_control "$temporary_root/$control_name" "$control_root"
+fi
 [[ -x "$control_root/share/kast/libexec/kast-service" ]] || fail "control archive has no executable installer"
 installation_commit=commit
 completion_capability="$control_root/share/kast/install-completion-v1"
@@ -1601,6 +1792,10 @@ if [[ "$stage_only" == 0 && ( -e "$completion_capability" || -L "$completion_cap
   [[ "$(wc -c < "$completion_capability")" =~ ^[[:space:]]*2[[:space:]]*$ ]] || fail "installation completion capability is incompatible"
   [[ "$(cat "$completion_capability")" == 1 ]] || fail "installation completion capability is incompatible"
   installation_commit=commit-active
+fi
+if [[ "$versioned_force" == 1 ]]; then
+  [[ "$installation_commit" == commit-active ]] || fail 'captured force requires active selected completion capability'
+  installation_commit=commit-selected-active
 fi
 if [[ "$component" == pair ]]; then
   [[ -f "$control_root/share/kast/host-installation.py" ]] || fail "control convenience installer has no host installation helper"
@@ -1613,12 +1808,14 @@ fi
 management_executable="$control_root/share/kast/libexec/kast-management"
 [[ -x "$management_executable" ]] || fail "control archive has no native management executable"
 export KAST_INSTALL_ROOT="$install_root"
+if [[ "$versioned_force" == 1 ]]; then preflight_captured_force_idea; fi
 management_preflight=preflight
 reset_management="$management_executable"
 reset_control_root="$control_root"
 if [[ "$force" == 1 && "$stage_only" == 0 ]]; then
   reset_capability="$control_root/share/kast/public-reset-v1"
   if [[ ! -e "$reset_capability" && ! -L "$reset_capability" ]]; then
+    [[ "$versioned_force" == 0 ]] || fail 'captured V2 Control lacks its own public reset capability; no recovery reselection is permitted'
     # Recovery code can be newer than the selected immutable release. Its payload is never installed.
     reset_selection="$(resolve_developer_latest)"
     IFS=$'\t' read -r reset_release reset_version reset_source <<< "$reset_selection"
@@ -1660,6 +1857,10 @@ if [[ "$mode" == apply && "$codex_plugin_choice" == register ]]; then
 fi
 
 if [[ "$mode" == apply && "$management_preflight" == preflight-reset ]]; then
+  if [[ "$versioned_force" == 1 ]]; then
+    readmit_captured_force_pair
+    preflight_captured_force_idea
+  fi
   export KAST_PUBLIC_RESET_RECOVERY="$temporary_root/prior-management.json"
   run_installer_step "Fresh installation reset" "" "$reset_management" --internal-install reset
 fi
@@ -1698,6 +1899,7 @@ if [[ "$stage_only" == 1 ]]; then
   [[ "$(cat "$control_root/share/kast/reset-fence-v1")" == 1 ]] || fail 'reset capability is incompatible'
   installation_options+=(--stage-only)
 fi
+if [[ "$versioned_force" == 1 ]]; then readmit_captured_force_pair; fi
 if [[ -n "${KAST_MANAGEMENT_REPORT_PATH:-}" && "$mode" == apply ]]; then
   run_installer_step "Managed payload installation" "$KAST_MANAGEMENT_REPORT_PATH" \
     "$control_root/share/kast/libexec/kast-service" install ${installation_options[@]+"${installation_options[@]}"}
@@ -1711,6 +1913,7 @@ if [[ "$mode" == plan ]]; then
   else info "Installation is planned at $install_root; the IDEA plugin is planned at $idea_plugin_root/kast-ide-hosted."; fi
 else
   if [[ "$component" != control ]]; then
+    if [[ "$versioned_force" == 1 ]]; then readmit_captured_force_pair; fi
     run_installer_step "IDEA host installation" "" run_host_installer "$control_root/share/kast/host-installation.py" \
       --archive "$temporary_root/$plugin_name" --sha256 "$plugin_digest" --version "$host_version" \
       --idea-build "$idea_build" --plugin-root "$idea_plugin_root" \
@@ -1718,6 +1921,10 @@ else
   fi
   export KAST_MANAGEMENT_CHANNEL="$([[ "$developer_latest" == 1 ]] && printf developer || printf stable)"
   completion_report="$temporary_root/management-completion"
+  if [[ "$versioned_force" == 1 ]]; then
+    readmit_captured_force_pair
+    export KAST_MANAGEMENT_SELECTION="$temporary_root/force-selection-binding.json"
+  fi
   if ! run_installer_step "Native installation completion" "" run_management_completion "$completion_report" \
     "$management_executable" --internal-install "$installation_commit"; then
     if [[ "$control_only" == 1 ]]; then

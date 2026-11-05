@@ -69,6 +69,8 @@ class BootstrapImportTest(unittest.TestCase):
             names = (
                 "managed_installation.py",
                 "managed_release.py",
+                "public_force_admission.py",
+                "bootstrap_release_auth.py",
                 "managed_update_contract.py",
                 "managed_update_journal.py",
                 "reload_hosted.py",
@@ -99,6 +101,28 @@ class BootstrapImportTest(unittest.TestCase):
                 if path.is_file()
             }
             self.assertEqual(before, after)
+
+    def test_force_admission_dispatch_does_not_enter_home_or_recorded_recovery(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            missing = Path(temporary).resolve() / "missing-selection.json"
+            with (
+                patch.dict(os.environ, {}, clear=True),
+                contextlib.redirect_stderr(io.StringIO()) as errors,
+            ):
+                result = install.main(
+                    [
+                        "--public-force-admission",
+                        "target",
+                        "--selection",
+                        str(missing),
+                        "--selection-sha256",
+                        "a" * 64,
+                        "--idea-line",
+                        "263",
+                    ]
+                )
+            self.assertEqual(1, result)
+            self.assertIn("captured force pair rejected", errors.getvalue())
 
 
 class ManagementRegistrationTest(unittest.TestCase):
