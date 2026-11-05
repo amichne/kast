@@ -167,6 +167,8 @@ class NativeHandoffTest(unittest.TestCase):
                 )
                 self.assertIn("--no-daemon", command)
                 self.assertIn("--no-parallel", command)
+                self.assertNotIn("--profile", command)
+                self.assertIn("--info", command)
                 self.assertIn(f"-Pversion={identity.version}", command)
                 self.assertIn(f"-PkastSourceRevision={identity.revision}", command)
                 payload = admit(root / "input-bundle", identity, Kind.INPUTS)

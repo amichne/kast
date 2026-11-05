@@ -37,7 +37,7 @@ source_revision="$(
 
 ./gradlew --no-daemon --no-parallel --max-workers=1 -Dorg.gradle.jvmargs=-Xmx5g \
   -PkastNativeBuildMetrics=true -Pversion="${version}" -PkastSourceRevision="${source_revision}" \
-  productBuildGate assembleRelease generateKastModuleKnowledge --profile --info
+  productBuildGate assembleRelease generateKastModuleKnowledge --info
 
 "${repository_root}/.github/scripts/release/admit-source.sh" \
   --repository-root "${repository_root}" \
