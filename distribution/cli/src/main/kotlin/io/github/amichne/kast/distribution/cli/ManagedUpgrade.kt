@@ -87,7 +87,7 @@ internal fun executeManagedUpgrade(
     val bridge =
         admittedInstallerBridge(installation)
             ?: return ManagedUpgradeOutcome.Rejected(BuildSelectionFailure.INSTALLER_CONTRACT_UNSUPPORTED)
-    val captured = Files.createTempFile("kast-selection-", ".json")
+    val captured = createCapturedSelectionFile(Path.of(System.getProperty("java.io.tmpdir")))
     return try {
         Files.writeString(captured, managementJson.encodeToString(selection))
         val options = buildList {
@@ -101,6 +101,9 @@ internal fun executeManagedUpgrade(
         discardCapturedSelection(captured, execution.notice)
     }
 }
+
+internal fun createCapturedSelectionFile(directory: Path): Path =
+    Files.createTempFile(directory.toRealPath(), "kast-selection-", ".json")
 
 private fun discardCapturedSelection(captured: Path, notice: (ManagedUpgradeNotice) -> Unit) {
     try {
