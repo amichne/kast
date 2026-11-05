@@ -15,7 +15,7 @@ internal fun executeInternalInstall(arguments: List<String>) {
 }
 
 @Suppress("ThrowsCount")
-private fun internalInstall(arguments: List<String>, environment: Map<String, String>): InternalInstallExit {
+internal fun internalInstall(arguments: List<String>, environment: Map<String, String>): InternalInstallExit {
     if (arguments.size != 2) throw ManagementRejected("installer-protocol", "invalid request")
     if ("KAST_INSTALL_ROOT" !in environment)
         throw ManagementRejected("installer-protocol", "installation root unavailable")
@@ -30,6 +30,10 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
             println(preflightPublicExecutable(root, environment).path)
             return InternalInstallExit.COMPLETED
         }
+        "preflight-idea" -> {
+            println(preflightInstallerIde(environment).home)
+            return InternalInstallExit.COMPLETED
+        }
         "managed-retire" -> return retireManagedInstallation(root, environment)
         "managed-publish" -> return publishManagedInstallation(root, environment)
         "preflight-reset",
@@ -41,6 +45,8 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
             }
         "commit" -> return completeInternalInstall(root, environment, InstallationCompletion.STAGED)
         "commit-active" -> return completeInternalInstall(root, environment, InstallationCompletion.ACTIVATE)
+        "commit-selected-active" ->
+            return completeInternalInstall(root, environment, InstallationCompletion.ACTIVATE, selected = true)
         else -> throw ManagementRejected("installer-protocol", "invalid request")
     }
 }
@@ -69,14 +75,16 @@ private fun completeInternalInstall(
     root: Path,
     environment: Map<String, String>,
     completion: InstallationCompletion,
+    selected: Boolean = false,
 ): InternalInstallExit {
+    val publication = if (selected) selectedManagementPublication(root, environment) else ManagementPublication.Preserve
     val channel =
         when (environment["KAST_MANAGEMENT_CHANNEL"]) {
             "stable" -> ReleaseChannel.STABLE
             "developer" -> ReleaseChannel.DEVELOPER
             else -> throw ManagementRejected("installer-protocol", "release channel unavailable")
         }
-    val result = completePublicInstallation(root, environment, channel, completion)
+    val result = completePublicInstallation(root, environment, channel, completion, composition = publication)
     val destination = result.destination
     println(destination.path)
     if (!destination.onPath)
@@ -87,7 +95,7 @@ private fun completeInternalInstall(
     }
 }
 
-private enum class InternalInstallExit(val code: Int) {
+internal enum class InternalInstallExit(val code: Int) {
     COMPLETED(0),
     ACTIVATION_REJECTED(1),
 }
@@ -103,10 +111,7 @@ private fun retireManagedInstallation(root: Path, environment: Map<String, Strin
 }
 
 private fun publishManagedInstallation(root: Path, environment: Map<String, String>): InternalInstallExit {
-    val selected =
-        environment["KAST_MANAGEMENT_SELECTION"]
-            ?: throw ManagementRejected("managed-publication", "selection unavailable")
-    val publication = ManagementPublication.Selected.admit(root, Path.of(selected))
+    val publication = selectedManagementPublication(root, environment)
     val channel =
         if (publication.binding.identity.mainRevision == null) ReleaseChannel.STABLE else ReleaseChannel.DEVELOPER
     val destination = commitPublicExecutable(root, environment, channel, publication)

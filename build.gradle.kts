@@ -149,6 +149,8 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     description = "Stages the Kast control installation for the existing IDE."
     dependsOn(generateKastControlMetadata, generateKastAgentTools)
     into(controlProductDirectory)
+    filePermissions { unix("644") }
+    dirPermissions { unix("755") }
     eachFile {
         if (relativePath.pathString in controlExecutablePaths) permissions { unix("755") }
     }
@@ -172,7 +174,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from("distribution/cli/reset-fence-v1") { into("share/kast") }
     from("packaging/install-completion-v1") { into("share/kast") }
     from("packaging/managed-install-v1") { into("share/kast") }
-    from(listOf("packaging/install-candidate.sh", "packaging/managed_installation.py", "packaging/managed_installation.py.lock", "packaging/managed_release.py", "packaging/managed_update_contract.py", "packaging/managed_update_journal.py", "packaging/reload_hosted.py", "packaging/host_directory_exchange.py")) { into("share/kast") }
+    from(listOf("packaging/install-candidate.sh", "packaging/managed_installation.py", "packaging/managed_installation.py.lock", "packaging/managed_release.py", "packaging/managed_update_contract.py", "packaging/managed_update_journal.py", "packaging/reload_hosted.py", "packaging/host_directory_exchange.py", "packaging/public_force_admission.py", "packaging/bootstrap_release_auth.py")) { into("share/kast") }
     from("distribution/contract/src/main/resources/management/reset-inventory-observation.schema.json") { into("share/kast/schema") }
     from("distribution/contract/src/main/resources/management/management-lifecycle.schema.json") { into("share/kast/schema") }
     from("distribution/cli/one-shot-observation-v1") {
@@ -205,6 +207,8 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     compression = Compression.GZIP
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
+    filePermissions { unix("644") }
+    dirPermissions { unix("755") }
     eachFile {
         if (relativePath.pathString in controlExecutablePaths) permissions { unix("755") }
     }
@@ -342,7 +346,10 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.file(hostedPluginArchive)
     val hostRecord = hostReleaseRecordFile
     inputs.file(hostRecord)
-    inputs.files("install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py")
+    inputs.files(
+        "install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py",
+        "packaging/public_force_admission.py", "packaging/bootstrap_release_auth.py",
+    )
     inputs.files(
         "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt",
         "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryDatabase.kt",
@@ -427,6 +434,18 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
     arguments.set(listOf("run", "--locked", "--project", "packaging", "pytest",
         "packaging/test-managed-installation.py", "packaging/test-managed-release.py",
         "packaging/test-managed-update-contract.py", "-q"))
+}
+
+tasks.register<VerificationReportTask>("prepareReleasePython") {
+    group = "verification"
+    description = "Prepares the locked release interpreter before selection interoperability test bodies."
+    sourceFiles.from(".github/scripts/release/pyproject.toml", ".github/scripts/release/uv.lock")
+    executableFile.set(validationExecutable("uv"))
+    providers.environmentVariable("UV_CACHE_DIR").orNull?.let { environmentVariables.put("UV_CACHE_DIR", it) }
+    environmentVariables.put("UV_PYTHON_DOWNLOADS", "never")
+    arguments.set(listOf("sync", "--locked", "--project", ".github/scripts/release"))
+    outputs.upToDateWhen { false }
+    timeout.set(java.time.Duration.ofMinutes(2))
 }
 
 val developerPublicationTest = tasks.register<VerificationReportTask>("developerPublicationTest") {

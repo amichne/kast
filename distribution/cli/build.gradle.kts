@@ -33,6 +33,19 @@ dependencies {
 }
 
 tasks.named<Test>("test") {
+    dependsOn(":prepareReleasePython")
+    inputs.files(
+        repositoryRoot.file("packaging/managed_release.py"),
+        repositoryRoot.file("packaging/managed_update_journal.py"),
+        repositoryRoot.file("config/intellij-targets.json"),
+    )
+    val releasePython = repositoryRoot.file(".github/scripts/release/.venv/bin/python")
+    inputs.file(releasePython)
+    systemProperty("kast.selectionInteropRoot", repositoryRoot.asFile.absolutePath)
+    systemProperty("kast.selectionInteropPython", releasePython.asFile.absolutePath)
+    val selectionReport = layout.buildDirectory.dir("test-results/selection-interop")
+    outputs.dir(selectionReport)
+    systemProperty("kast.selectionInteropReport", selectionReport.get().asFile.absolutePath)
     useJUnitPlatform()
     jvmArgs("--enable-native-access=ALL-UNNAMED")
 }

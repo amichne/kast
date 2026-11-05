@@ -26,8 +26,9 @@ internal fun completePublicInstallation(
     channel: ReleaseChannel,
     completion: InstallationCompletion,
     execution: LifecycleExecution = LifecycleExecution(),
+    composition: ManagementPublication = ManagementPublication.Preserve,
 ): InstallationCompletionResult {
-    val destination = commitPublicExecutable(root, environment, channel)
+    val destination = commitPublicExecutable(root, environment, channel, composition)
     val activated =
         when (completion) {
             InstallationCompletion.STAGED -> LifecycleEffect.Completed

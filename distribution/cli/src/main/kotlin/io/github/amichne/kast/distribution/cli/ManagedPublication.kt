@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.ManagementBuildBinding
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -29,6 +30,26 @@ internal sealed interface ManagementPublication {
 internal data class ControlBuildIdentity(val version: String, val sourceRevision: String, val sourceTree: String)
 
 private const val PUBLICATION_SELECTION_BYTES = 65_536L
+
+/** Parse the private binding path before any publication effect. */
+internal fun selectedManagementPublication(
+    root: Path,
+    environment: Map<String, String>,
+): ManagementPublication.Selected {
+    val raw =
+        environment["KAST_MANAGEMENT_SELECTION"]
+            ?: throw ManagementRejected("managed-publication", "selection unavailable")
+    val path =
+        try {
+            Path.of(raw)
+        } catch (_: InvalidPathException) {
+            throw ManagementRejected("managed-publication", "selection invalid")
+        }
+    if (!path.isAbsolute || path.normalize() != path)
+        throw ManagementRejected("managed-publication", "selection invalid")
+    return ManagementPublication.Selected.admit(root, path)
+}
+
 private const val PUBLICATION_IDENTITY_BYTES = 4096L
 
 private fun readPublicationBinding(file: Path): ManagementBuildBinding {
