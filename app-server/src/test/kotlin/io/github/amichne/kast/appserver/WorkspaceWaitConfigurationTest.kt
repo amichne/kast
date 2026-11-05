@@ -11,6 +11,44 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class WorkspaceWaitConfigurationTest {
+    // Budget: one physical installation, workspace, selected file, and workspace overlay.
+    // Configuration inspection only; no lifecycle request, IDE, or child process.
+    @Test
+    fun `explicit configuration selection survives workspace overlay and environment precedence`(
+        @TempDir temporary: Path
+    ) {
+        val root = temporary.toRealPath()
+        val installation = Files.createDirectory(root.resolve("installation"))
+        val workspace = CanonicalRoot(Files.createDirectory(root.resolve("workspace")))
+        val defaultFile = Files.createDirectories(installation.resolve("config")).resolve("environment")
+        Files.writeString(defaultFile, "KAST_WORKSPACE_PREPARATION_WAIT=invalid\n")
+        val selected = Files.writeString(root.resolve("selected-environment"), "KAST_WORKSPACE_PREPARATION_WAIT=41\n")
+        val environment = mapOf("KAST_CONFIGURATION_FILE" to selected.toString())
+        val configured = mcpWorkspaceOperationClient(root, environment, installation, workspace)
+        val bounded = configured.preparationAllowance() as Refinement.Refined
+        assertEquals(41L, bounded.value.protocolMillis())
+        val identity =
+            MessageDigest.getInstance("SHA-256")
+                .digest(workspace.path.toString().toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+        val overlay =
+            Files.createDirectories(installation.resolve("config/workspaces/$identity")).resolve("environment")
+        Files.writeString(overlay, "KAST_WORKSPACE_PREPARATION_WAIT=indefinite\n")
+        val overlaid = mcpWorkspaceOperationClient(root, environment, installation, workspace)
+        assertEquals(Refinement.Refined(ElapsedTimeAllowance.Unlimited), overlaid.preparationAllowance())
+        val overridden =
+            mcpWorkspaceOperationClient(
+                root,
+                environment + ("KAST_WORKSPACE_PREPARATION_WAIT" to "25"),
+                installation,
+                workspace,
+            )
+        val explicit = overridden.preparationAllowance() as Refinement.Refined
+        assertEquals(25L, explicit.value.protocolMillis())
+        assertEquals("KAST_WORKSPACE_PREPARATION_WAIT=41\n", Files.readString(selected))
+        assertEquals("KAST_WORKSPACE_PREPARATION_WAIT=invalid\n", Files.readString(defaultFile))
+    }
+
     @Test
     fun `explicit waiting resolves the workspace overlay and environment precedence before lifecycle effects`(
         @TempDir temporary: Path
