@@ -30,6 +30,8 @@ COMMAND = (
     "--console=plain",
     # Optional HTML profiling can fail after successful tasks; it is not gate evidence.
     "--info",
+    # Client cancellation must not leave a reusable daemon writing to this checkout.
+    "--no-daemon",
 )
 PREFLIGHT = (
     "python3",
