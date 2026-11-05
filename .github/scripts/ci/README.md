@@ -228,6 +228,9 @@ This command runs the complete candidate build and grants no publication authori
 A failed offline preflight stops before Gradle starts, including its dry-run.
 The failure report lists no graph tasks and keeps every source obligation as missing.
 The script records the source tree, task graph, elapsed time, exit code, and dependency compiler count.
+Full and affected commands request single-use Gradle daemons with `--no-daemon`.
+The local product gate requests the same daemon lifetime.
+This keeps a reusable daemon from continuing cancelled work after its client disconnects; disk caches remain enabled.
 A changed source tree or failed process cannot produce `SOURCE_VALIDATED`.
 This local execution record grants no publication authority.
 The separate workflow outcome also binds the exact producer and comparison base.
@@ -244,11 +247,23 @@ Neither outcome starts source execution, even when the partial log lists every r
 `task-graph-execution.json` retains the process outcome, elapsed time, diagnostic status, and cleanup status.
 Before stopping the client, the runner allows two seconds for a bounded process snapshot in `task-graph-process.txt`.
 That snapshot contains only client identity, state, elapsed time, CPU time, and RSS, not arguments or environment values.
-It does not include a daemon thread dump or establish the cause of a Gradle stall.
+The client snapshot does not establish the cause of a Gradle stall.
 
-Cleanup signals only the new client process group, with five seconds each for graceful exit and forced-exit observation.
+The runner also attempts a bounded daemon thread dump before client cleanup.
+It collects daemon PID candidates from streamed Gradle output and accepts only one distinct positive PID.
+Process inspection must match this invocation's random marker and the Gradle daemon class.
+The runner checks process start identity before and after `JAVA_HOME/bin/jcmd <pid> Thread.print -l`.
+Each process inspection has a two-second limit; attachment has a three-second limit and a two-MiB output cap.
+Each diagnostic helper's process group is retired, with one second allowed to reap its leader.
+Only complete output with confirmed association becomes `task-graph-daemon-threads.txt`.
+Raw arguments, environment values, and the invocation marker are not retained in the diagnostic report.
+`daemonDiagnostic` records whether evidence was retained, unavailable, truncated, timed out, failed to attach, or lacked confirmed identity.
+Diagnostic failure cannot replace the graph outcome or prevent client cleanup.
+These association checks do not make attachment atomic with process exit and PID reuse.
+
+Client cleanup signals only the new client process group, with five seconds each for graceful exit and forced-exit observation.
 It never runs `gradle --stop` or kills shared daemons by name.
-`CLIENT_REAPED` proves client retirement, not completion of cancellation inside an existing Gradle daemon.
+`CLIENT_REAPED` proves client retirement, not synchronous daemon retirement.
 `UNCONFIRMED` retains a failed cleanup observation rather than claiming retirement.
 Partial graph logs remain available; later attempts remove only the runner's prior reports.
 

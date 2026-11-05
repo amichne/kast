@@ -32,7 +32,7 @@ def run_gate(*, dry_run: bool = False) -> int:
     print(f"product-gate: latest published stable release v{version} from {REPOSITORY}; building current checkout",
           flush=True)
     command = ["./gradlew", "--max-workers=2", "-Dorg.gradle.jvmargs=-Xmx5g",
-               f"-Pversion={version}", "productBuildGate", "--console=plain"]
+               f"-Pversion={version}", "productBuildGate", "--console=plain", "--no-daemon"]
     if dry_run:
         command.append("--dry-run")
     return subprocess.run(command, cwd=ROOT, check=False).returncode
