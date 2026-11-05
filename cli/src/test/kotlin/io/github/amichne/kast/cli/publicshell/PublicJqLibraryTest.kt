@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonUnquotedLiteral
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class PublicJqLibraryTest {
@@ -43,7 +44,7 @@ class PublicJqLibraryTest {
     fun `invalid lossy literals and unsupported interpolation reject before evaluation`() {
         assertEquals(PublicJqFailure.PROGRAM_INVALID, (PublicJqProgram.compile(".[") as Refinement.Rejected).failure)
         assertEquals(
-            PublicJqFailure.NUMERIC_VALUE_LOSS,
+            PublicJqFailure.NUMERIC_LITERAL_LIMIT,
             (PublicJqProgram.compile("1.2345678901234567890123456789") as Refinement.Rejected).failure,
         )
         assertEquals(
@@ -94,6 +95,42 @@ class PublicJqLibraryTest {
             ".items[.index]",
             Json.encodeToString(NumericIndex(listOf("first", "last"), 4294967295L)),
         )
+    }
+
+    @Test
+    fun `literal admission prevents narrowing and handles lexer and normalization rejection`() {
+        for (program in
+            listOf("2147483648", "4294967296", "-2147483648", ".5", "0.5", "1e-1", "100e2147483647", "1e-2147483647")) {
+            assertEquals(
+                Refinement.Rejected(PublicJqFailure.NUMERIC_LITERAL_LIMIT),
+                PublicJqProgram.compile(program),
+                program,
+            )
+        }
+        for (program in listOf("2147483647", "2147483647.0", "1e3", "0e2147483647", "0e-2147483647")) {
+            assertTrue(PublicJqProgram.compile(program) is Refinement.Refined, program)
+        }
+        for (program in listOf(")", "1)")) assertEquals(
+            Refinement.Rejected(PublicJqFailure.PROGRAM_INVALID),
+            PublicJqProgram.compile(program),
+        )
+        assertEquals("3", evaluate("((. + 1))", "2"))
+        assertEquals("1.25", evaluate("fromjson", Json.encodeToString("1.25")))
+    }
+
+    @Test
+    fun `implode preserves complete Unicode scalars and rejects invalid code points`() {
+        val points = listOf(0x10000, 0x1F600, 0x10FFFF)
+        val expected = points.joinToString("") { String(Character.toChars(it)) }
+        assertEquals(Json.encodeToString(expected), evaluate("implode", Json.encodeToString(points)))
+        assertEquals(Json.encodeToString(expected), evaluate("explode | implode", Json.encodeToString(expected)))
+        assertEquals(Json.encodeToString(""), evaluate("implode", Json.encodeToString(emptyList<Int>())))
+        for (point in listOf(-1, 0xD800, 0xDFFF, 0x110000)) {
+            assertFailure(PublicJqFailure.EVALUATION_FAILED, "implode", Json.encodeToString(listOf(point)))
+        }
+        assertFailure(PublicJqFailure.EVALUATION_FAILED, "implode", Json.encodeToString(listOf(0.5)))
+        assertFailure(PublicJqFailure.EVALUATION_FAILED, "implode", Json.encodeToString(listOf("text")))
+        assertFailure(PublicJqFailure.OUTPUT_INVALID, Json.encodeToString("\uD800"))
     }
 
     @Test

@@ -34,6 +34,11 @@ internal enum class PublicJqFailure(val exit: PublicShellExit, val guidance: Str
         PublicShellExit.PROTOCOL,
         "Embedded jq's numeric conversion would change a value. Keep exact identifiers as strings or use --json | jq.",
     ),
+    NUMERIC_LITERAL_LIMIT(
+        PublicShellExit.INPUT,
+        "Direct numeric literals must be whole numbers with magnitude <=2147483647. " +
+            "Use quoted JSON with fromjson or tonumber for larger or fractional values; input numbers remain exact.",
+    ),
     JSON_LIMIT(
         PublicShellExit.PROTOCOL,
         "Embedded JSON exceeds the ${PublicJqLimits.JSON_NESTING} nesting or " +

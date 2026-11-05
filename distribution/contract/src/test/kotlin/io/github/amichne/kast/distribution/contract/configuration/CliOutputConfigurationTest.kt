@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 class CliOutputConfigurationTest {
     @Test
     fun `output selection remains process-local and cannot reach Host children`() {
-        for ((raw, normalized) in listOf("" to "1", "0" to "0", "1" to "1")) {
+        for ((raw, normalized) in listOf("" to "0", "0" to "0", "1" to "1")) {
             val resolved =
                 when (
                     val result =
@@ -30,14 +30,14 @@ class CliOutputConfigurationTest {
     }
 
     @Test
-    fun `unconfigured output selects TOON without reaching Host children`() {
+    fun `unconfigured output selects JSON without reaching Host children`() {
         val resolved =
             when (val result = ResolvedKastConfiguration.resolve(ConfigurationSources())) {
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> error("Unexpected configuration rejection: ${result.failure}")
             }
         val setting = resolved.inspection().single { it.key == "KAST_OUTPUT_TOON" }
-        assertEquals("1", setting.value)
+        assertEquals("0", setting.value)
         assertEquals(ConfigurationSource.DEFAULT, setting.source)
         for (child in ConfigurationChild.entries) assertFalse(
             resolved.childEnvironment(child).containsKey("KAST_OUTPUT_TOON")

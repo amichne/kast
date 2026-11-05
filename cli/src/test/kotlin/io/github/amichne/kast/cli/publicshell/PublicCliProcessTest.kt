@@ -76,22 +76,20 @@ class PublicCliProcessTest {
     }
 
     @Test
-    fun `zero keeps JSON and unknown TOON settings reject before planning`() {
+    fun `unset empty and zero select JSON while explicit TOON remains available`() {
         val args = listOf("query", "plan", "--name", "OrderService")
         val standard = children.child(args, environment = mapOf("KAST_OUTPUT_TOON" to "0"))
         assertEquals(
             "planned",
             Json.parseToJsonElement(standard.second).jsonObject.getValue("type").jsonPrimitive.content,
         )
-        for (environment in listOf(emptyMap(), mapOf("KAST_OUTPUT_TOON" to ""), mapOf("KAST_OUTPUT_TOON" to "1"))) {
-            val toon = children.child(args, environment = environment)
-            assertEquals(standard.first, toon.first)
-            assertFalse(toon.second.trimStart().startsWith("{"))
-            assertEquals(
-                Json.parseToJsonElement(standard.second),
-                Json.parseToJsonElement(JToon.decodeToJson(toon.second)),
-            )
+        for (environment in listOf(emptyMap(), mapOf("KAST_OUTPUT_TOON" to ""))) {
+            val actual = children.child(args, environment = environment)
+            assertEquals(standard, actual)
         }
+        val toon = children.child(args, environment = mapOf("KAST_OUTPUT_TOON" to "1"))
+        assertEquals(standard.first, toon.first)
+        assertEquals(Json.parseToJsonElement(standard.second), Json.parseToJsonElement(JToon.decodeToJson(toon.second)))
         val invalid = children.child(args, environment = mapOf("KAST_OUTPUT_TOON" to "typo"))
         assertEquals(2, invalid.first)
         assertEquals(

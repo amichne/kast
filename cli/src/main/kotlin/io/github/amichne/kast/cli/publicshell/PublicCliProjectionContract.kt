@@ -16,6 +16,7 @@ internal data class PublicCliProjectionContract(
     @Required
     val limitations: String =
         "No input/inputs, halt_error, environment, external modules or string interpolation. " +
+            "Direct number literals must be whole with magnitude <=2147483647; use quoted JSON conversion otherwise. " +
             "Arithmetic uses signed 64-bit integers (including overflow) and IEEE doubles. " +
             "Input numeric conversions reject value loss; intermediate arithmetic is not verified.",
     @Required val cardinality: String = "Exactly one JSON value; collect generators explicitly with [FILTER].",

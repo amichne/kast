@@ -5,7 +5,7 @@ internal fun publicCliHelp(command: PublicCliCommandId?): String =
         "Kast: compiler-grounded Kotlin queries.\n" +
             PublicCliCommandId.entries.joinToString("\n") { "  kast ${it.argv.joinToString(" ")}" } +
             "\nUse kast COMMAND --help for flags, or kast describe COMMAND for the contract summary.\n" +
-            "Semantic commands emit one TOON document. Use --json for piping JSON; diagnostics use stderr."
+            "Semantic commands emit one JSON document. Set KAST_OUTPUT_TOON=1 for TOON; diagnostics use stderr."
     } else publicCliHelp(listOf(command))
 
 internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =

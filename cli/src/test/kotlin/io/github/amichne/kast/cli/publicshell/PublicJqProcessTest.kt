@@ -52,6 +52,13 @@ class PublicJqProcessTest {
     }
 
     @Test
+    fun `invalid Unicode input rejects before starting a child`() {
+        val runner = PublicJqProcess(Path.of("/"), emptyMap()) { error("invalid Unicode must not start a child") }
+        val result = runner.execute(request(input = "\uD800"))
+        assertEquals(PublicJqFailure.OUTPUT_INVALID, (result as Refinement.Rejected).failure.failure)
+    }
+
+    @Test
     fun `an already cancelled worker starts no child`() {
         val runner = PublicJqProcess(Path.of("/"), emptyMap()) { error("start forbidden after cancellation") }
         Thread.currentThread().interrupt()

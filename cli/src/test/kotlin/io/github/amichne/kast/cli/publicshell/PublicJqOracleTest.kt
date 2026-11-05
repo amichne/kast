@@ -133,6 +133,45 @@ class PublicJqOracleTest {
     }
 
     @Test
+    fun `Unicode implode matches independent jq and unsafe literal programs reject before execution`() {
+        val points = listOf(0x10000, 0x1F600, 0x10FFFF)
+        val text = points.joinToString("") { String(Character.toChars(it)) }
+        for ((program, input) in
+            listOf("implode" to Json.encodeToString(points), "explode | implode" to Json.encodeToString(text))) {
+            val expected = Json.encodeToString(text)
+            verifyIndependentOracle(
+                JqOracleCase(
+                    "unicode-${program.hashCode()}",
+                    program,
+                    input,
+                    listOf(Json.parseToJsonElement(expected)),
+                    0,
+                )
+            )
+            assertEquals(
+                expected,
+                (engine(program).project(PublicPreparedOutput(input, PublicShellExit.COMPLETE)) as Refinement.Refined)
+                    .value
+                    .text,
+            )
+        }
+        val hasProgram = "has(4294967296)"
+        val input = Json.encodeToString(listOf("only"))
+        verifyIndependentOracle(
+            JqOracleCase("literal-has", hasProgram, input, listOf(Json.parseToJsonElement("false")), 0)
+        )
+        assertEquals(
+            PublicJqFailure.NUMERIC_LITERAL_LIMIT,
+            (admitEngine(hasProgram) as Refinement.Rejected).failure.failure,
+        )
+        // Do not ask the external oracle to allocate a huge array. Admission must prevent this effect entirely.
+        assertEquals(
+            PublicJqFailure.NUMERIC_LITERAL_LIMIT,
+            (admitEngine("setpath([4294967296]; \"changed\")") as Refinement.Rejected).failure.failure,
+        )
+    }
+
+    @Test
     fun `precision requiring numeric comparisons reject while native jq retains its comparison semantics`() {
         val input = Json.encodeToString(listOf(9007199254740992L, 9007199254740993L))
         for ((program, nativeValue) in listOf(".[0] == .[1]" to "false", "unique" to input)) {

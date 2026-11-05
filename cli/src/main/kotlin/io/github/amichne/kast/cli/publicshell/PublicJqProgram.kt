@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper
 import io.github.amichne.kast.distribution.output.JsonProjectionDocument
 import io.github.amichne.kast.kernel.Refinement
 import java.io.StringReader
+import java.nio.charset.CharacterCodingException
 import net.thisptr.jackson.jq.BuiltinFunctionLoader
 import net.thisptr.jackson.jq.JsonQuery
 import net.thisptr.jackson.jq.Scope
@@ -36,6 +37,7 @@ internal class PublicJqProgram private constructor(private val query: JsonQuery)
         // Core builtins only: no CLI I/O extensions, environment access or filesystem module loader.
         BuiltinFunctionLoader.getInstance().loadFunctions(Versions.JQ_1_7, root)
         installExactJsonConversions(root, mapper)
+        PublicJqUnicode.install(root)
         val result = JqSingleResult(mapper, maxBytes)
         return try {
             query.apply(Scope.newChildScope(root), input, result::emit)
@@ -44,6 +46,8 @@ internal class PublicJqProgram private constructor(private val query: JsonQuery)
             Refinement.Rejected(rejected.failure)
         } catch (_: JqNumericValueLoss) {
             Refinement.Rejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
+        } catch (_: CharacterCodingException) {
+            Refinement.Rejected(PublicJqFailure.OUTPUT_INVALID)
         } catch (_: JsonQueryException) {
             // Discard any earlier emission, including errors after the first result. Never publish the payload.
             Refinement.Rejected(PublicJqFailure.EVALUATION_FAILED)
@@ -97,16 +101,18 @@ private fun admitJqLiterals(program: String): Refinement<Unit, PublicJqFailure> 
             if (token.kind == ExpressionParserConstants.OPEN_INTERP)
                 return Refinement.Rejected(PublicJqFailure.PROGRAM_UNSUPPORTED)
             if (
-                token.kind == ExpressionParserConstants.INTEGER_LITERAL &&
-                    (token.image.toLongOrNull() == null || !exactJqDoubleLiteral(token.image))
+                token.kind in
+                    setOf(ExpressionParserConstants.INTEGER_LITERAL, ExpressionParserConstants.FLOAT_LITERAL) &&
+                    !boundedJqLiteral(token.image)
             )
-                return Refinement.Rejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
-            if (token.kind == ExpressionParserConstants.FLOAT_LITERAL && !exactJqDoubleLiteral(token.image))
-                return Refinement.Rejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
+                return Refinement.Rejected(PublicJqFailure.NUMERIC_LITERAL_LIMIT)
             token = tokens.nextToken
         }
         Refinement.Refined(Unit)
     } catch (_: TokenMgrError) {
+        Refinement.Rejected(PublicJqFailure.PROGRAM_INVALID)
+    } catch (_: IllegalStateException) {
+        // The pinned lexer uses this for unmatched closing parentheses before its parser can reject them.
         Refinement.Rejected(PublicJqFailure.PROGRAM_INVALID)
     }
 }
@@ -164,10 +170,13 @@ private fun jqJsonFailure(failure: JsonProcessingException): PublicJqFailure =
 
 private const val MAX_JSON_ERROR_CAUSES = 8
 
-private fun exactJqDoubleLiteral(text: String): Boolean {
+private fun boundedJqLiteral(text: String): Boolean {
     val original = text.toBigDecimalOrNull() ?: return false
-    val encoded = text.toDoubleOrNull()?.takeIf(Double::isFinite)?.toString()?.toBigDecimalOrNull() ?: return false
-    return original.compareTo(encoded) == 0
+    return try {
+        original.abs().compareTo(Int.MAX_VALUE.toBigDecimal()) <= 0 && original.stripTrailingZeros().scale() <= 0
+    } catch (_: ArithmeticException) {
+        false
+    }
 }
 
 private sealed interface JqEmission {
@@ -193,7 +202,8 @@ private class JqSingleResult(private val mapper: ObjectMapper, private val maxBy
 
     private fun encode(value: JsonNode): JsonProjectionDocument {
         val text = mapper.writeValueAsString(value)
-        if (text.toByteArray(Charsets.UTF_8).size > maxBytes) throw JqEmissionRejected(PublicJqFailure.BYTE_LIMIT)
+        if (text.encodeToByteArray(throwOnInvalidSequence = true).size > maxBytes)
+            throw JqEmissionRejected(PublicJqFailure.BYTE_LIMIT)
         return when (val parsed = JsonProjectionDocument.parse(text)) {
             is Refinement.Refined -> parsed.value
             is Refinement.Rejected -> throw JqEmissionRejected(PublicJqFailure.OUTPUT_INVALID)

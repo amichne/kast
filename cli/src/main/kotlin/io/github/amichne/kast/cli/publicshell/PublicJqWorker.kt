@@ -62,6 +62,7 @@ internal enum class PublicJqWorkerExit(val code: Int, val failure: PublicJqFailu
     PROGRAM_UNSUPPORTED(27, PublicJqFailure.PROGRAM_UNSUPPORTED),
     RESOURCE_LIMIT(28, PublicJqFailure.RESOURCE_LIMIT),
     JSON_LIMIT(29, PublicJqFailure.JSON_LIMIT),
+    NUMERIC_LITERAL_LIMIT(30, PublicJqFailure.NUMERIC_LITERAL_LIMIT),
 }
 
 private fun workerExit(failure: PublicJqFailure): PublicJqWorkerExit =
