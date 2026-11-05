@@ -222,6 +222,23 @@ A failed candidate build preserves its nonzero exit status.
 
 This command runs the complete candidate build and grants no publication authority.
 
+## Local product qualification
+
+`distribution/release/run_product_gate.py` builds one clean checkout with `productBuildGate`.
+Local validation uses version `0.0.0`; it does not select a published stable or developer release.
+The full commit and tree IDs identify the source, and the record declares its `LOCAL_VALIDATION` role.
+The wrapper sets source, Control, and Host versions explicitly and passes the admitted source revision.
+It checks clean source before execution and again after Gradle succeeds.
+The staged Control build identity must match the admitted version, commit, and tree.
+`build/reports/local-product-gate.json` records the outcome; a dry-run cannot claim `VALIDATED`.
+A prior success is replaced before each attempt, and Gradle failures keep their exit status.
+These before/after checks detect observed drift, not transient edits later restored.
+Use an isolated checkout throughout qualification.
+
+This local record grants no publication or installation authority.
+Stable release allocation and qualified developer publication keep their own version rules.
+Rolling installation selects a qualified developer build through its release track.
+
 ## Source obligations and qualification
 
 `source_validation.py` admits a clean source tree, runs the offline preflight suites, examines the Gradle graph, and runs `sourceValidationGate`.

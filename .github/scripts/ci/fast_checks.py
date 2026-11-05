@@ -10,7 +10,7 @@
 # url = "https://pypi.org/simple"
 # default = true
 # ///
-"""Run cheap checks before GitHub release observation, Gradle, or native compilation."""
+"""Run cheap checks before Gradle or native compilation."""
 
 from __future__ import annotations
 

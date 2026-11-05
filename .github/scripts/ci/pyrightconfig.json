@@ -14,7 +14,8 @@
     "source_validation.py",
     "self_hosted_guard.py",
     "verification_plan.py",
-    "rollout.py"
+    "rollout.py",
+    "../../../distribution/release/run_product_gate.py"
   ],
   "reportMatchNotExhaustive": "error",
   "reportUnnecessaryTypeIgnoreComment": "error"
