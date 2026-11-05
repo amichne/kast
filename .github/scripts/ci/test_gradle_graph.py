@@ -199,6 +199,67 @@ signal.pause()
             self.assertEqual(graph.Cleanup.CLIENT_REAPED, result.cleanup)
             self.assertEqual(str(-signal.SIGTERM), (root / "retired").read_text())
 
+    def test_daemon_diagnostic_failures_preserve_deadline_cancellation_and_cleanup(self):
+        for number in (None, signal.SIGINT, signal.SIGTERM):
+            for observation in (
+                RuntimeError("diagnostic failed"),
+                graph.gradle_diagnostics.Outcome.TRUNCATED,
+            ):
+                with (
+                    self.subTest(number=number, observation=observation),
+                    tempfile.TemporaryDirectory() as temporary,
+                ):
+                    root = Path(temporary)
+                    clock = Clock()
+
+                    def observed(value, number=number, clock=clock):
+                        if number is None and value == "ready\n":
+                            clock.now = 600.0
+
+                    child = """import os, signal, sys
+from pathlib import Path
+Path(sys.argv[1]).write_text(str(os.getpid()))
+print('ready', flush=True)
+if sys.argv[2] != 'none':
+    os.kill(os.getppid(), int(sys.argv[2]))
+signal.pause()
+"""
+                    with (
+                        patch.object(
+                            graph.gradle_diagnostics,
+                            "snapshot",
+                            side_effect=observation if isinstance(observation, Exception) else None,
+                            return_value=observation,
+                        ),
+                        redirect_stdout(Console(observed)),
+                    ):
+                        result = graph.run(
+                            (
+                                sys.executable,
+                                "-c",
+                                child,
+                                str(root / "pid"),
+                                "none" if number is None else str(number),
+                            ),
+                            root,
+                            root,
+                            clock=clock,
+                        )
+                    self.assertEqual(124 if number is None else 128 + number, result.exitCode)
+                    self.assertEqual(
+                        graph.Outcome.TIMED_OUT if number is None else graph.Outcome.CANCELLED,
+                        result.outcome,
+                    )
+                    self.assertEqual(graph.Cleanup.CLIENT_REAPED, result.cleanup)
+                    self.assertEqual(
+                        graph.gradle_diagnostics.Outcome.UNAVAILABLE
+                        if isinstance(observation, Exception)
+                        else observation,
+                        result.daemonDiagnostic,
+                    )
+                    with self.assertRaises(ChildProcessError):
+                        os.waitpid(int((root / "pid").read_text()), os.WNOHANG)
+
     def test_start_refusal_removes_stale_evidence_without_manufacturing_success(self):
         with tempfile.TemporaryDirectory() as temporary, redirect_stdout(io.StringIO()):
             root = Path(temporary)
@@ -216,6 +277,7 @@ signal.pause()
                     "elapsedMilliseconds": result.elapsedMilliseconds,
                     "diagnostic": "NOT_REQUESTED",
                     "cleanup": "NOT_REQUIRED",
+                    "daemonDiagnostic": "NOT_REQUESTED",
                 },
                 json.loads((root / "task-graph-execution.json").read_text()),
             )

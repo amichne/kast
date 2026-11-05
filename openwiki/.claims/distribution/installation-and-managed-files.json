@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:57c011dca4806a57d09a250a3848798b037b062741a83e515011c29fb1bbb17b",
+  "pageVersion": "sha256:e5aef20ea5ded5d078890df7c40e9281d0dc79612a3c5d8b92185eb51f1738ab",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -126,7 +126,7 @@
     },
     {
       "id": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-      "statement": "The cli module produces one native Control executable at share/kast/libexec/kast-management. Thin launchers select the installed command and transport entry points. The producer guard rejects lib, JARs, class files, a second native image, and a canonical image that differs from its qualified producer. Published-release admission preserves the historical pair when native-control-v1 is absent.",
+      "statement": "The cli module produces one native Control executable at share/kast/libexec/kast-management. Thin launchers select all existing Control entry points. The producer guard rejects lib, JARs, class files, a second native image, and a canonical image that differs from its qualified producer. Published-release admission preserves the historical pair when native-control-v1 is absent.",
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
@@ -134,11 +134,11 @@
         },
         {
           "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:d31ae1e1069157e9210b4a304c3d6f8bcad56d5305574448535b9f82ad8e2381"
+          "version": "repo-file-v1:sha256:fc96f7e447a3b03146c07d43b3ec340ecd40af6ef19f283c82f2d9196351c8cc"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt",
-          "version": "repo-file-v1:sha256:6ccb75e39b897cea90f090e5905fd44d52e40c4818e7df532b1fc66372284413"
+          "version": "repo-file-v1:sha256:91fb02f27d6b68d970556e95239d2959acaedeb5ae93e0a92b38350a2727309b"
         },
         {
           "resource": "repo://packaging/managed_release.py",
@@ -163,6 +163,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T06:38:37.294Z"
+    "at": "2026-11-05T04:04:28.756Z"
   }
 }

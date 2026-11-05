@@ -158,6 +158,7 @@ class SourceValidationTest(unittest.TestCase):
         self.assertIn("-PkastSemanticOwners=:runtime:hosted", command)
         self.assertIn(":verifySelectedKotlinSemanticCoverage", command)
         self.assertNotIn("sourceValidationGate", command)
+        self.assertIn("--no-daemon", command)
         required = source.obligations(plan)
         self.assertIn(":cli:queryDeliveryContractTest", required)
         self.assertNotIn(":symbol:intellij:semanticCoverageFixtureTest", required)
@@ -385,6 +386,7 @@ class SourceValidationTest(unittest.TestCase):
                 self.assertNotIn("productBuildGate", COMMAND)
                 self.assertIn("--info", COMMAND)
                 self.assertNotIn("--profile", COMMAND)
+                self.assertIn("--no-daemon", COMMAND)
 
 
 if __name__ == "__main__":

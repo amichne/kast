@@ -67,7 +67,7 @@ Cleanup runs after successful builds, and existing encrypted configuration-cache
 
 A successful main candidate reuse skips Gradle setup and retains the existing fast path.
 The separate `Populate Gradle caches` workflow supplies cache entries after main pushes and daily at 08:00 UTC.
-Its Linux job runs the complete source gate with the stable version `0.0.0`.
+Its Linux job runs the complete source gate with the fixed validation version `0.0.0`.
 Its macOS job runs the three reset-adapter suites when native compilation is enabled.
 Both jobs use the same platform, toolchain, cache owner and job identifiers as their CI consumers.
 The workflow also accepts a manual dispatch on main.
@@ -79,7 +79,7 @@ The cache producer adds runner work to populate shared entries even when main re
 Keep setup restore/save reports, build task outcomes, native metrics and job timestamps from necessary runs.
 A transport hit does not prove task-output reuse or a speedup.
 Candidate versions keep the workflow run number.
-Source validation uses the stable version `0.0.0` for product, control, and hosted-plugin resources.
+Source validation uses the fixed validation version `0.0.0` for product, control, and hosted-plugin resources.
 Source identities can still invalidate outputs. Measure their effect.
 Source and candidate invocations use `--info` to keep configuration-cache rejection reasons and task input changes.
 Source logs stay in the existing source reports; candidate logs stay in the Actions build step.
@@ -222,12 +222,40 @@ A failed candidate build preserves its nonzero exit status.
 
 This command runs the complete candidate build and grants no publication authority.
 
+## Local product qualification
+
+`distribution/release/run_product_gate.py` builds one clean checkout with `productBuildGate`.
+Local validation uses version `0.0.0`; it does not select a published stable or developer release.
+The full commit and tree IDs identify the source, and the record declares its `LOCAL_VALIDATION` role.
+The wrapper sets source, Control, and Host versions explicitly and passes the admitted source revision.
+It checks clean source before execution and again after Gradle succeeds.
+The staged Control build identity must match the admitted version, commit, and tree.
+`build/reports/local-product-gate.json` records the outcome; a dry-run cannot claim `VALIDATED`.
+A prior success is replaced before each attempt, and Gradle failures keep their exit status.
+These before/after checks detect observed drift, not transient edits later restored.
+Use an isolated checkout throughout qualification.
+
+This local record grants no publication or installation authority.
+Stable release allocation and qualified developer publication keep their own version rules.
+Rolling installation selects a qualified developer build through its release track.
+
+The agent experiment checks within `hostObservationTest` separate locked dependency preparation from test execution.
+Preparation explicitly includes the development dependencies; pytest then uses that project's interpreter.
+Preparation, pytest, and Node contracts each have a 120-second deadline.
+Each phase reports its outcome, exit code, and cleanup status before the next phase can start.
+A failure retains the last 64 KiB of child output and identifies truncation.
+Timeout and cancellation cleanup target only the child process group created for that phase.
+Inherited pytest selection options cannot replace required execution with collection.
+
 ## Source obligations and qualification
 
 `source_validation.py` admits a clean source tree, runs the offline preflight suites, examines the Gradle graph, and runs `sourceValidationGate`.
 A failed offline preflight stops before Gradle starts, including its dry-run.
 The failure report lists no graph tasks and keeps every source obligation as missing.
 The script records the source tree, task graph, elapsed time, exit code, and dependency compiler count.
+Full and affected commands request single-use Gradle daemons with `--no-daemon`.
+The local product gate requests the same daemon lifetime.
+This keeps a reusable daemon from continuing cancelled work after its client disconnects; disk caches remain enabled.
 A changed source tree or failed process cannot produce `SOURCE_VALIDATED`.
 This local execution record grants no publication authority.
 The separate workflow outcome also binds the exact producer and comparison base.
@@ -244,11 +272,23 @@ Neither outcome starts source execution, even when the partial log lists every r
 `task-graph-execution.json` retains the process outcome, elapsed time, diagnostic status, and cleanup status.
 Before stopping the client, the runner allows two seconds for a bounded process snapshot in `task-graph-process.txt`.
 That snapshot contains only client identity, state, elapsed time, CPU time, and RSS, not arguments or environment values.
-It does not include a daemon thread dump or establish the cause of a Gradle stall.
+The client snapshot does not establish the cause of a Gradle stall.
 
-Cleanup signals only the new client process group, with five seconds each for graceful exit and forced-exit observation.
+The runner also attempts a bounded daemon thread dump before client cleanup.
+It collects daemon PID candidates from streamed Gradle output and accepts only one distinct positive PID.
+Process inspection must match this invocation's random marker and the Gradle daemon class.
+The runner checks process start identity before and after `JAVA_HOME/bin/jcmd <pid> Thread.print -l`.
+Each process inspection has a two-second limit; attachment has a three-second limit and a two-MiB output cap.
+Each diagnostic helper's process group is retired, with one second allowed to reap its leader.
+Only complete output with confirmed association becomes `task-graph-daemon-threads.txt`.
+Raw arguments, environment values, and the invocation marker are not retained in the diagnostic report.
+`daemonDiagnostic` records whether evidence was retained, unavailable, truncated, timed out, failed to attach, or lacked confirmed identity.
+Diagnostic failure cannot replace the graph outcome or prevent client cleanup.
+These association checks do not make attachment atomic with process exit and PID reuse.
+
+Client cleanup signals only the new client process group, with five seconds each for graceful exit and forced-exit observation.
 It never runs `gradle --stop` or kills shared daemons by name.
-`CLIENT_REAPED` proves client retirement, not completion of cancellation inside an existing Gradle daemon.
+`CLIENT_REAPED` proves client retirement, not synchronous daemon retirement.
 `UNCONFIRMED` retains a failed cleanup observation rather than claiming retirement.
 Partial graph logs remain available; later attempts remove only the runner's prior reports.
 
@@ -273,7 +313,7 @@ Candidate qualification keeps those tasks, actual release versions, acceptance, 
 Source feedback waits for the selected source, documentation, and portable jobs.
 Linux owns the source result through `source-work`.
 The stable `Source validation` check needs that job, independently of native compilation.
-Source-only changes use affected selection with stable versions.
+Source-only changes use affected selection with fixed validation versions.
 Product changes run the complete source gate before the native input archive is prepared.
 A reused candidate keeps its original successful source proof and exact source tree.
 Failed, cancelled, missing, and skipped source results reject the source aggregate.

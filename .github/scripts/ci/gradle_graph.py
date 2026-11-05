@@ -5,6 +5,7 @@ from __future__ import annotations
 import codecs
 import json
 import os
+import secrets
 import signal
 import subprocess
 import time
@@ -13,10 +14,17 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
 
+import gradle_diagnostics
+
 HEARTBEAT_SECONDS = 15
 POLL_SECONDS = 0.1
 STOP_SECONDS = 5
-REPORTS = ("task-graph.log", "task-graph-execution.json", "task-graph-process.txt")
+REPORTS = (
+    "task-graph.log",
+    "task-graph-execution.json",
+    "task-graph-process.txt",
+    "task-graph-daemon-threads.txt",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +87,7 @@ class Result:
     elapsedMilliseconds: int
     diagnostic: Diagnostic = Diagnostic.NOT_REQUESTED
     cleanup: Cleanup = Cleanup.NOT_REQUIRED
+    daemonDiagnostic: gradle_diagnostics.Outcome = gradle_diagnostics.Outcome.NOT_REQUESTED
 
     def __post_init__(self) -> None:
         if not 0 <= self.exitCode <= 255 or (self.exitCode == 0) != (
@@ -159,14 +168,24 @@ def run(
         (destination / name).unlink(missing_ok=True)
     started = clock()
     interruption = Interruption()
+    owner = secrets.token_hex(16)
+    daemon_pids = gradle_diagnostics.DaemonPids()
 
     def finish(
         outcome: Outcome,
         code: int,
         diagnostic: Diagnostic = Diagnostic.NOT_REQUESTED,
         cleanup: Cleanup = Cleanup.NOT_REQUIRED,
+        daemon_diagnostic: gradle_diagnostics.Outcome = gradle_diagnostics.Outcome.NOT_REQUESTED,
     ) -> Result:
-        result = Result(outcome, code, round((clock() - started) * 1000), diagnostic, cleanup)
+        result = Result(
+            outcome,
+            code,
+            round((clock() - started) * 1000),
+            diagnostic,
+            cleanup,
+            daemon_diagnostic,
+        )
         encoded = json.dumps(asdict(result))
         (destination / "task-graph-execution.json").write_text(encoded + "\n")
         print(f"source-validation: task-graph {encoded}", flush=True)
@@ -185,6 +204,7 @@ def run(
                     stdout=output,
                     stderr=subprocess.STDOUT,
                     start_new_session=True,
+                    env={**os.environ, gradle_diagnostics.OWNER_KEY: owner},
                 )
             except OSError:
                 return finish(Outcome.START_FAILED, 1)
@@ -211,6 +231,7 @@ def run(
                         nonlocal last_output
                         block = reader.read(65536)
                         if block:
+                            daemon_pids.observe(block)
                             last_output = clock()
                             print(decoder.decode(block), end="", flush=True)
 
@@ -226,7 +247,19 @@ def run(
                             diagnostic = process_snapshot(
                                 process.pid, destination / "task-graph-process.txt"
                             )
-                            cleanup = stop_group(process)
+                            try:
+                                java = os.environ.get("JAVA_HOME")
+                                daemon_diagnostic = gradle_diagnostics.snapshot(
+                                    daemon_pids,
+                                    destination / "task-graph-daemon-threads.txt",
+                                    owner,
+                                    Path(java) if java else None,
+                                )
+                            except Exception:
+                                # Optional evidence must never replace the timeout or its cleanup.
+                                daemon_diagnostic = gradle_diagnostics.Outcome.UNAVAILABLE
+                            finally:
+                                cleanup = stop_group(process)
                             # Drain a fixed extent: descendants cannot keep the reader alive.
                             end = os.fstat(reader.fileno()).st_size
                             while reader.tell() < end:
@@ -234,11 +267,29 @@ def run(
                             print(decoder.decode(b"", final=True), end="", flush=True)
                             match interruption.reason:
                                 case Cancellation.INTERRUPT:
-                                    return finish(Outcome.CANCELLED, 130, diagnostic, cleanup)
+                                    return finish(
+                                        Outcome.CANCELLED,
+                                        130,
+                                        diagnostic,
+                                        cleanup,
+                                        daemon_diagnostic,
+                                    )
                                 case Cancellation.TERMINATE:
-                                    return finish(Outcome.CANCELLED, 143, diagnostic, cleanup)
+                                    return finish(
+                                        Outcome.CANCELLED,
+                                        143,
+                                        diagnostic,
+                                        cleanup,
+                                        daemon_diagnostic,
+                                    )
                                 case Cancellation.NOT_REQUESTED:
-                                    return finish(Outcome.TIMED_OUT, 124, diagnostic, cleanup)
+                                    return finish(
+                                        Outcome.TIMED_OUT,
+                                        124,
+                                        diagnostic,
+                                        cleanup,
+                                        daemon_diagnostic,
+                                    )
                         code = process.poll()
                         if code is not None:
                             end = os.fstat(reader.fileno()).st_size

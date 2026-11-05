@@ -6,6 +6,8 @@ import subprocess
 import unittest
 from pathlib import Path
 
+from agent_efficiency_gate import Outcome, run_checks
+
 
 class AgentEfficiencyGate(unittest.TestCase):
     def test_locked_coordinator_and_native_session_contracts(self) -> None:
@@ -25,32 +27,11 @@ class AgentEfficiencyGate(unittest.TestCase):
             check=True,
         ).stdout.splitlines()
         environment = {key: value for key, value in os.environ.items() if key not in local_names}
-        for command in (
-            [
-                uv,
-                "run",
-                "--locked",
-                "--project",
-                str(root),
-                "pytest",
-                "-q",
-                str(root / "efficiency-tests"),
-            ],
-            [
-                node,
-                "--test",
-                str(root / "agent_efficiency_session.test.mjs"),
-                str(root / "agent_efficiency_limits.test.mjs"),
-                str(root / "agent_efficiency_audit.test.mjs"),
-            ],
-        ):
-            result = subprocess.run(
-                command,
-                cwd=root,
-                env=environment,
-                capture_output=True,
-                text=True,
-                timeout=120,
-                check=False,
+        for phase, result in run_checks(root, uv, node, environment):
+            self.assertEqual(
+                (Outcome.PASSED, False),
+                (result.outcome, result.cleanup_failed),
+                f"phase={phase} outcome={result.outcome} returncode={result.returncode} "
+                f"outputTruncated={result.truncated} cleanupFailed={result.cleanup_failed}\n"
+                f"{result.output}",
             )
-            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
