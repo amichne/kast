@@ -35,7 +35,7 @@ val generateVerificationGraph = tasks.register<GenerateVerificationGraphTask>("g
     rootDirectory.set(layout.projectDirectory)
     reportFile.set(layout.buildDirectory.file("reports/ci/verification-graph.json"))
     graphInputs.from(moduleBuildFiles)
-    graphInputs.from(buildFile, "settings.gradle.kts", "settings.gradle", "gradle.properties", "mise.toml", "gradle/libs.versions.toml")
+    graphInputs.from(buildFile, "settings.gradle.kts", "settings.gradle", "gradle.properties", "mise.toml", "gradle/libs.versions.toml", "config/intellij-targets.json")
     graphInputs.from(fileTree("build-logic") {
         include("*.gradle.kts", "src/main/**")
     })

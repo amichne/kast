@@ -253,6 +253,43 @@ tasks.register<GenerateComponentReleaseTask>("generateHostReleaseRecord") {
     outputDirectory.set(hostReleaseRecordDirectory)
 }
 
+tasks.register<Exec>("generateHostTargetReceipt") {
+    group = "distribution"
+    description = "Binds one isolated Host archive to clean source, declared SDK and actual vendor metadata."
+    val isolatedOutputs = hostIntellijTarget.scopedOutputs
+    inputs.property("isolatedTargetOutputs", isolatedOutputs)
+    doFirst { require(isolatedOutputs) { "Host target receipts require an explicit intellijTarget or SDK home" } }
+    dependsOn("generateHostReleaseRecord", ":protocol:wire:generateHostedContract")
+    if (hostIntellijTarget.suppliedHome == null) dependsOn(":relation:intellij:extractNativeTestIdea")
+    val sdk = hostIntellijTarget.nativeFixtureHome(project)
+    inputs.files(hostedPluginArchive, hostReleaseRecordFile, contractFile, "config/intellij-targets.json")
+    inputs.files(sdk.map { it.file("product-info.json") }, sdk.map { it.file("Resources/product-info.json") },
+        sdk.map { it.file("plugins/Kotlin/lib/kotlin-plugin.jar") })
+    inputs.files(fileTree(".github/scripts/release") { include("*.py") },
+        ".github/scripts/release/admit-source.sh", "packaging/managed_release.py", "packaging/managed_update_journal.py",
+        ".github/scripts/release/pyproject.toml", ".github/scripts/release/uv.lock",
+        "protocol/contract/src/main/resources/ide-hosted/hosted-query.schema.json",
+        "protocol/contract/src/main/resources/ide-hosted/hosted-query.operations.json")
+    inputs.properties(mapOf("version" to hostedPluginVersion.get(), "target" to hostIntellijTarget.profile.intellijReleaseLine,
+        "sourceRevision" to releaseSourceRevision.get(), "sourceTree" to releaseSourceTree.get()))
+    outputs.file(layout.buildDirectory.file("host-targets/${hostIntellijTarget.profile.intellijReleaseLine}/target-receipt.json"))
+    // Every invocation re-admits live clean Git identity; a prior receipt cannot make this check up-to-date.
+    outputs.upToDateWhen { false }
+    timeout.set(java.time.Duration.ofMinutes(2))
+    workingDir(layout.projectDirectory)
+    setEnvironment(validationEnvironment.get())
+    providers.environmentVariable("UV_CACHE_DIR").orNull?.let { environment("UV_CACHE_DIR", it) }
+    environment("UV_PYTHON_DOWNLOADS", "never")
+    executable(validationExecutable("uv").get().asFile)
+    args("run", "--locked", "--project", ".github/scripts/release", "python",
+        ".github/scripts/release/generate_host_target_receipt.py", "--repository-root", layout.projectDirectory.asFile.absolutePath,
+        "--target", hostIntellijTarget.profile.intellijReleaseLine, "--version", hostedPluginVersion.get(),
+        "--source-revision", releaseSourceRevision.get(), "--source-tree", releaseSourceTree.get(),
+        "--sdk-home", sdk.get().asFile.absolutePath, "--archive", hostedPluginArchive.get().asFile.absolutePath,
+        "--release-record", hostReleaseRecordFile.get().asFile.absolutePath,
+        "--hosted-contract", contractFile.get().asFile.absolutePath)
+}
+
 
 apply(from = "distribution/release/plugin-release.gradle.kts")
 
@@ -412,6 +449,7 @@ val developerPublicationTest = tasks.register<VerificationReportTask>("developer
         ".github/scripts/release/test_dual_publication.py",
         ".github/scripts/release/test_host_evidence.py",
         ".github/scripts/release/test_host_staging.py",
+        ".github/scripts/release/test_generate_host_target_receipt.py",
         ".github/scripts/release/test_host_target_validation.py",
         ".github/scripts/release/test_installed_target_evidence.py",
         ".github/scripts/release/test_dual_producer.py",

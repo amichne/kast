@@ -155,6 +155,7 @@ def run(
                 ".github/scripts/release/test_dual_publication.py",
                 ".github/scripts/release/test_host_evidence.py",
                 ".github/scripts/release/test_host_staging.py",
+                ".github/scripts/release/test_generate_host_target_receipt.py",
                 ".github/scripts/release/test_host_target_validation.py",
                 ".github/scripts/release/test_installed_target_evidence.py",
             ),

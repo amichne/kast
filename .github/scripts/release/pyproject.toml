@@ -20,7 +20,7 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["developer_catalog.py", "publish_developer.py", "test_developer_catalog.py", "test_developer_publication.py", "host_targets.py", "dual_candidate.py", "host_evidence.py", "host_staging.py", "installed_target_evidence.py", "test_installed_target_evidence.py", "host_target_validation.py", "test_host_staging.py", "test_host_target_validation.py", "test_dual_candidate.py", "test_dual_producer.py", "test_dual_publication.py", "test_host_evidence.py", "dual_catalog.py", "test_dual_catalog.py"]
+include = ["developer_catalog.py", "publish_developer.py", "test_developer_catalog.py", "test_developer_publication.py", "host_targets.py", "dual_candidate.py", "host_evidence.py", "host_staging.py", "installed_target_evidence.py", "test_installed_target_evidence.py", "host_target_validation.py", "test_host_staging.py", "test_host_target_validation.py", "test_dual_candidate.py", "test_dual_producer.py", "test_dual_publication.py", "test_host_evidence.py", "dual_catalog.py", "test_dual_catalog.py", "generate_host_target_receipt.py", "test_generate_host_target_receipt.py"]
 extraPaths = ["../ci", "../../../packaging", "../../../distribution/release"]
 reportMatchNotExhaustive = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
@@ -28,7 +28,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["**/developer_catalog.py", "**/publish_developer.py", "**/test_developer_catalog.py", "**/test_developer_publication.py", "**/host_targets.py", "**/dual_candidate.py", "**/host_evidence.py", "**/host_staging.py", "**/installed_target_evidence.py", "**/test_installed_target_evidence.py", "**/host_target_validation.py", "**/test_host_staging.py", "**/test_host_target_validation.py", "**/test_dual_candidate.py", "**/test_dual_producer.py", "**/test_dual_publication.py", "**/test_host_evidence.py", "**/dual_catalog.py", "**/test_dual_catalog.py"]
+include = ["**/developer_catalog.py", "**/publish_developer.py", "**/test_developer_catalog.py", "**/test_developer_publication.py", "**/host_targets.py", "**/dual_candidate.py", "**/host_evidence.py", "**/host_staging.py", "**/installed_target_evidence.py", "**/test_installed_target_evidence.py", "**/host_target_validation.py", "**/test_host_staging.py", "**/test_host_target_validation.py", "**/test_dual_candidate.py", "**/test_dual_producer.py", "**/test_dual_publication.py", "**/test_host_evidence.py", "**/dual_catalog.py", "**/test_dual_catalog.py", "**/generate_host_target_receipt.py", "**/test_generate_host_target_receipt.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
