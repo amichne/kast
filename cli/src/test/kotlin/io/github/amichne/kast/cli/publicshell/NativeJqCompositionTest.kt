@@ -68,6 +68,8 @@ class NativeJqCompositionTest {
                     "empty" to "OUTPUT_CARDINALITY",
                     "1,2" to "OUTPUT_CARDINALITY",
                     "1.2345678901234567890123456789" to "NUMERIC_VALUE_LOSS",
+                    (Json.encodeToString(Json.encodeToString(listOf(9007199254740992L, 9007199254740993L))) +
+                        " | fromjson | unique") to "NUMERIC_VALUE_LOSS",
                 )
             cases.forEachIndexed { index, (program, failure) ->
                 val label = "rejection-$index"

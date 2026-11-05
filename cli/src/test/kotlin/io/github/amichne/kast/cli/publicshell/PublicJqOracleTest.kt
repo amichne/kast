@@ -122,7 +122,6 @@ class PublicJqOracleTest {
                 ".nil" to "null",
                 "false" to "false",
                 ".generation" to "9223372036854775807",
-                "9007199254740993 | . + 1" to "9007199254740994",
                 "def sparse(f): map(f); .items | sparse(.name)" to Json.encodeToString(listOf("Ada", "Bob")),
                 "try (.items | .wrong) catch \"type-error\"" to Json.encodeToString("type-error"),
             )
@@ -130,6 +129,24 @@ class PublicJqOracleTest {
             val projected = project(program)
             assertEquals(Json.parseToJsonElement(expected), Json.parseToJsonElement(projected.text), program)
             assertEquals(PublicShellExit.COMPLETE, projected.exit)
+        }
+    }
+
+    @Test
+    fun `precision requiring numeric comparisons reject while native jq retains its comparison semantics`() {
+        val input = Json.encodeToString(listOf(9007199254740992L, 9007199254740993L))
+        for ((program, nativeValue) in listOf(".[0] == .[1]" to "false", "unique" to input)) {
+            val case =
+                JqOracleCase(
+                    "numeric-${program.hashCode()}",
+                    program,
+                    input,
+                    listOf(Json.parseToJsonElement(nativeValue)),
+                    0,
+                )
+            verifyIndependentOracle(case)
+            val projected = engine(program).project(PublicPreparedOutput(input, PublicShellExit.COMPLETE))
+            assertEquals(PublicJqFailure.NUMERIC_VALUE_LOSS, (projected as Refinement.Rejected).failure.failure)
         }
     }
 

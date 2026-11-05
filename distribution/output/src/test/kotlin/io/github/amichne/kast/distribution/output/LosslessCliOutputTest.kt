@@ -21,7 +21,7 @@ class LosslessCliOutputTest {
             listOf(
                 "9223372036854775807" to "9223372036854776000",
                 "-0.0" to "0.0",
-                "[[1],[]]" to "[1]",
+                Json.encodeToString(listOf(listOf(1), emptyList())) to Json.encodeToString(listOf(1)),
                 "null" to "false",
             )) {
             val original = (JsonProjectionDocument.parse(before) as Refinement.Refined).value

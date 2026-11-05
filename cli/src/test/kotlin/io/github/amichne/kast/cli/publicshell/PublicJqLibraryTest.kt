@@ -1,8 +1,11 @@
 package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonUnquotedLiteral
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
@@ -11,10 +14,16 @@ class PublicJqLibraryTest {
     @Test
     fun `navigation map select and composition preserve independently specified shape`() {
         val input = Json.encodeToString(listOf(listOf(1, 2), emptyList(), listOf(3)))
-        assertEquals("[[2],[],[3]]", evaluate("map(map(select(. > 1)))", input))
+        assertEquals(
+            Json.encodeToString(listOf(listOf(2), emptyList(), listOf(3))),
+            evaluate("map(map(select(. > 1)))", input),
+        )
         assertEquals("null", evaluate(".missing", "null"))
         assertEquals("false", evaluate("false", "null"))
-        assertEquals("[]", evaluate("[.[] | select(. > 9)]", "[1,2]"))
+        assertEquals(
+            Json.encodeToString(emptyList<Int>()),
+            evaluate("[.[] | select(. > 9)]", Json.encodeToString(listOf(1, 2))),
+        )
     }
 
     @Test
@@ -60,6 +69,39 @@ class PublicJqLibraryTest {
     }
 
     @Test
+    @OptIn(ExperimentalSerializationApi::class)
+    fun `numeric comparison and grouping reject lossy input coercion without losing navigation`() {
+        val identifiers = Json.encodeToString(listOf(9007199254740992L, 9007199254740993L))
+        assertFailure(PublicJqFailure.NUMERIC_VALUE_LOSS, ".[0] == .[1]", identifiers)
+        assertFailure(PublicJqFailure.NUMERIC_VALUE_LOSS, "unique", identifiers)
+        assertEquals(identifiers, evaluate(".", identifiers))
+        assertEquals(
+            Json.encodeToString(listOf("9007199254740992", "9007199254740993")),
+            evaluate("map(tostring)", identifiers),
+        )
+        // Numeric tokens are dynamic user-projection data, not a fixed protocol shape.
+        val decimals =
+            Json.encodeToString(
+                listOf(
+                    JsonUnquotedLiteral("1.2345678901234567890123456789"),
+                    JsonUnquotedLiteral("1.2345678901234567890123456788"),
+                )
+            )
+        assertFailure(PublicJqFailure.NUMERIC_VALUE_LOSS, ".[0] == .[1]", decimals)
+        assertEquals("true", evaluate(".[0] < .[1]", Json.encodeToString(listOf(0.1, 0.2))))
+        assertFailure(
+            PublicJqFailure.NUMERIC_VALUE_LOSS,
+            ".items[.index]",
+            Json.encodeToString(NumericIndex(listOf("first", "last"), 4294967295L)),
+        )
+    }
+
+    @Test
+    fun `numeric token limits report a finite cause instead of malformed output`() {
+        assertFailure(PublicJqFailure.JSON_LIMIT, ".", "1" + "0".repeat(PublicJqLimits.JSON_NUMBER_CHARACTERS))
+    }
+
+    @Test
     fun `library arithmetic differences are explicit qualification cases`() {
         assertEquals("9007199254740994", evaluate(". + 1", "9007199254740993"))
         assertEquals("-9223372036854775808", evaluate(". + 1", "9223372036854775807"))
@@ -72,7 +114,9 @@ class PublicJqLibraryTest {
 
     private fun assertFailure(expected: PublicJqFailure, program: String, input: String = "null") {
         val result = (PublicJqProgram.compile(program) as Refinement.Refined).value.evaluate(input, 4096)
-        assertEquals(expected, (result as Refinement.Rejected).failure, program)
+        assertEquals(Refinement.Rejected(expected), result, program)
         assertFalse(result.toString().contains("private payload"))
     }
 }
+
+@Serializable private data class NumericIndex(val items: List<String>, val index: Long)

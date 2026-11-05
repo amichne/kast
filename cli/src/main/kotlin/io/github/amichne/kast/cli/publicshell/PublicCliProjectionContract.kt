@@ -16,7 +16,8 @@ internal data class PublicCliProjectionContract(
     @Required
     val limitations: String =
         "No input/inputs, halt_error, environment, external modules or string interpolation. " +
-            "Arithmetic uses signed 64-bit integers (including overflow) and IEEE doubles; codecs reject value loss.",
+            "Arithmetic uses signed 64-bit integers (including overflow) and IEEE doubles. " +
+            "Input numeric conversions reject value loss; intermediate arithmetic is not verified.",
     @Required val cardinality: String = "Exactly one JSON value; collect generators explicitly with [FILTER].",
     @Required
     val scope: String = "Only successful documents. Unfiltered output_schema does not describe a user projection.",

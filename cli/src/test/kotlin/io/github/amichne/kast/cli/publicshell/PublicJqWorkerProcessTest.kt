@@ -5,6 +5,8 @@ import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -18,8 +20,9 @@ open class PublicJqWorkerProcessTest {
 
     @Test
     fun `a real embedded worker runs with an empty environment and no jq on PATH`() {
-        val result = PublicJqProcess(Path.of("/"), emptyMap()).execute(request("map(. + 1)", "[1,2]"))
-        assertEquals(PublicJqCapture(0, "[2,3]"), (result as Refinement.Refined).value)
+        val result =
+            PublicJqProcess(Path.of("/"), emptyMap()).execute(request("map(. + 1)", Json.encodeToString(listOf(1, 2))))
+        assertEquals(PublicJqCapture(0, Json.encodeToString(listOf(2, 3))), (result as Refinement.Refined).value)
     }
 
     @Test

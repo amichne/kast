@@ -4,8 +4,8 @@ title: "Kast CLI output"
 description: "Defines the shared JSON and TOON presentation adapter for public command modes."
 resource: "repo://distribution/output"
 tags: [kast, cli, serialization]
-timestamp: "2026-11-04T23:47:43Z"
-source_revision: a40f353337068c7046aa4e9d2dbef161a21722ad
+timestamp: "2026-11-05T04:27:35Z"
+source_revision: 20e7d04835f12aafa43263be8af1557115f2afd4
 code_sources:
   - path: distribution/output/build.gradle.kts
   - path: distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/CliOutput.kt

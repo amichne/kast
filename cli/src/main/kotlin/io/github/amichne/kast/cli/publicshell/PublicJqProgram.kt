@@ -1,6 +1,10 @@
 package io.github.amichne.kast.cli.publicshell
 
+import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.core.StreamReadConstraints
+import com.fasterxml.jackson.core.StreamWriteConstraints
+import com.fasterxml.jackson.core.exc.StreamConstraintsException
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -38,11 +42,13 @@ internal class PublicJqProgram private constructor(private val query: JsonQuery)
             result.finish()
         } catch (rejected: JqEmissionRejected) {
             Refinement.Rejected(rejected.failure)
+        } catch (_: JqNumericValueLoss) {
+            Refinement.Rejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
         } catch (_: JsonQueryException) {
             // Discard any earlier emission, including errors after the first result. Never publish the payload.
             Refinement.Rejected(PublicJqFailure.EVALUATION_FAILED)
-        } catch (_: JsonProcessingException) {
-            Refinement.Rejected(PublicJqFailure.OUTPUT_INVALID)
+        } catch (failure: JsonProcessingException) {
+            Refinement.Rejected(jqJsonFailure(failure))
         }
     }
 
@@ -63,7 +69,21 @@ internal class PublicJqProgram private constructor(private val query: JsonQuery)
 }
 
 private fun exactJqMapper(): ObjectMapper =
-    JsonMapper.builder()
+    JsonMapper.builder(
+            JsonFactory.builder()
+                .streamReadConstraints(
+                    StreamReadConstraints.builder()
+                        .maxNestingDepth(PublicJqLimits.JSON_NESTING)
+                        .maxNumberLength(PublicJqLimits.JSON_NUMBER_CHARACTERS)
+                        .maxStringLength(PublicJqLimits.MAXIMUM_BYTES)
+                        .build()
+                )
+                .streamWriteConstraints(
+                    StreamWriteConstraints.builder().maxNestingDepth(PublicJqLimits.JSON_NESTING).build()
+                )
+                .build()
+        )
+        .nodeFactory(PublicJqNumberFactory)
         .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
         .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
         .build()
@@ -76,7 +96,10 @@ private fun admitJqLiterals(program: String): Refinement<Unit, PublicJqFailure> 
         while (token.kind != ExpressionParserConstants.EOF) {
             if (token.kind == ExpressionParserConstants.OPEN_INTERP)
                 return Refinement.Rejected(PublicJqFailure.PROGRAM_UNSUPPORTED)
-            if (token.kind == ExpressionParserConstants.INTEGER_LITERAL && token.image.toLongOrNull() == null)
+            if (
+                token.kind == ExpressionParserConstants.INTEGER_LITERAL &&
+                    (token.image.toLongOrNull() == null || !exactJqDoubleLiteral(token.image))
+            )
                 return Refinement.Rejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
             if (token.kind == ExpressionParserConstants.FLOAT_LITERAL && !exactJqDoubleLiteral(token.image))
                 return Refinement.Rejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
@@ -111,8 +134,8 @@ private fun parseJqString(value: JsonNode, mapper: ObjectMapper): JsonNode {
 }
 
 private fun rejectJqConversion(failure: PublicJqFailure): Nothing =
-    if (failure == PublicJqFailure.NUMERIC_VALUE_LOSS) throw JqEmissionRejected(failure)
-    else throw JsonQueryException("Invalid JSON text")
+    if (failure == PublicJqFailure.OUTPUT_INVALID) throw JsonQueryException("Invalid JSON text")
+    else throw JqEmissionRejected(failure)
 
 private fun parseExactJqJson(text: String, mapper: ObjectMapper): Refinement<JsonNode, PublicJqFailure> {
     val original =
@@ -125,10 +148,21 @@ private fun parseExactJqJson(text: String, mapper: ObjectMapper): Refinement<Jso
         if (original.reencoded(mapper.writeValueAsString(node)) is Refinement.Rejected)
             Refinement.Rejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
         else Refinement.Refined(node)
-    } catch (_: JsonProcessingException) {
-        Refinement.Rejected(PublicJqFailure.OUTPUT_INVALID)
+    } catch (failure: JsonProcessingException) {
+        Refinement.Rejected(jqJsonFailure(failure))
     }
 }
+
+private fun jqJsonFailure(failure: JsonProcessingException): PublicJqFailure =
+    if (
+        generateSequence<Throwable>(failure) { it.cause }
+            .take(MAX_JSON_ERROR_CAUSES)
+            .any { it is StreamConstraintsException }
+    )
+        PublicJqFailure.JSON_LIMIT
+    else PublicJqFailure.OUTPUT_INVALID
+
+private const val MAX_JSON_ERROR_CAUSES = 8
 
 private fun exactJqDoubleLiteral(text: String): Boolean {
     val original = text.toBigDecimalOrNull() ?: return false
@@ -172,7 +206,7 @@ private fun rejectNonFiniteNumbers(value: JsonNode) {
     pending.add(value)
     while (pending.isNotEmpty()) {
         val node = pending.removeLast()
-        if (node.isFloatingPointNumber && !node.doubleValue().isFinite())
+        if ((node.isDouble || node.isFloat) && !node.doubleValue().isFinite())
             throw JqEmissionRejected(PublicJqFailure.NUMERIC_VALUE_LOSS)
         if (node.isContainerNode) node.forEach { pending.add(it) }
     }

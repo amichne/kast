@@ -32,7 +32,12 @@ internal enum class PublicJqFailure(val exit: PublicShellExit, val guidance: Str
     ),
     NUMERIC_VALUE_LOSS(
         PublicShellExit.PROTOCOL,
-        "The embedded jq numeric codec cannot preserve this value. Keep exact values in strings or use --json | jq.",
+        "Embedded jq's numeric conversion would change a value. Keep exact identifiers as strings or use --json | jq.",
+    ),
+    JSON_LIMIT(
+        PublicShellExit.PROTOCOL,
+        "Embedded JSON exceeds the ${PublicJqLimits.JSON_NESTING} nesting or " +
+            "${PublicJqLimits.JSON_NUMBER_CHARACTERS} numeric-token character limit. Reduce the value's size or depth.",
     ),
     RESOURCE_LIMIT(
         PublicShellExit.IO,

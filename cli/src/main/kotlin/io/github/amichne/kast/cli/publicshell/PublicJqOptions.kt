@@ -43,6 +43,8 @@ internal class PublicJqLimits private constructor(val timeoutMillis: Long, val b
         const val MAXIMUM_TIMEOUT_MILLIS = 60_000L
         const val MAXIMUM_BYTES = 64 * 1_024 * 1_024
         const val STDERR_BYTES = 32 * 1_024
+        const val JSON_NESTING = 1_000
+        const val JSON_NUMBER_CHARACTERS = 1_000
 
         fun parse(arguments: LexicalArguments): Refinement<PublicJqLimits, PublicCliArgumentFailure> {
             val timeout =
