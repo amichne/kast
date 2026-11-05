@@ -43,7 +43,7 @@ open class PublicJqWorkerProcessTest {
         val oversized = Base64.getEncoder().encodeToString(ByteArray(MAX_PROGRAM_BYTES + 1) { 32 })
         val invalidUtf8 = Base64.getEncoder().encodeToString(byteArrayOf(0xFF.toByte()))
         for (argument in listOf("?", "", "AA==", invalidUtf8, oversized, "a".repeat(oversized.length + 1))) {
-            val valid = request(".")
+            val valid = request(".", input = "")
             val result =
                 PublicJqProcess(Path.of("/"), emptyMap())
                     .execute(valid.copy(arguments = valid.arguments.dropLast(1) + argument))
