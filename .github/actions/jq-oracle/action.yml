@@ -1,12 +1,29 @@
 name: Install jq oracle
-description: Install only the jq qualification version declared in mise.toml
+description: Install the declared jq qualification version with private CI tool state
 runs:
   using: composite
   steps:
     - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+      # Shim refresh must not open tracked configs from the runner user's workspaces.
+      env:
+        MISE_CONFIG_DIR: ${{ runner.temp }}/kast-jq-config
+        MISE_SYSTEM_CONFIG_DIR: ${{ runner.temp }}/kast-jq-system
+        MISE_GLOBAL_CONFIG_FILE: ${{ runner.temp }}/kast-jq-global.toml
+        MISE_DATA_DIR: ${{ runner.temp }}/kast-jq-tools
+        MISE_STATE_DIR: ${{ runner.temp }}/kast-jq-state
+        MISE_CACHE_DIR: ${{ runner.temp }}/kast-jq-cache
       with:
+        mise_dir: ${{ runner.temp }}/kast-jq-tools
+        cache_key_prefix: kast-jq-private-v1
         install_args: jq
         add_shims_to_path: false
         env: false
     - shell: bash
+      env:
+        MISE_CONFIG_DIR: ${{ runner.temp }}/kast-jq-config
+        MISE_SYSTEM_CONFIG_DIR: ${{ runner.temp }}/kast-jq-system
+        MISE_GLOBAL_CONFIG_FILE: ${{ runner.temp }}/kast-jq-global.toml
+        MISE_DATA_DIR: ${{ runner.temp }}/kast-jq-tools
+        MISE_STATE_DIR: ${{ runner.temp }}/kast-jq-state
+        MISE_CACHE_DIR: ${{ runner.temp }}/kast-jq-cache
       run: mise bin-paths jq >> "$GITHUB_PATH"
