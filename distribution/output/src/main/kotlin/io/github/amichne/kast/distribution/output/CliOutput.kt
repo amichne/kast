@@ -25,10 +25,15 @@ fun renderCliOutput(document: String, format: CliOutputFormat): Refinement<Strin
 private data class CliOutputRejection(
     val failure: CliOutputFailure,
     @Required val type: String = "rejected",
+    val guidance: String? = null,
 )
 
 fun cliOutputRejection(failure: CliOutputFailure, format: CliOutputFormat): String {
-    val document = Json.encodeToString(CliOutputRejection(failure))
+    val guidance =
+        if (failure == CliOutputFailure.OUTPUT_VALUE_LOSS)
+            "TOON cannot preserve this projection exactly. Use --json to preserve jq's JSON values."
+        else null
+    val document = Json.encodeToString(CliOutputRejection(failure, guidance = guidance))
     return when (val rendered = renderCliOutput(document, format)) {
         is Refinement.Refined -> rendered.value
         is Refinement.Rejected -> error("Output rejection cannot be encoded")

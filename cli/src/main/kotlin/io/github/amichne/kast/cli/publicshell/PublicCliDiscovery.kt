@@ -56,6 +56,7 @@ internal data class PublicCliCommandDescriptor(
     @SerialName("input_schema") val inputSchema: String,
     @SerialName("output_schema") val outputSchema: String,
     @SerialName("catalog_restriction") val catalogRestriction: String,
+    val projection: PublicCliProjectionContract,
 )
 
 @Serializable
@@ -70,16 +71,6 @@ internal enum class PublicCliInputMode {
     FILE,
     STDIN,
 }
-
-@Serializable
-internal data class PublicCliFlagDescriptor(
-    val name: String,
-    @SerialName("takes_value") val takesValue: Boolean,
-    val repeated: Boolean,
-    /** The packaged JSON Schema fragment is dynamic schema data, not a second semantic contract. */
-    val schema: JsonObject? = null,
-    @SerialName("value_spellings") val valueSpellings: List<String> = emptyList(),
-)
 
 internal fun describePublicCli(command: PublicCliCommand.Describe): PublicCliDescriptor {
     val selected = command.command
@@ -168,6 +159,7 @@ private fun commandDescriptor(command: PublicCliCommandId, catalog: PublicToolCa
                 "COMMON admits only the packaged common grammar. Unsupported options reject without catalog promotion."
             PublicToolCatalog.COMPLETE -> "COMPLETE admits the complete packaged query_symbols grammar."
         },
+        PublicCliProjectionContract(generatedRequestSchema(PublicJqRejection.serializer())),
     )
 }
 
@@ -210,6 +202,10 @@ private fun flagDescriptor(
             PublicCliFlag.WORKSPACE,
             PublicCliFlag.CATALOG,
             PublicCliFlag.JSON,
+            PublicCliFlag.JQ,
+            PublicCliFlag.JQ_EXECUTABLE,
+            PublicCliFlag.JQ_TIMEOUT,
+            PublicCliFlag.JQ_BYTES,
             PublicCliFlag.HELP,
             PublicCliFlag.REQUEST,
             PublicCliFlag.REF,
@@ -219,17 +215,18 @@ private fun flagDescriptor(
             PublicCliFlag.SECTION,
             PublicCliFlag.POINTER -> null
         }
-    val values =
-        when (flag) {
-            PublicCliFlag.CATALOG -> PublicToolCatalog.entries.map { it.name.lowercase() }
-            PublicCliFlag.TERMINAL -> listOf("emit", "trace")
-            PublicCliFlag.OUTPUT -> listOf("symbols", "occurrences")
-            PublicCliFlag.TEXT -> listOf("complete", "none")
-            PublicCliFlag.SECTION -> listOf("input", "output", "examples")
-            else -> enumSpellings(schema)
-        }
-    return PublicCliFlagDescriptor(flag.spelling, flag.takesValue, flag.repeated, schema, values)
+    return PublicCliFlagDescriptor(flag.spelling, flag.takesValue, flag.repeated, schema, flagSpellings(flag, schema))
 }
+
+private fun flagSpellings(flag: PublicCliFlag, schema: JsonObject?): List<String> =
+    when (flag) {
+        PublicCliFlag.CATALOG -> PublicToolCatalog.entries.map { it.name.lowercase() }
+        PublicCliFlag.TERMINAL -> listOf("emit", "trace")
+        PublicCliFlag.OUTPUT -> listOf("symbols", "occurrences")
+        PublicCliFlag.TEXT -> listOf("complete", "none")
+        PublicCliFlag.SECTION -> listOf("input", "output", "examples")
+        else -> enumSpellings(schema)
+    }
 
 private fun describeFlag(flag: PublicCliFlag): PublicCliFlagDescriptor =
     PublicCliFlagDescriptor(

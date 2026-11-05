@@ -4,8 +4,8 @@ title: "Kast cli"
 description: "Owns the public semantic CLI, private process modes, direct tool sessions, installation workflows, and typed output projections."
 resource: "repo://cli"
 tags: [kast, navigation]
-timestamp: "2026-11-04T15:48:12Z"
-source_revision: e76c008f45cca6193a474aac08684b1f5206a7b3
+timestamp: "2026-11-04T23:47:43Z"
+source_revision: a40f353337068c7046aa4e9d2dbef161a21722ad
 code_sources:
   - path: build.gradle.kts
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
@@ -15,6 +15,11 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliSchemaPage.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiagnostics.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliInvocation.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqEngine.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqProcess.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqRecovery.kt
+  - path: cli/src/main/resources/META-INF/native-image/io.github.amichne.kast/query/reachability-metadata.json
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativeJqCompositionTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
@@ -143,6 +148,10 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - Public shell commands default to `COMPLETE`. Keep explicit `COMMON` restrictions without promotion.
 - Schema discovery uses literal JSON Pointers and bounded direct-child pages. Keep full exports explicit, preserve exact scalar facts, and never imply that a page is a complete validation schema.
 - Public shell `--json` overrides `KAST_OUTPUT_TOON`, including startup before the installed query launcher is admitted. Request documents remain JSON with either output format.
+- `PublicJqEngine` admits optional `--jq` programs before workspace effects and accepts exactly one JSON result. Keep projection options outside semantic request DTOs.
+- `PublicJqProcess` owns bounded child I/O, cancellation, and reaping. It must never recover through Host lifecycle operations or semantic retries.
+- Preserve unsuccessful documents and issued retained-result recovery. Use the shared guard for exact values before TOON encoding of user projections. `mise.toml` owns the oracle pin; runtime version support remains a separate policy.
+- The native reachability metadata admits the JDK collection types observed in the `JToon` decoder. Keep `NativeJqCompositionTest` passing after JDK or `JToon` upgrades, including empty and nested arrays.
 - `source --help` and `result --help` list their commands without workspace preparation.
 - Keep parser diagnostics on stderr. Preserve the response contract and exclude request payloads and paths from those diagnostics.
 - Packaged discovery and request planning use installed contracts before workspace or host composition.

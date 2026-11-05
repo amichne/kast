@@ -1,9 +1,11 @@
 package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.cli.rpc.ToolRpcFailure
+import io.github.amichne.kast.distribution.contract.configuration.CliOutputFailure
 import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import io.github.amichne.kast.distribution.output.cliOutputRejection
 import io.github.amichne.kast.distribution.output.renderCliOutput
+import io.github.amichne.kast.distribution.output.renderLosslessCliOutput
 import io.github.amichne.kast.kernel.Refinement
 import java.io.OutputStream
 import sun.misc.Signal
@@ -45,6 +47,18 @@ private fun runPublicWorker(
 internal fun presentPublicOutput(prepared: PublicPreparedOutput, format: CliOutputFormat): PublicPreparedOutput =
     when (prepared.content) {
         PublicOutputContent.HELP -> prepared
+        is PublicOutputContent.Projection ->
+            when (val rendered = renderLosslessCliOutput(prepared.text, format)) {
+                is Refinement.Refined ->
+                    if (rendered.value.text.toByteArray(Charsets.UTF_8).size >= prepared.content.limits.bytes)
+                        presentPublicOutput(
+                            jqPresentationFailure(CliOutputFailure.OUTPUT_LIMIT_EXCEEDED, prepared.content),
+                            format,
+                        )
+                    else prepared.copy(text = rendered.value.text)
+                is Refinement.Rejected ->
+                    presentPublicOutput(jqPresentationFailure(rendered.failure, prepared.content), format)
+            }
         PublicOutputContent.DOCUMENT ->
             when (val rendered = renderCliOutput(prepared.text, format)) {
                 is Refinement.Refined -> prepared.copy(text = rendered.value)

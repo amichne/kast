@@ -147,4 +147,62 @@ If that budget expires, the CLI returns status `124`.
 A longer grant does not resolve missing callback proof.
 Keep the reported stage and readiness evidence before a new query.
 
+## Filter structured output
+
+Use `--jq FILTER` to run an installed jq on one successful JSON result before Kast encodes it as TOON or JSON:
+
+```shell
+kast query plan --name OrderService --fields name,location \
+  --jq '{type,fields:.request.output.fields}'
+```
+
+The filter must emit exactly one JSON value. Use `map(...)` or `[FILTER]` to collect a generator explicitly.
+An empty stream rejects; an empty array, `false`, and `null` are valid results.
+Kast does not add an array, flatten nested arrays, select the first result, or enable jq's `-e` option.
+For ordinary jq streams, raw strings, variable bindings, or other jq command options, use a JSON pipeline:
+
+```shell
+set -o pipefail
+kast query plan --name OrderService --json | jq -r '.request.output.fields[]'
+```
+
+Read the actual output contract before selecting paths. A presentation header, compact graph, and verbose result can have different fields.
+Filtering does not request missing fields, read another page, follow a continuation, or rerun a query.
+Keep `--fields` and semantic scope constraints on the original request when they can reduce its work.
+Preserve completion, qualifications, and recovery evidence when interpreting a projection.
+
+Kast checks the jq version and compiles the filter before workspace effects.
+Workspace failures, qualified results, time limits, and other nonzero Kast statuses keep their original documents without filtering.
+After successful semantic work, a jq runtime failure discards any partial filter output and reports its stage and child exit status.
+Use the retained result authority for recovery when available; projection failure does not retry semantic work.
+If a rejection includes `recovery`, save that value as `recovery.json` and read it without the failed filter:
+
+```shell
+kast query --request recovery.json --json
+```
+
+The recovery preserves the issued reference and original output kind. A normal retained result is read from its beginning; an issued detail request remains unchanged.
+
+Supported engines are stable jq versions `>=1.8.2,<2`. The qualification pin lives in `mise.toml`; newer supported versions can run without changing that pin.
+Kast does not install or download jq. Automatic executable lookup ignores relative PATH entries and executables inside the current working directory.
+Use `--jq-executable /absolute/path/to/jq` to select an executable explicitly, including when PATH contains a tool-manager shim.
+Filters are trusted code: jq can read its environment, import modules or data, and consume substantial memory. This option does not provide a sandbox.
+Kast passes the filter as one argument without a shell. It does not echo filter text, source payloads, or jq stderr in its rejection documents.
+
+| Option | Default | Accepted values |
+| --- | --- | --- |
+| `--jq-timeout-ms` | `5000` | `1..60000`, for each version, compilation, and filtering child |
+| `--jq-max-bytes` | `16777216` | `1..67108864`, for filter input, stdout, and successful encoded projections including their newline |
+
+These options require `--jq` and have no effect on workspace waiting or semantic budgets.
+The version response has a separate 1024-byte bound, and each child's stderr has a 32768-byte bound.
+On expiry or cancellation, Kast terminates and reaps its owned jq child. These limits bound capture and publication; they do not impose an operating-system memory limit on jq.
+`kast describe COMMAND` includes the default filter limits and a standalone schema for fixed filter rejections.
+Its normal output schema describes unfiltered results; a successful user projection can be any JSON value.
+
+TOON projections must preserve the selected JSON values exactly, including numerical precision and array shape.
+If the encoder cannot preserve a number, Kast rejects with `OUTPUT_VALUE_LOSS` and directs you to `--json`.
+JSON keeps jq's original numeric tokens. TOON encoding also rejects projections nested more than 128 levels deep.
+Filtering can reduce returned data; the reduction depends on the filter and result shape.
+
 Use [query contracts](/reference/api), [result contracts](/reference/responses), and [source identity](/reference/symbols) for detailed evidence rules.

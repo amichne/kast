@@ -1,0 +1,12 @@
+name: Install jq oracle
+description: Install only the jq qualification version declared in mise.toml
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+      with:
+        install_args: jq
+        add_shims_to_path: false
+        env: false
+    - shell: bash
+      run: mise bin-paths jq >> "$GITHUB_PATH"
