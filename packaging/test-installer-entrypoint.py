@@ -111,6 +111,7 @@ class ControlRecoveryFixture:
 
 class InstallerEntrypointTest(unittest.TestCase):
     def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3", reset_capability: bool = False,
+                          coordinator_fixture: bool = False,
                           completion_capability: bytes | None = b"1\n"):
         root = Path(directory).resolve()
         home = root / "home"
@@ -143,6 +144,13 @@ class InstallerEntrypointTest(unittest.TestCase):
         info.size = len(executable)
         with tarfile.open(control, "w:gz") as archive:
             archive.addfile(info, io.BytesIO(executable))
+            if coordinator_fixture:
+                # Argument-routing fixture only; no native/installation success is inferred.
+                for name in ('managed_installation.py', 'managed_installation.py.lock'):
+                    content = b'fixture runner input, never executed as production code\n'
+                    item = tarfile.TarInfo('share/kast/' + name)
+                    item.mode, item.size = 0o644, len(content)
+                    archive.addfile(item, io.BytesIO(content))
             if completion_capability is not None:
                 capability = tarfile.TarInfo("share/kast/install-completion-v1")
                 capability.mode, capability.size = 0o644, len(completion_capability)
@@ -261,7 +269,8 @@ esac
             self.assertIn('options=install --stage-only', result.stderr)
 
     def developer_curl(self, directory: str, assets: Path, pointer: str | None, *, version: str = '0.0.123',
-                       stable_url: str | None = None, release_status: int = 0):
+                       stable_url: str | None = None, release_status: int = 0,
+                       catalog_status: int = 404, catalog_transfer_status: int = 0):
         binary = Path(directory) / "bin/curl"
         binary.write_text(f"""#!/usr/bin/env python3
 from pathlib import Path
@@ -281,6 +290,16 @@ elif url == 'https://api.github.com/repos/amichne/kast/contents/latest.txt?ref=d
     if {pointer is None!r}:
         raise SystemExit(22)
     print({pointer!r})
+elif url == 'https://api.github.com/repos/amichne/kast/contents/builds-v2.json?ref=developer-latest':
+    assert '--fail' not in arguments and '--output' in arguments and '--write-out' in arguments
+    assert 'Accept: application/vnd.github.raw+json' in arguments and 'Cache-Control: no-cache' in arguments
+    target = Path(arguments[arguments.index('--output') + 1])
+    if {catalog_status!r} == 200:
+        shutil.copyfile(Path({str(assets)!r}) / 'builds-v2.json', target)
+    else:
+        target.write_text('not a catalog')
+    sys.stdout.write(str({catalog_status!r}))
+    raise SystemExit({catalog_transfer_status!r})
 elif url == 'https://github.com/amichne/kast/releases/latest' and {stable_url is not None!r}:
     assert '--head' in arguments and '--write-out' in arguments
     sys.stdout.write({stable_url!r})
@@ -298,6 +317,179 @@ else:
 """)
         binary.chmod(0o755)
         return {"PATH": str(binary.parent) + os.pathsep + TOOL_PATH}
+
+    def versioned_dispatch_fixture(self, directory: str, line: str, *, runner_status: int = 0):
+        idea, assets, environment = self.installer_fixture(directory, version='0.0.123',
+            plugin_line=line, coordinator_fixture=True)
+        if line == '263':
+            (idea / 'Resources/build.txt').write_text('IU-263.1234\n')
+            metadata = idea / 'Resources/product-info.json'
+            metadata.write_text(metadata.read_text().replace('262.1234', '263.1234')
+                .replace('2026.2', '2026.3'))
+        spec = importlib.util.spec_from_file_location('bootstrap_auth_fixture',
+            ROOT / 'packaging/test-bootstrap-release-auth.py')
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        control = assets / 'kast-control-v0.0.123-macos-aarch64.tar.gz'
+        case = module.fixture(control.read_bytes())
+        (assets / 'builds-v2.json').write_bytes(case.catalog)
+        for name, raw in zip(('candidate-v2.json', 'promotion-v2.json', 'candidate.json', 'promotion.json'), case.records):
+            (assets / name).write_bytes(raw)
+        for key in ('KAST_VERSION', 'KAST_INSTALL_ASSETS_DIRECTORY'):
+            environment.pop(key)
+        environment.update(self.developer_curl(directory, assets,
+            'developer-v0.0.123 0.0.123 ' + 'a' * 40, catalog_status=200))
+        routing = Path(directory) / 'routing.json'
+        runner = Path(directory) / 'bin/uv'
+        # This injected child proves ingress/arguments only. It does not install or run an IDE.
+        runner.write_text(f'''#!/usr/bin/env python3
+import json
+from pathlib import Path
+import sys
+arguments = sys.argv[1:]
+assert arguments[:3] == ['run', '--locked', '--script']
+assert Path(arguments[3]).name == 'managed_installation.py'
+selection = Path(arguments[arguments.index('--resolved-selection') + 1])
+Path({str(routing)!r}).write_text(json.dumps({{'arguments': arguments, 'selection': json.loads(selection.read_bytes())}}))
+print('fixture coordinator routing reached')
+raise SystemExit({runner_status!r})
+''')
+        runner.chmod(0o755)
+        return idea, assets, environment, routing, case
+
+    def test_versioned_public_bootstrap_routes_full_authenticated_capture_for_each_target(self):
+        for line in ('262', '263'):
+            with self.subTest(line=line), tempfile.TemporaryDirectory(prefix='kast-bootstrap-v2-route-') as directory:
+                idea, assets, environment, routing, case = self.versioned_dispatch_fixture(directory, line)
+                result = subprocess.run([str(BASH), '-c', INSTALLER.read_text(), '--', '--developer-latest',
+                    '--idea-home', str(idea), '--dry-run', '--restart-ide', '--skip-codex-plugin'],
+                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+                self.assertEqual(0, result.returncode, result.stderr)
+                observed = json.loads(routing.read_bytes())
+                self.assertEqual(json.loads(json.dumps(asdict(case.selected))), observed['selection'])
+                self.assertIn('--dry-run', observed['arguments'])
+                self.assertIn('--restart-ide', observed['arguments'])
+                self.assertIn('--idea-home', observed['arguments'])
+                self.assertIn(str(idea), observed['arguments'])
+                self.assertIn('Paired publication and exact Control bytes authenticated', result.stderr)
+                calls = [shlex.split(item) for item in (Path(directory) / 'curl.calls').read_text().splitlines()]
+                self.assertFalse(any('.zip' in call[-1] for call in calls))
+                self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_versioned_control_tamper_and_unpaired_promotion_stop_before_downloaded_code(self):
+        for altered in ('control', 'promotion'):
+            with self.subTest(altered=altered), tempfile.TemporaryDirectory(prefix='kast-bootstrap-v2-tamper-') as directory:
+                idea, assets, environment, routing, _ = self.versioned_dispatch_fixture(directory, '263')
+                if altered == 'control':
+                    path = assets / 'kast-control-v0.0.123-macos-aarch64.tar.gz'
+                    with path.open('ab') as content:
+                        content.write(b'changed authenticated bytes')
+                    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                    path.with_name(path.name + '.sha256').write_text(f'{digest}  {path.name}\n')
+                else:
+                    (assets / 'promotion.json').write_text('{}')
+                result = subprocess.run([str(BASH), str(INSTALLER), '--developer-latest',
+                    '--idea-home', str(idea), '--dry-run', '--skip-codex-plugin'],
+                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn('CONTROL_MISMATCH' if altered == 'control' else 'QUALIFICATION_UNPROVEN', result.stderr)
+                self.assertNotIn('Traceback', result.stderr)
+                self.assertFalse(routing.exists())
+                self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_present_invalid_or_unavailable_v2_catalog_never_uses_legacy_assets(self):
+        for status, transfer in ((200, 0), (503, 0), (200, 7)):
+            with self.subTest(status=status, transfer=transfer), tempfile.TemporaryDirectory(prefix='kast-bootstrap-v2-reject-') as directory:
+                idea, assets, environment = self.installer_fixture(directory, version='0.0.123')
+                for key in ('KAST_VERSION', 'KAST_INSTALL_ASSETS_DIRECTORY'):
+                    environment.pop(key)
+                (assets / 'builds-v2.json').write_text('{"schemaVersion":2}')
+                environment.update(self.developer_curl(directory, assets,
+                    'developer-v0.0.123 0.0.123 ' + 'a' * 40,
+                    catalog_status=status, catalog_transfer_status=transfer))
+                result = subprocess.run([str(BASH), str(INSTALLER), '--developer-latest', '--idea-home',
+                    str(idea), '--dry-run', '--skip-codex-plugin'], cwd=ROOT, env=environment,
+                    text=True, capture_output=True, timeout=10)
+                self.assertNotEqual(0, result.returncode)
+                self.assertNotIn('Traceback', result.stderr)
+                self.assertEqual(2, len((Path(directory) / 'curl.calls').read_text().splitlines()))
+                self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_stable_263_and_legacy_263_reject_before_asset_effects(self):
+        for developer in (False, True):
+            with self.subTest(developer=developer), tempfile.TemporaryDirectory(prefix='kast-bootstrap-263-policy-') as directory:
+                idea, assets, environment, routing, _ = self.versioned_dispatch_fixture(directory, '263')
+                environment.update(self.developer_curl(directory, assets,
+                    'developer-v0.0.123 0.0.123 ' + 'a' * 40, catalog_status=404))
+                options = ['--developer-latest'] if developer else ['--version', '0.0.123']
+                result = subprocess.run([str(BASH), str(INSTALLER), *options, '--idea-home', str(idea),
+                    '--dry-run', '--skip-codex-plugin'], cwd=ROOT, env=environment,
+                    text=True, capture_output=True, timeout=10)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn('HOST_TARGET_UNAVAILABLE', result.stderr)
+                log = Path(directory) / 'curl.calls'
+                self.assertEqual(2 if developer else 0, len(log.read_text().splitlines()) if log.exists() else 0)
+                self.assertFalse(routing.exists())
+                self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_versioned_coordinator_failure_is_preserved_without_success_feedback(self):
+        with tempfile.TemporaryDirectory(prefix='kast-bootstrap-v2-child-failure-') as directory:
+            idea, _, environment, routing, _ = self.versioned_dispatch_fixture(directory, '263', runner_status=42)
+            result = subprocess.run([str(BASH), str(INSTALLER), '--developer-latest', '--idea-home',
+                str(idea), '--dry-run', '--skip-codex-plugin'], cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertEqual(42, result.returncode, result.stderr)
+            self.assertIn('Recoverable versioned installation failed (exit 42)', result.stderr)
+            self.assertNotIn('planned the captured', result.stderr)
+            self.assertNotIn('installed Kast Control', result.stderr)
+            self.assertTrue(routing.exists())
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_263_local_stage_only_remains_control_only(self):
+        with tempfile.TemporaryDirectory(prefix='kast-bootstrap-263-stage-') as directory:
+            idea, assets, environment = self.installer_fixture(directory, plugin_line='263', reset_capability=True)
+            (idea / 'Resources/build.txt').write_text('IU-263.1234\n')
+            metadata = idea / 'Resources/product-info.json'
+            metadata.write_text(metadata.read_text().replace('262.1234', '263.1234').replace('2026.2', '2026.3'))
+            for path in assets.glob('*.zip*'):
+                path.unlink()
+            result = subprocess.run([str(BASH), str(INSTALLER), '--stage-only', '--idea-home', str(idea),
+                '--dry-run', '--skip-codex-plugin'], cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn('options=install --stage-only', result.stderr)
+            self.assertNotIn('downloading Kast Host', result.stderr)
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_versioned_explicit_legacy_force_rejects_before_code_download(self):
+        with tempfile.TemporaryDirectory(prefix='kast-bootstrap-v2-force-') as directory:
+            idea, _, environment, routing, _ = self.versioned_dispatch_fixture(directory, '263')
+            result = subprocess.run([str(BASH), str(INSTALLER), '--developer-latest', '--force',
+                '--idea-home', str(idea), '--dry-run', '--skip-codex-plugin'], cwd=ROOT,
+                env=environment, text=True, capture_output=True, timeout=10)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn('--force is legacy-only', result.stderr)
+            self.assertEqual(2, len((Path(directory) / 'curl.calls').read_text().splitlines()))
+            self.assertFalse(routing.exists())
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_developer_conflicting_explicit_host_selector_rejects_before_code_download(self):
+        for inherited in (False, True):
+            with self.subTest(inherited=inherited), tempfile.TemporaryDirectory(prefix='kast-bootstrap-host-selector-') as directory:
+                idea, _, environment, routing, _ = self.versioned_dispatch_fixture(directory, '263')
+                options = [] if inherited else ['--host-version', '9.9.9']
+                if inherited:
+                    environment['KAST_HOST_VERSION'] = '9.9.9'
+                result = subprocess.run([str(BASH), str(INSTALLER), '--developer-latest', *options,
+                    '--idea-home', str(idea), '--dry-run', '--skip-codex-plugin'], cwd=ROOT,
+                    env=environment, text=True, capture_output=True, timeout=10)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn('developer build requires its exact tested Host version', result.stderr)
+                self.assertFalse(routing.exists())
+                self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+                self.assertFalse(any('releases/download' in call for call in (Path(directory) / 'curl.calls').read_text().splitlines()))
 
     def test_stable_latest_uses_one_release_for_control_and_host(self):
         with tempfile.TemporaryDirectory(prefix='kast-stable-latest-') as directory:
@@ -1337,7 +1529,9 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
                 [str(BASH), "-c", INSTALLER.read_text(), "--", "--developer-latest", "--idea-home", str(idea), "--dry-run"],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
-            transfers = [shlex.split(line) for line in (Path(directory) / 'curl.calls').read_text().splitlines()][1:]
+            calls = [shlex.split(line) for line in (Path(directory) / 'curl.calls').read_text().splitlines()]
+            self.assertIn('/contents/builds-v2.json?', calls[1][-1])
+            transfers = calls[2:]
             self.assertEqual(6, len(transfers))
             for arguments in transfers:
                 self.assertIn('--silent', arguments)
@@ -1376,7 +1570,9 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             self.assertEqual([], failures)
             output = b''.join(chunks).decode()
             self.assertEqual(0, result.returncode, output)
-            transfers = [shlex.split(line) for line in (Path(directory) / 'curl.calls').read_text().splitlines()][1:]
+            calls = [shlex.split(line) for line in (Path(directory) / 'curl.calls').read_text().splitlines()]
+            self.assertIn('/contents/builds-v2.json?', calls[1][-1])
+            transfers = calls[2:]
             self.assertEqual(6, len(transfers))
             for arguments in transfers:
                 self.assertIn('--progress-bar', arguments)
@@ -1399,12 +1595,13 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             result = subprocess.run([str(BASH), '-c', command], cwd=checkout, env=environment,
                 text=True, capture_output=True, timeout=10)
             calls = [shlex.split(line) for line in (Path(directory) / 'curl.calls').read_text().splitlines()]
-            self.assertEqual(8, len(calls))
+            self.assertEqual(9, len(calls))
             self.assertEqual('https://raw.githubusercontent.com/amichne/kast/main/install.sh', calls[0][-1])
             self.assertEqual('https://api.github.com/repos/amichne/kast/contents/latest.txt?ref=developer-latest', calls[1][-1])
             self.assertIn('Accept: application/vnd.github.raw+json', calls[1])
             self.assertIn('Cache-Control: no-cache', calls[1])
-            for arguments in calls[2:]:
+            self.assertIn('/contents/builds-v2.json?', calls[2][-1])
+            for arguments in calls[3:]:
                 self.assertIn('/developer-v0.0.3336/', arguments[-1])
             self.assertEqual('version=0.0.3331\n', (checkout / 'gradle.properties').read_text())
         self.assertEqual(0, result.returncode, result.stderr)

@@ -28,6 +28,7 @@ MAXIMUM_RECORD_BYTES = 65_536
 PLATFORM = "macos-aarch64"
 REPOSITORY = "amichne/kast"
 CATALOG_URL = f"https://raw.githubusercontent.com/{REPOSITORY}/developer-latest/builds.json"
+CATALOG_V2_URL = f"https://raw.githubusercontent.com/{REPOSITORY}/developer-latest/builds-v2.json"
 STABLE_URL = f"https://api.github.com/repos/{REPOSITORY}/releases/latest"
 RELEASE_URL = f"https://github.com/{REPOSITORY}/releases/download"
 VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
@@ -41,6 +42,7 @@ class Failure(StrEnum):
     AMBIGUOUS_COMMIT = "AMBIGUOUS_COMMIT"
     BINARY_UNAVAILABLE = "BINARY_UNAVAILABLE"
     PLATFORM_UNAVAILABLE = "PLATFORM_UNAVAILABLE"
+    HOST_TARGET_UNAVAILABLE = "HOST_TARGET_UNAVAILABLE"
     CATALOG_UNAVAILABLE = "CATALOG_UNAVAILABLE"
     ARTIFACT_INVALID = "ARTIFACT_INVALID"
     INSTALLER_CONTRACT_UNSUPPORTED = "INSTALLER_CONTRACT_UNSUPPORTED"
@@ -91,6 +93,30 @@ class RecordReference:
 
 
 @dataclass(frozen=True, slots=True)
+class SdkTarget:
+    intellijReleaseLine: Literal["262", "263"]
+    ideBuild: str
+    kotlinPluginBuild: str
+
+
+@dataclass(frozen=True, slots=True)
+class HostTarget(SdkTarget):
+    record: RecordReference
+
+
+@dataclass(frozen=True, slots=True)
+class SupportedIdeTargets:
+    defaultTarget: Literal["262"]
+    targets: tuple[SdkTarget, SdkTarget]
+
+
+@dataclass(frozen=True, slots=True)
+class Legacy262Target:
+    recordName: str
+    intellijReleaseLine: Literal["262"] = "262"
+
+
+@dataclass(frozen=True, slots=True)
 class MainEntry:
     mainRevision: str
     buildRevision: str
@@ -105,6 +131,11 @@ class MainEntry:
         return BuildIdentity(
             self.releaseTag, self.version, self.buildRevision, self.sourceTree, self.mainRevision
         )
+
+
+@dataclass(frozen=True, slots=True)
+class MainEntryV2(MainEntry):
+    hostTargets: tuple[HostTarget, HostTarget]
 
 
 @dataclass(frozen=True, slots=True)
@@ -259,8 +290,87 @@ def parse_identity(value: object) -> BuildIdentity | Failure:
     return Failure.SELECTOR_INVALID
 
 
-def parse_entry(value: object) -> MainEntry | Failure:
+def parse_sdk_target(line: object, ide: object, kotlin: object) -> SdkTarget | Failure:
+    if (
+        line not in ("262", "263")
+        or not isinstance(ide, str)
+        or len(ide) > 64
+        or re.fullmatch(rf"{line}\.[0-9]+(?:\.[0-9]+)*", ide) is None
+        or not isinstance(kotlin, str)
+        or len(kotlin) > 80
+        or re.fullmatch(rf"{line}\.[0-9]+(?:\.[0-9]+)*-IJ", kotlin) is None
+    ):
+        return Failure.ARTIFACT_INVALID
+    return SdkTarget(line, ide, kotlin)
+
+
+def parse_supported_ide_targets(raw: bytes) -> SupportedIdeTargets | Failure:
+    if len(raw) > MAXIMUM_RECORD_BYTES:
+        return Failure.ARTIFACT_INVALID
+    try:
+        value = document(raw)
+    except (ValueError, UnicodeError, RecursionError):
+        return Failure.ARTIFACT_INVALID
+    if (
+        not mapping(value)
+        or set(value) != {"schemaVersion", "defaultTarget", "targets"}
+        or type(value["schemaVersion"]) is not int
+        or value["schemaVersion"] != 1
+        or value["defaultTarget"] != "262"
+    ):
+        return Failure.ARTIFACT_INVALID
+    targets = value["targets"]
+    if not sequence(targets) or len(targets) != 2:
+        return Failure.ARTIFACT_INVALID
+    admitted: list[SdkTarget] = []
+    for target in targets:
+        if not mapping(target) or set(target) != {
+            "intellijReleaseLine",
+            "ideBuild",
+            "kotlinPluginBuild",
+        }:
+            return Failure.ARTIFACT_INVALID
+        sdk = parse_sdk_target(
+            target["intellijReleaseLine"], target["ideBuild"], target["kotlinPluginBuild"]
+        )
+        if isinstance(sdk, Failure):
+            return sdk
+        admitted.append(sdk)
+    first, second = admitted
+    if first.intellijReleaseLine != "262" or second.intellijReleaseLine != "263":
+        return Failure.ARTIFACT_INVALID
+    return SupportedIdeTargets("262", (first, second))
+
+
+def parse_host_target(value: object, version: str) -> HostTarget | Failure:
     if not mapping(value) or set(value) != {
+        "intellijReleaseLine",
+        "ideBuild",
+        "kotlinPluginBuild",
+        "record",
+    }:
+        return Failure.CATALOG_UNAVAILABLE
+    line, ide, kotlin, record = (
+        value[key] for key in ("intellijReleaseLine", "ideBuild", "kotlinPluginBuild", "record")
+    )
+    sdk = parse_sdk_target(line, ide, kotlin)
+    if isinstance(sdk, Failure) or not mapping(record) or set(record) != {"name", "sha256"}:
+        return Failure.CATALOG_UNAVAILABLE
+    name = (
+        f"kast-host-release-v{version}.json"
+        if sdk.intellijReleaseLine == "262"
+        else f"kast-host-release-v{version}-idea-263.json"
+    )
+    digest = record["sha256"]
+    if record["name"] != name or not isinstance(digest, str) or not DIGEST.fullmatch(digest):
+        return Failure.CATALOG_UNAVAILABLE
+    return HostTarget(
+        sdk.intellijReleaseLine, sdk.ideBuild, sdk.kotlinPluginBuild, RecordReference(name, digest)
+    )
+
+
+def parse_entry(value: object, schema: Literal[1, 2] = 1) -> MainEntry | Failure:
+    fields = {
         "mainRevision",
         "buildRevision",
         "sourceTree",
@@ -269,7 +379,10 @@ def parse_entry(value: object) -> MainEntry | Failure:
         "platformTargets",
         "candidate",
         "promotion",
-    }:
+    }
+    if schema == 2:
+        fields.add("hostTargets")
+    if not mapping(value) or set(value) != fields:
         return Failure.CATALOG_UNAVAILABLE
     main, build, tree, tag, version, platforms = (
         value[key]
@@ -305,7 +418,11 @@ def parse_entry(value: object) -> MainEntry | Failure:
     if not targets:
         return Failure.CATALOG_UNAVAILABLE
     references: list[RecordReference] = []
-    for key, expected in (("candidate", "candidate.json"), ("promotion", "promotion.json")):
+    suffix = "-v2" if schema == 2 else ""
+    for key, expected in (
+        ("candidate", f"candidate{suffix}.json"),
+        ("promotion", f"promotion{suffix}.json"),
+    ):
         record = value[key]
         if (
             not mapping(record)
@@ -316,7 +433,48 @@ def parse_entry(value: object) -> MainEntry | Failure:
         ):
             return Failure.CATALOG_UNAVAILABLE
         references.append(RecordReference(expected, record["sha256"]))
-    return MainEntry(main, build, tree, tag, version, tuple(targets), references[0], references[1])
+    if schema == 1:
+        return MainEntry(
+            main, build, tree, tag, version, tuple(targets), references[0], references[1]
+        )
+    hosts = parse_host_targets(value["hostTargets"], version)
+    if isinstance(hosts, Failure):
+        return hosts
+    return MainEntryV2(
+        main, build, tree, tag, version, tuple(targets), references[0], references[1], hosts
+    )
+
+
+def parse_host_targets(raw_hosts: object, version: str) -> tuple[HostTarget, HostTarget] | Failure:
+    if not sequence(raw_hosts) or len(raw_hosts) != 2:
+        return Failure.CATALOG_UNAVAILABLE
+    first, second = (parse_host_target(item, version) for item in raw_hosts)
+    if (
+        isinstance(first, Failure)
+        or isinstance(second, Failure)
+        or first.intellijReleaseLine != "262"
+        or second.intellijReleaseLine != "263"
+    ):
+        return Failure.CATALOG_UNAVAILABLE
+    return first, second
+
+
+def select_host_target(
+    selection: Selection, idea_line: str
+) -> HostTarget | Legacy262Target | Rejected:
+    if isinstance(selection, MainSelection) and isinstance(selection.catalogEntry, MainEntryV2):
+        for target in selection.catalogEntry.hostTargets:
+            if target.intellijReleaseLine == idea_line:
+                return target
+    elif idea_line == "262":
+        return Legacy262Target(f"kast-host-release-v{selection.version}.json")
+    requested = (
+        selection.identity.mainRevision
+        if isinstance(selection, MainSelection)
+        else selection.version
+    )
+    assert requested is not None
+    return Rejected(Failure.HOST_TARGET_UNAVAILABLE, Stage.SELECTION, requested)
 
 
 def decode_selection(raw: bytes) -> Selection | Rejected:
@@ -341,7 +499,12 @@ def decode_selection(raw: bytes) -> Selection | Rejected:
     if set(value) == {"type", "identity", "policy", "catalogEntry"} and value["type"] == "Main":
         identity, entry, policy = (
             parse_identity(value["identity"]),
-            parse_entry(value["catalogEntry"]),
+            parse_entry(
+                value["catalogEntry"],
+                2
+                if mapping(value["catalogEntry"]) and "hostTargets" in value["catalogEntry"]
+                else 1,
+            ),
             value["policy"],
         )
         if (
@@ -397,7 +560,11 @@ def resolve_selection(
             ):
                 return StableSelection(tag[1:], tag, StablePolicy.TRACK)
         return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
-    raw = source.read(CATALOG_URL, MAXIMUM_RECORD_BYTES)
+    raw = source.read(CATALOG_V2_URL, MAXIMUM_RECORD_BYTES)
+    schema: Literal[1, 2] = 2
+    if raw is TransferFailure.NOT_FOUND:
+        schema = 1
+        raw = source.read(CATALOG_URL, MAXIMUM_RECORD_BYTES)
     if isinstance(raw, TransferFailure):
         return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
     try:
@@ -408,14 +575,14 @@ def resolve_selection(
         not mapping(parsed)
         or set(parsed) != {"schemaVersion", "builds"}
         or type(parsed["schemaVersion"]) is not int
-        or parsed["schemaVersion"] != 1
+        or parsed["schemaVersion"] != schema
         or not sequence(parsed["builds"])
         or len(parsed["builds"]) > 5
     ):
         return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
     entries: list[MainEntry] = []
     for item in parsed["builds"]:
-        admitted = parse_entry(item)
+        admitted = parse_entry(item, schema)
         if isinstance(admitted, Failure) or any(
             prior.mainRevision == admitted.mainRevision for prior in entries
         ):
@@ -581,6 +748,13 @@ class AdmittedComposition:
     integration_digest: str
 
 
+@dataclass(frozen=True, slots=True)
+class ArchiveBuildIdentity:
+    version: str
+    buildRevision: str
+    sourceTree: str
+
+
 def asset_url(selection: Selection, name: str) -> str:
     return f"{RELEASE_URL}/{selection.releaseTag}/{name}"
 
@@ -685,7 +859,10 @@ def extract_control(archive: Path, destination: Path) -> Failure | Admission:
 
 
 def inspect_host(
-    archive: Path, identity: BuildIdentity, contract: HostedContract
+    archive: Path,
+    identity: BuildIdentity | ArchiveBuildIdentity,
+    contract: HostedContract,
+    target: SdkTarget | Legacy262Target | None = None,
 ) -> Failure | Admission:
     try:
         with zipfile.ZipFile(archive) as source:
@@ -729,6 +906,15 @@ def inspect_host(
                     or descriptor.findtext("version") != identity.version
                 ):
                     return Failure.ARTIFACT_INVALID
+                if target is not None:
+                    compatibility = descriptor.find("idea-version")
+                    if (
+                        compatibility is None
+                        or compatibility.get("since-build", "").split(".")[0]
+                        != target.intellijReleaseLine
+                        or compatibility.get("until-build") != target.intellijReleaseLine + ".*"
+                    ):
+                        return Failure.ARTIFACT_INVALID
                 if parse_contract(document(plugin.read("hosted-contract.json"))) != contract:
                     return Failure.ARTIFACT_INVALID
                 properties: dict[str, str] = {}
@@ -746,6 +932,11 @@ def inspect_host(
                     properties.get("sourceRevision"),
                     properties.get("sourceTree"),
                 ) != (identity.version, identity.buildRevision, identity.sourceTree):
+                    return Failure.ARTIFACT_INVALID
+                if isinstance(target, SdkTarget) and (
+                    properties.get("ideBuild"),
+                    properties.get("kotlinBuild"),
+                ) != (target.ideBuild, target.kotlinPluginBuild):
                     return Failure.ARTIFACT_INVALID
         return Admission.ADMITTED
     except (OSError, ValueError, KeyError, UnicodeError, XML.ParseError, zipfile.BadZipFile):
@@ -779,6 +970,32 @@ def inspect_control(
             or parse_contract(metadata.get("requiredHostedContract")) != record.contract
         ):
             return Failure.ARTIFACT_INVALID
+        if isinstance(selection, MainSelection) and isinstance(selection.catalogEntry, MainEntryV2):
+            profile_path = control / "share/kast/intellij-targets.json"
+            with profile_path.open("rb") as stream:
+                profile = parse_supported_ide_targets(stream.read(MAXIMUM_RECORD_BYTES + 1))
+            hosts = selection.catalogEntry.hostTargets
+            expected_targets = tuple(
+                SdkTarget(host.intellijReleaseLine, host.ideBuild, host.kotlinPluginBuild)
+                for host in hosts
+            )
+            if (
+                isinstance(profile, Failure)
+                or profile.targets != expected_targets
+                or set(metadata)
+                != {
+                    "schemaVersion",
+                    "productVersion",
+                    "execution",
+                    "ideaBuild",
+                    "kotlinPluginBuild",
+                    "requiredHostedContract",
+                }
+                or type(metadata["schemaVersion"]) is not int
+                or metadata["ideaBuild"] != profile.targets[0].ideBuild
+                or metadata["kotlinPluginBuild"] != profile.targets[0].kotlinPluginBuild
+            ):
+                return Failure.ARTIFACT_INVALID
         build = document((control / "share/kast/build-identity.json").read_bytes())
         if (
             not mapping(build)
@@ -842,6 +1059,97 @@ def inspect_control(
         return Failure.ARTIFACT_INVALID
 
 
+def payload_names(version: str, dual: bool = False) -> frozenset[str]:
+    bases = {
+        f"kast-control-v{version}-{PLATFORM}.tar.gz",
+        f"kast-ide-hosted-v{version}-idea-262.zip",
+        f"kast-plugin-v{version}.zip",
+        f"kast-marketplace-v{version}.zip",
+        f"kast-control-release-v{version}.json",
+        f"kast-host-release-v{version}.json",
+        "host-installation.py",
+        f"kast-hosted-catalog-v{version}.json",
+        f"kast-module-knowledge-v{version}.json",
+        f"kast-sbom-v{version}.cdx.json",
+    }
+    if dual:
+        bases |= {
+            f"kast-ide-hosted-v{version}-idea-263.zip",
+            f"kast-host-release-v{version}-idea-263.json",
+        }
+    return frozenset(bases | {name + ".sha256" for name in bases})
+
+
+def parse_inventory(assets: object) -> dict[str, tuple[str, int]] | Failure:
+    if not sequence(assets) or not 1 <= len(assets) <= 32:
+        return Failure.ARTIFACT_INVALID
+    inventory: dict[str, tuple[str, int]] = {}
+    for asset in assets:
+        if not mapping(asset) or set(asset) != {"name", "sha256", "bytes"}:
+            return Failure.ARTIFACT_INVALID
+        name, digest, size = asset["name"], asset["sha256"], asset["bytes"]
+        if (
+            not isinstance(name, str)
+            or not re.fullmatch(r"[A-Za-z0-9_.-]{1,160}", name)
+            or name in (".", "..")
+            or name in inventory
+            or not isinstance(digest, str)
+            or not DIGEST.fullmatch(digest)
+            or type(size) is not int
+            or not 0 < size <= MAXIMUM_PAYLOAD_BYTES
+        ):
+            return Failure.ARTIFACT_INVALID
+        inventory[name] = (digest, size)
+    return inventory
+
+
+def admit_legacy_projection(
+    selection: MainSelection,
+    source: ReleaseSource,
+    candidate: dict[object, object],
+    promotion: dict[object, object],
+    inventory: dict[str, tuple[str, int]],
+) -> Failure | Admission:
+    raw_candidate = source.read(asset_url(selection, "candidate.json"), MAXIMUM_RECORD_BYTES)
+    raw_promotion = source.read(asset_url(selection, "promotion.json"), MAXIMUM_RECORD_BYTES)
+    if isinstance(raw_candidate, TransferFailure) or isinstance(raw_promotion, TransferFailure):
+        return Failure.ARTIFACT_INVALID
+    try:
+        legacy = document(raw_candidate)
+        proof = document(raw_promotion)
+    except (ValueError, UnicodeError, RecursionError):
+        return Failure.ARTIFACT_INVALID
+    if (
+        not mapping(legacy)
+        or not mapping(proof)
+        or set(legacy) != set(candidate) - {"hostTargets"}
+        or set(proof) != set(promotion)
+        or type(legacy["schemaVersion"]) is not int
+        or legacy["schemaVersion"] != 1
+        or type(proof["schemaVersion"]) is not int
+        or proof["schemaVersion"] != 1
+        or proof["candidateSha256"] != hashlib.sha256(raw_candidate).hexdigest()
+        or any(
+            type(legacy[key]) is not type(candidate[key]) or legacy[key] != candidate[key]
+            for key in set(legacy) - {"schemaVersion", "assets"}
+        )
+        or any(
+            type(proof[key]) is not type(promotion[key]) or proof[key] != promotion[key]
+            for key in set(proof) - {"schemaVersion", "candidateSha256"}
+        )
+    ):
+        return Failure.ARTIFACT_INVALID
+    legacy_inventory = parse_inventory(legacy["assets"])
+    names = payload_names(selection.version)
+    if (
+        isinstance(legacy_inventory, Failure)
+        or frozenset(legacy_inventory) != names
+        or any(legacy_inventory[name] != inventory.get(name) for name in names)
+    ):
+        return Failure.ARTIFACT_INVALID
+    return Admission.ADMITTED
+
+
 def admit_main_records(
     selection: MainSelection, source: ReleaseSource, downloaded: tuple[DownloadedFile, ...]
 ) -> Failure | Admission:
@@ -857,7 +1165,9 @@ def admit_main_records(
     candidate, promotion = values
     if not mapping(candidate) or not mapping(promotion):
         return Failure.ARTIFACT_INVALID
-    if set(candidate) != {
+    dual = isinstance(selection.catalogEntry, MainEntryV2)
+    schema = 2 if dual else 1
+    candidate_fields = {
         "schemaVersion",
         "repository",
         "sourceRevision",
@@ -870,7 +1180,10 @@ def admit_main_records(
         "platform",
         "toolchain",
         "assets",
-    } or set(promotion) != {
+    }
+    if dual:
+        candidate_fields.add("hostTargets")
+    if set(candidate) != candidate_fields or set(promotion) != {
         "schemaVersion",
         "repository",
         "buildRevision",
@@ -887,7 +1200,7 @@ def admit_main_records(
     identity = selection.identity
     if (
         type(candidate.get("schemaVersion")) is not int
-        or candidate.get("schemaVersion") != 1
+        or candidate.get("schemaVersion") != schema
         or candidate.get("repository") != REPOSITORY
         or candidate.get("sourceRevision") != identity.buildRevision
         or candidate.get("sourceTree") != identity.sourceTree
@@ -897,7 +1210,7 @@ def admit_main_records(
         return Failure.ARTIFACT_INVALID
     if (
         type(promotion.get("schemaVersion")) is not int
-        or promotion.get("schemaVersion") != 1
+        or promotion.get("schemaVersion") != schema
         or promotion.get("repository") != REPOSITORY
         or promotion.get("buildRevision") != identity.buildRevision
         or promotion.get("mergedRevision") != identity.mainRevision
@@ -934,48 +1247,22 @@ def admit_main_records(
         or not DIGEST.fullmatch(toolchain["releaseSha256"])
     ):
         return Failure.ARTIFACT_INVALID
-    assets = candidate.get("assets")
-    if not sequence(assets) or not 1 <= len(assets) <= 32:
+    inventory = parse_inventory(candidate.get("assets"))
+    if isinstance(inventory, Failure) or frozenset(inventory) != payload_names(
+        selection.version, dual
+    ):
         return Failure.ARTIFACT_INVALID
-    inventory: dict[str, tuple[str, int]] = {}
-    for asset in assets:
-        if not mapping(asset) or set(asset) != {"name", "sha256", "bytes"}:
-            return Failure.ARTIFACT_INVALID
-        name, digest, size = asset["name"], asset["sha256"], asset["bytes"]
+    if isinstance(selection.catalogEntry, MainEntryV2):
+        hosts = parse_host_targets(candidate["hostTargets"], selection.version)
         if (
-            not isinstance(name, str)
-            or not re.fullmatch(r"[A-Za-z0-9_.-]{1,160}", name)
-            or name in (".", "..")
-            or not isinstance(digest, str)
-            or not DIGEST.fullmatch(digest)
-            or type(size) is not int
-            or not 0 < size <= MAXIMUM_PAYLOAD_BYTES
-            or name in inventory
+            isinstance(hosts, Failure)
+            or hosts != selection.catalogEntry.hostTargets
+            or any(inventory[target.record.name][0] != target.record.sha256 for target in hosts)
         ):
             return Failure.ARTIFACT_INVALID
-        inventory[name] = (digest, size)
-    version = selection.version
-    hosts = [
-        name
-        for name in inventory
-        if re.fullmatch(rf"kast-ide-hosted-v{re.escape(version)}-idea-[0-9]{{3}}\.zip", name)
-    ]
-    if len(hosts) != 1:
-        return Failure.ARTIFACT_INVALID
-    bases = {
-        f"kast-control-v{version}-{PLATFORM}.tar.gz",
-        hosts[0],
-        f"kast-plugin-v{version}.zip",
-        f"kast-marketplace-v{version}.zip",
-        f"kast-control-release-v{version}.json",
-        f"kast-host-release-v{version}.json",
-        "host-installation.py",
-        f"kast-hosted-catalog-v{version}.json",
-        f"kast-module-knowledge-v{version}.json",
-        f"kast-sbom-v{version}.cdx.json",
-    }
-    if set(inventory) != bases | {name + ".sha256" for name in bases}:
-        return Failure.ARTIFACT_INVALID
+        legacy = admit_legacy_projection(selection, source, candidate, promotion, inventory)
+        if isinstance(legacy, Failure):
+            return legacy
     return (
         Admission.ADMITTED
         if all(inventory.get(item.path.name) == (item.sha256, item.bytes) for item in downloaded)
@@ -992,11 +1279,14 @@ def download_composition(
         else selection.version
     )
     assert requested is not None
-    if not re.fullmatch(r"[0-9]{3}", idea_line) or (
+    if (
         isinstance(selection, MainSelection)
         and PLATFORM not in selection.catalogEntry.platformTargets
     ):
         return Rejected(Failure.PLATFORM_UNAVAILABLE, Stage.SELECTION, requested)
+    target = select_host_target(selection, idea_line)
+    if isinstance(target, Rejected):
+        return target
     try:
         if (
             not directory.is_absolute()
@@ -1010,14 +1300,22 @@ def download_composition(
         host_name = f"kast-ide-hosted-v{selection.version}-idea-{idea_line}.zip"
         records: list[ComponentRecord] = []
         record_paths: list[Path] = []
-        for component, archive, line in (
-            ("control", control_name, None),
-            ("host", host_name, idea_line),
+        host_record_name = (
+            target.record.name if isinstance(target, HostTarget) else target.recordName
+        )
+        for name, archive, line in (
+            (f"kast-control-release-v{selection.version}.json", control_name, None),
+            (host_record_name, host_name, idea_line),
         ):
-            name = f"kast-{component}-release-v{selection.version}.json"
             raw = checked_record(selection, name, downloads, source)
             if isinstance(raw, Failure):
                 return Rejected(raw, Stage.RECORDS, requested)
+            if (
+                line is not None
+                and isinstance(target, HostTarget)
+                and hashlib.sha256(raw).hexdigest() != target.record.sha256
+            ):
+                return Rejected(Failure.ARTIFACT_INVALID, Stage.RECORDS, requested)
             parsed = parse_component(raw, selection.version, archive, line)
             if isinstance(parsed, Failure):
                 return Rejected(parsed, Stage.CONTRACT, requested)
@@ -1060,7 +1358,7 @@ def download_composition(
         identity = inspect_control(control_root, selection, control_record)
         if isinstance(identity, Failure):
             return Rejected(identity, Stage.CONTRACT, requested)
-        rejected = inspect_host(host.path, identity, control_record.contract)
+        rejected = inspect_host(host.path, identity, control_record.contract, target)
         if isinstance(rejected, Failure):
             return Rejected(rejected, Stage.CONTRACT, requested)
         policy = (

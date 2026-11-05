@@ -25,6 +25,22 @@ import managed_update_journal as journal
 
 
 @dataclass(frozen=True)
+class SupportedTargetsFixture:
+    targets: tuple[install.release.SdkTarget, install.release.SdkTarget] = (
+        install.release.SdkTarget("262", "262.1", "262.1-IJ"),
+        install.release.SdkTarget("263", "263.2", "263.2-IJ"),
+    )
+    defaultTarget: str = "262"
+    schemaVersion: int = 1
+
+
+@dataclass(frozen=True)
+class IdeaTargetMetadataFixture:
+    dataDirectoryName: str
+    buildNumber: str
+
+
+@dataclass(frozen=True)
 class LegacyRegistrationFixture:
     connection: Literal["PI"]
     destination: str
@@ -1169,8 +1185,27 @@ class FilesystemCoordinatorTest(unittest.TestCase):
         self.workspace = self.home / "workspace"
         self.workspace.mkdir()
         self.idea = install.SelectedIdea(
-            self.home / "IDEA/Contents", self.home / "profile", self.home / "java", "262", "262.1"
+            self.home / "IDEA/Contents",
+            self.home / "Library/Application Support/JetBrains/IntelliJIdea2026.2",
+            self.home / "IDEA/Contents/jbr/Contents/Home",
+            "262",
+            "262.1",
         )
+        metadata = self.idea.home / "Resources/product-info.json"
+        metadata.parent.mkdir(parents=True)
+        _ = metadata.write_bytes(
+            install.encoded(IdeaTargetMetadataFixture("IntelliJIdea2026.2", "262.1"))
+        )
+        java = self.idea.java / "bin/java"
+        java.parent.mkdir(parents=True)
+        _ = java.write_bytes(b"case-owned JBR executable")
+        java.chmod(0o755)
+        (self.idea.home / "plugins/Kotlin").mkdir(parents=True)
+        profile = self.home / "intellij-targets.json"
+        _ = profile.write_bytes(install.encoded(SupportedTargetsFixture()))
+        profile_patch = patch.object(install, "target_profile_path", return_value=profile)
+        _ = profile_patch.start()
+        self.addCleanup(profile_patch.stop)
         self.identity = journal.BuildIdentity("v2.0.0", "2.0.0", "a" * 40, "b" * 40)
         self.compatibility = install.release.HostedContract(
             "kast.ide-hosted.runtime.v3",
@@ -2673,6 +2708,53 @@ class FilesystemCoordinatorTest(unittest.TestCase):
         runner.finished()
         self.assert_restored()
 
+    def test_recorded_recovery_rejects_changed_profile_before_bridge_or_release_access(
+        self,
+    ) -> None:
+        metadata = self.idea.home / "Resources/product-info.json"
+        _ = metadata.write_bytes(
+            install.encoded(
+                IdeaTargetMetadataFixture(
+                    "IntelliJIdea2026.3",
+                    "263.999.1",
+                )
+            )
+        )
+        protected = (
+            self.slot / "receipt.json",
+            self.root / "management.json",
+            self.destination,
+            self.options,
+        )
+        before = {p: (p.read_bytes(), p.stat().st_ino) for p in protected}
+        runner = HostActionRunner([])
+        source = ExactControlSource(self.selected_archive, self.identity)
+        result = install.recover_recorded(self.root, self.home, False, source, runner=runner)
+        assert isinstance(result, contract.RecoveryRequired)
+        self.assertEqual(
+            contract.Rejected(contract.Stage.RECOVERY, contract.Failure.PROFILE_UNAVAILABLE),
+            result.recovery,
+        )
+        runner.finished()
+        self.assertEqual([], source.downloads)
+        self.assertEqual(before, {p: (p.read_bytes(), p.stat().st_ino) for p in protected})
+
+    def test_recorded_recovery_never_guesses_a_target_when_metadata_disappears(self) -> None:
+        metadata = self.idea.home / "Resources/product-info.json"
+        metadata.unlink()
+        receipt = (self.slot / "receipt.json").read_bytes()
+        runner = HostActionRunner([])
+        source = ExactControlSource(self.selected_archive, self.identity)
+        result = install.recover_recorded(self.root, self.home, False, source, runner=runner)
+        assert isinstance(result, contract.RecoveryRequired)
+        self.assertEqual(
+            contract.Rejected(contract.Stage.RECOVERY, contract.Failure.IDEA_UNAVAILABLE),
+            result.recovery,
+        )
+        runner.finished()
+        self.assertEqual([], source.downloads)
+        self.assertEqual(receipt, (self.slot / "receipt.json").read_bytes())
+
     def test_control_move_fault_keeps_fence_and_resumes_same_transaction(self) -> None:
         runner = self.observed_adapter(1)
         original = install.RECOVERY.managed_move
@@ -2804,6 +2886,11 @@ class IdeaMetadataTest(unittest.TestCase):
         _ = java.write_text("java")
         java.chmod(0o755)
         (self.idea / "plugins/Kotlin").mkdir(parents=True)
+        targets = install.release.parse_supported_ide_targets(
+            install.encoded(SupportedTargetsFixture())
+        )
+        assert isinstance(targets, install.release.SupportedIdeTargets)
+        self.targets = targets
 
     def selected_with_owner(self, owner: int) -> install.SelectedIdea | contract.Rejected:
         real_stat = os.fstat
@@ -2817,7 +2904,86 @@ class IdeaMetadataTest(unittest.TestCase):
             patch.object(install.os, "fstat", file_stat),
             patch.object(install.os, "getuid", return_value=501),
         ):
-            return install.select_idea(str(self.idea), self.home, self.home / "managed")
+            return install.select_idea(
+                str(self.idea), self.home, self.home / "managed", self.targets
+            )
+
+    def test_supported263_metadata_keeps_actual_patch_identity(self) -> None:
+        _ = self.metadata.write_bytes(
+            install.encoded(
+                IdeaTargetMetadataFixture(
+                    "IntelliJIdea2026.3",
+                    "263.999.123",
+                )
+            )
+        )
+        selected = self.selected_with_owner(0)
+        assert isinstance(selected, install.SelectedIdea)
+        self.assertEqual("263", selected.line)
+        self.assertEqual("263.999.123", selected.build)
+        self.assertEqual(
+            self.home / "Library/Application Support/JetBrains/IntelliJIdea2026.3", selected.profile
+        )
+
+    def test_recorded263_target_requires_exact_recorded_profile(self) -> None:
+        _ = self.metadata.write_bytes(
+            install.encoded(
+                IdeaTargetMetadataFixture(
+                    "IntelliJIdea2026.3",
+                    "263.999.123",
+                )
+            )
+        )
+        expected = self.home / "Library/Application Support/JetBrains/IntelliJIdea2026.3"
+        selected = install.read_recorded_idea(
+            str(self.idea),
+            str(expected),
+            self.home,
+            self.home / "managed",
+            self.targets,
+        )
+        assert isinstance(selected, install.SelectedIdea)
+        self.assertEqual(
+            ("263", "263.999.123", expected), (selected.line, selected.build, selected.profile)
+        )
+        rejected = install.read_recorded_idea(
+            str(self.idea),
+            str(expected.with_name("IntelliJIdea2026.2")),
+            self.home,
+            self.home / "managed",
+            self.targets,
+        )
+        self.assertEqual(
+            contract.Rejected(contract.Stage.RECOVERY, contract.Failure.PROFILE_UNAVAILABLE),
+            rejected,
+        )
+
+    def test_unknown_or_malformed_target_is_rejected(self) -> None:
+        for build in ("264.1", "263.not-a-build", "263", "263/1", "262."):
+            with self.subTest(build=build):
+                _ = self.metadata.write_bytes(
+                    install.encoded(
+                        IdeaTargetMetadataFixture(
+                            "IntelliJIdea2026.3",
+                            build,
+                        )
+                    )
+                )
+                self.assertEqual(
+                    contract.Rejected(
+                        contract.Stage.PREPARATION, contract.Failure.IDEA_UNAVAILABLE
+                    ),
+                    self.selected_with_owner(0),
+                )
+
+    def test_invalid_packaged_profile_does_not_select_an_ide(self) -> None:
+        profile = self.home / "intellij-targets.json"
+        _ = profile.write_bytes(b'{"schemaVersion":1,"defaultTarget":"263","targets":[]}')
+        with patch.object(install, "target_profile_path", return_value=profile):
+            self.assertEqual(
+                contract.Rejected(contract.Stage.PREPARATION, contract.Failure.CONTROL_REJECTED),
+                install.select_idea(str(self.idea), self.home, self.home / "managed"),
+            )
 
     def test_readable_root_owned_idea_metadata_is_admitted(self) -> None:
         selected = self.selected_with_owner(0)

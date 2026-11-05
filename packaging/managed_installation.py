@@ -22,6 +22,7 @@ import importlib.util
 import json
 import os
 import platform
+import re
 import signal
 import stat
 import subprocess
@@ -499,7 +500,33 @@ def reject(
     return StageRejected(contract.Rejected(stage, reason, adapter))
 
 
-def select_idea(explicit: str | None, home: Path, root: Path) -> SelectedIdea | contract.Rejected:
+def target_profile_path() -> Path:
+    directory = Path(__file__).resolve().parent
+    packaged = directory / "intellij-targets.json"
+    if os.path.lexists(packaged) or directory.name != "packaging":
+        return packaged
+    return directory.parent / "config/intellij-targets.json"
+
+
+def read_supported_targets() -> release.SupportedIdeTargets | contract.Rejected:
+    try:
+        parsed = release.parse_supported_ide_targets(read_record(target_profile_path()))
+        if not isinstance(parsed, release.Failure):
+            return parsed
+    except (OSError, ValueError):
+        pass
+    return contract.Rejected(contract.Stage.PREPARATION, contract.Failure.CONTROL_REJECTED)
+
+
+def select_idea(
+    explicit: str | None,
+    home: Path,
+    root: Path,
+    targets: release.SupportedIdeTargets | None = None,
+) -> SelectedIdea | contract.Rejected:
+    admitted_targets = targets if targets is not None else read_supported_targets()
+    if isinstance(admitted_targets, contract.Rejected):
+        return admitted_targets
     candidates: list[Path] = []
     if explicit is not None:
         candidates = [Path(explicit)]
@@ -540,7 +567,10 @@ def select_idea(explicit: str | None, home: Path, root: Path) -> SelectedIdea | 
             or data in {".", ".."}
             or Path(data).name != data
             or not isinstance(build, str)
-            or not build.startswith("262.")
+            or re.fullmatch(r"[0-9]{3}\.[0-9]+(?:\.[0-9]+)*", build) is None
+            or not any(
+                t.intellijReleaseLine == build.split(".")[0] for t in admitted_targets.targets
+            )
         ):
             raise ValueError()
         java = idea / "jbr/Contents/Home"
@@ -555,6 +585,23 @@ def select_idea(explicit: str | None, home: Path, root: Path) -> SelectedIdea | 
         )
     except (OSError, ValueError):
         return contract.Rejected(contract.Stage.PREPARATION, contract.Failure.IDEA_UNAVAILABLE)
+
+
+def read_recorded_idea(
+    recorded_home: str,
+    recorded_profile: str,
+    home: Path,
+    root: Path,
+    targets: release.SupportedIdeTargets | None = None,
+) -> SelectedIdea | contract.Rejected:
+    selected = select_idea(recorded_home, home, root, targets)
+    if isinstance(selected, contract.Rejected):
+        return replace(selected, stage=contract.Stage.RECOVERY)
+    if str(selected.home) != recorded_home:
+        return contract.Rejected(contract.Stage.RECOVERY, contract.Failure.OWNERSHIP_UNPROVEN)
+    if str(selected.profile) != recorded_profile:
+        return contract.Rejected(contract.Stage.RECOVERY, contract.Failure.PROFILE_UNAVAILABLE)
+    return selected
 
 
 def read_limits(control: Path) -> Limits:
@@ -2394,13 +2441,9 @@ def recover_recorded(
                 return contract.Rejected(contract.Stage.RECOVERY, contract.Failure.CANCELLED)
             reservation, core = journal_types.managed_parts(record)
             transaction = reservation.transaction
-            idea = SelectedIdea(
-                Path(core.ideaHome),
-                Path(core.profile),
-                Path(core.ideaHome) / "jbr/Contents/Home",
-                "262",
-                "262",
-            )
+            idea = read_recorded_idea(core.ideaHome, core.profile, home, root)
+            if isinstance(idea, contract.Rejected):
+                return contract.RecoveryRequired(transaction, failure, idea)
             with tempfile.TemporaryDirectory(prefix="kast-managed-recovery-") as temporary:
                 workspace = Path(temporary).resolve()
                 control = recorded_bridge(
