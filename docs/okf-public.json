@@ -6001,7 +6001,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqEngine.kt",
-          "sha256": "0552cb524014f817b394ae26b238c3eea3a4dd43208566457eb05a3a0c24bd4d"
+          "sha256": "81c01e9e4a477e60f72a3d90ce69422664062911223add92a802d594d3383bf1"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqFailure.kt",
@@ -6013,7 +6013,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqOptions.kt",
-          "sha256": "46fbfa7e672ef13f531516abfd64dd5c4e94d696be240457e562c257104ffffe"
+          "sha256": "b672a88f2cf7b5980e7be91d835b5e6ccfdfedddbaa8ea4ef60892706dfa1b11"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqProcess.kt",
@@ -6033,7 +6033,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqWorker.kt",
-          "sha256": "2b1e16d56ce04175568195567862e08d149731cf370fb87ba4152caccc4e690f"
+          "sha256": "5d891f9ad579b86eb529d0d27143c973f275116239d83942e3bbf55e9057851b"
         },
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
@@ -6088,7 +6088,7 @@
           "sha256": "de9404699e24e207135e9ff55865e252a18acd9cba051fc0c3d3eb974b98f6b3"
         }
       ],
-      "reviewedSourceRevision": "b652745594a1560a85a8faef3a51385bc389d8b2"
+      "reviewedSourceRevision": "6ed68779e9d3a4386bcf8a7840af4ccd23d0e9ed"
     },
     {
       "route": "reference/compatibility",
