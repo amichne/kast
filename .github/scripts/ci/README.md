@@ -239,6 +239,14 @@ This local record grants no publication or installation authority.
 Stable release allocation and qualified developer publication keep their own version rules.
 Rolling installation selects a qualified developer build through its release track.
 
+The agent experiment checks within `hostObservationTest` separate locked dependency preparation from test execution.
+Preparation explicitly includes the development dependencies; pytest then uses that project's interpreter.
+Preparation, pytest, and Node contracts each have a 120-second deadline.
+Each phase reports its outcome, exit code, and cleanup status before the next phase can start.
+A failure retains the last 64 KiB of child output and identifies truncation.
+Timeout and cancellation cleanup target only the child process group created for that phase.
+Inherited pytest selection options cannot replace required execution with collection.
+
 ## Source obligations and qualification
 
 `source_validation.py` admits a clean source tree, runs the offline preflight suites, examines the Gradle graph, and runs `sourceValidationGate`.
