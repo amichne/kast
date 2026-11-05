@@ -104,7 +104,13 @@ def verify_control_archive_matches_product(product: Path, control: Path) -> None
             path = product.joinpath(*parts)
             require(path.resolve(strict=True) == path and not path.is_symlink(),
                     'Control product path')
-            require(member.mode & ~0o777 == 0 and stat.S_IMODE(path.stat().st_mode) == member.mode,
+            require(0 <= member.mode <= 0o177777, 'Control archive mode ' + name)
+            permissions = stat.S_IMODE(member.mode)
+            encoded_kind = stat.S_IFDIR if member.isdir() else stat.S_IFREG
+            require(permissions & ~0o777 == 0
+                    and member.mode in (permissions, encoded_kind | permissions),
+                    'Control archive mode ' + name)
+            require(stat.S_IMODE(path.stat().st_mode) == permissions,
                     'Control product mode ' + name)
             if member.isdir():
                 require(path.is_dir(), 'Control product directory ' + name)
