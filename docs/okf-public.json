@@ -5549,7 +5549,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "49b2be311aee63a41f025baca17fb0e1d055fd52ce8ddb54589c552a48efb3a7"
+          "sha256": "296e3e55ddf23eb6deb0bafa9626b15d01f6045fa3d3ca8550963af58a3eb351"
         }
       ],
       "claims": [
@@ -5916,36 +5916,48 @@
       ],
       "generatedOwners": [
         {
+          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspaceConfigurationIngress.kt",
+          "sha256": "43ceffd48e1e635a3fbb31480d375b532b55f6947c5d8806fbed487b1a6501a0"
+        },
+        {
+          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
+          "sha256": "c5c97d429d5bd65a66dbae64b23004d409e55dca81cd46f8e7e8d3dc7c20a138"
+        },
+        {
+          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt",
+          "sha256": "be87f942c936f52b2ca057094fca390590458a90da087fb5a9ada6ad45889788"
+        },
+        {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt",
-          "sha256": "c20844d118650031d77dabe479e828543d5727097374af2b779d9a01f2c766fd"
+          "sha256": "dde907c9602b0876528ac41b052b1ef77b25826b4784c8df1156fd9cb0f12d44"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt",
-          "sha256": "f24102991d865737ce6141580cc1ae5ba879921c8ddfaa7737c352e6448868bd"
+          "sha256": "ce03a2c8f392dd04c4e38b41c17294b53429ce6943c56036d15f7dda4000600e"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiagnostics.kt",
-          "sha256": "25dfe4071997dc6996bf0c426180b23b84188ae925508e6088ee7569d89e4375"
+          "sha256": "bb691f3092eee802086fa7c46daa64fff3957b0476d92b9518a9d9659c6056be"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliDiscovery.kt",
-          "sha256": "7b2ed6a22df8256fe7d450fe001fb4bdcdf09e431a085f19cdc900f516e484db"
+          "sha256": "da6312eeed2318383c83b3f9cc6ecd97db99f09c73c645b2ff605a3eb08e9036"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliFlagDiscovery.kt",
-          "sha256": "79fa0045e3ea020b72c52cf3eb63afffd15253c526772c7c19f39270b516e111"
+          "sha256": "e0e34b724c2ef0048106aba053bec8ab4d67b7ea10f16437cc9c8156e6cb2818"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliHelp.kt",
-          "sha256": "0d09b7201c04b6485e82764551e0b584ec9741f1280b3f677cc1f52eeafb09ee"
+          "sha256": "d6aeaac379c0638264742a5f1b729dce94eae5cf9bc0ce841222f19fd63655e7"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliInvocation.kt",
-          "sha256": "6765e5a9e08c9d7541e5ba5a0c7c557c0c5e71396674f30333fdd1cf15921fe5"
+          "sha256": "1de10c1cfb3ec8eb50a7bb4985099b650ac1e9b454789906ee4869d5501bb807"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliLowering.kt",
@@ -5953,7 +5965,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliOptions.kt",
-          "sha256": "203b80f4b2e72e57ebdeff1f5bb85d49b3026395af8aac7516993103ef494763"
+          "sha256": "9154dbe14954587e29e03182084f0fa1ab7adc0ba472d20ac91bc17614a5f626"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliProjectionContract.kt",
@@ -6008,6 +6020,10 @@
           "sha256": "d2b6a205ba4b0ec735b3ae190f59493b48a5973fc00e880c9940748d7d14b2a6"
         },
         {
+          "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
+          "sha256": "ed651cce66f619249e45957086464e0d6fb742ba9fec5f0e11e1aa08ad5c772e"
+        },
+        {
           "path": "distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/CliOutput.kt",
           "sha256": "64854b2a4e42c05092bc025d96cf3856b9d2171e311644c16306fa0878957202"
         },
@@ -6032,7 +6048,7 @@
           "sha256": "9294c3eb4260e0ef2ef77315231fa74635fbf11ae0c7a41a1cf8a68c81a10c99"
         }
       ],
-      "reviewedSourceRevision": "79cec8532cb7091bebd31a9d9a7c19d7f57be6ae"
+      "reviewedSourceRevision": "1857be980fe872fd10478b6e0b2a942e9bd3fb60"
     },
     {
       "route": "reference/compatibility",
@@ -7040,6 +7056,18 @@
       ],
       "generatedOwners": [
         {
+          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspaceConfigurationIngress.kt",
+          "sha256": "43ceffd48e1e635a3fbb31480d375b532b55f6947c5d8806fbed487b1a6501a0"
+        },
+        {
+          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
+          "sha256": "c5c97d429d5bd65a66dbae64b23004d409e55dca81cd46f8e7e8d3dc7c20a138"
+        },
+        {
+          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt",
+          "sha256": "be87f942c936f52b2ca057094fca390590458a90da087fb5a9ada6ad45889788"
+        },
+        {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         },
@@ -7048,11 +7076,15 @@
           "sha256": "d2b6a205ba4b0ec735b3ae190f59493b48a5973fc00e880c9940748d7d14b2a6"
         },
         {
+          "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
+          "sha256": "ed651cce66f619249e45957086464e0d6fb742ba9fec5f0e11e1aa08ad5c772e"
+        },
+        {
           "path": "docs/public/reference/callables.openapi.json",
           "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "1857be980fe872fd10478b6e0b2a942e9bd3fb60"
     },
     {
       "route": "reference/limits",
