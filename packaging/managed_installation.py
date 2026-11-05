@@ -45,6 +45,7 @@ if not sys.dont_write_bytecode:
 import managed_release as release
 import managed_update_contract as contract
 import managed_update_journal as journal_types
+import public_force_admission
 import reload_hosted
 
 
@@ -2494,6 +2495,8 @@ def main(
     runner: ChildRunner = run_child,
     interrupt: InterruptState | None = None,
 ) -> int:
+    if arguments and arguments[0] == "--public-force-admission":
+        return public_force_admission.main(arguments[1:])
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group()
     _ = group.add_argument("--channel", choices=("stable", "main"))

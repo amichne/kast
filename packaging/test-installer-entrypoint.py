@@ -109,6 +109,8 @@ class ControlRecoveryFixture:
     type: str = 'ROLLED_BACK'
 
 
+
+
 class InstallerEntrypointTest(unittest.TestCase):
     def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3", reset_capability: bool = False,
                           coordinator_fixture: bool = False,
@@ -463,17 +465,104 @@ raise SystemExit({runner_status!r})
             self.assertNotIn('downloading Kast Host', result.stderr)
             self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
-    def test_versioned_explicit_legacy_force_rejects_before_code_download(self):
+    def test_versioned_force_rejects_control_without_pair_admission_capability(self):
         with tempfile.TemporaryDirectory(prefix='kast-bootstrap-v2-force-') as directory:
             idea, _, environment, routing, _ = self.versioned_dispatch_fixture(directory, '263')
             result = subprocess.run([str(BASH), str(INSTALLER), '--developer-latest', '--force',
                 '--idea-home', str(idea), '--dry-run', '--skip-codex-plugin'], cwd=ROOT,
                 env=environment, text=True, capture_output=True, timeout=10)
             self.assertNotEqual(0, result.returncode)
-            self.assertIn('--force is legacy-only', result.stderr)
-            self.assertEqual(2, len((Path(directory) / 'curl.calls').read_text().splitlines()))
+            self.assertIn('lacks captured force-pair admission', result.stderr)
+            self.assertEqual(8, len((Path(directory) / 'curl.calls').read_text().splitlines()))
             self.assertFalse(routing.exists())
             self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_explicit_force_and_restart_ide_reject_before_network_or_installer(self):
+        with tempfile.TemporaryDirectory(prefix='kast-force-restart-conflict-') as directory:
+            idea, assets, environment = self.installer_fixture(directory, version='0.0.123')
+            for key in ('KAST_VERSION', 'KAST_INSTALL_ASSETS_DIRECTORY'):
+                environment.pop(key)
+            environment.update(self.developer_curl(directory, assets, 'developer-v0.0.123 0.0.123 ' + 'a' * 40))
+            result = subprocess.run([str(BASH), str(INSTALLER), '--developer-latest', '--force',
+                '--restart-ide', '--idea-home', str(idea), '--skip-codex-plugin'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn('cannot be combined with explicit --force', result.stderr)
+            self.assertFalse((Path(directory) / 'curl.calls').exists())
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def real_force_validator_fixture(self, directory, line, *, sdk=None, tree=None, revision=None):
+        """Real pair-validator inputs; the Mach-O-layout fixture is NEVER executed."""
+        idea, assets, environment = self.installer_fixture(directory, version='0.0.123', plugin_line=line)
+        if line == '263':
+            (idea / 'Resources/build.txt').write_text('IU-263.1234\n')
+            metadata = idea / 'Resources/product-info.json'
+            metadata.write_text(metadata.read_text().replace('262.1234', '263.1234').replace('2026.2', '2026.3'))
+        spec = importlib.util.spec_from_file_location('force_real_release_fixture', ROOT / 'packaging/test-managed-release.py')
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        factory = module.ReleaseAdmissionTest()
+        factory.setUp()
+        self.addCleanup(factory.doCleanups)
+        helpers = ('managed_installation.py', 'managed_installation.py.lock', 'managed_release.py',
+            'public_force_admission.py', 'bootstrap_release_auth.py', 'managed_update_contract.py',
+            'managed_update_journal.py', 'reload_hosted.py', 'host_directory_exchange.py',
+            'host-installation.py', 'installation-recovery.py', 'installation-lifecycle.py')
+        source = factory.source('0.0.123', control_files={
+            'share/kast/' + name: (ROOT / 'packaging' / name).read_bytes() for name in helpers})
+        factory.dual_main(source, host_sdk=sdk or '263.2', host_tree=tree or module.TREE,
+            host_revision=revision or module.BUILD)
+        for name, raw in source.assets.items():
+            if '://' not in name:
+                (assets / name).write_bytes(raw)
+        (assets / 'builds-v2.json').write_bytes(source.assets[module.CATALOG_V2_URL])
+        for key in ('KAST_VERSION', 'KAST_INSTALL_ASSETS_DIRECTORY'):
+            environment.pop(key)
+        environment.update(self.developer_curl(directory, assets,
+            'developer-v0.0.123 0.0.123 ' + module.BUILD, catalog_status=200))
+        runner = Path(directory) / 'bin/uv'
+        runner.write_text(f'''#!/usr/bin/env python3
+from pathlib import Path
+import subprocess
+import sys
+arguments = sys.argv[1:]
+assert arguments[:3] == ['run', '--locked', '--script']
+assert '--public-force-admission' in arguments
+result = subprocess.run([sys.executable, *arguments[3:]], check=False)
+with Path({str(Path(directory) / 'real-admission.calls')!r}).open('a') as output:
+    output.write(arguments[arguments.index('--public-force-admission')+1] + ':' + str(result.returncode) + '\\n')
+raise SystemExit(result.returncode)
+''')
+        runner.chmod(0o755)
+        return idea, assets, environment
+
+    def test_v2_force_real_pair_failures_never_reach_reset_for_either_target(self):
+        for line in ('262', '263'):
+            for changed in ('record', 'archive', 'digest') + (('sdk', 'tree', 'source') if line == '263' else ()):
+                with self.subTest(line=line, changed=changed), tempfile.TemporaryDirectory(prefix='kast-force-real-rejection-') as directory:
+                    idea, assets, environment = self.real_force_validator_fixture(directory, line,
+                        sdk='263.999' if changed == 'sdk' else None,
+                        tree='f'*40 if changed == 'tree' else None,
+                        revision='f'*40 if changed == 'source' else None)
+                    record_name = 'kast-host-release-v0.0.123.json' if line == '262' else 'kast-host-release-v0.0.123-idea-263.json'
+                    if changed in ('record', 'archive', 'digest'):
+                        name = record_name if changed == 'record' else f'kast-ide-hosted-v0.0.123-idea-{line}.zip'
+                        path = assets / name
+                        other = assets / (f'kast-ide-hosted-v0.0.123-idea-{263 if line == "262" else 262}.zip')
+                        path.write_bytes(other.read_bytes() if changed == 'archive' else b'changed captured bytes')
+                        path.with_name(path.name + '.sha256').write_text(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n')
+                    result = subprocess.run([str(BASH), str(INSTALLER), '--developer-latest', '--force',
+                        '--idea-home', str(idea), '--skip-codex-plugin'], cwd=ROOT,
+                        env=environment, text=True, capture_output=True, timeout=15)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn('captured force pair rejected', result.stderr)
+                    self.assertNotIn('Fresh installation reset', result.stderr)
+                    self.assertNotIn('selected IDEA preflight', result.stderr)
+                    self.assertNotIn('Exec format', result.stderr)
+                    self.assertEqual(['target:0', 'admit:1'], (Path(directory) / 'real-admission.calls').read_text().splitlines())
+                    self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
     def test_developer_conflicting_explicit_host_selector_rejects_before_code_download(self):
         for inherited in (False, True):
