@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 from dataclasses import asdict, dataclass
 from enum import Enum
 import importlib.util
@@ -17,6 +19,10 @@ import sys
 import tempfile
 import time
 from urllib.parse import urlencode
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import host_evidence
 
 SPEC = importlib.util.spec_from_file_location("ci_candidate", Path(__file__).with_name("ci-candidate.py"))
 legacy = importlib.util.module_from_spec(SPEC)
@@ -28,6 +34,7 @@ WORKFLOW = ".github/workflows/ci.yml"
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / ".github/scripts/ci"))
 import validation_outcome as validation
+import host_targets
 
 
 class CandidateState(str, Enum):
@@ -52,6 +59,8 @@ class ObservationStage(str, Enum):
     RUN_ARTIFACTS = "RUN_ARTIFACTS"
     WORKFLOW_RUN = "WORKFLOW_RUN"
     MAIN_HEAD = "MAIN_HEAD"
+    SOURCE_PROFILE = "SOURCE_PROFILE"
+    SOURCE_RESOURCES = "SOURCE_RESOURCES"
 
 
 class ObservationOutcome(str, Enum):
@@ -296,6 +305,67 @@ def read(bundle: Path) -> Candidate:
     return candidate
 
 
+def source_bytes(repository: str, revision: str, path: str, stage: ObservationStage) -> bytes:
+    identity(repository, revision)
+    document = observe(
+        f"repos/{repository}/contents/{path}?ref={revision}", stage,
+    )
+    if (not isinstance(document, dict) or document.get("type") != "file"
+            or document.get("encoding") != "base64" or not isinstance(document.get("content"), str)
+            or len(document["content"]) > 90_000
+            or type(document.get("size")) is not int or not 1 <= document["size"] <= 65536):
+        raise Rejected(Failure.INVALID_RECORD)
+    try:
+        raw = base64.b64decode(document["content"].replace("\n", ""), validate=True)
+        if len(raw) != document["size"]:
+            raise ValueError()
+    except (ValueError, UnicodeError, RecursionError):
+        raise Rejected(Failure.INVALID_RECORD) from None
+    return raw
+
+
+def source_profile(repository: str, revision: str) -> host_targets.Profile:
+    """Read target pins from immutable build source, never from a newer publisher checkout."""
+    raw = source_bytes(repository, revision, "config/intellij-targets.json", ObservationStage.SOURCE_PROFILE)
+    try:
+        profile = host_targets.decode_profile(json.loads(raw, object_pairs_hook=unique_object))
+    except (ValueError, UnicodeError, RecursionError):
+        raise Rejected(Failure.INVALID_RECORD) from None
+    if isinstance(profile, host_targets.Failure):
+        raise Rejected(Failure.INVALID_RECORD)
+    return profile
+
+
+def source_resources(repository: str, revision: str) -> host_evidence.SourceResources:
+    import host_evidence
+    return host_evidence.SourceResources(*(
+        "sha256:" + hashlib.sha256(source_bytes(repository, revision, path, ObservationStage.SOURCE_RESOURCES)).hexdigest()
+        for path in (host_evidence.QUERY_SCHEMA_PATH, host_evidence.OPERATION_REGISTRY_PATH)
+    ))
+
+
+def read_retained(bundle: Path, expected_profile: host_targets.Profile | None = None,
+                  expected_resources: host_evidence.SourceResources | None = None) -> Candidate:
+    """Keep the historical reader strict; admit paired bundles at a separate boundary."""
+    if not (bundle / "candidate-v2.json").exists() and not (bundle / "candidate-v2.json").is_symlink():
+        return read(bundle)
+    import dual_candidate
+    import host_evidence
+    pair = dual_candidate.read(bundle)
+    if isinstance(pair, dual_candidate.Failure):
+        raise Rejected(Failure.PAYLOAD_MISMATCH)
+    profile = expected_profile if expected_profile is not None else source_profile(
+        pair.current.repository, pair.current.sourceRevision,
+    )
+    resources = expected_resources if expected_resources is not None else source_resources(
+        pair.current.repository, pair.current.sourceRevision,
+    )
+    if (isinstance(host_evidence.admit(bundle / "payload", pair.current, profile, resources), dual_candidate.Failure)
+            or isinstance(dual_candidate.admit_sbom(bundle / "payload", pair.current), dual_candidate.Failure)):
+        raise Rejected(Failure.PAYLOAD_MISMATCH)
+    return pair.legacy
+
+
 def empty(bundle: Path) -> None:
     if bundle.is_symlink() or (bundle.exists() and (not bundle.is_dir() or any(bundle.iterdir()))):
         raise Rejected(Failure.DESTINATION_NOT_EMPTY)
@@ -311,7 +381,7 @@ def download(repository: str, run: dict, revision: str, bundle: Path) -> Candida
     bundle.mkdir(parents=True, exist_ok=True)
     execute(["gh", "run", "download", str(run["id"]), "--repo", repository, "--name", name,
              "--dir", str(bundle)], Failure.DOWNLOAD_FAILED)
-    return read(bundle)
+    return read_retained(bundle)
 
 
 def reusable_run(run: dict, repository: str, revision: str) -> bool:
@@ -364,19 +434,38 @@ def seal(repository: str, revision: str, run_id: int, number: int, attempt: int,
              "--expected-source-revision", revision], Failure.INVALID_IDENTITY, cwd=ROOT)
     version = f"0.0.{number}"
     payload = ROOT / f"build/release/v{version}"
-    legacy.validate(payload, version, revision)
+    import dual_candidate
+    import host_evidence
+    import host_targets
+    import developer_catalog
+    profile = host_targets.decode_profile(dual_candidate.read_json(ROOT / "config/intellij-targets.json"))
+    if isinstance(profile, host_targets.Failure):
+        raise Rejected(Failure.INVALID_RECORD)
+    if {path.name for path in payload.iterdir()} != set(dual_candidate.names(version, True)):
+        raise Rejected(Failure.PAYLOAD_MISMATCH)
     release = Path(os.environ["JAVA_HOME"]) / "release"
     properties = dict(re.findall(r'^([A-Z_]+)="([^\n"]*)"$', release.read_text(), re.MULTILINE))
     local_tree = execute(["git", "rev-parse", "HEAD^{tree}"], Failure.OBSERVATION_FAILED,
                          cwd=ROOT, text=True, capture_output=True).stdout.strip()
-    candidate = Candidate(1, repository, revision, local_tree, version, run_id, number, attempt, event,
+    current = dual_candidate.Candidate(2, repository, revision, local_tree, version, run_id, number, attempt, event,
                           "macos-aarch64", Toolchain(properties["JAVA_VERSION"], properties["IMPLEMENTOR"], legacy.digest(release)),
-                          tuple(Asset(path.name, legacy.digest(path), path.stat().st_size) for path in sorted(payload.iterdir())))
+                          tuple(Asset(path.name, legacy.digest(path), path.stat().st_size) for path in sorted(payload.iterdir())),
+                          tuple(host_targets.HostTarget(target.intellijReleaseLine, target.ideBuild, target.kotlinPluginBuild,
+                                developer_catalog.RecordReference(host_targets.record_name(version, target.intellijReleaseLine),
+                                    legacy.digest(payload / host_targets.record_name(version, target.intellijReleaseLine))))
+                                for target in profile.targets))
+    candidate = dual_candidate.projection(current)
     decode(asdict(candidate))
+    resources = host_evidence.source_resources(ROOT)
+    if (isinstance(dual_candidate.admit_pair(candidate, current), dual_candidate.Failure)
+            or isinstance(host_evidence.admit(payload, current, profile, resources), dual_candidate.Failure)
+            or isinstance(dual_candidate.admit_sbom(payload, current), dual_candidate.Failure)):
+        raise Rejected(Failure.PAYLOAD_MISMATCH)
     bundle.mkdir(parents=True, exist_ok=True)
     shutil.copytree(payload, bundle / "payload")
     (bundle / "candidate.json").write_text(json.dumps(asdict(candidate), indent=2) + "\n")
-    read(bundle)
+    (bundle / "candidate-v2.json").write_text(json.dumps(asdict(current), indent=2) + "\n")
+    read_retained(bundle, profile, resources)
     return candidate
 
 
@@ -436,11 +525,15 @@ def promote(repository: str, revision: str, main_run_id: int, bundle: Path, reco
                           legacy.digest(bundle / "candidate.json"))
     record.parent.mkdir(parents=True, exist_ok=True)
     record.write_text(json.dumps(asdict(promotion), indent=2) + "\n")
+    if (bundle / "candidate-v2.json").exists():
+        from dataclasses import replace
+        current = replace(promotion, schemaVersion=2, candidateSha256=legacy.digest(bundle / "candidate-v2.json"))
+        record.with_name("promotion-v2.json").write_text(json.dumps(asdict(current), indent=2) + "\n")
     return candidate
 
 
 def verify_publication(repository: str, revision: str, version: str, bundle: Path, record: Path) -> Promotion:
-    candidate = read(bundle)
+    candidate = read_retained(bundle)
     if record.is_symlink() or not record.is_file() or record.stat().st_size > 4096:
         raise Rejected(Failure.INVALID_RECORD)
     try:

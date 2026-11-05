@@ -29,6 +29,8 @@ from pathlib import Path
 
 import build_candidate
 import developer_catalog as catalog
+import dual_candidate
+import dual_catalog
 
 BRANCH = "developer-latest"
 MAXIMUM_API_BYTES = 262_144
@@ -58,6 +60,7 @@ class PublicationAsset:
 class PreparedPublication:
     build: catalog.Build
     assets: tuple[PublicationAsset, ...]
+    paired: dual_catalog.Build | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,7 +145,7 @@ def prepare(
         admitted = build_candidate.verify_publication(
             repository, revision, version, assets.parent, promotion
         )
-        candidate = build_candidate.read(assets.parent)
+        candidate = build_candidate.read_retained(assets.parent)
         candidate_path = assets.parent / "candidate.json"
         candidate_digest = digest(candidate_path)
         promotion_bytes = promotion.read_bytes()
@@ -176,6 +179,115 @@ def prepare(
         return Rejected(Stage.QUALIFICATION, failure.failure)
     except (OSError, ValueError):
         return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_RECORD)
+
+
+def prepare_dual(
+    repository: str,
+    revision: str,
+    version: str,
+    assets: Path,
+    promotion: Path,
+) -> PreparedPublication | Rejected:
+    base = prepare(repository, revision, version, assets, promotion)
+    if isinstance(base, Rejected):
+        return base
+    pair = dual_candidate.read(assets.parent)
+    if isinstance(pair, dual_candidate.Failure):
+        return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_RECORD)
+    current_promotion_path = promotion.with_name("promotion-v2.json")
+    try:
+        old_value = dual_candidate.read_json(promotion, 4096)
+        new_value = dual_candidate.read_json(current_promotion_path, 4096)
+        if (
+            not catalog.mapping(old_value)
+            or not catalog.mapping(new_value)
+            or set(old_value) != set(build_candidate.Promotion.__dataclass_fields__)
+            or set(new_value) != set(build_candidate.Promotion.__dataclass_fields__)
+        ):
+            return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_RECORD)
+        old = decode_promotion(old_value)
+        current = decode_promotion(new_value)
+        if isinstance(old, Rejected) or isinstance(current, Rejected):
+            return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_RECORD)
+        current_candidate_path = assets.parent / "candidate-v2.json"
+        current_hash = digest(current_candidate_path)
+        admitted = dual_candidate.admit_promotions(
+            pair, old, current, base.build.candidate.sha256, current_hash
+        )
+        if isinstance(admitted, dual_candidate.Failure):
+            return Rejected(Stage.QUALIFICATION, build_candidate.Failure.INVALID_RECORD)
+        target_build = dual_catalog.Build(
+            base.build.mainRevision,
+            base.build.buildRevision,
+            base.build.sourceTree,
+            base.build.releaseTag,
+            base.build.version,
+            base.build.platformTargets,
+            catalog.RecordReference("candidate-v2.json", current_hash),
+            catalog.RecordReference("promotion-v2.json", digest(current_promotion_path)),
+            pair.current.hostTargets,
+        )
+        files = tuple(
+            PublicationAsset(assets / asset.name, asset.sha256, asset.bytes)
+            for asset in pair.current.assets
+        ) + (
+            *base.assets[-2:],
+            PublicationAsset(
+                current_candidate_path, current_hash, current_candidate_path.stat().st_size
+            ),
+            PublicationAsset(
+                current_promotion_path,
+                target_build.promotion.sha256,
+                current_promotion_path.stat().st_size,
+            ),
+        )
+        if (
+            len(files) != 28
+            or len({asset.source.name for asset in files}) != 28
+            or not dual_catalog.valid(target_build)
+        ):
+            return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_RECORD)
+        return PreparedPublication(base.build, files, target_build)
+    except (OSError, ValueError):
+        return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_RECORD)
+
+
+def decode_promotion(value: dict[object, object]) -> build_candidate.Promotion | Rejected:
+    # Decode scalar types before construction; bool must never become a run identity.
+    names = ("schemaVersion", "buildRunId", "buildRunAttempt", "mainRunId", "mainRunAttempt")
+    integers: list[int] = []
+    for name in names:
+        field = value.get(name)
+        if type(field) is not int or field < 1:
+            return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_RECORD)
+        integers.append(field)
+    names = (
+        "repository",
+        "buildRevision",
+        "mergedRevision",
+        "sourceTree",
+        "version",
+        "candidateSha256",
+    )
+    strings: list[str] = []
+    for name in names:
+        field = value.get(name)
+        if not isinstance(field, str):
+            return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_RECORD)
+        strings.append(field)
+    return build_candidate.Promotion(
+        integers[0],
+        strings[0],
+        strings[1],
+        strings[2],
+        strings[3],
+        strings[4],
+        integers[1],
+        integers[2],
+        integers[3],
+        integers[4],
+        strings[5],
+    )
 
 
 class RemotePublisher:
@@ -322,6 +434,42 @@ class RemotePublisher:
         assert isinstance(status, str)
         return status
 
+    def snapshot_dual(self) -> dual_catalog.Snapshot | catalog.Failure:
+        snapshot = self.snapshot()
+        if isinstance(snapshot, catalog.Failure):
+            return snapshot
+        result = (
+            self.api("GET", f"contents/builds-v2.json?ref={snapshot.head}")
+            if not snapshot.absent
+            else ApiFailure.ABSENT
+        )
+        if result is ApiFailure.ABSENT:
+            current = dual_catalog.Catalog(2, ())
+        elif isinstance(result, ApiDocument) and catalog.mapping(result.value):
+            content = result.value.get("content")
+            if (
+                result.value.get("type") != "file"
+                or result.value.get("encoding") != "base64"
+                or not isinstance(content, str)
+            ):
+                return catalog.Failure.CATALOG_INVALID
+            try:
+                raw = base64.b64decode(content.replace("\n", ""), validate=True).decode("utf-8")
+            except (ValueError, UnicodeDecodeError):
+                return catalog.Failure.CATALOG_INVALID
+            admitted = dual_catalog.decode(raw)
+            if isinstance(admitted, catalog.Failure):
+                return admitted
+            current = admitted
+        else:
+            return catalog.Failure.REMOTE_UNAVAILABLE
+        return dual_catalog.Snapshot(
+            snapshot.head,
+            snapshot.tree,
+            dual_catalog.CatalogPair(snapshot.catalog, current),
+            snapshot.absent,
+        )
+
     def history(self, revisions: tuple[str, ...]) -> tuple[str, ...] | catalog.Failure:
         main = self.api("GET", "git/ref/heads/main")
         if not isinstance(main, ApiDocument) or not catalog.mapping(main.value):
@@ -350,15 +498,43 @@ class RemotePublisher:
     def commit(
         self, snapshot: catalog.Snapshot, document: catalog.Catalog, pointer: str
     ) -> catalog.CommitResult | catalog.Failure:
+        return self.commit_files(
+            snapshot,
+            (
+                GitTreeFile("builds.json", catalog.encode(document)),
+                GitTreeFile("latest.txt", pointer),
+            ),
+        )
+
+    def commit_dual(
+        self,
+        snapshot: dual_catalog.Snapshot,
+        document: dual_catalog.CatalogPair,
+        pointer: str,
+    ) -> catalog.CommitResult | catalog.Failure:
+        base = catalog.Snapshot(
+            snapshot.head, snapshot.tree, snapshot.catalogs.legacy, snapshot.absent
+        )
+        return self.commit_files(
+            base,
+            (
+                GitTreeFile("builds.json", catalog.encode(document.legacy)),
+                GitTreeFile("builds-v2.json", dual_catalog.encode(document.current)),
+                GitTreeFile("latest.txt", pointer),
+            ),
+        )
+
+    def commit_files(
+        self,
+        snapshot: catalog.Snapshot,
+        files: tuple[GitTreeFile, ...],
+    ) -> catalog.CommitResult | catalog.Failure:
         tree = self.api(
             "POST",
             "git/trees",
             GitTreeRequest(
                 snapshot.tree,
-                (
-                    GitTreeFile("builds.json", catalog.encode(document)),
-                    GitTreeFile("latest.txt", pointer),
-                ),
+                files,
             ),
         )
         tree_sha = response_sha(tree)
@@ -442,7 +618,15 @@ def publish(
     released = remote.release(prepared)
     if isinstance(released, catalog.Failure):
         return Rejected(Stage.IMMUTABLE_RELEASE, released)
-    result = catalog.publish(prepared.build, remote.snapshot, remote.history, remote.commit)
+    if prepared.paired is None:
+        result = catalog.publish(prepared.build, remote.snapshot, remote.history, remote.commit)
+    else:
+        result = dual_catalog.publish(
+            dual_catalog.PairedBuild(prepared.build, prepared.paired),
+            remote.snapshot_dual,
+            remote.history,
+            remote.commit_dual,
+        )
     return Rejected(Stage.CATALOG, result) if isinstance(result, catalog.Failure) else result
 
 
@@ -466,7 +650,7 @@ def main(arguments: list[str]) -> int:
     if not os.environ.get("GH_TOKEN"):
         print("publish-developer: GH_TOKEN is absent", file=sys.stderr)
         return 1
-    prepared = prepare(
+    prepared = prepare_dual(
         repository,
         args.commit,
         args.version,

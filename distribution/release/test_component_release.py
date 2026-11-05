@@ -136,6 +136,14 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertEqual(len(admitted.assets), 6)
         self.assertFalse(any("control" in asset.name for asset in admitted.assets))
 
+    def test_independent_host_release_cannot_publish_a_263_record(self) -> None:
+        path = self.fixture(release.Component.HOST)
+        record = json.loads(path.read_text())
+        record["supportedIntellijReleaseLine"] = "263"
+        path.write_text(json.dumps(record))
+        self.checksums()
+        self.assertRejected(release.Component.HOST, release.ReleaseFailure.WRONG_OWNER)
+
     def test_host_release_rejects_legacy_main_jar_and_duplicate_stable_name(self) -> None:
         for name, duplicate in (("kast-ide-hosted-2.1.0.jar", False), ("kast-ide-hosted.jar", True)):
             self.fixture(release.Component.HOST, main_jar=name, duplicate=duplicate)

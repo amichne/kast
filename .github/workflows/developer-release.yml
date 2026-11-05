@@ -41,7 +41,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # Execute the current trusted publisher even for a delayed older main run.
+          # SOURCE_SHA below still binds qualification to that run's source.
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Set up Python

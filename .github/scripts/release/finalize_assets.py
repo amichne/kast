@@ -25,7 +25,7 @@ def mapping(value: object) -> TypeGuard[dict[object, object]]:
     return isinstance(value, dict)
 
 
-def finalize(version: str, revision: str) -> None:
+def finalize(version: str, revision: str, dual_hosts: bool = False) -> None:
     if not re.fullmatch(r"\d+\.\d+\.\d+", version) or not re.fullmatch(r"[0-9a-f]{40}", revision):
         raise SystemExit("release-assets: invalid identity")
     directory = ROOT / f"build/release/v{version}"
@@ -65,6 +65,8 @@ def finalize(version: str, revision: str) -> None:
             version,
             "--source-revision",
             revision,
+            "--host-targets",
+            *(("262", "263") if dual_hosts else ("262",)),
         ],
         cwd=ROOT,
         check=True,
@@ -80,5 +82,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     _ = parser.add_argument("--version", required=True)
     _ = parser.add_argument("--source-revision", required=True)
+    _ = parser.add_argument("--dual-hosts", action="store_true")
     arguments = parser.parse_args()
-    finalize(arguments.version, arguments.source_revision)
+    finalize(arguments.version, arguments.source_revision, arguments.dual_hosts)

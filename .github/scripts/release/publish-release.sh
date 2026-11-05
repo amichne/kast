@@ -62,6 +62,7 @@ control="${assets_directory}/kast-control-v${version}-macos-aarch64.tar.gz"
 plugins=("${assets_directory}"/kast-ide-hosted-v"${version}"-idea-*.zip)
 [[ "${#plugins[@]}" == 1 && -f "${plugins[0]}" ]] || fail "expected one IDEA-release-line hosted plugin"
 plugin="${plugins[0]}"
+[[ "${plugin##*/}" == "kast-ide-hosted-v${version}-idea-262.zip" ]] || fail "stable release supports only IDEA 262"
 catalog="${assets_directory}/kast-hosted-catalog-v${version}.json"
 knowledge="${assets_directory}/kast-module-knowledge-v${version}.json"
 sbom="${assets_directory}/kast-sbom-v${version}.cdx.json"

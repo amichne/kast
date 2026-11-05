@@ -86,13 +86,14 @@ def scanner(root: Path) -> Path:
     return executable
 
 
-def generate(root: Path, directory: Path, version: str, sha: str) -> None:
+def generate(root: Path, directory: Path, version: str, sha: str, host_lines: tuple[str, ...] = ("262",)) -> None:
     plugins = tuple(directory.glob(f"kast-ide-hosted-v{version}-idea-*.zip"))
-    if len(plugins) != 1:
-        raise SbomError("expected exactly one IDEA-release-line hosted plugin")
+    expected_plugins = tuple(f"kast-ide-hosted-v{version}-idea-{line}.zip" for line in host_lines)
+    if host_lines not in (("262",), ("262", "263")) or {path.name for path in plugins} != set(expected_plugins):
+        raise SbomError("hosted plugin inventory does not match the declared release view")
     names = (
         f"kast-control-v{version}-macos-aarch64.tar.gz",
-        plugins[0].name,
+        *expected_plugins,
         f"kast-plugin-v{version}.zip",
         f"kast-marketplace-v{version}.zip",
     )
@@ -130,6 +131,7 @@ if __name__ == "__main__":
     parser.add_argument("--assets-directory", type=Path, required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--source-revision", required=True)
+    parser.add_argument("--host-targets", nargs="+", choices=("262", "263"), default=["262"])
     args = parser.parse_args()
     try:
         generate(
@@ -137,6 +139,7 @@ if __name__ == "__main__":
             args.assets_directory.resolve(),
             args.version,
             args.source_revision,
+            tuple(args.host_targets),
         )
     except (SbomError, OSError, ValueError, KeyError, tarfile.TarError) as error:
         raise SystemExit(f"release-sbom: rejected: {error}") from None
