@@ -189,7 +189,7 @@ Keep the reported stage and readiness evidence before a new query.
 
 ## Filter structured output
 
-Use `--jq FILTER` to run an installed jq on one successful JSON result before Kast encodes it as TOON or JSON:
+Use `--jq FILTER` to project one successful JSON result with bundled jackson-jq before Kast encodes it as TOON or JSON:
 
 ```shell
 kast query plan --name OrderService --fields name,location \
@@ -211,7 +211,7 @@ Filtering does not request missing fields, read another page, follow a continuat
 Keep `--fields` and semantic scope constraints on the original request when they can reduce its work.
 Preserve completion, qualifications, and recovery evidence when interpreting a projection.
 
-Kast checks the jq version and compiles the filter before workspace effects.
+Kast checks filter syntax and numeric literals before workspace effects. Unknown functions and input types reject during evaluation.
 Workspace failures, qualified results, time limits, and other nonzero Kast statuses keep their original documents without filtering.
 After successful semantic work, a jq runtime failure discards any partial filter output and reports its stage and child exit status.
 Use the retained result authority for recovery when available; projection failure does not retry semantic work.
@@ -223,20 +223,34 @@ kast query --request recovery.json --json
 
 The recovery preserves the issued reference and original output kind. A normal retained result is read from its beginning; an issued detail request remains unchanged.
 
-Supported engines are stable jq versions `>=1.8.2,<2`. The qualification pin lives in `mise.toml`; newer supported versions can run without changing that pin.
-Kast does not install or download jq. Automatic executable lookup ignores relative PATH entries and executables inside the current working directory.
-Use `--jq-executable /absolute/path/to/jq` to select an executable explicitly, including when PATH contains a tool-manager shim.
-Filters are trusted code: jq can read its environment, import modules or data, and consume substantial memory. This option does not provide a sandbox.
-Kast passes the filter as one argument without a shell. It does not echo filter text, source payloads, or jq stderr in its rejection documents.
+Kast embeds jackson-jq `1.6.5` with jq `1.7` compatibility. No external jq, JVM installation, PATH lookup, or runtime download is needed.
+The native Control image contains the library. `--jq-executable` is no longer accepted.
+The version catalog in `gradle/libs.versions.toml` owns the library and compatible Jackson pins; installed discovery reads generated version metadata.
+The separate jq pin in `mise.toml` supplies the independent qualification oracle.
+
+Navigation, optional paths, `map`, `select`, sorting, grouping, function definitions and composition are supported.
+This is a library subset, not full jq parity. CLI I/O functions such as `input`, `inputs` and `halt_error` are unavailable.
+Environment access and external module or data loading are disabled. String interpolation rejects; use string concatenation or a JSON pipeline.
+Kast passes the program as one argument without a shell. It does not echo program text, source payloads, or worker stderr in rejection documents.
+
+Input JSON and `fromjson` or `tonumber` conversions keep exact decimal values. An encoding change, including lost negative zero, rejects with `NUMERIC_VALUE_LOSS`.
+Numeric literals must fit the library's signed 64-bit integer or finite double parser without changing their printed decimal value.
+Decimal literals that change value and non-finite results reject. Keep arbitrary exact numeric literals in JSON strings and use `fromjson` when needed.
+Arithmetic follows jackson-jq: integral operators use signed 64-bit arithmetic, including overflow, and other numeric operators use doubles.
+For example, `9007199254740993 + 1` produces `9007199254740994`; `9223372036854775807 + 1` wraps to `-9223372036854775808`.
+These arithmetic rules differ from native jq and do not provide exact arithmetic. The encoding checks do not verify arithmetic results.
+Before TOON publication, the existing guard separately rejects any changed value, key, null, or array shape with `OUTPUT_VALUE_LOSS`; use `--json` for values TOON cannot preserve.
 
 | Option | Default | Accepted values |
 | --- | --- | --- |
-| `--jq-timeout-ms` | `5000` | `1..60000`, for each version, compilation, and filtering child |
-| `--jq-max-bytes` | `16777216` | `1..67108864`, for filter input, stdout, and successful encoded projections including their newline |
+| `--jq-timeout-ms` | `5000` | `1..60000`, for each syntax-checking and filtering worker |
+| `--jq-max-bytes` | `16777216` | `1..67108864`, for input, worker stdout, and successful encoded projections including their newline |
 
 These options require `--jq` and have no effect on workspace waiting or semantic budgets.
-The version response has a separate 1024-byte bound, and each child's stderr has a 32768-byte bound.
-On expiry or cancellation, Kast terminates and reaps its owned jq child. These limits bound capture and publication; they do not impose an operating-system memory limit on jq.
+Each worker has a private 512 MiB heap and a 32768-byte stderr bound. Programs are limited to 32768 UTF-8 bytes.
+A worker exits before workspace waiting starts; no filter process is kept alive while the workspace is being prepared.
+On expiry or cancellation, Kast terminates and reaps its owned worker and joins its pipe readers before returning.
+Heap or stack exhaustion reports `RESOURCE_LIMIT`; a smaller input or projection can still need more working memory than its encoded size.
 `kast describe COMMAND` includes the default filter limits and a standalone schema for fixed filter rejections.
 Its normal output schema describes unfiltered results; a successful user projection can be any JSON value.
 

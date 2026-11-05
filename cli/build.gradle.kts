@@ -11,6 +11,16 @@ plugins {
 
 val repositoryRoot = project.isolated.rootProject.projectDirectory
 
+val jqEngineMetadata =
+    tasks.register<WriteProperties>("jqEngineMetadata") {
+        destinationFile.set(layout.buildDirectory.file("generated/jq/jq-engine.properties"))
+        property("version", libs.versions.jackson.jq.get())
+    }
+
+tasks.named<ProcessResources>("processResources") {
+    from(jqEngineMetadata)
+}
+
 application {
     applicationName = "kast"
     mainClass = "io.github.amichne.kast.cli.KastCliMainKt"
@@ -95,6 +105,8 @@ tasks.register<Tar>("assembleNativeImageInputs") {
 }
 
 dependencies {
+    implementation(platform(libs.jackson2.bom))
+    implementation(libs.jackson.jq)
     testImplementation(libs.ktor.client.cio)
     testImplementation(libs.ktor.client.websockets)
     implementation(project(":distribution:cli"))

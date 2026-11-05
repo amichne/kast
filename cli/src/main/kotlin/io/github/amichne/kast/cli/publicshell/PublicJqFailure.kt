@@ -10,8 +10,6 @@ import kotlinx.serialization.json.Json
 
 @Serializable
 internal enum class PublicJqStage {
-    EXECUTABLE,
-    VERSION,
     COMPILE,
     FILTER,
     PRESENTATION,
@@ -32,16 +30,31 @@ internal enum class PublicJqFailure(val exit: PublicShellExit, val guidance: Str
         PublicShellExit.PROTOCOL,
         "The projection cannot be encoded in this format. Use --json; TOON projection depth is limited to 128.",
     ),
+    NUMERIC_VALUE_LOSS(
+        PublicShellExit.PROTOCOL,
+        "The embedded jq numeric codec cannot preserve this value. Keep exact values in strings or use --json | jq.",
+    ),
+    RESOURCE_LIMIT(
+        PublicShellExit.IO,
+        "Embedded jq exceeded its private 512 MiB heap or stack. Reduce the projection's working set or recursion.",
+    ),
+    WORKER_FAILED(
+        PublicShellExit.RUNTIME,
+        "The bundled jq worker terminated unexpectedly. Its bounded child_exit is retained; raw stderr is private.",
+    ),
+    PROGRAM_UNSUPPORTED(
+        PublicShellExit.INPUT,
+        "Embedded jq does not admit string interpolation. Use string concatenation or --json | jq.",
+    ),
     INVALID_OUTPUT_FORMAT(PublicShellExit.INPUT, "Select JSON with --json or a valid KAST_OUTPUT_TOON setting."),
     ENGINE_UNAVAILABLE(
         PublicShellExit.RUNTIME,
-        "Install jq >=1.8.2,<2 or select its absolute path with --jq-executable.",
+        "The bundled jq worker could not start. Verify the Kast Control installation; no external jq is required.",
     ),
-    ENGINE_UNSUPPORTED(
-        PublicShellExit.RUNTIME,
-        "Use a stable jq version >=1.8.2,<2. mise.toml owns the qualification pin.",
+    PROGRAM_INVALID(
+        PublicShellExit.INPUT,
+        "Embedded jq rejected the syntax. Builtin names and input types are checked during evaluation.",
     ),
-    PROGRAM_INVALID(PublicShellExit.INPUT, "jq rejected the program. Check its syntax and builtin names."),
     EVALUATION_FAILED(
         PublicShellExit.INPUT,
         "jq could not evaluate the program on this document. Check its paths and types.",
@@ -99,5 +112,5 @@ internal fun jqRejection(
     stage: PublicJqStage,
     limits: PublicJqLimits,
     childExit: Int? = null,
-    version: String? = null,
+    version: String? = "jackson-jq $embeddedJqVersion",
 ): PublicJqRejection = PublicJqRejection(failure, stage, limits.timeoutMillis, limits.bytes, childExit, version)

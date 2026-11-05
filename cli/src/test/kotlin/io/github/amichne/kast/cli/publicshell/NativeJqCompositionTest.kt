@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.CleanupMode
 import org.junit.jupiter.api.io.TempDir
 
-/** Real jq over actual native documents; these local plans establish no compiler semantics. */
+/** Embedded JVM jq over actual native documents with PATH empty; local plans establish no compiler semantics. */
 @Tag("public-launcher")
 class NativeJqCompositionTest {
     @TempDir(cleanup = CleanupMode.ON_SUCCESS) lateinit var temporary: Path
@@ -43,12 +43,12 @@ class NativeJqCompositionTest {
                     ),
                     NativeProjection("false", false, "false\n"),
                     NativeProjection("null", false, "null\n"),
-                    NativeProjection("1.2345678901234567890123456789", true, "1.2345678901234567890123456789\n"),
+                    NativeProjection("1.25", true, "1.25\n"),
                 )
             cases.forEachIndexed { index, case ->
                 val label = "projection-$index"
                 val arguments = plan + jq(case.program) + if (case.json) listOf("--json") else emptyList()
-                val child = fixture.start(label, arguments, environment = emptyMap())
+                val child = fixture.start(label, arguments, environment = mapOf("PATH" to ""))
                 fixture.assertExit(child, 0, label)
                 assertEquals(case.expected, Files.readString(temporary.resolve("$label.stdout")))
                 assertEquals("", Files.readString(temporary.resolve("$label.stderr")))
@@ -67,12 +67,12 @@ class NativeJqCompositionTest {
                     "error(\"private native payload\")" to "EVALUATION_FAILED",
                     "empty" to "OUTPUT_CARDINALITY",
                     "1,2" to "OUTPUT_CARDINALITY",
-                    "1.2345678901234567890123456789" to "OUTPUT_VALUE_LOSS",
+                    "1.2345678901234567890123456789" to "NUMERIC_VALUE_LOSS",
                 )
             cases.forEachIndexed { index, (program, failure) ->
                 val label = "rejection-$index"
-                val child = fixture.start(label, plan + jq(program), environment = emptyMap())
-                fixture.assertExit(child, if (failure == "OUTPUT_VALUE_LOSS") 6 else 2, label)
+                val child = fixture.start(label, plan + jq(program), environment = mapOf("PATH" to ""))
+                fixture.assertExit(child, if (failure == "NUMERIC_VALUE_LOSS") 6 else 2, label)
                 val output = Files.readString(temporary.resolve("$label.stdout"))
                 val diagnostic = Files.readString(temporary.resolve("$label.stderr"))
                 val document = Json.parseToJsonElement(JToon.decodeToJson(output)).jsonObject
@@ -83,14 +83,7 @@ class NativeJqCompositionTest {
         }
     }
 
-    private fun jq(program: String): List<String> = listOf("--jq", program, "--jq-executable", executable().toString())
-
-    private fun executable(): Path =
-        System.getenv("PATH")
-            .split(java.io.File.pathSeparatorChar)
-            .map { Path.of(it).resolve("jq") }
-            .first { Files.isRegularFile(it) && Files.isExecutable(it) }
-            .toRealPath()
+    private fun jq(program: String): List<String> = listOf("--jq", program)
 
     private data class NativeProjection(val program: String, val json: Boolean, val expected: String)
 }

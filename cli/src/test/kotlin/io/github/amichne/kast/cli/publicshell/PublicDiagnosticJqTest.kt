@@ -5,7 +5,6 @@ import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.io.ByteArrayInputStream
-import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -20,8 +19,6 @@ class PublicDiagnosticJqTest {
     @Test
     fun `diagnostic identity survives jq preflight and successful projection`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
-        val executable = Files.writeString(root.resolve("jq"), "fixture")
-        check(executable.toFile().setExecutable(true))
         val stages = mutableListOf<PublicJqStage>()
         val executor = PublicJqExecutor { request ->
             stages.add(request.stage)
@@ -29,10 +26,8 @@ class PublicDiagnosticJqTest {
                 PublicJqCapture(
                     0,
                     when (request.stage) {
-                        PublicJqStage.VERSION -> "jq-1.8.2\n"
                         PublicJqStage.COMPILE -> ""
                         PublicJqStage.FILTER -> Json.encodeToString(true)
-                        PublicJqStage.EXECUTABLE,
                         PublicJqStage.PRESENTATION -> error("This stage cannot execute a child")
                     },
                 )
@@ -47,20 +42,20 @@ class PublicDiagnosticJqTest {
             )
         val output =
             preparePublicCli(
-                listOf("diagnostic", "check", "--path", ".", "--jq", ".", "--jq-executable", executable.toString()),
+                listOf("diagnostic", "check", "--path", ".", "--jq", "."),
                 ByteArrayInputStream(byteArrayOf()),
                 root,
                 session = { _, _ -> session },
                 invoke = { _, admitted ->
                     assertEquals(PublicToolIdentity.CHECK_DIAGNOSTICS, admitted.identity)
                     assertTrue(admitted.canonical is PublicToolCanonical.Diagnostics)
-                    assertEquals(listOf(PublicJqStage.VERSION, PublicJqStage.COMPILE), stages)
+                    assertEquals(listOf(PublicJqStage.COMPILE), stages)
                     PublicPreparedOutput(Json.encodeToString(emptyList<String>()), PublicShellExit.COMPLETE)
                 },
                 jqExecutor = executor,
             )
         assertEquals(PublicShellExit.COMPLETE, output.exit)
         assertEquals("true", output.text)
-        assertEquals(listOf(PublicJqStage.VERSION, PublicJqStage.COMPILE, PublicJqStage.FILTER), stages)
+        assertEquals(listOf(PublicJqStage.COMPILE, PublicJqStage.FILTER), stages)
     }
 }

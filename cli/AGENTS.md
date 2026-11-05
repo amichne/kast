@@ -148,9 +148,9 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - Public shell commands default to `COMPLETE`. Keep explicit `COMMON` restrictions without promotion.
 - Schema discovery uses literal JSON Pointers and bounded direct-child pages. Keep full exports explicit, preserve exact scalar facts, and never imply that a page is a complete validation schema.
 - Public shell `--json` overrides `KAST_OUTPUT_TOON`, including startup before the installed query launcher is admitted. Request documents remain JSON with either output format.
-- `PublicJqEngine` admits optional `--jq` programs before workspace effects and accepts exactly one JSON result. Keep projection options outside semantic request DTOs.
-- `PublicJqProcess` owns bounded child I/O, cancellation, and reaping. It must never recover through Host lifecycle operations or semantic retries.
-- Preserve unsuccessful documents and issued retained-result recovery. Use the shared guard for exact values before TOON encoding of user projections. `mise.toml` owns the oracle pin; runtime version support remains a separate policy.
+- `PublicJqEngine` checks optional `--jq` syntax and numeric literals before workspace effects and accepts exactly one JSON result. Keep projection options outside semantic request DTOs.
+- `PublicJqProgram` owns embedded evaluation and exact JSON conversions. `PublicJqWorker` runs it through a private Control entry with a 512 MiB heap. `PublicJqProcess` owns bounded child I/O, cancellation, and reaping. Never recover through Host lifecycle operations or semantic retries.
+- Preserve unsuccessful documents and issued retained-result recovery. Use the shared guard for exact values before TOON encoding of user projections. `mise.toml` owns the independent jq oracle pin; `gradle/libs.versions.toml` owns the bundled library and Jackson versions. Runtime filtering never resolves jq from PATH.
 - The native reachability metadata admits the JDK collection types observed in the `JToon` decoder. Keep `NativeJqCompositionTest` passing after JDK or `JToon` upgrades, including empty and nested arrays.
 - `source --help` and `result --help` list their commands without workspace preparation.
 - Keep parser diagnostics on stderr. Preserve the response contract and exclude request payloads and paths from those diagnostics.

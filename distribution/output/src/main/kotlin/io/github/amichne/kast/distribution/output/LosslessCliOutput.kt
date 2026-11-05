@@ -48,7 +48,7 @@ private fun renderToonProjection(document: JsonProjectionDocument): Refinement<L
 private const val MAX_TOON_PROJECTION_DEPTH = 128
 
 /** Iteration avoids making projection depth a second recursive call-stack limit. */
-private fun sameJsonValues(original: JsonElement, decoded: JsonElement): Boolean {
+internal fun sameJsonValues(original: JsonElement, decoded: JsonElement): Boolean {
     val pending = ArrayDeque<Pair<JsonElement, JsonElement>>()
     pending.add(original to decoded)
     while (pending.isNotEmpty()) {

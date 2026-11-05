@@ -13,7 +13,7 @@ internal fun publicCliArgumentDiagnostic(failure: PublicCliArgumentFailure): Str
             PublicCliArgumentFailure.INVALID_VALUE -> "Use kast describe query for accepted flag values."
             PublicCliArgumentFailure.INVALID_JQ_OPTIONS ->
                 "Supply --jq FILTER (1..32768 UTF-8 bytes) without --help. " +
-                    "Optional --jq-executable must be absolute; " +
+                    "Kast bundles jq support; --jq-executable is no longer supported; " +
                     "--jq-timeout-ms accepts 1..60000 (default 5000); --jq-max-bytes accepts 1..67108864 " +
                     "(default 16777216). Companion options require --jq."
             PublicCliArgumentFailure.MIXED_INPUT_MODES ->

@@ -19,6 +19,8 @@ ktor = "3.6.0"
 mcp-kotlin = "0.15.0"
 jtoon = "3.0.0"
 ktoon = "6.0.0"
+jackson-jq = "1.6.5"
+jackson2 = "2.22.4"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
@@ -47,6 +49,8 @@ ktor-client-websockets = { module = "io.ktor:ktor-client-websockets-jvm", versio
 mcp-kotlin-core = { module = "io.modelcontextprotocol:kotlin-sdk-core", version.ref = "mcp-kotlin" }
 jtoon = { module = "dev.toonformat:jtoon", version.ref = "jtoon" }
 ktoon = { module = "com.lukelast.ktoon:ktoon", version.ref = "ktoon" }
+jackson-jq = { module = "net.thisptr:jackson-jq", version.ref = "jackson-jq" }
+jackson2-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson2" }
 
 [bundles]
 test = [

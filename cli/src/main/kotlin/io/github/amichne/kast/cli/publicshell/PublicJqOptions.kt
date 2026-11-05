@@ -1,8 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.file.InvalidPathException
-import java.nio.file.Path
 
 internal sealed interface PublicOutputProjection {
     data object Unfiltered : PublicOutputProjection
@@ -14,7 +12,6 @@ internal sealed interface PublicOutputProjection {
 internal class PublicJqOptions
 private constructor(
     val program: String,
-    val executable: Path?,
     val limits: PublicJqLimits,
 ) {
     companion object {
@@ -34,29 +31,18 @@ private constructor(
                     is Refinement.Refined -> parsed.value
                     is Refinement.Rejected -> return parsed
                 }
-            val executable =
-                try {
-                    arguments[PublicCliFlag.JQ_EXECUTABLE]?.let(Path::of)
-                } catch (_: InvalidPathException) {
-                    return Refinement.Rejected(PublicCliArgumentFailure.INVALID_JQ_OPTIONS)
-                }
-            if (executable != null && !executable.isAbsolute)
-                return Refinement.Rejected(PublicCliArgumentFailure.INVALID_JQ_OPTIONS)
-            return Refinement.Refined(PublicOutputProjection.Jq(PublicJqOptions(program, executable, limits)))
+            return Refinement.Refined(PublicOutputProjection.Jq(PublicJqOptions(program, limits)))
         }
     }
 }
 
 internal class PublicJqLimits private constructor(val timeoutMillis: Long, val bytes: Int) {
-    fun versionProbe(): PublicJqLimits = PublicJqLimits(timeoutMillis, VERSION_RESPONSE_BYTES)
-
     companion object {
         const val DEFAULT_TIMEOUT_MILLIS = 5_000L
         const val DEFAULT_BYTES = 16 * 1_024 * 1_024
         const val MAXIMUM_TIMEOUT_MILLIS = 60_000L
         const val MAXIMUM_BYTES = 64 * 1_024 * 1_024
         const val STDERR_BYTES = 32 * 1_024
-        private const val VERSION_RESPONSE_BYTES = 1_024
 
         fun parse(arguments: LexicalArguments): Refinement<PublicJqLimits, PublicCliArgumentFailure> {
             val timeout =
@@ -74,6 +60,4 @@ internal class PublicJqLimits private constructor(val timeoutMillis: Long, val b
     }
 }
 
-internal val jqFlags =
-    setOf(PublicCliFlag.JQ, PublicCliFlag.JQ_EXECUTABLE, PublicCliFlag.JQ_TIMEOUT, PublicCliFlag.JQ_BYTES)
-private const val MAX_PROGRAM_BYTES = 32 * 1_024
+internal val jqFlags = setOf(PublicCliFlag.JQ, PublicCliFlag.JQ_TIMEOUT, PublicCliFlag.JQ_BYTES)

@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.publicshell
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -32,6 +33,7 @@ class PublicJqOracleTest {
     }
 
     private fun verifyCase(case: JqOracleCase) {
+        verifyIndependentOracle(case)
         val admitted = admitEngine(case.program)
         if (case.expectedExit == 3) {
             assertEquals(
@@ -48,7 +50,7 @@ class PublicJqOracleTest {
         if (case.expectedExit != 0) {
             val failure = (result as Refinement.Rejected).failure
             assertEquals(PublicJqFailure.EVALUATION_FAILED, failure.failure, case.name)
-            assertEquals(case.expectedExit, failure.childExit, case.name)
+            assertEquals(22, failure.childExit, case.name)
             return
         }
         if (case.expectedValues.size != 1) {
@@ -59,7 +61,38 @@ class PublicJqOracleTest {
             )
             return
         }
-        verifyEncodings(case, (result as Refinement.Refined).value)
+        when (case.name) {
+            "inputs_eof" ->
+                assertEquals(PublicJqFailure.EVALUATION_FAILED, (result as Refinement.Rejected).failure.failure)
+            "large_integer_arithmetic" -> assertEquals("9007199254740994", (result as Refinement.Refined).value.text)
+            else -> verifyEncodings(case, (result as Refinement.Refined).value)
+        }
+    }
+
+    private fun verifyIndependentOracle(case: JqOracleCase) {
+        val executable =
+            System.getenv("PATH")
+                .split(java.io.File.pathSeparatorChar)
+                .map { Path.of(it).resolve("jq") }
+                .first { Files.isRegularFile(it) && Files.isExecutable(it) }
+                .toRealPath()
+        val stdout = temporary.resolve("${case.name}.oracle.json")
+        val stderr = temporary.resolve("${case.name}.oracle.stderr")
+        val child =
+            ProcessBuilder(executable.toString(), "-c", "--", case.program)
+                .directory(temporary.toFile())
+                .redirectOutput(stdout.toFile())
+                .redirectError(stderr.toFile())
+                .start()
+        try {
+            child.outputStream.use { it.write(case.inputJson.toByteArray()) }
+            assertTrue(child.waitFor(10, TimeUnit.SECONDS), case.name)
+            assertEquals(case.expectedExit, child.exitValue(), case.name)
+            val values = Files.readAllLines(stdout).filter(String::isNotBlank).map(Json::parseToJsonElement)
+            assertEquals(case.expectedValues, values, case.name)
+        } finally {
+            if (child.isAlive) child.destroyForcibly().waitFor()
+        }
     }
 
     private fun verifyEncodings(case: JqOracleCase, projection: PublicPreparedOutput) {
@@ -89,9 +122,8 @@ class PublicJqOracleTest {
                 ".nil" to "null",
                 "false" to "false",
                 ".generation" to "9223372036854775807",
-                "9007199254740993 | . + 1" to "9007199254740992",
+                "9007199254740993 | . + 1" to "9007199254740994",
                 "def sparse(f): map(f); .items | sparse(.name)" to Json.encodeToString(listOf("Ada", "Bob")),
-                "reduce inputs as \$item ([]; . + [\$item])" to Json.encodeToString(emptyList<String>()),
                 "try (.items | .wrong) catch \"type-error\"" to Json.encodeToString("type-error"),
             )
         for ((program, expected) in cases) {
@@ -111,7 +143,7 @@ class PublicJqOracleTest {
             engine("1, error(\"private payload\")").project(PublicPreparedOutput(fixture, PublicShellExit.COMPLETE))
                 as Refinement.Rejected
         assertEquals(PublicJqFailure.EVALUATION_FAILED, failed.failure.failure)
-        assertEquals(5, failed.failure.childExit)
+        assertEquals(22, failed.failure.childExit)
         assertFalse(failed.failure.prepared().text.contains("private payload"))
         assertEquals(Json.encodeToString(emptyList<String>()), project("[.items[] | select(.count < 0)]").text)
     }
@@ -119,7 +151,8 @@ class PublicJqOracleTest {
     @Test
     fun `exact decimal remains JSON and rejects lossy TOON`() {
         val decimal = "1.2345678901234567890123456789"
-        val projected = project(decimal)
+        val projected =
+            ((engine(".").project(PublicPreparedOutput(decimal, PublicShellExit.COMPLETE))) as Refinement.Refined).value
         assertEquals(
             decimal,
             presentPublicOutput(
@@ -146,19 +179,6 @@ class PublicJqOracleTest {
         assertFalse(Files.exists(marker))
     }
 
-    @Test
-    fun `runtime version range admits newer stable releases without changing the qualified pin`() {
-        for (version in listOf("jq-1.8.2", "jq-1.8.3", "jq-1.9", "jq-1.10.0")) assertTrue(
-            PublicJqVersion.admit(version) is Refinement.Refined,
-            version,
-        )
-        for (version in
-            listOf("jq-1.8.1", "jq-1.7.1", "jq-2.0.0", "jq-1.9-dev", "unknown", "jq-1.999999999999.0")) assertTrue(
-            PublicJqVersion.admit(version) is Refinement.Rejected,
-            version,
-        )
-    }
-
     private fun project(program: String): PublicPreparedOutput =
         (engine(program).project(PublicPreparedOutput(fixture, PublicShellExit.COMPLETE)) as Refinement.Refined).value
 
@@ -175,7 +195,7 @@ class PublicJqOracleTest {
             (parsePublicCliArguments(listOf("query", "plan", "--name", "Order", "--jq", program)) as Refinement.Refined)
                 .value
         val options = (command.projection as PublicOutputProjection.Jq).options
-        return PublicJqEngine.prepare(options, temporary, System.getenv())
+        return PublicJqEngine.prepare(options, temporary)
     }
 }
 

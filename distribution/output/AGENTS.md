@@ -21,7 +21,7 @@ The process adapters supply `KAST_OUTPUT_TOON` once at startup.
 The existing serializers own result fields, discriminators, defaults, and nulls.
 `JToon` encodes their complete JSON projection.
 
-Use `JsonProjectionDocument` to admit a dynamic user projection as one strict JSON value.
+Use `JsonProjectionDocument` to admit a dynamic user projection as one strict JSON value. Its `reencoded` method carries proof that encoding preserved exact values and shape.
 `renderLosslessCliOutput` preserves exact JSON numeric tokens and checks decoded TOON values with exact decimal comparisons.
 Reject changed values, keys, nulls, and array shapes. Keep the TOON depth bound before encoding.
 

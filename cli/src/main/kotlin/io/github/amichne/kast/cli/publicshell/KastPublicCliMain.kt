@@ -105,8 +105,7 @@ internal fun preparePublicCli(
     },
     invoke: (KastDirectToolSession, AdmittedPublicTool) -> PublicPreparedOutput = ::invokeInstalledPublic,
     diagnostic: (String) -> Unit = {},
-    environment: Map<String, String> = System.getenv(),
-    jqExecutor: PublicJqExecutor = PublicJqProcess(directory, environment),
+    jqExecutor: PublicJqExecutor = PublicJqProcess(directory, emptyMap()),
 ): PublicPreparedOutput =
     if (argv.firstOrNull() in setOf("hook", "workspace")) preparePublicHook(argv, input, diagnostic)
     else
@@ -116,7 +115,7 @@ internal fun preparePublicCli(
                 publicFailure(ToolRpcFailure.INVALID_COMMAND)
             }
             is Refinement.Refined ->
-                prepareProjectedPublicCli(parsed.value, directory, environment, jqExecutor, diagnostic) {
+                prepareProjectedPublicCli(parsed.value, directory, jqExecutor, diagnostic) {
                     when (val command = parsed.value) {
                         is PublicCliCommand.Help ->
                             PublicPreparedOutput(
@@ -145,7 +144,6 @@ internal fun preparePublicCli(
 private fun prepareProjectedPublicCli(
     command: PublicCliCommand,
     directory: Path,
-    environment: Map<String, String>,
     executor: PublicJqExecutor,
     diagnostic: (String) -> Unit,
     prepare: () -> PublicPreparedOutput,
@@ -153,7 +151,7 @@ private fun prepareProjectedPublicCli(
     when (val projection = command.projection) {
         PublicOutputProjection.Unfiltered -> prepare()
         is PublicOutputProjection.Jq ->
-            when (val engine = PublicJqEngine.prepare(projection.options, directory, environment, executor)) {
+            when (val engine = PublicJqEngine.prepare(projection.options, directory, executor)) {
                 is Refinement.Rejected -> {
                     diagnostic("kast: ${engine.failure.failure}. ${engine.failure.guidance}")
                     engine.failure.prepared()

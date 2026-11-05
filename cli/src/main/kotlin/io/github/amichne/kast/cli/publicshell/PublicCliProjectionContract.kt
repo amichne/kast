@@ -10,13 +10,25 @@ internal data class PublicCliProjectionContract(
     /** A standalone schema for fixed projection failures; successful projections are dynamic JSON values. */
     @SerialName("failure_schema") val failureSchema: JsonObject,
     @Required val option: String = "--jq",
-    @Required val engine: String = "jq >=1.8.2,<2",
+    @Required val engine: String = "jackson-jq $embeddedJqVersion (embedded; jq 1.7 compatibility, not full jq parity)",
+    @Required
+    val preflight: String = "Syntax and numeric literals before workspace effects; function names at evaluation.",
+    @Required
+    val limitations: String =
+        "No input/inputs, halt_error, environment, external modules or string interpolation. " +
+            "Arithmetic uses signed 64-bit integers (including overflow) and IEEE doubles; codecs reject value loss.",
     @Required val cardinality: String = "Exactly one JSON value; collect generators explicitly with [FILTER].",
     @Required
     val scope: String = "Only successful documents. Unfiltered output_schema does not describe a user projection.",
     @Required @SerialName("default_timeout_ms") val timeout: Long = PublicJqLimits.DEFAULT_TIMEOUT_MILLIS,
     @Required @SerialName("default_max_bytes") val bytes: Int = PublicJqLimits.DEFAULT_BYTES,
 )
+
+internal val embeddedJqVersion: String by lazy {
+    val properties = java.util.Properties()
+    checkNotNull(PublicJqEngine::class.java.getResourceAsStream("/jq-engine.properties")).use(properties::load)
+    checkNotNull(properties.getProperty("version"))
+}
 
 @Serializable
 internal data class PublicCliFlagDescriptor(

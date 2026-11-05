@@ -8,7 +8,6 @@ internal enum class PublicCliFlag(val spelling: String, val takesValue: Boolean 
     CATALOG("--catalog"),
     JSON("--json", false),
     JQ("--jq"),
-    JQ_EXECUTABLE("--jq-executable"),
     JQ_TIMEOUT("--jq-timeout-ms"),
     JQ_BYTES("--jq-max-bytes"),
     HELP("--help", false),

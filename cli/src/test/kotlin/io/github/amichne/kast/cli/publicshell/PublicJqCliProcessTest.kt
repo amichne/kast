@@ -23,7 +23,7 @@ class PublicJqCliProcessTest {
             listOf("query", "plan", "--name", "Order", "--fields", "name,location") + jq(".request.output.fields")
         assertEquals(0 to Json.encodeToString(listOf("name", "location")) + "\n", children.child(args + "--json"))
         assertEquals(0 to "[2]: name,location\n", children.child(args, environment = mapOf("KAST_OUTPUT_TOON" to "1")))
-        assertEquals(0 to "null\n", children.child(args.dropLast(4) + jq("null") + "--json"))
+        assertEquals(0 to "null\n", children.child(args.dropLast(2) + jq("null") + "--json"))
     }
 
     @Test
@@ -46,11 +46,6 @@ class PublicJqCliProcessTest {
     @Test
     fun `missing engine compile runtime and cardinality failures have visible finite causes`() {
         val base = listOf("query", "plan", "--name", "Order", "--json")
-        val missing =
-            children.child(base + listOf("--jq", ".", "--jq-executable", temporary.resolve("missing-jq").toString()))
-        assertEquals(4, missing.first)
-        assertTrue(missing.second.contains("ENGINE_UNAVAILABLE"), missing.second)
-        assertTrue(missing.second.contains("--jq-executable"), missing.second)
         for ((program, code) in
             listOf(
                 ".[" to "PROGRAM_INVALID",
@@ -67,12 +62,5 @@ class PublicJqCliProcessTest {
         }
     }
 
-    private fun jq(program: String): List<String> = listOf("--jq", program, "--jq-executable", executable().toString())
-
-    private fun executable(): Path =
-        System.getenv("PATH")
-            .split(java.io.File.pathSeparatorChar)
-            .map { Path.of(it).resolve("jq") }
-            .first { Files.isRegularFile(it) && Files.isExecutable(it) }
-            .toRealPath()
+    private fun jq(program: String): List<String> = listOf("--jq", program)
 }
