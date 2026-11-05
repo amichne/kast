@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3d8a0d12adbd02709b88abf971c1a13270856c8e6356fa01d7d4c70c12424982",
+  "pageVersion": "sha256:e5aef20ea5ded5d078890df7c40e9281d0dc79612a3c5d8b92185eb51f1738ab",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -88,7 +88,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:2759ef309ef3da936d790837d099e37e826bebf0da30a47f61bb69a77d1cd4a0"
+          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
         },
         {
           "resource": "repo://packaging/managed_update_journal.py",
@@ -102,7 +102,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:2759ef309ef3da936d790837d099e37e826bebf0da30a47f61bb69a77d1cd4a0"
+          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
         }
       ]
     },
@@ -145,10 +145,24 @@
           "version": "repo-file-v1:sha256:053aee7a20ec7d6248a54c19ba2fe0fc7652e7d579cec9fc8033e9a5328a8a95"
         }
       ]
+    },
+    {
+      "id": "claim_d115a0e7e108440f8671efc6c575677e",
+      "statement": "Before importing installed helpers, the candidate bootstrap disables Python bytecode writes so those imports preserve the exact installed payload inventory.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_installation.py#L40-L47",
+          "version": "repo-lines-v1:sha256:9d991d7d32644987562492d1d0a55647f1b50af3418b106a04f9d62049db5c59:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzU5OTQ1OGRjYzg2MjZlZDg5ZmFhZDhiMWJjZjBkYjFhNjg4MDU3Nzc3ODhlNDcyYmJjMmUyYmJhMzFkMjFlNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzkyMTY0ZjQxOWY3MTgwOGNhNzYxY2NlZmI3MmE4OTU2MTJmNTU5NDcwYTI0YjVhY2M3YmY4ZGI2NDdiZmI0YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI3ODhmNjE0OTRlM2NiY2RhYTUxYWZjODZiZjcwYjU4Mjg4NDE4NjBiOWE2ZWNjZWJiOGJkODE4NWEyNTI0ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDdjMTJjOGQ3ZWUxMTIyMDUyMTY0ODYwOGE1OTNiMzE2ODQzYTkyNTA0MjViMzlkM2QzMTc1ODhjOWE4ZWJmMyJ9"
+        },
+        {
+          "resource": "repo://packaging/test-managed-installation.py#L47-L88",
+          "version": "repo-lines-v1:sha256:1a91f218776a1f98fd7a50ee81a98522fc7789e4cc2f699cbf4da139c17cf6ca:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzOGMxNjU2NTdhY2RjMDk3NDQ1ZDZmYmZhOGRhYmM3MmM2MzcyZDYwZWIyOTBjODAzNDMyMzg4ZmFmMDMxMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhNjhjMzE4ZThjNDQzNmFhYTM2NjViNzFlZDAxMjAwZmQ0MTY4NGE2ODEwNTg0NmI5OGRhYjhkYzBiODJlMDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAzNzllMmRmNjRkY2MyODAyMmY0YWMyY2VlY2UzYWNjYjdkYmQ2MGFiMjNlOWY4ZjgzOGRlZWQ2NmJlNDY3NWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0YTU5YjE4ZjZhODFjZTk1ZTBkOWQ1NmI4NzkyMGM3NDU4YjJmZmM5YWVkN2YzNjMwOWRkYjBkMGEwZjljOWEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T18:05:12.445Z"
+    "at": "2026-11-05T04:04:28.756Z"
   }
 }

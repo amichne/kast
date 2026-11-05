@@ -42,16 +42,18 @@ sources:
     resource: repo://packaging/managed_installation.py
   - id: openwiki-source-5e407ffc0053b191a3e609bc
     resource: repo://packaging/managed_update_contract.py
+  - id: openwiki-source-988817829b83f3eaab1d41af
+    resource: repo://packaging/test-managed-installation.py
   - id: openwiki-source-8fae9d27fc5ee242f935c4cf
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt
   - id: openwiki-source-5bce5e00d8d37b48b461a27e
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
-generated: { by: "codex", at: "2026-10-31T10:43:14.711Z" }
+generated: { by: "codex", at: "2026-11-05T04:04:28.756Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-05T04:04:28.756Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -74,6 +76,11 @@ Shutdown fences new tool calls and automatic restart before it waits for owned w
 Recorded process identity scopes the permitted retirement effects.
 An in-flight mutation needs its existing recovery settlement before the workspace lane ends.
 Shared IDEA and Gradle processes remain outside Kast's force-retirement ownership.
+
+After an acknowledged normal stop, the coordinator waits within the existing Host settlement budget for a captured process inventory proving absence.
+During that poll, `PROCESS_IDENTITY_UNAVAILABLE` produces `WAITING` evidence and does not prove that the process stopped.
+If the deadline expires, the timeout retains that native failure code.
+A changed process, a Host identity rejection, or cancellation ends the wait without admitting absence.
 
 Installation recovery preserves the failure stage and the result of restoration.
 A failed payload completion keeps the shutdown fence and its exact failure evidence.
