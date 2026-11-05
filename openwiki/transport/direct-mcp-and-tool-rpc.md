@@ -53,7 +53,7 @@ sources:
 generated: { by: "codex", at: "2026-11-04T23:27:44.986Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T06:25:54.221Z
+    at: 2026-11-05T00:37:28.525Z
 ---
 
 # Direct MCP and tool RPC

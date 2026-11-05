@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d3f7b71af20ebe89bd67718c6b971b133297554ec6800f248b44f965e588941f",
+  "pageVersion": "sha256:06c18c80c0e6d0fa62e687df9ecb4292d9d858dd3d5bdd4c68ba863cb3f6eb82",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -46,7 +46,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
-          "version": "repo-file-v1:sha256:ff7df8f1e028ce4c451aa96cb88be6c6e100d7df4084508c8cf6722bff13df13"
+          "version": "repo-file-v1:sha256:998e70fde7d4f7340ad28cdf4d256b726dd135ee60ada82c0533ed690bd8add3"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstaller.kt",
@@ -68,7 +68,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:2759ef309ef3da936d790837d099e37e826bebf0da30a47f61bb69a77d1cd4a0"
+          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
         }
       ]
     },
@@ -78,7 +78,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:2759ef309ef3da936d790837d099e37e826bebf0da30a47f61bb69a77d1cd4a0"
+          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
@@ -96,7 +96,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:2759ef309ef3da936d790837d099e37e826bebf0da30a47f61bb69a77d1cd4a0"
+          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
@@ -126,13 +126,27 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:2759ef309ef3da936d790837d099e37e826bebf0da30a47f61bb69a77d1cd4a0"
+          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
+        }
+      ]
+    },
+    {
+      "id": "claim_3be8590b825041bcb81bc9b7c2edd8a6",
+      "statement": "After a normal-stop acknowledgment, unavailable process metadata is pending only within the existing Host settlement budget. Success still requires a captured empty process inventory; timeout preserves the native failure code, while changed identity and cancellation remain rejections.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_installation.py#L836-L876",
+          "version": "repo-lines-v1:sha256:88178fca41aba78a6cc205a1eed0c83d48f761c39a466d7f6c420ad0c350fd24:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5MzBkOGU5M2E0MjJmODEyOTUxNzFkNzYxN2VkNmQwMzM4ZGZmOTBhYzIzZjg4MTBhMTE0MjM0YTE4MWY0M2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyYjExMDFjMWNlMDgwNmQxYmVhZGZmM2I4MTNiODhlOWNhZjJiNmU5MmRkNjg1YTI5MzFmNjkzMTRiMjYzOGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNhYWVhOTI4NjdiMDc4NmIyMjMwNTk5Y2YyNDNmNDg1OGU2MTE5YzI0NWEzNDFiMzJkM2ZiMzAxYzIwNTY4NDMifQ"
+        },
+        {
+          "resource": "repo://packaging/test-managed-installation.py#L225-L318",
+          "version": "repo-lines-v1:sha256:ae8288a1a11c42b6447b1407454071119fdc19ce690fc2106eac9c4fa8109a74:eyJzZWxlY3RlZExpbmVDb3VudCI6OTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmNGY1YTAwMDRlZTYyYmQxZGQ1OWYzZjdkZWM2MjM0YzA2ODUzNzEyOTFkNzhhYzJjMjZlMjdjM2YzZjkwMzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlMDFhMTZiOWRhYWI5NDBkODJhYmZmMWE2ODQzYTMyNWQyYTY0N2E1YzM4M2MzYWY1Njk1YWFjOTU5N2EzZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjMjEyNjM5OTU0NzY0YmJhZDljZTQyMmRkYjg3ZDA4YjA1ODU4ZjY1ZGYyNzYxNGU0NjI0MjQ0Njk0MzMwZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjZWNhMDAyZTZkOGZkZGUwODdhOTI1Njc2YTUxMDVlOTEyNWJhMmI3Yjc3NGJjMzdhZDllZjMzMzdjMTk5MjMifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T05:07:02.262Z"
+    "at": "2026-11-05T04:04:28.756Z"
   }
 }

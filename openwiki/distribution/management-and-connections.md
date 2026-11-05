@@ -44,10 +44,14 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
   - id: openwiki-source-656a2bd4859ff8a64d431829
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+  - id: openwiki-source-d95d75ec0e14dda7faf63dbf
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt
+  - id: openwiki-source-1380068036b00bec817a6579
+    resource: repo://packaging/managed_installation.py
+generated: { by: "codex", at: "2026-11-05T04:04:28.756Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T06:25:54.221Z
+    at: 2026-11-05T04:04:28.756Z
 ---
 
 # Native management and harness connections
@@ -92,6 +96,8 @@ A fresh agent session is necessary after setup.
 
 `kast versions` lists the stable selection and five newest selectable published main builds.
 Upgrade requests refine into one typed release selection and update policy before artifact effects.
+The wrapper writes the captured selection in a physical temporary directory before invoking the installer bridge.
+An aliased temporary-directory setting therefore still produces a physical record path.
 An unqualified upgrade keeps its recorded tracking policy and rejects a pinned policy before release access.
 Pending recovery takes precedence over selector resolution and invokes only the manifest-owned recovery bridge.
 The wrapper preserves the child terminal result and does not select another release after recovery.
@@ -111,6 +117,7 @@ These mechanisms alone do not establish that a running IDEA loaded the selected 
 - [ManagementCliTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagementCliTest.kt)
 - [ConnectionConfigurationContractTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfigurationContractTest.kt)
 - [PluginInstallationTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallationTest.kt)
+- [ManagedUpgradeSelectionFileTest.kt](../../distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt)
 
 ## Source owners
 

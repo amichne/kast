@@ -33,10 +33,12 @@ sources:
     resource: repo://packaging/test-host-installation.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+  - id: openwiki-source-988817829b83f3eaab1d41af
+    resource: repo://packaging/test-managed-installation.py
+generated: { by: "codex", at: "2026-11-05T04:04:28.756Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T06:25:54.221Z
+    at: 2026-11-05T04:04:28.756Z
 ---
 
 
@@ -81,6 +83,8 @@ Unknown paths do not become owned because their names resemble Kast artifacts.
 ## Managed composition transaction
 
 `managed_installation.py` coordinates the existing Control and Host effect owners under the selected management lock.
+The bootstrap disables Python bytecode writes before importing its installed helpers.
+Those imports preserve the exact installed payload inventory.
 It captures exact preimages for management, the public command, profile options, runtime state, and Host receipts.
 The typed journal records the selected artifacts and one `STOPPED`, `HOT_RELOAD`, or `NORMAL_RESTART` strategy.
 
@@ -138,6 +142,7 @@ Read native lifecycle evidence before a claim about loaded components or workspa
 - [InstallationWorkflowTest.kt](../../cli/src/test/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflowTest.kt)
 - [test-host-installation.py](../../packaging/test-host-installation.py)
 - [test-installer-entrypoint.py](../../packaging/test-installer-entrypoint.py)
+- [test-managed-installation.py](../../packaging/test-managed-installation.py)
 
 ## Source owners
 

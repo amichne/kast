@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4243f11b0379ce8c76df3402a008c60bd01ce03fa17ea56a6e9a65d2de917241",
+  "pageVersion": "sha256:59a7cc18b85f19cae9d437bbf3711ec4617f73db26cb28be9645fdfe68c986f3",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -56,7 +56,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
-          "version": "repo-file-v1:sha256:ff7df8f1e028ce4c451aa96cb88be6c6e100d7df4084508c8cf6722bff13df13"
+          "version": "repo-file-v1:sha256:998e70fde7d4f7340ad28cdf4d256b726dd135ee60ada82c0533ed690bd8add3"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementReceiptAdmission.kt",
@@ -70,11 +70,11 @@
       "evidence": [
         {
           "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:d31ae1e1069157e9210b4a304c3d6f8bcad56d5305574448535b9f82ad8e2381"
+          "version": "repo-file-v1:sha256:fc96f7e447a3b03146c07d43b3ec340ecd40af6ef19f283c82f2d9196351c8cc"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt",
-          "version": "repo-file-v1:sha256:6ccb75e39b897cea90f090e5905fd44d52e40c4818e7df532b1fc66372284413"
+          "version": "repo-file-v1:sha256:91fb02f27d6b68d970556e95239d2959acaedeb5ae93e0a92b38350a2727309b"
         },
         {
           "resource": "repo://cli/src/main/native-launchers/bin/kast-mcp",
@@ -95,10 +95,28 @@
           "version": "repo-file-v1:sha256:569cbb3f9408be606a3f2180d129ba00ee4b40ec15e16e09303d4d57a4547a25"
         }
       ]
+    },
+    {
+      "id": "claim_b0b9cd6b770c448b80069387309589b5",
+      "statement": "The upgrade wrapper resolves the temporary directory before creating its captured selection file, so an aliased temporary directory still yields a physical record path for the unchanged record-admission checks.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt#L88-L109",
+          "version": "repo-lines-v1:sha256:6b81c12449334e70e05b1340169a664109636f0524271eb5de29dbc4ca6ad665:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlYjMxNDEzOTUwN2M2MzcyZjFhMzg0NTFkM2Y5NDQ5OWRiMTFkZDNkYzUwZjVjOGEyYzI2OTQ5ZTFjYjZiMDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExZGY4N2E0NzMxNmM3MDhjNTUwMjA5OGU5YWY2YzQ0NTM0ZWI4MGJlYWRjZjYwNjMwMjhlZmNhODU5MzdhYmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmYmE1NWU1NDljM2M0ZTg2M2Q3YTZmYWJiYmEyMmMwZGZkNjliOTM1OWNmNWE0MDM2MjBhMDMzZDEyZTJhOGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2N2NiOTA1YzkwMTMzYzY5MzhjNjgwMjM4NzZlMmEwNTNiMTQ2MzNiMTdhZDUzODYyNjZmNzNiM2M4YzJjMjkifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt#L13-L30",
+          "version": "repo-lines-v1:sha256:167047777691c3563627648c1924869b1313f1696dadda1bdf0ebf869ae0a166:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1MzVjMmU0MGQ4NWY0YWI0ODM2ZmM0MjAwMDYxZDRkMDBlOTVmMzc4MWZiMjZkNDEyOTQ2ZmVmYTI1MTg0MDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py#L293-L306",
+          "version": "repo-lines-v1:sha256:072dea805fe8cf7acaabe0cfa7d667f2ebfa232ea134dbd8c62ff6ae1c52a023:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3NzQ5OGFiMjA3MTY0Y2I5ZWM5M2U4NGNkODZhN2M1NjMwNjQ3Yjg1ZWQzNzU2ZGJiNTM3ZWRiMzg2NWIyYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3OWFjZmUwNGRjNzY2NGQ4MTY1NzY1MmFlMjFlOGNkZjY5OThjNWQwZWY3Mjk2MjFkZjMzY2EwMzhmOTg1M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFiNzIwNDEwZTNjNGE1ZmM5MDkwMzNlNTBkMzg5NjMxMDY5M2EyOGFhNGIzMGEwZGFmYzI0NThlYzIwOTk3ZmIifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T06:25:54.221Z"
+    "at": "2026-11-05T04:04:28.756Z"
   }
 }
