@@ -3,9 +3,10 @@
 Use the installed `kast` command for Kotlin queries without MCP registration.
 The existing IntelliJ Host remains necessary for semantic work.
 
-CLI result documents use TOON by default, including errors, plans, descriptors, and management results.
-Set `KAST_OUTPUT_TOON=0` to select JSON.
-An unset or empty variable selects TOON, as does `KAST_OUTPUT_TOON=1`.
+Semantic CLI results use JSON by default, including errors, plans, and descriptors.
+Set `KAST_OUTPUT_TOON=1` to select TOON.
+An unset or empty variable selects JSON, as does `KAST_OUTPUT_TOON=0`.
+Management commands keep their human output unless `--json` or TOON is selected.
 Keep JSON request documents and issued references unchanged.
 Help, version text, stderr diagnostics, MCP, and tool RPC keep their existing formats.
 

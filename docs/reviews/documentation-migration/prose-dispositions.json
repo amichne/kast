@@ -3137,13 +3137,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/cli.mdx",
-        "sourceSha256": "eb093bcdf2974f6c0b7ce3efcc4fe39a4818d94a01d527d523a4369270afb994",
+        "sourceSha256": "22285edfe4428ae35a62ad4940383dadc753f95f0b3c5c71cae3b41c2056b367",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 9.05 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 9.02 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep exact embedded-engine limits, numeric conversion rejection, integer overflow examples, one-result cardinality, retained-result recovery, and the distinction between filtering and workspace waiting. Engine, numeric-value and cancellation sections now divide the tasks, and the paragraph and section advisories are resolved. The grade-8 advisory remains unmet; exact source review and metrics do not establish reader comprehension."
+      "reason": "Keep exact embedded-engine limits, checked numeric conversions, literal admission, integer overflow examples, one-result cardinality, retained-result recovery, JSON default and explicit TOON selection. Engine, numeric-value and cancellation sections divide the tasks; separate outcome paragraphs resolve the paragraph advisory. The grade-8 advisory remains unmet; exact source review and metrics do not establish reader comprehension."
     }
   ]
 }

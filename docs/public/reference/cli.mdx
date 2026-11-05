@@ -154,16 +154,18 @@ Do not combine `--request` with semantic flags or `--verbose`.
 
 ## Read the outcome
 
-Semantic commands emit TOON on stdout by default.
-Use `--json` for JSON output from one command.
-This flag overrides `KAST_OUTPUT_TOON`.
-Set `KAST_OUTPUT_TOON=0` for JSON output across commands.
+Semantic commands emit JSON on stdout by default.
+Set `KAST_OUTPUT_TOON=1` to select TOON.
+Use `--json` to select JSON even when this variable selects TOON.
+An unset, empty, or `0` value selects JSON.
 The input document remains JSON with either output format.
-For pipelines, select `--json` explicitly and keep stderr separate.
+For pipelines, keep stderr separate from the JSON result.
+
 Use `--max-results`, `--max-returned-bytes`, and a narrow `--fields` selection before the query.
 These limits bound presentation without stripping completion or recovery evidence.
 Query byte limits measure canonical JSON presentation before TOON encoding. The outer envelope, newline, and stderr are outside that allowance.
 An explicit `--request` document owns its execution budget; do not add semantic budget flags beside it.
+
 Progress and diagnostics use stderr.
 Read the outer outcome and its qualifications before a semantic conclusion.
 An unfinished search with no matches does not prove absence.
@@ -199,7 +201,7 @@ kast query plan --name OrderService --fields name,location \
 The filter must emit exactly one JSON value. Use `map(...)` or `[FILTER]` to collect a generator explicitly.
 An empty stream rejects; an empty array, `false`, and `null` are valid results.
 Kast does not add an array, flatten nested arrays, select the first result, or enable jq's `-e` option.
-For ordinary jq streams, raw strings, variable bindings, or other jq command options, use a JSON pipeline:
+For ordinary jq streams, raw strings, `--arg` bindings, or other jq command options, use a JSON pipeline:
 
 ```shell
 set -o pipefail
@@ -232,14 +234,18 @@ The separate jq pin in `mise.toml` supplies the independent qualification oracle
 
 Navigation, optional paths, `map`, `select`, sorting, grouping, function definitions and composition are supported.
 This is a library subset, not full jq parity. CLI I/O functions such as `input`, `inputs` and `halt_error` are unavailable.
+`implode` preserves complete Unicode scalars, including supplementary characters. Invalid scalars reject.
 Environment access and external module or data loading are disabled. String interpolation rejects; use string concatenation or a JSON pipeline.
 Kast passes the program as one argument without a shell. It does not echo program text, source payloads, or worker stderr in rejection documents.
 
 ### Numeric values
 
 Input JSON and `fromjson` or `tonumber` conversions keep exact decimal values. An encoding change, including lost negative zero, rejects with `NUMERIC_VALUE_LOSS`.
-Numeric literals must fit the library's signed 64-bit integer or finite double parser and preserve their decimal value after a double round trip.
-Decimal literals that change value and non-finite results reject. Keep arbitrary exact numeric literals in JSON strings and use `fromjson` when needed.
+Direct numeric literals must be whole numbers with magnitude at most `2147483647`.
+Whole decimal and exponent forms such as `2147483647.0` and `1e3` are accepted.
+The minus sign is a separate token, so `-2147483648` also needs quoted conversion.
+For larger or fractional constants, use quoted JSON with `fromjson` or `tonumber`, such as `("1.25" | fromjson)`.
+Unsupported literals report `NUMERIC_LITERAL_LIMIT` before workspace effects. Non-finite results reject.
 
 Kast rejects input numeric conversions that change values during comparison, grouping or array indexing. Exact navigation and conversion to strings remain available.
 

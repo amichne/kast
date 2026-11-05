@@ -4,9 +4,10 @@ title: "Kast CLI output"
 description: "Defines the shared JSON and TOON presentation adapter for public command modes."
 resource: "repo://distribution/output"
 tags: [kast, cli, serialization]
-timestamp: "2026-11-05T05:01:09Z"
-source_revision: 2cc048bffba8dfb1504a434e2fb3fe5f5aee5dd7
+timestamp: "2026-11-05T06:19:25Z"
+source_revision: f771eded1ebbeb5b283caa14442713cbc0a86345
 code_sources:
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/CliOutputConfiguration.kt
   - path: distribution/output/build.gradle.kts
   - path: distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/CliOutput.kt
   - path: distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/JsonProjectionDocument.kt
@@ -18,6 +19,7 @@ code_sources:
 This module owns result presentation for public command modes.
 `distribution/contract` owns the format enum, parser, and configuration declaration.
 The process adapters supply `KAST_OUTPUT_TOON` once at startup.
+JSON is the default; only explicit `1` selects TOON.
 The existing serializers own result fields, discriminators, defaults, and nulls.
 `JToon` encodes their complete JSON projection.
 
