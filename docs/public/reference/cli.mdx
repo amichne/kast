@@ -223,6 +223,8 @@ kast query --request recovery.json --json
 
 The recovery preserves the issued reference and original output kind. A normal retained result is read from its beginning; an issued detail request remains unchanged.
 
+### Embedded engine
+
 Kast embeds jackson-jq `1.6.5` with jq `1.7` compatibility. No external jq, JVM installation, PATH lookup, or runtime download is needed.
 The native Control image contains the library. `--jq-executable` is no longer accepted.
 The version catalog in `gradle/libs.versions.toml` owns the library and compatible Jackson pins; installed discovery reads generated version metadata.
@@ -233,14 +235,21 @@ This is a library subset, not full jq parity. CLI I/O functions such as `input`,
 Environment access and external module or data loading are disabled. String interpolation rejects; use string concatenation or a JSON pipeline.
 Kast passes the program as one argument without a shell. It does not echo program text, source payloads, or worker stderr in rejection documents.
 
+### Numeric values
+
 Input JSON and `fromjson` or `tonumber` conversions keep exact decimal values. An encoding change, including lost negative zero, rejects with `NUMERIC_VALUE_LOSS`.
 Numeric literals must fit the library's signed 64-bit integer or finite double parser and preserve their decimal value after a double round trip.
 Decimal literals that change value and non-finite results reject. Keep arbitrary exact numeric literals in JSON strings and use `fromjson` when needed.
-Input numeric conversions for comparisons, grouping and array indexes reject if they would change the value. Exact navigation and conversion to strings remain available.
+
+Kast rejects input numeric conversions that change values during comparison, grouping or array indexing. Exact navigation and conversion to strings remain available.
+
 Arithmetic follows jackson-jq: integral operators use signed 64-bit arithmetic, including overflow, and other numeric operators use doubles.
 With input `9007199254740993`, `. + 1` produces `9007199254740994`. With input `9223372036854775807`, `. + 1` wraps to `-9223372036854775808`.
 These arithmetic rules differ from native jq and do not provide exact arithmetic. The conversion checks do not verify intermediate arithmetic results. Keep opaque identifiers as strings when filtering them.
+
 Before TOON publication, the existing guard separately rejects any changed value, key, null, or array shape with `OUTPUT_VALUE_LOSS`; use `--json` for values TOON cannot preserve.
+
+### Limits and cancellation
 
 | Option | Default | Accepted values |
 | --- | --- | --- |
@@ -250,8 +259,10 @@ Before TOON publication, the existing guard separately rejects any changed value
 These options require `--jq` and have no effect on workspace waiting or semantic budgets.
 Each worker has a private 512 MiB heap and a 32768-byte stderr bound. Programs are limited to 32768 UTF-8 bytes.
 JSON nesting is limited to 1000 levels, and numeric tokens to 1000 characters. Exceeding these limits reports `JSON_LIMIT`.
+
 A worker exits before workspace waiting starts; no filter process is kept alive while the workspace is being prepared.
 On expiry or cancellation, Kast terminates and reaps its owned worker and joins its pipe readers before returning.
+
 Heap or stack exhaustion reports `RESOURCE_LIMIT`; a smaller input or projection can still need more working memory than its encoded size.
 `kast describe COMMAND` includes the default filter limits and a standalone schema for fixed filter rejections.
 Its normal output schema describes unfiltered results; a successful user projection can be any JSON value.

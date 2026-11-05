@@ -3137,13 +3137,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/cli.mdx",
-        "sourceSha256": "296e3e55ddf23eb6deb0bafa9626b15d01f6045fa3d3ca8550963af58a3eb351",
+        "sourceSha256": "eb093bcdf2974f6c0b7ce3efcc4fe39a4818d94a01d527d523a4369270afb994",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 8.60 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 9.05 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep exact jq options, one-result output, supported versions, bounded capture, retained-result recovery, and numeric preservation. The combined guide also distinguishes issued source authority, diagnostics, and bounded or indefinite preparation. Short sections and concrete commands preserve those contracts. The grade-8 advisory remains unmet; metrics and author review do not establish reader comprehension."
+      "reason": "Keep exact embedded-engine limits, numeric conversion rejection, integer overflow examples, one-result cardinality, retained-result recovery, and the distinction between filtering and workspace waiting. Engine, numeric-value and cancellation sections now divide the tasks, and the paragraph and section advisories are resolved. The grade-8 advisory remains unmet; exact source review and metrics do not establish reader comprehension."
     }
   ]
 }
