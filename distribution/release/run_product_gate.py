@@ -117,7 +117,7 @@ def run_gate(*, dry_run: bool = False) -> int:
         "--no-daemon",
     ]
     if dry_run:
-        command.append("--dry-run")
+        command.extend(("--dry-run", "--info"))
     print(
         f"product-gate: local validation {source.revision} tree {source.tree}; version {VERSION}",
         flush=True,
