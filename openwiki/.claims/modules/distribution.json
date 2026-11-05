@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:afdb207fefdc80b518170eab80e494ad8bf5316cb7468ea4f0aff86b74350827",
+  "pageVersion": "sha256:bf79844bd9938c48a075732c9ebfaa17245e8f7b63977587b04d81cbf53f2c68",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -342,7 +342,7 @@
         },
         {
           "resource": "repo://.github/scripts/ci/native_handoff.py",
-          "version": "repo-file-v1:sha256:344c91d6b27b544fb19098c9113920bff665273afc43ee3fcba128e724727bc4"
+          "version": "repo-file-v1:sha256:469e3d78dbf42f619e96ee6cee81ace3c5dca250d5ba78024bb52530e1c95c13"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
@@ -468,7 +468,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/native_handoff.py",
-          "version": "repo-file-v1:sha256:344c91d6b27b544fb19098c9113920bff665273afc43ee3fcba128e724727bc4"
+          "version": "repo-file-v1:sha256:469e3d78dbf42f619e96ee6cee81ace3c5dca250d5ba78024bb52530e1c95c13"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
@@ -483,6 +483,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T04:04:28.756Z"
+    "at": "2026-11-05T04:51:53.442Z"
   }
 }
