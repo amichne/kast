@@ -91,9 +91,9 @@ object HostedCompatibilityPolicy {
 }
 
 /** Control requirements contain boundary facts and platform admission, with no implementation provenance. */
-data class HostedCompatibilityRequirements(
-    val ideBuild: IdeBuildIdentity,
-    val kotlinPluginBuild: KotlinPluginBuildIdentity,
+class HostedCompatibilityRequirements
+private constructor(
+    private val targets: DeclaredIntellijTargets,
     val contract: HostedContract,
 ) {
     fun admit(document: HostedCompatibilityDocument): IdeHostCompatibilityAdmission {
@@ -102,19 +102,30 @@ data class HostedCompatibilityRequirements(
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return IdeHostCompatibilityAdmission.Rejected(parsed.failure)
             }
-        if (observed.ideBuild.releaseLine != ideBuild.releaseLine)
-            return IdeHostCompatibilityAdmission.Rejected(
-                IdeHostCompatibilityFailure.Mismatch(IdeHostCompatibilityMismatch.IdeBuild(ideBuild, observed.ideBuild))
-            )
-        if (observed.kotlinPluginBuild.releaseLine != kotlinPluginBuild.releaseLine)
+        val target =
+            when (val selected = targets.forReleaseLine(observed.ideBuild.releaseLine.value)) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected ->
+                    return IdeHostCompatibilityAdmission.Rejected(
+                        IdeHostCompatibilityFailure.Mismatch(
+                            IdeHostCompatibilityMismatch.IdeBuild(targets.defaultTarget.ideBuild, observed.ideBuild)
+                        )
+                    )
+            }
+        if (observed.kotlinPluginBuild.releaseLine != target.releaseLine)
             return IdeHostCompatibilityAdmission.Rejected(
                 IdeHostCompatibilityFailure.Mismatch(
-                    IdeHostCompatibilityMismatch.KotlinPluginBuild(kotlinPluginBuild, observed.kotlinPluginBuild)
+                    IdeHostCompatibilityMismatch.KotlinPluginBuild(target.kotlinPluginBuild, observed.kotlinPluginBuild)
                 )
             )
         return when (val admitted = HostedCompatibilityPolicy.admit(contract, observed.hostedContract)) {
             is Refinement.Refined -> IdeHostCompatibilityAdmission.Admitted(observed)
             is Refinement.Rejected -> IdeHostCompatibilityAdmission.Rejected(admitted.failure)
         }
+    }
+
+    companion object {
+        fun forTargets(targets: DeclaredIntellijTargets, contract: HostedContract): HostedCompatibilityRequirements =
+            HostedCompatibilityRequirements(targets, contract)
     }
 }

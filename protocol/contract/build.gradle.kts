@@ -1,3 +1,5 @@
+import support.tasks.idea.defaultIntellijTargetProfile
+
 plugins {
     id("kast.kotlin-serialization")
     id("kast.role.contract")
@@ -8,11 +10,14 @@ dependencies {
     implementation(project(":symbol:contract"))
 }
 
+val defaultTarget = defaultIntellijTargetProfile(project)
+
 tasks.processResources {
+    from(project.isolated.rootProject.projectDirectory.file("config/intellij-targets.json"))
     val values =
         mapOf(
-            "ideBuild" to libs.versions.ide.host.build.get(),
-            "kotlinPluginBuild" to libs.versions.ide.kotlin.plugin.build.get(),
+            "ideBuild" to defaultTarget.ideBuild,
+            "kotlinPluginBuild" to defaultTarget.kotlinPluginBuild,
         )
     inputs.properties(values)
     filesMatching("kast-hosted-platform.properties") { expand(values) }

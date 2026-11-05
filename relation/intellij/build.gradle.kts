@@ -1,5 +1,8 @@
 import java.time.Duration
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import support.tasks.idea.IntellijSdkLibraryFamily
+import support.tasks.idea.selectedIdeaProductInfo
+import support.tasks.idea.selectedIntellijTarget
 import support.tasks.nativefixtures.CompileDependencyFixture
 import support.tasks.nativefixtures.DependencyFixtureArguments
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
@@ -18,7 +21,15 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val ideaPlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
+private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val ideaPlatformBuild = intellij.profile.ideBuild
+private val sdkLibraries =
+    intellij.libraries(
+        project,
+        IntellijSdkLibraryFamily.PLATFORM,
+        IntellijSdkLibraryFamily.KOTLIN,
+        IntellijSdkLibraryFamily.JAVA,
+    )
 
 val relationIdeaDistribution =
     configurations.create("relationIdeaDistribution") {
@@ -26,40 +37,11 @@ val relationIdeaDistribution =
         isCanBeResolved = true
     }
 
-private val extractedKotlinPluginDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/relation-intellij-kotlin-plugin/$ideaPlatformBuild")))
-    }
-
+// Preserve the existing task entry point without another mutable SDK extraction.
 val extractRelationKotlinPlugin =
-    tasks.register<Sync>("extractRelationKotlinPlugin") {
-        inputs.property("pluginLibrarySets", listOf("Kotlin", "java"))
-        from({ zipTree(relationIdeaDistribution.singleFile) }) {
-            include("**/plugins/Kotlin/lib/**/*.jar")
-            include("**/plugins/java/lib/**/*.jar")
-            exclude("**/plugins/Kotlin/lib/jps/**")
-            exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-            eachFile {
-                relativePath =
-                    RelativePath(
-                        true,
-                        *relativePath.segments.dropWhile { segment -> segment != "lib" }.drop(1).toTypedArray(),
-                    )
-            }
-        }
-        includeEmptyDirs = false
-        into(extractedKotlinPluginDirectory)
+    tasks.register("extractRelationKotlinPlugin") {
+        dependsOn(sdkLibraries)
     }
-
-private val kotlinPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedKotlinPluginDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/*.jar")
-                }
-            }
-        )
-        .builtBy(extractRelationKotlinPlugin)
 
 dependencies {
     implementation(project(":protocol:contract"))
@@ -71,26 +53,8 @@ dependencies {
     relationIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaPlatformBuild@zip") {
         isTransitive = false
     }
-
-    compileOnly("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
-    compileOnly(kotlinPluginLibs)
-
-    testImplementation("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
-    testImplementation(kotlinPluginLibs)
-    testImplementation("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
+    compileOnly(sdkLibraries)
+    testImplementation(sdkLibraries)
 }
 
 // The native call oracle must compile with the repository's compiler before IDE acceptance.
@@ -192,12 +156,7 @@ nativeTest.runtimeClasspath += sourceSets.main.get().output
 
 kotlin.target.compilations.getByName("nativeTest").associateWith(kotlin.target.compilations.getByName("main"))
 
-val nativeFixtureIdeaHome = providers.gradleProperty("nativeFixtureIdeaHome")
-val nativeIdeaHome =
-    objects.directoryProperty().apply {
-        if (nativeFixtureIdeaHome.isPresent) set(project.file(nativeFixtureIdeaHome.get()))
-        else set(layout.buildDirectory.dir("native-test/idea"))
-    }
+val nativeIdeaHome = intellij.nativeFixtureHome(project)
 val extractNativeTestIdea =
     tasks.register<Sync>("extractNativeTestIdea") {
         from({ zipTree(relationIdeaDistribution.singleFile) })
@@ -218,7 +177,7 @@ val nativeIdeaLibraries =
                 }
             }
         )
-        .apply { if (!nativeFixtureIdeaHome.isPresent) builtBy(extractNativeTestIdea) }
+        .apply { if (intellij.suppliedHome == null) builtBy(extractNativeTestIdea) }
 
 dependencies {
     add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)
@@ -248,11 +207,11 @@ val compileDeclaredEffectFixture =
                 fileTree(home.dir("plugins/Kotlin/kotlinc/lib")) { include("*.jar") }
             }
         )
-        dependencies.from(nativeIdeaHome.file("plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar"))
+        dependencies.from(nativeIdeaHome.map { it.file("plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar") })
         javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
         archiveFile.set(layout.buildDirectory.file("native-test/dependencies/effects.jar"))
         timeout.set(Duration.ofSeconds(60))
-        if (!nativeFixtureIdeaHome.isPresent) dependsOn(extractNativeTestIdea)
+        if (intellij.suppliedHome == null) dependsOn(extractNativeTestIdea)
     }
 
 val compileResultEffectFixture =
@@ -296,7 +255,7 @@ fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<Strin
         testClassesDirs = nativeTest.output.classesDirs
         classpath = nativeTest.runtimeClasspath
         dependsOn("detektNativeTest")
-        if (!nativeFixtureIdeaHome.isPresent) dependsOn(extractNativeTestIdea)
+        if (intellij.suppliedHome == null) dependsOn(extractNativeTestIdea)
         if (selectedClasses.isNotEmpty()) {
             dependsOn(":verifyKotlinSemanticInputs")
             filter { selectedClasses.forEach(::includeTestsMatching) }
@@ -309,7 +268,7 @@ fun registerRelationNativeFixtures(taskName: String, selectedClasses: List<Strin
         )
         jvmArgumentProviders.add(
             objects.newInstance<NativeFixtureJvmArguments>().apply {
-                productInfo.set(nativeIdeaHome.file("product-info.json"))
+                productInfo.set(layout.file(nativeIdeaHome.map { selectedIdeaProductInfo(it.asFile) }))
                 pinnedBuild.set(ideaPlatformBuild)
                 osName.set(providers.systemProperty("os.name"))
             }

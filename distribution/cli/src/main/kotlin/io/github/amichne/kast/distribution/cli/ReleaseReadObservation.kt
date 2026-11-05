@@ -17,6 +17,7 @@ internal enum class ReleaseReadFailure {
     TIMED_OUT,
     IO_FAILURE,
     HTTP_REJECTED,
+    NOT_FOUND,
     DOCUMENT_TOO_LARGE,
     INVALID_ENCODING,
     INVALID_ARGUMENT,

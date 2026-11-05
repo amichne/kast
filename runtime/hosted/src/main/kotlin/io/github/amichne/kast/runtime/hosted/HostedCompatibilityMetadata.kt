@@ -4,9 +4,14 @@ import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.extensions.PluginId
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
+import io.github.amichne.kast.protocol.contract.DeclaredHostCompatibilityPolicy
+import io.github.amichne.kast.protocol.contract.DeclaredIntellijTargets
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
-import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityPolicy
+import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
+import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
+import io.github.amichne.kast.protocol.contract.IntellijTargetFailure
 import io.github.amichne.kast.protocol.wire.CanonicalHostedContract
 import java.util.Properties
 
@@ -28,15 +33,51 @@ internal object HostedCompatibilityMetadata {
                 check(Regex("[0-9a-f]{40}").matches(it.sourceTree))
             }
 
-    val document: HostedCompatibilityDocument by lazy {
-        val document =
+    private val observed: HostedCompatibilityDocument by lazy {
+        HostedCompatibilityDocument(
+            ApplicationInfo.getInstance().build.asStringWithoutProductCode(),
+            checkNotNull(PluginManagerCore.getPlugin(PluginId.getId("org.jetbrains.kotlin"))).version,
+            checkNotNull(properties.getProperty("version")),
+            CanonicalHostedContract.document,
+        )
+    }
+
+    /** The packaged SDK establishes the policy; the runtime cannot define a policy from its own observation. */
+    val admission: Refinement<AdmittedIdeHostCompatibility, HostedRuntimeCompatibilityFailure> by lazy {
+        val targets =
+            when (val parsed = DeclaredIntellijTargets.packaged) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected ->
+                    return@lazy Refinement.Rejected(HostedRuntimeCompatibilityFailure.TargetRegistry(parsed.failure))
+            }
+        val compiled =
             HostedCompatibilityDocument(
-                ApplicationInfo.getInstance().build.asStringWithoutProductCode(),
-                checkNotNull(PluginManagerCore.getPlugin(PluginId.getId("org.jetbrains.kotlin"))).version,
+                checkNotNull(properties.getProperty("ideBuild")),
+                checkNotNull(properties.getProperty("kotlinBuild")),
                 checkNotNull(properties.getProperty("version")),
                 CanonicalHostedContract.document,
             )
-        check(IdeHostCompatibilityPolicy.define(document.candidate()) is Refinement.Refined)
-        document
+        when (val defined = DeclaredHostCompatibilityPolicy.define(targets, compiled)) {
+            is Refinement.Refined ->
+                when (val actual = defined.value.admit(observed.candidate())) {
+                    is IdeHostCompatibilityAdmission.Admitted -> Refinement.Refined(actual.compatibility)
+                    is IdeHostCompatibilityAdmission.Rejected ->
+                        Refinement.Rejected(HostedRuntimeCompatibilityFailure.Compatibility(actual.failure))
+                }
+            is Refinement.Rejected ->
+                Refinement.Rejected(HostedRuntimeCompatibilityFailure.Compatibility(defined.failure))
+        }
     }
+
+    val document: HostedCompatibilityDocument
+        get() {
+            check(admission is Refinement.Refined) { "Host runtime compatibility rejected: $admission" }
+            return observed
+        }
+}
+
+internal sealed interface HostedRuntimeCompatibilityFailure {
+    data class TargetRegistry(val reason: IntellijTargetFailure) : HostedRuntimeCompatibilityFailure
+
+    data class Compatibility(val reason: IdeHostCompatibilityFailure) : HostedRuntimeCompatibilityFailure
 }

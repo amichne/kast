@@ -1,6 +1,8 @@
 import java.security.MessageDigest
 import support.consumeProjectOutput
+import support.tasks.idea.IntellijSdkLibraryFamily
 import support.tasks.idea.selectedIdeaProductInfo
+import support.tasks.idea.selectedIntellijTarget
 import support.tasks.nativefixtures.DependencyFixtureArguments
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
 
@@ -14,37 +16,11 @@ val repositoryRoot = project.isolated.rootProject.projectDirectory
 
 base { archivesName.set("kast-ide-hosted") }
 
-val hostedIdeaHome = providers.gradleProperty("hostedIdeaHome")
 val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-val pinnedBuild = catalog.findVersion("ide-host-build").get().requiredVersion
-val sdk =
-    hostedIdeaHome.orElse(
-        gradle.gradleUserHomeDir.resolve("kast/workspace-intellij-read-idea-distributions/$pinnedBuild").path
-    )
-val platform =
-    files(
-        sdk.map { home ->
-            fileTree(home) {
-                include("lib/**/*.jar", "plugins/gradle*/lib/**/*.jar")
-                exclude("lib/intellij.libraries.kotlinx.serialization.*.jar", "lib/intellij.libraries.ktor.utils.jar")
-            }
-        }
-    )
-
-if (!hostedIdeaHome.isPresent) platform.builtBy(":workspace:intellij-read:extractWorkspaceReadIdeaDistribution")
-
-val ideBuild =
-    if (hostedIdeaHome.isPresent) {
-        val metadata =
-            providers
-                .fileContents(
-                    layout.projectDirectory.file(selectedIdeaProductInfo(file(hostedIdeaHome.get())).absolutePath)
-                )
-                .asText
-                .get()
-        (groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"] as String
-    } else pinnedBuild
-val ideReleaseLine = ideBuild.substringBefore('.')
+val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+val platform = intellij.libraries(project, IntellijSdkLibraryFamily.PLATFORM, IntellijSdkLibraryFamily.GRADLE)
+val ideBuild = intellij.profile.ideBuild
+val ideReleaseLine = intellij.profile.intellijReleaseLine
 
 val hostedContractFiles = consumeProjectOutput("hostedContractFiles", ":protocol:wire", "hostedContractElements")
 val hostSourceRevision =
@@ -81,7 +57,7 @@ tasks.processResources {
         mapOf(
             "ideBuild" to ideBuild,
             "ideReleaseLine" to ideReleaseLine,
-            "kotlinBuild" to "$ideBuild-IJ",
+            "kotlinBuild" to intellij.profile.kotlinPluginBuild,
             "pluginVersion" to project.version.toString(),
             "schemaDigest" to digest(schema),
             "registryDigest" to digest(registry),
@@ -241,14 +217,9 @@ nativeTest.runtimeClasspath += sourceSets.main.get().output
 
 kotlin.target.compilations.getByName("nativeTest").associateWith(kotlin.target.compilations.getByName("main"))
 
-val nativePlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
+val nativePlatformBuild = intellij.profile.ideBuild
 val nativeCoroutinesTestVersion = catalog.findVersion("ide-coroutines-test").get().requiredVersion
-val nativeFixtureIdeaHome = providers.gradleProperty("nativeFixtureIdeaHome")
-val nativeIdeaHome =
-    objects.directoryProperty().apply {
-        if (nativeFixtureIdeaHome.isPresent) set(project.file(nativeFixtureIdeaHome.get()))
-        else set(providers.provider { repositoryRoot.dir("relation/intellij/build/native-test/idea") })
-    }
+val nativeIdeaHome = intellij.nativeFixtureHome(project)
 val nativeIdeaLibraries =
     files(
             nativeIdeaHome.map { home ->
@@ -269,7 +240,7 @@ val nativeIdeaLibraries =
                 }
             }
         )
-        .apply { if (!nativeFixtureIdeaHome.isPresent) builtBy(":relation:intellij:extractNativeTestIdea") }
+        .apply { if (intellij.suppliedHome == null) builtBy(":relation:intellij:extractNativeTestIdea") }
 
 dependencies {
     add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)
@@ -329,7 +300,7 @@ fun registerHostedNativeFixtures(taskName: String, selectedClasses: List<String>
         )
         jvmArgumentProviders.add(
             objects.newInstance<NativeFixtureJvmArguments>().apply {
-                productInfo.set(nativeIdeaHome.file("product-info.json"))
+                productInfo.set(layout.file(nativeIdeaHome.map { selectedIdeaProductInfo(it.asFile) }))
                 pinnedBuild.set(nativePlatformBuild)
                 osName.set(providers.systemProperty("os.name"))
             }

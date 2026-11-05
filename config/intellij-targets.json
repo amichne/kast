@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "defaultTarget": "262",
+  "targets": [
+    {
+      "intellijReleaseLine": "262",
+      "ideBuild": "262.11879.100",
+      "kotlinPluginBuild": "262.11879.100-IJ"
+    },
+    {
+      "intellijReleaseLine": "263",
+      "ideBuild": "263.7307.200",
+      "kotlinPluginBuild": "263.7307.200-IJ"
+    }
+  ]
+}

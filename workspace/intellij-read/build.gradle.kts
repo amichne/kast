@@ -2,7 +2,8 @@ import java.security.MessageDigest
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import support.tasks.idea.selectedIdeaProductInfo
+import support.tasks.idea.IntellijSdkLibraryFamily
+import support.tasks.idea.selectedIntellijTarget
 
 plugins {
     `java-test-fixtures`
@@ -20,18 +21,8 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val hostedIdeaHome = providers.gradleProperty("hostedIdeaHome")
-private val ideHostBuild =
-    if (hostedIdeaHome.isPresent) {
-        val metadata =
-            providers
-                .fileContents(
-                    layout.projectDirectory.file(selectedIdeaProductInfo(file(hostedIdeaHome.get())).absolutePath)
-                )
-                .asText
-                .get()
-        checkNotNull((groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"]) as String
-    } else catalog.findVersion("ide-host-build").get().requiredVersion
+private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val ideHostBuild = intellij.profile.ideBuild
 
 val workspaceReadIdeaDistribution =
     configurations.create("workspaceReadIdeaDistribution") {
@@ -39,10 +30,7 @@ val workspaceReadIdeaDistribution =
         isCanBeResolved = true
     }
 
-private val extractedIdeaDistributionDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/workspace-intellij-read-idea-distributions/$ideHostBuild")))
-    }
+private val extractedIdeaDistributionDirectory = intellij.extractedSdkHome(project)
 
 val extractWorkspaceReadIdeaDistribution =
     tasks.register<ExtractIdeaDistributionTask>("extractWorkspaceReadIdeaDistribution") {
@@ -59,28 +47,10 @@ val extractWorkspaceReadIdeaDistribution =
         outputDirectory.set(extractedIdeaDistributionDirectory)
     }
 
-private fun extractedIdeaFiles(configure: ConfigurableFileTree.() -> Unit) =
-    if (hostedIdeaHome.isPresent) files(fileTree(hostedIdeaHome.get()) { configure() })
-    else
-        files(
-                extractedIdeaDistributionDirectory.map { directory ->
-                    fileTree(directory) { configure() }
-                }
-            )
-            .builtBy(extractWorkspaceReadIdeaDistribution)
-
-private val ideaLibraries: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/lib/**/*.jar")
-    exclude("**/plugins/**")
-    exclude("**/lib/intellij.libraries.kotlinx.serialization.*.jar")
-    exclude("**/lib/intellij.libraries.ktor.utils.jar")
-}
-
-private val kotlinPluginLibraries: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/plugins/Kotlin/lib/**/*.jar")
-    exclude("**/plugins/Kotlin/lib/jps/**")
-    exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-}
+private val ideaLibraries = intellij.libraries(project, IntellijSdkLibraryFamily.PLATFORM)
+private val kotlinPluginLibraries = intellij.libraries(project, IntellijSdkLibraryFamily.KOTLIN)
+private val javaPluginLibraries = intellij.libraries(project, IntellijSdkLibraryFamily.JAVA)
+private val gradlePluginLibraries = intellij.libraries(project, IntellijSdkLibraryFamily.GRADLE)
 
 dependencies {
     implementation(project(":protocol:contract"))
@@ -93,9 +63,9 @@ dependencies {
     }
     compileOnly(ideaLibraries)
     compileOnly(kotlinPluginLibraries)
-    compileOnly(extractedIdeaFiles { include("**/plugins/java/lib/**/*.jar") })
-    compileOnly(extractedIdeaFiles { include("**/plugins/gradle*/lib/**/*.jar") })
-    testImplementation(extractedIdeaFiles { include("**/plugins/gradle*/lib/**/*.jar") })
+    compileOnly(javaPluginLibraries)
+    compileOnly(gradlePluginLibraries)
+    testImplementation(gradlePluginLibraries)
     testImplementation(ideaLibraries)
     testImplementation(kotlinPluginLibraries)
     testImplementation(catalog.findLibrary("serialization-json").get())
@@ -133,7 +103,7 @@ val hostedQueryPluginJar =
         from(repositoryRoot.dir("experiments/host-observation/hosted-plugin")) {
             expand(
                 "ideBuild" to ideHostBuild,
-                "kotlinBuild" to "$ideHostBuild-IJ",
+                "kotlinBuild" to intellij.profile.kotlinPluginBuild,
                 "registryDigest" to
                     "sha256:" +
                         MessageDigest.getInstance("SHA-256")

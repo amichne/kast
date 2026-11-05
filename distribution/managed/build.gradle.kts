@@ -11,4 +11,5 @@ base {
 
 dependencies {
     implementation(project(":distribution:contract"))
+    implementation(project(":protocol:contract"))
 }

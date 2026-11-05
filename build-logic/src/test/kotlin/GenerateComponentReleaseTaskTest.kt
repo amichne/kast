@@ -28,7 +28,12 @@ class GenerateComponentReleaseTaskTest {
         assertRecord(ReleaseComponent.HOST, "HOST_RELEASE", "hostedPluginVersion", "providedHostedContract")
     }
 
-    private fun assertRecord(component: ReleaseComponent, type: String, versionField: String, contractField: String) {
+    @Test
+    fun `263 host record has a distinct name without replacing the legacy 262 record name`() {
+        assertRecord(ReleaseComponent.HOST, "HOST_RELEASE", "hostedPluginVersion", "providedHostedContract", "263")
+    }
+
+    private fun assertRecord(component: ReleaseComponent, type: String, versionField: String, contractField: String, line: String = "262") {
         val root = directory.toFile()
         val archive = root.resolve("component.zip").apply { writeText("owned component payload") }
         val contract = root.resolve("contract.json").apply { writeText(Json.encodeToString(ContractFixture(
@@ -42,12 +47,13 @@ class GenerateComponentReleaseTaskTest {
             sourceRevision.set("a".repeat(40))
             this.archive.set(archive)
             hostedContractFile.set(contract)
-            if (component == ReleaseComponent.HOST) ideaReleaseLine.set("262")
+            if (component == ReleaseComponent.HOST) ideaReleaseLine.set(line)
             outputDirectory.set(root.resolve("release"))
         }
         task.generate()
         val output = task.outputDirectory.get().asFile
-        val recordFile = output.resolve("${component.recordName}-v2.1.0.json")
+        val suffix = if (component == ReleaseComponent.HOST && line != "262") "-idea-$line" else ""
+        val recordFile = output.resolve("${component.recordName}-v2.1.0$suffix.json")
         val record = Json.parseToJsonElement(recordFile.readText()).jsonObject
         assertEquals(type, record.getValue("type").jsonPrimitive.content)
         assertEquals("2.1.0", record.getValue(versionField).jsonPrimitive.content)
@@ -61,7 +67,7 @@ class GenerateComponentReleaseTaskTest {
             assertFalse(record.containsKey("supportedIntellijReleaseLine"))
         } else {
             assertFalse(record.containsKey("controlVersion"))
-            assertEquals("262", record.getValue("supportedIntellijReleaseLine").jsonPrimitive.content)
+            assertEquals(line, record.getValue("supportedIntellijReleaseLine").jsonPrimitive.content)
         }
     }
 

@@ -57,7 +57,9 @@ abstract class GenerateComponentReleaseTask : DefaultTask() {
         val output = outputDirectory.get().asFile
         output.deleteRecursively()
         output.mkdirs()
-        val record = output.resolve("${component.get().recordName}-v${releaseVersion.get()}.json")
+        val targetSuffix = if (component.get() == ReleaseComponent.HOST && ideaReleaseLine.get() != "262")
+            "-idea-${ideaReleaseLine.get()}" else ""
+        val record = output.resolve("${component.get().recordName}-v${releaseVersion.get()}$targetSuffix.json")
         record.writeText(controlMetadataJson.encodeToString(ComponentReleaseDocument.serializer(), release))
         (listOf(primary, record) + companionArtifacts.files).forEach { asset ->
             output.resolve("${asset.name}.sha256").writeText("${checksum(asset).removePrefix("sha256:")}  ${asset.name}\n")

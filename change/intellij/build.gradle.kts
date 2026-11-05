@@ -1,4 +1,6 @@
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import support.tasks.idea.IntellijSdkLibraryFamily
+import support.tasks.idea.selectedIntellijTarget
 
 plugins {
     id("kast.kotlin-library")
@@ -13,39 +15,10 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val ideaDistributionVersion = catalog.findVersion("idea-platform-build").get().requiredVersion
-
-private val extractedIdeaDistributionDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/symbol-intellij-idea-distributions/$ideaDistributionVersion")))
-    }
-
-private fun extractedIdeaFiles(configure: ConfigurableFileTree.() -> Unit) =
-    files(
-            extractedIdeaDistributionDirectory.map { directory ->
-                fileTree(directory) {
-                    configure()
-                }
-            }
-        )
-        .builtBy(":symbol:intellij:extractSymbolIdeaDistribution")
-
-private val ideaLibs: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/lib/**/*.jar")
-    exclude("**/plugins/**")
-    exclude("**/lib/intellij.libraries.kotlinx.serialization.*.jar")
-    exclude("**/lib/intellij.libraries.ktor.utils.jar")
-}
-
-private val kotlinPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/plugins/Kotlin/lib/**/*.jar")
-    exclude("**/plugins/Kotlin/lib/jps/**")
-    exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-}
-
-private val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/plugins/java/lib/**/*.jar")
-}
+private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val ideaLibs = intellij.libraries(project, IntellijSdkLibraryFamily.PLATFORM)
+private val kotlinPluginLibs = intellij.libraries(project, IntellijSdkLibraryFamily.KOTLIN)
+private val javaPluginLibs = intellij.libraries(project, IntellijSdkLibraryFamily.JAVA)
 
 dependencies {
     implementation(project(":protocol:contract"))

@@ -37,6 +37,7 @@
     { "glob": "ide-hosted/*.json" },
     { "glob": "control/hosted-endpoint-owner.schema.json" },
     { "glob": "kast-hosted-platform.properties" },
+    { "glob": "intellij-targets.json" },
     { "glob": "query-delivery.schema.json" },
     { "glob": "ch/qos/logback/classic/logback-classic-version.properties" },
     { "glob": "META-INF/services/ch.qos.logback.classic.spi.Configurator" },

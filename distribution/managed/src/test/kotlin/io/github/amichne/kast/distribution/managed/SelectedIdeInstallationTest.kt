@@ -61,12 +61,18 @@ class SelectedIdeInstallationTest {
         )
     }
 
-    private fun fixture(root: Path, build: String, launchers: List<String>): Path {
+    private fun fixture(
+        root: Path,
+        build: String,
+        launchers: List<String>,
+        profile: String = "IntelliJIdea2026.2",
+    ): Path {
         val home = Files.createDirectories(root.resolve("Selected.app/Contents")).toRealPath()
         Files.createDirectories(home.resolve("Resources"))
         Files.writeString(
             home.resolve("Resources/product-info.json"),
-            Json { encodeDefaults = true }.encodeToString(Product(build, launchers.map { Launch(launcherPath = it) })),
+            Json { encodeDefaults = true }
+                .encodeToString(Product(build, launchers.map { Launch(launcherPath = it) }, profile)),
         )
         Files.createDirectories(home.resolve("MacOS"))
         Files.writeString(home.resolve("MacOS/real-idea"), "")
@@ -140,8 +146,27 @@ class SelectedIdeInstallationTest {
     }
 
     @Test
+    fun `263 selection retains its actual launcher and vendor profile`(@TempDir root: Path) {
+        val home = fixture(root, "263.7307.200", listOf("../MacOS/real-idea"), "IntelliJIdea2026.3")
+        val selected = assertInstanceOf(SelectedIdeLaunch.Resolved::class.java, SelectedIdeInstallation.resolve(home))
+        assertEquals(home.resolve("MacOS/real-idea").toString(), selected.executable)
+        val user = Files.createDirectory(root.resolve("user")).toRealPath()
+        val profile =
+            org.junit.jupiter.api
+                .assertInstanceOf<Refinement.Refined<SelectedIdePluginRoot>>(
+                    SelectedIdeInstallation.pluginRoot(selected, user)
+                )
+                .value
+        assertEquals(user.resolve("Library/Application Support/JetBrains/IntelliJIdea2026.3/plugins"), profile.value)
+        assertEquals(
+            selected,
+            Json.decodeFromString<SelectedIdeLaunch>(Json.encodeToString<SelectedIdeLaunch>(selected)),
+        )
+    }
+
+    @Test
     fun `unsupported line and ambiguous launchers fail closed`(@TempDir root: Path) {
-        val home = fixture(root, "263.1", listOf("../MacOS/real-idea"))
+        val home = fixture(root, "264.1", listOf("../MacOS/real-idea"))
         assertEquals(
             SelectedIdeLaunch.Unavailable(IdeLaunchFailure.UNSUPPORTED_PLATFORM_LINE),
             SelectedIdeInstallation.resolve(home),

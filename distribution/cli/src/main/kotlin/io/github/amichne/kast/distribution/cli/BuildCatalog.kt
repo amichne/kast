@@ -5,22 +5,15 @@ import kotlinx.serialization.SerializationException
 
 @Serializable internal data class BuildRecordReference(val name: String, val sha256: String)
 
-@Serializable
-internal data class MainBuildEntry(
-    val mainRevision: String,
-    val buildRevision: String,
-    val sourceTree: String,
-    val releaseTag: String,
-    val version: String,
-    val platformTargets: List<String>,
-    val candidate: BuildRecordReference,
-    val promotion: BuildRecordReference,
-)
+@Serializable internal data class MainBuildCatalog(val schemaVersion: Int, val builds: List<LegacyMainBuildEntry>)
 
-@Serializable internal data class MainBuildCatalog(val schemaVersion: Int, val builds: List<MainBuildEntry>)
+@Serializable
+internal data class VersionedMainBuildCatalog(val schemaVersion: Int, val builds: List<VersionedMainBuildEntry>)
 
 /** A captured discovery snapshot never selects a different entry after platform rejection. */
-internal class AdmittedBuildCatalog private constructor(val entries: List<MainBuildEntry>) {
+internal class AdmittedBuildCatalog private constructor(entries: List<MainBuildEntry>) {
+    val entries: List<MainBuildEntry> = java.util.List.copyOf(entries)
+
     fun select(request: BuildRequest, platform: String): SelectionAdmission<MainBuildEntry> {
         val matches =
             when (request) {
@@ -40,6 +33,34 @@ internal class AdmittedBuildCatalog private constructor(val entries: List<MainBu
     }
 
     companion object {
+        fun decodeV2(raw: String): SelectionAdmission<AdmittedBuildCatalog> {
+            if (raw.length > MAX_CATALOG_CHARACTERS)
+                return SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
+            val document =
+                try {
+                    managementJson.decodeFromString<VersionedMainBuildCatalog>(raw)
+                } catch (_: SerializationException) {
+                    return SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
+                }
+            if (
+                document.schemaVersion != 2 ||
+                    document.builds.size > MAX_CATALOG_ENTRIES ||
+                    !validEntries(document.builds) ||
+                    !document.builds.all(::validTargets)
+            )
+                return SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
+            return SelectionAdmission.Admitted(
+                AdmittedBuildCatalog(
+                    document.builds.map { entry ->
+                        entry.copy(
+                            platformTargets = java.util.List.copyOf(entry.platformTargets),
+                            hostTargets = java.util.List.copyOf(entry.hostTargets),
+                        )
+                    }
+                )
+            )
+        }
+
         fun decode(raw: String): SelectionAdmission<AdmittedBuildCatalog> {
             if (raw.length > MAX_CATALOG_CHARACTERS)
                 return SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
@@ -50,7 +71,12 @@ internal class AdmittedBuildCatalog private constructor(val entries: List<MainBu
                     return SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
                 }
             val entries = document.builds
-            return if (validCatalog(document)) SelectionAdmission.Admitted(AdmittedBuildCatalog(entries.toList()))
+            return if (validCatalog(document))
+                SelectionAdmission.Admitted(
+                    AdmittedBuildCatalog(
+                        entries.map { it.copy(platformTargets = java.util.List.copyOf(it.platformTargets)) }
+                    )
+                )
             else SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
         }
     }
@@ -65,8 +91,8 @@ private fun validEntry(entry: MainBuildEntry): Boolean =
         entry.platformTargets.isNotEmpty() &&
         entry.platformTargets.distinct() == entry.platformTargets &&
         entry.platformTargets.all { Regex("[a-z0-9]+-[a-z0-9]+").matches(it) } &&
-        entry.candidate.name == "candidate.json" &&
-        entry.promotion.name == "promotion.json" &&
+        entry.candidate.name == (if (entry is VersionedMainBuildEntry) "candidate-v2.json" else "candidate.json") &&
+        entry.promotion.name == (if (entry is VersionedMainBuildEntry) "promotion-v2.json" else "promotion.json") &&
         listOf(entry.candidate, entry.promotion).all { Regex("[0-9a-f]{64}").matches(it.sha256) }
 
 private const val MAX_CATALOG_CHARACTERS = 65_536
@@ -78,3 +104,17 @@ private fun validCatalog(document: MainBuildCatalog): Boolean =
 
 private fun validEntries(entries: List<MainBuildEntry>): Boolean =
     entries.map { it.mainRevision }.distinct().size == entries.size && entries.all(::validEntry)
+
+/** Historic entries retain their own compile pins; the selected record later binds them to that source revision. */
+private fun validTargets(entry: VersionedMainBuildEntry): Boolean {
+    if (entry.hostTargets.map { it.intellijReleaseLine } != listOf("262", "263")) return false
+    return entry.hostTargets.all { target ->
+        target.ideBuild.matches(Regex("${target.intellijReleaseLine}\\.[0-9]+\\.[0-9]+")) &&
+            target.kotlinPluginBuild == "${target.ideBuild}-IJ" &&
+            target.record.name ==
+                "kast-host-release-v${entry.version}" +
+                    (if (target.intellijReleaseLine == "262") "" else "-idea-${target.intellijReleaseLine}") +
+                    ".json" &&
+            Regex("[0-9a-f]{64}").matches(target.record.sha256)
+    }
+}

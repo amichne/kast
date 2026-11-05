@@ -1,6 +1,8 @@
 package io.github.amichne.kast.distribution.managed
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.DeclaredIntellijTargets
+import io.github.amichne.kast.protocol.contract.IntellijTargetFailure
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -225,8 +227,23 @@ object SelectedIdeInstallation {
     }
 
     private fun resolve(home: Path, product: Product, layout: SelectedIdeLayout): SelectedIdeLaunch {
-        if (!product.buildNumber.matches(Regex("262\\.[0-9]+(?:\\.[0-9]+)*")))
-            return unavailable(IdeLaunchFailure.UNSUPPORTED_PLATFORM_LINE)
+        val targets =
+            when (val admitted = DeclaredIntellijTargets.packaged) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return unavailable(IdeLaunchFailure.INVALID_METADATA)
+            }
+        when (val admitted = targets.forVendorBuild(product.buildNumber)) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected ->
+                return unavailable(
+                    if (
+                        admitted.failure == IntellijTargetFailure.TARGET_UNAVAILABLE ||
+                            admitted.failure == IntellijTargetFailure.INVALID_IDE_BUILD
+                    )
+                        IdeLaunchFailure.UNSUPPORTED_PLATFORM_LINE
+                    else IdeLaunchFailure.INVALID_METADATA
+                )
+        }
         val architectures =
             when (layout) {
                 SelectedIdeLayout.MACOS_BUNDLE -> setOf("aarch64", "arm64")

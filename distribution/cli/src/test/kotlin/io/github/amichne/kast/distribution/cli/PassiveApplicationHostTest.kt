@@ -30,6 +30,37 @@ class PassiveApplicationHostTest {
     }
 
     @Test
+    fun `passive application identity admits a declared 263 target without a project`() {
+        val fixture = fixture("263")
+        val status = readApplicationHost(fixture.root, fixture.home) { fixture.process }
+        assertEquals(Observation.verified(fixture.loaded), status)
+    }
+
+    @Test
+    fun `unknown or mixed loaded targets reject before process observation`() {
+        val fixture = fixture("263")
+        val original = managementJson.decodeFromString<Advertisement>(Files.readString(fixture.descriptor))
+        for (compatibility in
+            listOf(
+                fixture.loaded.compatibility.copy(ideBuild = "264.1.1", kotlinPluginBuild = "264.1.1-IJ"),
+                fixture.loaded.compatibility.copy(kotlinPluginBuild = "262.1.1-IJ"),
+            )) {
+            Files.writeString(
+                fixture.descriptor,
+                managementJson.encodeToString(
+                    original.copy(application = fixture.loaded.copy(compatibility = compatibility))
+                ),
+            )
+            val status =
+                readApplicationHost(fixture.root, fixture.home) {
+                    error("unqualified target must reject before process observation")
+                }
+            assertEquals(ObservationState.UNAVAILABLE, status.state)
+            assertEquals("DESCRIPTOR_REJECTED", status.reason)
+        }
+    }
+
+    @Test
     fun `a stale PID start or foreign launcher cannot qualify loaded identity`() {
         val fixture = fixture()
         for (process in
@@ -80,19 +111,25 @@ class PassiveApplicationHostTest {
         }
     }
 
-    private fun fixture(): Fixture {
+    private fun fixture(line: String = "262"): Fixture {
         val fixture = createLifecycleFixture(temporary)
         val idea = temporary.toRealPath().resolve("IDE.app/Contents")
         Files.writeString(
             idea.resolve("Resources/product-info.json"),
             managementJson.encodeToString(
-                Product("262.1.1", listOf(Launch("macOS", "aarch64", "../MacOS/idea")), "IntelliJIdea2026.2")
+                Product(
+                    "$line.1.1",
+                    listOf(Launch("macOS", "aarch64", "../MacOS/idea")),
+                    "IntelliJIdea2026.${line.toInt() - 260}",
+                )
             ),
         )
         val profile =
-            Files.createDirectories(fixture.home.resolve("Library/Application Support/JetBrains/IntelliJIdea2026.2"))
+            Files.createDirectories(
+                fixture.home.resolve("Library/Application Support/JetBrains/IntelliJIdea2026.${line.toInt() - 260}")
+            )
         val host = UUID(0, 1).toString()
-        val loaded = loadedHost(idea, profile, host)
+        val loaded = loadedHost(idea, profile, host, line)
         val hash =
             MessageDigest.getInstance("SHA-256").digest(idea.toString().toByteArray()).take(16).joinToString("") {
                 "%02x".format(it)
@@ -119,7 +156,7 @@ class PassiveApplicationHostTest {
         return Fixture(fixture.root, fixture.home, descriptor, loaded, process)
     }
 
-    private fun loadedHost(idea: Path, profile: Path, host: String): LoadedApplicationHost =
+    private fun loadedHost(idea: Path, profile: Path, host: String, line: String): LoadedApplicationHost =
         LoadedApplicationHost(
             ApplicationRuntimeIdentity(
                 idea.toString(),
@@ -131,8 +168,8 @@ class PassiveApplicationHostTest {
                 ApplicationAutoReload.ENABLED,
             ),
             ApplicationHostCompatibility(
-                "262.1.1",
-                "262.1.1-IJ",
+                "$line.1.1",
+                "$line.1.1-IJ",
                 "9.8.7",
                 ApplicationHostedContract(
                     "HOSTED_CONTRACT",

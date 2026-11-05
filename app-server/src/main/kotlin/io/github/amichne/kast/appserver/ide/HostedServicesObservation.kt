@@ -2,16 +2,14 @@ package io.github.amichne.kast.appserver.ide
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
+import io.github.amichne.kast.protocol.contract.DeclaredIntellijTargets
 import io.github.amichne.kast.protocol.contract.HostProvenance
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityRequirements
-import io.github.amichne.kast.protocol.contract.IdeBuildIdentity
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
-import io.github.amichne.kast.protocol.contract.KotlinPluginBuildIdentity
 import io.github.amichne.kast.protocol.wire.CanonicalHostedContract
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
-import java.util.Properties
 
 sealed interface HostedServiceObservation {
     val root: CanonicalRoot
@@ -51,37 +49,12 @@ sealed interface HostedServicesObservation {
 }
 
 internal fun requiredHostedCompatibilityPolicy(): Refinement<HostedCompatibilityRequirements, ExistingIdeFailure> {
-    val properties = Properties()
-    return try {
-        val resource =
-            CanonicalHostedContract::class.java.getResourceAsStream("/kast-hosted-platform.properties")
-                ?: return Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
-        resource.use(properties::load)
-        val ide =
-            when (
-                val parsed =
-                    IdeBuildIdentity.parse(
-                        properties.getProperty("ideBuild")
-                            ?: return Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
-                    )
-            ) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
-            }
-        val kotlin =
-            when (
-                val parsed =
-                    KotlinPluginBuildIdentity.parse(
-                        properties.getProperty("kotlinPluginBuild")
-                            ?: return Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
-                    )
-            ) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
-            }
-        Refinement.Refined(HostedCompatibilityRequirements(ide, kotlin, CanonicalHostedContract.required))
-    } catch (_: java.io.IOException) {
-        Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
+    return when (val targets = DeclaredIntellijTargets.packaged) {
+        is Refinement.Refined ->
+            Refinement.Refined(
+                HostedCompatibilityRequirements.forTargets(targets.value, CanonicalHostedContract.required)
+            )
+        is Refinement.Rejected -> Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
     }
 }
 

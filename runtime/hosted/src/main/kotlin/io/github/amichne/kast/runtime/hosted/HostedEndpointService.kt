@@ -203,6 +203,15 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                     observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.REJECTED)
                     return@launch
                 }
+            when (val compatibility = HostedCompatibilityMetadata.admission) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> {
+                    Logger.getInstance(HostedEndpointService::class.java)
+                        .info("kast_hosted stage=COMPATIBILITY outcome=REJECTED failure=${compatibility.failure}")
+                    observer.observe(HostedEndpointStage.BIND, HostedEndpointOutcome.REJECTED)
+                    return@launch
+                }
+            }
             val owner =
                 when (
                     val opened =

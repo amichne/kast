@@ -19,6 +19,7 @@ application {
 }
 
 dependencies {
+    implementation(project(":protocol:contract"))
     implementation(project(":distribution:output"))
     testImplementation(libs.jtoon)
     implementation(project(":distribution:contract"))

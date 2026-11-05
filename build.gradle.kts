@@ -1,7 +1,8 @@
+import support.tasks.idea.defaultIntellijTargetProfile
 import support.consumeProjectOutput
 import org.gradle.process.CommandLineArgumentProvider
 import org.gradle.api.tasks.testing.Test
-import support.tasks.idea.selectedIdeaProductInfo
+import support.tasks.idea.selectedIntellijTarget
 import conventions.registerJsonContractVerification
 import conventions.jsoncontracts.JsonContractScanRequest
 import org.gradle.api.tasks.bundling.Compression
@@ -87,6 +88,15 @@ val publicLauncherTest = tasks.register<Test>("publicLauncherTest") {
     })
 }
 
+val defaultIntellijTarget = defaultIntellijTargetProfile(project)
+val hostIntellijTarget = selectedIntellijTarget(project)
+val hostReleaseRecordName = "kast-host-release-v${hostedPluginVersion.get()}" +
+    (if (hostIntellijTarget.profile.intellijReleaseLine == "262") "" else "-idea-${hostIntellijTarget.profile.intellijReleaseLine}") + ".json"
+val hostReleaseRecordDirectory = layout.buildDirectory.dir(
+    if (hostIntellijTarget.scopedOutputs) "host-targets/${hostIntellijTarget.profile.intellijReleaseLine}/component-release"
+    else "generated/host-release"
+)
+val hostReleaseRecordFile = hostReleaseRecordDirectory.map { it.file(hostReleaseRecordName) }
 val generatedControlMetadata = layout.buildDirectory.dir("generated/control-metadata")
 val releaseSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(providers.exec {
     commandLine("git", "rev-parse", "HEAD")
@@ -111,8 +121,8 @@ val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("g
     productVersion.set(controlVersion)
     sourceRevision.set(releaseSourceRevision)
     sourceTree.set(releaseSourceTree)
-    ideaBuild.set(libs.versions.ide.host.build)
-    kotlinPluginBuild.set(libs.versions.ide.kotlin.plugin.build)
+    ideaBuild.set(defaultIntellijTarget.ideBuild)
+    kotlinPluginBuild.set(defaultIntellijTarget.kotlinPluginBuild)
     outputDirectory.set(generatedControlMetadata)
 }
 
@@ -149,6 +159,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from("install.sh") {
         into("share/kast")
     }
+    from("config/intellij-targets.json") { into("share/kast") }
     from("distribution/cli/lifecycle-fence-v1") { into("share/kast") }
     from("distribution/cli/public-reset-v1") { into("share/kast") }
     from("distribution/cli/reset-fence-v1") { into("share/kast") }
@@ -238,14 +249,8 @@ tasks.register<GenerateComponentReleaseTask>("generateHostReleaseRecord") {
     sourceRevision.set(releaseSourceRevision)
     archive.set(hostedPluginArchive)
     hostedContractFile.set(contractFile)
-    val metadataBaseDirectory = layout.projectDirectory.asFile
-    ideaReleaseLine.set(providers.gradleProperty("hostedIdeaHome").map { home ->
-        val metadataPath = selectedIdeaProductInfo(java.io.File(home))
-        val metadataFile = if (metadataPath.isAbsolute) metadataPath else java.io.File(metadataBaseDirectory, metadataPath.path)
-        val metadata = groovy.json.JsonSlurper().parse(metadataFile) as Map<*, *>
-        (metadata["buildNumber"] as String).substringBefore('.')
-    }.orElse(libs.versions.ide.host.build.map { it.substringBefore('.') }))
-    outputDirectory.set(layout.buildDirectory.dir("generated/host-release"))
+    ideaReleaseLine.set(hostIntellijTarget.profile.intellijReleaseLine)
+    outputDirectory.set(hostReleaseRecordDirectory)
 }
 
 
@@ -275,14 +280,7 @@ val localJavaHome = providers.systemProperty("java.home").map { configuredHome -
 }
 val localJavaExecutable = localJavaHome.map { home -> home.resolve("bin/java") }
 
-val localHostedIdeaBuild = providers.gradleProperty("hostedIdeaHome").map { home ->
-    val metadata = providers.fileContents(layout.projectDirectory.file(selectedIdeaProductInfo(file(home)).absolutePath)).asText.get()
-    (groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"] as String
-}.orElse(libs.versions.ide.host.build)
-val localHostedPluginArchive = localHostedIdeaBuild.map { build ->
-    val releaseLine = build.substringBefore('.')
-    layout.projectDirectory.file("runtime/hosted/build/distributions/kast-ide-hosted-v${hostedPluginVersion.get()}-idea-$releaseLine.zip")
-}
+val localHostedPluginArchive = hostedPluginArchive
 
 tasks.register<Exec>("installLocal") {
     group = "distribution"
@@ -296,7 +294,7 @@ tasks.register<Exec>("installLocal") {
     environment("KAST_LOCAL_PREFIX", localInstallPrefix.get().absolutePath)
     environment("KAST_LOCAL_CONTROL_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment("KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE", localHostedPluginArchive.get().asFile.absolutePath)
-    environment("KAST_LOCAL_HOST_RELEASE_RECORD", layout.buildDirectory.file("generated/host-release/kast-host-release-v${hostedPluginVersion.get()}.json").get().asFile.absolutePath)
+    environment("KAST_LOCAL_HOST_RELEASE_RECORD", hostReleaseRecordFile.get().asFile.absolutePath)
     providers.gradleProperty("hostedIdeaHome").orNull?.let { environment("KAST_INSTALL_IDEA_HOME", it) }
     commandLine("bash", layout.projectDirectory.file("packaging/install-local.sh"))
 }
@@ -308,7 +306,7 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.dir(controlProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(hostedPluginArchive)
-    val hostRecord = layout.buildDirectory.file("generated/host-release/kast-host-release-v${hostedPluginVersion.get()}.json")
+    val hostRecord = hostReleaseRecordFile
     inputs.file(hostRecord)
     inputs.files("install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py")
     inputs.files(
@@ -317,6 +315,17 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
         "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangeReceiptStore.kt",
     )
     outputs.upToDateWhen { false }
+    val selectedLine = hostIntellijTarget.profile.intellijReleaseLine
+    val requestedLine = providers.environmentVariable("KAST_HOSTED_IDE_RELEASE_LINE").orElse(selectedLine)
+    inputs.property("hostedIdeReleaseLine", requestedLine)
+    require(requestedLine.get() == selectedLine) { "Installed-product target must match intellijTarget" }
+    val installedReport = providers.environmentVariable("KAST_INSTALLED_PRODUCT_REPORT").map { raw ->
+        require(java.io.File(raw).isAbsolute) { "Installed-product report must be absolute" }
+        java.io.File(raw)
+    }.orElse(layout.buildDirectory.file("reports/installed-product/$selectedLine.json").map { it.asFile })
+    outputs.file(installedReport)
+    environment("KAST_HOSTED_IDE_RELEASE_LINE", requestedLine.get())
+    environment("KAST_INSTALLED_PRODUCT_REPORT", installedReport.get().absolutePath)
     environment("KAST_INSTALLED_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)
     val archive = hostedPluginArchive
@@ -391,11 +400,21 @@ val developerPublicationTest = tasks.register<VerificationReportTask>("developer
     description = "Proves qualified publication and concurrent discovery admission."
     sourceFiles.from(fileTree(".github/scripts/release") { include("*.py", "pyproject.toml", "uv.lock") })
     sourceFiles.from(".github/scripts/release/publish-release.sh", ".github/scripts/release/admit-source.sh")
+    sourceFiles.from("packaging/managed_release.py", "packaging/managed_update_journal.py")
+    sourceFiles.from("distribution/release/generate_sbom.py")
     sourceFiles.from(fileTree(".github/scripts/ci") { include("*.py") })
     executableFile.set(validationExecutable("uv"))
     arguments.set(listOf("run", "--locked", "--project", ".github/scripts/release", "pytest",
         ".github/scripts/release/test_build_candidate.py",
         ".github/scripts/release/test_developer_catalog.py",
+        ".github/scripts/release/test_dual_catalog.py",
+        ".github/scripts/release/test_dual_candidate.py",
+        ".github/scripts/release/test_dual_publication.py",
+        ".github/scripts/release/test_host_evidence.py",
+        ".github/scripts/release/test_host_staging.py",
+        ".github/scripts/release/test_host_target_validation.py",
+        ".github/scripts/release/test_installed_target_evidence.py",
+        ".github/scripts/release/test_dual_producer.py",
         ".github/scripts/release/test_developer_publication.py", "-q"))
 }
 

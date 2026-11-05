@@ -4,6 +4,7 @@ import io.github.amichne.kast.distribution.managed.InstalledHostPluginTarget
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.DeclaredIntellijTargets
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -260,10 +261,17 @@ private fun validApplicationProvenance(build: ApplicationHostBuild): Boolean =
         Regex("[0-9a-f]{40}").matches(it) && it != "0".repeat(SOURCE_REVISION_LENGTH)
     }
 
-private fun validApplicationCompatibility(compatibility: ApplicationHostCompatibility): Boolean =
-    Regex("262\\.[0-9]+\\.[0-9]+").matches(compatibility.ideBuild) &&
+private fun validApplicationCompatibility(compatibility: ApplicationHostCompatibility): Boolean {
+    val targets =
+        when (val parsed = DeclaredIntellijTargets.packaged) {
+            is Refinement.Refined -> parsed.value
+            is Refinement.Rejected -> return false
+        }
+    return Regex("[0-9]{3}\\.[0-9]+\\.[0-9]+").matches(compatibility.ideBuild) &&
+        targets.forVendorBuild(compatibility.ideBuild) is Refinement.Refined &&
         compatibility.kotlinPluginBuild == "${compatibility.ideBuild}-IJ" &&
         validApplicationContract(compatibility.hostedContract)
+}
 
 private fun validApplicationContract(contract: ApplicationHostedContract): Boolean {
     if (

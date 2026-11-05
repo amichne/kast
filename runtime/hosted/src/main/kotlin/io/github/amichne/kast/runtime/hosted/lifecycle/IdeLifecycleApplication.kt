@@ -1,7 +1,6 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
@@ -88,7 +87,10 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     private val job =
         scope.launch(Dispatchers.IO) {
             if (ApplicationManager.getApplication().isHeadlessEnvironment) return@launch
-            if (ApplicationInfo.getInstance().build.baselineVersion != 262) return@launch
+            if (io.github.amichne.kast.runtime.hosted.HostedCompatibilityMetadata.admission is Refinement.Rejected) {
+                observe(IdeLifecycleResult.Blocked(IdeLifecycleFailure.COMPATIBILITY_REJECTED))
+                return@launch
+            }
             val root =
                 when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(home)) {
                     is Refinement.Refined -> admitted.value

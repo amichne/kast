@@ -89,7 +89,7 @@ class BuildSelectionTest {
     }
 
     private fun entry(main: String) =
-        MainBuildEntry(
+        LegacyMainBuildEntry(
             main,
             "c".repeat(40),
             "d".repeat(40),

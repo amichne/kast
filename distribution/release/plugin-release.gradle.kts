@@ -49,7 +49,7 @@ tasks.register<Sync>("assembleHostRelease") {
     into(layout.buildDirectory.dir("release/host-v$hostVersion"))
     from(pluginArchive)
     from(layout.projectDirectory.file("packaging/host-installation.py"))
-    from(layout.buildDirectory.dir("generated/host-release"))
+    from(hostRecord)
 }
 
 val assembleRelease = tasks.register<Sync>("assembleRelease") {
@@ -62,7 +62,7 @@ val assembleRelease = tasks.register<Sync>("assembleRelease") {
     from(pluginArchive)
     from(agentPluginArchive.flatMap(Zip::getArchiveFile))
     from(marketplaceArchive.flatMap(Zip::getArchiveFile))
-    from(layout.buildDirectory.dir("generated/host-release"))
+    from(hostRecord)
     from(layout.buildDirectory.dir("generated/control-release"))
     from(layout.projectDirectory.file("packaging/host-installation.py"))
     doLast {

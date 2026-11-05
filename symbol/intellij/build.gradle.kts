@@ -1,4 +1,7 @@
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import support.tasks.idea.IntellijSdkLibraryFamily
+import support.tasks.idea.selectedIdeaProductInfo
+import support.tasks.idea.selectedIntellijTarget
 import support.tasks.nativefixtures.NativeFixtureJvmArguments
 import support.tasks.nativefixtures.SharedNativeFixtureIdea
 
@@ -14,85 +17,29 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val ideaPlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
+private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val ideaPlatformBuild = intellij.profile.ideBuild
+private val sdkLibraries =
+    intellij.libraries(
+        project,
+        IntellijSdkLibraryFamily.PLATFORM,
+        IntellijSdkLibraryFamily.KOTLIN,
+        IntellijSdkLibraryFamily.JAVA,
+    )
 
-val symbolIdeaDistribution =
-    configurations.create("symbolIdeaDistribution") {
-        isCanBeConsumed = false
-        isCanBeResolved = true
-    }
-
-private val extractedIdeaDistributionDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/symbol-intellij-idea-distributions/$ideaPlatformBuild")))
-    }
-
+// Preserve the public producer name while one workspace owner extracts each SDK.
 val extractSymbolIdeaDistribution =
-    tasks.register<ExtractIdeaDistributionTask>("extractSymbolIdeaDistribution") {
-        archives.from(symbolIdeaDistribution)
-        ideaVersion.set(ideaPlatformBuild)
-        libraryFamilies.set(setOf(IdeaLibraryFamily.PLATFORM, IdeaLibraryFamily.KOTLIN, IdeaLibraryFamily.JAVA))
-        outputDirectory.set(extractedIdeaDistributionDirectory)
+    tasks.register("extractSymbolIdeaDistribution") {
+        dependsOn(sdkLibraries)
     }
-
-private val kotlinPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedIdeaDistributionDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/plugins/Kotlin/lib/**/*.jar")
-                    exclude("**/plugins/Kotlin/lib/jps/**")
-                    exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-                }
-            }
-        )
-        .builtBy(extractSymbolIdeaDistribution)
-
-private val javaPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedIdeaDistributionDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/plugins/java/lib/**/*.jar")
-                }
-            }
-        )
-        .builtBy(extractSymbolIdeaDistribution)
 
 dependencies {
     implementation(project(":symbol:contract"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
 
-    symbolIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaPlatformBuild@zip") {
-        isTransitive = false
-    }
-
-    compileOnly("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:util-class-loader:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:util-text-matching:$ideaPlatformBuild")
-    compileOnly(kotlinPluginLibs)
-    compileOnly(javaPluginLibs)
-
-    testImplementation("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:boot:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:util-class-loader:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:syntax-psi:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:util-text-matching:$ideaPlatformBuild")
-    testImplementation(javaPluginLibs)
-    testImplementation(kotlinPluginLibs)
+    compileOnly(sdkLibraries)
+    testImplementation(sdkLibraries)
 }
 
 // Indexed Platform fixtures own a separate process and task; parser/pure tests stay fast.
@@ -106,8 +53,7 @@ nativeTest.runtimeClasspath += sourceSets.main.get().output
 
 kotlin.target.compilations.getByName("nativeTest").associateWith(kotlin.target.compilations.getByName("main"))
 
-val nativeFixtureIdeaHome = providers.gradleProperty("nativeFixtureIdeaHome")
-val nativeFixtureIdea = SharedNativeFixtureIdea.select(project)
+val nativeFixtureIdea = SharedNativeFixtureIdea.select(project, intellij)
 val nativeIdeaHome = nativeFixtureIdea.home
 val extractNativeTestIdea =
     tasks.register("extractNativeTestIdea") {
@@ -128,7 +74,7 @@ val nativeIdeaLibraries =
                 }
             }
         )
-        .apply { if (!nativeFixtureIdeaHome.isPresent) builtBy(extractNativeTestIdea) }
+        .apply { if (intellij.suppliedHome == null) builtBy(extractNativeTestIdea) }
 
 dependencies {
     add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)
@@ -154,7 +100,7 @@ fun registerSymbolNativeFixtures(taskName: String, selectedClasses: List<String>
         testClassesDirs = nativeTest.output.classesDirs
         classpath = nativeTest.runtimeClasspath
         dependsOn("detektNativeTest")
-        if (!nativeFixtureIdeaHome.isPresent) dependsOn(extractNativeTestIdea)
+        if (intellij.suppliedHome == null) dependsOn(extractNativeTestIdea)
         if (selectedClasses.isNotEmpty()) {
             dependsOn(":verifyKotlinSemanticInputs")
             filter { selectedClasses.forEach(::includeTestsMatching) }
@@ -162,7 +108,7 @@ fun registerSymbolNativeFixtures(taskName: String, selectedClasses: List<String>
         maxParallelForks = 1
         jvmArgumentProviders.add(
             objects.newInstance<NativeFixtureJvmArguments>().apply {
-                productInfo.set(nativeIdeaHome.map { it.file("product-info.json") })
+                productInfo.set(layout.file(nativeIdeaHome.map { selectedIdeaProductInfo(it.asFile) }))
                 pinnedBuild.set(ideaPlatformBuild)
                 osName.set(providers.systemProperty("os.name"))
             }

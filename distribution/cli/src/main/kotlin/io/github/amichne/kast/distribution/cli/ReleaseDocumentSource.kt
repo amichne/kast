@@ -13,6 +13,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+private const val BUILD_CATALOG_V2_URL =
+    "https://raw.githubusercontent.com/amichne/kast/developer-latest/builds-v2.json"
 private const val BUILD_CATALOG_URL = "https://raw.githubusercontent.com/amichne/kast/developer-latest/builds.json"
 private const val STABLE_RELEASE_URL = "https://api.github.com/repos/amichne/kast/releases/latest"
 private const val RELEASE_READ_TIMEOUT_MILLIS = 15_000
@@ -39,7 +41,9 @@ internal fun readReleaseDocumentObserved(
             configureReleaseConnection(connection)
             try {
                 stage = ReleaseReadStage.RESPONSE
-                if (connection.responseCode != HttpURLConnection.HTTP_OK)
+                if (connection.responseCode == HttpURLConnection.HTTP_NOT_FOUND)
+                    unavailable(stage, ReleaseReadFailure.NOT_FOUND)
+                else if (connection.responseCode != HttpURLConnection.HTTP_OK)
                     unavailable(stage, ReleaseReadFailure.HTTP_REJECTED)
                 else {
                     stage = ReleaseReadStage.BODY
@@ -115,7 +119,19 @@ internal fun latestStable(read: (String) -> ReleaseDocumentRead): SelectionAdmis
 }
 
 internal fun captureMainCatalog(read: (String) -> ReleaseDocumentRead): SelectionAdmission<AdmittedBuildCatalog> =
-    when (val result = read(BUILD_CATALOG_URL)) {
-        is ReleaseDocumentRead.Read -> AdmittedBuildCatalog.decode(result.text)
-        is ReleaseDocumentRead.Unavailable -> SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
+    when (val result = read(BUILD_CATALOG_V2_URL)) {
+        is ReleaseDocumentRead.Read -> AdmittedBuildCatalog.decodeV2(result.text)
+        is ReleaseDocumentRead.Unavailable -> {
+            if (
+                result.observation !=
+                    ReleaseReadObservation.Unavailable(ReleaseReadStage.RESPONSE, ReleaseReadFailure.NOT_FOUND)
+            )
+                SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
+            else
+                when (val legacy = read(BUILD_CATALOG_URL)) {
+                    is ReleaseDocumentRead.Read -> AdmittedBuildCatalog.decode(legacy.text)
+                    is ReleaseDocumentRead.Unavailable ->
+                        SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE)
+                }
+        }
     }

@@ -1,4 +1,6 @@
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import support.tasks.idea.IntellijSdkLibraryFamily
+import support.tasks.idea.selectedIntellijTarget
 
 plugins {
     id("kast.kotlin-library")
@@ -12,47 +14,21 @@ base {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val ideaPlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
+private val intellij = selectedIntellijTarget(project).also { it.configureBuildDirectory(project) }
+private val ideaPlatformBuild = intellij.profile.ideBuild
+private val sdkLibraries =
+    intellij.libraries(
+        project,
+        IntellijSdkLibraryFamily.PLATFORM,
+        IntellijSdkLibraryFamily.KOTLIN,
+        IntellijSdkLibraryFamily.JAVA,
+    )
 
-val diagnosticIdeaDistribution =
-    configurations.create("diagnosticIdeaDistribution") {
-        isCanBeConsumed = false
-        isCanBeResolved = true
-    }
-
-private val extractedKotlinPluginDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/diagnostic-intellij-kotlin-plugin/$ideaPlatformBuild")))
-    }
-
+// Preserve the existing task entry point without another mutable SDK extraction.
 val extractDiagnosticKotlinPlugin =
-    tasks.register<Sync>("extractDiagnosticKotlinPlugin") {
-        from({ zipTree(diagnosticIdeaDistribution.singleFile) }) {
-            include("**/plugins/Kotlin/lib/**/*.jar")
-            include("**/plugins/java/lib/**/*.jar")
-            exclude("**/plugins/Kotlin/lib/jps/**")
-            exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-            eachFile {
-                relativePath =
-                    RelativePath(
-                        true,
-                        *relativePath.segments.dropWhile { segment -> segment != "lib" }.drop(1).toTypedArray(),
-                    )
-            }
-        }
-        includeEmptyDirs = false
-        into(extractedKotlinPluginDirectory)
+    tasks.register("extractDiagnosticKotlinPlugin") {
+        dependsOn(sdkLibraries)
     }
-
-private val kotlinPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedKotlinPluginDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/*.jar")
-                }
-            }
-        )
-        .builtBy(extractDiagnosticKotlinPlugin)
 
 dependencies {
     implementation(catalog.findLibrary("serialization-json").get())
@@ -62,26 +38,6 @@ dependencies {
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
 
-    diagnosticIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaPlatformBuild@zip") {
-        isTransitive = false
-    }
-
-    compileOnly("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
-    compileOnly("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
-    compileOnly(kotlinPluginLibs)
-
-    testImplementation("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:analysis:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:indexing:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:lang:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:lang-impl:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:util:$ideaPlatformBuild")
-    testImplementation("com.jetbrains.intellij.platform:project-model:$ideaPlatformBuild")
+    compileOnly(sdkLibraries)
+    testImplementation(sdkLibraries)
 }
