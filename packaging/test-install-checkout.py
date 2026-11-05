@@ -543,6 +543,7 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         self.assertFalse((self.root / "calls").exists())
 
     def test_other_262_patch_uses_the_same_release_line_archive(self):
+        (self.idea / "Resources/build.txt").write_text("IU-262.20000.200")
         (self.idea / "Resources/product-info.json").write_text(json.dumps({
             "buildNumber": "262.20000.200",
             "dataDirectoryName": "IntelliJIdea2026.2",
@@ -553,9 +554,10 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
         self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
 
-    def test_other_release_lines_reject_the_262_descriptor_before_installation(self):
+    def test_other_release_lines_reject_the_stable_bootstrap_before_installation(self):
         for line in ("261", "263"):
             with self.subTest(line=line):
+                (self.idea / "Resources/build.txt").write_text("IU-" + line + ".10315.125")
                 (self.idea / "Resources/product-info.json").write_text(json.dumps({
                     "buildNumber": line + ".10315.125",
                     "dataDirectoryName": "IntelliJIdea2026.2",
@@ -569,7 +571,7 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
                 self.write_host_record(wrong_asset, line)
                 result = self.run_installer()
                 self.assertNotEqual(0, result.returncode)
-                self.assertIn("PAYLOAD_REJECTED", result.stderr)
+                self.assertIn("IDEA home is incompatible" if line == "261" else "HOST_TARGET_UNAVAILABLE", result.stderr)
                 self.assertFalse((self.root / "calls").exists())
 
     def test_programmatic_plugin_update_replaces_only_owned_directory(self):

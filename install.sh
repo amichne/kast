@@ -170,6 +170,11 @@ for name in sys.argv[3:]:
                     text += '; resume with ' + resume
             elif document.get('status') == 'retained' and isinstance(document.get('retained'), list):
                 text = f"{len(document['retained'])} prior Kast entries retained for review"
+            elif not code and document.get('type') in ('ACTIVATED', 'INSTALLED_NOT_RUNNING', 'PLANNED'):
+                text = document['type']
+                action = readable(document.get('nextAction'))
+                if action:
+                    text += '; ' + action
             elif code:
                 text = details(document)
             else:
@@ -206,7 +211,7 @@ Bootstrap Kast for the current user.
 
 Usage:
   install.sh [--control-only | --host-only] [--host-version <major.minor.patch>] [--idea-home <absolute-path>]
-             [--version <major.minor.patch> | --developer-latest] [--force] [--dry-run]
+             [--version <major.minor.patch> | --developer-latest] [--force] [--restart-ide] [--dry-run]
              [--install-codex-plugin | --skip-codex-plugin] [--install-root <absolute-path>] [--stage-only] [--verbose]
   install.sh uninstall [--install-root <absolute-path>] [--dry-run] [--managed-registrations] [--verbose]
   install.sh --help
@@ -253,7 +258,13 @@ Non-interactive paired installs install the plugin by default.
 and --stage-only skip plugin installation without prompting.
 The legacy --register-codex-mcp and --skip-codex-mcp options select the same plugin behavior.
 After installation, use kast status, kast connect, kast upgrade, or kast uninstall.
-`--force` uses the fresh archive to stop Kast and remove its old installation,
+Versioned developer releases select a qualified 262 or 263 Host from their paired
+publication records. They use the recoverable installer; --restart-ide explicitly
+permits a normal IDE restart if required. Without it, RESTART_REQUIRED is reported.
+Stable and legacy developer releases support 262 only. Older Controls that reject
+263 must use this new public --developer-latest bootstrap explicitly.
+`--force` is a legacy installation option; versioned developer releases reject it.
+For legacy releases, `--force` uses the fresh archive to stop Kast and remove its old installation,
 legacy `$HOME/.kast` state, historical `.kast-*` artifacts, and public command.
 It preserves stable lock files and repairs recorded harness connections after installation. It does not change
 source workspaces or the selected IDEA application. `--dry-run` remains read-only.
@@ -291,7 +302,7 @@ canonical_idea_home() {
     *) return 1 ;;
   esac
   [[ -f "$build_file" ]] || return 1
-  [[ "$(cat "$build_file")" =~ ^(IU-|IC-)?262\. ]] || return 1
+  [[ "$(cat "$build_file")" =~ ^(IU-|IC-)?(262|263)\. ]] || return 1
   [[ -d "$physical/plugins/Kotlin" ]] || return 1
   [[ -x "$bundled_java/bin/java" ]] || return 1
   release="$bundled_java/release"
@@ -363,6 +374,543 @@ run_host_installer() {
   python3 "$helper" "$@" ${reset_options[@]+"${reset_options[@]}"}
 }
 
+# BEGIN GENERATED BOOTSTRAP RELEASE AUTH
+bootstrap_release_auth() {
+  python3 - "$@" <<'KAST_BOOTSTRAP_RELEASE_AUTH'
+"""Authenticate published code before the standalone bootstrap imports that code.
+
+This stdlib-only prelude is embedded verbatim in install.sh. It establishes the
+catalog/promotion/candidate and Control-byte binding; installed ownership and
+runtime effects remain with the authenticated managed installer.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import sys
+from dataclasses import asdict, dataclass
+from enum import Enum
+from pathlib import Path
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from typing import TypeGuard
+
+MAX_RECORD = 65_536
+MAX_PAYLOAD = 1_073_741_824
+REPOSITORY = "amichne/kast"
+
+
+class Failure(str, Enum):
+    CATALOG_INVALID = "CATALOG_INVALID"
+    SOURCE_CHANGED = "SOURCE_CHANGED"
+    HOST_TARGET_UNAVAILABLE = "HOST_TARGET_UNAVAILABLE"
+    QUALIFICATION_UNPROVEN = "QUALIFICATION_UNPROVEN"
+    CONTROL_MISMATCH = "CONTROL_MISMATCH"
+    FILESYSTEM_REJECTED = "FILESYSTEM_REJECTED"
+
+
+@dataclass(frozen=True)
+class Reference:
+    name: str
+    sha256: str
+
+
+@dataclass(frozen=True)
+class Target:
+    intellijReleaseLine: str
+    ideBuild: str
+    kotlinPluginBuild: str
+    record: Reference
+
+
+@dataclass(frozen=True)
+class Identity:
+    releaseTag: str
+    version: str
+    buildRevision: str
+    sourceTree: str
+    mainRevision: str
+
+
+@dataclass(frozen=True)
+class Entry:
+    mainRevision: str
+    buildRevision: str
+    sourceTree: str
+    releaseTag: str
+    version: str
+    platformTargets: tuple[str, ...]
+    candidate: Reference
+    promotion: Reference
+    hostTargets: tuple[Target, Target]
+
+
+@dataclass(frozen=True)
+class Policy:
+    type: Literal["TrackMain"] = "TrackMain"
+
+
+@dataclass(frozen=True)
+class Selection:
+    identity: Identity
+    policy: Policy
+    catalogEntry: Entry
+    type: Literal["Main"] = "Main"
+
+
+@dataclass(frozen=True)
+class Artifact:
+    name: str
+    sha256: str
+    bytes: int
+
+
+@dataclass(frozen=True)
+class CodeAuthenticated:
+    selection: Selection
+    control: Artifact
+
+
+def mapping(value: object) -> TypeGuard[dict[object, object]]:
+    return isinstance(value, dict)
+
+
+def sequence(value: object) -> TypeGuard[list[object]]:
+    return isinstance(value, list)
+
+
+def positive(value: object) -> TypeGuard[int]:
+    return type(value) is int and value > 0
+
+
+def digest(value: object, length: int = 64) -> TypeGuard[str]:
+    return (
+        isinstance(value, str)
+        and re.fullmatch(rf"[0-9a-f]{{{length}}}", value) is not None
+        and value != "0" * length
+    )
+
+
+def unique(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate member")
+        result[key] = value
+    return result
+
+
+def document(raw: bytes) -> dict[object, object] | Failure:
+    if len(raw) > MAX_RECORD:
+        return Failure.QUALIFICATION_UNPROVEN
+    try:
+        value: object = json.loads(raw.decode("utf-8"), object_pairs_hook=unique)
+    except (ValueError, UnicodeError, RecursionError):
+        return Failure.QUALIFICATION_UNPROVEN
+    return value if mapping(value) else Failure.QUALIFICATION_UNPROVEN
+
+
+def reference(value: object, name: str) -> Reference | Failure:
+    if (
+        not mapping(value)
+        or set(value) != {"name", "sha256"}
+        or value["name"] != name
+        or not digest(value["sha256"])
+    ):
+        return Failure.CATALOG_INVALID
+    return Reference(name, value["sha256"])
+
+
+def targets(value: object, version: str) -> tuple[Target, Target] | Failure:
+    if not sequence(value) or len(value) != 2:
+        return Failure.CATALOG_INVALID
+    result: list[Target] = []
+    for index, line in enumerate(("262", "263")):
+        item = value[index]
+        if not mapping(item) or set(item) != {
+            "intellijReleaseLine",
+            "ideBuild",
+            "kotlinPluginBuild",
+            "record",
+        }:
+            return Failure.CATALOG_INVALID
+        ide, kotlin = item["ideBuild"], item["kotlinPluginBuild"]
+        name = (
+            f"kast-host-release-v{version}.json"
+            if line == "262"
+            else f"kast-host-release-v{version}-idea-263.json"
+        )
+        record = reference(item["record"], name)
+        if (
+            item["intellijReleaseLine"] != line
+            or not isinstance(ide, str)
+            or len(ide) > 64
+            or re.fullmatch(rf"{line}\.[0-9]+(?:\.[0-9]+)*", ide) is None
+            or not isinstance(kotlin, str)
+            or len(kotlin) > 80
+            or re.fullmatch(rf"{line}\.[0-9]+(?:\.[0-9]+)*-IJ", kotlin) is None
+            or isinstance(record, Failure)
+        ):
+            return Failure.CATALOG_INVALID
+        result.append(Target(line, ide, kotlin, record))
+    return result[0], result[1]
+
+
+def entry(value: object) -> Entry | Failure:
+    if not mapping(value) or set(value) != {
+        "mainRevision",
+        "buildRevision",
+        "sourceTree",
+        "releaseTag",
+        "version",
+        "platformTargets",
+        "candidate",
+        "promotion",
+        "hostTargets",
+    }:
+        return Failure.CATALOG_INVALID
+    main, build, tree, tag, version = (
+        value[k] for k in ("mainRevision", "buildRevision", "sourceTree", "releaseTag", "version")
+    )
+    platforms = value["platformTargets"]
+    if (
+        not all(digest(x, 40) for x in (main, build, tree))
+        or not isinstance(main, str)
+        or not isinstance(build, str)
+        or not isinstance(tree, str)
+        or not isinstance(version, str)
+        or len(version) > 64
+        or re.fullmatch(r"0\.0\.[1-9][0-9]*", version) is None
+        or tag != "developer-v" + version
+        or not isinstance(tag, str)
+        or not sequence(platforms)
+        or not platforms
+    ):
+        return Failure.CATALOG_INVALID
+    admitted_platforms: list[str] = []
+    for platform in platforms:
+        if (
+            not isinstance(platform, str)
+            or re.fullmatch(r"[a-z0-9]+-[a-z0-9]+", platform) is None
+            or platform in admitted_platforms
+        ):
+            return Failure.CATALOG_INVALID
+        admitted_platforms.append(platform)
+    candidate = reference(value["candidate"], "candidate-v2.json")
+    promotion = reference(value["promotion"], "promotion-v2.json")
+    hosts = targets(value["hostTargets"], version)
+    if (
+        isinstance(candidate, Failure)
+        or isinstance(promotion, Failure)
+        or isinstance(hosts, Failure)
+    ):
+        return Failure.CATALOG_INVALID
+    return Entry(
+        main, build, tree, tag, version, tuple(admitted_platforms), candidate, promotion, hosts
+    )
+
+
+def select_catalog(
+    raw: bytes, tag: str, version: str, build: str, line: str
+) -> Selection | Failure:
+    catalog = document(raw)
+    if (
+        isinstance(catalog, Failure)
+        or set(catalog) != {"schemaVersion", "builds"}
+        or type(catalog["schemaVersion"]) is not int
+        or catalog["schemaVersion"] != 2
+    ):
+        return Failure.CATALOG_INVALID
+    builds = catalog["builds"]
+    if not sequence(builds) or not 1 <= len(builds) <= 5:
+        return Failure.CATALOG_INVALID
+    admitted: list[Entry] = []
+    for item in builds:
+        parsed = entry(item)
+        if isinstance(parsed, Failure) or any(
+            old.mainRevision == parsed.mainRevision for old in admitted
+        ):
+            return Failure.CATALOG_INVALID
+        admitted.append(parsed)
+    selected = admitted[0]
+    if (selected.releaseTag, selected.version, selected.buildRevision) != (tag, version, build):
+        return Failure.SOURCE_CHANGED
+    if line not in ("262", "263") or "macos-aarch64" not in selected.platformTargets:
+        return Failure.HOST_TARGET_UNAVAILABLE
+    return Selection(
+        Identity(tag, version, build, selected.sourceTree, selected.mainRevision),
+        Policy(),
+        selected,
+    )
+
+
+def payload_names(version: str, dual: bool) -> frozenset[str]:
+    bases = {
+        f"kast-control-v{version}-macos-aarch64.tar.gz",
+        f"kast-ide-hosted-v{version}-idea-262.zip",
+        f"kast-plugin-v{version}.zip",
+        f"kast-marketplace-v{version}.zip",
+        f"kast-control-release-v{version}.json",
+        f"kast-host-release-v{version}.json",
+        "host-installation.py",
+        f"kast-hosted-catalog-v{version}.json",
+        f"kast-module-knowledge-v{version}.json",
+        f"kast-sbom-v{version}.cdx.json",
+    }
+    if dual:
+        bases |= {
+            f"kast-ide-hosted-v{version}-idea-263.zip",
+            f"kast-host-release-v{version}-idea-263.json",
+        }
+    return frozenset(bases | {name + ".sha256" for name in bases})
+
+
+def inventory(value: object) -> dict[str, Artifact] | Failure:
+    if not sequence(value) or not 1 <= len(value) <= 32:
+        return Failure.QUALIFICATION_UNPROVEN
+    result: dict[str, Artifact] = {}
+    for item in value:
+        if not mapping(item) or set(item) != {"name", "sha256", "bytes"}:
+            return Failure.QUALIFICATION_UNPROVEN
+        name, sha, size = item["name"], item["sha256"], item["bytes"]
+        if (
+            not isinstance(name, str)
+            or re.fullmatch(r"[A-Za-z0-9_.-]{1,160}", name) is None
+            or name in (".", "..")
+            or name in result
+            or not digest(sha)
+            or not positive(size)
+            or size > MAX_PAYLOAD
+        ):
+            return Failure.QUALIFICATION_UNPROVEN
+        result[name] = Artifact(name, sha, size)
+    return result
+
+
+def qualify(
+    selected: Selection,
+    candidate_raw: bytes,
+    promotion_raw: bytes,
+    legacy_candidate_raw: bytes,
+    legacy_promotion_raw: bytes,
+    control: Artifact,
+) -> CodeAuthenticated | Failure:
+    expected = selected.catalogEntry
+    if (
+        hashlib.sha256(candidate_raw).hexdigest() != expected.candidate.sha256
+        or hashlib.sha256(promotion_raw).hexdigest() != expected.promotion.sha256
+    ):
+        return Failure.QUALIFICATION_UNPROVEN
+    candidate, promotion, legacy, prior = (
+        document(raw)
+        for raw in (candidate_raw, promotion_raw, legacy_candidate_raw, legacy_promotion_raw)
+    )
+    if any(isinstance(x, Failure) for x in (candidate, promotion, legacy, prior)):
+        return Failure.QUALIFICATION_UNPROVEN
+    assert (
+        not isinstance(candidate, Failure)
+        and not isinstance(promotion, Failure)
+        and not isinstance(legacy, Failure)
+        and not isinstance(prior, Failure)
+    )
+    candidate_fields = {
+        "schemaVersion",
+        "repository",
+        "sourceRevision",
+        "sourceTree",
+        "version",
+        "runId",
+        "runNumber",
+        "runAttempt",
+        "event",
+        "platform",
+        "toolchain",
+        "assets",
+    }
+    promotion_fields = {
+        "schemaVersion",
+        "repository",
+        "buildRevision",
+        "mergedRevision",
+        "sourceTree",
+        "version",
+        "buildRunId",
+        "buildRunAttempt",
+        "mainRunId",
+        "mainRunAttempt",
+        "candidateSha256",
+    }
+    if (
+        set(candidate) != candidate_fields | {"hostTargets"}
+        or set(legacy) != candidate_fields
+        or set(promotion) != promotion_fields
+        or set(prior) != promotion_fields
+    ):
+        return Failure.QUALIFICATION_UNPROVEN
+    for current, schema in ((candidate, 2), (promotion, 2), (legacy, 1), (prior, 1)):
+        if (
+            type(current["schemaVersion"]) is not int
+            or current["schemaVersion"] != schema
+            or current["repository"] != REPOSITORY
+            or current["version"] != expected.version
+            or current["sourceTree"] != expected.sourceTree
+        ):
+            return Failure.QUALIFICATION_UNPROVEN
+    if (
+        candidate["sourceRevision"] != expected.buildRevision
+        or candidate["platform"] != "macos-aarch64"
+        or any(not positive(candidate[k]) for k in ("runId", "runNumber", "runAttempt"))
+        or not isinstance(candidate["runNumber"], int)
+        or candidate["runNumber"] > 2_147_483_647
+        or candidate["version"] != f"0.0.{candidate['runNumber']}"
+        or candidate["event"] not in ("pull_request", "merge_group", "push", "workflow_dispatch")
+        or promotion["buildRevision"] != expected.buildRevision
+        or promotion["mergedRevision"] != expected.mainRevision
+        or promotion["candidateSha256"] != expected.candidate.sha256
+        or promotion["buildRunId"] != candidate["runId"]
+        or promotion["buildRunAttempt"] != candidate["runAttempt"]
+        or any(
+            not positive(promotion[k])
+            for k in ("buildRunId", "buildRunAttempt", "mainRunId", "mainRunAttempt")
+        )
+        or prior["candidateSha256"] != hashlib.sha256(legacy_candidate_raw).hexdigest()
+    ):
+        return Failure.QUALIFICATION_UNPROVEN
+    toolchain = candidate["toolchain"]
+    if (
+        not mapping(toolchain)
+        or set(toolchain) != {"javaVersion", "vendor", "releaseSha256"}
+        or any(
+            not isinstance(value, str) or not 0 < len(value) <= 160
+            for value in (toolchain["javaVersion"], toolchain["vendor"])
+        )
+        or not digest(toolchain["releaseSha256"])
+    ):
+        return Failure.QUALIFICATION_UNPROVEN
+    if any(
+        type(legacy[k]) is not type(candidate[k]) or legacy[k] != candidate[k]
+        for k in candidate_fields - {"schemaVersion", "assets"}
+    ) or any(
+        type(prior[k]) is not type(promotion[k]) or prior[k] != promotion[k]
+        for k in promotion_fields - {"schemaVersion", "candidateSha256"}
+    ):
+        return Failure.QUALIFICATION_UNPROVEN
+    assets, old_assets = inventory(candidate["assets"]), inventory(legacy["assets"])
+    hosts = targets(candidate["hostTargets"], expected.version)
+    if (
+        isinstance(assets, Failure)
+        or isinstance(old_assets, Failure)
+        or isinstance(hosts, Failure)
+        or hosts != expected.hostTargets
+    ):
+        return Failure.QUALIFICATION_UNPROVEN
+    if (
+        frozenset(assets) != payload_names(expected.version, True)
+        or frozenset(old_assets) != payload_names(expected.version, False)
+        or any(assets.get(name) != item for name, item in old_assets.items())
+        or any(assets[target.record.name].sha256 != target.record.sha256 for target in hosts)
+    ):
+        return Failure.QUALIFICATION_UNPROVEN
+    if (
+        control.name != f"kast-control-v{expected.version}-macos-aarch64.tar.gz"
+        or assets.get(control.name) != control
+    ):
+        return Failure.CONTROL_MISMATCH
+    return CodeAuthenticated(selected, control)
+
+
+def read_record(path: Path) -> bytes:
+    if (
+        path.is_symlink()
+        or not path.is_file()
+        or path.stat().st_uid != os.getuid()
+        or path.stat().st_size > MAX_RECORD
+    ):
+        raise OSError("record rejected")
+    return path.read_bytes()
+
+
+def read_control(path: Path) -> Artifact:
+    if (
+        path.is_symlink()
+        or not path.is_file()
+        or path.stat().st_uid != os.getuid()
+        or not 0 < path.stat().st_size <= MAX_PAYLOAD
+    ):
+        raise OSError("Control rejected")
+    sha = hashlib.sha256()
+    with path.open("rb") as stream:
+        while block := stream.read(65_536):
+            sha.update(block)
+    return Artifact(path.name, sha.hexdigest(), path.stat().st_size)
+
+
+def main(arguments: list[str]) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    _ = parser.add_argument("phase", choices=("select", "authenticate"))
+    _ = parser.add_argument("--catalog", type=Path, required=True)
+    _ = parser.add_argument("--tag", required=True)
+    _ = parser.add_argument("--version", required=True)
+    _ = parser.add_argument("--source", required=True)
+    _ = parser.add_argument("--idea-line", required=True)
+    _ = parser.add_argument("--output", type=Path, required=True)
+    _ = parser.add_argument("--records", type=Path)
+    _ = parser.add_argument("--control", type=Path)
+    args = parser.parse_args(arguments)
+    try:
+        selected = select_catalog(
+            read_record(args.catalog), args.tag, args.version, args.source, args.idea_line
+        )
+        outcome: Selection | CodeAuthenticated | Failure = selected
+        if not isinstance(selected, Failure) and args.phase == "authenticate":
+            if (
+                args.records is None
+                or args.control is None
+                or args.control.is_symlink()
+                or not args.control.is_file()
+                or args.control.stat().st_uid != os.getuid()
+            ):
+                outcome = Failure.FILESYSTEM_REJECTED
+            else:
+                candidate = read_record(args.records / "candidate-v2.json")
+                promotion = read_record(args.records / "promotion-v2.json")
+                legacy_candidate = read_record(args.records / "candidate.json")
+                legacy_promotion = read_record(args.records / "promotion.json")
+                outcome = qualify(
+                    selected,
+                    candidate,
+                    promotion,
+                    legacy_candidate,
+                    legacy_promotion,
+                    read_control(args.control),
+                )
+        if isinstance(outcome, Failure):
+            print(f"kast-install: versioned release rejected ({outcome.value})", file=sys.stderr)
+            return 1
+        admitted = outcome.selection if isinstance(outcome, CodeAuthenticated) else outcome
+        with args.output.open("x") as output:
+            json.dump(asdict(admitted), output)
+            output.write("\n")
+        return 0
+    except (OSError, ValueError):
+        print(
+            f"kast-install: versioned release rejected ({Failure.FILESYSTEM_REJECTED.value})",
+            file=sys.stderr,
+        )
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
+KAST_BOOTSTRAP_RELEASE_AUTH
+}
+# END GENERATED BOOTSTRAP RELEASE AUTH
+
 resolve_developer_latest() {
   local pointer tag selected_version source_revision extra
   pointer="$(curl --fail --location --silent --show-error --max-filesize 256 \
@@ -382,6 +930,7 @@ fetch_asset() {
   local name="$1"
   local destination="$2"
   local unavailable="${3:-}"
+  local maximum_bytes="${4:-1073741824}"
   local transfer_display=(--silent)
   if [[ -n "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]]; then
     require_absolute_path "assets directory" "$KAST_INSTALL_ASSETS_DIRECTORY"
@@ -389,16 +938,53 @@ fetch_asset() {
       [[ -z "$unavailable" ]] || fail "$unavailable"
       fail "local release asset is unavailable: $name"
     fi
+    [[ "$(wc -c < "$KAST_INSTALL_ASSETS_DIRECTORY/$name")" -le "$maximum_bytes" ]] ||
+      fail "release asset exceeds its byte bound: $name"
     cp "$KAST_INSTALL_ASSETS_DIRECTORY/$name" "$destination"
   else
     if [[ -t 2 ]]; then transfer_display=(--progress-bar); fi
-    if ! curl --fail --location "${transfer_display[@]}" --show-error \
+    if ! curl --fail --location "${transfer_display[@]}" --show-error --max-filesize "$maximum_bytes" \
       --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
       --output "$destination" "$release_url/$name"; then
       [[ -z "$unavailable" ]] || fail "$unavailable"
       fail "release asset is unavailable: $name"
     fi
   fi
+}
+
+capture_versioned_main() {
+  local status
+  status="$(curl --location --silent --show-error --max-filesize 65536 \
+    --proto '=https' --proto-redir '=https' \
+    --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
+    --header 'Accept: application/vnd.github.raw+json' --header 'Cache-Control: no-cache' \
+    --output "$temporary_root/builds-v2.json" --write-out '%{http_code}' \
+    "https://api.github.com/repos/$REPOSITORY/contents/builds-v2.json?ref=developer-latest")" ||
+    fail 'versioned developer catalog is unavailable (CATALOG_UNAVAILABLE); legacy fallback was not admitted'
+  case "$status" in
+    200)
+      bootstrap_release_auth select --catalog "$temporary_root/builds-v2.json" \
+        --tag "$release" --version "$version" --source "$developer_source" \
+        --idea-line "${idea_build%%.*}" --output "$temporary_root/unqualified-selection.json" ||
+        fail 'versioned developer selection was rejected before code download'
+      versioned_main=1
+      ;;
+    404) info 'Versioned catalog is absent; evaluating the legacy 262 release.' ;;
+    *) fail "versioned developer catalog is unavailable (HTTP $status); legacy fallback was not admitted" ;;
+  esac
+}
+
+authenticate_versioned_control() {
+  local name
+  for name in candidate-v2.json promotion-v2.json candidate.json promotion.json; do
+    fetch_asset "$name" "$temporary_root/$name" '' 65536
+  done
+  bootstrap_release_auth authenticate --catalog "$temporary_root/builds-v2.json" \
+    --tag "$release" --version "$version" --source "$developer_source" \
+    --idea-line "${idea_build%%.*}" --records "$temporary_root" \
+    --control "$temporary_root/$control_name" --output "$temporary_root/resolved-selection.json" ||
+    fail 'versioned publication or Control bytes were rejected before code execution'
+  info 'Paired publication and exact Control bytes authenticated before installer execution.'
 }
 
 verify_checksum() {
@@ -510,6 +1096,8 @@ idea_home="${KAST_INSTALL_IDEA_HOME:-}"
 requested_install_root=""
 mode=apply
 force=0
+explicit_force=0
+restart_ide=0
 stage_only=0
 developer_latest=0
 codex_plugin_choice=unspecified
@@ -544,6 +1132,12 @@ while [[ $# -gt 0 ]]; do
     --force)
       [[ "$action" == install ]] || fail "--force is valid only for installation"
       force=1
+      explicit_force=1
+      shift
+      ;;
+    --restart-ide)
+      [[ "$action" == install ]] || fail "--restart-ide is valid only for installation"
+      restart_ide=1
       shift
       ;;
     --uninstall-journal)
@@ -814,6 +1408,16 @@ case "$control_platform" in
 esac
 IFS=$'\t' read -r idea_version idea_build idea_data_directory < <(read_idea_identity "$idea_home")
 [[ -n "$idea_version" && -n "$idea_build" && -n "$idea_data_directory" ]] || fail "IDEA product identity is unavailable"
+case "$control_platform" in
+  macos-aarch64) selected_build_file="$idea_home/Resources/build.txt" ;;
+  linux-x86_64) selected_build_file="$idea_home/build.txt" ;;
+esac
+[[ "$(sed -E 's/^(IU-|IC-)//' "$selected_build_file")" == "$idea_build" ]] ||
+  fail 'IDEA product and build-file identities disagree'
+if [[ "${idea_build%%.*}" != 262 && "$developer_latest" == 0 ]]; then
+  [[ "$stage_only" == 1 && -n "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] ||
+    fail 'HOST_TARGET_UNAVAILABLE: stable/component releases support IDEA 262; use the new --developer-latest bootstrap for 263'
+fi
 success "found IntelliJ IDEA $idea_version (build $idea_build)"
 info "The IntelliJ plugin gives Kast compiler-grounded access to projects opened in this exact IDEA release line."
 idea_plugin_root="$idea_profile_base/$idea_data_directory/plugins"
@@ -855,6 +1459,10 @@ if [[ "$component" != control && -z "$host_version" ]]; then
   host_version="$version"
 fi
 if [[ "$component" != control ]]; then validate_version "$host_version"; fi
+if [[ "$developer_latest" == 1 && "$stage_only" == 0 ]]; then
+  [[ "$host_version" == "$version" ]] ||
+    fail "developer build requires its exact tested Host version $version; conflicting Host selector was rejected"
+fi
 base_release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
 release_url="${KAST_RELEASE_BASE_URL:-https://github.com/$REPOSITORY/releases/download}"
 release_url="${release_url%/}/$release"
@@ -890,6 +1498,9 @@ cleanup() {
     if [[ "$stage_only" == 1 ]]; then
       success "staged Kast Control $version"
       info "The verified lifecycle owner will activate control."
+    elif [[ "$versioned_main" == 1 ]]; then
+      success "completed the captured Kast $version installation"
+      info "The coordinator reports whether the Host is activated or installed but not running."
     elif [[ "$component" == control ]]; then
       success "activated Kast Control $version with admitted running IntelliJ hosts"
       info "Start fresh control sessions. IntelliJ was reused."
@@ -904,10 +1515,54 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+versioned_main=0
+if [[ "$developer_latest" == 1 ]]; then capture_versioned_main; fi
+if [[ "${idea_build%%.*}" != 262 && "$versioned_main" == 0 ]]; then
+  [[ "$stage_only" == 1 && -n "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] ||
+    fail 'HOST_TARGET_UNAVAILABLE: this legacy publication has no admitted IDEA 263 target'
+fi
+if [[ "$versioned_main" == 1 ]]; then
+  [[ "$explicit_force" == 0 ]] || fail '--force is legacy-only; omit it to use recoverable versioned installation'
+elif [[ "$restart_ide" == 1 ]]; then
+  fail '--restart-ide requires a versioned developer publication'
+fi
+
 if [[ "$component" != host ]]; then
   note "downloading Kast Control $version"
   for name in "$control_name" "$control_name.sha256"; do fetch_asset "$name" "$temporary_root/$name"; done
   control_digest="$(verify_checksum "$temporary_root/$control_name" "$temporary_root/$control_name.sha256" "$control_name")"
+fi
+if [[ "$versioned_main" == 1 ]]; then
+  authenticate_versioned_control
+  if [[ "$stage_only" == 0 ]]; then
+    require_command uv
+    [[ "$mode" != apply || "$codex_plugin_choice" != register ]] || require_command codex
+    control_root="$temporary_root/control"
+    extract_control "$temporary_root/$control_name" "$control_root"
+    coordinator="$control_root/share/kast/managed_installation.py"
+    [[ -f "$coordinator" && ! -L "$coordinator" && -f "$coordinator.lock" && ! -L "$coordinator.lock" ]] ||
+      fail 'authenticated Control has no locked managed installer'
+    coordinated_options=(--resolved-selection "$temporary_root/resolved-selection.json" --idea-home "$idea_home" --install-root "$install_root")
+    [[ "$mode" != plan ]] || coordinated_options+=(--dry-run)
+    [[ "$restart_ide" == 0 ]] || coordinated_options+=(--restart-ide)
+    if [[ -n "${KAST_MANAGEMENT_REPORT_PATH:-}" && "$mode" == apply ]]; then
+      run_installer_step 'Recoverable versioned installation' "$KAST_MANAGEMENT_REPORT_PATH" \
+        uv run --locked --script "$coordinator" "${coordinated_options[@]}" --json
+    else
+      run_installer_step 'Recoverable versioned installation' '' \
+        uv run --locked --script "$coordinator" "${coordinated_options[@]}"
+    fi
+    if [[ "$mode" == apply ]]; then
+      if [[ "$codex_plugin_choice" == register ]]; then
+        run_installer_step 'Codex plugin installation' '' \
+          "$control_root/share/kast/libexec/kast-management" plugin codex
+      fi
+      installation_complete=1
+    else
+      success 'planned the captured versioned developer installation'
+    fi
+    exit 0
+  fi
 fi
 if [[ "$component" != control ]]; then
   control_release_url="$release_url"
@@ -969,13 +1624,25 @@ if [[ "$force" == 1 && "$stage_only" == 0 ]]; then
     IFS=$'\t' read -r reset_release reset_version reset_source <<< "$reset_selection"
     validate_version "$reset_version"
     reset_archive="kast-control-v$reset_version-macos-aarch64.tar.gz"
-    selected_release_url="$release_url"
-    release_url="https://github.com/$REPOSITORY/releases/download/$reset_release"
     note "downloading verified installation recovery $reset_version from $reset_source"
-    for name in "$reset_archive" "$reset_archive.sha256"; do fetch_asset "$name" "$temporary_root/recovery-$name"; done
-    verify_checksum "$temporary_root/recovery-$reset_archive" "$temporary_root/recovery-$reset_archive.sha256" "$reset_archive" >/dev/null
-    release_url="$selected_release_url"
-    extract_control "$temporary_root/recovery-$reset_archive" "$temporary_root/recovery-control"
+    recovery_directory="$temporary_root/recovery-release"
+    mkdir -m 700 "$recovery_directory"
+    (
+      # This optional public legacy recovery is separate from recorded native bridge recovery.
+      # A modern recovery Control needs its own paired publication proof before execution.
+      temporary_root="$recovery_directory"
+      release="$reset_release"
+      version="$reset_version"
+      developer_source="$reset_source"
+      control_name="$reset_archive"
+      release_url="https://github.com/$REPOSITORY/releases/download/$reset_release"
+      versioned_main=0
+      capture_versioned_main
+      for name in "$control_name" "$control_name.sha256"; do fetch_asset "$name" "$temporary_root/$name"; done
+      verify_checksum "$temporary_root/$control_name" "$temporary_root/$control_name.sha256" "$control_name" >/dev/null
+      if [[ "$versioned_main" == 1 ]]; then authenticate_versioned_control; fi
+    )
+    extract_control "$recovery_directory/$reset_archive" "$temporary_root/recovery-control"
     reset_capability="$temporary_root/recovery-control/share/kast/public-reset-v1"
     reset_management="$temporary_root/recovery-control/share/kast/libexec/kast-management"
     reset_control_root="$temporary_root/recovery-control"
