@@ -384,6 +384,7 @@ class SourceValidationTest(unittest.TestCase):
                 self.assertNotIn("assembleRelease", COMMAND)
                 self.assertNotIn("productBuildGate", COMMAND)
                 self.assertIn("--info", COMMAND)
+                self.assertNotIn("--profile", COMMAND)
 
 
 if __name__ == "__main__":

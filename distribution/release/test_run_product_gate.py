@@ -66,7 +66,6 @@ class ProductGateVersionTest(unittest.TestCase):
                             "-Pversion=0.46.0",
                             "productBuildGate",
                             "--console=plain",
-                            "--profile",
                         ],
                     ),
                     dict(cwd=gate.ROOT, check=False),

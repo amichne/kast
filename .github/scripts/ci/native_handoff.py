@@ -243,7 +243,7 @@ def gradle(identity: Identity, *tasks: str) -> None:
             f"-PkastSourceRevision={identity.revision}",
             *tasks,
             "--console=plain",
-            "--profile",
+            # Keep diagnostic HTML profiling outside artifact qualification.
             "--info",
         ]
     )

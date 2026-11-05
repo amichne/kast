@@ -28,7 +28,7 @@ COMMAND = (
     f"-PhostedPluginVersion={VERSION}",
     "sourceValidationGate",
     "--console=plain",
-    "--profile",
+    # Optional HTML profiling can fail after successful tasks; it is not gate evidence.
     "--info",
 )
 PREFLIGHT = (
