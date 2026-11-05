@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
@@ -9,6 +10,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -30,6 +32,45 @@ class PublicJqOracleTest {
         assertEquals("kast.jq.oracle.v1", corpus.schema)
         assertEquals(43, corpus.cases.size)
         corpus.cases.forEach(::verifyCase)
+    }
+
+    @Test
+    fun `the oracle accepts a compile rejection after jq has already exited`() {
+        val case = JqOracleCase("compile-exit-before-input", ".document[", fixture, emptyList(), 3)
+        verifyIndependentOracle(case) { builder ->
+            val child = builder.start()
+            try {
+                assertTrue(child.waitFor(10, TimeUnit.SECONDS), "${case.name}: compile exit deadline")
+                assertEquals(3, child.exitValue(), "${case.name}: real jq compile rejection")
+                child
+            } catch (failure: Throwable) {
+                retireOracleChild(child, case.name)
+                throw failure
+            }
+        }
+    }
+
+    @Test
+    fun `the oracle preserves Unicode input EOF and partial stdout on evaluation failure`() {
+        val text = "\u03a9\uD83D\uDE00"
+        verifyIndependentOracle(
+            JqOracleCase(
+                "unicode-input-eof",
+                "., inputs",
+                Json.encodeToString(text),
+                listOf(Json.parseToJsonElement(Json.encodeToString(text))),
+                0,
+            )
+        )
+        verifyIndependentOracle(
+            JqOracleCase(
+                "partial-stdout-exit-five",
+                "1, error(\"oracle probe\")",
+                fixture,
+                listOf(Json.parseToJsonElement("1")),
+                5,
+            )
+        )
     }
 
     private fun verifyCase(case: JqOracleCase) {
@@ -69,7 +110,7 @@ class PublicJqOracleTest {
         }
     }
 
-    private fun verifyIndependentOracle(case: JqOracleCase) {
+    private fun verifyIndependentOracle(case: JqOracleCase, start: (ProcessBuilder) -> Process = { it.start() }) {
         val executable =
             System.getenv("PATH")
                 .split(java.io.File.pathSeparatorChar)
@@ -78,20 +119,35 @@ class PublicJqOracleTest {
                 .toRealPath()
         val stdout = temporary.resolve("${case.name}.oracle.json")
         val stderr = temporary.resolve("${case.name}.oracle.stderr")
-        val child =
+        val stdin = temporary.resolve("${case.name}.oracle.stdin")
+        Files.write(stdin, case.inputJson.toByteArray(UTF_8))
+        val builder =
             ProcessBuilder(executable.toString(), "-c", "--", case.program)
                 .directory(temporary.toFile())
+                .redirectInput(stdin.toFile())
                 .redirectOutput(stdout.toFile())
                 .redirectError(stderr.toFile())
-                .start()
+        val child = assertDoesNotThrow<Process>({ start(builder) }, "${case.name}: start native jq oracle")
         try {
-            child.outputStream.use { it.write(case.inputJson.toByteArray()) }
-            assertTrue(child.waitFor(10, TimeUnit.SECONDS), case.name)
-            assertEquals(case.expectedExit, child.exitValue(), case.name)
-            val values = Files.readAllLines(stdout).filter(String::isNotBlank).map(Json::parseToJsonElement)
-            assertEquals(case.expectedValues, values, case.name)
+            assertTrue(child.waitFor(10, TimeUnit.SECONDS), "${case.name}: native jq exit deadline")
+            val diagnostic =
+                "${case.name}: exit=${child.exitValue()}, stderr=" +
+                    Files.newInputStream(stderr).use { it.readNBytes(4_096).toString(UTF_8) }
+            assertEquals(case.expectedExit, child.exitValue(), diagnostic)
+            val values =
+                assertDoesNotThrow<List<JsonElement>>(
+                    { Files.readAllLines(stdout, UTF_8).filter(String::isNotBlank).map(Json::parseToJsonElement) },
+                    "${case.name}: native jq stdout JSON",
+                )
+            assertEquals(case.expectedValues, values, diagnostic)
         } finally {
-            if (child.isAlive) child.destroyForcibly().waitFor()
+            retireOracleChild(child, case.name)
+        }
+    }
+
+    private fun retireOracleChild(child: Process, caseName: String) {
+        if (child.isAlive) {
+            assertTrue(child.destroyForcibly().waitFor(5, TimeUnit.SECONDS), "$caseName: forced jq exit deadline")
         }
     }
 
