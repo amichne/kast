@@ -35,6 +35,7 @@ class ProductGateVersionTest(unittest.TestCase):
 root = pathlib.Path.cwd()
 (root / "build").mkdir(exist_ok=True)
 (root / "build/argv.json").write_text(json.dumps(sys.argv[1:]))
+(root / "build/owner.json").write_text(json.dumps(os.environ.get("KAST_CI_GRADLE_INVOCATION")))
 (root / "build/git-environment.json").write_text(json.dumps({key: os.environ.get(key) for key in ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM", "GIT_NO_REPLACE_OBJECTS")}))
 if "--dry-run" in sys.argv:
     raise SystemExit(0)
@@ -166,8 +167,12 @@ path.write_text("[]" if mode == "malformed" else json.dumps(identity))
 
     def test_dry_run_cannot_claim_completed_qualification(self):
         self.assertEqual(0, gate.run_gate())
-        self.assertEqual(0, gate.run_gate(dry_run=True))
+        self.assertNotIn("--info", json.loads((self.root / "build/argv.json").read_text()))
+        with patch.dict(os.environ, {"KAST_CI_GRADLE_INVOCATION": "owned-graph"}):
+            self.assertEqual(0, gate.run_gate(dry_run=True))
         self.assertEqual("DRY_RUN", self.report()["outcome"])
+        self.assertIn("--info", json.loads((self.root / "build/argv.json").read_text()))
+        self.assertEqual("owned-graph", json.loads((self.root / "build/owner.json").read_text()))
 
     def test_inherited_git_context_cannot_redirect_admission_or_build(self):
         with patch.dict(

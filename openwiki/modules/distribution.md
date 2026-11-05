@@ -251,8 +251,12 @@ sources:
     resource: repo://.github/scripts/ci/native_handoff.py
   - id: openwiki-source-27e9613cc8767d52b5cfe287
     resource: repo://.github/scripts/ci/required_checks.py
+  - id: openwiki-source-de62ffd8b4fe61a2095f5212
+    resource: repo://.github/scripts/ci/routine_gate.py
   - id: openwiki-source-eaec0145ee5bcb15fda00e9c
     resource: repo://.github/scripts/ci/source_validation.py
+  - id: openwiki-source-d7f5bb97a65625ecdf33ddcf
+    resource: repo://.github/scripts/ci/test_routine_gate.py
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
     resource: repo://.github/scripts/release/build_candidate.py
   - id: openwiki-source-939501634c56c6ffea2fec6b
@@ -347,10 +351,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-05T06:37:09.283Z" }
+generated: { by: "codex", at: "2026-11-05T16:04:45.402Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T12:22:48.595Z
+    at: 2026-11-05T16:04:45.402Z
 ---
 
 # Distribution and packaging
@@ -427,6 +431,16 @@ Disk caches remain enabled; client retirement does not prove synchronous daemon 
 On graph timeout or cancellation, optional diagnostics attempt a bounded daemon thread dump.
 Invocation association and process start identity are checked before and after attachment.
 Incomplete diagnostics do not replace the graph failure or prevent client cleanup.
+
+Routine gate membership runs product and native-input dry-runs as separate phases.
+Each phase streams output and reports progress with a default 600-second execution deadline.
+Both commands limit Gradle to two workers and a 5 GiB heap, with single-use daemons.
+Timeout and cancellation keep partial logs and attempt bounded diagnostics before owned process-group cleanup.
+The deadline excludes that bounded diagnostic and cleanup work.
+Each attempt replaces prior success and clears both phases' old reports before starting.
+A phase must exit successfully and satisfy its task inventory before validation can continue.
+Missing proofs, launch failures, deadlines, and observed cancellation leave a rejected record with a nonzero exit code.
+These controls do not serialize separate checkouts or establish synchronous daemon retirement.
 
 The candidate's typed identity record retains the exact build commit, Git tree, producer run and attempt, platform, toolchain, and payload digests. Main CI reuses a successful same-repository PR candidate only when the PR head tree equals the merged main tree. Missing or expired records, fork producers, and changed trees require a fresh main candidate. Malformed records, damaged bytes, and incomplete observations reject reuse. Candidate retention is 30 days.
 

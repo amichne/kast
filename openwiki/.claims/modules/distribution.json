@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:35ce8dc889faa92b76fd1bfc49baee003c5596276dcd7f8b25930f5350ab4458",
+  "pageVersion": "sha256:0766fd0e0c1a956a3a5a9c73469107c3dc4651845302b50cdb8fe579bd2d175f",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -482,11 +482,11 @@
       "evidence": [
         {
           "resource": "repo://distribution/release/run_product_gate.py",
-          "version": "repo-file-v1:sha256:ab90ce4ffc8755f67b867b588b15bcb3e12b5ff9289b6d01a5f039dafae2251d"
+          "version": "repo-file-v1:sha256:457d982edd85feb5d02e6f4124448a143866e6c461d54820197ea48f8f0780e2"
         },
         {
-          "resource": "repo://distribution/release/test_run_product_gate.py#L94-L229",
-          "version": "repo-lines-v1:sha256:6f27cda6bee36b2fd8baca95e363efa94be6ad0c20fe372e0b7c903e620e108e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlY2JiNjA4MWIyZGU2NWY5ZjJlYjFiYWZhYmRhMzg1ZGZhYWNlYTZlZTliODQ1ZTBlNDY3YjI0Yzg3NjhjMjU1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhYzdkODEzZTAxZTAyODMwOGY1MGVmNzBiMjNjMGYyYTBlOGEzNGU0NGZjYzFiNWMwNTdlMDFlNTM4MDcwMDJhIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkNTUxOTE1MGQxMjZmOTI1YWY2MTNkOTQ1NDFkODMzYTZjNmRhNjA3YzM4NTA5MzJjZmU1OWEwNDY1MjlhMTAyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzY2VhOWUyNWZmOWY1MWQxNjdhNzFlMWJjNDY0ZTY5OWY2NTY4NTBmN2YzODM5OGQyMTYyZWUyMTk2YzBlNjY3In0"
+          "resource": "repo://distribution/release/test_run_product_gate.py#L95-L234",
+          "version": "repo-lines-v1:sha256:c15baedbf92a1cd5547716181cf47b4dcead511c3feed3ec699dfb77d4264b08:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlY2JiNjA4MWIyZGU2NWY5ZjJlYjFiYWZhYmRhMzg1ZGZhYWNlYTZlZTliODQ1ZTBlNDY3YjI0Yzg3NjhjMjU1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhYzdkODEzZTAxZTAyODMwOGY1MGVmNzBiMjNjMGYyYTBlOGEzNGU0NGZjYzFiNWMwNTdlMDFlNTM4MDcwMDJhIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkNTUxOTE1MGQxMjZmOTI1YWY2MTNkOTQ1NDFkODMzYTZjNmRhNjA3YzM4NTA5MzJjZmU1OWEwNDY1MjlhMTAyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzY2VhOWUyNWZmOWY1MWQxNjdhNzFlMWJjNDY0ZTY5OWY2NTY4NTBmN2YzODM5OGQyMTYyZWUyMTk2YzBlNjY3In0"
         }
       ]
     },
@@ -504,7 +504,7 @@
         },
         {
           "resource": "repo://distribution/release/run_product_gate.py#L98-L134",
-          "version": "repo-lines-v1:sha256:5d468d4a8feb15fca72c35d8aa6d934f59ee8d73ce7c16c18635683033f1219b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5ZjgyZDliMmQxZDRlZWI5NDNhNTAyNTY3ZGVhOWZlOTYzZTM4Yjk0YWEzMDQyYmE2YjMxNzgwZWNlODJkNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExYjJjNThiMTBiZGIzZmIxYzM4NjE1MzM3OTdiMzBmZTBiOGYwMjBiYTJmOGFkNTU0ZDA5ODMzMjkxNDFhZmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY0MjkzMTA4NWU4Y2E4MDNmZjExNWMxMDQzOWRiMGJiMjg1N2E3OGQyOTY4ZDRhYTE2YmY0Y2U1ZDY0MTI4YTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1MzM1NzE4NDA2YWQ2YTU0OTNhN2MxZjQ4MDZmY2YwNDM4ZTQ3NWMxM2Q5ZDA2NGM1N2Q4MmJiNTc4ZTY3NDkifQ"
+          "version": "repo-lines-v1:sha256:82c9f23aa57e55b9a3e86cd23636c90f4021c8c19212b3fd12ce8745c3b2adac:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5ZjgyZDliMmQxZDRlZWI5NDNhNTAyNTY3ZGVhOWZlOTYzZTM4Yjk0YWEzMDQyYmE2YjMxNzgwZWNlODJkNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExYjJjNThiMTBiZGIzZmIxYzM4NjE1MzM3OTdiMzBmZTBiOGYwMjBiYTJmOGFkNTU0ZDA5ODMzMjkxNDFhZmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY0MjkzMTA4NWU4Y2E4MDNmZjExNWMxMDQzOWRiMGJiMjg1N2E3OGQyOTY4ZDRhYTE2YmY0Y2U1ZDY0MTI4YTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1MzM1NzE4NDA2YWQ2YTU0OTNhN2MxZjQ4MDZmY2YwNDM4ZTQ3NWMxM2Q5ZDA2NGM1N2Q4MmJiNTc4ZTY3NDkifQ"
         }
       ]
     },
@@ -521,10 +521,32 @@
           "version": "repo-lines-v1:sha256:851bcc11215fd8a8b42d5db0b64f17c54c59f9505cab07010cc84177889dec63:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwNGQ1MDg2MzIwMWM2OTFkOTRhMGU4NTI1YWEwNzRiODhlMzU4NzJhNWI4Y2ZjOWNjNmM5M2IwYmIxMjAwNDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4Mzk0N2E1MDFmZTJhYmZmODcxMDliMTg5ZWIxMDRiMTQxOWYwNDQxNjljMjE2OWIzNzkzMGEwNzA3OTA4YzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIyZjk1ZDI4MGIyNmQ5ZDAwNmFiNTBjYmUzY2ZhMGQwMWMxNDFhMjY0NDg1MTk3NmIzZjlkNWEyZWY2ODI5ZjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1OTQ5NWUzZGNhMDg4YmJkODU1YWJiYTIxY2Y1ZGRkMmQyZTU5ZmI3YzE5Y2RkODEyM2IxY2Y5NjNmYTFhZjAifQ"
         }
       ]
+    },
+    {
+      "id": "claim_10189229a592450b90aed0d45164a889",
+      "statement": "Routine membership inspection uses separate streamed product and native-input dry-run phases with a default 600-second execution deadline, bounded diagnostics and owned process-group cleanup. Both Gradle commands use two workers, a 5 GiB heap and single-use daemons. Prior success and phase reports are replaced before work; continuation requires successful execution and complete task proofs, while failures and observed cancellation reject with nonzero status.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/gradle_graph.py",
+          "version": "repo-file-v1:sha256:3372a49d9ca9aa6b52c35bcc1b6829a7b6fd5b469c89ffe466a24b912e4a39ba"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/routine_gate.py#L147-L338",
+          "version": "repo-lines-v1:sha256:993cc30ca544aef0d59f769342ef9f628ede8eed0398517a25d2177a8fce752c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTkyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0ZDk2YjUwZDk2ZmUyZDRkM2JlMWJlODNiYzRiY2U3Y2IxMDlkMzY3MzYzODA4Mjk4MjgzOGI0YzE4ZTU2MWRlIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmYjY0ZTkyMDAwYTE5Y2EzODU5M2E0ZTZhMGJhYzc3MDk2ZDFlOTg2OTQ5YTNiNjI4MjZiN2NlYTRmNzNkOWU5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI5YTgyZWJlOWVkNDA3YzNhNmJhNGIwMDM0MjkyYmFhNTJjMTFjZTVhZTI4NjEwNzQwMmRlNDc5MmVlZWNhY2ZjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/test_routine_gate.py",
+          "version": "repo-file-v1:sha256:3207571ad31efdab3b78e067901f1b7dc72f63aef23e114267103cc26d9ab5c3"
+        },
+        {
+          "resource": "repo://distribution/release/run_product_gate.py#L98-L134",
+          "version": "repo-lines-v1:sha256:82c9f23aa57e55b9a3e86cd23636c90f4021c8c19212b3fd12ce8745c3b2adac:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5ZjgyZDliMmQxZDRlZWI5NDNhNTAyNTY3ZGVhOWZlOTYzZTM4Yjk0YWEzMDQyYmE2YjMxNzgwZWNlODJkNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExYjJjNThiMTBiZGIzZmIxYzM4NjE1MzM3OTdiMzBmZTBiOGYwMjBiYTJmOGFkNTU0ZDA5ODMzMjkxNDFhZmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY0MjkzMTA4NWU4Y2E4MDNmZjExNWMxMDQzOWRiMGJiMjg1N2E3OGQyOTY4ZDRhYTE2YmY0Y2U1ZDY0MTI4YTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1MzM1NzE4NDA2YWQ2YTU0OTNhN2MxZjQ4MDZmY2YwNDM4ZTQ3NWMxM2Q5ZDA2NGM1N2Q4MmJiNTc4ZTY3NDkifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T12:22:48.595Z"
+    "at": "2026-11-05T16:04:45.402Z"
   }
 }
