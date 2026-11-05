@@ -195,7 +195,7 @@ code_sources:
       - published_versions
   - path: distribution/release/run_product_gate.py
     symbols:
-      - latest_version
+      - source_identity
       - run_gate
   - path: .github/scripts/ci/routine_gate.py
   - path: .github/scripts/ci/validation_scope.py
@@ -243,10 +243,16 @@ code_sources:
 sources:
   - id: openwiki-source-3b28c686cbf92ac682eb5142
     resource: repo://.github/scripts/ci/build_execution.py
+  - id: openwiki-source-970d1a886c7a46d7b0335a81
+    resource: repo://.github/scripts/ci/gradle_diagnostics.py
+  - id: openwiki-source-d09e57e512e655a9f4013dba
+    resource: repo://.github/scripts/ci/gradle_graph.py
   - id: openwiki-source-782f88ea0a8c13260d76dfa4
     resource: repo://.github/scripts/ci/native_handoff.py
   - id: openwiki-source-27e9613cc8767d52b5cfe287
     resource: repo://.github/scripts/ci/required_checks.py
+  - id: openwiki-source-eaec0145ee5bcb15fda00e9c
+    resource: repo://.github/scripts/ci/source_validation.py
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
     resource: repo://.github/scripts/release/build_candidate.py
   - id: openwiki-source-939501634c56c6ffea2fec6b
@@ -313,6 +319,10 @@ sources:
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
+  - id: openwiki-source-360539b338a8755db6cff27a
+    resource: repo://distribution/release/run_product_gate.py
+  - id: openwiki-source-eb5e76c5c52dc1f7704250ce
+    resource: repo://distribution/release/test_run_product_gate.py
   - id: openwiki-source-a27a8f11a4689cb821b5f6e8
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
   - id: openwiki-source-03ffc32a0ca502ab67c54b25
@@ -337,10 +347,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+generated: { by: "codex", at: "2026-11-05T05:25:39.361Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T00:37:28.525Z
+    at: 2026-11-05T05:25:39.361Z
 ---
 
 # Distribution and packaging
@@ -403,7 +413,20 @@ Installer examples, generated schemas, scripts, build configuration, protected p
 The completion job requires every selected job to succeed and every excluded job to be skipped.
 It then seals a validation record with the exact source revision, source tree, comparison base, event, and producer run identities.
 One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run number>`.
-Pre-push keeps its published stable-version admission independently.
+Local pre-push qualification uses version `0.0.0` with a `LOCAL_VALIDATION` record.
+The full source commit and tree identify the checkout; no published release label is selected.
+The wrapper sets source, Control, and Host versions and passes the admitted source revision.
+Clean source is checked before execution and again after Gradle succeeds.
+The staged Control build identity must match that version, commit, and tree before `VALIDATED`.
+A dry-run records `DRY_RUN`; failures cannot inherit an earlier success.
+Before/after admission detects observed drift, not transient edits later restored.
+Local qualification grants no publication or installation authority.
+
+Full and affected source validation and the local product gate request single-use Gradle daemons.
+Disk caches remain enabled; client retirement does not prove synchronous daemon retirement.
+On graph timeout or cancellation, optional diagnostics attempt a bounded daemon thread dump.
+Invocation association and process start identity are checked before and after attachment.
+Incomplete diagnostics do not replace the graph failure or prevent client cleanup.
 
 The candidate's typed identity record retains the exact build commit, Git tree, producer run and attempt, platform, toolchain, and payload digests. Main CI reuses a successful same-repository PR candidate only when the PR head tree equals the merged main tree. Missing or expired records, fork producers, and changed trees require a fresh main candidate. Malformed records, damaged bytes, and incomplete observations reject reuse. Candidate retention is 30 days.
 
@@ -424,11 +447,12 @@ Manual publication retries supply the successful current-main push CI run ID.
 When setup runs, the product job configures cache transport for eligible Gradle User Home state, task outputs, and native build tools.
 Only main push and main workflow-dispatch runs save cache entries.
 Pull requests, forks, merge groups, and other refs are read-only.
-A repository secret enables encrypted configuration-cache storage and is unavailable to fork PRs.
+A repository secret supplies the cache encryption key and is unavailable to fork PRs.
+A supplied key alone does not establish that configuration-cache state was captured.
 Successful main candidate reuse skips Gradle setup.
 An authorized full CI dispatch on accepted main can seed the shared cache without automatic developer publication.
 Configured transport does not establish an observed task cache hit or lower build time.
-CI pins GraalVM 25.0.2 and keeps native analysis/resource metrics, finite build outcome records, and Gradle profile reports for matched comparisons. The unified producer uses `-Os` and transfers one exact executable through the native handoff.
+CI pins GraalVM 25.0.2 and keeps native analysis/resource metrics and finite build outcome records for matched comparisons. The unified producer uses `-Os` and transfers one exact executable through the native handoff.
 Mac qualification imports the executable from the assembled Control archive into the existing `publicLauncherTest` suite before candidate sealing.
 The workflow keeps the native suite's XML and HTML reports with the Mac qualification evidence.
 Stable full and component releases keep explicit versions that affect compiled bytes, so a different version requires another build.
