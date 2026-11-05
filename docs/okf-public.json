@@ -6048,6 +6048,10 @@
           "sha256": "aaac157eb580cfd1a07faa62b5aaa5fceff026fef71a9bc0223aa654388ca938"
         },
         {
+          "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationParameterDeclaration.kt",
+          "sha256": "e7934a20020cfa601f0b6f442cb1ee3bebb9480acf82ce87f315f6560396c7bf"
+        },
+        {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
           "sha256": "bc5b0b095fb2ee95b93d433cf18d4065116ecde59cc8a4e39f17dff565f11c00"
         },
@@ -6085,10 +6089,10 @@
         },
         {
           "path": "packaging/configuration-schema.json",
-          "sha256": "de9404699e24e207135e9ff55865e252a18acd9cba051fc0c3d3eb974b98f6b3"
+          "sha256": "7a91c9ec680c599ea0db811c207f1c1cb955c3257adcc6649b3bb02a48c7c511"
         }
       ],
-      "reviewedSourceRevision": "6ed68779e9d3a4386bcf8a7840af4ccd23d0e9ed"
+      "reviewedSourceRevision": "9610c6e88c05873145116432bdeb734ba309a99b"
     },
     {
       "route": "reference/compatibility",
