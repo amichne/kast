@@ -18,7 +18,6 @@ import org.jetbrains.kotlin.KtNodeTypes
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.parsing.KotlinParserDefinition
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.stubs.elements.KtStubElementType
 
 internal enum class ClasslikeAstPsiAdmission {
     REQUIRED,
@@ -109,16 +108,17 @@ internal sealed interface IntellijClasslikeAstBinding {
                 else ClasslikeAstPsiAdmission.OMITTED
             }
 
-            private fun fixedFactory(type: IElementType): Boolean =
-                when (type) {
-                    is KtStubElementType<*, *> ->
-                        type.javaClass.getMethod("createPsiFromAst", ASTNode::class.java).declaringClass ==
-                            KtStubElementType::class.java
-                    is KtNodeType ->
+            private fun fixedFactory(type: IElementType): Boolean {
+                val stubOwner = IntellijKotlinAstSourceBinding.legacyStubElementType()
+                return when {
+                    stubOwner.isInstance(type) ->
+                        type.javaClass.getMethod("createPsiFromAst", ASTNode::class.java).declaringClass == stubOwner
+                    type is KtNodeType ->
                         type.javaClass.getMethod("createPsi", ASTNode::class.java).declaringClass ==
                             KtNodeType::class.java
                     else -> false
                 }
+            }
 
             private fun selfPsiLeaves(): Boolean = SELF_PSI_LEAVES.all {
                 it.getMethod("getPsi").declaringClass == LeafPsiElement::class.java

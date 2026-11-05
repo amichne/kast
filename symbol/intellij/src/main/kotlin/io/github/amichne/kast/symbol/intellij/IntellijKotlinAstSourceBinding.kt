@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.KtNodeType
 import org.jetbrains.kotlin.KtNodeTypes
 import org.jetbrains.kotlin.parsing.KotlinCommonParserDefinition
 import org.jetbrains.kotlin.parsing.KotlinParserDefinition
-import org.jetbrains.kotlin.psi.stubs.elements.KtStubElementType
 
 internal enum class KotlinAstSourceBinding {
     SUPPORTED,
@@ -198,7 +197,7 @@ internal object IntellijKotlinAstSourceBinding {
                 KotlinParserDefinition::class.java,
                 "cf21b1aa31cc5c4860ca9e35c5cf640d426ad896a37e57b8c0a09c0ce2ae22b1",
             ),
-            Witness(KtStubElementType::class.java, "14f62ea11505cea137f65cae7fac04bab9fcaa1e6e7e520700576845d708b6cb"),
+            Witness(legacyStubElementType(), "14f62ea11505cea137f65cae7fac04bab9fcaa1e6e7e520700576845d708b6cb"),
             Witness(
                 Class.forName("org.jetbrains.kotlin.psi.impl.KotlinElementTypeProviderImpl", false, loader),
                 "ca571266ecd2395a52bc6582b7d44589c7b57cfc713925dae9d44caffcf41106",
@@ -211,4 +210,12 @@ internal object IntellijKotlinAstSourceBinding {
             Witness(LeafPsiElement::class.java, "7f2fe7eb0566ef51223e774f209b9110b57f4cdf75993b67d3ec36f32e81e1bd"),
         )
     }
+
+    /** An absent legacy compiler owner cannot acquire the unchanged source witness or qualify the optimization. */
+    internal fun legacyStubElementType(): Class<*> =
+        Class.forName(
+            "org.jetbrains.kotlin.psi.stubs.elements.KtStubElementType",
+            false,
+            KtNodeTypes::class.java.classLoader,
+        )
 }

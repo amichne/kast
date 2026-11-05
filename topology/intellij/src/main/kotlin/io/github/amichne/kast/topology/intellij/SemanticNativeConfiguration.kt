@@ -28,18 +28,23 @@ internal class SemanticNativeConfiguration(
     private val files: SemanticNativeFiles,
 ) {
     fun arguments(module: Module, digest: SemanticInputDigest): SemanticCapture<K2JVMCompilerArguments> {
+        // This compiler-input model is separately qualified from basic Host transport and read admission.
+        if (ApplicationInfo.getInstance().build.baselineVersion != 262) return configurationUnavailable()
         val settings =
             budget.observation.call(IntellijReadCall.KOTLIN_FACET) { KotlinFacet.get(module) }?.configuration?.settings
                 ?: return configurationUnavailable()
         if (settings.useProjectSettings || settings.isHmppEnabled) return configurationUnavailable()
         val arguments = settings.mergedCompilerArguments as? K2JVMCompilerArguments ?: return configurationUnavailable()
-        when (
-            val distribution = admitSemanticCompilerDistribution(arguments.kotlinHome, arguments.intellijPluginRoot)
-        ) {
+        val legacy =
+            when (val captured = LegacyJvmCompilerInputs.capture(arguments)) {
+                is Refinement.Refined -> captured.value
+                is Refinement.Rejected -> return captured
+            }
+        when (val distribution = admitSemanticCompilerDistribution(arguments.kotlinHome, legacy.intellijPluginRoot)) {
             is Refinement.Rejected -> return distribution
             is Refinement.Refined -> Unit
         }
-        if (unmodeledSources(arguments)) return configurationUnavailable()
+        if (unmodeledSources(arguments, legacy)) return configurationUnavailable()
         if (!arguments.pluginOptions.isNullOrEmpty() || !arguments.pluginConfigurations.isNullOrEmpty())
             return captureRejected(SemanticDependencyCaptureFailure.COMPILER_PLUGIN_INPUTS_UNMODELED)
         val values =
@@ -77,22 +82,22 @@ internal class SemanticNativeConfiguration(
         return Refinement.Refined(values)
     }
 
-    private fun unmodeledSources(arguments: K2JVMCompilerArguments): Boolean =
+    private fun unmodeledSources(arguments: K2JVMCompilerArguments, legacy: LegacyJvmCompilerInputs): Boolean =
         arguments.multiPlatform ||
             arguments.script ||
             arguments.freeArgs.isNotEmpty() ||
-            !arguments.klibLibraries.isNullOrBlank() ||
+            !legacy.klibLibraries.isNullOrBlank() ||
             !arguments.buildFile.isNullOrBlank() ||
-            unmodeledSourceArrays(arguments)
+            unmodeledSourceArrays(arguments, legacy)
 
-    private fun unmodeledSourceArrays(arguments: K2JVMCompilerArguments): Boolean =
+    private fun unmodeledSourceArrays(arguments: K2JVMCompilerArguments, legacy: LegacyJvmCompilerInputs): Boolean =
         listOf(
                 arguments.commonSources,
                 arguments.fragments,
                 arguments.fragmentSources,
                 arguments.fragmentDependencies,
                 arguments.fragmentFriendDependencies,
-                arguments.fragmentIncrementalClasspath,
+                legacy.fragmentIncrementalClasspath,
                 arguments.fragmentRefines,
                 arguments.scriptTemplates,
                 arguments.scriptResolverEnvironment,
