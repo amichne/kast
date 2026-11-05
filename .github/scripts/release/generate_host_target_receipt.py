@@ -86,31 +86,28 @@ def valid_request(request: Request) -> bool:
 
 
 def source_admitted(request: Request) -> bool:
+    # The requested repository is data until admitted. Never execute its mutable helper scripts.
+    command = ["git", "--no-optional-locks", "-c", "core.fsmonitor=false", "-C", str(request.root)]
     try:
-        result = subprocess.run(
-            [
-                "/bin/bash",
-                str(request.root / ".github/scripts/release/admit-source.sh"),
-                "--repository-root",
-                str(request.root),
-                "--expected-source-revision",
-                request.identity.buildRevision,
-            ],
-            capture_output=True,
-            timeout=30,
-            check=False,
-        )
-        tree = subprocess.run(
-            ["git", "-C", str(request.root), "rev-parse", "HEAD^{tree}"],
-            capture_output=True,
-            timeout=10,
-            check=False,
-        )
-        return (
-            result.returncode == tree.returncode == 0
-            and result.stdout.decode("ascii").strip() == request.identity.buildRevision
-            and tree.stdout.decode("ascii").strip() == request.identity.sourceTree
-        )
+        observed: list[str] = []
+        for arguments in (
+            ("rev-parse", "--show-toplevel"),
+            ("rev-parse", "HEAD^{commit}"),
+            ("rev-parse", "HEAD^{tree}"),
+            ("status", "--porcelain=v1", "--untracked-files=all"),
+        ):
+            result = subprocess.run(
+                [*command, *arguments], capture_output=True, timeout=10, check=False
+            )
+            if result.returncode != 0:
+                return False
+            observed.append(result.stdout.decode("utf-8", errors="strict").strip())
+        return observed == [
+            str(request.root),
+            request.identity.buildRevision,
+            request.identity.sourceTree,
+            "",
+        ]
     except (OSError, UnicodeError, subprocess.TimeoutExpired):
         return False
 

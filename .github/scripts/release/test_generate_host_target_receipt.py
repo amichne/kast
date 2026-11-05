@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -188,6 +189,17 @@ class HostTargetReceiptTest(unittest.TestCase):
         (self.root / "new-source.kt").unlink()
         request = replace(self.request, identity=replace(self.identity, buildRevision="a" * 40))
         self.assertEqual(generator.Failure.SOURCE_REJECTED, generator.write(request))
+        self.assertFalse(self.request.output.exists())
+
+    def test_modified_repository_admission_script_is_data_and_must_never_execute(self) -> None:
+        sentinel = self.container / "unadmitted-script-ran"
+        admission = self.root / ".github/scripts/release/admit-source.sh"
+        admission.write_text(
+            f"#!/bin/bash\n/usr/bin/touch {shlex.quote(str(sentinel))}\n"
+            f"printf '%s\\n' '{self.identity.buildRevision}'\n"
+        )
+        self.assertEqual(generator.Failure.SOURCE_REJECTED, generator.write(self.request))
+        self.assertFalse(sentinel.exists())
         self.assertFalse(self.request.output.exists())
 
     def test_wrong_sdk_product_or_kotlin_descriptor_rejects(self) -> None:
