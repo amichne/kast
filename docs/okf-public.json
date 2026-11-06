@@ -6085,14 +6085,14 @@
         },
         {
           "path": "mise.toml",
-          "sha256": "531d6af3dc9cccdc74f22a1801a26e982ce214ca026940ef9f0bc11f8c038195"
+          "sha256": "9204ea58eb4c1446f39bdd3291a78c31d034f4dd94225bd5c907720c75b249b0"
         },
         {
           "path": "packaging/configuration-schema.json",
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "e37888ae77b7af99addc1165f1ae981bb7d1309b"
     },
     {
       "route": "reference/compatibility",
