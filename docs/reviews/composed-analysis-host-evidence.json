@@ -227,7 +227,7 @@
   ],
   "proseAssessment": {
     "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/prose-assessment.json",
-    "sha256": "6e306679e28932d3c10ca6c3c41b64e41b63506c09698cc6069e0d9f33b683f3"
+    "sha256": "65157cdca9df74394ad7623d942c8b81921158f7ab801e54b66b457bd8b68cca"
   },
   "proseFindingReason": "Grade and technical vocabulary advisories remain. Canonical terms and technical identifiers keep their meanings. Terminology scope is OUT_OF_SCOPE. Comprehension is NOT_ASSESSED.",
   "limits": [

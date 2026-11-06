@@ -142,6 +142,7 @@ mise exec -- uv run --locked --project packaging python packaging/composed_host_
 ```
 
 The fixture starts from `experiments/host-observation/static-callback-fixture` with the repository Gradle wrapper.
+The `experiments/host-observation/composed-host-fixture-overlay` directory supplies the Java-reference files.
 The private profile grants trust only to the exact disposable root.
 The probe does not grant trust.
 
