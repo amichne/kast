@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "scope": "native macOS ARM composition and stated disposable corpus",
+  "artifactRoot": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106",
+  "runtimeRoot": "/private/tmp/kbh",
+  "fixtureRoot": "/private/tmp/kbw6",
+  "nativeRevision": "8367953a41082eabf96b8c5e9a37d7603c4139c9",
+  "nativeTree": "9e2530b684edddf6935eade3804d2b1453f689ec",
+  "platformBuild": "262.10315.125",
+  "kotlinPluginBuild": "262.10315.125-IJ",
+  "javaRuntime": "25.0.4+1-b508.27",
+  "sourceManifest": {
+    "path": "/private/tmp/kh7/assembly-manifest.json",
+    "sha256": "d2eda92d34f99c4f41d1c93a840f59db7be3eda24253018c6dc9a8ad9063b4b7"
+  },
+  "compositionManifest": {
+    "path": "/private/tmp/kbh/composition-manifest.json",
+    "sha256": "afdcd574bfb14c88facd43bd4f8df8ea40c591c642310cce16ff94b382ea44fa"
+  },
+  "donor": {
+    "regularFiles": 3188,
+    "regularBytes": 4459611689,
+    "symlinks": 222
+  },
+  "composed": {
+    "regularFiles": 761,
+    "regularBytes": 1646303144,
+    "symlinks": 221
+  },
+  "generatedBytes": 1453785,
+  "moduleCount": 528,
+  "pluginProviders": [
+    "com.intellij",
+    "com.intellij.gradle",
+    "com.intellij.java",
+    "com.intellij.properties",
+    "intellij.java.aetherDependencyResolver.plugin",
+    "intellij.libraries.misc.plugin",
+    "intellij.structuralSearch.plugin",
+    "intellij.structureView.plugin",
+    "intellij.testRunner.plugin",
+    "intellij.todo.plugin",
+    "org.jetbrains.kotlin",
+    "org.jetbrains.plugins.gradle"
+  ],
+  "cases": [
+    {
+      "name": "cold",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-cold.log",
+        "sha256": "5df8ec4731583a9c4d11f98122cddabb6c777c91ae43e0818e051ad4f5149468"
+      }
+    },
+    {
+      "name": "parity-source",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-parity-source.log",
+        "sha256": "e281eefd835b682eb3f6efe437c6a99b67e345be5e44230e61e88da7b1dc6746"
+      }
+    },
+    {
+      "name": "parity-mutation",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-parity-mutation.log",
+        "sha256": "66561af9529708be1457507f474700d97035c05fcdc6d99655a20c5703e05797"
+      }
+    },
+    {
+      "name": "parity-add",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-parity-add.log",
+        "sha256": "3217de89b3ef837cb879939feab67dc9236d171d9edda109cdefbaa20d7afdeb"
+      }
+    },
+    {
+      "name": "other",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-other.log",
+        "sha256": "4439ecf7c5da20b1c6bb1a3d2bad6644e8768c0138b564eff7f581fbbe9db05d"
+      }
+    },
+    {
+      "name": "assert-mixed",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-assert-mixed.log",
+        "sha256": "5d0914ca0fc512410e460e8483728aab498f90fbd308065b3fdff4f73eb2656b"
+      }
+    },
+    {
+      "name": "parity-model",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-parity-model.log",
+        "sha256": "e8eb45647e538599cd579f56662497f9c8a99853515164c16f031ee1f1037ba8"
+      }
+    },
+    {
+      "name": "baseline",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-baseline.log",
+        "sha256": "7496c391ec824af9f2b8d42e1672a0d98f8352f634530bad289460dc82f5e467"
+      }
+    },
+    {
+      "name": "retention",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-retention.log",
+        "sha256": "86853176214a11300d71c628353faba08a1f39d9c62484a3649d3eeda26e6234"
+      }
+    },
+    {
+      "name": "cancel-public",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-cancel-public.log",
+        "sha256": "645bd40807efb48fa7e3b7f7944ad30459b0769662ee0f34769af2d1d736edd5"
+      }
+    },
+    {
+      "name": "stop",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-stop.log",
+        "sha256": "c1b0582b0f2c0738f6423cce8e82a3f2e0053d88cc0f65dba9188a9f4325ac91"
+      }
+    },
+    {
+      "name": "restart-stop",
+      "outcome": "PASSED",
+      "log": {
+        "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/final-restart-stop.log",
+        "sha256": "afb73a267b29a6eef8f41818ac08bdd3f425091448b1fe2d37c74b9c780e8396"
+      }
+    }
+  ],
+  "probe": {
+    "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/qualification/restart-probe/probe.json",
+    "sha256": "a5b2afb40b7d33a9feeb39778aee39f00329775e4607e04cd9d833edbf856e67"
+  },
+  "hostBeforeRestart": {
+    "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/qualification/restart-before.json",
+    "sha256": "a42b8069696562b963bca2424aefe42a369aba5b8a675f0370c6257915c4ad93"
+  },
+  "hostAfterRestart": {
+    "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/qualification/restart-after.json",
+    "sha256": "84f0701359ca50e3f9bba5e68f79589f690cf4df03a212ba89db46f1cf4240d3"
+  },
+  "sourceFiles": [
+    {
+      "path": "packaging/composed_host.py",
+      "sha256": "81b87131522255682c1daad7ab570c7f75c8b1e195ea8cd8a366812cff24ae16"
+    },
+    {
+      "path": "packaging/composition_graph.py",
+      "sha256": "a781e352313c46f3c8c3b40681cfe536449a2f6aa2dd3d1332bf91d447b77790"
+    },
+    {
+      "path": "packaging/composition_index.py",
+      "sha256": "951e499f1d3645d9ada35d9f90276331ccc162c16a02fe5875921786b41e04ba"
+    },
+    {
+      "path": "packaging/composition_descriptors.py",
+      "sha256": "ef351ea16535b0c542b11ec50aa1c8f700f45992e9ee4e196ce794d62726e0d4"
+    },
+    {
+      "path": "packaging/composition_recipe.py",
+      "sha256": "77ceac138b32a8a0dd3d77922ca5e94ea0540fa621d3c0ec28cbd55e503eb63e"
+    },
+    {
+      "path": "packaging/managed_headless.py",
+      "sha256": "47984cbbb1e44b18fbe1d46328c37e547d0443828c7905560d1350859d860039"
+    }
+  ],
+  "corpusScripts": [
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/production-assert-mixed.py",
+      "sha256": "618a9c6fa6bd38c58154826acc3070e94c9fccb6f4755a60da587a23b6e1a464"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/production-baseline.py",
+      "sha256": "0e1417e9d622cfc9ef0b133ae9b71d543c0f653e810614c599a9cbbfacb10254"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/production-cancel-public.py",
+      "sha256": "4539a32add18022a856556871ef9c250e25606a4df5a4d22e6eedede0729376a"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/production-other.py",
+      "sha256": "87d5a97425842f1ac795cef7b3f96681e9c14b051994f8532410926d93c41bf1"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/production-parity-add.py",
+      "sha256": "474fb80480de91e0c9911cea9321c65bfd83eee6d91bc124b0046bb7711369f2"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/production-parity-model.py",
+      "sha256": "12cb6132560b56c0812deed00c5d4636a36a2e4412f8307217f776612dc72bce"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/production-parity-mutation.py",
+      "sha256": "d9c2d1a32ee68ce922c8493e644dedc316f62cd3f4a635c7777036631a5cfc56"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/production-parity-source.py",
+      "sha256": "b9a1fe7f2d427d7e06a1d5d7636489140e0d7c9eff2f3bfc3f69bb1efe20302c"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/production-retention.py",
+      "sha256": "cf98925c06bbafe12fa3f93ef3cd7c4e13f566bfe2a900f7a9376a9918a03ee3"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/production-stop.py",
+      "sha256": "f999070d2f04e54cecc57712efb07a028d2c8e4c1f75c374828bb3470fd75eb4"
+    },
+    {
+      "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/run-production-cold.py",
+      "sha256": "f1029c0d58c7db147f9234922490dc87464c1472dd06211a25629c189dc9f01c"
+    }
+  ],
+  "proseAssessment": {
+    "path": "/Users/amichne/.codex-workspaces/artifacts/kast-composed-host-20261106/prose-assessment.json",
+    "sha256": "65157cdca9df74394ad7623d942c8b81921158f7ab801e54b66b457bd8b68cca"
+  },
+  "proseFindingReason": "Grade and technical vocabulary advisories remain. Canonical terms and technical identifiers keep their meanings. Terminology scope is OUT_OF_SCOPE. Comprehension is NOT_ASSESSED.",
+  "limits": [
+    "No absolute-minimum dependency proof",
+    "No Community Edition source rebuild or sparse artifact download",
+    "No release or redistribution qualification",
+    "No cross-platform or general Gradle compatibility proof",
+    "No memory, download-size, or latency improvement claim",
+    "Broader corpus scripts and raw outputs remain local artifacts"
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e1e4750c80150ff53144513aae6750f672fcfc0be6f402ca8c8dbf89bcdc6c37",
+  "pageVersion": "sha256:37e327878420d4b2f0baf0ec735b09ebddea20dca5eaec06e8ff57d686f1c660",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -11,8 +11,8 @@
           "version": "repo-file-v1:sha256:b664763ec093af466ba893058ec2d7f7e72beee86c6eea9a9269cb772f0368ff"
         },
         {
-          "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:51c6d1c158ef51f4a91ec188f2756dec1086593181494bbd7db621b401da91fc"
+          "resource": "repo://build.gradle.kts#L728-L747",
+          "version": "repo-lines-v1:sha256:49750b9bcf0a0e582bd76e22d0016b992efa169cd730b00d50f9384f6bc438d1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMjUzOGFhM2MyZWJkMDU4NzM3MTJiYjAwODRmYWFiNjVmYmNmNjUwNzhhZTQ4NzgxOWY2MTA4MDNjMmI3NTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhYmQ0ZjAwYjM2ZGVmNDAyZjMzNDY3ZDdlOGQ0MDJhZDZlYjI1NmJjYWI0YTI4OWU0M2FlYTU2YWQ4NDQzMDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRkN2I4YzBjMTk4NDgwNTRkMDNjMGYwNGM3ZThkOTRjMTE5ODI5MDJlMzc0NDFhMDRmOWVkZDU2OTI4NzYyNjgifQ"
         }
       ]
     },
@@ -87,6 +87,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T05:26:56.646Z"
+    "at": "2026-11-06T14:55:42.277Z"
   }
 }
