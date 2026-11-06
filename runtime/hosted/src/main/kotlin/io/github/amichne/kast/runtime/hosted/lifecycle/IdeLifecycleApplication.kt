@@ -207,7 +207,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
         }
 
     private fun submit(received: IdeLifecycleCommand): IdeLifecycleResult {
-        native.observeProjects()
+        observeApplicationProjects(runtimeIdentity.mode, native::observeProjects)
         if (received is IdeLifecycleCommand.Inspect)
             return inspectApplicationHost(runtimeIdentity, native.inspectProjects(), hostRefresh)
         if (received is IdeLifecycleCommand.SettleHost) return settlement.settle(received)

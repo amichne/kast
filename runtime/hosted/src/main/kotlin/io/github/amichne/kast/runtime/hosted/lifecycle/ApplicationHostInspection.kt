@@ -3,11 +3,20 @@ package io.github.amichne.kast.runtime.hosted.lifecycle
 import com.intellij.openapi.application.ApplicationInfo
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostAutoReload
+import io.github.amichne.kast.protocol.contract.IdeHostMode
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectDescription
 import io.github.amichne.kast.runtime.hosted.HostedCompatibilityMetadata
+
+/** Managed project registration belongs to the native opener, after project initialization. */
+internal fun observeApplicationProjects(mode: IdeHostMode, observeBorrowed: () -> Unit) {
+    when (mode) {
+        IdeHostMode.DESKTOP -> observeBorrowed()
+        IdeHostMode.MANAGED_HEADLESS -> Unit
+    }
+}
 
 internal fun lifecycleHostModeSupported(): Boolean =
     !com.intellij.idea.AppMode.isRemoteDevHost() &&
