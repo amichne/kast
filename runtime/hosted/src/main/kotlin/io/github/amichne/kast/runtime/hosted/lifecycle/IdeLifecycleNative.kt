@@ -36,7 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
-/** Ordinary graphical 262 APIs only. No force closure, global preferences, or implicit trust. */
+/** Native IDEA 262 effects preserve trust and normal project closure. */
 @Suppress("LargeClass") // One owner retains the native project and lifecycle effect order.
 internal class IdeLifecycleNative(
     private val state: IdeLifecycleState,
