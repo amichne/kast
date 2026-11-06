@@ -544,6 +544,21 @@ def assemble(admitted: _AdmittedInput, installer: Path) -> Installed | Rejected:
     if isinstance(manifest, Rejected):
         return manifest
     _ = (root / "assembly-manifest.json").write_text(json.dumps(asdict(manifest), indent=2) + "\n")
+    return install_prepared_runtime(admitted, home, installer, manifest)
+
+
+def install_prepared_runtime(
+    admitted: _AdmittedInput,
+    home: Path,
+    installer: Path,
+    manifest: AssemblyManifest | None = None,
+) -> Installed | Rejected:
+    """Both assembly strategies use one installer, private state layout, and launcher."""
+    inputs = admitted.inputs
+    root = inputs.root
+    if not home.is_relative_to(root / "runtime") or home.resolve() != home:
+        return Rejected(Failure.INVALID_INPUT)
+    system = platform.system()
     bootstrap = add_bootstrap(home, inputs.bootstrap)
     if isinstance(bootstrap, Rejected):
         return bootstrap
@@ -574,9 +589,10 @@ def assemble(admitted: _AdmittedInput, installer: Path) -> Installed | Rejected:
         )
     if result.returncode != 0:
         return Rejected(Failure.INSTALLER_FAILED)
-    configured = configure_removed_plugins(state, manifest)
-    if configured is not None:
-        return configured
+    if manifest is not None:
+        configured = configure_removed_plugins(state, manifest)
+        if configured is not None:
+            return configured
     (root / "bin").mkdir()
     command = root / "bin/kast"
     _ = command.write_text(wrapper(home, state))

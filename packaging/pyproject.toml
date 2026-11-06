@@ -20,7 +20,7 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["managed_headless.py", "test-managed-headless.py", "managed_installation.py", "managed_release.py", "managed_update_journal.py", "managed_update_contract.py", "test-managed-installation.py", "test-managed-release.py", "test-managed-update-contract.py"]
+include = ["composed_host_probe.py", "test_composition_descriptors.py", "test_composition_host.py", "composed_host.py", "composition_descriptors.py", "composition_recipe.py", "composition_index.py", "test_composition_index.py", "composition_graph.py", "test_composition_graph.py", "managed_headless.py", "test-managed-headless.py", "managed_installation.py", "managed_release.py", "managed_update_journal.py", "managed_update_contract.py", "test-managed-installation.py", "test-managed-release.py", "test-managed-update-contract.py"]
 extraPaths = ["."]
 reportUnusedCallResult = "error"
 reportMatchNotExhaustive = "error"
@@ -29,7 +29,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["**/managed_headless.py", "**/test-managed-headless.py", "**/managed_installation.py", "**/managed_release.py", "**/managed_update_journal.py", "**/managed_update_contract.py", "**/test-managed-installation.py", "**/test-managed-release.py", "**/test-managed-update-contract.py"]
+include = ["**/composed_host_probe.py", "**/test_composition_descriptors.py", "**/test_composition_host.py", "**/composed_host.py", "**/composition_descriptors.py", "**/composition_recipe.py", "**/composition_index.py", "**/test_composition_index.py", "**/composition_graph.py", "**/test_composition_graph.py", "**/managed_headless.py", "**/test-managed-headless.py", "**/managed_installation.py", "**/managed_release.py", "**/managed_update_journal.py", "**/managed_update_contract.py", "**/test-managed-installation.py", "**/test-managed-release.py", "**/test-managed-update-contract.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -40,5 +40,5 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --import-mode=importlib -ra"
 pythonpath = ["."]
-python_files = ["test-managed-*.py"]
+python_files = ["test-managed-*.py", "test_composition_*.py"]
 testpaths = ["."]
