@@ -110,6 +110,9 @@ private constructor(
     val selectedIdeHome: ConfigurationPathSelection
         get() = path(ConfigurationParameter.INSTALL_IDEA_HOME)
 
+    val managedHeadlessState: ConfigurationPathSelection
+        get() = path(ConfigurationParameter.MANAGED_HEADLESS_STATE)
+
     val runtimeDirectory: ConfigurationPathSelection
         get() = path(ConfigurationParameter.RUNTIME_DIRECTORY)
 

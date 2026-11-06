@@ -26,7 +26,7 @@ object ManagedHostCli {
                     else {
                         val request = managedHostJson.decodeFromString<ManagedHostRequest>(Files.readString(path))
                         val home = Path.of(environment["HOME"] ?: System.getProperty("user.home")).toRealPath()
-                        executeManagedHost(request, home)
+                        executeSelectedManagedHost(request, home, environment)
                     }
                 }
             } catch (_: IOException) {
@@ -38,6 +38,28 @@ object ManagedHostCli {
             }
         println(managedHostJson.encodeToString(result))
         return if (result is ManagedHostResponse.Rejected) 1 else 0
+    }
+}
+
+private fun executeSelectedManagedHost(
+    request: ManagedHostRequest,
+    home: Path,
+    environment: Map<String, String>,
+): ManagedHostResponse {
+    val key =
+        io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter.MANAGED_HEADLESS_STATE.key
+    val sources =
+        io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources(
+            environment = environment.filterKeys { it == key }
+        )
+    return when (
+        val configuration =
+            io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration.resolve(sources)
+    ) {
+        is io.github.amichne.kast.kernel.Refinement.Rejected ->
+            ManagedHostResponse.Rejected(ManagedHostFailure.INVALID_REQUEST)
+        is io.github.amichne.kast.kernel.Refinement.Refined ->
+            executeManagedHost(request, home, configuration.value.managedHeadlessState)
     }
 }
 

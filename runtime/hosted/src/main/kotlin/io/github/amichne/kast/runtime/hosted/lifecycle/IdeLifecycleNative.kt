@@ -1,6 +1,5 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
-import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
@@ -31,7 +30,6 @@ import io.github.amichne.kast.runtime.hosted.workspace.observeWorkspaceRefresh
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedSemanticReadResult
-import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -114,17 +112,20 @@ internal class IdeLifecycleNative(
                     open(command, it)
                 }
             is IdeLifecycleCommand.Present ->
-                withTarget(command.target) { project ->
-                    withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
-                        val frame = WindowManager.getInstance().getFrame(project)
-                        if (frame == null) blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
-                        else {
-                            frame.isVisible = true
-                            frame.toFront()
-                            IdeLifecycleResult.Presented(command.target)
+                if (com.intellij.openapi.application.ApplicationManager.getApplication().isHeadlessEnvironment)
+                    blocked(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE)
+                else
+                    withTarget(command.target) { project ->
+                        withContext(Dispatchers.EDT + ModalityState.nonModal().asContextElement()) {
+                            val frame = WindowManager.getInstance().getFrame(project)
+                            if (frame == null) blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
+                            else {
+                                frame.isVisible = true
+                                frame.toFront()
+                                IdeLifecycleResult.Presented(command.target)
+                            }
                         }
                     }
-                }
             is IdeLifecycleCommand.Sync ->
                 prepareNativeWorkspace(
                     command.requestId,
@@ -190,7 +191,11 @@ internal class IdeLifecycleNative(
         val importScopes = mutableListOf<InitialImportScope>()
         try {
             if (operation.remaining() is Refinement.Rejected) return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
-            val project = openNative(root, importScopes) ?: return blocked(IdeLifecycleFailure.OPEN_FAILED)
+            val project =
+                when (val opened = openNative(root, importScopes)) {
+                    is Refinement.Refined -> opened.value
+                    is Refinement.Rejected -> return blocked(opened.failure)
+                }
             val target = observe(project, root, IdeProjectOwnership.MANAGED)
             val endpoint = project.getService(HostedEndpointService::class.java)
             if (
@@ -229,25 +234,16 @@ internal class IdeLifecycleNative(
     private suspend fun openNative(
         root: CanonicalWorkspaceRoot,
         importScopes: MutableList<InitialImportScope>,
-    ): Project? =
-        ProjectManagerEx.getInstanceEx()
-            .openProjectAsync(
-                Path.of(root.value),
-                OpenProjectTask {
-                    forceOpenInNewFrame = true
-                    forceReuseFrame = false
-                    projectToClose = null
-                    showWelcomeScreen = false
-                    runConfigurators = false
-                    runConversionBeforeOpen = false
-                    isNewProject = !Files.exists(Path.of(root.value).resolve(".idea"))
-                    beforeOpen = { opening ->
-                        importScopes.add(InitialImportScope(opening))
-                        true
-                    }
-                    useDefaultProjectAsTemplate = false
-                },
-            )
+    ): Refinement<Project, IdeLifecycleFailure> {
+        val task =
+            when (val admitted = nativeLifecycleProjectTask(root, importScopes)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val project = ProjectManagerEx.getInstanceEx().openProjectAsync(Path.of(root.value), task)
+        return if (project == null) Refinement.Rejected(IdeLifecycleFailure.OPEN_FAILED)
+        else Refinement.Refined(project)
+    }
 
     private suspend fun awaitReady(
         project: Project,

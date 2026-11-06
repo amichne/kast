@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.managed.ManagedHeadlessLaunch
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
@@ -27,6 +28,11 @@ class LinuxIdeLifecycleTest {
 
             override fun start(arguments: List<String>): Process = start(arguments)
 
+            override fun startManaged(
+                specification: ManagedHeadlessLaunch
+            ): io.github.amichne.kast.kernel.Refinement<Process, IdeLifecycleFailure> =
+                error("Unexpected managed launch")
+
             override fun processes(): List<IdeProcessObservation> = emptyList()
         }
 
@@ -40,6 +46,25 @@ class LinuxIdeLifecycleTest {
             Json.encodeToString(Product("262.1", listOf(Launch("Linux", "amd64", "bin/idea")))),
         )
         return assertInstanceOf<SelectedIdeLaunch.Resolved>(SelectedIdeInstallation.resolve(home))
+    }
+
+    @Test
+    fun `explicit managed selection rejects missing ownership before desktop discovery or launch`(@TempDir root: Path) {
+        val target = target(root)
+        val client =
+            IdeLifecycleClient(
+                root,
+                Path.of(target.home),
+                LifecycleExchangeTimer.Native,
+                System::nanoTime,
+                platform(":99"),
+                IdeLifecycleDeployment.Headless(root.resolve("missing")),
+            )
+        assertEquals(
+            IdeLifecycleResult.Blocked(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE),
+            client.open(root.toString(), "request", "test"),
+        )
+        assertEquals(IdeLifecycleResult.Blocked(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE), client.startInstallation())
     }
 
     @Test

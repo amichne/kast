@@ -1,6 +1,7 @@
 package io.github.amichne.kast.runtime.hosted
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
@@ -210,6 +211,20 @@ class HostedEndpointService(private val project: Project, private val scope: Cor
                             directory = OwnedHostedEndpoint.directory(Path.of(System.getProperty("user.home")), root),
                             root = root,
                             host = query.hostLifetime,
+                            application =
+                                if (
+                                    io.github.amichne.kast.runtime.hosted.lifecycle.ManagedHeadlessHost.current() ==
+                                        null
+                                )
+                                    null
+                                else
+                                    ApplicationManager.getApplication()
+                                        .getService(
+                                            io.github.amichne.kast.runtime.hosted.lifecycle
+                                                    .IdeLifecycleApplication::class
+                                                .java
+                                        )
+                                        .advertisement,
                             observer = observer,
                             limits = limits,
                         )

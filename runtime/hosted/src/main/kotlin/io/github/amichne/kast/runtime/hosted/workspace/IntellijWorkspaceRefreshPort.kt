@@ -17,6 +17,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure as PublicFailure
 import io.github.amichne.kast.runtime.hosted.ProjectDocumentPreparation
+import io.github.amichne.kast.runtime.hosted.lifecycle.prepareProjectJbr
 import io.github.amichne.kast.runtime.hosted.prepareProjectDocuments
 import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -48,6 +49,13 @@ internal class IntellijWorkspaceRefreshPort(
         if (!saveProjectDocuments(root)) return Refinement.Rejected(PublicFailure.UNSAVED_DOCUMENTS)
         if (ExternalSystemApiUtil.getSettings(project, GRADLE).linkedProjectsSettings.isNotEmpty())
             return Refinement.Rejected(PublicFailure.UNLINKED_BUILD)
+        val headless = io.github.amichne.kast.runtime.hosted.lifecycle.ManagedHeadlessHost.current()
+        if (headless != null) {
+            when (val jbr = headless.prepareProjectJbr(project)) {
+                is Refinement.Refined -> Unit
+                is Refinement.Rejected -> return jbr
+            }
+        }
         linkState =
             LinkState.Initial(
                 org.jetbrains.plugins.gradle.service.project.open.createLinkSettings(

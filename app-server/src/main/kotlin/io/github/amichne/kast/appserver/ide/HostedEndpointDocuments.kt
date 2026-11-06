@@ -40,9 +40,11 @@ private constructor(
     val socket: Path,
     val owner: HostedEndpointOwnerPid,
     private val host: java.util.UUID,
+    private val application: io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement?,
 ) {
     fun bind(root: CanonicalRoot, socket: Path): Refinement<ExistingIdeDescriptor, ExistingIdeFailure> =
-        if (this.root == root.path && this.socket == socket) Refinement.Refined(ExistingIdeDescriptor(owner, host))
+        if (this.root == root.path && this.socket == socket)
+            Refinement.Refined(ExistingIdeDescriptor(owner, host, application))
         else Refinement.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
 
     companion object {
@@ -65,14 +67,16 @@ private constructor(
                     node.path("protocol").asInt() != HOSTED_PROTOCOL_VERSION
             )
                 return rejected
-            val owner =
-                when (val parsed = HostedEndpointOwnerPid.parse(node.path("hostPid").toString())) {
-                    is Refinement.Refined -> parsed.value
-                    is Refinement.Rejected -> return parsed
-                }
             return try {
-                val rootText = node.path("root").asString()
-                val socketText = node.path("socket").asString()
+                val document =
+                    kotlinx.serialization.json.Json.decodeFromString<EndpointRoutingDocument>(node.toString())
+                val owner =
+                    when (val parsed = HostedEndpointOwnerPid.parse(document.hostPid.toString())) {
+                        is Refinement.Refined -> parsed.value
+                        is Refinement.Rejected -> return parsed
+                    }
+                val rootText = document.root
+                val socketText = document.socket
                 val root = Path.of(rootText)
                 val socket = Path.of(socketText)
                 if (root.toString() != rootText || socket.toString() != socketText) rejected
@@ -83,10 +87,13 @@ private constructor(
                             root,
                             socket,
                             owner,
-                            java.util.UUID.fromString(node.path("host").asString()),
+                            java.util.UUID.fromString(document.host),
+                            document.application,
                         )
                     )
             } catch (_: IllegalArgumentException) {
+                rejected
+            } catch (_: kotlinx.serialization.SerializationException) {
                 rejected
             }
         }
@@ -94,3 +101,16 @@ private constructor(
 }
 
 private const val HOSTED_PROTOCOL_VERSION = 3
+
+@kotlinx.serialization.Serializable
+private data class EndpointRoutingDocument(
+    val type: String,
+    val protocol: Int,
+    val root: String,
+    val socket: String,
+    val hostPid: Long,
+    val host: String,
+    val querySchema: String,
+    val operations: List<String>,
+    val application: io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement? = null,
+)

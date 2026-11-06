@@ -9,6 +9,17 @@ import org.junit.jupiter.api.Test
 
 class KastConfigurationResolutionTest {
     @Test
+    fun `managed headless state stays explicit across child launch and rejects relative input`() {
+        val key = "KAST_MANAGED_HEADLESS_STATE"
+        val resolved = admitted(ConfigurationSources(environment = mapOf(key to "/kast/state")))
+        assertEquals("/kast/state", resolved.childEnvironment(ConfigurationChild.BROKER)[key])
+        assertEquals(
+            ConfigurationFailure.INVALID_PATH,
+            rejected(ConfigurationSources(environment = mapOf(key to "relative"))).reason,
+        )
+    }
+
+    @Test
     fun `workspace wait admits saved indefinite and explicit bounded policies while rejecting malformed overrides`() {
         val key = "KAST_WORKSPACE_PREPARATION_WAIT"
         val indefinite = admitted(ConfigurationSources(savedWorkspace = listOf(key to "indefinite")))

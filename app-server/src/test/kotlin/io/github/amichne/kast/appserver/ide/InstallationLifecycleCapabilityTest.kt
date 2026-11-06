@@ -73,6 +73,65 @@ class InstallationLifecycleCapabilityTest {
         )
     }
 
+    @Test
+    fun `workspace inspection admits a Host without graphical presentation`() {
+        workspaceFixture(present = false)
+    }
+
+    @Test
+    fun `graphical presentation rejects a Host without that capability`() {
+        workspaceFixture(present = true)
+    }
+
+    private fun workspaceFixture(present: Boolean) {
+        val root = Files.createTempDirectory(Path.of("/tmp"), "k").toRealPath()
+        val server = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            val home = Files.createDirectory(root.resolve("idea"))
+            val identity = identity(home, root)
+            val inspected =
+                inspected(home, identity, false, false)
+                    .copy(
+                        compatibility =
+                            HostedCompatibilityDocument(
+                                "262.10315.125",
+                                "262.10315.125-IJ",
+                                "0.0.0",
+                                io.github.amichne.kast.protocol.wire.CanonicalHostedContract.document,
+                            ),
+                        capabilities = IdeLifecycleCapabilityName.entries.toSet() - IdeLifecycleCapabilityName.PRESENT,
+                    )
+            val digest =
+                MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
+                    "%02x".format(it)
+                }
+            val socket = root.resolve(".kast/ide-lifecycle/$digest/host.sock")
+            Files.createDirectories(socket.parent)
+            server.bind(UnixDomainSocketAddress.of(socket))
+            val serving = executor.submit {
+                serve(server, listOf(IdeLifecycleCommand.Inspect to inspected), Json { encodeDefaults = true })
+            }
+            val request =
+                if (present)
+                    io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.Present(
+                        target = io.github.amichne.kast.protocol.contract.IdeProjectTarget("host", "project", "/work"),
+                        requestId = "request",
+                    )
+                else io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.Inspect
+            val result = IdeLifecycleClient(root, home).execute(request, "test")
+            assertEquals(
+                if (present) IdeLifecycleResult.Blocked(IdeLifecycleFailure.CAPABILITY_MISMATCH) else inspected,
+                result,
+            )
+            serving.get(5, TimeUnit.SECONDS)
+        } finally {
+            server.close()
+            executor.shutdownNow()
+            Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+        }
+    }
+
     private fun exchangeFixture(
         command: IdeLifecycleCommand,
         refresh: Boolean,

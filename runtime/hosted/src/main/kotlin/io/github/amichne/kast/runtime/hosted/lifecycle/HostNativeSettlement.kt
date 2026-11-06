@@ -8,6 +8,11 @@ import io.github.amichne.kast.runtime.hosted.HostedChangeResources
 /** Every open project keeps its durable mutation evidence independent of process liveness. */
 internal fun inspectHostNativeSettlement(hasPreparation: () -> Boolean): HostNativeSettlement {
     if (hasPreparation()) return HostNativeSettlement.Busy
+    if (
+        ManagedHeadlessHost.current() != null &&
+            com.intellij.openapi.progress.ProgressManager.getInstance().hasUnsafeProgressIndicator()
+    )
+        return HostNativeSettlement.Busy
     for (project in ProjectManager.getInstance().openProjects.filterNot { it.isDisposed }) {
         val root =
             when (val parsed = canonicalLifecycleRoot(project.basePath ?: return HostNativeSettlement.Busy)) {

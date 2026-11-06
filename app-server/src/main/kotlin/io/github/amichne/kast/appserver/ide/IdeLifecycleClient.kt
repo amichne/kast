@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver.ide
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.distribution.managed.SelectedIdeLayout
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ApprovedProjectCloseInvocation
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
@@ -47,6 +48,7 @@ internal constructor(
     private val exchangeTimer: LifecycleExchangeTimer,
     private val nanoTime: () -> Long,
     private val platform: IdeLaunchPlatform = IdeLaunchPlatform.Native,
+    private val deployment: IdeLifecycleDeployment = IdeLifecycleDeployment.Desktop,
 ) : WorkspaceLifecycleClient {
     constructor(
         userHome: Path,
@@ -56,6 +58,18 @@ internal constructor(
         selectedHome = selectedHome,
         exchangeTimer = LifecycleExchangeTimer.Native,
         nanoTime = System::nanoTime,
+    )
+
+    constructor(
+        userHome: Path,
+        selectedHome: Path,
+        managedState: Path,
+    ) : this(
+        userHome,
+        selectedHome,
+        LifecycleExchangeTimer.Native,
+        System::nanoTime,
+        deployment = IdeLifecycleDeployment.Headless(managedState),
     )
 
     private val json = Json { encodeDefaults = true }
@@ -86,6 +100,14 @@ internal constructor(
         return exchange(Path.of(inspected.home), command)
     }
 
+    /** Starts or reuses the selected application without opening a project or granting readiness. */
+    fun startInstallation(): IdeLifecycleResult {
+        val inspected = execute(IdeLifecycleCommand.Inspect)
+        return if (inspected is IdeLifecycleResult.Blocked && inspected.reason == IdeLifecycleFailure.HOST_UNAVAILABLE)
+            coldHost()
+        else inspected
+    }
+
     /** Prior-release inspection preserves its stated capabilities without granting new management operations. */
     fun inspectForInstallation(): IdeLifecycleResult {
         val home =
@@ -94,7 +116,18 @@ internal constructor(
             } catch (_: java.io.IOException) {
                 return blocked(IdeLifecycleFailure.SELECTED_IDE_UNAVAILABLE)
             }
+        val selectedDeployment =
+            when (val selected = selectLifecycleDeployment(deployment, userHome, selectedHome)) {
+                is Refinement.Rejected -> return blocked(selected.failure)
+                is Refinement.Refined -> selected.value
+            }
         val result = exchange(home, IdeLifecycleCommand.Inspect)
+        if (result is IdeLifecycleResult.Inspected) {
+            when (val admitted = admitLifecycleHost(selectedDeployment, result)) {
+                is Refinement.Rejected -> return blocked(admitted.failure)
+                is Refinement.Refined -> Unit
+            }
+        }
         return if (result is IdeLifecycleResult.Inspected && (result.home != home.toString() || result.protocol != 1))
             blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
         else result
@@ -137,25 +170,17 @@ internal constructor(
             } catch (_: java.io.IOException) {
                 return blocked(IdeLifecycleFailure.SELECTED_IDE_UNAVAILABLE)
             }
+        val selectedDeployment =
+            when (val selected = selectLifecycleDeployment(deployment, userHome, selectedHome)) {
+                is Refinement.Rejected -> return blocked(selected.failure)
+                is Refinement.Refined -> selected.value
+            }
         val host = exchange(home, IdeLifecycleCommand.Inspect)
         if (host !is IdeLifecycleResult.Inspected) return host
-        if (host.home != home.toString()) return blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
-        if (host.protocol != 1) return blocked(IdeLifecycleFailure.UNSUPPORTED_PROTOCOL)
-        if (!host.capabilities.containsAll(WORKSPACE_CAPABILITIES))
-            return blocked(IdeLifecycleFailure.CAPABILITY_MISMATCH)
-        if (!host.build.substringAfter('-').startsWith("262."))
-            return blocked(IdeLifecycleFailure.UNSUPPORTED_PLATFORM_LINE)
-        val requirements =
-            when (val required = requiredHostedCompatibilityPolicy()) {
-                is io.github.amichne.kast.kernel.Refinement.Refined -> required.value
-                is io.github.amichne.kast.kernel.Refinement.Rejected ->
-                    return blocked(IdeLifecycleFailure.COMPATIBILITY_REJECTED)
-            }
-        if (
-            requirements.admit(host.compatibility)
-                is io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission.Rejected
-        )
-            return blocked(IdeLifecycleFailure.COMPATIBILITY_REJECTED)
+        when (val admitted = admitWorkspaceLifecycleHost(home, host, command, selectedDeployment)) {
+            is Refinement.Rejected -> return blocked(admitted.failure)
+            is Refinement.Refined -> Unit
+        }
         return if (command == IdeLifecycleCommand.Inspect) host else exchange(home, command)
     }
 
@@ -168,9 +193,8 @@ internal constructor(
     ): IdeLifecycleResult {
         val limit =
             when (val admitted = io.github.amichne.kast.kernel.ElapsedTimeAllowance.admitMillis(preparationMillis)) {
-                is io.github.amichne.kast.kernel.Refinement.Refined -> admitted.value
-                is io.github.amichne.kast.kernel.Refinement.Rejected ->
-                    return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
             }
         val deadline =
             io.github.amichne.kast.protocol.contract.WorkspacePreparationDeadline.start(limit, System.nanoTime())
@@ -182,7 +206,7 @@ internal constructor(
         return when (host) {
             is IdeLifecycleResult.Inspected ->
                 when (val remaining = deadline.remaining(System.nanoTime())) {
-                    is io.github.amichne.kast.kernel.Refinement.Refined ->
+                    is Refinement.Refined ->
                         exchange(
                             Path.of(host.home),
                             IdeLifecycleCommand.Open(
@@ -193,8 +217,7 @@ internal constructor(
                                 preparationMillis = remaining.value.protocolMillis(),
                             ),
                         )
-                    is io.github.amichne.kast.kernel.Refinement.Rejected ->
-                        blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+                    is Refinement.Rejected -> blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
                 }
             else -> host
         }
@@ -206,15 +229,20 @@ internal constructor(
                 is SelectedIdeLaunch.Resolved -> selected
                 is SelectedIdeLaunch.Unavailable -> return blocked(selected.reason.lifecycleFailure())
             }
-        when (running(launch)) {
-            Running.PRESENT -> return blocked(IdeLifecycleFailure.PLUGIN_UNAVAILABLE)
-            Running.UNAVAILABLE -> return blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
-            Running.ABSENT -> Unit
+        val selectedDeployment =
+            when (val selected = selectLifecycleDeployment(deployment, userHome, selectedHome)) {
+                is Refinement.Rejected -> return blocked(selected.failure)
+                is Refinement.Refined -> selected.value
+            }
+        when (runningIde(launch, platform, selectedDeployment)) {
+            IdeRunningProcess.PRESENT -> return blocked(IdeLifecycleFailure.PLUGIN_UNAVAILABLE)
+            IdeRunningProcess.UNAVAILABLE -> return blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
+            IdeRunningProcess.ABSENT -> Unit
         }
         val lifetime =
-            when (val started = launch(launch)) {
-                is io.github.amichne.kast.kernel.Refinement.Rejected -> return blocked(started.failure)
-                is io.github.amichne.kast.kernel.Refinement.Refined -> started.value
+            when (val started = launch(launch, selectedDeployment)) {
+                is Refinement.Rejected -> return blocked(started.failure)
+                is Refinement.Refined -> started.value
             }
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(LAUNCH_WAIT_SECONDS)
         var host = execute(IdeLifecycleCommand.Inspect)
@@ -228,28 +256,30 @@ internal constructor(
     }
 
     private fun launch(
-        target: SelectedIdeLaunch.Resolved
-    ): io.github.amichne.kast.kernel.Refinement<IdeLaunchLifetime, IdeLifecycleFailure> {
+        target: SelectedIdeLaunch.Resolved,
+        selectedDeployment: SelectedLifecycleDeployment,
+    ): Refinement<IdeLaunchLifetime, IdeLifecycleFailure> {
+        if (selectedDeployment is SelectedLifecycleDeployment.Headless)
+            return launchManagedHeadless(selectedDeployment.installation, platform)
         if (target.layout == SelectedIdeLayout.LINUX_DIRECTORY && platform.display().isNullOrBlank())
-            return io.github.amichne.kast.kernel.Refinement.Rejected(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
+            return Refinement.Rejected(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
         val arguments = ideLaunchArguments(target)
         val process =
             try {
                 platform.start(arguments)
             } catch (_: java.io.IOException) {
-                return io.github.amichne.kast.kernel.Refinement.Rejected(IdeLifecycleFailure.LAUNCH_FAILED)
+                return Refinement.Rejected(IdeLifecycleFailure.LAUNCH_FAILED)
             }
         // A directly launched Linux IDE is the long-lived application, not a helper.
         // Process creation admits launch only; the correlated Host exchange below owns readiness.
         if (target.layout == SelectedIdeLayout.LINUX_DIRECTORY)
-            return io.github.amichne.kast.kernel.Refinement.Refined(IdeLaunchLifetime.Application(process))
+            return Refinement.Refined(IdeLaunchLifetime.Application(process))
         if (!process.waitFor(LAUNCH_HELPER_SECONDS, TimeUnit.SECONDS)) {
             process.destroy()
-            return io.github.amichne.kast.kernel.Refinement.Rejected(IdeLifecycleFailure.LAUNCH_FAILED)
+            return Refinement.Rejected(IdeLifecycleFailure.LAUNCH_FAILED)
         }
-        return if (process.exitValue() == 0)
-            io.github.amichne.kast.kernel.Refinement.Refined(IdeLaunchLifetime.HelperCompleted)
-        else io.github.amichne.kast.kernel.Refinement.Rejected(IdeLifecycleFailure.LAUNCH_FAILED)
+        return if (process.exitValue() == 0) Refinement.Refined(IdeLaunchLifetime.HelperCompleted)
+        else Refinement.Rejected(IdeLifecycleFailure.LAUNCH_FAILED)
     }
 
     private fun exchange(home: Path, command: IdeLifecycleCommand): IdeLifecycleResult {
@@ -309,78 +339,17 @@ internal constructor(
         return json.decodeFromString<IdeLifecycleResult>(response.decodeToString(throwOnInvalidSequence = true))
     }
 
-    private enum class Running {
-        PRESENT,
-        ABSENT,
-        UNAVAILABLE,
-    }
-
-    private fun running(launch: SelectedIdeLaunch.Resolved): Running {
-        if (launch.layout == SelectedIdeLayout.LINUX_DIRECTORY) return runningLinux(launch)
-        // Read native application identity; no activation or accessibility control.
-        val script =
-            """ObjC.import('AppKit'); function run(argv) { var apps = $.NSWorkspace.sharedWorkspace.runningApplications; for (var i = 0; i < apps.count; i++) { var a = apps.objectAtIndex(i); if (a.bundleURL && ObjC.unwrap(a.bundleURL.path) === argv[0]) return 'present'; } return 'absent'; }"""
-        return try {
-            val process =
-                ProcessBuilder("/usr/bin/osascript", "-l", "JavaScript", "-e", script, launch.bundle)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start()
-            if (!process.waitFor(DISCOVERY_SECONDS, TimeUnit.SECONDS)) {
-                process.destroy()
-                Running.UNAVAILABLE
-            } else if (process.exitValue() != 0) Running.UNAVAILABLE
-            else
-                when (process.inputStream.readNBytes(MAX_RUNNING_REPLY).decodeToString().trim()) {
-                    "present" -> Running.PRESENT
-                    "absent" -> Running.ABSENT
-                    else -> Running.UNAVAILABLE
-                }
-        } catch (_: java.io.IOException) {
-            Running.UNAVAILABLE
-        }
-    }
-
-    private fun runningLinux(launch: SelectedIdeLaunch.Resolved): Running {
-        return try {
-            val observed = platform.processes()
-            if (observed.size > MAX_RUNNING_PROCESSES) return Running.UNAVAILABLE
-            val user = System.getProperty("user.name")
-            val matches = observed.map { matchLinuxIdeProcess(launch, user, it) }
-            when {
-                LinuxIdeProcessMatch.SELECTED in matches -> Running.PRESENT
-                LinuxIdeProcessMatch.UNAVAILABLE in matches -> Running.UNAVAILABLE
-                else -> Running.ABSENT
-            }
-        } catch (_: SecurityException) {
-            Running.UNAVAILABLE
-        }
-    }
-
     private companion object {
-        private val WORKSPACE_CAPABILITIES =
-            setOf(
-                IdeLifecycleCapabilityName.INSPECT,
-                IdeLifecycleCapabilityName.OPEN,
-                IdeLifecycleCapabilityName.PRESENT,
-                IdeLifecycleCapabilityName.SYNC,
-                IdeLifecycleCapabilityName.CONFIGURE_SYNC,
-                IdeLifecycleCapabilityName.RELEASE,
-                IdeLifecycleCapabilityName.CLOSE,
-                IdeLifecycleCapabilityName.STATUS,
-                IdeLifecycleCapabilityName.EXACT_USER_CLOSE,
-            )
         const val LAUNCH_HELPER_SECONDS = 10L
         const val LAUNCH_WAIT_SECONDS = 60L
-        const val DISCOVERY_SECONDS = 5L
         const val POLL_MILLIS = 100L
         const val MAX_FRAME_BYTES = 1_048_576
-        const val MAX_RUNNING_REPLY = 32
     }
 
     private fun blocked(reason: IdeLifecycleFailure) = IdeLifecycleResult.Blocked(reason)
 }
 
-private sealed interface IdeLaunchLifetime {
+internal sealed interface IdeLaunchLifetime {
     data object HelperCompleted : IdeLaunchLifetime
 
     data class Application(val process: Process) : IdeLaunchLifetime

@@ -20,7 +20,7 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["managed_installation.py", "managed_release.py", "managed_update_journal.py", "managed_update_contract.py", "test-managed-installation.py", "test-managed-release.py", "test-managed-update-contract.py"]
+include = ["managed_headless.py", "test-managed-headless.py", "managed_installation.py", "managed_release.py", "managed_update_journal.py", "managed_update_contract.py", "test-managed-installation.py", "test-managed-release.py", "test-managed-update-contract.py"]
 extraPaths = ["."]
 reportUnusedCallResult = "error"
 reportMatchNotExhaustive = "error"
@@ -29,7 +29,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["**/managed_installation.py", "**/managed_release.py", "**/managed_update_journal.py", "**/managed_update_contract.py", "**/test-managed-installation.py", "**/test-managed-release.py", "**/test-managed-update-contract.py"]
+include = ["**/managed_headless.py", "**/test-managed-headless.py", "**/managed_installation.py", "**/managed_release.py", "**/managed_update_journal.py", "**/managed_update_contract.py", "**/test-managed-installation.py", "**/test-managed-release.py", "**/test-managed-update-contract.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

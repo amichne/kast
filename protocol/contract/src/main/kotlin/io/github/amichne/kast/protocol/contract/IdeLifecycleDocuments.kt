@@ -292,7 +292,14 @@ data class IdeHostRuntimeIdentity(
     val hostLifetime: String,
     val buildIdentity: IdeHostBuildIdentity,
     val autoReload: HostAutoReload = HostAutoReload.DISABLED,
+    @kotlinx.serialization.EncodeDefault val mode: IdeHostMode = IdeHostMode.DESKTOP,
 )
+
+@Serializable
+enum class IdeHostMode {
+    DESKTOP,
+    MANAGED_HEADLESS,
+}
 
 @Serializable
 enum class HostAutoReload {

@@ -25,7 +25,7 @@ val platform =
     files(
         sdk.map { home ->
             fileTree(home) {
-                include("lib/**/*.jar", "plugins/gradle*/lib/**/*.jar")
+                include("lib/**/*.jar", "plugins/gradle*/lib/**/*.jar", "plugins/java/lib/**/*.jar")
                 exclude("lib/intellij.libraries.kotlinx.serialization.*.jar", "lib/intellij.libraries.ktor.utils.jar")
             }
         }
@@ -199,6 +199,29 @@ val hostedPlugin =
             duplicatesStrategy = DuplicatesStrategy.FAIL
         }
     }
+
+// The Platform admits projectStorePathCustomizer only from a bundled plugin.
+// Keep this descriptor out of the ordinary desktop Host installation.
+val headlessBootstrapJar =
+    tasks.register<Jar>("headlessBootstrapJar") {
+        archiveFileName.set("kast-managed-headless.jar")
+        destinationDirectory.set(layout.buildDirectory.dir("headless-bootstrap"))
+        isPreserveFileTimestamps = false
+        isReproducibleFileOrder = true
+        val values = mapOf("pluginVersion" to project.version.toString(), "ideReleaseLine" to ideReleaseLine)
+        inputs.properties(values)
+        from("src/headless/resources") { expand(values) }
+    }
+
+tasks.register<Zip>("headlessBootstrapPlugin") {
+    group = "distribution"
+    description = "Packages the bundled startup descriptor for the managed headless Host."
+    archiveFileName.set("kast-managed-headless-v${project.version}-idea-$ideReleaseLine.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+    into("kast-managed-headless/lib") { from(headlessBootstrapJar.flatMap { it.archiveFile }) }
+}
 
 // The actual encoder is compared with the exact bytes also validated by CLI schema tests.
 tasks.named("test") {

@@ -30,7 +30,14 @@ internal data class ApplicationRuntimeIdentity(
     val hostLifetime: String,
     val buildIdentity: ApplicationHostBuild,
     val autoReload: ApplicationAutoReload,
+    @kotlinx.serialization.EncodeDefault val mode: ApplicationHostMode = ApplicationHostMode.DESKTOP,
 )
+
+@Serializable
+internal enum class ApplicationHostMode {
+    DESKTOP,
+    MANAGED_HEADLESS,
+}
 
 @Serializable
 internal enum class ApplicationAutoReload {
@@ -240,6 +247,8 @@ private fun validApplicationIdentity(
     val identity = document.application.runtimeIdentity
     if (document.hostPid != identity.pid || document.host != identity.hostLifetime) return false
     if (identity.ideaHome != selection.launch.home || identity.profile != selection.profile.toString()) return false
+    if (identity.mode == ApplicationHostMode.MANAGED_HEADLESS && identity.autoReload != ApplicationAutoReload.DISABLED)
+        return false
     if (identity.pid <= 0 || identity.processStartEpochMillis <= 0) return false
     return UUID.fromString(identity.hostLifetime).toString() == identity.hostLifetime
 }
