@@ -37,7 +37,7 @@ sources:
 generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T00:37:28.525Z
+    at: 2026-11-06T20:52:34.571Z
 ---
 
 # Release candidates and promotion

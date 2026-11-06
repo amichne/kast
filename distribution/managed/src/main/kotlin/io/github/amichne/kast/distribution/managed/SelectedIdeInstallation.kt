@@ -225,7 +225,7 @@ object SelectedIdeInstallation {
     }
 
     private fun resolve(home: Path, product: Product, layout: SelectedIdeLayout): SelectedIdeLaunch {
-        if (!product.buildNumber.matches(Regex("262\\.[0-9]+(?:\\.[0-9]+)*")))
+        if (!product.buildNumber.matches(Regex("(?:262|263)\\.[0-9]+(?:\\.[0-9]+)*")))
             return unavailable(IdeLaunchFailure.UNSUPPORTED_PLATFORM_LINE)
         val architectures =
             when (layout) {

@@ -11,16 +11,24 @@ import unittest
 
 class LocalInstallationTest(unittest.TestCase):
     def test_local_adapter_delegates_to_versioned_installer_and_preserves_legacy_siblings(self):
+        self.assert_local_adapter('262')
+
+    def test_263_local_adapter_preserves_the_selected_record_name(self):
+        self.assert_local_adapter('263')
+
+    def assert_local_adapter(self, line):
         with tempfile.TemporaryDirectory(prefix='kast-local-') as directory:
             root = Path(directory).resolve()
             (root / 'packaging').mkdir()
             script = root / 'packaging/install-local.sh'
             shutil.copy2(Path(__file__).with_name('install-local.sh'), script)
             record = root / 'installer-contract'
+            suffix = '-idea-263' if line == '263' else ''
             (root / 'install.sh').write_text(
                 '#!/bin/sh\n'
-                'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-262.zip" || exit 32\n'
-                'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-262.zip.sha256" || exit 33\n'
+                f'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-{line}.zip" || exit 32\n'
+                f'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-{line}.zip.sha256" || exit 33\n'
+                f'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-host-release-v1.2.3{suffix}.json" || exit 34\n'
                 'printf "argument=%s\\n" "$@" > "' + str(record) + '"\n'
                 'for key in KAST_VERSION KAST_RELEASE_BASE_URL KAST_INSTALL_ASSETS_DIRECTORY '
                 'KAST_INSTALL_ROOT KAST_BIN_DIR KAST_INSTALL_PROFILE; do\n'
@@ -37,7 +45,7 @@ class LocalInstallationTest(unittest.TestCase):
             (product / 'share/kast/libexec/kast-service').write_text('#!/bin/sh\nexit 0\n')
             (product / 'share/kast/libexec/kast-service').chmod(0o755)
             (product / 'share/kast/ide-host.json').write_text(json.dumps({'productVersion': '1.2.3'}))
-            plugin = root / 'kast-ide-hosted-v1.2.3-idea-262.zip'
+            plugin = root / f'kast-ide-hosted-v1.2.3-idea-{line}.zip'
             plugin.write_text('fixture plugin')
             host_record = root / 'host-release.json'
             host_record.write_text('release fixture')

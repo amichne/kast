@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+from dataclasses import asdict, dataclass
 from contextlib import redirect_stdout
 import io
 import os
@@ -25,6 +26,12 @@ SPEC.loader.exec_module(candidate)
 REPOSITORY = "amichne/kast"
 REVISION = "a" * 40
 VERSION = "0.44.4"
+
+
+@dataclass(frozen=True)
+class ArchiveProperty:
+    name: str
+    value: str
 
 
 class CiCandidateTest(unittest.TestCase):
@@ -103,6 +110,27 @@ class CiCandidateTest(unittest.TestCase):
             for name in names:
                 (directory / f"{name}.sha256").write_text(f"{candidate.digest(directory / name)}  {name}\n")
             candidate.validate(directory, VERSION, REVISION)
+
+            # The same immutable candidate also authenticates the second line.
+            variant = f"kast-ide-hosted-v{VERSION}-idea-263.zip"
+            variant_record = f"kast-host-release-v{VERSION}-idea-263.json"
+            (directory / variant).write_bytes(b"263 Host")
+            (directory / variant_record).write_bytes(b"263 record")
+            sbom["metadata"]["properties"].append(
+                asdict(ArchiveProperty(f"kast:archive:{variant}", f"sha256:{candidate.digest(directory / variant)}"))
+            )
+            (directory / names[-1]).write_text(json.dumps(sbom))
+            for name in (variant, variant_record, names[-1]):
+                (directory / f"{name}.sha256").write_text(f"{candidate.digest(directory / name)}  {name}\n")
+            candidate.validate(directory, VERSION, REVISION)
+            (directory / variant_record).unlink()
+            with self.assertRaisesRegex(candidate.CandidateError, "inventory"):
+                candidate.validate(directory, VERSION, REVISION)
+            for name in (variant, variant + ".sha256", variant_record + ".sha256"):
+                (directory / name).unlink()
+            sbom["metadata"]["properties"].pop()
+            (directory / names[-1]).write_text(json.dumps(sbom))
+            (directory / f"{names[-1]}.sha256").write_text(f"{candidate.digest(directory / names[-1])}  {names[-1]}\n")
 
             for name in names[2:6]:
                 with self.subTest(agent_archive=name):

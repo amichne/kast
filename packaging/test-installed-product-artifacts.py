@@ -32,10 +32,11 @@ class InstalledProductArtifactTest(unittest.TestCase):
         self.archive = Path(self.temporary.name) / 'host.zip'
         self.contract = json.loads(json.dumps(asdict(ContractFixture())))
 
-    def write_archive(self, main='kast-ide-hosted.jar', duplicate=False, version='1.2.3', contract=None):
+    def write_archive(self, main='kast-ide-hosted.jar', duplicate=False, version='1.2.3', contract=None, line='262'):
         jar = io.BytesIO()
         with zipfile.ZipFile(jar, 'w') as nested:
-            nested.writestr('META-INF/plugin.xml', f'<idea-plugin><version>{version}</version></idea-plugin>')
+            nested.writestr('META-INF/plugin.xml', f'<idea-plugin><version>{version}</version>'
+                            f'<idea-version since-build="{line}" until-build="{line}.*"/></idea-plugin>')
             nested.writestr('hosted-contract.json', json.dumps(self.contract if contract is None else contract))
         with zipfile.ZipFile(self.archive, 'w') as archive:
             archive.writestr('kast-ide-hosted/lib/' + main, jar.getvalue())
@@ -58,6 +59,14 @@ class InstalledProductArtifactTest(unittest.TestCase):
             self.write_archive(main=name, duplicate=duplicate)
             with self.assertRaises(AssertionError):
                 product.verify_plugin_archive(self.archive, '1.2.3', self.contract)
+
+    def test_selected_263_descriptor_admits_and_another_line_rejects(self):
+        self.write_archive(line='263')
+        before = self.archive.read_bytes()
+        product.verify_plugin_archive(self.archive, '1.2.3', self.contract, '263')
+        self.assertEqual(before, self.archive.read_bytes())
+        with self.assertRaises(AssertionError):
+            product.verify_plugin_archive(self.archive, '1.2.3', self.contract, '262')
 
     def test_embedded_version_and_contract_still_need_exact_selected_identity(self):
         self.write_archive(version='1.2.4')

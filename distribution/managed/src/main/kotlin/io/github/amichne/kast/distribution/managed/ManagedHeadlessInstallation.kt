@@ -113,7 +113,7 @@ private constructor(
             val record = Json.decodeFromString<ManagedHeadlessAssemblyRecord>(bytes.decodeToString())
             val identityValid = record.schemaVersion == 1 && record.installation == home.toString()
             val platformValid =
-                Regex("262\\.[0-9]+(?:\\.[0-9]+)*").matches(record.platformBuild) &&
+                Regex("(?:262|263)\\.[0-9]+(?:\\.[0-9]+)*").matches(record.platformBuild) &&
                     record.kotlinPluginBuild == record.platformBuild + "-IJ"
             val digest = Regex("[0-9a-f]{64}")
             val digestsValid = digest.matches(record.distributionSha256) && digest.matches(record.bootstrapSha256)

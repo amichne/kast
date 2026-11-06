@@ -72,6 +72,17 @@ Prepare the trusted guest image through its image owner's procedure.
 The runner does not create or publish that base image.
 Create the macOS bundle with `packaging/composed_bundle.py pack` and the composition report's pinned macOS inputs.
 
+The Control archive includes the task coordinator and bundle receiver under `share/kast/task-vm`.
+After a public installation, examine the installed coordinator:
+
+```sh
+uv run --locked --script "$HOME/.local/share/kast/installation/share/kast/task-vm/bin/kast-task-vm" --help
+```
+
+Use that installed script with the same arguments as the checkout command.
+The installed `share/kast/task-vm/bin/setup-kast` script receives an authenticated composed bundle.
+The bundle and trusted OCI image remain caller-supplied inputs.
+
 Use a new absolute output directory outside the source repository and VM store.
 Use a short, dedicated VM store with an existing parent directory.
 
@@ -153,9 +164,14 @@ The reused Control rejected `kast stop` with `HOST_RESTART_REQUIRED` after this 
 The disposable Host exited after an exact-process `SIGTERM`.
 The VM coordinator instead retires the whole guest through Tart.
 The local task command rejected `DISK_PRESSURE` before VM cloning or output creation.
-The host had about 20 GiB free before this qualification.
-Tart documents an initial image download of about 25 GB.
-No VM image download, guest boot, native parallel run, or guest containment corpus ran in this change.
+The first local task rejected before download with about 20 GiB free.
+A later cold run started the real Tart image download with about 50 GiB free.
+Its Sequoia image digest was `eee659985b01e4df2a6c0754bd8d25e54969933c43fdcd4edef8bea337b3d354`.
+The registry manifest declares 25,458,766,500 compressed bytes and a 50,000,000,000-byte logical disk.
+The operator cancelled the download after free storage decreased to 13 GiB.
+The coordinator returned `CLONE / CANCELLED`, exit `130`, with `nativeAcceptance=NOT_ASSERTED`.
+The authenticated partial download was removed, and the dedicated Tart inventory was empty afterward.
+No guest boot, native parallel run, or guest containment corpus ran in this change.
 The hypervisor, guest agent, and trusted base image remain part of the isolation mechanism.
 
 Native qualification needs enough host storage and a reviewed image digest with the stated guest tools.

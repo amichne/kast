@@ -59,6 +59,11 @@ class NativeHandoffTest(unittest.TestCase):
                 (source / f"kast-ide-hosted-v{identity.version}-idea-262.zip").write_bytes(
                     b"host fixture"
                 )
+                paired = product_exit == 0 and native_exit == 0
+                if paired:
+                    (source / f"kast-ide-hosted-v{identity.version}-idea-263.zip").write_bytes(
+                        b"second Host fixture"
+                    )
                 pack(
                     source,
                     root / "bundle",
@@ -81,6 +86,12 @@ class NativeHandoffTest(unittest.TestCase):
                         ).read_bytes(),
                     )
                     observed.append("product")
+                    plugin = Path(environment["KAST_HOSTED_PLUGIN_ARCHIVE"])
+                    suffix = "-idea-263" if plugin.name.endswith("-idea-263.zip") else ""
+                    self.assertEqual(
+                        f"kast-host-release-v{identity.version}{suffix}.json",
+                        Path(environment["KAST_HOST_RELEASE_RECORD"]).name,
+                    )
                     if code:
                         raise subprocess.CalledProcessError(code, command)
 
@@ -113,13 +124,13 @@ class NativeHandoffTest(unittest.TestCase):
                             native_handoff.qualify(payload)
                     else:
                         native_handoff.qualify(payload)
-                    product.assert_called_once()
+                    self.assertEqual(2 if paired else 1, product.call_count)
                     if product_exit:
                         native.assert_not_called()
                         self.assertEqual(["product"], effects)
                     else:
                         native.assert_called_once()
-                        self.assertEqual(["product", "native"], effects)
+                        self.assertEqual(["product", "product", "native"] if paired else ["product", "native"], effects)
 
     def test_inputs_and_native_stage_preserve_the_single_executable_identity(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")

@@ -97,6 +97,15 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/ide-host.json",
             "share/kast/knowledge/manifest.json",
             "share/kast/licenses/LICENSE",
+            "share/kast/task-vm/bin/kast-task-vm",
+            "share/kast/task-vm/bin/kast-task-vm.lock",
+            "share/kast/task-vm/bin/setup-kast",
+            "share/kast/task-vm/bin/setup-kast.lock",
+            "share/kast/task-vm/packaging/task_vm.py",
+            "share/kast/task-vm/packaging/task_vm_guest.py",
+            "share/kast/task-vm/packaging/composed_bundle.py",
+            "share/kast/task-vm/packaging/composition_platform.py",
+            "share/kast/task-vm/packaging/managed_headless.py",
         )
         check((required + guidanceDistributionEntries()).all(entries::contains)) { "control product is missing required entries" }
         check(Files.readString(root.resolve("share/kast/native-control-v1")) == "1\n") {
@@ -123,6 +132,9 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         check(listOf("bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc", "bin/kast-query", "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management").all { Files.isExecutable(root.resolve(it)) }) {
             "control product kast launcher is not executable"
         }
+        check(listOf("kast-task-vm", "setup-kast").all {
+            Files.isExecutable(root.resolve("share/kast/task-vm/bin/$it"))
+        }) { "task launcher is not executable" }
         check(paths.none(Files::isSymbolicLink)) { "control product contains a symbolic link" }
         val forbidden = listOf("kast-indexer", "idea-home", "plugins/Kotlin", "plugins/gradle")
         check(entries.none { entry -> forbidden.any(entry::contains) }) {

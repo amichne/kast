@@ -35,6 +35,27 @@ class ManagedHeadlessInstallationTest {
     }
 
     @Test
+    fun `263 assembly preserves the platform record and rejects an unreviewed successor`(@TempDir directory: Path) {
+        val fixture = fixture(directory, "263.7307.200")
+        val actual =
+            assertInstanceOf<Refinement.Refined<ManagedHeadlessInstallation>>(
+                    ManagedHeadlessInstallation.resolve(fixture.launch, fixture.state, fixture.state.resolve("home"))
+                )
+                .value
+        assertEquals("263.7307.200", actual.assembly.platformBuild)
+        assertEquals("263.7307.200-IJ", actual.assembly.kotlinPluginBuild)
+        val original = Json.decodeFromString<ManagedHeadlessAssemblyRecord>(Files.readString(fixture.manifest))
+        Files.writeString(
+            fixture.manifest,
+            Json.encodeToString(original.copy(platformBuild = "264.1.1", kotlinPluginBuild = "264.1.1-IJ")),
+        )
+        assertEquals(
+            Refinement.Rejected(ManagedHeadlessInstallationFailure.INVALID_ASSEMBLY),
+            ManagedHeadlessInstallation.resolve(fixture.launch, fixture.state, fixture.state.resolve("home")),
+        )
+    }
+
+    @Test
     fun `changed bootstrap rejects ownership`(@TempDir directory: Path) {
         val fixture = fixture(directory)
         Files.writeString(fixture.bootstrap, "changed")
@@ -90,7 +111,7 @@ class ManagedHeadlessInstallationTest {
         val manifest: Path,
     )
 
-    private fun fixture(directory: Path): Fixture {
+    private fun fixture(directory: Path, build: String = "262.10315.125"): Fixture {
         val root = directory.toRealPath()
         val installation = Files.createDirectory(root.resolve("owned idea"))
         val state = Files.createDirectory(root.resolve("state"))
@@ -104,7 +125,7 @@ class ManagedHeadlessInstallationTest {
             installation.resolve("product-info.json"),
             Json.encodeToString(
                 Product(
-                    "262.10315.125",
+                    build,
                     "IntelliJIdea2026.2",
                     listOf(Launch("Linux", "amd64", "bin/idea", "bin/idea.vmoptions")),
                 )
@@ -122,8 +143,8 @@ class ManagedHeadlessInstallationTest {
                 installation.toString(),
                 "a".repeat(64),
                 "333c04dd151a2a6831c039cb9a651df29198be8a04e16ce861d4b6a34a11c954",
-                "262.10315.125",
-                "262.10315.125-IJ",
+                build,
+                "$build-IJ",
             )
         val manifest = installation.resolve("kast-headless.json")
         Files.writeString(manifest, Json.encodeToString(record))

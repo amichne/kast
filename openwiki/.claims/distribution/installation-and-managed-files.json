@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6479c5ca109a8cb743c636f4675a19d3d8b7b1624b185d12d149c07f0f57591d",
+  "pageVersion": "sha256:56176fdae804b823e1452bd60fd1d5158ef5875c957916fc299b12a5ce40d29d",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -88,7 +88,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
+          "version": "repo-file-v1:sha256:1251d778d369b2494bccf9ea1f28027d98c9d0118656ed51c334a5d8cede62d3"
         },
         {
           "resource": "repo://packaging/managed_update_journal.py",
@@ -102,7 +102,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
+          "version": "repo-file-v1:sha256:1251d778d369b2494bccf9ea1f28027d98c9d0118656ed51c334a5d8cede62d3"
         }
       ]
     },
@@ -130,7 +130,7 @@
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-          "version": "repo-file-v1:sha256:51eb78851f13e80049617c07556063697e3c4cfd128eb0eb7070f8f5c9c07968"
+          "version": "repo-file-v1:sha256:9e32a8f74d4343b6ad2c0714965cb8df2c3394eb9342c14de284b44b82b2a8e1"
         },
         {
           "resource": "repo://cli/build.gradle.kts",
@@ -142,7 +142,7 @@
         },
         {
           "resource": "repo://packaging/managed_release.py",
-          "version": "repo-file-v1:sha256:053aee7a20ec7d6248a54c19ba2fe0fc7652e7d579cec9fc8033e9a5328a8a95"
+          "version": "repo-file-v1:sha256:ef4cc70c132b363eb60ab7d7e4cf5570f5a4c63b9d66720ad786b422d1bc2d65"
         }
       ]
     },
@@ -151,7 +151,7 @@
       "statement": "Before importing installed helpers, the candidate bootstrap disables Python bytecode writes so those imports preserve the exact installed payload inventory.",
       "evidence": [
         {
-          "resource": "repo://packaging/managed_installation.py#L40-L47",
+          "resource": "repo://packaging/managed_installation.py#L41-L48",
           "version": "repo-lines-v1:sha256:9d991d7d32644987562492d1d0a55647f1b50af3418b106a04f9d62049db5c59:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzU5OTQ1OGRjYzg2MjZlZDg5ZmFhZDhiMWJjZjBkYjFhNjg4MDU3Nzc3ODhlNDcyYmJjMmUyYmJhMzFkMjFlNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzkyMTY0ZjQxOWY3MTgwOGNhNzYxY2NlZmI3MmE4OTU2MTJmNTU5NDcwYTI0YjVhY2M3YmY4ZGI2NDdiZmI0YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI3ODhmNjE0OTRlM2NiY2RhYTUxYWZjODZiZjcwYjU4Mjg4NDE4NjBiOWE2ZWNjZWJiOGJkODE4NWEyNTI0ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDdjMTJjOGQ3ZWUxMTIyMDUyMTY0ODYwOGE1OTNiMzE2ODQzYTkyNTA0MjViMzlkM2QzMTc1ODhjOWE4ZWJmMyJ9"
         },
         {
@@ -163,6 +163,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T10:28:11.464Z"
+    "at": "2026-11-06T20:52:34.571Z"
   }
 }

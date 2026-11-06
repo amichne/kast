@@ -11,6 +11,31 @@ import org.junit.jupiter.api.Test
 
 class ExistingProjectAdmissionTest {
     @Test
+    fun `263 semantic project admission preserves actual platform identities`() {
+        val observation =
+            RecordingProjectObservation().apply {
+                hostIdentity = fixtureHostIdentity("263.7307.200", "263.7307.200-IJ")
+            }
+        val admitted =
+            when (
+                val result =
+                    AdmittedIdeProject.admitObserved(
+                        opaqueProject(),
+                        FIXTURE_ROOT,
+                        FIXTURE_COMPATIBILITY,
+                        FIXTURE_COMPATIBILITY_POLICY,
+                        observation,
+                        FIXTURE_EPOCH_SOURCE_FACTORY,
+                    )
+            ) {
+                is ExistingProjectAdmission.Admitted -> result.project
+                is ExistingProjectAdmission.Rejected -> fail("263 host rejected: ${result.failure}")
+            }
+        assertEquals("263.7307.200", admitted.compatibility.ideBuild.value)
+        assertEquals("263.7307.200-IJ", admitted.compatibility.kotlinPluginBuild.value)
+    }
+
+    @Test
     fun `another 262 host retains its observed builds after project admission`() {
         val observation =
             RecordingProjectObservation().apply {

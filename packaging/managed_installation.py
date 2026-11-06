@@ -22,6 +22,7 @@ import importlib.util
 import json
 import os
 import platform
+import re
 import signal
 import stat
 import subprocess
@@ -540,7 +541,7 @@ def select_idea(explicit: str | None, home: Path, root: Path) -> SelectedIdea | 
             or data in {".", ".."}
             or Path(data).name != data
             or not isinstance(build, str)
-            or not build.startswith("262.")
+            or re.fullmatch(r"(?:262|263)\.[0-9]+(?:\.[0-9]+)*", build) is None
         ):
             raise ValueError()
         java = idea / "jbr/Contents/Home"

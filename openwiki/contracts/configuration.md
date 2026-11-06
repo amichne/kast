@@ -49,6 +49,8 @@ code_sources:
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/ModelInputFailure.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt
 sources:
+  - id: openwiki-source-f4cafbcbf8d6282990c24a8a
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt
   - id: openwiki-source-23800b7a30d62f442e3b56ae
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt
   - id: openwiki-source-b490c970be179fe22cf68e37
@@ -87,6 +89,10 @@ sources:
     resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
   - id: openwiki-source-821af660abbe3507ea0b79ee
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessInstallation.kt
+  - id: openwiki-source-8677e434adb584035406f54a
+    resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
+  - id: openwiki-source-9fc90fe80de60424a80bdcee
+    resource: repo://distribution/managed/src/test/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallationTest.kt
   - id: openwiki-source-03ffc32a0ca502ab67c54b25
     resource: repo://install.sh
   - id: openwiki-source-4070dc53852de69cdff3bd47
@@ -95,10 +101,10 @@ sources:
     resource: repo://packaging/install-local.sh
   - id: openwiki-source-621afc296584eb4217553339
     resource: repo://packaging/managed_headless.py
-generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
+generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-06T14:55:42.277Z
+    at: 2026-11-06T20:52:34.571Z
 ---
 
 # Installation configuration
@@ -181,7 +187,7 @@ The [native qualification](../../docs/reviews/concurrent-semantic-reads.md) moti
 Saturation returns a finite admission rejection when a connection
 has reached the application; the OS backlog is a separate finite capacity.
 
-The existing `KAST_INSTALL_IDEA_HOME` selection also identifies the lifecycle host. Installation saves that home in its environment and a derived `config/selected-ide.json` receipt containing the bundle and real executable (or a finite resolution failure). These are derived observations, not independently configurable launch paths. An explicit open makes sure that product metadata and the executable remain valid for each supported `262.*` patch update. Inspection and installation never launch IDEA.
+The existing `KAST_INSTALL_IDEA_HOME` selection also identifies the lifecycle host. Installation saves that home in its environment and a derived `config/selected-ide.json` receipt containing the bundle and real executable (or a finite resolution failure). These are derived observations, not independently configurable launch paths. Each explicit open examines product metadata and the executable for reviewed `262.*` and `263.*` installations. Inspection and installation never launch IDEA.
 
 The catalogue rejects removed isolated-runtime setup inputs as `UNKNOWN_KEY` at every source: `KAST_NETWORK_CONFIG`, `KAST_TRUST_DONOR_JAVA_HOME`, `KAST_IDE_CONFIG_HOME`, `KAST_INSTALL_RUNTIME_ARCHIVE`, `KAST_INSTALL_RUNTIME_SHA256`, `KAST_RUNTIME_BASE_URL`, `KAST_LOCAL_RUNTIME_ARCHIVE`, and `KAST_SEMANTIC_RUNTIME_ARCHIVE`. Remove these assignments from saved configuration and the calling environment. The catalogue no longer advertises indexer transport limits or derived JVM settings owned by the retired indexer and workspace importer.
 

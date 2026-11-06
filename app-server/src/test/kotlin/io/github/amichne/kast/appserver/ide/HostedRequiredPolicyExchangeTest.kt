@@ -20,6 +20,28 @@ class HostedRequiredPolicyExchangeTest {
         )
 
     @Test
+    fun `installed Control policy admits a 263 describe before dispatch and rejects a 264 successor`() {
+        val actual = compatibility.copy(ideBuild = "263.7307.200", kotlinPluginBuild = "263.7307.200-IJ")
+        val successor = compatibility.copy(ideBuild = "264.1.1", kotlinPluginBuild = "264.1.1-IJ")
+        fixture.exchange(
+            script =
+                HostedSocketExchangeScript(
+                    expected = listOf("DESCRIBE", "CLASS_LOOKUP", "DESCRIBE"),
+                    describeMetadata = listOf(actual, successor),
+                )
+        ) { client, root ->
+            assertInstanceOf(ExistingIdeExchange.HostRejected::class.java, client.query(root, classes()))
+            val admitted =
+                assertInstanceOf(HostedServiceObservation.Compatible::class.java, client.latestObservation(root))
+            assertEquals("263.7307.200", admitted.compatibility.ideBuild.value)
+            assertEquals(
+                ExistingIdeExchange.Rejected(ExistingIdeFailure.COMPATIBILITY_REJECTED),
+                client.query(root, classes()),
+            )
+        }
+    }
+
+    @Test
     fun `three same client operations load required policy once but each admits a fresh describe`() {
         var loads = 0
         fixture.exchange(

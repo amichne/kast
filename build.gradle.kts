@@ -48,6 +48,8 @@ extra["hostedPluginVersion"] = hostedPluginVersion.get()
 val modulePaths = subprojects.filter { it.buildFile.isFile }.map { it.path }
 val hostedPluginFiles = consumeProjectOutput("hostedPluginFiles", ":runtime:hosted", "hostedPluginElements")
 val hostedPluginArchive = layout.file(hostedPluginFiles.flatMap { it.elements }.map { it.single().asFile })
+val hosted263PluginFiles = consumeProjectOutput("hosted263PluginFiles", ":runtime:hosted", "hosted263PluginElements")
+val hosted263PluginArchive = layout.file(hosted263PluginFiles.flatMap { it.elements }.map { it.single().asFile })
 val hostedContractFiles = consumeProjectOutput("hostedContractFiles", ":protocol:wire", "hostedContractElements")
 val contractFile = layout.file(hostedContractFiles.flatMap { it.elements }.map { it.single().asFile })
 val registryFiles = consumeProjectOutput("operationRegistryFiles", ":protocol:wire", "operationRegistryElements")
@@ -161,6 +163,14 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
         into("share/kast")
     }
     from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py", "packaging/host-installation.py")) { into("share/kast") }
+    from(listOf("bin/kast-task-vm", "bin/setup-kast")) {
+        into("share/kast/task-vm/bin")
+        filePermissions { unix("755") }
+    }
+    from(listOf("bin/kast-task-vm.lock", "bin/setup-kast.lock")) { into("share/kast/task-vm/bin") }
+    from(listOf("packaging/task_vm.py", "packaging/task_vm_guest.py", "packaging/composed_bundle.py", "packaging/composition_platform.py", "packaging/managed_headless.py")) {
+        into("share/kast/task-vm/packaging")
+    }
 }
 
 val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip(providers.gradleProperty("kastNativeExecutable").orElse("")) { platform, executable ->
@@ -197,6 +207,8 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
                 "share/kast/libexec/kast-daemon",
                 "share/kast/libexec/kast-service",
                 "share/kast/libexec/kast-management",
+                "share/kast/task-vm/bin/kast-task-vm",
+                "share/kast/task-vm/bin/setup-kast",
             )
         ) permissions { unix("755") }
     }
@@ -247,6 +259,16 @@ tasks.register<GenerateComponentReleaseTask>("generateHostReleaseRecord") {
     }.orElse(libs.versions.ide.host.build.map { it.substringBefore('.') }))
     outputDirectory.set(layout.buildDirectory.dir("generated/host-release"))
 }
+tasks.register<GenerateComponentReleaseTask>("generateHost263ReleaseRecord") {
+    component.set(ReleaseComponent.HOST)
+    companionArtifacts.from(layout.projectDirectory.file("packaging/host-installation.py"))
+    releaseVersion.set(hostedPluginVersion)
+    sourceRevision.set(releaseSourceRevision)
+    archive.set(hosted263PluginArchive)
+    hostedContractFile.set(contractFile)
+    ideaReleaseLine.set("263")
+    outputDirectory.set(layout.buildDirectory.dir("generated/host-release-263"))
+}
 
 
 apply(from = "distribution/release/plugin-release.gradle.kts")
@@ -283,6 +305,8 @@ val localHostedPluginArchive = localHostedIdeaBuild.map { build ->
     val releaseLine = build.substringBefore('.')
     layout.projectDirectory.file("runtime/hosted/build/distributions/kast-ide-hosted-v${hostedPluginVersion.get()}-idea-$releaseLine.zip")
 }
+val selectedHostReleaseRecord = tasks.named<GenerateComponentReleaseTask>("generateHostReleaseRecord")
+    .flatMap { it.releaseRecord }
 
 tasks.register<Exec>("installLocal") {
     group = "distribution"
@@ -291,12 +315,13 @@ tasks.register<Exec>("installLocal") {
     dependsOn(stageKastControlProduct, ":runtime:hosted:hostedPlugin", "generateHostReleaseRecord")
     inputs.dir(controlProductDirectory)
     inputs.file(localHostedPluginArchive)
+    inputs.file(selectedHostReleaseRecord)
     inputs.files("packaging/install-local.sh", "install.sh")
     inputs.property("localInstallPrefix", localInstallPrefix.map { it.absolutePath })
     environment("KAST_LOCAL_PREFIX", localInstallPrefix.get().absolutePath)
     environment("KAST_LOCAL_CONTROL_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
     environment("KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE", localHostedPluginArchive.get().asFile.absolutePath)
-    environment("KAST_LOCAL_HOST_RELEASE_RECORD", layout.buildDirectory.file("generated/host-release/kast-host-release-v${hostedPluginVersion.get()}.json").get().asFile.absolutePath)
+    environment("KAST_LOCAL_HOST_RELEASE_RECORD", selectedHostReleaseRecord.get().asFile.absolutePath)
     providers.gradleProperty("hostedIdeaHome").orNull?.let { environment("KAST_INSTALL_IDEA_HOME", it) }
     commandLine("bash", layout.projectDirectory.file("packaging/install-local.sh"))
 }
@@ -308,7 +333,7 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.dir(controlProductDirectory)
     inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
     inputs.file(hostedPluginArchive)
-    val hostRecord = layout.buildDirectory.file("generated/host-release/kast-host-release-v${hostedPluginVersion.get()}.json")
+    val hostRecord = selectedHostReleaseRecord
     inputs.file(hostRecord)
     inputs.files("install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py")
     inputs.files(

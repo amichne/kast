@@ -31,6 +31,7 @@ val marketplaceArchive = tasks.register<Zip>("assembleKastMarketplace") {
 
 val controlRecord = tasks.named("generateControlReleaseRecord")
 val hostRecord = tasks.named("generateHostReleaseRecord")
+val includeHost263 = !providers.gradleProperty("hostedIdeaHome").isPresent
 
 tasks.register<Sync>("assembleControlRelease") {
     group = "distribution"
@@ -50,6 +51,11 @@ tasks.register<Sync>("assembleHostRelease") {
     from(pluginArchive)
     from(layout.projectDirectory.file("packaging/host-installation.py"))
     from(layout.buildDirectory.dir("generated/host-release"))
+    if (includeHost263) {
+        dependsOn("generateHost263ReleaseRecord")
+        from(configurations.named("hosted263PluginFiles"))
+        from(layout.buildDirectory.dir("generated/host-release-263"))
+    }
 }
 
 val assembleRelease = tasks.register<Sync>("assembleRelease") {
@@ -65,6 +71,11 @@ val assembleRelease = tasks.register<Sync>("assembleRelease") {
     from(layout.buildDirectory.dir("generated/host-release"))
     from(layout.buildDirectory.dir("generated/control-release"))
     from(layout.projectDirectory.file("packaging/host-installation.py"))
+    if (includeHost263) {
+        dependsOn("generateHost263ReleaseRecord")
+        from(configurations.named("hosted263PluginFiles"))
+        from(layout.buildDirectory.dir("generated/host-release-263"))
+    }
     doLast {
         destinationDir.listFiles { file -> file.isFile && !file.name.endsWith(".sha256") }
             .orEmpty().sortedBy { it.name }.forEach { asset ->

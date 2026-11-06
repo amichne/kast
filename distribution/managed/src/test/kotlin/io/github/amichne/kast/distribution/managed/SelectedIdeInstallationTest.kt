@@ -85,6 +85,29 @@ class SelectedIdeInstallationTest {
     }
 
     @Test
+    fun `263 launch and profile preserve the exact metadata identities`(@TempDir root: Path) {
+        val home = fixture(root, "263.7307.200", listOf("../MacOS/real-idea"))
+        Files.writeString(
+            home.resolve("Resources/product-info.json"),
+            Json { encodeDefaults = true }
+                .encodeToString(
+                    Product("263.7307.200", listOf(Launch(launcherPath = "../MacOS/real-idea")), "IntelliJIdea2026.3")
+                ),
+        )
+        val user = Files.createDirectory(root.resolve("user")).toRealPath()
+        val launch = assertInstanceOf(SelectedIdeLaunch.Resolved::class.java, SelectedIdeInstallation.resolve(home))
+        val profile =
+            org.junit.jupiter.api.assertInstanceOf<Refinement.Refined<SelectedIdePluginRoot>>(
+                SelectedIdeInstallation.pluginRoot(launch, user)
+            )
+        assertEquals(
+            user.resolve("Library/Application Support/JetBrains/IntelliJIdea2026.3/plugins"),
+            profile.value.value,
+        )
+        assertEquals(home.resolve("MacOS/real-idea").toString(), launch.executable)
+    }
+
+    @Test
     fun `plugin profile comes from the exact admitted IDE metadata`(@TempDir root: Path) {
         val home = fixture(root, "262.1234.99", listOf("../MacOS/real-idea"))
         val user = Files.createDirectory(root.resolve("user")).toRealPath()
@@ -141,7 +164,7 @@ class SelectedIdeInstallationTest {
 
     @Test
     fun `unsupported line and ambiguous launchers fail closed`(@TempDir root: Path) {
-        val home = fixture(root, "263.1", listOf("../MacOS/real-idea"))
+        val home = fixture(root, "264.1", listOf("../MacOS/real-idea"))
         assertEquals(
             SelectedIdeLaunch.Unavailable(IdeLaunchFailure.UNSUPPORTED_PLATFORM_LINE),
             SelectedIdeInstallation.resolve(home),

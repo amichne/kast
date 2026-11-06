@@ -16,7 +16,7 @@ The normal setup path tracks the latest published development build with `--chan
 ## Before you install
 
 Use an Apple silicon Mac and a Kotlin Gradle project.
-Use IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+Use IntelliJ IDEA `262.*` or `263.*` with its bundled Kotlin plugin and Java 25 JBR.
 Your project's JDK does not replace the IDEA runtime.
 
 Use Python 3.12 or 3.13, available as `python3` on `PATH`. For upgrades, install uv 0.12.9 or later. The [optional MCP service](/reference/integrations#optional-mcp) uses the same runtime versions.
@@ -45,6 +45,13 @@ The installer does not edit shell profiles.
 For another IDEA installation, append `--idea-home "/Applications/IntelliJ IDEA.app"` after the installer options.
 Keep Bash's `--` separator before those options.
 To preview installation without changes, append `--dry-run`. To inspect structured diagnostics, append `--verbose`.
+
+The installer selects a separate Host archive for each IDEA release line.
+Older published builds can lack the `263` archive.
+The Host profile uses `dataDirectoryName` from the selected IDEA metadata.
+IDEA `263` normally uses `IntelliJIdea2026.3`, independently of the app's name or location.
+The Kast installation and command paths stay the same.
+If several compatible IDEA apps exist, supply `--idea-home` to select one exact app.
 
 ## 1. Install the selected release
 

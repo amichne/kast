@@ -62,7 +62,7 @@ class ComponentReleaseTest(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
 
-    def fixture(self, component: release.Component, main_jar: str = "kast-ide-hosted.jar", duplicate: bool = False) -> Path:
+    def fixture(self, component: release.Component, main_jar: str = "kast-ide-hosted.jar", duplicate: bool = False, line: str = "262", descriptor_line: str | None = None) -> Path:
         if component is release.Component.CONTROL:
             archive = self.root / "kast-control-v2.1.0-macos-aarch64.tar.gz"
             with tarfile.open(archive, "w:gz") as stream:
@@ -77,10 +77,11 @@ class ComponentReleaseTest(unittest.TestCase):
                 (self.root / f"kast-{name}-v2.1.0.zip").write_bytes(b"agent attachment")
             record = ControlRelease(Artifact(archive.name, "sha256:" + release.digest(archive), archive.stat().st_size))
         else:
-            archive = self.root / "kast-ide-hosted-v2.1.0-idea-262.zip"
+            archive = self.root / f"kast-ide-hosted-v2.1.0-idea-{line}.zip"
+            selected_descriptor = line if descriptor_line is None else descriptor_line
             jar = io.BytesIO()
             with zipfile.ZipFile(jar, "w") as plugin:
-                plugin.writestr("META-INF/plugin.xml", "<idea-plugin><version>2.1.0</version></idea-plugin>")
+                plugin.writestr("META-INF/plugin.xml", f'<idea-plugin><version>2.1.0</version><idea-version since-build="{selected_descriptor}" until-build="{selected_descriptor}.*"/></idea-plugin>')
                 plugin.writestr("hosted-contract.json", json.dumps(asdict(Contract())))
             with zipfile.ZipFile(archive, "w") as stream:
                 stream.writestr("kast-ide-hosted/lib/" + main_jar, jar.getvalue())
@@ -90,8 +91,9 @@ class ComponentReleaseTest(unittest.TestCase):
                         warnings.simplefilter("ignore", UserWarning)
                         stream.writestr("kast-ide-hosted/lib/" + main_jar, jar.getvalue())
             (self.root / "host-installation.py").write_text("host installer")
-            record = HostRelease(Artifact(archive.name, "sha256:" + release.digest(archive), archive.stat().st_size))
-        path = self.root / f"{component.record_prefix}-v2.1.0.json"
+            record = HostRelease(Artifact(archive.name, "sha256:" + release.digest(archive), archive.stat().st_size), supportedIntellijReleaseLine=line)
+        suffix = "-idea-263" if component is release.Component.HOST and line == "263" else ""
+        path = self.root / f"{component.record_prefix}-v2.1.0{suffix}.json"
         path.write_text(json.dumps(asdict(record)))
         self.checksums()
         return path
@@ -135,6 +137,37 @@ class ComponentReleaseTest(unittest.TestCase):
         admitted = release.admit(self.root, release.Component.HOST, "2.1.0", "a" * 40)
         self.assertEqual(len(admitted.assets), 6)
         self.assertFalse(any("control" in asset.name for asset in admitted.assets))
+
+    def test_host_release_admits_both_independently_qualified_lines(self) -> None:
+        self.fixture(release.Component.HOST)
+        self.fixture(release.Component.HOST, line="263")
+        admitted = release.admit(self.root, release.Component.HOST, "2.1.0", "a" * 40)
+        self.assertEqual(10, len(admitted.assets))
+
+    def test_selected_263_local_release_needs_no_262_archive(self) -> None:
+        self.fixture(release.Component.HOST, line="263")
+        admitted = release.admit(self.root, release.Component.HOST, "2.1.0", "a" * 40)
+        self.assertEqual(6, len(admitted.assets))
+
+    def test_variant_descriptor_must_match_its_recorded_line(self) -> None:
+        self.fixture(release.Component.HOST, line="263", descriptor_line="262")
+        self.assertRejected(release.Component.HOST, release.ReleaseFailure.WRONG_IDENTITY)
+
+    def test_263_variant_rejects_incomplete_or_mixed_evidence(self) -> None:
+        self.fixture(release.Component.HOST)
+        path = self.fixture(release.Component.HOST, line="263")
+        original = path.read_bytes()
+        for field, value in (("sourceRevision", "b" * 40), ("supportedIntellijReleaseLine", "262")):
+            with self.subTest(field=field):
+                record = json.loads(original)
+                record[field] = value
+                path.write_text(json.dumps(record))
+                self.checksums()
+                self.assertRejected(release.Component.HOST, release.ReleaseFailure.WRONG_IDENTITY)
+        path.write_bytes(original)
+        self.checksums()
+        path.unlink()
+        self.assertRejected(release.Component.HOST, release.ReleaseFailure.INVENTORY_MISMATCH)
 
     def test_host_release_rejects_legacy_main_jar_and_duplicate_stable_name(self) -> None:
         for name, duplicate in (("kast-ide-hosted-2.1.0.jar", False), ("kast-ide-hosted.jar", True)):
