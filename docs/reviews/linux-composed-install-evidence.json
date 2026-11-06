@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "kind": "KAST_LINUX_COMPOSED_INSTALL_EVIDENCE_V1",
+  "environment": "Debian 13.6 x86_64 container in Colima ARM VM with Rosetta; native VM filesystem; no developer HOME mount",
+  "nativePayloadRevision": "8367953a41082eabf96b8c5e9a37d7603c4139c9",
+  "nativePayloadTree": "9e2530b684edddf6935eade3804d2b1453f689ec",
+  "bundleName": "kast-composed-setup-v0.0.0-linux-x86_64-r2.tar.gz",
+  "bundleSha256": "3b09ad8d2dfbe53a3d4db5e384be4e3304dd6ceef62df6212523f5a26ef22cf2",
+  "bundleBytes": 655834269,
+  "sourceDistributionSha256": "f1cc5329a7adf3ab3bd8886744103f7d3bcf1ca12e699762ecd9bffe57335f8b",
+  "compositionManifestSha256": "b56e1d4f02c89459441849034b01489d9309fc20bb03f918c4ab4a5f07bb03f1",
+  "regularVendorBytes": 1655507759,
+  "generatedBytes": 1453517,
+  "selectedModules": 528,
+  "installerAndAdapterSources": [
+    {
+      "repository": "amichne/kast",
+      "path": "bin/setup-kast",
+      "sha256": "36ee6d81bc1d7d93ab05be25de0271d74cbbe52d0a3bdea052409bb2a15cd27c"
+    },
+    {
+      "repository": "amichne/kast",
+      "path": "packaging/composed_bundle.py",
+      "sha256": "718920f7c1ad728dc49d90f135a5a7fbc576f34c038f5e6ab878b88dadfce210"
+    },
+    {
+      "repository": "amichne/kast",
+      "path": "packaging/managed_headless.py",
+      "sha256": "387f691e11e65d1f4a2e34e9cba6af86d969bd82e48e15cd53c84348d1c4b539"
+    },
+    {
+      "repository": "amichne/kast",
+      "path": "packaging/composed_host_probe.py",
+      "sha256": "06323eb14601e5f9c877ed0b23dd4d4ef9ebebc37845d2486ad28e8fc61f6b15"
+    },
+    {
+      "repository": "amichne/kast",
+      "path": "packaging/composed_host.py",
+      "sha256": "2a1ffe29ef645b9010a9b24f2387b5bb34134d9f929ae8553f23442bec49565e"
+    },
+    {
+      "repository": "amichne/kast",
+      "path": "packaging/composition_platform.py",
+      "sha256": "f882c7ea48115121acc75fd65b304ced21da674ef2e49daf113da81b7fac29e8"
+    },
+    {
+      "repository": "amichne/kast-action",
+      "path": "bin/install-kast",
+      "sha256": "aea1c128015d31158fc55446ffa27e9aed7c8bfc9b5d05b69455730749525a82"
+    },
+    {
+      "repository": "amichne/kast-action",
+      "path": "setup_kast.py",
+      "sha256": "948a0d62790735a881aa55c7c84f5f85f839d38faec5b6e859d826ba60e633ae"
+    },
+    {
+      "repository": "amichne/kast-action",
+      "path": "dist/index.js",
+      "sha256": "cac15b8b189d38c3cae52e4c491d866f2b788dc0c89543f9a84339aee71eacbf"
+    }
+  ],
+  "callers": [
+    "aliasWrapper",
+    "forwardOnce",
+    "mutableAliasWrapper",
+    "mutualSecond"
+  ],
+  "javaReferenceContexts": [
+    "IMPORT",
+    "TYPE",
+    "CODE"
+  ],
+  "exhaustive": true,
+  "failures": 0,
+  "omissions": 0,
+  "unknownResultRejected": true,
+  "repositorySentinelsPreserved": true,
+  "wrongDigestRejectedBeforeRootCreation": true,
+  "existingRootRejectedBeforeDownload": true,
+  "wrongHostRejected": true,
+  "exactHostExitedAndAdvertisementRetired": true,
+  "rawArtifacts": [
+    {
+      "repository": "local-artifact",
+      "path": "composition-manifest.json",
+      "sha256": "b56e1d4f02c89459441849034b01489d9309fc20bb03f918c4ab4a5f07bb03f1"
+    },
+    {
+      "repository": "local-artifact",
+      "path": "consumer-probe/callers.json",
+      "sha256": "11cb3b381eb0dcf27f15183396c28b77ea99dca1b5213c396629dab0cbe140f9"
+    },
+    {
+      "repository": "local-artifact",
+      "path": "consumer-probe/java-references.json",
+      "sha256": "a8dd95a02661fdc1cb4f80103c1aa5e862e192becdd705af652e76f0561887d8"
+    },
+    {
+      "repository": "local-artifact",
+      "path": "consumer-probe/unknown-result.json",
+      "sha256": "e28a6d9491712dc7d98bc15fb55942df1296128af55bc7238c14e9c78aa91511"
+    },
+    {
+      "repository": "local-artifact",
+      "path": "consumer-probe/probe.json",
+      "sha256": "7046ac8cc4e0b48eb812349972820427d2cb91a011d0141657afda52046f2c53"
+    },
+    {
+      "repository": "local-artifact",
+      "path": "consumer-stop.log",
+      "sha256": "af1e98c50070bc3cff5acf20f66a2bf7cc85867166d3b8fe73fbd2e9ce6e97fc"
+    }
+  ],
+  "devinQualification": "NOT_RUN: target machine unavailable"
+}

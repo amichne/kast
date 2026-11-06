@@ -1,4 +1,4 @@
-"""Compose a pinned macOS analysis Host into an empty tree from selected source files."""
+"""Compose a pinned analysis Host into an empty tree from selected source files."""
 
 from __future__ import annotations
 
@@ -19,7 +19,8 @@ from xml.etree.ElementTree import tostring
 from composition_descriptors import DescriptorRejected, DescriptorSelection, parse_xml
 from composition_graph import GraphRejected, ModuleId
 from composition_index import IndexRejected, PluginIndex, encode_plugin_index
-from composition_recipe import ARCHIVE_SHA256, BUILD, ROOTS, plan, support_resources
+from composition_platform import HostPlatform, UnsupportedHost, host_platform
+from composition_recipe import BUILD, ROOTS, plan, support_resources
 from managed_headless import (
     AssemblyEntryKind,
     AssemblyFile,
@@ -128,7 +129,10 @@ def _safe_path(value: str) -> bool:
 
 
 def source_inventory(
-    home: Path, manifest: Path, expected: str
+    home: Path,
+    manifest: Path,
+    expected: str,
+    target: HostPlatform = HostPlatform.MACOS_ARM64,
 ) -> tuple[InputFile, ...] | CompositionRejected:
     if home.resolve() != home or not home.is_dir() or manifest.is_symlink():
         return CompositionRejected(CompositionFailure.UNSAFE_SOURCE, str(home))
@@ -141,7 +145,7 @@ def source_inventory(
     if (
         not object_fields(raw)
         or raw.get("schemaVersion") != 1
-        or raw.get("distributionSha256") != ARCHIVE_SHA256
+        or raw.get("distributionSha256") != target.layout.archive_sha256
     ):
         return CompositionRejected(CompositionFailure.INVALID_SOURCE_MANIFEST, str(manifest))
     records = raw.get("retainedFiles")
@@ -236,7 +240,8 @@ def product(
         names is None
         or arguments is None
         or not all(isinstance(value, str) for value in fields)
-        or fields[:2] != ("macOS", "aarch64")
+        or fields[:2]
+        not in {(target.layout.launch_os, target.layout.launch_arch) for target in HostPlatform}
         or any(not _safe_path(name) for name in names)
     ):
         return CompositionRejected(CompositionFailure.INVALID_PRODUCT, "launch fields")
@@ -270,14 +275,20 @@ def compose(
 ) -> (
     Installed | Rejected | CompositionRejected | DescriptorRejected | GraphRejected | IndexRejected
 ):
-    if platform.system() != "Darwin" or platform.machine() != "arm64":
+    target = host_platform(platform.system(), platform.machine())
+    if isinstance(target, UnsupportedHost):
         return CompositionRejected(CompositionFailure.UNSUPPORTED_PLATFORM, platform.platform())
-    if inputs.build != BUILD or inputs.archive_sha256 != ARCHIVE_SHA256 or inputs.excluded_plugins:
+    layout = target.layout
+    if (
+        inputs.build != BUILD
+        or inputs.archive_sha256 != layout.archive_sha256
+        or inputs.excluded_plugins
+    ):
         return CompositionRejected(CompositionFailure.WRONG_PIN, inputs.build)
     admitted = admit(inputs)
     if isinstance(admitted, Rejected):
         return admitted
-    inventory = source_inventory(source, manifest, manifest_sha256)
+    inventory = source_inventory(source, manifest, manifest_sha256, target)
     if isinstance(inventory, CompositionRejected):
         return inventory
     by_path = {item.record.path: item for item in inventory}
@@ -286,7 +297,7 @@ def compose(
         "plugins/plugin-classpath.txt",
         "lib/intellij.platform.ide.impl.jar",
         "lib/intellij.idea.ultimate.customization.jar",
-        "Resources/product-info.json",
+        layout.product,
     )
     for name in shaping:
         item = by_path.get(name)
@@ -304,8 +315,7 @@ def compose(
     paths = {item.path for item in (*selection.closure.resources, *support)}
     paths.update(
         {
-            "Info.plist",
-            "Resources/build.txt",
+            *layout.support,
             "lib/ext/platform-main.jar",
             "plugins/java/lib/resources/jdkAnnotations.jar",
         }
@@ -334,6 +344,8 @@ def compose(
     metadata = product((source / shaping[-1]).read_bytes(), frozenset(paths), selection.plugins)
     if isinstance(metadata, CompositionRejected):
         return metadata
+    if (metadata.launch[0].os, metadata.launch[0].arch) != (layout.launch_os, layout.launch_arch):
+        return CompositionRejected(CompositionFailure.INVALID_PRODUCT, "source platform")
     native_index = PluginIndex(
         selection.core,
         tuple(
@@ -358,7 +370,7 @@ def compose(
     root = inputs.root
     root.mkdir(mode=0o700)
     _ = (root / ".kast-headless-owned").write_text("kast-managed-headless-v1\n")
-    home = root / "runtime/Kast Analysis Host.app/Contents"
+    home = root / layout.home
     home.mkdir(parents=True)
     for item in chosen:
         original, target = source / item.record.path, home / item.record.path
@@ -369,10 +381,8 @@ def compose(
             _ = shutil.copy2(original, target)
         if file_record(target, home) != item.record:
             return CompositionRejected(CompositionFailure.SOURCE_DIGEST_MISMATCH, item.record.path)
-    (home / "Resources").mkdir(exist_ok=True)
-    _ = (home / "Resources/product-info.json").write_text(
-        json.dumps(asdict(metadata), indent=2) + "\n"
-    )
+    (home / layout.product).parent.mkdir(exist_ok=True, parents=True)
+    _ = (home / layout.product).write_text(json.dumps(asdict(metadata), indent=2) + "\n")
     (home / "plugins").mkdir(exist_ok=True)
     _ = (home / "plugins/plugin-classpath.txt").write_bytes(encode_plugin_index(native_index))
     with zipfile.ZipFile(
@@ -388,7 +398,7 @@ def compose(
     generated = tuple(
         file_record(home / name, home)
         for name in (
-            "Resources/product-info.json",
+            layout.product,
             "plugins/plugin-classpath.txt",
             "lib/kast-product.jar",
         )
@@ -407,6 +417,7 @@ def compose(
                 "composition_index.py",
                 "composition_descriptors.py",
                 "composition_recipe.py",
+                "composition_platform.py",
                 "managed_headless.py",
             )
         ),

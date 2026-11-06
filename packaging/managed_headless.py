@@ -486,9 +486,12 @@ def select_assembly_components(
         return Rejected(Failure.INVALID_COMPONENT)
 
 
-def configure_removed_plugins(state: Path, manifest: AssemblyManifest) -> Rejected | None:
-    if not manifest.disabled_plugins:
-        return None
+@dataclass(frozen=True, slots=True)
+class PrivateHostProfile:
+    directory: Path
+
+
+def selected_private_profile(state: Path) -> PrivateHostProfile | Rejected:
     selected: object = json.loads(
         (state / "home/.local/share/kast/installation/config/selected-ide.json").read_text()
     )
@@ -507,7 +510,16 @@ def configure_removed_plugins(state: Path, manifest: AssemblyManifest) -> Reject
         or not plugins.is_relative_to(state / "home")
     ):
         return Rejected(Failure.SHARED_STATE)
-    path = plugins.parent / "disabled_plugins.txt"
+    return PrivateHostProfile(plugins.parent)
+
+
+def configure_removed_plugins(state: Path, manifest: AssemblyManifest) -> Rejected | None:
+    if not manifest.disabled_plugins:
+        return None
+    profile = selected_private_profile(state)
+    if isinstance(profile, Rejected):
+        return profile
+    path = profile.directory / "disabled_plugins.txt"
     if path.is_symlink():
         return Rejected(Failure.INVALID_COMPONENT)
     prior: set[str] = set(path.read_text().splitlines()) if path.exists() else set()
