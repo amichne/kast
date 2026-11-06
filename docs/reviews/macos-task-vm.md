@@ -82,6 +82,8 @@ uv run --locked --script "$HOME/.local/share/kast/installation/share/kast/task-v
 Use that installed script with the same arguments as the checkout command.
 The installed `share/kast/task-vm/bin/setup-kast` script receives an authenticated composed bundle.
 The bundle and trusted OCI image remain caller-supplied inputs.
+The task subtree also runs from an authenticated, extracted Control archive.
+The coordinator needs no IDEA installation on the host.
 
 Use a new absolute output directory outside the source repository and VM store.
 Use a short, dedicated VM store with an existing parent directory.

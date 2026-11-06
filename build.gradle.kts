@@ -261,7 +261,6 @@ tasks.register<GenerateComponentReleaseTask>("generateHostReleaseRecord") {
 }
 tasks.register<GenerateComponentReleaseTask>("generateHost263ReleaseRecord") {
     component.set(ReleaseComponent.HOST)
-    companionArtifacts.from(layout.projectDirectory.file("packaging/host-installation.py"))
     releaseVersion.set(hostedPluginVersion)
     sourceRevision.set(releaseSourceRevision)
     archive.set(hosted263PluginArchive)

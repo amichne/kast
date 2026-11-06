@@ -9,6 +9,9 @@
   <depends>com.intellij.java</depends>
   <depends>org.jetbrains.kotlin</depends>
   <depends>org.jetbrains.plugins.gradle</depends>
+  <extensions defaultExtensionNs="org.jetbrains.kotlin">
+    <supportsKotlinPluginMode supportsK1="false" supportsK2="true"/>
+  </extensions>
   <applicationListeners>
     <listener class="io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleStartup" topic="com.intellij.ide.AppLifecycleListener"/>
     <listener class="io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleStartup" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
