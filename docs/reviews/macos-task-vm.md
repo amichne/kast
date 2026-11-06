@@ -5,7 +5,7 @@ description: "Defines the composed Host, offline VM lifecycle, task inputs, and 
 resource: "repo://docs/reviews/macos-task-vm"
 tags: [kast, packaging, macos, isolation, evidence]
 timestamp: "2026-11-06T18:00:00Z"
-source_revision: 04dc45613405b8c011eeb1ed8e6ea81a7ee6b56e
+source_revision: 28bfaa7b336fb84cf272c7c0b63a4e202ed5187d
 code_sources:
   - path: bin/kast-task-vm
   - path: packaging/task_vm.py
@@ -118,6 +118,10 @@ The runner rejects an existing store without its ownership marker or private per
 Strict Pyright rejects a caller that skips that transition.
 Parallel tasks share that image cache, with separate VM names, output directories, profiles, and task files.
 These controls do not measure host-wide capacity or prove native parallel execution.
+
+The [Tart maintainer](https://github.com/openai/tart/discussions/1054) documents a limit of two concurrent macOS guests per physical Mac.
+The caller schedules tasks within that limit.
+Native qualification did not examine this limit.
 
 After ordinary task completion, the runner copies the workspace into `workspace.tar.gz`.
 It keeps that archive without extraction on the host.
