@@ -111,7 +111,7 @@ def verify_task_tools(fixture: InstallerFixture, control: Path) -> None:
         archive.extractall(extracted, members=members, filter="data")
     tools = extracted / prefix
     cwd = fixture.root / "workspace"
-    for name, option in (("kast-task-vm", "--image"), ("setup-kast", "--bundle")):
+    for name, option in (("kast-task-vm", "--image"), ("setup-kast", "--archive")):
         launcher = tools / "bin" / name
         require(os.access(launcher, os.X_OK), "task launcher is not executable: " + name)
         result = subprocess.run([str(fixture.tools["python3"]), "-I", str(launcher), "--help"],

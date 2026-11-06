@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import sys
+import tarfile
 import tempfile
 import unittest
 import warnings
@@ -26,6 +27,23 @@ class ContractFixture:
 
 
 class InstalledProductArtifactTest(unittest.TestCase):
+    def test_extracted_task_tools_run_without_checkout_imports(self):
+        from installer_fixture import InstallerFixture, admitted_tools
+
+        source = Path(__file__).resolve().parent.parent
+        inputs = (
+            'bin/kast-task-vm', 'bin/kast-task-vm.lock', 'bin/setup-kast', 'bin/setup-kast.lock',
+            'packaging/task_vm.py', 'packaging/task_vm_guest.py', 'packaging/composed_bundle.py',
+            'packaging/composition_platform.py', 'packaging/managed_headless.py',
+        )
+        with InstallerFixture(admitted_tools(), parent=Path('/tmp').resolve()) as fixture:
+            control = fixture.root / 'control.tar'
+            with tarfile.open(control, 'w') as archive:
+                for entry in inputs:
+                    archive.add(source / entry, arcname='share/kast/task-vm/' + entry)
+            product.verify_task_tools(fixture, control)
+            fixture.mark_passed()
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
