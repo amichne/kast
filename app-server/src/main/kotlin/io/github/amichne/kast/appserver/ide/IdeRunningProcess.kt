@@ -13,10 +13,8 @@ internal enum class IdeRunningProcess {
 internal fun runningIde(
     launch: SelectedIdeLaunch.Resolved,
     platform: IdeLaunchPlatform,
-    deployment: SelectedLifecycleDeployment,
 ): IdeRunningProcess {
-    if (launch.layout == SelectedIdeLayout.LINUX_DIRECTORY || deployment is SelectedLifecycleDeployment.Headless)
-        return runningDirect(launch, platform)
+    if (launch.layout == SelectedIdeLayout.LINUX_DIRECTORY) return runningDirect(launch, platform)
     // Read native application identity; no activation or accessibility control.
     val script =
         """ObjC.import('AppKit'); function run(argv) { var apps = $.NSWorkspace.sharedWorkspace.runningApplications; for (var i = 0; i < apps.count; i++) { var a = apps.objectAtIndex(i); if (a.bundleURL && ObjC.unwrap(a.bundleURL.path) === argv[0]) return 'present'; } return 'absent'; }"""

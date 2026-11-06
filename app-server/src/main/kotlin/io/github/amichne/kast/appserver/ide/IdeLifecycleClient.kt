@@ -234,10 +234,14 @@ internal constructor(
                 is Refinement.Rejected -> return blocked(selected.failure)
                 is Refinement.Refined -> selected.value
             }
-        when (runningIde(launch, platform, selectedDeployment)) {
-            IdeRunningProcess.PRESENT -> return blocked(IdeLifecycleFailure.PLUGIN_UNAVAILABLE)
-            IdeRunningProcess.UNAVAILABLE -> return blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
-            IdeRunningProcess.ABSENT -> Unit
+        // Native directory locking owns exclusivity for the admitted private profile.
+        // Managed launch never enumerates unrelated processes. Only a live handshake grants admission.
+        if (selectedDeployment == SelectedLifecycleDeployment.Desktop) {
+            when (runningIde(launch, platform)) {
+                IdeRunningProcess.PRESENT -> return blocked(IdeLifecycleFailure.PLUGIN_UNAVAILABLE)
+                IdeRunningProcess.UNAVAILABLE -> return blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
+                IdeRunningProcess.ABSENT -> Unit
+            }
         }
         val lifetime =
             when (val started = launch(launch, selectedDeployment)) {
