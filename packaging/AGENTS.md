@@ -8,6 +8,10 @@ timestamp: "2026-11-06T17:00:00Z"
 source_revision: 13d0ce4b2c41ad781b88b7e1ba9c2c0624df7c04
 code_sources:
   - path: bin/setup-kast
+  - path: bin/kast-task-vm
+  - path: packaging/task_vm.py
+  - path: packaging/task_vm_guest.py
+  - path: packaging/test_composition_task_vm.py
   - path: packaging/composed_bundle.py
   - path: packaging/composition_platform.py
   - path: packaging/composed_host.py
@@ -52,6 +56,8 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - [managed_headless.py](managed_headless.py) - archive assembly and the shared private installer.
 - [composed_host.py](composed_host.py) - module-based assembly from a pinned donor inventory.
 - [composed_bundle.py](composed_bundle.py) - authenticated portable setup bundles and installer dispatch.
+- [task_vm.py](task_vm.py) - offline macOS ARM task coordination through Tart.
+- [task_vm_guest.py](task_vm_guest.py) - the shared installer and literal task process inside the guest.
 - [composition_platform.py](composition_platform.py) - pinned donor and layout selection for macOS ARM and Linux x86_64.
 - [composition_recipe.py](composition_recipe.py) - pinned roots and plugin provider candidates.
 - [composed_host_probe.py](composed_host_probe.py) - native callers, Java references, and result rejection.
@@ -85,7 +91,8 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 
 - `install_prepared_runtime` owns the installer, bootstrap, private state, and wrapper for both assembly strategies.
 - The composed recipe supports pinned macOS ARM and Linux x86_64 donors. Keep vendor bytes unchanged and reject an existing destination.
-- `bin/setup-kast` installs a digest-pinned Linux bundle through `install_prepared_runtime`.
+- `bin/setup-kast` installs a digest-pinned Linux or macOS ARM bundle through `install_prepared_runtime`.
+- `mise exec -- kast-task-vm --help` describes disposable macOS ARM tasks. Read the [VM report](../docs/reviews/macos-task-vm.md) for the image contract and native gaps.
 - Bundle creation uses `python3 packaging/composed_bundle.py pack`. Read the [Linux install report](../docs/reviews/linux-composed-install.md) for its inputs.
 - Explicit workspace trust applies only to the new private profile and the named existing repository.
 - The native probe consumes a disposable fixture with explicit trust and a fresh evidence directory.

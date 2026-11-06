@@ -377,7 +377,7 @@ val localPluginReloadTest = tasks.register<VerificationReportTask>("localPluginR
 tasks.named("check") { dependsOn(localPluginReloadTest) }
 
 val managedInstallationTest = tasks.register<VerificationReportTask>("managedInstallationTest") {
-    sourceFiles.from("bin/setup-kast", "bin/setup-kast.lock")
+    sourceFiles.from("bin/setup-kast", "bin/setup-kast.lock", "bin/kast-task-vm", "bin/kast-task-vm.lock")
     group = "verification"
     description = "Proves immutable selection, managed replacement, and recorded recovery."
     sourceFiles.from(fileTree("packaging") { include("*.py", "*.sh", "pyproject.toml", "uv.lock") })
@@ -387,7 +387,7 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
         "packaging/test-managed-update-contract.py", "packaging/test-managed-headless.py",
         "packaging/test_composition_graph.py", "packaging/test_composition_index.py",
         "packaging/test_composition_descriptors.py", "packaging/test_composition_host.py",
-        "packaging/test_composition_bundle.py", "-q"))
+        "packaging/test_composition_bundle.py", "packaging/test_composition_task_vm.py", "-q"))
 }
 
 val developerPublicationTest = tasks.register<VerificationReportTask>("developerPublicationTest") {

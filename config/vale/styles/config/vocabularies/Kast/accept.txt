@@ -135,3 +135,6 @@ Ardia
 viewport
 scrollable
 allowlist
+
+# Apple developer product named in the macOS task image contract.
+Xcode
