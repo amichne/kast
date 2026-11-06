@@ -52,6 +52,11 @@ internal sealed interface WorkspacePreparationActivityOutcome {
         val nextRequestId: String,
         val expired: WorkspacePreparationTiming,
     ) : WorkspacePreparationActivityOutcome
+
+    @Serializable
+    @SerialName("waiting_after_exchange_deadline")
+    data class WaitingAfterExchangeDeadline(val nativeRequestId: String, val host: String) :
+        WorkspacePreparationActivityOutcome
 }
 
 internal fun interface WorkspacePreparationObserver {

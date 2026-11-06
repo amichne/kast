@@ -1,6 +1,8 @@
 package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCause
+import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
@@ -73,10 +75,45 @@ internal class NativePreparationAwaiter(
             if (expectedHost != null && progress.host != expectedHost)
                 return Refinement.Rejected(WorkspacePreparationFailure.RESPONSE_REJECTED)
             publish(WorkspacePreparationOutcome.Pending(maxOf(entry.lastStage, progress.stage)))
-            delay(interval)
-            response = exchange(WorkspaceLifecycleRequest.Status(progress.host.toString(), requestId))
+            response = observeStatus(request, progress)
         }
         return Refinement.Refined(NativePreparationObservation(response, progress))
+    }
+
+    /** Status is read-only. A lost frame cannot retire an admitted native operation or establish completion. */
+    private suspend fun observeStatus(
+        request: WorkspacePreparationId,
+        progress: NativePreparationProgress,
+    ): IdeLifecycleResult {
+        while (true) {
+            delay(interval)
+            val response =
+                exchange(WorkspaceLifecycleRequest.Status(progress.host.toString(), request.value.toString()))
+            if (response !is IdeLifecycleResult.Blocked) return response
+            val failure = response.exchange ?: return response
+            if (
+                response.reason != IdeLifecycleFailure.EXCHANGE_DEADLINE_EXCEEDED ||
+                    failure.cause != IdeLifecycleExchangeCause.DEADLINE_EXCEEDED ||
+                    failure.command !in setOf(IdeLifecycleExchangeCommand.INSPECT, IdeLifecycleExchangeCommand.STATUS)
+            )
+                return response
+            observer.observe(
+                WorkspacePreparationActivity(
+                    entry.id.value.toString(),
+                    WorkspacePreparationActivityOutcome.WaitingAfterExchangeDeadline(
+                        request.value.toString(),
+                        progress.host.toString(),
+                    ),
+                    preparation =
+                        entry.deadline.timing(
+                            entry.lastStage,
+                            WorkspacePreparationDeadlineOwner.PREPARATION_OWNER,
+                            nanoTime(),
+                        ),
+                    exchange = failure,
+                )
+            )
+        }
     }
 
     private fun continuation(observation: NativePreparationObservation): NativeDeadlineContinuation =
