@@ -1749,10 +1749,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "architecture/change-lifecycle",
@@ -1812,7 +1812,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "architecture/query-reuse",
@@ -2112,10 +2112,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "architecture/topology",
@@ -2130,11 +2130,11 @@
         },
         {
           "path": "docs/public/snippets/okf/modules/architecture.mdx",
-          "sha256": "4e0c903dcbbdeee1a7667fa6360dde71ba792e0e05f042a0d245f2f9f50dd568"
+          "sha256": "376f09bd068854a0acb618066cf2a92a43765258831400ed9142a2539132ca8d"
         },
         {
           "path": "docs/public/snippets/okf/runtime/hosted-composition-and-publication.mdx",
-          "sha256": "d2c9713468b8da79f61fc18fa0b1996a946ce41481bef6c8147d6eaa303ace10"
+          "sha256": "14014df5e75fbc3be2883a006f1de8b91b4a3eb12816a839c503889530778888"
         }
       ],
       "claims": [
@@ -2195,7 +2195,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "explanation",
@@ -2534,10 +2534,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "explanation/query-lifecycle",
@@ -2621,7 +2621,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "explanation/value-journey",
@@ -2718,14 +2718,14 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         },
         {
           "path": "docs/tooling/value-journey/src/trace.ts",
           "sha256": "6e948fb730e4b47985f1d7397f7020a5c4dc68dd78d6d8a922761d4b53f04c48"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "explanation/value-journey-evidence",
@@ -2814,14 +2814,14 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         },
         {
           "path": "docs/tooling/value-journey/src/trace.ts",
           "sha256": "6e948fb730e4b47985f1d7397f7020a5c4dc68dd78d6d8a922761d4b53f04c48"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "glossary",
@@ -2894,7 +2894,7 @@
           "sha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "how-to",
@@ -3208,10 +3208,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "how-to/complete-engineering-task",
@@ -3580,10 +3580,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "how-to/inspect-diagnostics",
@@ -3617,10 +3617,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "how-to/read-retained-evidence",
@@ -3904,10 +3904,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "index",
@@ -4375,10 +4375,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference",
@@ -4717,10 +4717,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/api",
@@ -5074,21 +5074,21 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/callables/add-declaration",
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "74b368fb1f6c28c88ec9569b845e96b61f8d07c1e0e3dc0dcfc3008f00ed5bc0"
+          "sha256": "cd82864a39fdec1096c7e53bb9025f0a2cd46502d2cbd2b4bb979ac28b527569"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         },
         {
           "path": "docs/public/reference/callables/add-declaration.mdx",
@@ -5096,7 +5096,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "18ae2fa05b576aa743747e439750c12bf3beb1d6dc650b1716bcd60c48a6400f"
+          "sha256": "eada7a6050e1f1acc321c4c5bb30529e242eb04925adf3c6a18deeca6c42bdfc"
         }
       ],
       "claims": [],
@@ -5118,18 +5118,18 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/callables/check-diagnostics",
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "74b368fb1f6c28c88ec9569b845e96b61f8d07c1e0e3dc0dcfc3008f00ed5bc0"
+          "sha256": "cd82864a39fdec1096c7e53bb9025f0a2cd46502d2cbd2b4bb979ac28b527569"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         },
         {
           "path": "docs/public/reference/callables/check-diagnostics.mdx",
@@ -5137,7 +5137,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "18ae2fa05b576aa743747e439750c12bf3beb1d6dc650b1716bcd60c48a6400f"
+          "sha256": "eada7a6050e1f1acc321c4c5bb30529e242eb04925adf3c6a18deeca6c42bdfc"
         }
       ],
       "claims": [],
@@ -5159,18 +5159,18 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/callables/query-symbols",
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "74b368fb1f6c28c88ec9569b845e96b61f8d07c1e0e3dc0dcfc3008f00ed5bc0"
+          "sha256": "cd82864a39fdec1096c7e53bb9025f0a2cd46502d2cbd2b4bb979ac28b527569"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         },
         {
           "path": "docs/public/reference/callables/query-symbols.mdx",
@@ -5178,7 +5178,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "18ae2fa05b576aa743747e439750c12bf3beb1d6dc650b1716bcd60c48a6400f"
+          "sha256": "eada7a6050e1f1acc321c4c5bb30529e242eb04925adf3c6a18deeca6c42bdfc"
         }
       ],
       "claims": [],
@@ -5200,18 +5200,18 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/callables/replace-body",
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "74b368fb1f6c28c88ec9569b845e96b61f8d07c1e0e3dc0dcfc3008f00ed5bc0"
+          "sha256": "cd82864a39fdec1096c7e53bb9025f0a2cd46502d2cbd2b4bb979ac28b527569"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         },
         {
           "path": "docs/public/reference/callables/replace-body.mdx",
@@ -5219,7 +5219,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "18ae2fa05b576aa743747e439750c12bf3beb1d6dc650b1716bcd60c48a6400f"
+          "sha256": "eada7a6050e1f1acc321c4c5bb30529e242eb04925adf3c6a18deeca6c42bdfc"
         }
       ],
       "claims": [],
@@ -5241,18 +5241,18 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/callables/workspace-lifecycle",
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "74b368fb1f6c28c88ec9569b845e96b61f8d07c1e0e3dc0dcfc3008f00ed5bc0"
+          "sha256": "cd82864a39fdec1096c7e53bb9025f0a2cd46502d2cbd2b4bb979ac28b527569"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         },
         {
           "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
@@ -5260,7 +5260,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "18ae2fa05b576aa743747e439750c12bf3beb1d6dc650b1716bcd60c48a6400f"
+          "sha256": "eada7a6050e1f1acc321c4c5bb30529e242eb04925adf3c6a18deeca6c42bdfc"
         }
       ],
       "claims": [],
@@ -5282,7 +5282,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/callback-observations",
@@ -5401,10 +5401,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/callbacks",
@@ -5490,7 +5490,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/change",
@@ -5539,10 +5539,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/cli",
@@ -5921,7 +5921,7 @@
         },
         {
           "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
-          "sha256": "c5c97d429d5bd65a66dbae64b23004d409e55dca81cd46f8e7e8d3dc7c20a138"
+          "sha256": "b2f824d9c2d4c5bd84bb06bc9c7b4bc18ba9a0bc8fcf9ff9d7f1927c2acabb8a"
         },
         {
           "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt",
@@ -6053,11 +6053,11 @@
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "sha256": "bc5b0b095fb2ee95b93d433cf18d4065116ecde59cc8a4e39f17dff565f11c00"
+          "sha256": "dcb69ccad11f9350e7e20fca0c2b5b0be30f83001ea577d96109025f59035d05"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
-          "sha256": "ed651cce66f619249e45957086464e0d6fb742ba9fec5f0e11e1aa08ad5c772e"
+          "sha256": "c3f640e58c9094a2375e2376d429bdeeb985c557bfbc72771a2dba186502f393"
         },
         {
           "path": "distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/CliOutput.kt",
@@ -6073,7 +6073,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         },
         {
           "path": "gradle/libs.versions.toml",
@@ -6089,10 +6089,10 @@
         },
         {
           "path": "packaging/configuration-schema.json",
-          "sha256": "7a91c9ec680c599ea0db811c207f1c1cb955c3257adcc6649b3bb02a48c7c511"
+          "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "9610c6e88c05873145116432bdeb734ba309a99b"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/compatibility",
@@ -6346,10 +6346,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/composition",
@@ -6406,7 +6406,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/evidence-boundaries",
@@ -6522,7 +6522,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/installation",
@@ -6721,10 +6721,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/integrations",
@@ -6838,10 +6838,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/internals/architecture",
@@ -6882,7 +6882,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/internals/background-startup",
@@ -6897,7 +6897,7 @@
         },
         {
           "path": "docs/public/snippets/okf/runtime/idea-lifecycle-and-refresh.mdx",
-          "sha256": "b9024622efe6919a8bd1a6022509db9ee112eb10cc2773397b8833073a8ee62f"
+          "sha256": "84748a3171e56df75ccfb19d1509e6afb5c7407566702e057a21eff377983891"
         },
         {
           "path": "docs/public/snippets/okf/transport/coordinator-and-workspace-preparation.mdx",
@@ -6967,7 +6967,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/lifecycles",
@@ -7105,7 +7105,7 @@
         },
         {
           "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
-          "sha256": "c5c97d429d5bd65a66dbae64b23004d409e55dca81cd46f8e7e8d3dc7c20a138"
+          "sha256": "b2f824d9c2d4c5bd84bb06bc9c7b4bc18ba9a0bc8fcf9ff9d7f1927c2acabb8a"
         },
         {
           "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt",
@@ -7117,18 +7117,18 @@
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "sha256": "bc5b0b095fb2ee95b93d433cf18d4065116ecde59cc8a4e39f17dff565f11c00"
+          "sha256": "dcb69ccad11f9350e7e20fca0c2b5b0be30f83001ea577d96109025f59035d05"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
-          "sha256": "ed651cce66f619249e45957086464e0d6fb742ba9fec5f0e11e1aa08ad5c772e"
+          "sha256": "c3f640e58c9094a2375e2376d429bdeeb985c557bfbc72771a2dba186502f393"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "f771eded1ebbeb5b283caa14442713cbc0a86345"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/limits",
@@ -7592,10 +7592,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/management",
@@ -7794,10 +7794,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/mcp-catalog",
@@ -8176,10 +8176,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/models/diagnostic",
@@ -8518,10 +8518,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/models/live-evidence",
@@ -8860,10 +8860,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/models/mcp-change-result",
@@ -9202,10 +9202,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/models/mcp-investigation-result",
@@ -9544,10 +9544,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/models/mcp-read-result",
@@ -9886,10 +9886,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/models/mcp-tool-call-result",
@@ -10228,10 +10228,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/models/query-item",
@@ -10570,10 +10570,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/models/relation-fact",
@@ -10912,10 +10912,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/models/tool-rpc-reply",
@@ -11254,10 +11254,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/program-tracing",
@@ -11410,10 +11410,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/query-pipelines",
@@ -11697,10 +11697,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/responses",
@@ -12054,10 +12054,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/rpc-catalog",
@@ -12436,10 +12436,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/schemas",
@@ -12723,10 +12723,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/search",
@@ -13065,10 +13065,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/source-map",
@@ -13897,10 +13897,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/staleness",
@@ -13964,7 +13964,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/symbols",
@@ -14030,7 +14030,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "9ef9e65825b09f5e031322ab98f310276e2eb51f"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/troubleshooting",
@@ -14284,10 +14284,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "reference/walkthrough",
@@ -14571,10 +14571,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "search",
@@ -14977,10 +14977,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "start",
@@ -15508,10 +15508,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "troubleshooting",
@@ -15769,10 +15769,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "36a17528f2e93f44b5a6a22f50fb9c045d2fd8c4"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "tutorials",
@@ -16056,10 +16056,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     },
     {
       "route": "tutorials/first-query",
@@ -16402,10 +16402,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "1215728237d88a0be4add806f6493ac212c5e17e4aa6cefe61e7254a0c6441aa"
+          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "04f609baa6f7b94e40d472ad38799888659863f7"
+      "reviewedSourceRevision": "9585299fdd321da3ea6782722d86f1b04ecd61d0"
     }
   ]
 }
