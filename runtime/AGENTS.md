@@ -4,9 +4,12 @@ title: "Kast runtime"
 description: "Composes semantic services inside IntelliJ IDEA and owns hosted transport, query publication, diagnostics, and source changes."
 resource: "repo://runtime"
 tags: [kast, navigation]
-timestamp: "2026-10-30T22:56:37Z"
-source_revision: c00f3bfa71dd40e9897d714e378b21eacf673073
+timestamp: "2026-11-06T09:45:06Z"
+source_revision: 35bf4cc5420244babe898ff72330a6a0102015ce
 code_sources:
+  - path: runtime/hosted/src/headless/resources/META-INF/plugin.xml
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt
+  - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessProjectStore.kt
   - path: runtime/hosted/build.gradle.kts
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - path: runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeResources.kt
@@ -26,7 +29,7 @@ code_sources:
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-14 | hash: 9b6ab7c209f5 -->
+<!-- generated: 2026-11-06 | hash: 7b2055e5e4b1 -->
 
 # runtime
 
@@ -56,6 +59,7 @@ Composes semantic services inside IntelliJ IDEA and owns hosted transport, query
 ## Entry Points
 
 - Gradle project: `:runtime:hosted`.
+- Run `mise exec -- ./gradlew :runtime:hosted:headlessBootstrapPlugin` to package the bundled descriptor archive. This archive supplies no Host classes.
 - Read `hosted/NATIVE_FIXTURES.md` and `hosted/native/README.md` before native qualification.
 - Hosted declared-effect fixtures consume the relation-owned `compileDeclaredEffectFixture` archive. Each case keeps its own archive copy and project state.
 - `check` and `scopedCheck` include `dependencyFixtureTest` for archive isolation.
@@ -63,6 +67,11 @@ Composes semantic services inside IntelliJ IDEA and owns hosted transport, query
 - [HostedQueryRetainedPresentationTest.kt](hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryRetainedPresentationTest.kt) - retained output cases.
 
 ## Navigation Hints
+
+- `KastHeadlessStarter` admits production headless mode with private state and bundled JBR. It uses the existing Host plugin.
+- The bundled bootstrap supplies descriptor entries. Its classes stay in `runtime:hosted`.
+- `ManagedHeadlessProjectStore` keeps IDEA metadata under private state and preserves the repository identity. Keep project trust necessary.
+- Reject test mode and a forced core classloader before the headless application endpoint starts.
 
 - The application service captures its build identity, profile, process incarnation, and loaded `idea.auto.reload.plugins` option at startup.
 - Its existing endpoint descriptor publishes those facts without a project or Gradle import.

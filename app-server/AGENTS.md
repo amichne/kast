@@ -4,9 +4,12 @@ title: "Kast app-server"
 description: "Owns the shared coordinator, workspace preparation, host adapters, Codex transport, and public tool admission."
 resource: "repo://app-server"
 tags: [kast, navigation]
-timestamp: "2026-10-22T05:31:45Z"
-source_revision: ebc805014ada9e3eb1b85ef611e41bd176af8d80
+timestamp: "2026-11-06T09:45:06Z"
+source_revision: 35bf4cc5420244babe898ff72330a6a0102015ce
 code_sources:
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt
+  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLaunchPlatform.kt
   - path: app-server/README.md
   - path: app-server/build.gradle.kts
   - path: app-server/docs/compatibility.md
@@ -26,7 +29,7 @@ code_sources:
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-14 | hash: 79fb7323575e -->
+<!-- generated: 2026-11-06 | hash: 2645752e4b93 -->
 
 # app-server
 
@@ -70,6 +73,9 @@ Owns the shared coordinator, workspace preparation, host adapters, Codex transpo
 - For host faults, read the nested host guide before changing transport arguments or process ownership.
 - For public syntax, read the nested query guide, authored schema, and canonical mappings.
 - For preparation failures, trace the exact root through `WorkspacePreparations` into the existing-IDE client.
+- For managed headless selection, read `IdeLifecycleDeployment` and `ManagedSemanticDeployment`.
+- Keep deployment admission on workspace preparation and exact-reference reads. Reject an invalid managed selection before desktop discovery.
+- `IdeLaunchPlatform.startManaged` starts only the admitted private installation.
 - Coordinator readiness alone does not establish workspace enrollment or semantic availability.
 - `KastInvocationInput` keeps the admitted execution mode through provider dispatch. `WorkspaceExecutionAccess.RunnerControlledQuery` carries an unlimited semantic lifetime only for a schema-admitted query with a read effect. Provider dispatch and the workspace lane omit semantic deadlines for that access. Queue admission and output limits keep their existing grants.
 - `ExistingIdeSocketClient` bounds connection and request writes. For an admitted `RUNNER_CONTROLLED` query, it waits for the semantic response until caller cancellation.
