@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ecf81e8a404f78b0bfc6655617ac5d6c9038b5b774eb784446ab369ea0e6ecd1",
+  "pageVersion": "sha256:8a37f53a976f3ded197705645880e530c888af481b18dbeef0ce12bf7c95b626",
   "claims": [
     {
       "id": "claim_cef6aa14cee14d75b0fedd02c53e9033",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
-          "version": "repo-file-v1:sha256:7f75a18583818145b9892c77fa19e20d9a30b941e6f4c380e583050d470d76d6"
+          "version": "repo-file-v1:sha256:728d88993295067868e794a71d67300debb243026c56e7e9f3ab40ac425d78db"
         }
       ]
     },
@@ -61,6 +61,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T05:26:56.646Z"
+    "at": "2026-11-06T22:26:46.446Z"
   }
 }

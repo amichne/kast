@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b8426c2ecfcf025aa3ce12512691cc94dbbe3d8337c788c07b50adc73fb30f68",
+  "pageVersion": "sha256:501d4c7da3a8b54c895e092770618549878326cfb429434c4868d10c6c541702",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -119,20 +119,28 @@
       "statement": "The local adapter delegates Java selection to the public installer's admitted IntelliJ home. The unused KAST_LOCAL_JAVA_EXECUTABLE and KAST_LOCAL_JAVA_HOME inputs are absent from installLocal and the catalogue; every configuration source rejects them as UNKNOWN_KEY. The assembled-product acceptance runner retains KAST_ACCEPTANCE_JAVA_EXECUTABLE.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L309-L348",
-          "version": "repo-lines-v1:sha256:d890641fe9f563dadf81523caa05750e56b0a33fb3bbc0a96a524ea298468819:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlZGM3OWM2ZjgxZDZlZDM2NTEzN2JlNGMyNzM4MGEyNGE4ZmI0YzUyNjk1ZDMzYjFkMzRlNzg1MzIzOGVjOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlYTVmNjVjMTE2ZTQzZGMzODJmNzkzYzE2MGI4NmE1ZTBjZDMwMjc4Nzg5ZTkxM2M0NDdhMGJlYjkyMzc3NGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5NDkyYzhhODE3ZWQ1MGU1NjYwNzhiZDQ4MmUxMjUzYTdmNDBiYzc5YTI5MWFiZjgzMjkzYWJhYjdhMzQxMWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ3YzEwN2NkYTEwMzM4OTg2ZDcwMTg0YzgzYmMyMDA2MzczNmU3NTdiMDBjZDVhZGFhMjRiMjI3YThiZDNjNGEifQ"
+          "resource": "repo://build.gradle.kts#L308-L326",
+          "version": "repo-lines-v1:sha256:2f84f19ff80e508afbe4ddacc7f9a7bcb7994e709693bf12c4970d08e2f5dc5c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2NWI4MzU2NGIyZjhkNDQzYjFlZDU3ZDFiNTcxYTkyMjkzZTQzMTVmNjc4N2Y5ODAyZjVlYzcxNzJlZTI0MmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3NWQzZTBiMjY4YzI1OTlmN2JjMjNjZjAwNTBjZDYzODc1YjQ3MjVjM2ZjNTEwMjAzN2Y5NjA3ZmI3MjkyNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE1MDhmZmIwYzcxZTQ1MGJjOTEzYmYxZjFhYjI1ZDMwZjcxZDY4ODQ3NDVjYmQwMTllZmIwZjU5MDNmOWNmZDUifQ"
+        },
+        {
+          "resource": "repo://build.gradle.kts#L328-L350",
+          "version": "repo-lines-v1:sha256:3a885e91346a1f2e79d957ca95bc3d7ca8de9d6935ccf39dae3b65f9e1c195f5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNWI1MjU5ODlhYmEzZTYxMjE2ZWNkOWZlMzBhNmRkNzZjZDI0NWQ5YjE5ODcxM2U3ZDUwOGZlZTgwNjk3YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3NTU4ZjJjYmFjMWVmNzhlZjE3ZDliYzY4ZjdlYWE3NTY0MDJhYzJmZTA5NThmMmJlYWYxZDIxZTE4NWJmYWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzOTIxNDZjMjFkN2EzOGZjNjNkNWM4Y2RlODFhMmVjYTc2MGQxNmE4Y2Q5MDg2OWYyODc3ZDFkZTBlNjM3YjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYwMTMxZDNlNWIyYWJjZGY5ODE2ZjI1MDI0NTlhYWQyZjBmNDlhNGIyOGFlNDQ0NWZmMmIwNzEzZGE0NzkyMjQifQ"
         },
         {
           "resource": "repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt",
           "version": "repo-file-v1:sha256:4269816d4265367a277caece39290f55eb607ee7efb5d859db92d2fbf358dacf"
         },
         {
-          "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:f37016858beffadb75fb23ff80e7af29f00b7a2f784ea5c238be8f39a463dd46"
+          "resource": "repo://install.sh#L279-L306",
+          "version": "repo-lines-v1:sha256:c663d8ea2691a97450d4c510167ff86a18452042d227ceced13c79414c3a6c5e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyMzFkZTQxNzM2Nzk1OTI2MjMzZmQxZmM3MDIzMGVhZjRmY2NlZjM3MmM3ODNjZDRmZDNlNzk3YTc1ZjEwMDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxNjhiNjY2NGNiMTY1ZDFjODExNTkwOWU3NGQwODc1NDJjYzNmYmVkZTVjYmU0NWMxOTAxZTlmZWY5NmU5MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE1MjA4ZjdmN2U2MWVhMTJhZTExODhmNGZlNzhmOTM1Nzk5MzRhYzg3MzNlZjcwYTVmNmU4ZDNmYzk5NzVlNGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNzczNzdhM2YwNzZkNTA2Yzg2OTMzNWQ3ZmUxYzJiMjBhNGVkZDk2OGVhOTE1Nzk3ZjM5YThjMGM5ZTUxM2MifQ"
+        },
+        {
+          "resource": "repo://install.sh#L790-L818",
+          "version": "repo-lines-v1:sha256:952aed4c397a60ee553bedfd74ea417398c616a72f7574078a0618cd146ad856:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyZmQxMDlhMGQ4ODIwNzg5YzBiNjI5NjY0ZTRhYzUyMjhkMDhlZDA3ZGQ2ZmI4NDhhYWVhNTViZjMyYTYwZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4YzE4NmJlYjA0OTNjZDczYTJhY2I1Zjg3YTc4MDk5MTg0OGE3ZWE2NGI5YWE0ZjJjNDcyOGE3YzUyZDk5YmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4MGMyN2Q1YWQ1MDcyOTkyNjRmOWVhMTAzNzliNzg1NWM4N2VmMTljMWZjNGJkNGNlYmUyMTA5ZmE1MmM2ZDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgwZmJkYTA0ZWNhOGJkYTFjMmVhZmI3NDM2ZTEyN2UzNDNkODlhYTRiNDc2Njk1YmU3NDM0ZjhmYWE1YThlZjIifQ"
         },
         {
           "resource": "repo://packaging/install-local.sh",
-          "version": "repo-file-v1:sha256:3c3f2fda9a5103d287442454dae1a910be838803d4e92cb564f657db72ca08de"
+          "version": "repo-file-v1:sha256:6e8f0ac7af2684b39d9c2dab97df0afa97b3598f96e9506b2c2dbf3aab9d0fba"
         }
       ]
     },
@@ -223,6 +231,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T20:52:34.571Z"
+    "at": "2026-11-06T22:26:46.446Z"
   }
 }

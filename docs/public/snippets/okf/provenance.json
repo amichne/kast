@@ -387,8 +387,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "ab25ae97e6c363ed3350bdec8dddc70a2e6f9da95c64be24185ac299e91fd9ea",
-      "claimsSha256": "f2c55f3787591a018cc6f43693a565447a3fc72eae17e3b16b5502cb45eee3dd",
+      "sha256": "9c80730783820e5827f007a5e31370b6461e4f9b9c30d8d1b074ee1a814df714",
+      "claimsSha256": "5f1a9fb7a9e80f5f92015ec05d276720ee647c98fd549418c0ce7ccad05fe24e",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -441,7 +441,7 @@
         },
         {
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
-          "resource": "repo://build.gradle.kts#L812-L849",
+          "resource": "repo://build.gradle.kts#L815-L852",
           "recordedVersion": "repo-lines-v1:sha256:a8eae36b4a254b4a99e0ff299b1ada839533417a38d3ce1c79dd5117b566d38a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjYzAyOWJkYWJiMWEwM2RkNzUyMjQ0MGM4MGU3YTlkMzlmNjhiZTA1OTUzZDA4Y2NjZTA0MjI0OGM0YmQ2YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzMmRlYzFiZDA1NTEyYTEzNDBkZjkyNTI3YWQ0NWQzNWI1NmQ1MjA0ZjU3YmQ3MjA4NDI2M2UzYWQ1OGRkZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkxOTIwNTE1MzMzN2JjMzEwNGE4ZDBiNmMwYWM0NTg1YzliNzcxOTRjZGU5NDk3ZDBlZjgwMDhhNjI4NzNhMTIifQ",
           "currentVersion": "repo-file-v1:sha256:ab92617f2dcc69589625e09c64437f5c47573318e4879fff31c0b964170f5c0d",
           "status": "NOT_ASSESSED"
@@ -518,8 +518,8 @@
         },
         {
           "claim": "claim_9d5bbef224bb433b82205fb924c4dee4",
-          "resource": "repo://runtime/hosted/build.gradle.kts#L252-L270",
-          "recordedVersion": "repo-lines-v1:sha256:791e4c6e2b6fb7e78e6e5a327a88910e3f6434c11eb1e6431e467ad840bfd980:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlMzAzOTkzMmU5MzAzZDM2NmUwMzViZjEwNzcyNzYzMmNmNGY2Yjg1ZDBkNTJlMjdmNzk4YWUzY2JlMDk4NTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3OWJhOTA5ZjFkY2Y3ZjhkZjg3MDc2NmFlMGIzNTNkMmU3NDJkZjU5MDc3NjQxZmZjNWEyZDUxOWYwNGU3ZmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwNTU0MzZhMmUzNTgyNTRmZTgzYjNkMTBkZmM5MDk5MzBhNDMwMzRkZjRhYzllN2FiM2FlYTdiM2UzY2ZhMzYifQ",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L241-L262",
+          "recordedVersion": "repo-lines-v1:sha256:be87f4f1c05f9b5d7fc5cbd3b4ffc879d4affd9e302495db86734ca4b8096105:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2NDQ3YTlkNWU1YTBhOGE4OThiM2NlYTk0ZWRiNTY2ZWY0YzU5NGI4YzlmMTVmNGIxZGFjZWExZjk0ZTE0ZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZmYzk1MmNlNDI1NzM4YjNhNDgzMjM0NTI3ZWUyNWIwZjM1YWFiMzFkNDk4ZTQ0NjgyZWU1OGI0ZTZiNDM4ZjkifQ",
           "currentVersion": "repo-file-v1:sha256:13543ee5578c06c6f265e968d183b5498ce95a9ee80bf302865218be26589b68",
           "status": "NOT_ASSESSED"
         },
@@ -533,9 +533,9 @@
         {
           "claim": "claim_9d5bbef224bb433b82205fb924c4dee4",
           "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
-          "recordedVersion": "repo-file-v1:sha256:7f75a18583818145b9892c77fa19e20d9a30b941e6f4c380e583050d470d76d6",
+          "recordedVersion": "repo-file-v1:sha256:728d88993295067868e794a71d67300debb243026c56e7e9f3ab40ac425d78db",
           "currentVersion": "repo-file-v1:sha256:728d88993295067868e794a71d67300debb243026c56e7e9f3ab40ac425d78db",
-          "status": "CHANGED"
+          "status": "MATCHED"
         },
         {
           "claim": "claim_9d5bbef224bb433b82205fb924c4dee4",
@@ -667,8 +667,8 @@
     },
     {
       "path": "openwiki/runtime/hosted-composition-and-publication.md",
-      "sha256": "ecf81e8a404f78b0bfc6655617ac5d6c9038b5b774eb784446ab369ea0e6ecd1",
-      "claimsSha256": "7fe25258e0caa5010438884735c92206f7bf4bc6f961c002c476a723c747b587",
+      "sha256": "8a37f53a976f3ded197705645880e530c888af481b18dbeef0ce12bf7c95b626",
+      "claimsSha256": "b8c6db7fa6e8f8b9e62af63da9191983c388118472c77e4d243a81b8d40cc1c7",
       "evidence": [
         {
           "claim": "claim_cef6aa14cee14d75b0fedd02c53e9033",
@@ -680,9 +680,9 @@
         {
           "claim": "claim_cef6aa14cee14d75b0fedd02c53e9033",
           "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
-          "recordedVersion": "repo-file-v1:sha256:7f75a18583818145b9892c77fa19e20d9a30b941e6f4c380e583050d470d76d6",
+          "recordedVersion": "repo-file-v1:sha256:728d88993295067868e794a71d67300debb243026c56e7e9f3ab40ac425d78db",
           "currentVersion": "repo-file-v1:sha256:728d88993295067868e794a71d67300debb243026c56e7e9f3ab40ac425d78db",
-          "status": "CHANGED"
+          "status": "MATCHED"
         },
         {
           "claim": "claim_ee41761235244553bcf1a058d83d8d5c",

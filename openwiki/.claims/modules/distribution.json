@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1aa5a78c78d18ac109c8ed57842e2baeaefd972abaa3a995b3fcaa3ff01972e9",
+  "pageVersion": "sha256:b0ee09b40b983a3a068e565b645a77947f287da89266acecc2e168530b5a5023",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -72,15 +72,15 @@
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt",
-          "version": "repo-file-v1:sha256:db186dcc0f9b3da58ddfc730f2160a724c3dec832b73b2cf65e39e7080d99461"
+          "version": "repo-file-v1:sha256:91dc7954fbb0e71d38b6c849f56736cbd8eea6f7e656b44c4e35d471f0faf9db"
         },
         {
           "resource": "repo://build.gradle.kts#L104-L123",
           "version": "repo-lines-v1:sha256:1f809cbe56fb43c60678bb4eae7c28529eb3d35c334884cafdf85acb755f73c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNGU0NWUyOWRhNjc2ZGM0MDVkODNiN2Q2MDVjMjE0MmRjYTZhZjU0N2NmNDVhMzZkM2JlY2NlNDE2NDQ0MTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOTgwZTUxYjM3MTQzYjdmMjhlN2M1ZmVkMzIxYzcxYjhiNjIyYzdiZjc4ZmFiMWUzMzg3NWNmMWVkZjU2OTUifQ"
         },
         {
-          "resource": "repo://build.gradle.kts#L286-L324",
-          "version": "repo-lines-v1:sha256:0d6052e32501e55e2945a1258c01d6d4e738c415c6d8eeec3e7f74964477a27c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhOGIzOWI4MzFmNTJjMzg0YWViMTZiNmU0ZWNhMzNmOWIyMzRmMTI0OTZjZDBjOTUyYmY3M2U1OTQ0YzRkMTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE1MDhmZmIwYzcxZTQ1MGJjOTEzYmYxZjFhYjI1ZDMwZjcxZDY4ODQ3NDVjYmQwMTllZmIwZjU5MDNmOWNmZDUifQ"
+          "resource": "repo://build.gradle.kts#L232-L270",
+          "version": "repo-lines-v1:sha256:64d31b63bafcae0d3882982679ca4a806d4b79df6159b4913d0e93046927a286:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZThlNDk0NDUxZmQ4OTQ2YWZhNDU2NWVmNmYwYjJkYjQ4MzU1MjYyNjA2N2Y3NDdhYjlkMDJhMTA3ZmQ3MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxOWQyZTA0ZGIwYzViYWUyMjVlYzllOGY0MDgzN2U3OGQwZmIxYmQ2YzViMmQ0ZGQxOTkxNDAzN2I1Mzk3OGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhZjU1Y2ExMjEzYzlmNzQxYzc4ODNiNTJmMDhhNmExYTZkYjFhM2Y3YWNlMGY2MmZkOThlZjU3Y2RlODQzMTMifQ"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -161,16 +161,16 @@
       "statement": "Assembled-product acceptance stages production Control in an owned HOME, verifies canonical cold staging and publication, then stages the receipted Host, creates an empty canonical mutation database and invokes the real published native uninstall, requiring owned Host, Control, public executable and user-state removal while preserving an unrelated sentinel; it does not establish live IDE or Codex behavior.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L326-L356",
-          "version": "repo-lines-v1:sha256:5ddb6d4bb8ce50b90928dfb8a7c92b3bbd3a5dba340d318922caa824c1401b81:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNWI1MjU5ODlhYmEzZTYxMjE2ZWNkOWZlMzBhNmRkNzZjZDI0NWQ5YjE5ODcxM2U3ZDUwOGZlZTgwNjk3YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1ODY2NTQ4MDg2MzViZTdjMGIxOTU1NGE3ZDU0ZmE4ZDZmZWNkZTljOWEzN2U0MjM1MWMwMDRiNTJmZWI5YzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzOTIxNDZjMjFkN2EzOGZjNjNkNWM4Y2RlODFhMmVjYTc2MGQxNmE4Y2Q5MDg2OWYyODc3ZDFkZTBlNjM3YjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYwNDdjOTM2MGU2MmQ2OWIwNjQ4NWM0OWI3YzI2YzZiY2M0MTUzOTAwMzNhNzkwNTA1MDA1ODM0YzA1YzcwNzIifQ"
+          "resource": "repo://build.gradle.kts#L328-L350",
+          "version": "repo-lines-v1:sha256:3a885e91346a1f2e79d957ca95bc3d7ca8de9d6935ccf39dae3b65f9e1c195f5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNWI1MjU5ODlhYmEzZTYxMjE2ZWNkOWZlMzBhNmRkNzZjZDI0NWQ5YjE5ODcxM2U3ZDUwOGZlZTgwNjk3YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3NTU4ZjJjYmFjMWVmNzhlZjE3ZDliYzY4ZjdlYWE3NTY0MDJhYzJmZTA5NThmMmJlYWYxZDIxZTE4NWJmYWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzOTIxNDZjMjFkN2EzOGZjNjNkNWM4Y2RlODFhMmVjYTc2MGQxNmE4Y2Q5MDg2OWYyODc3ZDFkZTBlNjM3YjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYwMTMxZDNlNWIyYWJjZGY5ODE2ZjI1MDI0NTlhYWQyZjBmNDlhNGIyOGFlNDQ0NWZmMmIwNzEzZGE0NzkyMjQifQ"
         },
         {
           "resource": "repo://packaging/installer_fixture.py",
           "version": "repo-file-v1:sha256:82f00cd72889105c170a2dd2bd2b326775607ef7634b0ba6cfc2619ea772c67c"
         },
         {
-          "resource": "repo://packaging/run-installed-product.py",
-          "version": "repo-file-v1:sha256:d055e29a90f775229156d940bbd79d5912921af020de93ff79a10e489db8a635"
+          "resource": "repo://packaging/run-installed-product.py#L202-L307",
+          "version": "repo-lines-v1:sha256:85d5fa8f8232b14bc2eb53f37b693c2ce16c2faf2b3bca029f5d74bbc7f89d25:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0ODU1MGY3OTVlZjcxNTcyNjAzZjVlZGNlY2I5MGYzYWFlZTExOTBjYzg4YWNjNTM3ZGQxY2EwZjA1YzA2NmY3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJkNmQ0ZTA1ZmQ4ZWJmYmM3YjZjNzRkM2M1ODY3MzFjNGVjNTEwNjQ0M2MxNDliYTJjZDBkODIxOTU1OTA1MzVlIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJiYzI1ZDgxNzNkZmEwNjczYWViOGMyMDc2MzI4ZGViN2VjZmI4Zjc1NWMwZWJiOTM5YzJlNDllZWFmYTI1MjBiIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjMzg0OTFiZDAzZTYwOTYwYTJjZmU5NjA2NGIxMzE1YzFiYjIyNWE1NzMzYTUwYThjZmQzMTFkMWU2NTM4YWNlIn0"
         }
       ]
     },
@@ -611,6 +611,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T20:52:34.571Z"
+    "at": "2026-11-06T22:26:46.446Z"
   }
 }

@@ -104,7 +104,7 @@ sources:
 generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-06T20:52:34.571Z
+    at: 2026-11-06T22:26:46.446Z
 ---
 
 # Installation configuration
