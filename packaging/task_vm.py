@@ -127,6 +127,17 @@ class _AdmittedTask:
     request: Request
 
 
+@dataclass(frozen=True, slots=True)
+class _OwnedStore:
+    path: Path
+
+
+@dataclass(frozen=True, slots=True)
+class _PreparedTask:
+    admitted: _AdmittedTask
+    store: _OwnedStore
+
+
 def admit(request: Request, host: HostFacts, bundle: BundleManifest) -> _AdmittedTask | Rejected:
     if (host.system, host.machine) != ("Darwin", "arm64"):
         return Rejected(Stage.ADMISSION, Failure.UNSUPPORTED_HOST)
@@ -208,7 +219,7 @@ def call(
     return Completed(0)
 
 
-def prepare_store(store: Path) -> Completed | Rejected:
+def prepare_store(store: Path) -> _OwnedStore | Rejected:
     if not store.is_absolute() or store.resolve() != store or len(os.fsencode(store)) > 65:
         return Rejected(Stage.ADMISSION, Failure.INVALID_INPUT)
     marker = store / ".kast-task-vm-store"
@@ -229,7 +240,26 @@ def prepare_store(store: Path) -> Completed | Rejected:
         or marker.read_text() != "kast-task-vm-store-v1\n"
     ):
         return Rejected(Stage.ADMISSION, Failure.INVALID_INPUT)
-    return Completed(0)
+    return _OwnedStore(store)
+
+
+def prepare_task(admitted: _AdmittedTask) -> _PreparedTask | Rejected:
+    request = admitted.request
+    if (
+        not request.output.is_absolute()
+        or request.output.resolve() != request.output
+        or request.output.exists()
+        or request.output.is_relative_to(request.repository)
+        or request.store.is_relative_to(request.repository)
+        or request.output.is_relative_to(request.store)
+        or request.store.is_relative_to(request.output)
+    ):
+        return Rejected(Stage.ADMISSION, Failure.INVALID_INPUT)
+    store = prepare_store(request.store)
+    if isinstance(store, Rejected):
+        return store
+    request.output.mkdir(mode=0o700)
+    return _PreparedTask(admitted, store)
 
 
 def bundle_manifest(archive: Path, digest: str) -> BundleManifest | Rejected:
@@ -308,12 +338,12 @@ BOOTSTRAP = (
 )
 
 
-def run(admitted: _AdmittedTask) -> Receipt:
-    request = admitted.request
+def run(prepared: _PreparedTask) -> Receipt:
+    request = prepared.admitted.request
     name = "kt-" + uuid.uuid4().hex[:12]
     home = request.output / "host-home"
     home.mkdir(mode=0o700)
-    env = environment(home, request.store)
+    env = environment(home, prepared.store.path)
     executable = str(request.tart)
     events: list[Event] = []
     cleanup: list[Event] = []
@@ -530,7 +560,7 @@ def run(admitted: _AdmittedTask) -> Receipt:
         request.revision,
         snapshot_digest,
         name,
-        str(request.store),
+        str(prepared.store.path),
         tart_digest,
         coordinator_digest,
         guest_digest,
@@ -621,25 +651,14 @@ def main() -> int:
                 admitted = admit(request, facts, manifest)
                 if isinstance(admitted, Rejected):
                     result = admitted
-                elif (
-                    not request.output.is_absolute()
-                    or request.output.resolve() != request.output
-                    or request.output.exists()
-                    or request.output.is_relative_to(request.repository)
-                    or request.store.is_relative_to(request.repository)
-                    or request.output.is_relative_to(request.store)
-                    or request.store.is_relative_to(request.output)
-                ):
-                    result = Rejected(Stage.ADMISSION, Failure.INVALID_INPUT)
                 else:
-                    store = prepare_store(request.store)
-                    if isinstance(store, Rejected):
-                        result = store
+                    prepared = prepare_task(admitted)
+                    if isinstance(prepared, Rejected):
+                        result = prepared
                     else:
-                        request.output.mkdir(mode=0o700)
                         previous = signal.signal(signal.SIGTERM, cancel)
                         try:
-                            result = run(admitted)
+                            result = run(prepared)
                         finally:
                             _ = signal.signal(signal.SIGTERM, previous)
     except (OSError, ValueError, tarfile.TarError, subprocess.CalledProcessError):

@@ -8,6 +8,8 @@ import os
 import subprocess
 import sys
 import tarfile
+import tempfile
+from collections.abc import Iterator
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import BinaryIO
@@ -29,6 +31,7 @@ from task_vm import (
     environment,
     launch_arguments,
     prepare_store,
+    prepare_task,
     run,
 )
 from task_vm_guest import task_environment
@@ -36,6 +39,12 @@ from test_composition_bundle import manifest_bytes
 
 HOST = HostFacts("Darwin", "arm64", 60 * 1024**3, 8)
 IMAGE = "ghcr.io/example/macos-base@sha256:" + "a" * 64
+
+
+@pytest.fixture
+def vm_store() -> Iterator[Path]:
+    with tempfile.TemporaryDirectory(prefix="kv-", dir="/tmp") as name:
+        yield Path(name).resolve() / "store"
 
 
 def mac_manifest() -> BundleManifest:
@@ -223,7 +232,7 @@ else:
     return program
 
 
-def task_case(tmp_path: Path, failures: dict[str, int]) -> Request:
+def task_case(tmp_path: Path, failures: dict[str, int], vm_store: Path) -> Request:
     original = request(tmp_path)
     original.repository.mkdir()
     _ = (original.repository / "input.txt").write_text("committed bytes\n")
@@ -253,9 +262,9 @@ def task_case(tmp_path: Path, failures: dict[str, int]) -> Request:
     ).strip()
     _ = (original.repository / "ignored-secret").write_text("untracked sentinel")
     _ = original.bundle.write_bytes(b"fixture bundle transport bytes")
-    original.output.mkdir()
     return replace(
         original,
+        store=vm_store,
         revision=revision,
         tart=scripted_tart(tmp_path, failures),
         bundle_sha256=sha256(original.bundle),
@@ -268,13 +277,16 @@ def task_case(tmp_path: Path, failures: dict[str, int]) -> Request:
 )
 def test_real_children_keep_order_copy_inputs_and_retire_only_the_owned_vm(
     tmp_path: Path,
+    vm_store: Path,
     failed_stage: str,
     code: int,
 ) -> None:
-    original = task_case(tmp_path, {failed_stage: code} if failed_stage else {})
+    original = task_case(tmp_path, {failed_stage: code} if failed_stage else {}, vm_store)
     admitted = admit(original, HOST, mac_manifest())
     assert not isinstance(admitted, Rejected)
-    result = run(admitted)
+    prepared = prepare_task(admitted)
+    assert not isinstance(prepared, Rejected)
+    result = run(prepared)
     if failed_stage:
         assert isinstance(result.result, Rejected)
         assert result.result.exitCode == code
@@ -327,11 +339,11 @@ def test_real_children_keep_order_copy_inputs_and_retire_only_the_owned_vm(
 
 @pytest.mark.parametrize("reason", [Failure.TIMED_OUT, Failure.CANCELLED])
 def test_timeout_or_cancellation_stops_vm_before_further_task_effects(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reason: Failure
+    tmp_path: Path, vm_store: Path, monkeypatch: pytest.MonkeyPatch, reason: Failure
 ) -> None:
     import task_vm
 
-    original = task_case(tmp_path, {})
+    original = task_case(tmp_path, {}, vm_store)
     admitted = admit(original, HOST, mac_manifest())
     assert not isinstance(admitted, Rejected)
     real_call = task_vm.call
@@ -353,7 +365,9 @@ def test_timeout_or_cancellation_stops_vm_before_further_task_effects(
         return real_call(command, env, stage, output, timeout=timeout, source=source, errors=errors)
 
     monkeypatch.setattr(task_vm, "call", interrupted_call)
-    result = run(admitted)
+    prepared = prepare_task(admitted)
+    assert not isinstance(prepared, Rejected)
+    result = run(prepared)
     assert result.result == Rejected(
         Stage.TASK, reason, 124 if reason == Failure.TIMED_OUT else 130
     )
@@ -364,11 +378,14 @@ def test_timeout_or_cancellation_stops_vm_before_further_task_effects(
 
 def test_cleanup_failure_preserves_the_successful_task_and_its_failed_retirement(
     tmp_path: Path,
+    vm_store: Path,
 ) -> None:
-    original = task_case(tmp_path, {"delete": 31})
+    original = task_case(tmp_path, {"delete": 31}, vm_store)
     admitted = admit(original, HOST, mac_manifest())
     assert not isinstance(admitted, Rejected)
-    result = run(admitted)
+    prepared = prepare_task(admitted)
+    assert not isinstance(prepared, Rejected)
+    result = run(prepared)
     assert result.result == Completed(0)
     assert result.cleanup[-1].result == Rejected(Stage.DELETE, Failure.EFFECT_FAILED, 31)
 
@@ -395,15 +412,17 @@ def test_guest_task_uses_real_child_literal_arguments_and_private_environment(
     assert not (tmp_path / "repository/forbidden").exists()
 
 
-def test_stop_log_failure_cannot_skip_retirement(tmp_path: Path) -> None:
+def test_stop_log_failure_cannot_skip_retirement(tmp_path: Path, vm_store: Path) -> None:
     import signal
 
-    original = task_case(tmp_path, {})
-    (original.output / "stop.log").mkdir()
+    original = task_case(tmp_path, {}, vm_store)
     admitted = admit(original, HOST, mac_manifest())
     assert not isinstance(admitted, Rejected)
+    prepared = prepare_task(admitted)
+    assert not isinstance(prepared, Rejected)
+    (original.output / "stop.log").mkdir()
     try:
-        result = run(admitted)
+        result = run(prepared)
         assert result.result == Completed(0)
         assert result.cleanup[0].result == Rejected(Stage.STOP, Failure.EFFECT_FAILED)
         assert result.cleanup[-1].stage == Stage.DELETE
@@ -415,3 +434,63 @@ def test_stop_log_failure_cannot_skip_retirement(tmp_path: Path) -> None:
                 os.kill(int(marker.read_text()), signal.SIGTERM)
             except ProcessLookupError:
                 pass
+
+
+def test_prepared_task_keeps_the_owned_store_fact(tmp_path: Path, vm_store: Path) -> None:
+    original = replace(request(tmp_path), store=vm_store)
+    admitted = admit(original, HOST, mac_manifest())
+    assert not isinstance(admitted, Rejected)
+    prepared = prepare_task(admitted)
+    assert not isinstance(prepared, Rejected)
+    assert prepared.admitted == admitted
+    assert prepared.store.path == vm_store
+    assert prepare_store(vm_store) == prepared.store
+    assert original.output.is_dir()
+
+
+def test_unowned_store_rejects_before_task_output(tmp_path: Path, vm_store: Path) -> None:
+    vm_store.mkdir(mode=0o700)
+    original = replace(request(tmp_path), store=vm_store)
+    admitted = admit(original, HOST, mac_manifest())
+    assert not isinstance(admitted, Rejected)
+    assert prepare_task(admitted) == Rejected(Stage.ADMISSION, Failure.INVALID_INPUT)
+    assert not original.output.exists()
+    assert not (vm_store / ".kast-task-vm-store").exists()
+
+
+def test_submodule_snapshot_rejects_before_vm_effects(tmp_path: Path, vm_store: Path) -> None:
+    original = task_case(tmp_path, {}, vm_store)
+    git = ("git", "-C", str(original.repository))
+    _ = subprocess.run(
+        (*git, "update-index", "--add", "--cacheinfo", "160000", original.revision, "child"),
+        check=True,
+    )
+    _ = subprocess.run(
+        (
+            *git,
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@localhost",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "commit",
+            "-qm",
+            "fixture submodule",
+        ),
+        check=True,
+    )
+    revision = subprocess.check_output((*git, "rev-parse", "HEAD"), text=True).strip()
+    original = replace(original, revision=revision)
+    admitted = admit(original, HOST, mac_manifest())
+    assert not isinstance(admitted, Rejected)
+    prepared = prepare_task(admitted)
+    assert not isinstance(prepared, Rejected)
+    result = run(prepared)
+    assert result.result == Rejected(Stage.SNAPSHOT, Failure.UNSUPPORTED_SOURCE)
+    assert result.snapshotSha256 is None
+    assert not (original.output / "source.tar").exists()
+    assert not (tmp_path / "calls.jsonl").exists()
+    assert result.cleanup == ()

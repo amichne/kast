@@ -114,6 +114,8 @@ The dedicated VM store keeps cached image bytes for later tasks.
 Each task clones its selected immutable image and receives its own writable VM state.
 Automatic cache pruning stays off.
 The runner rejects an existing store without its ownership marker or private permissions.
+`_PreparedTask` carries the admitted VM store into execution.
+Strict Pyright rejects a caller that skips that transition.
 Parallel tasks share that image cache, with separate VM names, output directories, profiles, and task files.
 These controls do not measure host-wide capacity or prove native parallel execution.
 
