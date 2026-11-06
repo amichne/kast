@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8ba47dbc1793d38125fcd3a629114f82f53ecd38568eae328a4756c3ef17438a",
+  "pageVersion": "sha256:2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -188,23 +188,23 @@
     },
     {
       "id": "claim_55b85b562afc4dd980e162077f0e5167",
-      "statement": "Pi and Copilot consume KAST_TOOL_RPC_COMMAND as a private executable selector and remove it from child environments while preserving other settings; strict product configuration still rejects unknown keys.",
+      "statement": "Pi and Copilot remove KAST_TOOL_RPC_COMMAND and KAST_EVALUATION_DEADLINE_MS from child environments while ordinary settings keep their values. Strict configuration rejects unknown product keys.",
       "evidence": [
         {
-          "resource": "repo://cli/src/test/js/harness-adapters.test.mjs",
-          "version": "repo-file-v1:sha256:221a520d0ba1ade38d127350cf42664b89713e6b2fce8b142e6e7cdf6995c1a7"
+          "resource": "repo://cli/src/test/js/harness-adapters.test.mjs#L200-L218",
+          "version": "repo-lines-v1:sha256:964b0e42c3ba85ebe9c441e0d71d76534497799ea13605f19e67db9e6b816dc9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlYmQyOTZlYmI1M2U0Mzc4Yjk0MjlmYTNlNDQ2N2U5ZWRmYTM3MGQ1MjVhOTdjYmI2MDRkMDYxOTM3Y2RkZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhM2U0NmY5NDI3NmI2ZjZmNGVkMWYwMmFmNzhiZWY2YTJlZTFjNDM5ZGQ1NTg0Yjk3Mzk0ODMxMzIxNGQyYjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5MDM1ZDU2OThhZDIzYTcxMzlkODIzZjUyOGM3ZjBmZGRiNmFkMjYxMjk0NTRmMjgwYWJiNGMzZmZkODM1NzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5NzM0ODljZDI1YzU0MmNlYTg3ZGZhNWE2NjYxMmFkOTFlZDY3ZWNmMzRjYWUwNTJiNTliMjAyODc3NDJjYzAifQ"
         },
         {
-          "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:14a437bda450c93145c9f62622e60483dbd00e5280c9193472ce89a7786ad499"
+          "resource": "repo://copilot/extension.mjs#L645-L656",
+          "version": "repo-lines-v1:sha256:3ea5d8268b4a594d988e11d32ee74db41d26ae7dd970d50d806a5d11a660f2f6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1ZWViNjRlOTYwNjAwZmFlODMzYmRjNGYwOGY2YTIyM2ZkMmVmNmIyZjQ0OWNhOGUyMmY5MGQzODI1YjBlMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViOTUxOWRmMjlhNDE5MzA5MzQxYzNiNTVmODg5ZDM0YmM3N2RhMDRlZTg1YzJlOGY3OGIwMjdjN2I3MTFjYjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NTY1NTcwZjMzNTUwNGFhZTY1MWU4NTM2MWFkNTQ3ZjJkMzMwZDIwYzNhZjU1YTg5ZDNhOGIyNWJhMTE2NDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZhZTRjNGJlNGI2ZTI5MjQxZWIxNzljMDM1YWZmNjA0MDUzMjZmMTg4ZWZiZTJjMjhhMDE5OTM4ODk2YzU2ZjQifQ"
         },
         {
-          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
-          "version": "repo-file-v1:sha256:ed651cce66f619249e45957086464e0d6fb742ba9fec5f0e11e1aa08ad5c772e"
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt#L239-L255",
+          "version": "repo-lines-v1:sha256:940532cfeb96cd9e6a63ce40c9bf270bf1e9e6b00bb2c9985a548028944fb795:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkZmYzM2MxMGNjNzdjMzhiMTU5YTI2YTc3NDJhZjhhNzE4YTQ2YTA3M2M5MDU0MDkwOGI4MzI2OWFhZmI5NzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyYWZiOTEzNmI3Mjc0NzIzOWViMDFhZTFmZmJhMmU5MDczZmU2ZWEwYTNkNmY5Y2UwMWYwODYyMmY3ZmIxYmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRkZmJhMzg4OTJmMjNjZGZkNTM0ZTdlN2Q1NTI5YzllM2FjNWJmZDk0NTZjMTQ1YWE1YjE5Mzc2ZTNlMGRjNGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4YjIyODc0OWQ4YjEwMjM3NDYyYTdlNGE4OWM1YWQwNGJjODliYzczNTc5YTdkNmUzYTUzMWVlZDQ5YTY2NzcifQ"
         },
         {
-          "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:b93c3360385c1f111ead7ecc5200e50addecffccf05ff7b10735de9e1d072e02"
+          "resource": "repo://pi/extension.ts#L655-L665",
+          "version": "repo-lines-v1:sha256:068de9ba029c5bb5fe56f4deaf762e3e0fd509a58b3124fe664a55157c15bca7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1ZWViNjRlOTYwNjAwZmFlODMzYmRjNGYwOGY2YTIyM2ZkMmVmNmIyZjQ0OWNhOGUyMmY5MGQzODI1YjBlMzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjY2Q3YWY5Y2QxMTI0OWZjOGMwY2ZkNWE5MTFmY2ZmNDI2NDM5Y2IzNWRmM2NkMTk0MjNjYWIzNmQyNzhiMzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NTY1NTcwZjMzNTUwNGFhZTY1MWU4NTM2MWFkNTQ3ZjJkMzMwZDIwYzNhZjU1YTg5ZDNhOGIyNWJhMTE2NDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZhZTRjNGJlNGI2ZTI5MjQxZWIxNzljMDM1YWZmNjA0MDUzMjZmMTg4ZWZiZTJjMjhhMDE5OTM4ODk2YzU2ZjQifQ"
         }
       ]
     },
@@ -461,6 +461,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T23:27:44.986Z"
+    "at": "2026-11-06T05:26:56.646Z"
   }
 }

@@ -19,9 +19,13 @@ internal class InstalledWorkspacePreparation(
     owner: ThreadBindingOwner.Installation,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    private val lifecycle = installedWorkspaceLifecycleClient(options.userHome, options.configuration.selectedIdeHome)
-    private val native =
-        ExistingIdeSocketClient(options.userHome, options.configuration.readLimits, debug = options.configuration.debug)
+    private val lifecycle =
+        installedWorkspaceLifecycleClient(
+            options.userHome,
+            options.configuration.selectedIdeHome,
+            options.configuration.managedHeadlessState,
+        )
+    private val native = ExistingIdeSocketClient(options.userHome, options.configuration)
     private val registryPath = options.installationRoot.resolve("config/workspaces.json")
     private val registry = WorkspaceEnrollmentStore(registryPath)
 

@@ -20,7 +20,11 @@ import tools.jackson.core.StreamReadFeature
 import tools.jackson.databind.DeserializationFeature
 import tools.jackson.databind.json.JsonMapper
 
-class ExistingIdeDescriptor(val owner: HostedEndpointOwnerPid, val host: java.util.UUID) {
+class ExistingIdeDescriptor(
+    val owner: HostedEndpointOwnerPid,
+    val host: java.util.UUID,
+    val application: io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement? = null,
+) {
     val hostPid: Long
         get() = owner.value
 }

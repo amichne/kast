@@ -192,11 +192,14 @@ internal sealed interface InstalledBrokerServerConfiguration {
                     ideClient =
                         io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient(
                             canonicalUserHome,
-                            configuration.readLimits,
-                            debug = configuration.debug,
+                            configuration,
                         ),
                     lifecycleClient =
-                        installedWorkspaceLifecycleClient(canonicalUserHome, configuration.selectedIdeHome),
+                        installedWorkspaceLifecycleClient(
+                            canonicalUserHome,
+                            configuration.selectedIdeHome,
+                            configuration.managedHeadlessState,
+                        ),
                 )
             val protocolOptions =
                 when (

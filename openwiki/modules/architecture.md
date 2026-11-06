@@ -59,14 +59,18 @@ sources:
     resource: repo://distribution/cli/build.gradle.kts
   - id: openwiki-source-7fa48d17b46dccf82f4b3238
     resource: repo://runtime/hosted/build.gradle.kts
+  - id: openwiki-source-d6999ec49aac231ecbc30c0b
+    resource: repo://runtime/hosted/src/headless/resources/META-INF/plugin.xml
+  - id: openwiki-source-ac716e2943cfb6f63701ba77
+    resource: repo://runtime/hosted/src/main/resources/META-INF/plugin.xml
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T10:28:11.464Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Verified module architecture
@@ -101,6 +105,11 @@ without introducing an isolated workspace opener or importing implementation
 dependencies from semantic service modules.
 
 `runtime:hosted` is the sole active semantic host. Its declared dependencies include the semantic contracts, services, read adapters and controlled change adapters used by the plugin. The former composition, server, telemetry, indexer and workspace importer/coordinator remain explicit retired policy entries with no dependencies or effects. No active module can acquire a retired owner through its production dependency graph.
+
+The headless bootstrap contains a bundled plugin descriptor.
+Its classes stay in `runtime:hosted`.
+The private production distribution loads that same hosted plugin.
+No retired module returns as a runtime dependency.
 
 Explicit application lifecycle opening and the project refresh adapter have narrowly scoped native effect owners. The hosted runtime uses `topology:contract`, `topology:build`, and `topology:intellij` for live semantic dependencies and callback fact reuse. The graph service and historical SQLite adapter remain separate from hosted composition. Topology build, bounded source-root synchronization and snapshot publication keep their exclusive owners in these modules.
 

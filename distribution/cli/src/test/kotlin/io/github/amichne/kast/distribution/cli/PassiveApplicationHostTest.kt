@@ -15,6 +15,31 @@ class PassiveApplicationHostTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `passive status keeps managed ownership and rejects an unknown mode`() {
+        val fixture = fixture()
+        val original = managementJson.decodeFromString<Advertisement>(Files.readString(fixture.descriptor))
+        val identity =
+            fixture.loaded.runtimeIdentity.copy(
+                mode = ApplicationHostMode.MANAGED_HEADLESS,
+                autoReload = ApplicationAutoReload.DISABLED,
+            )
+        val loaded = fixture.loaded.copy(runtimeIdentity = identity)
+        val encoded = managementJson.encodeToString(original.copy(application = loaded))
+        Files.writeString(fixture.descriptor, encoded)
+        val actual = readApplicationHost(fixture.root, fixture.home) { fixture.process }
+        assertEquals(Observation.verified(loaded), actual)
+        assertEquals(ApplicationHostMode.MANAGED_HEADLESS, actual.value?.runtimeIdentity?.mode)
+        Files.writeString(fixture.descriptor, encoded.replace("MANAGED_HEADLESS", "UNPROVEN"))
+        assertEquals(
+            ObservationState.UNAVAILABLE,
+            readApplicationHost(fixture.root, fixture.home) {
+                    error("unknown ownership precedes process inspection")
+                }
+                .state,
+        )
+    }
+
+    @Test
     fun `passive application identity works without a project or coordinator`() {
         val fixture = fixture()
         val before = Files.readAllBytes(fixture.descriptor)

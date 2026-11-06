@@ -28,6 +28,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceExecutionPolicy.kt
   - id: openwiki-source-63714f19f4c87d1962b654ac
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
+  - id: openwiki-source-83d816c0e2c999ea4834606d
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationExchangeTest.kt
   - id: openwiki-source-d49b78c58a23da108be9efe5
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt
   - id: openwiki-source-681368e4942d2fb35f298a68
@@ -38,6 +40,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - id: openwiki-source-9713af85ff6a629a6ce68bf3
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt
+  - id: openwiki-source-1cf3346cf0788f96ecae79a6
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleProjectInspection.kt
+  - id: openwiki-source-c1e3a062130aa4d1b7b87b04
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleReadiness.kt
   - id: openwiki-source-594b73dd64e36b813f7ed5b2
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleState.kt
   - id: openwiki-source-91a4a9e4b4052c946d881372
@@ -46,10 +52,12 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshImportCompletion.kt
   - id: openwiki-source-c3d765f6a0f5ed9757d16a3a
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshService.kt
-generated: { by: "codex", at: "2026-11-04T23:47:48.767Z" }
+  - id: openwiki-source-f8ef45edcf8c31a32e77dc9b
+    resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleProjectReadinessObservationTest.kt
+generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-04T23:47:48.767Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # IDEA lifecycle and explicit refresh
@@ -140,6 +148,15 @@ Changed identity or a real lifecycle failure ends that wait.
 Lifecycle frames keep separate 5-second transport limits.
 EXCHANGE_DEADLINE_EXCEEDED reports command, stage, cause, and timing without proving that IDEA exited.
 Semantic execution has separate limits after preparation.
+
+After native `Pending` admission, a status observation can lose its read-only `INSPECT` or `STATUS` frame deadline.
+The same preparation owner then repeats status for the same Host and request within its original allowance.
+It records the original exchange failure without another open effect or a readiness claim.
+An initial Open timeout cannot enter this path.
+Malformed responses, changed identity, import failure, shutdown, cancellation, and the owner deadline still end the wait.
+
+During an active native `MODEL_RELOAD`, lifecycle inspection reports pending through the existing refresh snapshot.
+It defers native project readiness access until that refresh settles.
 
 A settled import can still need MODEL_RELOAD_REQUIRED recovery.
 Preparation can reload once within its allowance.

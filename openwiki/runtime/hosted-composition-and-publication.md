@@ -26,16 +26,18 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt
   - id: openwiki-source-94796d308902e0d5ca80c5fc
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
+  - id: openwiki-source-57ba3a687a2a322141093d5f
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-ac716e2943cfb6f63701ba77
     resource: repo://runtime/hosted/src/main/resources/META-INF/plugin.xml
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
   - id: openwiki-source-95e44f119ab39a83df93b28f
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadPublicationAdmission.kt
-generated: { by: "codex", at: "2026-10-30T23:25:02.193Z" }
+generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-04T23:27:44.986Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Hosted endpoint composition and publication
@@ -46,6 +48,10 @@ verified:
 The service composes passive semantic reads and explicitly requested workspace lifecycle operations.
 Its endpoint identity, project admission, refresh owner, and retirement state belong to that project lifetime.
 Another process cannot manufacture a current endpoint by copying a descriptor.
+
+A managed headless endpoint also publishes the application's captured runtime identity and hosted compatibility.
+Desktop endpoints keep the existing descriptor shape without that advertisement.
+Application identity does not replace project ownership, fresh read admission, or final publication proof.
 
 The endpoint admits request framing and connection ownership before semantic dispatch.
 `HostedConnectionAdmission` bounds concurrent connection jobs.

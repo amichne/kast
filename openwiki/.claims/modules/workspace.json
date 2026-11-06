@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0477ddc9f3d71d7ba8d5ccfedb12b1f642070a783c53d16c98d6fd813b28aeb6",
+  "pageVersion": "sha256:7c9b387d749e0539ebdf0ef1a3790280ad95e3ab0f4b2f4508cc3d0d996cea68",
   "claims": [
     {
       "id": "claim_55dc24a64b404afb9e68deda45662bd9",
@@ -21,10 +21,24 @@
           "version": "repo-lines-v1:sha256:cec7f195425070efc5b386d203db46109265de2bb6b7303d75168ed86816da8f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjljMjY0M2QzYTRmMTMxYjQ0MGM3Y2IwOTkxMWNhMmVhY2IxOTZmMjY1NDViYzkzYzEzMzU1ZDQ0MzZiZmRkY2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0N2YxYjk4NjQ2NDA5YTg5N2E3OGU1Y2EzYzcwYTU2Njk0MTMzNThjMmFkNTdjZjM4YTk5YjAzNTJkOTlmNTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3OTRkMDJhODEyMTk0NGQxNzZkMjY1ZTliYjljYzU5ZjZhYjg5MGJjYWRmOGFlZmRlYmRiYmI0ZjJlYTg0NDQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_b6b51d8c9f464eeb997d235146a096cc",
+      "statement": "The existing native project opener admits private project storage and omits a frame for managed headless mode. Desktop mode keeps normal new-frame opening.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L232-L246",
+          "version": "repo-lines-v1:sha256:ec2890a73471ab51cfebbd8d2ad0fccf33e01c4fd3d99802cfb2734de63d7da5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1NGJmOTU1ODk0NmZhNzI4NjE4OGY5YzE0ZTRjZjMyNjEwODI1MDJlNjFkMDRhNTI3ZDZiNTIwNDZhMTExNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiZjJkNzc3ODg4NTcxZjQ1NzM0ZTFlNTk5N2UyODEzNGM0OGNiN2FhNGY5YTg4MTk5NmQ1YjhiYTA5ZDBmYzcifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleProjectOpen.kt",
+          "version": "repo-file-v1:sha256:3453188995e3d9b900d1ea2603773f8a2b380f35b74a0aa9f0c7544a139290ea"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T06:09:31.584Z"
+    "at": "2026-11-06T05:26:56.646Z"
   }
 }

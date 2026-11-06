@@ -1,0 +1,13 @@
+<idea-plugin>
+  <id>io.github.amichne.kast.managed-headless</id>
+  <name>Kast Managed Headless Startup</name>
+  <version>${pluginVersion}</version>
+  <vendor>amichne</vendor>
+  <description>Starts the existing Kast Host with private native project storage.</description>
+  <idea-version since-build="${ideReleaseLine}" until-build="${ideReleaseLine}.*"/>
+  <depends>io.github.amichne.kast.ide-hosted</depends>
+  <extensions defaultExtensionNs="com.intellij">
+    <appStarter id="kast-headless" implementation="io.github.amichne.kast.runtime.hosted.lifecycle.KastHeadlessStarter"/>
+    <projectStorePathCustomizer implementation="io.github.amichne.kast.runtime.hosted.lifecycle.ManagedHeadlessProjectStore"/>
+  </extensions>
+</idea-plugin>

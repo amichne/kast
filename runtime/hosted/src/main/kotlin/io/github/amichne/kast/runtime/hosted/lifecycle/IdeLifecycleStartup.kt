@@ -8,7 +8,8 @@ import com.intellij.openapi.application.ApplicationManager
 
 class IdeLifecycleStartup : AppLifecycleListener, DynamicPluginListener {
     override fun appStarted() {
-        ApplicationManager.getApplication().getService(IdeLifecycleApplication::class.java)
+        val application = ApplicationManager.getApplication()
+        if (!application.isHeadlessEnvironment) application.getService(IdeLifecycleApplication::class.java)
     }
 
     override fun pluginLoaded(pluginDescriptor: IdeaPluginDescriptor) {

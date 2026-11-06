@@ -34,7 +34,7 @@ sources:
 generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T06:09:31.584Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Durable change evidence and retained topology

@@ -27,6 +27,8 @@ internal constructor(
     private val exchangeMillis: Long,
     private val debug: io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch =
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch.DISABLED,
+    private val deployment: Refinement<SelectedLifecycleDeployment, ExistingIdeFailure> =
+        Refinement.Refined(SelectedLifecycleDeployment.Desktop),
     private val policyLoader: () -> Refinement<HostedCompatibilityRequirements, ExistingIdeFailure>,
 ) : ExistingIdeClient {
     constructor(
@@ -35,7 +37,19 @@ internal constructor(
         exchangeMillis: Long = limits[ReadLimitParameter.CLIENT_EXCHANGE_MILLIS].value.toLong(),
         debug: io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch =
             io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch.DISABLED,
-    ) : this(home, limits, exchangeMillis, debug, ::requiredHostedCompatibilityPolicy)
+    ) : this(home, limits, exchangeMillis, debug, policyLoader = ::requiredHostedCompatibilityPolicy)
+
+    constructor(
+        home: Path,
+        configuration: io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration,
+    ) : this(
+        home,
+        configuration.readLimits,
+        configuration.readLimits[ReadLimitParameter.CLIENT_EXCHANGE_MILLIS].value.toLong(),
+        configuration.debug,
+        configuredSemanticDeployment(home, configuration),
+        ::requiredHostedCompatibilityPolicy,
+    )
 
     private val observations = java.util.concurrent.ConcurrentHashMap<CanonicalRoot, HostedServiceObservation>()
     private val policyLock = Any()
@@ -80,7 +94,15 @@ internal constructor(
         when (val admitted = admitObservedHostedRoot(root.path)) {
             is Refinement.Rejected -> HostedServiceObservation.Unavailable(root, admitted.failure)
             is Refinement.Refined -> {
-                val client = ExistingIdeSocketClient(home, limits, exchangeMillis, debug = debug)
+                val client =
+                    ExistingIdeSocketClient(
+                        home,
+                        limits,
+                        exchangeMillis,
+                        debug,
+                        deployment,
+                        ::requiredHostedCompatibilityPolicy,
+                    )
                 client.query(admitted.value, ExistingIdeOperation.Status)
                 client.latestObservation(admitted.value)
             }
@@ -92,7 +114,17 @@ internal constructor(
     internal fun queryPrepared(workspace: PreparedWorkspace, operation: ExistingIdeOperation): ExistingIdeExchange =
         query(ExistingIdeTarget.Prepared(workspace), operation)
 
-    private fun query(target: ExistingIdeTarget, operation: ExistingIdeOperation): ExistingIdeExchange {
+    private fun query(target: ExistingIdeTarget, operation: ExistingIdeOperation): ExistingIdeExchange =
+        when (val selected = deployment) {
+            is Refinement.Rejected -> ExistingIdeExchange.Rejected(selected.failure)
+            is Refinement.Refined -> querySelected(target, operation, selected.value)
+        }
+
+    private fun querySelected(
+        target: ExistingIdeTarget,
+        operation: ExistingIdeOperation,
+        selected: SelectedLifecycleDeployment,
+    ): ExistingIdeExchange {
         val answer =
             try {
                 val root = target.root
@@ -101,7 +133,12 @@ internal constructor(
                         .digest(root.path.toString().toByteArray(Charsets.UTF_8))
                         .take(16)
                         .joinToString("") { "%02x".format(it) }
-                val directory = home.resolve(".kast/ide-hosted/$digest")
+                val endpointHome =
+                    when (selected) {
+                        SelectedLifecycleDeployment.Desktop -> home
+                        is SelectedLifecycleDeployment.Headless -> selected.installation.userHome
+                    }
+                val directory = endpointHome.resolve(".kast/ide-hosted/$digest")
                 val socket = directory.resolve("host.sock")
                 when (
                     val descriptor =
@@ -109,7 +146,11 @@ internal constructor(
                             descriptor(directory, root, socket)
                         }
                 ) {
-                    is Refinement.Refined -> exchange(target, operation, descriptor.value, socket)
+                    is Refinement.Refined ->
+                        when (val admitted = admitSemanticDeployment(selected, descriptor.value)) {
+                            is Refinement.Rejected -> ExistingIdeExchange.Rejected(admitted.failure)
+                            is Refinement.Refined -> exchange(target, operation, admitted.value, socket)
+                        }
                     is Refinement.Rejected -> ExistingIdeExchange.Rejected(descriptor.failure)
                 }
             } catch (_: java.io.IOException) {

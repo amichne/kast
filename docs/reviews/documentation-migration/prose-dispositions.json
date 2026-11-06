@@ -3144,6 +3144,1170 @@
         "severity": "warning"
       },
       "reason": "Keep exact embedded-engine limits, checked numeric conversions, literal admission, integer overflow examples, one-result cardinality, retained-result recovery, JSON default and explicit TOON selection. Engine, numeric-value and cancellation sections divide the tasks; separate outcome paragraphs resolve the paragraph advisory. The grade-8 advisory remains unmet; exact source review and metrics do not establish reader comprehension."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/modules/architecture.mdx",
+        "sourceSha256": "376f09bd068854a0acb618066cf2a92a43765258831400ed9142a2539132ca8d",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.52 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep verified module responsibilities and exact Gradle architecture guards. Preserve exact identifiers `generateKastModuleKnowledge`, `AGENTS.md`, `query:protocol`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/modules/architecture.mdx",
+        "sourceSha256": "376f09bd068854a0acb618066cf2a92a43765258831400ed9142a2539132ca8d",
+        "rule": "Slopsentral.LongSentence",
+        "line": 65,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the task dependency inventory and its two distinct production/test line limits. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/runtime/hosted-composition-and-publication.mdx",
+        "sourceSha256": "14014df5e75fbc3be2883a006f1de8b91b4a3eb12816a839c503889530778888",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.72 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep project endpoint ownership, request drainage, final freshness, and atomic publication distinct. Native review confirmed the current HostedEndpointService composition and removed the source-drift warning. Exact service identifiers preserve the ownership boundary. The grade target remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/runtime/idea-lifecycle-and-refresh.mdx",
+        "sourceSha256": "84748a3171e56df75ccfb19d1509e6afb5c7407566702e057a21eff377983891",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.71 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the configured bounded or indefinite allowance, shared-waiter continuation checks, separate frame deadlines, and project disposal outcomes explicit. The native review corrected the former fixed 17-minute claim and the reader audit now checks separate focused paragraphs. Exact lifecycle identifiers preserve those distinctions. The grade target remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/architecture/functional-packages.md",
+        "sourceSha256": "27c814f3c4c1ab411158a88b0b35fdb7706724b69a5c786d5eab324def61c6d4",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 19.71 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the exact package inventory and its current ownership map. Preserve exact identifiers `app-server`, `io.github.amichne.kast.appserver`, `io.github.amichne.kast.appserver.core`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/configuration.md",
+        "sourceSha256": "a9922f57a3126beb533f5bc01eeea8759c6e7d78d4b625ee6883baef3fe77853",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.69 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep explicit selector provenance, exact installer inputs, and read-grant precedence. Preserve exact identifiers `KAST_CONFIGURATION_FILE`, `installation/config/environment`, `KAST_APP_SERVER_PUBLIC_ENDPOINT`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/configuration.md",
+        "sourceSha256": "a9922f57a3126beb533f5bc01eeea8759c6e7d78d4b625ee6883baef3fe77853",
+        "rule": "Slopsentral.LongSentence",
+        "line": 111,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep inherited-selector provenance and the explicit override procedure together. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/configuration.md",
+        "sourceSha256": "a9922f57a3126beb533f5bc01eeea8759c6e7d78d4b625ee6883baef3fe77853",
+        "rule": "Slopsentral.LongSentence",
+        "line": 153,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the no-explicit-selector condition and the complete delegated-operation inventory. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/configuration.md",
+        "sourceSha256": "a9922f57a3126beb533f5bc01eeea8759c6e7d78d4b625ee6883baef3fe77853",
+        "rule": "Slopsentral.LongSentence",
+        "line": 211,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the no-explicit-selector condition and the complete delegated-operation inventory. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.77 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep closed public request variants, nullable/default semantics, and installed-catalog qualification. Preserve exact identifiers `terminalStep`, `EMIT`, `TRACE`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 290,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the checkpoint recovery direction beside the exclusion of silent refresh and automatic retry. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 292,
+        "message": "Long sentence: 51 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the exhaustive admitted-source list, optional issued row IDs, and independent optional run controls. This is a reference inventory, not a first-use prerequisite. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 292,
+        "message": "Long sentence: 44 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep RUN and READ_RESULT output inventories distinct and keep the retained-row-type constraint. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 334,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the complete INDEXED_WORD exemplar record and its 512-character and UTF-16 constraints. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 364,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the checkpoint recovery direction beside the exclusion of silent refresh and automatic retry. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 433,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the checkpoint recovery direction beside the exclusion of silent refresh and automatic retry. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 437,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep occurrence ownership alternatives distinct from traversal reachability. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 481,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact row identity, result identity, ordinal cursor, and maxResults:1 together for full-row expansion. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 524,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all detached dependency-contract proof fields, including binary digest and declared invocation kind. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/development/knowledge-upkeep.md",
+        "sourceSha256": "e1e4750c80150ff53144513aae6750f672fcfc0be6f402ca8c8dbf89bcdc6c37",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.00 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep source-impact assessment, native Claim review, and publication evidence with exact identifiers AGENTS.md, knowledgeImpact, and verifyKnowledgeBase. Comparison with merged main proves the complete page body is unchanged; only the native verification timestamp changed. This disposition binds the current bytes, retains the grade-12 advisory, and makes no reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+        "sourceSha256": "af4e0b6dfbdc38d6f7718ed1e42e27109e2e8ab4a3ce1bb886f1a9f551967501",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.82 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep upgrade recovery, daemon retirement, and guarded reset ownership. Preserve exact identifiers `InstalledDaemonUpgrade`, `ManagedUpgrade`, `--recover-only`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Rechecked the new post-STOP settlement paragraph: unavailable metadata is pending only after acknowledged STOP and within the existing deadline; changed identities and other native failures still reject."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.54 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep existing-IDE authority, native compiler phases, and distinct local versus installed evidence. Preserve exact identifiers `ExternalProjectDataCache`, `ExternalSourceSet.name`, `ExternalProject`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 323,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all three reclamation prerequisites as one conjunction before cleanup. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 336,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep CONNECTION_RELEASE after permit release and the harness's correlated notification prerequisite. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 389,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all three reclamation prerequisites as one conjunction before cleanup. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 406,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep active-import waiting separate from the three model-reload triggers. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 415,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all three reclamation prerequisites as one conjunction before cleanup. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 437,
+        "message": "Long sentence: 30 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep rejected query fan-out controls distinct from supported bounded traversal fan-out and continuation identity. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 454,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep child authority, single evaluation, final freshness, and completed receipt in one independently owned read. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 470,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep child authority, single evaluation, final freshness, and completed receipt in one independently owned read. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 497,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all three reclamation prerequisites as one conjunction before cleanup. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 534,
+        "message": "Long sentence: 30 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep rejected query fan-out controls distinct from supported bounded traversal fan-out and continuation identity. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 560,
+        "message": "Long sentence: 43 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the exact diagnostic phase inventory and distinguish phase entry from cumulative durations after drainage. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 652,
+        "message": "Long sentence: 30 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep rejected query fan-out controls distinct from supported bounded traversal fan-out and continuation identity. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 655,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep active-import waiting separate from the three model-reload triggers. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 695,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep active-import waiting separate from the three model-reload triggers. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 748,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep CONNECTION_RELEASE after permit release and the harness's correlated notification prerequisite. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 757,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep native refresh/readiness between the ordinary source edit and the fresh epoch assertion. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 765,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep child authority, single evaluation, final freshness, and completed receipt in one independently owned read. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 776,
+        "message": "Long sentence: 30 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep rejected query fan-out controls distinct from supported bounded traversal fan-out and continuation identity. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 807,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep active-import waiting separate from the three model-reload triggers. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 817,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep active-import waiting separate from the three model-reload triggers. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 866,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep child authority, single evaluation, final freshness, and completed receipt in one independently owned read. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+        "rule": "Slopsentral.LongSentence",
+        "line": 870,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep child authority, single evaluation, final freshness, and completed receipt in one independently owned read. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/request-dispatch.md",
+        "sourceSha256": "e8ea7cd32d6f4d86322edae3d85bee8a1e7507bd3d40ee5500fcf2a36cccc838",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.16 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep canonical request/output binding and exact host/root transport admission. Preserve exact identifiers `HostedSemanticServices`, `BUDGET_EXCEEDED`, `query:protocol`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/request-dispatch.md",
+        "sourceSha256": "e8ea7cd32d6f4d86322edae3d85bee8a1e7507bd3d40ee5500fcf2a36cccc838",
+        "rule": "Slopsentral.LongSentence",
+        "line": 151,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the no-semantic-send condition before the single fresh-incarnation retry. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/request-dispatch.md",
+        "sourceSha256": "e8ea7cd32d6f4d86322edae3d85bee8a1e7507bd3d40ee5500fcf2a36cccc838",
+        "rule": "Slopsentral.LongSentence",
+        "line": 157,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep timeout/freshness evidence and output/retention refusal evidence attached at their respective owners. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/request-dispatch.md",
+        "sourceSha256": "e8ea7cd32d6f4d86322edae3d85bee8a1e7507bd3d40ee5500fcf2a36cccc838",
+        "rule": "Slopsentral.LongSentence",
+        "line": 181,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep rollback's complete schema-pair condition distinct from unchanged pass-through and qualified revert. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/request-dispatch.md",
+        "sourceSha256": "e8ea7cd32d6f4d86322edae3d85bee8a1e7507bd3d40ee5500fcf2a36cccc838",
+        "rule": "Slopsentral.LongSentence",
+        "line": 195,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep timeout/freshness evidence and output/retention refusal evidence attached at their respective owners. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/request-dispatch.md",
+        "sourceSha256": "e8ea7cd32d6f4d86322edae3d85bee8a1e7507bd3d40ee5500fcf2a36cccc838",
+        "rule": "Slopsentral.LongSentence",
+        "line": 236,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep timeout/freshness evidence and output/retention refusal evidence attached at their respective owners. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/request-dispatch.md",
+        "sourceSha256": "e8ea7cd32d6f4d86322edae3d85bee8a1e7507bd3d40ee5500fcf2a36cccc838",
+        "rule": "Slopsentral.LongSentence",
+        "line": 245,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the no-semantic-send condition before the single fresh-incarnation retry. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/architecture.md",
+        "sourceSha256": "dc315d94fdf0f15b4aaf94ff6a10d34d6c4b9888d919f9ad77a4418fc6125806",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.91 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/architecture.md",
+        "sourceSha256": "dc315d94fdf0f15b4aaf94ff6a10d34d6c4b9888d919f9ad77a4418fc6125806",
+        "rule": "Slopsentral.LongSentence",
+        "line": 126,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.76 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 378,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 380,
+        "message": "Long sentence: 36 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 380,
+        "message": "Long sentence: 41 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 550,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 552,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 566,
+        "message": "Long sentence: 37 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 569,
+        "message": "Long sentence: 39 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 646,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 660,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 690,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 705,
+        "message": "Long sentence: 32 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 727,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
+        "rule": "Slopsentral.LongSentence",
+        "line": 729,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/protocol.md",
+        "sourceSha256": "69ac1777aedd8ad2d296e90afb9960b20fa763b199c5c19e58c76405cbb41c68",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.09 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep canonical DTO, registry, and wire ownership with finite schema admission. Preserve exact identifiers `protocol:contract`, `protocol:registry`, `protocol:wire`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/protocol.md",
+        "sourceSha256": "69ac1777aedd8ad2d296e90afb9960b20fa763b199c5c19e58c76405cbb41c68",
+        "rule": "Slopsentral.LongSentence",
+        "line": 135,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep finite admitted read failures and required reports distinct from missing, invalid, and null metadata. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/protocol.md",
+        "sourceSha256": "69ac1777aedd8ad2d296e90afb9960b20fa763b199c5c19e58c76405cbb41c68",
+        "rule": "Slopsentral.LongSentence",
+        "line": 137,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the exact byte limit and full pre-startup rejection inventory for the packaged catalog. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.46 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep process and host ownership, exact endpoint identity, and guarded native lifecycle effects. Preserve exact identifiers `runtime:hosted`, `workspace:intellij-read`, `HostedContract`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 332,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exclusive phase durations distinct from inclusive traversal duration and CPU measurements. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 344,
+        "message": "Long sentence: 34 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep native workspace demand before immutable plan loading and preserve every admission/output qualification. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 346,
+        "message": "Long sentence: 33 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep socket openness in the launched process and physical identity checks before and after each connection. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 389,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exclusive phase durations distinct from inclusive traversal duration and CPU measurements. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 417,
+        "message": "Long sentence: 30 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep application-only linking separate from passive semantic read admission and preceding native refresh. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 417,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep physical descriptor ownership, proven process absence, and current-contract/existing-root admission distinct. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 496,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep physical descriptor ownership, proven process absence, and current-contract/existing-root admission distinct. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 506,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the four K2 impact capabilities under the same admitted project, model, and observation capability. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 536,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep physical descriptor ownership, proven process absence, and current-contract/existing-root admission distinct. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 552,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep passive management's captured version and workspace/connection/compatibility observations qualified as observations. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 570,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep physical descriptor ownership, proven process absence, and current-contract/existing-root admission distinct. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 583,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the four K2 impact capabilities under the same admitted project, model, and observation capability. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 594,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exclusive phase durations distinct from inclusive traversal duration and CPU measurements. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "5cafa931501bf0091cf348940b6f60c262b64d2f8bc3d9bb81f73fb16af8b6cc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 600,
+        "message": "Long sentence: 39 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep target-basis admission before token restoration and preserve child grant, aggregate work, and whole elapsed time. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/topology-evidence.md",
+        "sourceSha256": "e0673754a75d1e99244c25a13f72a2732225badbe824cbff6dde53eaf91ea0cd",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.83 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep durable mutation evidence and retained historical topology. Preserve exact identifiers `SqliteHostedChangeStores.open`, `HostedChangeFailure`, `topology:contract`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/workspace.md",
+        "sourceSha256": "7c9b387d749e0539ebdf0ef1a3790280ad95e3ab0f4b2f4508cc3d0d996cea68",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.69 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep live epoch admission, exact owner retention, and lifecycle recovery. Preserve exact identifiers `workspace:contract`, `workspace:intellij-read`, `SemanticReadAuthority`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/workspace.md",
+        "sourceSha256": "7c9b387d749e0539ebdf0ef1a3790280ad95e3ab0f4b2f4508cc3d0d996cea68",
+        "rule": "Slopsentral.LongSentence",
+        "line": 79,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep admitted reports through later failure without granting evaluator permission after deadline. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/workspace.md",
+        "sourceSha256": "7c9b387d749e0539ebdf0ef1a3790280ad95e3ab0f4b2f4508cc3d0d996cea68",
+        "rule": "Slopsentral.Claims",
+        "line": 94,
+        "message": "Avoid the unverifiable claim 'best'.",
+        "severity": "warning"
+      },
+      "reason": "At workspace.md:85, best effort qualifies background presentation while trust and unsaved-document checks remain blockers. It describes a limited guarantee, not a comparative claim that Kast is best. Keep the qualification so background presentation cannot be read as guaranteed."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/workspace.md",
+        "sourceSha256": "7c9b387d749e0539ebdf0ef1a3790280ad95e3ab0f4b2f4508cc3d0d996cea68",
+        "rule": "Slopsentral.LongSentence",
+        "line": 96,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep lifecycle Close admission fencing, native-work rejection, EDT saves, and veto-respecting disposal in owner order. Keep this as an assessed length exception, without a reader-comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/quickstart.md",
+        "sourceSha256": "a52b48255bde0d2215d02fbd3a60a366fa38ac16093bebd199c80036fa3d2ecd",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.25 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep source routes and the distinction between OpenWiki context and implementation authority. Preserve exact identifiers `AGENTS.md`, `SemanticReadAuthority`, `code_sources`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/runtime/hosted-composition-and-publication.md",
+        "sourceSha256": "ecf81e8a404f78b0bfc6655617ac5d6c9038b5b774eb784446ab369ea0e6ecd1",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.42 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep request drainage, final freshness, and atomic publication ownership. Preserve exact identifiers `HostedEndpointService`, `Service`, `HostedConnectionAdmission`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/runtime/idea-lifecycle-and-refresh.md",
+        "sourceSha256": "752ab0d77bc4001440d90d51ed0c57d31af2d702362b1ece451cb4726b1f44c2",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.05 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep configured bounded and indefinite waiting, shared native deadline continuation, Host/root/project checks, and transport limits explicit. Separate paragraphs distinguish policy, continuation, and transport. Exact lifecycle and refresh identifiers preserve the ownership boundaries. The grade target remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/topology/live-dependencies-and-reuse.md",
+        "sourceSha256": "b42e8ef6eb4374370c846b2bb8279f455b52af9cff082172270ee99bd1c61248",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.14 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact dependency proof and fact reuse under fresh authority. Preserve exact identifiers `IntellijSemanticDependencyCapture`, `SemanticDependencySnapshot.fromCompiler`, `reuseFrom`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/transport/coordinator-and-workspace-preparation.md",
+        "sourceSha256": "4656930448b8f27429f57a7f456e61da342ecb824481d494c75a3cef25f0e8ae",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.44 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep installed coordinator admission, preparation ownership, and existing reference authority distinct. The new preparation-selection paragraph explains why issued source reads cannot restart preparation. Exact owner identifiers preserve this causal boundary. The grade target remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/transport/direct-mcp-and-tool-rpc.md",
+        "sourceSha256": "821c2c5bd055ac3d3cc6c3871f2fed798de816233a90abad7aaf0bf838433c68",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.09 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep MCP startup effects separate from CLI and one-shot RPC operation demand. Preserve the exact transport owners and the existing authority used for issued source and retained-reference reads. The grade target remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "reader-prose-3.25.1",
+        "path": "docs/public/snippets/okf/runtime/idea-lifecycle-and-refresh.mdx",
+        "sourceSha256": "84748a3171e56df75ccfb19d1509e6afb5c7407566702e057a21eff377983891",
+        "rule": "Prose.SectionLength",
+        "line": 61,
+        "message": "This section has 653.00 words. Consider a subheading at a change of topic.",
+        "severity": "suggestion"
+      },
+      "reason": "The section presents one lifecycle contract with separate paragraphs for admission, transport, preparation, and native stop. The managed headless addition uses those same owners. Keep this sequence and its existing anchors. The section-length advisory remains visible without a reader comprehension claim."
     }
   ]
 }

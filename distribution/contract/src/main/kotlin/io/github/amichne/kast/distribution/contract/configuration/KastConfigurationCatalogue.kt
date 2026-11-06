@@ -224,6 +224,14 @@ enum class ConfigurationParameter(
         ConfigurationScope.INSTALLATION,
         mutability = ConfigurationMutability.DERIVED,
     ),
+    MANAGED_HEADLESS_STATE(
+        "KAST_MANAGED_HEADLESS_STATE",
+        ConfigurationSyntax.ABSOLUTE_PATH,
+        ConfigurationScope.INSTALLATION,
+        ":app-server",
+        disclosure = ConfigurationDisclosure.SENSITIVE_PATH,
+        children = setOf(ConfigurationChild.BROKER),
+    ),
     INSTALL_IDEA_HOME("KAST_INSTALL_IDEA_HOME", ConfigurationSyntax.ABSOLUTE_PATH, ConfigurationScope.INSTALLATION),
     INSTALL_IDEA_PLUGIN_ROOT(
         "KAST_INSTALL_IDEA_PLUGIN_ROOT",

@@ -383,7 +383,7 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
     executableFile.set(validationExecutable("uv"))
     arguments.set(listOf("run", "--locked", "--project", "packaging", "pytest",
         "packaging/test-managed-installation.py", "packaging/test-managed-release.py",
-        "packaging/test-managed-update-contract.py", "-q"))
+        "packaging/test-managed-update-contract.py", "packaging/test-managed-headless.py", "-q"))
 }
 
 val developerPublicationTest = tasks.register<VerificationReportTask>("developerPublicationTest") {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2470fb3a1e579602b75ee3e40d9323675f017764a0604d59daf4c51375f8bed0",
+  "pageVersion": "sha256:a9922f57a3126beb533f5bc01eeea8759c6e7d78d4b625ee6883baef3fe77853",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -175,10 +175,36 @@
           "version": "repo-lines-v1:sha256:addc72af37d069a17b2786685b78e031e4c45ba51e33300fa751c63c72e9c78c:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGNmMDllYjBjNTc0NGZiOTczMzFiOThmZjNmYmYwNWE2MDJiYTNmN2Y2N2U1ZGE1YmU5MDk1MDMzZjYyNTgyNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWFjOWUyZDUyZjRiOTNiNzcxMGVlODYxY2E3NjgyMjBjOTgzMDlhZDdjYTQ5NTE0ODZkMTRkNDBhZjQ2Y2NkNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmRlNjk4ODdhMGE5NzRiNDNlYWI5ZmFmNDUxZDU1NmI1Nzc5ZTlkMGM0ZDJmZmY5MWFiMTI2YTA1OTFkYjRlOSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_241f784529764699a078b7c288ae822d",
+      "statement": "Explicit KAST_MANAGED_HEADLESS_STATE selection admits a private HOME, selected distribution, bundled JBR, and assembly before lifecycle or semantic access and rejects invalid ownership without desktop fallback.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt#L28-L55",
+          "version": "repo-lines-v1:sha256:bc4435b435277eaf6bcc7a2264f796af9b04623fe252754e6f3058edf07ee79c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmMjFmNzYwYmRmMTVkZTE5YjU2N2IxY2Y4ZTJiMWNlNDBiMDJhODY5MjFmMWY0MmMxODQ0MzQ1NDczNTBjZjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFiODMwNzMwNTdkYTUwM2EwZTMyNmRkOTIyZDNmNmRlZWY4ZDE2ZjExMjU2NzdiZjk3MzIxZDk1NWIxN2Y2MDcifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt#L8-L29",
+          "version": "repo-lines-v1:sha256:e63286b2f83e4239a434f75ffb2d2373d26bf93a4390d542dfbedd70fb603dd4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2ZDk2YzVjMTU1NzkxMjJjNzk0Y2JmZGFkZTVlZDJiNmIwNDdlNmM1OTViZWNmMzVjNzkwOTE1MjU5NWIxOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwN2UyYzQ0ZWIxZGVjNjljODlkMGQ3NGVkNDNmOGZkNjIyNDdjY2Y0ZGExYWVmZjMyMTAxNDBmYzQzM2YzYjcifQ"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L227-L235",
+          "version": "repo-lines-v1:sha256:835f047818eb912a2cb10f719a43f66194c8d5fee36f11a775ee9758a9ddec54:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjI3YzJhODFjZTQ4ODMxMDVhMWVlNDEyNTgxZTRkOWE0ZDcxNjlkMzM1YWRlY2ZmMTNhYTY0ZTIwMGQ2MzQwNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzU2YTkxNDZkYzBhN2M5NzM0NzAzZjhkYmI4YTYwYTc2MTFlOGY0OGU0YTk5MjFiYWE5YjYxMTgwNjBmODVlMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGUxNGFjMzNjMjdhZTliZTRjMTliNWMwN2E0MmFkNzJiY2IzODc4MmYyYzIzMGIzMmZkOTJmMmViYWNlN2Q1ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGVkNTg2MDdiMTIyYzA1YTk0OTQwZTNhMWM3MWE0YjE1MjM1MGYwMzg5YTQ2ZjVkNzhlMWJmM2ZlMmMwN2RlMiJ9"
+        },
+        {
+          "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessInstallation.kt#L75-L117",
+          "version": "repo-lines-v1:sha256:3c434c40a6efc2ad22b809900ea6377875bf152c6cf0e6ba4c7ef6ad3ce03924:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmYjM5OGQxZjIzMDdiMDA2NmZhMWMxNDNjYjUzMGU4ODM5ZTMzZjY0MmMzODY5ZGIzYjJmN2Q2NjY4NzVmZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0ZTFjYTNjMWRhNTBiNjc1MDFjZmYyNTRjZDAzNzEwNjA2ZGIzMDc4MjU2OTE0Yzk2MmRkYWMwNWU3MmZlZGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlZmZiZjExOTI1YTkyNGJjNWRjODBlM2Q1OWMxMDgzMjAzMDc0ZjE3NTcyOGQzNjBhZDA0ZDQ2YjY1MTM3M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlMGRlNjg1ZDg5ZDNmOGU5NWJhODMwYzg5MDRiNDk0YThmMDJhNWZjM2E3ZDhiNTk4MTNjMjU2NTRkNjkxNGQifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_headless.py#L525-L589",
+          "version": "repo-lines-v1:sha256:b66f5ba89a4ccc75a833ae1d492646b7e556eecb7ce133a305892db2686ce851:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjOGY4OTcyZGQzOGI2OGYwMzY1ZTRiNjFlNzhlMzIzYjZiNmMzNDkxMWI2M2YyOGRhNzM1ZjRhMDJiM2I2NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4Y2ZjMDRkZTg5NzRlZTRmYmNkZjY2MzQxNWIwZWE5NWE5YTc1NDc3NzJiMmUxZDMyNGExM2ViZjI0OThjYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1Mzg0YTlhMDVmZmJmNzc3NmQwMTNlNWFkNDFlODA4ZTE0YWQ5YTUzN2VmNjdjNzdhYWNmOGE3MWM4NTRhZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0OGQxYWZjZDFiMjQ1N2EyZjQ3NjZkNDg2YmY5MTZiYmEzN2UyM2ZiMzZiNTczNjA0YWIxMjhkNmQ4OGQxZWQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T10:28:11.464Z"
+    "at": "2026-11-06T05:26:56.646Z"
   }
 }

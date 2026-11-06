@@ -27,7 +27,7 @@ sources:
 generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:45:59.282Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Live dependency proofs and fact reuse

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:90451653af5d10f381f9414eb62a1a6888825925aa9393299e046b311aa857e1",
+  "pageVersion": "sha256:69ac1777aedd8ad2d296e90afb9960b20fa763b199c5c19e58c76405cbb41c68",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -148,17 +148,31 @@
       "evidence": [
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt",
-          "version": "repo-file-v1:sha256:c5741248e41c34af177617e1c7bd5635bdc92d130cc8ce0118ed521677ad9c86"
+          "version": "repo-file-v1:sha256:10705e2d3902a0e3af0bca820e0e566eca150bc9c8b76258495580a39fc93b53"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
           "version": "repo-file-v1:sha256:5a305db0539143d5521a46bf53baa317d17069cbe20f61542c657ee9fd505b40"
         }
       ]
+    },
+    {
+      "id": "claim_296512735e2d4e4c8cfaebfdfb141365",
+      "statement": "Runtime identity encodes the closed Host mode, including default DESKTOP. Managed project advertisements require MANAGED_HEADLESS, disabled auto reload, process identity, and hosted compatibility.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt#L286-L314",
+          "version": "repo-lines-v1:sha256:a06768e9e87394b936e910e10410571b3eef4455cfc732ba7c047acc62345852:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZjgyNGI1MDJlMGZmMDExODg1ODlkMzdkOTIwYjgxYTIyOGY5Mjk0NmZkZDBjYzYxNGYxNDAyYWI4NzFkMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4ZTc4ZGU2YzI0MDRkN2E0MGY3NTgzNTZlZjMzYjgxYzFiNmM5MTk3MjRkMWQ0NDczMjQ2ODE1NDczZGZmN2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json#L76-L120",
+          "version": "repo-lines-v1:sha256:1ed3cce820cf7f851da51f0648443faa1d790c961c117ca84a8aaf9af5ce45b1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzYjNmY2E2ODBkZTI0NmExZWIwOTQzOTU0MzU0MjdlZWViNGQ2NTE5NmVhYmEyMzU4ZTlhNjlhNDY2YTRiY2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjZTljODMwM2I0NWE3ZmZhMDMwZTcyMjdlZGIyMjU4NTcxMDcyZTE2YjJjMzk4ZWM3MTJkYTRkMDRlZWQ4MjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIzYjI3NGVhMThhMjZhMGUyODBmY2ViNmI2MjY4NjgzYjc3MmI5NTAzYThhMjhjZmY5NGNhOGU2OGRhMThkYjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlNGJhYzJhZDYzZThmYTU4YWU5ZTMwODhmNWI5MDIyZTg3ZWJlY2FjZWZiMTc5ZThmOTE1MGJlOTMyMjliNjQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T23:27:44.986Z"
+    "at": "2026-11-06T05:26:56.646Z"
   }
 }

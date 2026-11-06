@@ -61,19 +61,8 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     internal fun hasActivePreparation(): Boolean = native.hasActivePreparation()
 
     private val home = Path.of(PathManager.getHomePath()).toRealPath()
-    private val runtimeIdentity =
-        io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity(
-            ideaHome = home.toString(),
-            profile = Path.of(PathManager.getConfigPath()).toRealPath().toString(),
-            pid = ProcessHandle.current().pid(),
-            processStartEpochMillis = ProcessHandle.current().info().startInstant().orElseThrow().toEpochMilli(),
-            hostLifetime = state.host.toString(),
-            buildIdentity = io.github.amichne.kast.runtime.hosted.HostedCompatibilityMetadata.buildIdentity,
-            autoReload =
-                if (System.getProperty("idea.auto.reload.plugins") == "true")
-                    io.github.amichne.kast.protocol.contract.HostAutoReload.ENABLED
-                else io.github.amichne.kast.protocol.contract.HostAutoReload.DISABLED,
-        )
+    internal val advertisement = captureApplicationAdvertisement(home, state.host.toString())
+    private val runtimeIdentity = advertisement.runtimeIdentity
     private val hostRefresh = HostBundleRefreshAdapter(this)
     private val settlement =
         HostedApplicationSettlement(
@@ -87,7 +76,8 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
     private val logger = Logger.getInstance(IdeLifecycleApplication::class.java)
     private val job =
         scope.launch(Dispatchers.IO) {
-            if (ApplicationManager.getApplication().isHeadlessEnvironment) return@launch
+            if (ApplicationManager.getApplication().isHeadlessEnvironment && ManagedHeadlessHost.current() == null)
+                return@launch
             if (ApplicationInfo.getInstance().build.baselineVersion != 262) return@launch
             val root =
                 when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(home)) {
@@ -105,11 +95,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                         root,
                         IdeReadHostLifetime.fromBoundary(state.host),
                         advertisement = HostedEndpointAdvertisement.LIFECYCLE,
-                        application =
-                            io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement(
-                                runtimeIdentity,
-                                io.github.amichne.kast.runtime.hosted.HostedCompatibilityMetadata.document,
-                            ),
+                        application = advertisement,
                     )
             ) {
                 is Refinement.Rejected -> observe(IdeLifecycleResult.Blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE))
@@ -215,15 +201,13 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
             } else {
                 val result = submit(command)
                 if (result is IdeLifecycleResult.HostStopRequested)
-                    LifecycleReply.afterAcknowledgment(result) {
-                        ApplicationManager.getApplication().invokeLater { ApplicationManager.getApplication().exit() }
-                    }
+                    LifecycleReply.afterAcknowledgment(result, ::requestSettledHostExit)
                 else LifecycleReply.immediate(result)
             }
         }
 
     private fun submit(received: IdeLifecycleCommand): IdeLifecycleResult {
-        native.observeProjects()
+        observeApplicationProjects(runtimeIdentity.mode, native::observeProjects)
         if (received is IdeLifecycleCommand.Inspect)
             return inspectApplicationHost(runtimeIdentity, native.inspectProjects(), hostRefresh)
         if (received is IdeLifecycleCommand.SettleHost) return settlement.settle(received)

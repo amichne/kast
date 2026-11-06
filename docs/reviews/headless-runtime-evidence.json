@@ -1,0 +1,2863 @@
+{
+  "sourceRevision": "8367953a41082eabf96b8c5e9a37d7603c4139c9",
+  "sourceTree": "9e2530b684edddf6935eade3804d2b1453f689ec",
+  "reviewedBase": "1f6db02c16a5dd0e2106f97f7eae747d66545ebe",
+  "evidenceRoot": "/Users/amichne/.codex-workspaces/artifacts/kast-headless-a71f1a4a",
+  "cases": [
+    {
+      "platform": "linux-x86_64-rosetta",
+      "selection": "full",
+      "assemblyManifestSha256": "d06800f71046819b1eb626760fc993d495bdc3cabcfd7211d00d180531ac907d",
+      "assemblyInputs": {
+        "distributionSha256": "f1cc5329a7adf3ab3bd8886744103f7d3bcf1ca12e699762ecd9bffe57335f8b",
+        "bootstrapArchiveSha256": "23b90ca038394eaff197b97f30b9e53780adb22ab3b8713de751a3594110891a",
+        "assemblerSha256": "484bcb1b3ad7ef8fd7dfbbfe942b46eea0c0996d9be1b58a7570867cd0f9b2a5",
+        "installerSha256": "08c0b0d0144adf8736f5fde7b3cf4b297c0f3d36b0bc143dbf2a0e355d34664b",
+        "hostRoots": [
+          "com.intellij.modules.platform",
+          "com.intellij.java",
+          "org.jetbrains.kotlin",
+          "org.jetbrains.plugins.gradle"
+        ],
+        "assets": [
+          {
+            "path": "host-installation.py",
+            "kind": "FILE",
+            "bytes": 77358,
+            "sha256": "1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          },
+          {
+            "path": "host-installation.py.sha256",
+            "kind": "FILE",
+            "bytes": 87,
+            "sha256": "511924b965823a8356e4bcd074faf516e0dc00d3cab3f2772c9d849fe0d43e33"
+          },
+          {
+            "path": "kast-control-v0.0.0-linux-x86_64.tar.gz",
+            "kind": "FILE",
+            "bytes": 39776370,
+            "sha256": "863d7071d7872da6d50f974a3ef8e1a5f85b7bce3d9d97e13c4a769c2b785df4"
+          },
+          {
+            "path": "kast-control-v0.0.0-linux-x86_64.tar.gz.sha256",
+            "kind": "FILE",
+            "bytes": 106,
+            "sha256": "9e21e5c5b6b3954f1ddaaff3a9a7d4a19947a4dddcf7d0efa9f8524787ef98df"
+          },
+          {
+            "path": "kast-host-release-v0.0.0.json",
+            "kind": "FILE",
+            "bytes": 742,
+            "sha256": "5627323e4448e38016c89a838ef5c2e1a360a4967e2b5b32cc191f987c53a247"
+          },
+          {
+            "path": "kast-host-release-v0.0.0.json.sha256",
+            "kind": "FILE",
+            "bytes": 96,
+            "sha256": "d318e5ea74206d1c8c357dfacbd78e957e610b1096f105e089217e716932c17f"
+          },
+          {
+            "path": "kast-ide-hosted-v0.0.0-idea-262.zip",
+            "kind": "FILE",
+            "bytes": 38252597,
+            "sha256": "3bed0f6de55c08fdcfd620e63917c752aef90009d479a850d61a3d530356f086"
+          },
+          {
+            "path": "kast-ide-hosted-v0.0.0-idea-262.zip.sha256",
+            "kind": "FILE",
+            "bytes": 102,
+            "sha256": "16be7cb28475dc5bc6d47611c38232231e3ac90871fb2f363255435919289c06"
+          }
+        ],
+        "componentDecisions": []
+      },
+      "removedFiles": [],
+      "retainedInventorySha256": "8bcd8ac9681fe32fd3174128d945defc015ab8711741ecbdf45391f453621491",
+      "retainedRegularFiles": 3523,
+      "removedRegularBytes": 0,
+      "coldPublicSeconds": 258.28265339199993,
+      "coldPublicOutcome": "PASSED",
+      "sampledColdPeakRssKiB": 4698824,
+      "warmSamples": [
+        {
+          "index": 0,
+          "startedUtc": "2026-11-06T05:49:15.940813+00:00",
+          "wallSeconds": 5.714722517000155,
+          "nativeDurationNanos": 151271030,
+          "readId": "ce8841ff-6294-490f-a1e0-748aaf827efe"
+        },
+        {
+          "index": 1,
+          "startedUtc": "2026-11-06T05:49:21.659995+00:00",
+          "wallSeconds": 5.324948843000129,
+          "nativeDurationNanos": 93194301,
+          "readId": "609a3235-0c2c-4a21-ad60-39edb8b9f547"
+        },
+        {
+          "index": 2,
+          "startedUtc": "2026-11-06T05:49:26.986617+00:00",
+          "wallSeconds": 5.306816200999947,
+          "nativeDurationNanos": 84307314,
+          "readId": "bde880b8-7177-4040-bd81-26a05bf92a3e"
+        },
+        {
+          "index": 3,
+          "startedUtc": "2026-11-06T05:49:32.294871+00:00",
+          "wallSeconds": 5.474340324999957,
+          "nativeDurationNanos": 88815453,
+          "readId": "b8b42196-fd6d-4b1f-b5b8-c2be49358b5d"
+        },
+        {
+          "index": 4,
+          "startedUtc": "2026-11-06T05:49:37.770869+00:00",
+          "wallSeconds": 6.2107405340002515,
+          "nativeDurationNanos": 105998383,
+          "readId": "0f8c0108-39b6-48bc-be39-23a877f6e2d4"
+        }
+      ],
+      "storageAndSteadyMemory": {
+        "storage": [
+          {
+            "path": "/runtime/kh7f/runtime",
+            "regularFiles": 3525,
+            "apparentBytes": 4571234501,
+            "allocatedBytes": 4579463168,
+            "symlinks": 221
+          },
+          {
+            "path": "/runtime/kh7f/state/system",
+            "regularFiles": 2013,
+            "apparentBytes": 347629139,
+            "allocatedBytes": 352825344,
+            "symlinks": 0
+          },
+          {
+            "path": "/runtime/kh7f/state/home/.gradle",
+            "regularFiles": 13012,
+            "apparentBytes": 960588143,
+            "allocatedBytes": 992731136,
+            "symlinks": 0
+          },
+          {
+            "path": "/runtime/kh7f/state/log",
+            "regularFiles": 108,
+            "apparentBytes": 10985737,
+            "allocatedBytes": 11214848,
+            "symlinks": 0
+          },
+          {
+            "path": "/runtime/kh7f/state/tmp",
+            "regularFiles": 3,
+            "apparentBytes": 8138,
+            "allocatedBytes": 16384,
+            "symlinks": 0
+          },
+          {
+            "path": "/runtime/kh7f/state/home/.local/share/kast/installation",
+            "regularFiles": 15717,
+            "apparentBytes": 118721302,
+            "allocatedBytes": 174510080,
+            "symlinks": 0
+          },
+          {
+            "path": "/runtime/kh7f/state/home/.local/share/JetBrains/IntelliJIdea2026.2/plugins",
+            "regularFiles": 39,
+            "apparentBytes": 41175099,
+            "allocatedBytes": 41242624,
+            "symlinks": 0
+          }
+        ],
+        "processes": [
+          {
+            "pid": 5528,
+            "startTicks": 209187,
+            "rssKiB": 2697736,
+            "peakRssKiB": 2698684,
+            "pssKiB": 2681612,
+            "command": [
+              "/runtime/kh7f/runtime/idea-IU-262.10315.125/bin/idea",
+              "kast-headless"
+            ]
+          },
+          {
+            "pid": 6073,
+            "startTicks": 214558,
+            "rssKiB": 744008,
+            "peakRssKiB": 745052,
+            "pssKiB": 727870,
+            "command": [
+              "/runtime/kh7f/runtime/idea-IU-262.10315.125/jbr/bin/java",
+              "--add-opens=java.base/java.lang=ALL-UNNAMED",
+              "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+              "--add-opens=java.base/java.util=ALL-UNNAMED",
+              "--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED",
+              "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+              "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
+              "--add-opens=java.base/java.nio.charset=ALL-UNNAMED",
+              "--add-opens=java.base/java.net=ALL-UNNAMED",
+              "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
+              "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
+              "--add-opens=java.xml/javax.xml.namespace=ALL-UNNAMED",
+              "--add-opens=java.base/java.time=ALL-UNNAMED",
+              "--sun-misc-unsafe-memory-access=allow",
+              "--enable-native-access=ALL-UNNAMED",
+              "-XX:MaxMetaspaceSize=384m",
+              "-XX:+HeapDumpOnOutOfMemoryError",
+              "-Xms256m",
+              "-Xmx512m",
+              "-Dfile.encoding=UTF-8",
+              "-Duser.country=US",
+              "-Duser.language=en",
+              "-Duser.variant",
+              "-cp",
+              "/runtime/kh7f/state/home/.gradle/wrapper/dists/gradle-9.8.2-bin/8wepis63pzuhrlfaiy04bagwu/gradle-9.8.2/lib/gradle-daemon-main-9.8.2.jar",
+              "-javaagent:/runtime/kh7f/state/home/.gradle/wrapper/dists/gradle-9.8.2-bin/8wepis63pzuhrlfaiy04bagwu/gradle-9.8.2/lib/agents/gradle-instrumentation-agent-9.8.2.jar",
+              "org.gradle.launcher.daemon.bootstrap.GradleDaemon",
+              "9.8.2"
+            ]
+          }
+        ],
+        "sumRssKiB": 3441744,
+        "sumPssKiB": 3409482,
+        "memoryScope": "current admitted Host and private Gradle or Kotlin daemon processes, including reparented children; sampled after the same acceptance corpus"
+      },
+      "heapSnapshot": "5528:\ngarbage-first heap   total reserved 1572864K, committed 540672K, used 480429K [0x00000000a0000000, 0x0000000100000000)\n region size 1024K, 192 young (196608K), 21 survivors (21504K)\n"
+    },
+    {
+      "platform": "linux-x86_64-rosetta",
+      "selection": "reduced",
+      "assemblyManifestSha256": "0df69add4dceaef13f5127dd90281f2474d49dd516400453bdc82703b67d4c4b",
+      "assemblyInputs": {
+        "distributionSha256": "f1cc5329a7adf3ab3bd8886744103f7d3bcf1ca12e699762ecd9bffe57335f8b",
+        "bootstrapArchiveSha256": "23b90ca038394eaff197b97f30b9e53780adb22ab3b8713de751a3594110891a",
+        "assemblerSha256": "484bcb1b3ad7ef8fd7dfbbfe942b46eea0c0996d9be1b58a7570867cd0f9b2a5",
+        "installerSha256": "08c0b0d0144adf8736f5fde7b3cf4b297c0f3d36b0bc143dbf2a0e355d34664b",
+        "hostRoots": [
+          "com.intellij.modules.platform",
+          "com.intellij.java",
+          "org.jetbrains.kotlin",
+          "org.jetbrains.plugins.gradle"
+        ],
+        "assets": [
+          {
+            "path": "host-installation.py",
+            "kind": "FILE",
+            "bytes": 77358,
+            "sha256": "1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          },
+          {
+            "path": "host-installation.py.sha256",
+            "kind": "FILE",
+            "bytes": 87,
+            "sha256": "511924b965823a8356e4bcd074faf516e0dc00d3cab3f2772c9d849fe0d43e33"
+          },
+          {
+            "path": "kast-control-v0.0.0-linux-x86_64.tar.gz",
+            "kind": "FILE",
+            "bytes": 39776370,
+            "sha256": "863d7071d7872da6d50f974a3ef8e1a5f85b7bce3d9d97e13c4a769c2b785df4"
+          },
+          {
+            "path": "kast-control-v0.0.0-linux-x86_64.tar.gz.sha256",
+            "kind": "FILE",
+            "bytes": 106,
+            "sha256": "9e21e5c5b6b3954f1ddaaff3a9a7d4a19947a4dddcf7d0efa9f8524787ef98df"
+          },
+          {
+            "path": "kast-host-release-v0.0.0.json",
+            "kind": "FILE",
+            "bytes": 742,
+            "sha256": "5627323e4448e38016c89a838ef5c2e1a360a4967e2b5b32cc191f987c53a247"
+          },
+          {
+            "path": "kast-host-release-v0.0.0.json.sha256",
+            "kind": "FILE",
+            "bytes": 96,
+            "sha256": "d318e5ea74206d1c8c357dfacbd78e957e610b1096f105e089217e716932c17f"
+          },
+          {
+            "path": "kast-ide-hosted-v0.0.0-idea-262.zip",
+            "kind": "FILE",
+            "bytes": 38252597,
+            "sha256": "3bed0f6de55c08fdcfd620e63917c752aef90009d479a850d61a3d530356f086"
+          },
+          {
+            "path": "kast-ide-hosted-v0.0.0-idea-262.zip.sha256",
+            "kind": "FILE",
+            "bytes": 102,
+            "sha256": "16be7cb28475dc5bc6d47611c38232231e3ac90871fb2f363255435919289c06"
+          }
+        ],
+        "componentDecisions": [
+          {
+            "component": {
+              "directory": "plugins/code-provenance",
+              "identifiers": [
+                "com.intellij.code.provenance"
+              ],
+              "modules": [
+                "intellij.code.provenance.core",
+                "intellij.code.provenance.core.claude",
+                "intellij.code.provenance.core.fus",
+                "intellij.code.provenance.core.git",
+                "intellij.code.provenance.core.llm",
+                "intellij.code.provenance.core.mcp",
+                "intellij.code.provenance.dev",
+                "intellij.code.provenance.ui"
+              ],
+              "required": [
+                "intellij.platform.lvcs.impl"
+              ],
+              "descriptor_sha256": [
+                "8afd0e023b865473358c367a0bf44b3f4f8ef0bad664ca2aa4ca9616dbb7bbd4"
+              ]
+            },
+            "decision": "EXCLUDE",
+            "reason": "EXPLICIT_NON_ROOT_CANDIDATE"
+          },
+          {
+            "component": {
+              "directory": "plugins/fullLine",
+              "identifiers": [
+                "org.jetbrains.completion.full.line"
+              ],
+              "modules": [
+                "intellij.fullLine.chat",
+                "intellij.fullLine.controlModel",
+                "intellij.fullLine.controlModel.trigger.polyglot",
+                "intellij.fullLine.core",
+                "intellij.fullLine.core.completion",
+                "intellij.fullLine.core.impl",
+                "intellij.fullLine.core.utils.common",
+                "intellij.fullLine.cpp",
+                "intellij.fullLine.cpp.local",
+                "intellij.fullLine.css",
+                "intellij.fullLine.css.less",
+                "intellij.fullLine.css.less.local",
+                "intellij.fullLine.css.local",
+                "intellij.fullLine.css.postcss",
+                "intellij.fullLine.css.postcss.local",
+                "intellij.fullLine.css.sass",
+                "intellij.fullLine.css.sass.local",
+                "intellij.fullLine.css.ultimate",
+                "intellij.fullLine.erb",
+                "intellij.fullLine.experiments",
+                "intellij.fullLine.fake.frontend",
+                "intellij.fullLine.go",
+                "intellij.fullLine.go.local",
+                "intellij.fullLine.html",
+                "intellij.fullLine.html.local",
+                "intellij.fullLine.java",
+                "intellij.fullLine.java.local",
+                "intellij.fullLine.js",
+                "intellij.fullLine.js.astro",
+                "intellij.fullLine.js.astro.local",
+                "intellij.fullLine.js.local",
+                "intellij.fullLine.js.svelte",
+                "intellij.fullLine.js.svelte.local",
+                "intellij.fullLine.js.ultimate",
+                "intellij.fullLine.js.vue",
+                "intellij.fullLine.js.vue.local",
+                "intellij.fullLine.json",
+                "intellij.fullLine.kotlin",
+                "intellij.fullLine.kotlin.jupyter",
+                "intellij.fullLine.kotlin.jupyter.local",
+                "intellij.fullLine.kotlin.local",
+                "intellij.fullLine.local",
+                "intellij.fullLine.markdown",
+                "intellij.fullLine.php",
+                "intellij.fullLine.php.local",
+                "intellij.fullLine.properties",
+                "intellij.fullLine.python",
+                "intellij.fullLine.python.jupyter",
+                "intellij.fullLine.python.jupyter.local",
+                "intellij.fullLine.python.local",
+                "intellij.fullLine.rbs",
+                "intellij.fullLine.rider",
+                "intellij.fullLine.rider.cpp",
+                "intellij.fullLine.rider.cpp.local",
+                "intellij.fullLine.rider.csharp",
+                "intellij.fullLine.rider.csharp.local",
+                "intellij.fullLine.rider.fsharp",
+                "intellij.fullLine.rider.godot",
+                "intellij.fullLine.rider.hlsl",
+                "intellij.fullLine.rider.local",
+                "intellij.fullLine.rider.shaderlab",
+                "intellij.fullLine.rider.unrealengine",
+                "intellij.fullLine.ruby",
+                "intellij.fullLine.ruby.local",
+                "intellij.fullLine.rust",
+                "intellij.fullLine.rust.local",
+                "intellij.fullLine.sql",
+                "intellij.fullLine.terminal",
+                "intellij.fullLine.terraform",
+                "intellij.fullLine.terraform.local",
+                "intellij.fullLine.text",
+                "intellij.fullLine.vcs",
+                "intellij.fullLine.web",
+                "intellij.fullLine.xdebugger",
+                "intellij.fullLine.xml",
+                "intellij.fullLine.yaml",
+                "intellij.llmInstaller",
+                "intellij.llmInstaller.common",
+                "intellij.llmInstaller.enterprise",
+                "intellij.llmInstaller.frontend",
+                "intellij.llmInstaller.jupyter",
+                "intellij.llmInstaller.pycharm.community",
+                "intellij.llmInstaller.shared",
+                "intellij.ml.diagnostics",
+                "intellij.ml.llm.chat.completion",
+                "intellij.ml.llm.completion",
+                "intellij.ml.llm.cpp.completion",
+                "intellij.ml.llm.cpp.nextEdits.backend",
+                "intellij.ml.llm.css.completion",
+                "intellij.ml.llm.css.less.completion",
+                "intellij.ml.llm.css.nextEdits.backend",
+                "intellij.ml.llm.css.postcss.completion",
+                "intellij.ml.llm.css.sass.completion",
+                "intellij.ml.llm.editor.backend",
+                "intellij.ml.llm.editor.common",
+                "intellij.ml.llm.editor.frontend",
+                "intellij.ml.llm.erb.completion",
+                "intellij.ml.llm.experiments",
+                "intellij.ml.llm.git.nextEdits.backend",
+                "intellij.ml.llm.go.completion",
+                "intellij.ml.llm.go.nextEdits.backend",
+                "intellij.ml.llm.html.completion",
+                "intellij.ml.llm.html.nextEdits.backend",
+                "intellij.ml.llm.java.completion",
+                "intellij.ml.llm.java.nextEdits.agent.delegation.backend",
+                "intellij.ml.llm.java.nextEdits.backend",
+                "intellij.ml.llm.javaee.spring.completion",
+                "intellij.ml.llm.javascript.astro.completion",
+                "intellij.ml.llm.javascript.astro.nextEdits.backend",
+                "intellij.ml.llm.javascript.completion",
+                "intellij.ml.llm.javascript.nextEdits.backend",
+                "intellij.ml.llm.javascript.nextEdits.ultimate.backend",
+                "intellij.ml.llm.javascript.svelte.completion",
+                "intellij.ml.llm.javascript.svelte.nextEdits.backend",
+                "intellij.ml.llm.javascript.vue.completion",
+                "intellij.ml.llm.javascript.vue.nextEdits.backend",
+                "intellij.ml.llm.json.completion",
+                "intellij.ml.llm.json.nextEdits.backend",
+                "intellij.ml.llm.jupyter.common.nextEdits.backend",
+                "intellij.ml.llm.jupyter.common.nextEdits.frontend",
+                "intellij.ml.llm.jupyter.kotlin.completion",
+                "intellij.ml.llm.jupyter.python.completion",
+                "intellij.ml.llm.jupyter.python.nextEdits.backend",
+                "intellij.ml.llm.kotlin.completion",
+                "intellij.ml.llm.kotlin.nextEdits.agent.delegation.backend",
+                "intellij.ml.llm.kotlin.nextEdits.backend",
+                "intellij.ml.llm.markdown.completion",
+                "intellij.ml.llm.markdown.nextEdits.backend",
+                "intellij.ml.llm.mdx.nextEdits.backend",
+                "intellij.ml.llm.nextEdits.acp.backend",
+                "intellij.ml.llm.nextEdits.agent.delegation.backend",
+                "intellij.ml.llm.nextEdits.agent.delegation.common",
+                "intellij.ml.llm.nextEdits.agent.delegation.frontend",
+                "intellij.ml.llm.nextEdits.agents.backend",
+                "intellij.ml.llm.nextEdits.backend",
+                "intellij.ml.llm.nextEdits.common",
+                "intellij.ml.llm.nextEdits.frontend",
+                "intellij.ml.llm.nextEdits.monolith",
+                "intellij.ml.llm.php.completion",
+                "intellij.ml.llm.php.nextEdits.backend",
+                "intellij.ml.llm.properties.completion",
+                "intellij.ml.llm.python.completion",
+                "intellij.ml.llm.python.nextEdits.agent.delegation.backend",
+                "intellij.ml.llm.python.nextEdits.backend",
+                "intellij.ml.llm.rbs.completion",
+                "intellij.ml.llm.rider.cpp.completion",
+                "intellij.ml.llm.rider.cpp.nextEdits.backend",
+                "intellij.ml.llm.rider.csharp.completion",
+                "intellij.ml.llm.rider.csharp.nextEdits.backend",
+                "intellij.ml.llm.rider.fsharp.completion",
+                "intellij.ml.llm.rider.godot.completion",
+                "intellij.ml.llm.rider.hlsl.completion",
+                "intellij.ml.llm.rider.shaderlab.completion",
+                "intellij.ml.llm.rider.unrealengine.completion",
+                "intellij.ml.llm.ruby.completion",
+                "intellij.ml.llm.ruby.nextEdits.backend",
+                "intellij.ml.llm.rust.completion",
+                "intellij.ml.llm.rust.nextEdits.backend",
+                "intellij.ml.llm.sql.completion",
+                "intellij.ml.llm.terminal.completion",
+                "intellij.ml.llm.terraform.completion",
+                "intellij.ml.llm.text.completion",
+                "intellij.ml.llm.vcs.completion",
+                "intellij.ml.llm.xdebugger.completion",
+                "intellij.ml.llm.xml.completion",
+                "intellij.ml.llm.xml.nextEdits.backend",
+                "intellij.ml.llm.yaml.completion",
+                "intellij.ml.llm.yaml.javaee.spring.completion",
+                "intellij.ml.llm.yaml.json.completion",
+                "intellij.ml.llm.yaml.nextEdits.backend"
+              ],
+              "required": [
+                "intellij.platform.inline.completion"
+              ],
+              "descriptor_sha256": [
+                "844682b37b9b30e404fd2613b6fb38f8c6103d930d8a78770f5bf76da87ab50f"
+              ]
+            },
+            "decision": "EXCLUDE",
+            "reason": "EXPLICIT_NON_ROOT_CANDIDATE"
+          },
+          {
+            "component": {
+              "directory": "plugins/grazie",
+              "identifiers": [
+                "tanvd.grazi"
+              ],
+              "modules": [
+                "intellij.grazie.core",
+                "intellij.grazie.java",
+                "intellij.grazie.json",
+                "intellij.grazie.markdown",
+                "intellij.grazie.properties",
+                "intellij.grazie.xml",
+                "intellij.grazie.yaml",
+                "intellij.libraries.ai.grazie.spell.gec.engine.local"
+              ],
+              "required": [
+                "intellij.platform.vcs.impl",
+                "intellij.spellchecker"
+              ],
+              "descriptor_sha256": [
+                "005b854785441d514e244cfa53eea3c2e014f61324afbec6356a5629803fc110"
+              ]
+            },
+            "decision": "EXCLUDE",
+            "reason": "EXPLICIT_NON_ROOT_CANDIDATE"
+          }
+        ]
+      },
+      "removedFiles": [
+        {
+          "path": "plugins/code-provenance/lib/chatter-native/linux-x86_64/chatter",
+          "kind": "FILE",
+          "bytes": 74219376,
+          "sha256": "e46591b584e82a578ac107303c9f7303d7e43cf942f027639d8d370edc56824e"
+        },
+        {
+          "path": "plugins/code-provenance/lib/code-provenance.jar",
+          "kind": "FILE",
+          "bytes": 81376,
+          "sha256": "23ce5783d84dc112a608e49b027541efdaec8ba8e766c50cdf5a5f3302fecfa2"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.claude.jar",
+          "kind": "FILE",
+          "bytes": 162477,
+          "sha256": "e3a18f7abe04a24c87d5bebdc7b5076d47433a9731b7da61ac396bf932693e0f"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.fus.jar",
+          "kind": "FILE",
+          "bytes": 214817,
+          "sha256": "b1101efc8387d83f59c073dd5b956fa13fea3033958ced76ce0e5379827883e1"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.git.jar",
+          "kind": "FILE",
+          "bytes": 119473,
+          "sha256": "97fa95e8dafb25d32defe7c90134289a18dc025aa7f5740e34d055c28fb14529"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.jar",
+          "kind": "FILE",
+          "bytes": 1598427,
+          "sha256": "19fe60dd1aefffc461f7797081c70b28ae31806c74f5af89509025e4b6005072"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.llm.jar",
+          "kind": "FILE",
+          "bytes": 278832,
+          "sha256": "b16fe217f04035219b7461dbc1db65620b5e3692ed6c8654f469f66b995b72cc"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.mcp.jar",
+          "kind": "FILE",
+          "bytes": 33510,
+          "sha256": "b949a14098e18f3795a390800b49ffc0c1a66dc1db0ebc24fa3f64e623d9a764"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.dev.jar",
+          "kind": "FILE",
+          "bytes": 721764,
+          "sha256": "ea30c3a1cbd1233a25469c945da753e979ea239db8d5d5e6764d3be734aba7ed"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.ui.jar",
+          "kind": "FILE",
+          "bytes": 39429,
+          "sha256": "e1a8c87256cf0a332ac58589be35870151f2c400a0949ed6110e38ba4f418af5"
+        },
+        {
+          "path": "plugins/fullLine/full-line-model-java-v2.zip",
+          "kind": "FILE",
+          "bytes": 68859908,
+          "sha256": "3d98f4412fda1fb10febe561ff53dcdd0d8863875f75bd52fc244cce3d9686c8"
+        },
+        {
+          "path": "plugins/fullLine/full-line-model-kotlin.zip",
+          "kind": "FILE",
+          "bytes": 68860379,
+          "sha256": "5ccb4de9549f5a64c342cd42c191da1cbce89f796eca342338ba8e81b9ab228f"
+        },
+        {
+          "path": "plugins/fullLine/full-line-native-server-linux-x86_64.zip",
+          "kind": "FILE",
+          "bytes": 39089987,
+          "sha256": "c2319e818b031652f01609d834241be2d7c42321490bda35fd6b455713fe3f34"
+        },
+        {
+          "path": "plugins/fullLine/lib/clikt.jar",
+          "kind": "FILE",
+          "bytes": 1427756,
+          "sha256": "910f9c6121c233c7ba2bb4b93aa6f73b1926384703852940cd7860df827b06ac"
+        },
+        {
+          "path": "plugins/fullLine/lib/fullLine.jar",
+          "kind": "FILE",
+          "bytes": 25675469,
+          "sha256": "9170cc9ef7bf44922d39e8be8302a348fe2bc34fbaa342b35e9cc3daf12aca2c"
+        },
+        {
+          "path": "plugins/fullLine/lib/github.oshi.core.jar",
+          "kind": "FILE",
+          "bytes": 2125813,
+          "sha256": "a731597e93a57e3f6de0dbffd97e05b0ddd6b539b2b534014274e9421eac8900"
+        },
+        {
+          "path": "plugins/fullLine/lib/java-diff-utils.jar",
+          "kind": "FILE",
+          "bytes": 178584,
+          "sha256": "44e62648ca1e1d5ad2d43533519e75a8b9ce01abb5d518450ccf623e20c785d2"
+        },
+        {
+          "path": "plugins/fullLine/lib/jetbrains.ai.completion.trigger.model.markdown.cloud.jar",
+          "kind": "FILE",
+          "bytes": 233526,
+          "sha256": "81622ff2c707aa0c3390927cd567704288ebb3ece65d6a76412a0c15bffbef2e"
+        },
+        {
+          "path": "plugins/fullLine/lib/jetbrains.ai.completion.trigger.model.polyglot.cloud.jar",
+          "kind": "FILE",
+          "bytes": 5935010,
+          "sha256": "9bc72d5043afb5472f97e1fd54768a1c277c1394d085bdc682563830db3c4d6f"
+        },
+        {
+          "path": "plugins/fullLine/lib/jetbrains.ai.completion.trigger.model.text.cloud.jar",
+          "kind": "FILE",
+          "bytes": 193993,
+          "sha256": "fe377a539c01688b408502ce33c250a7acac18e606ebaed755a1d7e689727a0c"
+        },
+        {
+          "path": "plugins/fullLine/lib/jetbrains.mlapi.core.jar",
+          "kind": "FILE",
+          "bytes": 1041484,
+          "sha256": "73b570401bd1249090a71aed47d3d2410185625833b202dc12d2eb5e61dec1f8"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.chat.jar",
+          "kind": "FILE",
+          "bytes": 617,
+          "sha256": "d0ad615a25eb9920a30c54c7f7549cb9a610f9706f6947c2176194410762ead4"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.controlModel.jar",
+          "kind": "FILE",
+          "bytes": 67793322,
+          "sha256": "62001bd1e9ef9d6fd04b832ee7454a98ca1ad46016ef4eafd4aace4d9131440a"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.css.less.local.jar",
+          "kind": "FILE",
+          "bytes": 9941,
+          "sha256": "6342d26a96cd3434f9f33142142fc0f7aa100b8fc6eb6d5f707991aca35d201a"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.css.local.jar",
+          "kind": "FILE",
+          "bytes": 1445336,
+          "sha256": "5e619db46d202b24750b18cccb6a8cc13dd866a3a25c48541ed688ddf025b55b"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.css.ultimate.jar",
+          "kind": "FILE",
+          "bytes": 48705,
+          "sha256": "9039293a14e74b8592b3cfaeb66377b29b8dab320ed0c3090e945a8a39ba71e7"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.erb.jar",
+          "kind": "FILE",
+          "bytes": 477,
+          "sha256": "9894a9b39299e39ecd6dc312c3d55c0b503ff234f94c565d5f3ec1695a454365"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.fake.frontend.jar",
+          "kind": "FILE",
+          "bytes": 453,
+          "sha256": "e184aadaee16e1fef9d1ef93fd1ec1b33653cc3301d4569be4781123c9eed954"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.go.local.jar",
+          "kind": "FILE",
+          "bytes": 3918436,
+          "sha256": "3714878e973ddcae359574ef7901976bab92acc13a4c8ab3b65e71f967a4956f"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.html.local.jar",
+          "kind": "FILE",
+          "bytes": 2072514,
+          "sha256": "d216ddfbc4d36071bea1bdf0340516ec271f7461db9489a78670d32c643b7975"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.java.local.jar",
+          "kind": "FILE",
+          "bytes": 4439599,
+          "sha256": "6ba89cc672a4a8108841dec165f534df31fe5b59ea3a1f99bed26775bb5fdd0f"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.js.local.jar",
+          "kind": "FILE",
+          "bytes": 4518385,
+          "sha256": "3ca72814a61a2b406650d4f55384bb49120e195779bdb7503fe1589a39d48229"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.js.ultimate.jar",
+          "kind": "FILE",
+          "bytes": 101928,
+          "sha256": "2879fa05de8f5c223807d21d090ab7a12ddc11d305fea3cb112335012c8d8019"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.json.jar",
+          "kind": "FILE",
+          "bytes": 500,
+          "sha256": "f9e21d6c7a9b5d5f27c797a7de0967db6a27b4326a3bf18b6ea914caf715cfec"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.kotlin.local.jar",
+          "kind": "FILE",
+          "bytes": 2564183,
+          "sha256": "67c433a4a4a6870f22d79c29877fb996a601c6cbe394db5b224f04b38055721e"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.local.jar",
+          "kind": "FILE",
+          "bytes": 4375720,
+          "sha256": "8c1bf4381b63f0360e0f70588db87923d260bd1fc0f2ad5efe7dc4837fd19a65"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.markdown.jar",
+          "kind": "FILE",
+          "bytes": 517,
+          "sha256": "52464375754f066b7a606d65e14d72b3900a9a7e39a36a48f30edb40766260df"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.php.local.jar",
+          "kind": "FILE",
+          "bytes": 2646670,
+          "sha256": "3691104884de6b7d3e8c3769e574ef987139bf83f97caa352ec4651f2cfcc54d"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.properties.jar",
+          "kind": "FILE",
+          "bytes": 591,
+          "sha256": "a95b341a9fd7c25f4d211f042d9ce13b5f54ba58957ceb7f6d17ed9ce5bc4f6d"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.python.jupyter.jar",
+          "kind": "FILE",
+          "bytes": 1032,
+          "sha256": "9091798be801b3620497651dbc894ce7c311eb6c89aa09becd32feb8986afbd5"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.python.jupyter.local.jar",
+          "kind": "FILE",
+          "bytes": 11446,
+          "sha256": "2cb1771bf42b92eaf258cc58587530653daff68e8c8ec204f384de7f2a7125bf"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.python.local.jar",
+          "kind": "FILE",
+          "bytes": 9031369,
+          "sha256": "f5bbca157c6392469a8a092b5ae246a3e2cbe4a2f39632ce2ae29ec4756ad1db"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rbs.jar",
+          "kind": "FILE",
+          "bytes": 524,
+          "sha256": "c9aafbfaa122d6a338ec9618f129b3782fa9f39c6feb057191ee745c76cc54f5"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.cpp.local.jar",
+          "kind": "FILE",
+          "bytes": 4509432,
+          "sha256": "cd14c1edea3df349f1e77873465e0393e1e7c2d20ec26e1f82026a71b68c74b9"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.csharp.local.jar",
+          "kind": "FILE",
+          "bytes": 4214990,
+          "sha256": "3e303d69f5ebd75844939950a501d99a9f43237eb116d3c2c25c7c76cd583a4f"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.fsharp.jar",
+          "kind": "FILE",
+          "bytes": 5469,
+          "sha256": "ffc7e87a52e429fafb457de940cffebaaba2ea96ecf1f3d5a955b105de2cfeba"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.godot.jar",
+          "kind": "FILE",
+          "bytes": 9184,
+          "sha256": "78eb057ff48207b6c2032bcfffb03b1def56028717035dc4f66ba65f773e2ef3"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.hlsl.jar",
+          "kind": "FILE",
+          "bytes": 9354,
+          "sha256": "376c9e9192643794597a5dd9b4ef71bceb9108234b6c743b27ea31f50379d7ac"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.local.jar",
+          "kind": "FILE",
+          "bytes": 918,
+          "sha256": "a0076577b0d3390c0e5d4130987edc1c36c6743794e979b232c23a83834bc7a1"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.shaderlab.jar",
+          "kind": "FILE",
+          "bytes": 5595,
+          "sha256": "9f100ffb12010b9339f4dc2536067c3c62db4cd31121aa285f74c1ba220b81fc"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.unrealengine.jar",
+          "kind": "FILE",
+          "bytes": 9838,
+          "sha256": "a68cc80c23eabcf404489cd51fb57f37874f51870848e42222096911989b0761"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.ruby.local.jar",
+          "kind": "FILE",
+          "bytes": 2755835,
+          "sha256": "9dcd52e94cca47c20f098cd934ba463d37283a36d227d3240ae66286a907073c"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rust.local.jar",
+          "kind": "FILE",
+          "bytes": 1781257,
+          "sha256": "be98c5eb38ed8d167dbb9badf116731a0a386007f60f6f7863cd7f51dd984f0e"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.sql.jar",
+          "kind": "FILE",
+          "bytes": 520,
+          "sha256": "4b73eca6ceb317d4be483626f9625e092f3950155f2e825e6ff3f6b2afb58dee"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.terraform.local.jar",
+          "kind": "FILE",
+          "bytes": 668087,
+          "sha256": "252bd3e8411c7b8f06eed07f01a95a1acdd5e72fb9e59d49b9150d3733b18903"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.text.jar",
+          "kind": "FILE",
+          "bytes": 433,
+          "sha256": "a539549ebb164b9714fafc575b2ebf22b879dd0a67343433987c261b33d33871"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.vcs.jar",
+          "kind": "FILE",
+          "bytes": 16993,
+          "sha256": "faebc4ec57dd40a7d0cdb508767d2b9717a355837f889aee4807eb7f295ba7e1"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.web.jar",
+          "kind": "FILE",
+          "bytes": 44907,
+          "sha256": "3e6decbb64f0a8de247d34577b64e95167ebd4b589600a9c936a594531d5afd0"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.xml.jar",
+          "kind": "FILE",
+          "bytes": 498,
+          "sha256": "f654ce61f5aef6f63abeb64fca83d0d213ae327e449c2ff56682b7cba41ec0a1"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.yaml.jar",
+          "kind": "FILE",
+          "bytes": 500,
+          "sha256": "8524df6b59bc3454544778986c1720309c250b83aeac9fa469c30f1ca55a0545"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.llmInstaller.frontend.jar",
+          "kind": "FILE",
+          "bytes": 61675,
+          "sha256": "4ab1cb4712849c7f324efe642a87e39f3732f3cf5b8aa02720054b64ec274b9d"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.llmInstaller.shared.jar",
+          "kind": "FILE",
+          "bytes": 108930,
+          "sha256": "335b57dd23337e2bc281294f8088a6a78fb329be8445fc97aa5181e8ecd7960f"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.diagnostics.jar",
+          "kind": "FILE",
+          "bytes": 412279,
+          "sha256": "98d75b1e12dd2c240f291f7d219272856b860c7c5ac652144056b8dcc3657212"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.chat.completion.jar",
+          "kind": "FILE",
+          "bytes": 2019051,
+          "sha256": "2ae35db50393d2c59643dec1ad6e53b2d2454ac3da444825b9ac8e2b28d70687"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.completion.jar",
+          "kind": "FILE",
+          "bytes": 5587508,
+          "sha256": "3c446b589124499894b56ec78e3393cafb2d29d8fd6443d0b721e966f6a24843"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.cpp.completion.jar",
+          "kind": "FILE",
+          "bytes": 2241699,
+          "sha256": "76c6496d6d971b6913c1727ac7d14f735a6772f7cc9c1b3e03c688fd647af9ea"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.css.completion.jar",
+          "kind": "FILE",
+          "bytes": 936987,
+          "sha256": "bdd07bccf9d8e0e9ff344abfc171d4a01319494ca6c0fee02ecca57d6d7d01eb"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.git.nextEdits.backend.jar",
+          "kind": "FILE",
+          "bytes": 32969,
+          "sha256": "edc7356b3f70d3f72f206dddfb1149f03daeefbc2e4f9dda2aa2968612507ac9"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.go.completion.jar",
+          "kind": "FILE",
+          "bytes": 1620039,
+          "sha256": "7dc7fda63edde34f69b85bead3f6815afeb3165b616573621389a7a06001737f"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.html.completion.jar",
+          "kind": "FILE",
+          "bytes": 1087468,
+          "sha256": "68ab9d62760ddf4ff7f5b6314815a7903c3cadbf485d5b81d459daa5f856f523"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.java.completion.jar",
+          "kind": "FILE",
+          "bytes": 3581833,
+          "sha256": "097c3070cec5467cfcd8e2c7b211660c9d880f7ad0c833a02522d776f003be16"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.java.nextEdits.agent.delegation.backend.jar",
+          "kind": "FILE",
+          "bytes": 30528,
+          "sha256": "c045862c1c36e31ac28d989734d168c4bff3bb3534e5e55fc80ff2107ef154ed"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.javaee.spring.completion.jar",
+          "kind": "FILE",
+          "bytes": 87121,
+          "sha256": "bb727dfb174aa5089d55b223988ec5fad9a854a43cb3188bfae138cca779e000"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.javascript.completion.jar",
+          "kind": "FILE",
+          "bytes": 1517763,
+          "sha256": "42add648b5758f47f125bf2350bd188dc02179e639c3ab8a0e86b91b451c159d"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.javascript.nextEdits.ultimate.backend.jar",
+          "kind": "FILE",
+          "bytes": 5786,
+          "sha256": "9d8f17fc4d32893f5555d502a3c2e7772b84704fdbc0c8782a011ae4a1a16e66"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.jupyter.python.completion.jar",
+          "kind": "FILE",
+          "bytes": 18912,
+          "sha256": "205fea6172ffddfa791fad2118263b109dcc2864dc1a1b233a3ab6ad5f706d09"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.kotlin.completion.jar",
+          "kind": "FILE",
+          "bytes": 5130453,
+          "sha256": "9fdaf5d09479d2f2308662f99ffae5b72ddc37c7dd30442b002dbed2a47d5dd8"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.kotlin.nextEdits.agent.delegation.backend.jar",
+          "kind": "FILE",
+          "bytes": 34532,
+          "sha256": "d75cec59b237116666e55f99e27466b1d23b25a1eade123e052cb1de69dcdcb2"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.mdx.nextEdits.backend.jar",
+          "kind": "FILE",
+          "bytes": 2791,
+          "sha256": "72b531ccf4bf05ba9bba128b79481f13f6cc3d5d17687e6404a94eced6617103"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.nextEdits.acp.backend.jar",
+          "kind": "FILE",
+          "bytes": 854002,
+          "sha256": "d831d059e222e42af2cb33c8add19b12d33e077f0f90e38cc505e1af72c20a93"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.nextEdits.agent.delegation.backend.jar",
+          "kind": "FILE",
+          "bytes": 787659,
+          "sha256": "f850ab3e567fbfdb7539f72bdb6b44524910db18d1ffd89ca45b398a2d64b712"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.nextEdits.agents.backend.jar",
+          "kind": "FILE",
+          "bytes": 4121311,
+          "sha256": "e2b2486d47f55d87086201c8e4ca743985f2bb8d309015cd530e469b3dd17f0e"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.php.completion.jar",
+          "kind": "FILE",
+          "bytes": 2256302,
+          "sha256": "7629b68cd14efe5ad12db4ebcda1fe1e83cc9f244c559e75bb93790f55e4c336"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.python.completion.jar",
+          "kind": "FILE",
+          "bytes": 2165305,
+          "sha256": "aa6f02dc2786ab53225a11227bc86f81f84696847d55f92890a2524d7dc86637"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.python.nextEdits.agent.delegation.backend.jar",
+          "kind": "FILE",
+          "bytes": 26269,
+          "sha256": "9b3184c8b945f53b45c74b86cfd0c17c1f11588d047971cd762df1a6a5155474"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rbs.completion.jar",
+          "kind": "FILE",
+          "bytes": 81415,
+          "sha256": "c146e21e930f7fbd6cd794df5a64772b668bcd7d9155b9ce61caac2bb8ef176a"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.cpp.completion.jar",
+          "kind": "FILE",
+          "bytes": 2250298,
+          "sha256": "8a696c54bb8fabe60c078358578f9991d17f768a8f3b59b19648ab8fb72b0dd9"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.csharp.completion.jar",
+          "kind": "FILE",
+          "bytes": 1640710,
+          "sha256": "7fbdde70e0997a612421af4b0283c5cd86bae4d39ff602d9db359f47bd82e6cc"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.fsharp.completion.jar",
+          "kind": "FILE",
+          "bytes": 16575,
+          "sha256": "8240254f49df226d6758cac359ff452d9e27e8a7df78cc49c82cb2a5667c690e"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.godot.completion.jar",
+          "kind": "FILE",
+          "bytes": 31801,
+          "sha256": "78929f1270cfc8fd1605a2a885c5abe63be4b1a11d5c6224b5c5fb6942ce8b70"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.hlsl.completion.jar",
+          "kind": "FILE",
+          "bytes": 16211,
+          "sha256": "55366bd8368e6df4822bc04c7ade279940657959671509c2591bcce6e467745a"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.shaderlab.completion.jar",
+          "kind": "FILE",
+          "bytes": 16943,
+          "sha256": "848a0f4df98417f5433502ee84bb8ff244deedf178a7dc5a2ba4944c048c93e5"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.unrealengine.completion.jar",
+          "kind": "FILE",
+          "bytes": 17093,
+          "sha256": "074cbfd58d8be1ba7e0b201aab4efb4cb4a053cf6a4837e49118b2eec3bc6fb8"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.ruby.completion.jar",
+          "kind": "FILE",
+          "bytes": 1170662,
+          "sha256": "5dc3facd28c511eea370417ee7280216c996f38b3ba518e2b5d9ae4cbedcdec8"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rust.completion.jar",
+          "kind": "FILE",
+          "bytes": 2246419,
+          "sha256": "b2a7cd17d9be74479936e76be3f93f4c75c9995cc5f328aef76713bf3bbfb6e7"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.sql.completion.jar",
+          "kind": "FILE",
+          "bytes": 409091,
+          "sha256": "3b21e4c61abe209a3fe5bdc4e1af6f1543ddc15c33998666dd5d5c10097ddff2"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.vcs.completion.jar",
+          "kind": "FILE",
+          "bytes": 1281869,
+          "sha256": "3e2641d18451e0c3aeca3094161036d5aa889d7b8157bd314aaa50e02e6125f8"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.yaml.completion.jar",
+          "kind": "FILE",
+          "bytes": 83158,
+          "sha256": "1c0e6cb1df8260294a8f6a219b3c44b99a1f61682032d5af28301403f1b5cde6"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.yaml.javaee.spring.completion.jar",
+          "kind": "FILE",
+          "bytes": 8375,
+          "sha256": "63feb422054756ddf9715b05aa75e938ba238cdc609f7611b56cfbe44934e809"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.yaml.json.completion.jar",
+          "kind": "FILE",
+          "bytes": 15288,
+          "sha256": "3c4e1e72f0aa0e3e935782560c9ebe01c4a71eb84c1f4c720b996e25f56ad9a4"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/AIEnterprise.png",
+          "kind": "FILE",
+          "bytes": 297563,
+          "sha256": "8dfc2b4efcdedba1423b8b123bbe8f48d5812f7826f174c67512ed0cc16dc647"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/CloudCompletion.png",
+          "kind": "FILE",
+          "bytes": 271810,
+          "sha256": "59b967bc7a49cfea10f19dc288529ed28c0e30a418f7e2453052e994832c840f"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/CloudCompletion_dark.png",
+          "kind": "FILE",
+          "bytes": 254122,
+          "sha256": "e1cedaa684a6d45f12e84960270ef7d7db192dd9546d203db9798fe0ecceff9d"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/CommandGenerationInTerminal.png",
+          "kind": "FILE",
+          "bytes": 78929,
+          "sha256": "868a47349db33705bdaf5d27c15e52424a70cfee308f454156dcc7f5f93ea736"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/CommandGenerationInTerminal_dark.png",
+          "kind": "FILE",
+          "bytes": 89869,
+          "sha256": "b2c3f5fe6242037bbadf73f7dfdb2cb5ea8c490dc48b183f200b4cef034f6397"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/ContextAwareChat.png",
+          "kind": "FILE",
+          "bytes": 334558,
+          "sha256": "542ce1e2e1fdb78e48a6bdde24cd44e9265cbcb91dc8e16e353093ca5f2364b7"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/ContextAwareChat_dark.png",
+          "kind": "FILE",
+          "bytes": 387425,
+          "sha256": "6df010d8543c307a3c4f374c7faf5ea295ce76fb861c95712028a730bcb85112"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/FixWithAI.png",
+          "kind": "FILE",
+          "bytes": 336814,
+          "sha256": "8a5b41e8769c44f156e04ac9fc21aa3596ebaaa337e8fecd1126ad372c20a8ba"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/FixWithAI_dark.png",
+          "kind": "FILE",
+          "bytes": 308415,
+          "sha256": "53f26f4bdc69fb18d18db0ca105d77c806cc3f3d969780389cf73ddeb367152f"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/GenerateTests.png",
+          "kind": "FILE",
+          "bytes": 284930,
+          "sha256": "4f4ced4180b444db4f0652abfea6827e3d5a1fd0f107d8891e0808be33a0314f"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/GenerateTests_dark.png",
+          "kind": "FILE",
+          "bytes": 238456,
+          "sha256": "a898eeb2e2790cd653090838cddc7c3b349e118a0746d15d48cfbf5240568c97"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/LocalCompletion.png",
+          "kind": "FILE",
+          "bytes": 244108,
+          "sha256": "9ed3fafc89a2e91b8d2248d9f4bf37a7f0b5476b562285770d827f2f81eea26f"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/LocalCompletion_dark.png",
+          "kind": "FILE",
+          "bytes": 244472,
+          "sha256": "d586641dd4bcb420c07e94a0a6c967bbb680bf90e6c2b100c38400e64958f120"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/MergeWithAI.png",
+          "kind": "FILE",
+          "bytes": 344419,
+          "sha256": "f8b56d9a3b02e44a4479829b59522404b1afdf2120e1f6666dceb50291e925d2"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/MergeWithAI_dark.png",
+          "kind": "FILE",
+          "bytes": 327980,
+          "sha256": "9501e1b91e83206c42f67184866ba555025ee2203c3f516720825a3ae3b3f2e5"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/content.json",
+          "kind": "FILE",
+          "bytes": 607,
+          "sha256": "22e58b3ce36bc4cb584894dd92c598ed173454c685e7384340f37ad5e13b0a1f"
+        },
+        {
+          "path": "plugins/grazie/lib/grazie.jar",
+          "kind": "FILE",
+          "bytes": 86571,
+          "sha256": "2adbed5f1446760ddacc4d8c0f55b5d86c0811fd30f2d6c0983765e3935e9da3"
+        },
+        {
+          "path": "plugins/grazie/lib/intellij.grazie.core.jar",
+          "kind": "FILE",
+          "bytes": 39435399,
+          "sha256": "a7a3e93370bc53f23b5e40dbe3f60b09ee9b13205a3d04d2f21981ec40c3589e"
+        },
+        {
+          "path": "plugins/grazie/lib/intellij.libraries.ai.grazie.spell.gec.engine.local.jar",
+          "kind": "FILE",
+          "bytes": 12762157,
+          "sha256": "f6f42417a8ad0fe52d1364ff8c1a43f1ecd77a6a2e9aad14d7dcc43ee461f802"
+        },
+        {
+          "path": "plugins/grazie/lib/modules/intellij.grazie.java.jar",
+          "kind": "FILE",
+          "bytes": 13696,
+          "sha256": "e53d3a038a5955b8bcc8cd869028e877433d05f762ae5ff030132bdae165bbc0"
+        },
+        {
+          "path": "plugins/grazie/lib/modules/intellij.grazie.markdown.jar",
+          "kind": "FILE",
+          "bytes": 344419,
+          "sha256": "a107298afc651aef9d34d6f760c5d29eb70e9f6bd06a57c379364e0e6566888a"
+        },
+        {
+          "path": "plugins/grazie/lib/modules/intellij.grazie.properties.jar",
+          "kind": "FILE",
+          "bytes": 12670,
+          "sha256": "7cbdab21d40e26b53b29d44ad5d74f5d177eca6c3a514bda546911f459eefcfd"
+        },
+        {
+          "path": "plugins/grazie/lib/org.jetbrains.intellij.deps.languagetool-language-en.jar",
+          "kind": "FILE",
+          "bytes": 19373318,
+          "sha256": "60c55fabe86d175924b353327fee8a78afa5dba456c105e4ebb2114b470f247d"
+        },
+        {
+          "path": "plugins/grazie/lib/org.jetbrains.intellij.deps.languagetool-languagetool-core.jar",
+          "kind": "FILE",
+          "bytes": 5411901,
+          "sha256": "0bf461292b27cd8ca000ab689cea1d368e3d085ba96671fd703fd68ea1560350"
+        }
+      ],
+      "retainedInventorySha256": "74434e8280a92390597a7e92b1964672e5883138b6be4fef678faa9f4c53a6e4",
+      "retainedRegularFiles": 3399,
+      "removedRegularBytes": 533607153,
+      "coldPublicSeconds": 291.73859345899973,
+      "coldPublicOutcome": "PASSED",
+      "sampledColdPeakRssKiB": 4618060,
+      "warmSamples": [
+        {
+          "index": 0,
+          "startedUtc": "2026-11-06T06:17:08.731115+00:00",
+          "wallSeconds": 6.494363781000175,
+          "nativeDurationNanos": 186318601,
+          "readId": "3b536048-0b26-422e-b677-4044c042b244"
+        },
+        {
+          "index": 1,
+          "startedUtc": "2026-11-06T06:17:15.231541+00:00",
+          "wallSeconds": 5.796288570999877,
+          "nativeDurationNanos": 148970230,
+          "readId": "a9e8ffeb-943b-471f-800a-58db0a6705d9"
+        },
+        {
+          "index": 2,
+          "startedUtc": "2026-11-06T06:17:21.029538+00:00",
+          "wallSeconds": 7.01876372300012,
+          "nativeDurationNanos": 120050220,
+          "readId": "f6f0ae54-4f49-409c-b79c-5376f72ff72c"
+        },
+        {
+          "index": 3,
+          "startedUtc": "2026-11-06T06:17:28.057461+00:00",
+          "wallSeconds": 7.923786600999847,
+          "nativeDurationNanos": 241567279,
+          "readId": "47e0846f-e4b5-464c-a40e-260853ce8d30"
+        },
+        {
+          "index": 4,
+          "startedUtc": "2026-11-06T06:17:35.988481+00:00",
+          "wallSeconds": 6.565229301999807,
+          "nativeDurationNanos": 185453057,
+          "readId": "f6794666-c779-473a-8b18-5dc9f96b34ce"
+        }
+      ],
+      "storageAndSteadyMemory": {
+        "storage": [
+          {
+            "path": "/runtime/kh7r/runtime",
+            "regularFiles": 3401,
+            "apparentBytes": 4037627348,
+            "allocatedBytes": 4045594624,
+            "symlinks": 221
+          },
+          {
+            "path": "/runtime/kh7r/state/system",
+            "regularFiles": 2013,
+            "apparentBytes": 347741124,
+            "allocatedBytes": 352964608,
+            "symlinks": 0
+          },
+          {
+            "path": "/runtime/kh7r/state/home/.gradle",
+            "regularFiles": 13012,
+            "apparentBytes": 960642624,
+            "allocatedBytes": 992784384,
+            "symlinks": 0
+          },
+          {
+            "path": "/runtime/kh7r/state/log",
+            "regularFiles": 118,
+            "apparentBytes": 12135206,
+            "allocatedBytes": 12382208,
+            "symlinks": 0
+          },
+          {
+            "path": "/runtime/kh7r/state/tmp",
+            "regularFiles": 2,
+            "apparentBytes": 8133,
+            "allocatedBytes": 12288,
+            "symlinks": 0
+          },
+          {
+            "path": "/runtime/kh7r/state/home/.local/share/kast/installation",
+            "regularFiles": 15717,
+            "apparentBytes": 118721302,
+            "allocatedBytes": 174510080,
+            "symlinks": 0
+          },
+          {
+            "path": "/runtime/kh7r/state/home/.local/share/JetBrains/IntelliJIdea2026.2/plugins",
+            "regularFiles": 39,
+            "apparentBytes": 41175099,
+            "allocatedBytes": 41242624,
+            "symlinks": 0
+          }
+        ],
+        "processes": [
+          {
+            "pid": 11723,
+            "startTicks": 375321,
+            "rssKiB": 2587468,
+            "peakRssKiB": 2587548,
+            "pssKiB": 2571350,
+            "command": [
+              "/runtime/kh7r/runtime/idea-IU-262.10315.125/bin/idea",
+              "kast-headless"
+            ]
+          },
+          {
+            "pid": 12278,
+            "startTicks": 380896,
+            "rssKiB": 757092,
+            "peakRssKiB": 757092,
+            "pssKiB": 740734,
+            "command": [
+              "/runtime/kh7r/runtime/idea-IU-262.10315.125/jbr/bin/java",
+              "--add-opens=java.base/java.lang=ALL-UNNAMED",
+              "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+              "--add-opens=java.base/java.util=ALL-UNNAMED",
+              "--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED",
+              "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+              "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
+              "--add-opens=java.base/java.nio.charset=ALL-UNNAMED",
+              "--add-opens=java.base/java.net=ALL-UNNAMED",
+              "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
+              "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
+              "--add-opens=java.xml/javax.xml.namespace=ALL-UNNAMED",
+              "--add-opens=java.base/java.time=ALL-UNNAMED",
+              "--sun-misc-unsafe-memory-access=allow",
+              "--enable-native-access=ALL-UNNAMED",
+              "-XX:MaxMetaspaceSize=384m",
+              "-XX:+HeapDumpOnOutOfMemoryError",
+              "-Xms256m",
+              "-Xmx512m",
+              "-Dfile.encoding=UTF-8",
+              "-Duser.country=US",
+              "-Duser.language=en",
+              "-Duser.variant",
+              "-cp",
+              "/runtime/kh7r/state/home/.gradle/wrapper/dists/gradle-9.8.2-bin/8wepis63pzuhrlfaiy04bagwu/gradle-9.8.2/lib/gradle-daemon-main-9.8.2.jar",
+              "-javaagent:/runtime/kh7r/state/home/.gradle/wrapper/dists/gradle-9.8.2-bin/8wepis63pzuhrlfaiy04bagwu/gradle-9.8.2/lib/agents/gradle-instrumentation-agent-9.8.2.jar",
+              "org.gradle.launcher.daemon.bootstrap.GradleDaemon",
+              "9.8.2"
+            ]
+          }
+        ],
+        "sumRssKiB": 3344560,
+        "sumPssKiB": 3312084,
+        "memoryScope": "current admitted Host and private Gradle or Kotlin daemon processes, including reparented children; sampled after the same acceptance corpus"
+      },
+      "heapSnapshot": "11723:\ngarbage-first heap   total reserved 1572864K, committed 465920K, used 337498K [0x00000000a0000000, 0x0000000100000000)\n region size 1024K, 67 young (68608K), 10 survivors (10240K)\n"
+    },
+    {
+      "platform": "macos-aarch64",
+      "selection": "full",
+      "assemblyManifestSha256": "d2eda92d34f99c4f41d1c93a840f59db7be3eda24253018c6dc9a8ad9063b4b7",
+      "assemblyInputs": {
+        "distributionSha256": "f4a45f451008c86ce4e9342d5931fd89c8553f9d3ab6e8012da7533e9fe5c249",
+        "bootstrapArchiveSha256": "23b90ca038394eaff197b97f30b9e53780adb22ab3b8713de751a3594110891a",
+        "assemblerSha256": "484bcb1b3ad7ef8fd7dfbbfe942b46eea0c0996d9be1b58a7570867cd0f9b2a5",
+        "installerSha256": "08c0b0d0144adf8736f5fde7b3cf4b297c0f3d36b0bc143dbf2a0e355d34664b",
+        "hostRoots": [
+          "com.intellij.modules.platform",
+          "com.intellij.java",
+          "org.jetbrains.kotlin",
+          "org.jetbrains.plugins.gradle"
+        ],
+        "assets": [
+          {
+            "path": "host-installation.py",
+            "kind": "FILE",
+            "bytes": 77358,
+            "sha256": "1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          },
+          {
+            "path": "host-installation.py.sha256",
+            "kind": "FILE",
+            "bytes": 87,
+            "sha256": "511924b965823a8356e4bcd074faf516e0dc00d3cab3f2772c9d849fe0d43e33"
+          },
+          {
+            "path": "kast-control-v0.0.0-macos-aarch64.tar.gz",
+            "kind": "FILE",
+            "bytes": 41097997,
+            "sha256": "3cedd346d060d18312b0109f21f4c999263458f4f0becc6103e39856216e0334"
+          },
+          {
+            "path": "kast-control-v0.0.0-macos-aarch64.tar.gz.sha256",
+            "kind": "FILE",
+            "bytes": 107,
+            "sha256": "e61c7c66fa708d84af212bc35b8e9b9f41b3bddfe3b5f0f5bf1146cf861c5239"
+          },
+          {
+            "path": "kast-host-release-v0.0.0.json",
+            "kind": "FILE",
+            "bytes": 742,
+            "sha256": "5627323e4448e38016c89a838ef5c2e1a360a4967e2b5b32cc191f987c53a247"
+          },
+          {
+            "path": "kast-host-release-v0.0.0.json.sha256",
+            "kind": "FILE",
+            "bytes": 96,
+            "sha256": "d318e5ea74206d1c8c357dfacbd78e957e610b1096f105e089217e716932c17f"
+          },
+          {
+            "path": "kast-ide-hosted-v0.0.0-idea-262.zip",
+            "kind": "FILE",
+            "bytes": 38252597,
+            "sha256": "3bed0f6de55c08fdcfd620e63917c752aef90009d479a850d61a3d530356f086"
+          },
+          {
+            "path": "kast-ide-hosted-v0.0.0-idea-262.zip.sha256",
+            "kind": "FILE",
+            "bytes": 102,
+            "sha256": "16be7cb28475dc5bc6d47611c38232231e3ac90871fb2f363255435919289c06"
+          }
+        ],
+        "componentDecisions": []
+      },
+      "removedFiles": [],
+      "retainedInventorySha256": "3ed271b334dda02e0c283469bc9dd214a5cf40379b8aa886f33f3aa3032e5fb9",
+      "retainedRegularFiles": 3188,
+      "removedRegularBytes": 0,
+      "coldPublicSeconds": 50.24976704099936,
+      "coldPublicOutcome": "FRESHNESS_REJECTED/DUMB_MODE",
+      "sampledColdPeakRssKiB": 3289920,
+      "warmSamples": [
+        {
+          "index": 0,
+          "startedUtc": "2026-11-06T05:45:18.934238+00:00",
+          "wallSeconds": 2.178592333999404,
+          "nativeDurationNanos": 25587958,
+          "readId": "7720b1c5-f700-4751-9171-eb967d70c8d7"
+        },
+        {
+          "index": 1,
+          "startedUtc": "2026-11-06T05:45:21.114260+00:00",
+          "wallSeconds": 2.081684249999853,
+          "nativeDurationNanos": 19454542,
+          "readId": "14c3ae53-c818-4c05-b80e-d3a37b0161c3"
+        },
+        {
+          "index": 2,
+          "startedUtc": "2026-11-06T05:45:23.197204+00:00",
+          "wallSeconds": 1.9632446249997884,
+          "nativeDurationNanos": 18482291,
+          "readId": "2cc5a107-9b41-4cb4-aeeb-b9625d58df4a"
+        },
+        {
+          "index": 3,
+          "startedUtc": "2026-11-06T05:45:25.161803+00:00",
+          "wallSeconds": 2.0175562499998705,
+          "nativeDurationNanos": 20765250,
+          "readId": "92a31090-29bd-4104-a379-b7ced3d076f9"
+        },
+        {
+          "index": 4,
+          "startedUtc": "2026-11-06T05:45:27.180690+00:00",
+          "wallSeconds": 2.1020852079991528,
+          "nativeDurationNanos": 21528917,
+          "readId": "d6c688a3-ec9a-42bf-97b6-4dedac411b09"
+        }
+      ],
+      "storageAndSteadyMemory": {
+        "storage": [
+          {
+            "path": "/private/tmp/kh7/runtime",
+            "regularFiles": 3190,
+            "apparentBytes": 4459612763,
+            "allocatedBytes": 4467138560,
+            "symlinks": 222
+          },
+          {
+            "path": "/private/tmp/kh7/state/system",
+            "regularFiles": 2017,
+            "apparentBytes": 348757705,
+            "allocatedBytes": 357371904,
+            "symlinks": 0
+          },
+          {
+            "path": "/private/tmp/kh7/state/home/.gradle",
+            "regularFiles": 13012,
+            "apparentBytes": 960732940,
+            "allocatedBytes": 1014005760,
+            "symlinks": 0
+          },
+          {
+            "path": "/private/tmp/kh7/state/log",
+            "regularFiles": 122,
+            "apparentBytes": 11350291,
+            "allocatedBytes": 12869632,
+            "symlinks": 0
+          },
+          {
+            "path": "/private/tmp/kh7/state/tmp",
+            "regularFiles": 3,
+            "apparentBytes": 8242,
+            "allocatedBytes": 16384,
+            "symlinks": 0
+          },
+          {
+            "path": "/private/tmp/kh7/state/home/.local/share/kast/installation",
+            "regularFiles": 15717,
+            "apparentBytes": 121377239,
+            "allocatedBytes": 177164288,
+            "symlinks": 0
+          },
+          {
+            "path": "/private/tmp/kh7/state/home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins",
+            "regularFiles": 39,
+            "apparentBytes": 41175099,
+            "allocatedBytes": 41242624,
+            "symlinks": 0
+          }
+        ],
+        "processes": [
+          {
+            "pid": 22101,
+            "rssKiB": 924592,
+            "command": "/private/tmp/kh7/runtime/IntelliJ IDEA.app/Contents/MacOS/idea kast-headless"
+          },
+          {
+            "pid": 22125,
+            "rssKiB": 67280,
+            "command": "/private/tmp/kh7/runtime/IntelliJ IDEA.app/Contents/jbr/Contents/Home/bin/java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.xml/javax.xml.namespace=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED -XX:MaxMetaspaceSize=384m -XX:+HeapDumpOnOutOfMemoryError -Xms256m -Xmx512m -Dfile.encoding=UTF-8 -Duser.country=US -Duser.language=en -Duser.variant -cp /private/tmp/kh7/state/home/.gradle/wrapper/dists/gradle-9.8.2-bin/8wepis63pzuhrlfaiy04bagwu/gradle-9.8.2/lib/gradle-daemon-main-9.8.2.jar -javaagent:/private/tmp/kh7/state/home/.gradle/wrapper/dists/gradle-9.8.2-bin/8wepis63pzuhrlfaiy04bagwu/gradle-9.8.2/lib/agents/gradle-instrumentation-agent-9.8.2.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 9.8.2"
+          }
+        ],
+        "sumRssKiB": 991872,
+        "scope": "current admitted Host plus private Gradle daemon PIDs from its owned logs; RSS can count shared pages more than once"
+      },
+      "heapSnapshot": "NOT RUN on macOS"
+    },
+    {
+      "platform": "macos-aarch64",
+      "selection": "reduced",
+      "assemblyManifestSha256": "06393dca66d147e46a9ebff8acbe51227a356e356cb0c91873d3b58866741cbb",
+      "assemblyInputs": {
+        "distributionSha256": "f4a45f451008c86ce4e9342d5931fd89c8553f9d3ab6e8012da7533e9fe5c249",
+        "bootstrapArchiveSha256": "23b90ca038394eaff197b97f30b9e53780adb22ab3b8713de751a3594110891a",
+        "assemblerSha256": "484bcb1b3ad7ef8fd7dfbbfe942b46eea0c0996d9be1b58a7570867cd0f9b2a5",
+        "installerSha256": "08c0b0d0144adf8736f5fde7b3cf4b297c0f3d36b0bc143dbf2a0e355d34664b",
+        "hostRoots": [
+          "com.intellij.modules.platform",
+          "com.intellij.java",
+          "org.jetbrains.kotlin",
+          "org.jetbrains.plugins.gradle"
+        ],
+        "assets": [
+          {
+            "path": "host-installation.py",
+            "kind": "FILE",
+            "bytes": 77358,
+            "sha256": "1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          },
+          {
+            "path": "host-installation.py.sha256",
+            "kind": "FILE",
+            "bytes": 87,
+            "sha256": "511924b965823a8356e4bcd074faf516e0dc00d3cab3f2772c9d849fe0d43e33"
+          },
+          {
+            "path": "kast-control-v0.0.0-macos-aarch64.tar.gz",
+            "kind": "FILE",
+            "bytes": 41097997,
+            "sha256": "3cedd346d060d18312b0109f21f4c999263458f4f0becc6103e39856216e0334"
+          },
+          {
+            "path": "kast-control-v0.0.0-macos-aarch64.tar.gz.sha256",
+            "kind": "FILE",
+            "bytes": 107,
+            "sha256": "e61c7c66fa708d84af212bc35b8e9b9f41b3bddfe3b5f0f5bf1146cf861c5239"
+          },
+          {
+            "path": "kast-host-release-v0.0.0.json",
+            "kind": "FILE",
+            "bytes": 742,
+            "sha256": "5627323e4448e38016c89a838ef5c2e1a360a4967e2b5b32cc191f987c53a247"
+          },
+          {
+            "path": "kast-host-release-v0.0.0.json.sha256",
+            "kind": "FILE",
+            "bytes": 96,
+            "sha256": "d318e5ea74206d1c8c357dfacbd78e957e610b1096f105e089217e716932c17f"
+          },
+          {
+            "path": "kast-ide-hosted-v0.0.0-idea-262.zip",
+            "kind": "FILE",
+            "bytes": 38252597,
+            "sha256": "3bed0f6de55c08fdcfd620e63917c752aef90009d479a850d61a3d530356f086"
+          },
+          {
+            "path": "kast-ide-hosted-v0.0.0-idea-262.zip.sha256",
+            "kind": "FILE",
+            "bytes": 102,
+            "sha256": "16be7cb28475dc5bc6d47611c38232231e3ac90871fb2f363255435919289c06"
+          }
+        ],
+        "componentDecisions": [
+          {
+            "component": {
+              "directory": "plugins/code-provenance",
+              "identifiers": [
+                "com.intellij.code.provenance"
+              ],
+              "modules": [
+                "intellij.code.provenance.core",
+                "intellij.code.provenance.core.claude",
+                "intellij.code.provenance.core.fus",
+                "intellij.code.provenance.core.git",
+                "intellij.code.provenance.core.llm",
+                "intellij.code.provenance.core.mcp",
+                "intellij.code.provenance.dev",
+                "intellij.code.provenance.ui"
+              ],
+              "required": [
+                "intellij.platform.lvcs.impl"
+              ],
+              "descriptor_sha256": [
+                "8afd0e023b865473358c367a0bf44b3f4f8ef0bad664ca2aa4ca9616dbb7bbd4"
+              ]
+            },
+            "decision": "EXCLUDE",
+            "reason": "EXPLICIT_NON_ROOT_CANDIDATE"
+          },
+          {
+            "component": {
+              "directory": "plugins/fullLine",
+              "identifiers": [
+                "org.jetbrains.completion.full.line"
+              ],
+              "modules": [
+                "intellij.fullLine.chat",
+                "intellij.fullLine.controlModel",
+                "intellij.fullLine.controlModel.trigger.polyglot",
+                "intellij.fullLine.core",
+                "intellij.fullLine.core.completion",
+                "intellij.fullLine.core.impl",
+                "intellij.fullLine.core.utils.common",
+                "intellij.fullLine.cpp",
+                "intellij.fullLine.cpp.local",
+                "intellij.fullLine.css",
+                "intellij.fullLine.css.less",
+                "intellij.fullLine.css.less.local",
+                "intellij.fullLine.css.local",
+                "intellij.fullLine.css.postcss",
+                "intellij.fullLine.css.postcss.local",
+                "intellij.fullLine.css.sass",
+                "intellij.fullLine.css.sass.local",
+                "intellij.fullLine.css.ultimate",
+                "intellij.fullLine.erb",
+                "intellij.fullLine.experiments",
+                "intellij.fullLine.fake.frontend",
+                "intellij.fullLine.go",
+                "intellij.fullLine.go.local",
+                "intellij.fullLine.html",
+                "intellij.fullLine.html.local",
+                "intellij.fullLine.java",
+                "intellij.fullLine.java.local",
+                "intellij.fullLine.js",
+                "intellij.fullLine.js.astro",
+                "intellij.fullLine.js.astro.local",
+                "intellij.fullLine.js.local",
+                "intellij.fullLine.js.svelte",
+                "intellij.fullLine.js.svelte.local",
+                "intellij.fullLine.js.ultimate",
+                "intellij.fullLine.js.vue",
+                "intellij.fullLine.js.vue.local",
+                "intellij.fullLine.json",
+                "intellij.fullLine.kotlin",
+                "intellij.fullLine.kotlin.jupyter",
+                "intellij.fullLine.kotlin.jupyter.local",
+                "intellij.fullLine.kotlin.local",
+                "intellij.fullLine.local",
+                "intellij.fullLine.markdown",
+                "intellij.fullLine.php",
+                "intellij.fullLine.php.local",
+                "intellij.fullLine.properties",
+                "intellij.fullLine.python",
+                "intellij.fullLine.python.jupyter",
+                "intellij.fullLine.python.jupyter.local",
+                "intellij.fullLine.python.local",
+                "intellij.fullLine.rbs",
+                "intellij.fullLine.rider",
+                "intellij.fullLine.rider.cpp",
+                "intellij.fullLine.rider.cpp.local",
+                "intellij.fullLine.rider.csharp",
+                "intellij.fullLine.rider.csharp.local",
+                "intellij.fullLine.rider.fsharp",
+                "intellij.fullLine.rider.godot",
+                "intellij.fullLine.rider.hlsl",
+                "intellij.fullLine.rider.local",
+                "intellij.fullLine.rider.shaderlab",
+                "intellij.fullLine.rider.unrealengine",
+                "intellij.fullLine.ruby",
+                "intellij.fullLine.ruby.local",
+                "intellij.fullLine.rust",
+                "intellij.fullLine.rust.local",
+                "intellij.fullLine.sql",
+                "intellij.fullLine.terminal",
+                "intellij.fullLine.terraform",
+                "intellij.fullLine.terraform.local",
+                "intellij.fullLine.text",
+                "intellij.fullLine.vcs",
+                "intellij.fullLine.web",
+                "intellij.fullLine.xdebugger",
+                "intellij.fullLine.xml",
+                "intellij.fullLine.yaml",
+                "intellij.llmInstaller",
+                "intellij.llmInstaller.common",
+                "intellij.llmInstaller.enterprise",
+                "intellij.llmInstaller.frontend",
+                "intellij.llmInstaller.jupyter",
+                "intellij.llmInstaller.pycharm.community",
+                "intellij.llmInstaller.shared",
+                "intellij.ml.diagnostics",
+                "intellij.ml.llm.chat.completion",
+                "intellij.ml.llm.completion",
+                "intellij.ml.llm.cpp.completion",
+                "intellij.ml.llm.cpp.nextEdits.backend",
+                "intellij.ml.llm.css.completion",
+                "intellij.ml.llm.css.less.completion",
+                "intellij.ml.llm.css.nextEdits.backend",
+                "intellij.ml.llm.css.postcss.completion",
+                "intellij.ml.llm.css.sass.completion",
+                "intellij.ml.llm.editor.backend",
+                "intellij.ml.llm.editor.common",
+                "intellij.ml.llm.editor.frontend",
+                "intellij.ml.llm.erb.completion",
+                "intellij.ml.llm.experiments",
+                "intellij.ml.llm.git.nextEdits.backend",
+                "intellij.ml.llm.go.completion",
+                "intellij.ml.llm.go.nextEdits.backend",
+                "intellij.ml.llm.html.completion",
+                "intellij.ml.llm.html.nextEdits.backend",
+                "intellij.ml.llm.java.completion",
+                "intellij.ml.llm.java.nextEdits.agent.delegation.backend",
+                "intellij.ml.llm.java.nextEdits.backend",
+                "intellij.ml.llm.javaee.spring.completion",
+                "intellij.ml.llm.javascript.astro.completion",
+                "intellij.ml.llm.javascript.astro.nextEdits.backend",
+                "intellij.ml.llm.javascript.completion",
+                "intellij.ml.llm.javascript.nextEdits.backend",
+                "intellij.ml.llm.javascript.nextEdits.ultimate.backend",
+                "intellij.ml.llm.javascript.svelte.completion",
+                "intellij.ml.llm.javascript.svelte.nextEdits.backend",
+                "intellij.ml.llm.javascript.vue.completion",
+                "intellij.ml.llm.javascript.vue.nextEdits.backend",
+                "intellij.ml.llm.json.completion",
+                "intellij.ml.llm.json.nextEdits.backend",
+                "intellij.ml.llm.jupyter.common.nextEdits.backend",
+                "intellij.ml.llm.jupyter.common.nextEdits.frontend",
+                "intellij.ml.llm.jupyter.kotlin.completion",
+                "intellij.ml.llm.jupyter.python.completion",
+                "intellij.ml.llm.jupyter.python.nextEdits.backend",
+                "intellij.ml.llm.kotlin.completion",
+                "intellij.ml.llm.kotlin.nextEdits.agent.delegation.backend",
+                "intellij.ml.llm.kotlin.nextEdits.backend",
+                "intellij.ml.llm.markdown.completion",
+                "intellij.ml.llm.markdown.nextEdits.backend",
+                "intellij.ml.llm.mdx.nextEdits.backend",
+                "intellij.ml.llm.nextEdits.acp.backend",
+                "intellij.ml.llm.nextEdits.agent.delegation.backend",
+                "intellij.ml.llm.nextEdits.agent.delegation.common",
+                "intellij.ml.llm.nextEdits.agent.delegation.frontend",
+                "intellij.ml.llm.nextEdits.agents.backend",
+                "intellij.ml.llm.nextEdits.backend",
+                "intellij.ml.llm.nextEdits.common",
+                "intellij.ml.llm.nextEdits.frontend",
+                "intellij.ml.llm.nextEdits.monolith",
+                "intellij.ml.llm.php.completion",
+                "intellij.ml.llm.php.nextEdits.backend",
+                "intellij.ml.llm.properties.completion",
+                "intellij.ml.llm.python.completion",
+                "intellij.ml.llm.python.nextEdits.agent.delegation.backend",
+                "intellij.ml.llm.python.nextEdits.backend",
+                "intellij.ml.llm.rbs.completion",
+                "intellij.ml.llm.rider.cpp.completion",
+                "intellij.ml.llm.rider.cpp.nextEdits.backend",
+                "intellij.ml.llm.rider.csharp.completion",
+                "intellij.ml.llm.rider.csharp.nextEdits.backend",
+                "intellij.ml.llm.rider.fsharp.completion",
+                "intellij.ml.llm.rider.godot.completion",
+                "intellij.ml.llm.rider.hlsl.completion",
+                "intellij.ml.llm.rider.shaderlab.completion",
+                "intellij.ml.llm.rider.unrealengine.completion",
+                "intellij.ml.llm.ruby.completion",
+                "intellij.ml.llm.ruby.nextEdits.backend",
+                "intellij.ml.llm.rust.completion",
+                "intellij.ml.llm.rust.nextEdits.backend",
+                "intellij.ml.llm.sql.completion",
+                "intellij.ml.llm.terminal.completion",
+                "intellij.ml.llm.terraform.completion",
+                "intellij.ml.llm.text.completion",
+                "intellij.ml.llm.vcs.completion",
+                "intellij.ml.llm.xdebugger.completion",
+                "intellij.ml.llm.xml.completion",
+                "intellij.ml.llm.xml.nextEdits.backend",
+                "intellij.ml.llm.yaml.completion",
+                "intellij.ml.llm.yaml.javaee.spring.completion",
+                "intellij.ml.llm.yaml.json.completion",
+                "intellij.ml.llm.yaml.nextEdits.backend"
+              ],
+              "required": [
+                "intellij.platform.inline.completion"
+              ],
+              "descriptor_sha256": [
+                "844682b37b9b30e404fd2613b6fb38f8c6103d930d8a78770f5bf76da87ab50f"
+              ]
+            },
+            "decision": "EXCLUDE",
+            "reason": "EXPLICIT_NON_ROOT_CANDIDATE"
+          },
+          {
+            "component": {
+              "directory": "plugins/grazie",
+              "identifiers": [
+                "tanvd.grazi"
+              ],
+              "modules": [
+                "intellij.grazie.core",
+                "intellij.grazie.java",
+                "intellij.grazie.json",
+                "intellij.grazie.markdown",
+                "intellij.grazie.properties",
+                "intellij.grazie.xml",
+                "intellij.grazie.yaml",
+                "intellij.libraries.ai.grazie.spell.gec.engine.local"
+              ],
+              "required": [
+                "intellij.platform.vcs.impl",
+                "intellij.spellchecker"
+              ],
+              "descriptor_sha256": [
+                "005b854785441d514e244cfa53eea3c2e014f61324afbec6356a5629803fc110"
+              ]
+            },
+            "decision": "EXCLUDE",
+            "reason": "EXPLICIT_NON_ROOT_CANDIDATE"
+          }
+        ]
+      },
+      "removedFiles": [
+        {
+          "path": "plugins/code-provenance/lib/chatter-native/macos-aarch64/chatter",
+          "kind": "FILE",
+          "bytes": 74255568,
+          "sha256": "02375a1b1cd0eb4c080c940cae11846984e4a87608221fa98cdad267e59b5ba5"
+        },
+        {
+          "path": "plugins/code-provenance/lib/code-provenance.jar",
+          "kind": "FILE",
+          "bytes": 81376,
+          "sha256": "23ce5783d84dc112a608e49b027541efdaec8ba8e766c50cdf5a5f3302fecfa2"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.claude.jar",
+          "kind": "FILE",
+          "bytes": 162477,
+          "sha256": "e3a18f7abe04a24c87d5bebdc7b5076d47433a9731b7da61ac396bf932693e0f"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.fus.jar",
+          "kind": "FILE",
+          "bytes": 214817,
+          "sha256": "b1101efc8387d83f59c073dd5b956fa13fea3033958ced76ce0e5379827883e1"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.git.jar",
+          "kind": "FILE",
+          "bytes": 119473,
+          "sha256": "97fa95e8dafb25d32defe7c90134289a18dc025aa7f5740e34d055c28fb14529"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.jar",
+          "kind": "FILE",
+          "bytes": 1598427,
+          "sha256": "19fe60dd1aefffc461f7797081c70b28ae31806c74f5af89509025e4b6005072"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.llm.jar",
+          "kind": "FILE",
+          "bytes": 278832,
+          "sha256": "b16fe217f04035219b7461dbc1db65620b5e3692ed6c8654f469f66b995b72cc"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.core.mcp.jar",
+          "kind": "FILE",
+          "bytes": 33510,
+          "sha256": "b949a14098e18f3795a390800b49ffc0c1a66dc1db0ebc24fa3f64e623d9a764"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.dev.jar",
+          "kind": "FILE",
+          "bytes": 721764,
+          "sha256": "ea30c3a1cbd1233a25469c945da753e979ea239db8d5d5e6764d3be734aba7ed"
+        },
+        {
+          "path": "plugins/code-provenance/lib/modules/intellij.code.provenance.ui.jar",
+          "kind": "FILE",
+          "bytes": 39429,
+          "sha256": "e1a8c87256cf0a332ac58589be35870151f2c400a0949ed6110e38ba4f418af5"
+        },
+        {
+          "path": "plugins/fullLine/full-line-model-java-v2.zip",
+          "kind": "FILE",
+          "bytes": 68859908,
+          "sha256": "3d98f4412fda1fb10febe561ff53dcdd0d8863875f75bd52fc244cce3d9686c8"
+        },
+        {
+          "path": "plugins/fullLine/full-line-model-kotlin.zip",
+          "kind": "FILE",
+          "bytes": 68860379,
+          "sha256": "5ccb4de9549f5a64c342cd42c191da1cbce89f796eca342338ba8e81b9ab228f"
+        },
+        {
+          "path": "plugins/fullLine/full-line-native-server-macos-arm_64.zip",
+          "kind": "FILE",
+          "bytes": 31796506,
+          "sha256": "60cf6c1dc92bb044f622125768d08daed90f95b01ba833166bf5567443049617"
+        },
+        {
+          "path": "plugins/fullLine/lib/clikt.jar",
+          "kind": "FILE",
+          "bytes": 1427756,
+          "sha256": "910f9c6121c233c7ba2bb4b93aa6f73b1926384703852940cd7860df827b06ac"
+        },
+        {
+          "path": "plugins/fullLine/lib/fullLine.jar",
+          "kind": "FILE",
+          "bytes": 25675469,
+          "sha256": "9170cc9ef7bf44922d39e8be8302a348fe2bc34fbaa342b35e9cc3daf12aca2c"
+        },
+        {
+          "path": "plugins/fullLine/lib/github.oshi.core.jar",
+          "kind": "FILE",
+          "bytes": 2125813,
+          "sha256": "a731597e93a57e3f6de0dbffd97e05b0ddd6b539b2b534014274e9421eac8900"
+        },
+        {
+          "path": "plugins/fullLine/lib/java-diff-utils.jar",
+          "kind": "FILE",
+          "bytes": 178584,
+          "sha256": "44e62648ca1e1d5ad2d43533519e75a8b9ce01abb5d518450ccf623e20c785d2"
+        },
+        {
+          "path": "plugins/fullLine/lib/jetbrains.ai.completion.trigger.model.markdown.cloud.jar",
+          "kind": "FILE",
+          "bytes": 233526,
+          "sha256": "81622ff2c707aa0c3390927cd567704288ebb3ece65d6a76412a0c15bffbef2e"
+        },
+        {
+          "path": "plugins/fullLine/lib/jetbrains.ai.completion.trigger.model.polyglot.cloud.jar",
+          "kind": "FILE",
+          "bytes": 5935010,
+          "sha256": "9bc72d5043afb5472f97e1fd54768a1c277c1394d085bdc682563830db3c4d6f"
+        },
+        {
+          "path": "plugins/fullLine/lib/jetbrains.ai.completion.trigger.model.text.cloud.jar",
+          "kind": "FILE",
+          "bytes": 193993,
+          "sha256": "fe377a539c01688b408502ce33c250a7acac18e606ebaed755a1d7e689727a0c"
+        },
+        {
+          "path": "plugins/fullLine/lib/jetbrains.mlapi.core.jar",
+          "kind": "FILE",
+          "bytes": 1041484,
+          "sha256": "73b570401bd1249090a71aed47d3d2410185625833b202dc12d2eb5e61dec1f8"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.chat.jar",
+          "kind": "FILE",
+          "bytes": 617,
+          "sha256": "d0ad615a25eb9920a30c54c7f7549cb9a610f9706f6947c2176194410762ead4"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.controlModel.jar",
+          "kind": "FILE",
+          "bytes": 67793322,
+          "sha256": "62001bd1e9ef9d6fd04b832ee7454a98ca1ad46016ef4eafd4aace4d9131440a"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.css.less.local.jar",
+          "kind": "FILE",
+          "bytes": 9941,
+          "sha256": "6342d26a96cd3434f9f33142142fc0f7aa100b8fc6eb6d5f707991aca35d201a"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.css.local.jar",
+          "kind": "FILE",
+          "bytes": 1445336,
+          "sha256": "5e619db46d202b24750b18cccb6a8cc13dd866a3a25c48541ed688ddf025b55b"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.css.ultimate.jar",
+          "kind": "FILE",
+          "bytes": 48705,
+          "sha256": "9039293a14e74b8592b3cfaeb66377b29b8dab320ed0c3090e945a8a39ba71e7"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.erb.jar",
+          "kind": "FILE",
+          "bytes": 477,
+          "sha256": "9894a9b39299e39ecd6dc312c3d55c0b503ff234f94c565d5f3ec1695a454365"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.fake.frontend.jar",
+          "kind": "FILE",
+          "bytes": 453,
+          "sha256": "e184aadaee16e1fef9d1ef93fd1ec1b33653cc3301d4569be4781123c9eed954"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.go.local.jar",
+          "kind": "FILE",
+          "bytes": 3918436,
+          "sha256": "3714878e973ddcae359574ef7901976bab92acc13a4c8ab3b65e71f967a4956f"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.html.local.jar",
+          "kind": "FILE",
+          "bytes": 2072514,
+          "sha256": "d216ddfbc4d36071bea1bdf0340516ec271f7461db9489a78670d32c643b7975"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.java.local.jar",
+          "kind": "FILE",
+          "bytes": 4439599,
+          "sha256": "6ba89cc672a4a8108841dec165f534df31fe5b59ea3a1f99bed26775bb5fdd0f"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.js.local.jar",
+          "kind": "FILE",
+          "bytes": 4518385,
+          "sha256": "3ca72814a61a2b406650d4f55384bb49120e195779bdb7503fe1589a39d48229"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.js.ultimate.jar",
+          "kind": "FILE",
+          "bytes": 101928,
+          "sha256": "2879fa05de8f5c223807d21d090ab7a12ddc11d305fea3cb112335012c8d8019"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.json.jar",
+          "kind": "FILE",
+          "bytes": 500,
+          "sha256": "f9e21d6c7a9b5d5f27c797a7de0967db6a27b4326a3bf18b6ea914caf715cfec"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.kotlin.local.jar",
+          "kind": "FILE",
+          "bytes": 2564183,
+          "sha256": "67c433a4a4a6870f22d79c29877fb996a601c6cbe394db5b224f04b38055721e"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.local.jar",
+          "kind": "FILE",
+          "bytes": 4375720,
+          "sha256": "8c1bf4381b63f0360e0f70588db87923d260bd1fc0f2ad5efe7dc4837fd19a65"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.markdown.jar",
+          "kind": "FILE",
+          "bytes": 517,
+          "sha256": "52464375754f066b7a606d65e14d72b3900a9a7e39a36a48f30edb40766260df"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.php.local.jar",
+          "kind": "FILE",
+          "bytes": 2646670,
+          "sha256": "3691104884de6b7d3e8c3769e574ef987139bf83f97caa352ec4651f2cfcc54d"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.properties.jar",
+          "kind": "FILE",
+          "bytes": 591,
+          "sha256": "a95b341a9fd7c25f4d211f042d9ce13b5f54ba58957ceb7f6d17ed9ce5bc4f6d"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.python.jupyter.jar",
+          "kind": "FILE",
+          "bytes": 1032,
+          "sha256": "9091798be801b3620497651dbc894ce7c311eb6c89aa09becd32feb8986afbd5"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.python.jupyter.local.jar",
+          "kind": "FILE",
+          "bytes": 11446,
+          "sha256": "2cb1771bf42b92eaf258cc58587530653daff68e8c8ec204f384de7f2a7125bf"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.python.local.jar",
+          "kind": "FILE",
+          "bytes": 9031369,
+          "sha256": "f5bbca157c6392469a8a092b5ae246a3e2cbe4a2f39632ce2ae29ec4756ad1db"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rbs.jar",
+          "kind": "FILE",
+          "bytes": 524,
+          "sha256": "c9aafbfaa122d6a338ec9618f129b3782fa9f39c6feb057191ee745c76cc54f5"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.cpp.local.jar",
+          "kind": "FILE",
+          "bytes": 4509432,
+          "sha256": "cd14c1edea3df349f1e77873465e0393e1e7c2d20ec26e1f82026a71b68c74b9"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.csharp.local.jar",
+          "kind": "FILE",
+          "bytes": 4214990,
+          "sha256": "3e303d69f5ebd75844939950a501d99a9f43237eb116d3c2c25c7c76cd583a4f"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.fsharp.jar",
+          "kind": "FILE",
+          "bytes": 5469,
+          "sha256": "ffc7e87a52e429fafb457de940cffebaaba2ea96ecf1f3d5a955b105de2cfeba"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.godot.jar",
+          "kind": "FILE",
+          "bytes": 9184,
+          "sha256": "78eb057ff48207b6c2032bcfffb03b1def56028717035dc4f66ba65f773e2ef3"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.hlsl.jar",
+          "kind": "FILE",
+          "bytes": 9354,
+          "sha256": "376c9e9192643794597a5dd9b4ef71bceb9108234b6c743b27ea31f50379d7ac"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.local.jar",
+          "kind": "FILE",
+          "bytes": 918,
+          "sha256": "a0076577b0d3390c0e5d4130987edc1c36c6743794e979b232c23a83834bc7a1"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.shaderlab.jar",
+          "kind": "FILE",
+          "bytes": 5595,
+          "sha256": "9f100ffb12010b9339f4dc2536067c3c62db4cd31121aa285f74c1ba220b81fc"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rider.unrealengine.jar",
+          "kind": "FILE",
+          "bytes": 9838,
+          "sha256": "a68cc80c23eabcf404489cd51fb57f37874f51870848e42222096911989b0761"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.ruby.local.jar",
+          "kind": "FILE",
+          "bytes": 2755835,
+          "sha256": "9dcd52e94cca47c20f098cd934ba463d37283a36d227d3240ae66286a907073c"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.rust.local.jar",
+          "kind": "FILE",
+          "bytes": 1781257,
+          "sha256": "be98c5eb38ed8d167dbb9badf116731a0a386007f60f6f7863cd7f51dd984f0e"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.sql.jar",
+          "kind": "FILE",
+          "bytes": 520,
+          "sha256": "4b73eca6ceb317d4be483626f9625e092f3950155f2e825e6ff3f6b2afb58dee"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.terraform.local.jar",
+          "kind": "FILE",
+          "bytes": 668087,
+          "sha256": "252bd3e8411c7b8f06eed07f01a95a1acdd5e72fb9e59d49b9150d3733b18903"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.text.jar",
+          "kind": "FILE",
+          "bytes": 433,
+          "sha256": "a539549ebb164b9714fafc575b2ebf22b879dd0a67343433987c261b33d33871"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.vcs.jar",
+          "kind": "FILE",
+          "bytes": 16993,
+          "sha256": "faebc4ec57dd40a7d0cdb508767d2b9717a355837f889aee4807eb7f295ba7e1"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.web.jar",
+          "kind": "FILE",
+          "bytes": 44907,
+          "sha256": "3e6decbb64f0a8de247d34577b64e95167ebd4b589600a9c936a594531d5afd0"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.xml.jar",
+          "kind": "FILE",
+          "bytes": 498,
+          "sha256": "f654ce61f5aef6f63abeb64fca83d0d213ae327e449c2ff56682b7cba41ec0a1"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.fullLine.yaml.jar",
+          "kind": "FILE",
+          "bytes": 500,
+          "sha256": "8524df6b59bc3454544778986c1720309c250b83aeac9fa469c30f1ca55a0545"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.llmInstaller.frontend.jar",
+          "kind": "FILE",
+          "bytes": 61675,
+          "sha256": "4ab1cb4712849c7f324efe642a87e39f3732f3cf5b8aa02720054b64ec274b9d"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.llmInstaller.shared.jar",
+          "kind": "FILE",
+          "bytes": 108930,
+          "sha256": "335b57dd23337e2bc281294f8088a6a78fb329be8445fc97aa5181e8ecd7960f"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.diagnostics.jar",
+          "kind": "FILE",
+          "bytes": 412279,
+          "sha256": "98d75b1e12dd2c240f291f7d219272856b860c7c5ac652144056b8dcc3657212"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.chat.completion.jar",
+          "kind": "FILE",
+          "bytes": 2019051,
+          "sha256": "2ae35db50393d2c59643dec1ad6e53b2d2454ac3da444825b9ac8e2b28d70687"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.completion.jar",
+          "kind": "FILE",
+          "bytes": 5587508,
+          "sha256": "3c446b589124499894b56ec78e3393cafb2d29d8fd6443d0b721e966f6a24843"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.cpp.completion.jar",
+          "kind": "FILE",
+          "bytes": 2241699,
+          "sha256": "76c6496d6d971b6913c1727ac7d14f735a6772f7cc9c1b3e03c688fd647af9ea"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.css.completion.jar",
+          "kind": "FILE",
+          "bytes": 936987,
+          "sha256": "bdd07bccf9d8e0e9ff344abfc171d4a01319494ca6c0fee02ecca57d6d7d01eb"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.git.nextEdits.backend.jar",
+          "kind": "FILE",
+          "bytes": 32969,
+          "sha256": "edc7356b3f70d3f72f206dddfb1149f03daeefbc2e4f9dda2aa2968612507ac9"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.go.completion.jar",
+          "kind": "FILE",
+          "bytes": 1620039,
+          "sha256": "7dc7fda63edde34f69b85bead3f6815afeb3165b616573621389a7a06001737f"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.html.completion.jar",
+          "kind": "FILE",
+          "bytes": 1087468,
+          "sha256": "68ab9d62760ddf4ff7f5b6314815a7903c3cadbf485d5b81d459daa5f856f523"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.java.completion.jar",
+          "kind": "FILE",
+          "bytes": 3581833,
+          "sha256": "097c3070cec5467cfcd8e2c7b211660c9d880f7ad0c833a02522d776f003be16"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.java.nextEdits.agent.delegation.backend.jar",
+          "kind": "FILE",
+          "bytes": 30528,
+          "sha256": "c045862c1c36e31ac28d989734d168c4bff3bb3534e5e55fc80ff2107ef154ed"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.javaee.spring.completion.jar",
+          "kind": "FILE",
+          "bytes": 87121,
+          "sha256": "bb727dfb174aa5089d55b223988ec5fad9a854a43cb3188bfae138cca779e000"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.javascript.completion.jar",
+          "kind": "FILE",
+          "bytes": 1517763,
+          "sha256": "42add648b5758f47f125bf2350bd188dc02179e639c3ab8a0e86b91b451c159d"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.javascript.nextEdits.ultimate.backend.jar",
+          "kind": "FILE",
+          "bytes": 5786,
+          "sha256": "9d8f17fc4d32893f5555d502a3c2e7772b84704fdbc0c8782a011ae4a1a16e66"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.jupyter.python.completion.jar",
+          "kind": "FILE",
+          "bytes": 18912,
+          "sha256": "205fea6172ffddfa791fad2118263b109dcc2864dc1a1b233a3ab6ad5f706d09"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.kotlin.completion.jar",
+          "kind": "FILE",
+          "bytes": 5130453,
+          "sha256": "9fdaf5d09479d2f2308662f99ffae5b72ddc37c7dd30442b002dbed2a47d5dd8"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.kotlin.nextEdits.agent.delegation.backend.jar",
+          "kind": "FILE",
+          "bytes": 34532,
+          "sha256": "d75cec59b237116666e55f99e27466b1d23b25a1eade123e052cb1de69dcdcb2"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.mdx.nextEdits.backend.jar",
+          "kind": "FILE",
+          "bytes": 2791,
+          "sha256": "72b531ccf4bf05ba9bba128b79481f13f6cc3d5d17687e6404a94eced6617103"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.nextEdits.acp.backend.jar",
+          "kind": "FILE",
+          "bytes": 854002,
+          "sha256": "d831d059e222e42af2cb33c8add19b12d33e077f0f90e38cc505e1af72c20a93"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.nextEdits.agent.delegation.backend.jar",
+          "kind": "FILE",
+          "bytes": 787659,
+          "sha256": "f850ab3e567fbfdb7539f72bdb6b44524910db18d1ffd89ca45b398a2d64b712"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.nextEdits.agents.backend.jar",
+          "kind": "FILE",
+          "bytes": 4121311,
+          "sha256": "e2b2486d47f55d87086201c8e4ca743985f2bb8d309015cd530e469b3dd17f0e"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.php.completion.jar",
+          "kind": "FILE",
+          "bytes": 2256302,
+          "sha256": "7629b68cd14efe5ad12db4ebcda1fe1e83cc9f244c559e75bb93790f55e4c336"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.python.completion.jar",
+          "kind": "FILE",
+          "bytes": 2165305,
+          "sha256": "aa6f02dc2786ab53225a11227bc86f81f84696847d55f92890a2524d7dc86637"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.python.nextEdits.agent.delegation.backend.jar",
+          "kind": "FILE",
+          "bytes": 26269,
+          "sha256": "9b3184c8b945f53b45c74b86cfd0c17c1f11588d047971cd762df1a6a5155474"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rbs.completion.jar",
+          "kind": "FILE",
+          "bytes": 81415,
+          "sha256": "c146e21e930f7fbd6cd794df5a64772b668bcd7d9155b9ce61caac2bb8ef176a"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.cpp.completion.jar",
+          "kind": "FILE",
+          "bytes": 2250298,
+          "sha256": "8a696c54bb8fabe60c078358578f9991d17f768a8f3b59b19648ab8fb72b0dd9"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.csharp.completion.jar",
+          "kind": "FILE",
+          "bytes": 1640710,
+          "sha256": "7fbdde70e0997a612421af4b0283c5cd86bae4d39ff602d9db359f47bd82e6cc"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.fsharp.completion.jar",
+          "kind": "FILE",
+          "bytes": 16575,
+          "sha256": "8240254f49df226d6758cac359ff452d9e27e8a7df78cc49c82cb2a5667c690e"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.godot.completion.jar",
+          "kind": "FILE",
+          "bytes": 31801,
+          "sha256": "78929f1270cfc8fd1605a2a885c5abe63be4b1a11d5c6224b5c5fb6942ce8b70"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.hlsl.completion.jar",
+          "kind": "FILE",
+          "bytes": 16211,
+          "sha256": "55366bd8368e6df4822bc04c7ade279940657959671509c2591bcce6e467745a"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.shaderlab.completion.jar",
+          "kind": "FILE",
+          "bytes": 16943,
+          "sha256": "848a0f4df98417f5433502ee84bb8ff244deedf178a7dc5a2ba4944c048c93e5"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rider.unrealengine.completion.jar",
+          "kind": "FILE",
+          "bytes": 17093,
+          "sha256": "074cbfd58d8be1ba7e0b201aab4efb4cb4a053cf6a4837e49118b2eec3bc6fb8"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.ruby.completion.jar",
+          "kind": "FILE",
+          "bytes": 1170662,
+          "sha256": "5dc3facd28c511eea370417ee7280216c996f38b3ba518e2b5d9ae4cbedcdec8"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.rust.completion.jar",
+          "kind": "FILE",
+          "bytes": 2246419,
+          "sha256": "b2a7cd17d9be74479936e76be3f93f4c75c9995cc5f328aef76713bf3bbfb6e7"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.sql.completion.jar",
+          "kind": "FILE",
+          "bytes": 409091,
+          "sha256": "3b21e4c61abe209a3fe5bdc4e1af6f1543ddc15c33998666dd5d5c10097ddff2"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.vcs.completion.jar",
+          "kind": "FILE",
+          "bytes": 1281869,
+          "sha256": "3e2641d18451e0c3aeca3094161036d5aa889d7b8157bd314aaa50e02e6125f8"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.yaml.completion.jar",
+          "kind": "FILE",
+          "bytes": 83158,
+          "sha256": "1c0e6cb1df8260294a8f6a219b3c44b99a1f61682032d5af28301403f1b5cde6"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.yaml.javaee.spring.completion.jar",
+          "kind": "FILE",
+          "bytes": 8375,
+          "sha256": "63feb422054756ddf9715b05aa75e938ba238cdc609f7611b56cfbe44934e809"
+        },
+        {
+          "path": "plugins/fullLine/lib/modules/intellij.ml.llm.yaml.json.completion.jar",
+          "kind": "FILE",
+          "bytes": 15288,
+          "sha256": "3c4e1e72f0aa0e3e935782560c9ebe01c4a71eb84c1f4c720b996e25f56ad9a4"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/AIEnterprise.png",
+          "kind": "FILE",
+          "bytes": 297563,
+          "sha256": "8dfc2b4efcdedba1423b8b123bbe8f48d5812f7826f174c67512ed0cc16dc647"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/CloudCompletion.png",
+          "kind": "FILE",
+          "bytes": 271810,
+          "sha256": "59b967bc7a49cfea10f19dc288529ed28c0e30a418f7e2453052e994832c840f"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/CloudCompletion_dark.png",
+          "kind": "FILE",
+          "bytes": 254122,
+          "sha256": "e1cedaa684a6d45f12e84960270ef7d7db192dd9546d203db9798fe0ecceff9d"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/CommandGenerationInTerminal.png",
+          "kind": "FILE",
+          "bytes": 78929,
+          "sha256": "868a47349db33705bdaf5d27c15e52424a70cfee308f454156dcc7f5f93ea736"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/CommandGenerationInTerminal_dark.png",
+          "kind": "FILE",
+          "bytes": 89869,
+          "sha256": "b2c3f5fe6242037bbadf73f7dfdb2cb5ea8c490dc48b183f200b4cef034f6397"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/ContextAwareChat.png",
+          "kind": "FILE",
+          "bytes": 334558,
+          "sha256": "542ce1e2e1fdb78e48a6bdde24cd44e9265cbcb91dc8e16e353093ca5f2364b7"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/ContextAwareChat_dark.png",
+          "kind": "FILE",
+          "bytes": 387425,
+          "sha256": "6df010d8543c307a3c4f374c7faf5ea295ce76fb861c95712028a730bcb85112"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/FixWithAI.png",
+          "kind": "FILE",
+          "bytes": 336814,
+          "sha256": "8a5b41e8769c44f156e04ac9fc21aa3596ebaaa337e8fecd1126ad372c20a8ba"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/FixWithAI_dark.png",
+          "kind": "FILE",
+          "bytes": 308415,
+          "sha256": "53f26f4bdc69fb18d18db0ca105d77c806cc3f3d969780389cf73ddeb367152f"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/GenerateTests.png",
+          "kind": "FILE",
+          "bytes": 284930,
+          "sha256": "4f4ced4180b444db4f0652abfea6827e3d5a1fd0f107d8891e0808be33a0314f"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/GenerateTests_dark.png",
+          "kind": "FILE",
+          "bytes": 238456,
+          "sha256": "a898eeb2e2790cd653090838cddc7c3b349e118a0746d15d48cfbf5240568c97"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/LocalCompletion.png",
+          "kind": "FILE",
+          "bytes": 244108,
+          "sha256": "9ed3fafc89a2e91b8d2248d9f4bf37a7f0b5476b562285770d827f2f81eea26f"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/LocalCompletion_dark.png",
+          "kind": "FILE",
+          "bytes": 244472,
+          "sha256": "d586641dd4bcb420c07e94a0a6c967bbb680bf90e6c2b100c38400e64958f120"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/MergeWithAI.png",
+          "kind": "FILE",
+          "bytes": 344419,
+          "sha256": "f8b56d9a3b02e44a4479829b59522404b1afdf2120e1f6666dceb50291e925d2"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/MergeWithAI_dark.png",
+          "kind": "FILE",
+          "bytes": 327980,
+          "sha256": "9501e1b91e83206c42f67184866ba555025ee2203c3f516720825a3ae3b3f2e5"
+        },
+        {
+          "path": "plugins/fullLine/promo/Idea/content.json",
+          "kind": "FILE",
+          "bytes": 607,
+          "sha256": "22e58b3ce36bc4cb584894dd92c598ed173454c685e7384340f37ad5e13b0a1f"
+        },
+        {
+          "path": "plugins/grazie/lib/grazie.jar",
+          "kind": "FILE",
+          "bytes": 86571,
+          "sha256": "2adbed5f1446760ddacc4d8c0f55b5d86c0811fd30f2d6c0983765e3935e9da3"
+        },
+        {
+          "path": "plugins/grazie/lib/intellij.grazie.core.jar",
+          "kind": "FILE",
+          "bytes": 39435399,
+          "sha256": "a7a3e93370bc53f23b5e40dbe3f60b09ee9b13205a3d04d2f21981ec40c3589e"
+        },
+        {
+          "path": "plugins/grazie/lib/intellij.libraries.ai.grazie.spell.gec.engine.local.jar",
+          "kind": "FILE",
+          "bytes": 12762157,
+          "sha256": "f6f42417a8ad0fe52d1364ff8c1a43f1ecd77a6a2e9aad14d7dcc43ee461f802"
+        },
+        {
+          "path": "plugins/grazie/lib/modules/intellij.grazie.java.jar",
+          "kind": "FILE",
+          "bytes": 13696,
+          "sha256": "e53d3a038a5955b8bcc8cd869028e877433d05f762ae5ff030132bdae165bbc0"
+        },
+        {
+          "path": "plugins/grazie/lib/modules/intellij.grazie.markdown.jar",
+          "kind": "FILE",
+          "bytes": 344419,
+          "sha256": "a107298afc651aef9d34d6f760c5d29eb70e9f6bd06a57c379364e0e6566888a"
+        },
+        {
+          "path": "plugins/grazie/lib/modules/intellij.grazie.properties.jar",
+          "kind": "FILE",
+          "bytes": 12670,
+          "sha256": "7cbdab21d40e26b53b29d44ad5d74f5d177eca6c3a514bda546911f459eefcfd"
+        },
+        {
+          "path": "plugins/grazie/lib/org.jetbrains.intellij.deps.languagetool-language-en.jar",
+          "kind": "FILE",
+          "bytes": 19373318,
+          "sha256": "60c55fabe86d175924b353327fee8a78afa5dba456c105e4ebb2114b470f247d"
+        },
+        {
+          "path": "plugins/grazie/lib/org.jetbrains.intellij.deps.languagetool-languagetool-core.jar",
+          "kind": "FILE",
+          "bytes": 5411901,
+          "sha256": "0bf461292b27cd8ca000ab689cea1d368e3d085ba96671fd703fd68ea1560350"
+        }
+      ],
+      "retainedInventorySha256": "3fe5e5b7081f2c76366544ce2442a792566cf68f95ff82926bc2f88541d2a094",
+      "retainedRegularFiles": 3064,
+      "removedRegularBytes": 526349864,
+      "coldPublicSeconds": 58.85934570799964,
+      "coldPublicOutcome": "PASSED",
+      "sampledColdPeakRssKiB": 3110944,
+      "warmSamples": [
+        {
+          "index": 0,
+          "startedUtc": "2026-11-06T06:07:58.129606+00:00",
+          "wallSeconds": 1.9743536249998215,
+          "nativeDurationNanos": 50104916,
+          "readId": "96d2ee46-469d-4f0e-bb4c-1a3a4175c079"
+        },
+        {
+          "index": 1,
+          "startedUtc": "2026-11-06T06:08:00.105526+00:00",
+          "wallSeconds": 1.9992005840003912,
+          "nativeDurationNanos": 20569875,
+          "readId": "e0a9b870-634a-4245-afd1-c951556695a4"
+        },
+        {
+          "index": 2,
+          "startedUtc": "2026-11-06T06:08:02.106010+00:00",
+          "wallSeconds": 2.001103375000639,
+          "nativeDurationNanos": 20756791,
+          "readId": "983b0f5d-aad6-4576-9eef-80d692cf465b"
+        },
+        {
+          "index": 3,
+          "startedUtc": "2026-11-06T06:08:04.108309+00:00",
+          "wallSeconds": 1.9706308750000971,
+          "nativeDurationNanos": 22178542,
+          "readId": "ff768717-f603-47a1-a46f-67c108ded6db"
+        },
+        {
+          "index": 4,
+          "startedUtc": "2026-11-06T06:08:06.080319+00:00",
+          "wallSeconds": 2.015578542000185,
+          "nativeDurationNanos": 20114083,
+          "readId": "483e2af4-a694-4bfb-b334-bca224e4255f"
+        }
+      ],
+      "storageAndSteadyMemory": {
+        "storage": [
+          {
+            "path": "/private/tmp/kr7/runtime",
+            "regularFiles": 3066,
+            "apparentBytes": 3933262899,
+            "allocatedBytes": 3940507648,
+            "symlinks": 222
+          },
+          {
+            "path": "/private/tmp/kr7/state/system",
+            "regularFiles": 2017,
+            "apparentBytes": 348684957,
+            "allocatedBytes": 356298752,
+            "symlinks": 0
+          },
+          {
+            "path": "/private/tmp/kr7/state/home/.gradle",
+            "regularFiles": 13051,
+            "apparentBytes": 960781952,
+            "allocatedBytes": 993763328,
+            "symlinks": 0
+          },
+          {
+            "path": "/private/tmp/kr7/state/log",
+            "regularFiles": 103,
+            "apparentBytes": 9801560,
+            "allocatedBytes": 10174464,
+            "symlinks": 0
+          },
+          {
+            "path": "/private/tmp/kr7/state/tmp",
+            "regularFiles": 2,
+            "apparentBytes": 8237,
+            "allocatedBytes": 12288,
+            "symlinks": 0
+          },
+          {
+            "path": "/private/tmp/kr7/state/home/.local/share/kast/installation",
+            "regularFiles": 15717,
+            "apparentBytes": 121377239,
+            "allocatedBytes": 177164288,
+            "symlinks": 0
+          },
+          {
+            "path": "/private/tmp/kr7/state/home/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins",
+            "regularFiles": 39,
+            "apparentBytes": 41175099,
+            "allocatedBytes": 41242624,
+            "symlinks": 0
+          }
+        ],
+        "processes": [
+          {
+            "pid": 26314,
+            "rssKiB": 147200,
+            "command": "/private/tmp/kr7/runtime/IntelliJ IDEA.app/Contents/MacOS/idea kast-headless"
+          },
+          {
+            "pid": 26334,
+            "rssKiB": 60096,
+            "command": "/private/tmp/kr7/runtime/IntelliJ IDEA.app/Contents/jbr/Contents/Home/bin/java --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.xml/javax.xml.namespace=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED -XX:MaxMetaspaceSize=384m -XX:+HeapDumpOnOutOfMemoryError -Xms256m -Xmx512m -Dfile.encoding=UTF-8 -Duser.country=US -Duser.language=en -Duser.variant -cp /private/tmp/kr7/state/home/.gradle/wrapper/dists/gradle-9.8.2-bin/8wepis63pzuhrlfaiy04bagwu/gradle-9.8.2/lib/gradle-daemon-main-9.8.2.jar -javaagent:/private/tmp/kr7/state/home/.gradle/wrapper/dists/gradle-9.8.2-bin/8wepis63pzuhrlfaiy04bagwu/gradle-9.8.2/lib/agents/gradle-instrumentation-agent-9.8.2.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 9.8.2"
+          }
+        ],
+        "sumRssKiB": 207296,
+        "scope": "current admitted Host plus private Gradle daemon PIDs from its owned logs; RSS can count shared pages more than once"
+      },
+      "heapSnapshot": "NOT RUN on macOS"
+    }
+  ],
+  "linuxMetadataAudit": "FATRACE_ERRORS fatrace: open_by_handle_at: Cannot allocate memory\nfatrace: open_by_handle_at: Cannot allocate memory\nfatrace: open_by_handle_at: Cannot allocate memory\nfatrace: open_by_handle_at: Cannot allocate memory\nfatrace: open_by_handle_at: Cannot allocate memory\nfatrace: open_by_handle_at: Cannot allocate memory\n\n{\n  \"outcome\": \"PASSED\",\n  \"fileEvents\": 725288,\n  \"workspaceEvents\": 1808,\n  \"protectedChanges\": 0,\n  \"actorNamespacePids\": {},\n  \"actorWriteEvents\": {},\n  \"privateProjectMetadataWrites\": 35\n}\n",
+  "macMetadataAudit": {
+    "outcome": "PASSED",
+    "events": 199,
+    "protectedChanges": 0,
+    "overflowEvents": 0,
+    "sentinelBytesUnchanged": true,
+    "guardScope": "FSEvents metadata writes and kernel-denied access to personal HOME and IDEA app, with positive and negative controls"
+  },
+  "nativeReadyRecords": [
+    {
+      "root": "/private/tmp/kh7",
+      "logPath": "/private/tmp/kh7/state/log/idea.log",
+      "logLine": "2026-11-06 00:29:28,687 [  45282]   INFO - #io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleApplication - kast_preparation {\"requestId\":\"830eac3b-baac-4185-a56f-3061bf770001\",\"outcome\":\"COMPLETE\",\"preparation\":{\"stage\":\"ADMISSION\",\"elapsedMillis\":43159,\"limitMillis\":1017233,\"remainingMillis\":974074,\"limitingOwner\":\"NATIVE_PREPARATION\",\"waitMode\":\"BOUNDED\"},\"failure\":null}",
+      "nativePreparation": {
+        "requestId": "830eac3b-baac-4185-a56f-3061bf770001",
+        "outcome": "COMPLETE",
+        "preparation": {
+          "stage": "ADMISSION",
+          "elapsedMillis": 43159,
+          "limitMillis": 1017233,
+          "remainingMillis": 974074,
+          "limitingOwner": "NATIVE_PREPARATION",
+          "waitMode": "BOUNDED"
+        },
+        "failure": null
+      }
+    },
+    {
+      "root": "/private/tmp/kr7",
+      "logPath": "/private/tmp/kr7/state/log/idea.log",
+      "logLine": "2026-11-06 01:05:32,354 [  46689]   INFO - #io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleApplication - kast_preparation {\"requestId\":\"6dfea7eb-a8d8-45d0-8f06-7127d10d7a2e\",\"outcome\":\"COMPLETE\",\"preparation\":{\"stage\":\"ADMISSION\",\"elapsedMillis\":44241,\"limitMillis\":1016978,\"remainingMillis\":972737,\"limitingOwner\":\"NATIVE_PREPARATION\",\"waitMode\":\"BOUNDED\"},\"failure\":null}",
+      "nativePreparation": {
+        "requestId": "6dfea7eb-a8d8-45d0-8f06-7127d10d7a2e",
+        "outcome": "COMPLETE",
+        "preparation": {
+          "stage": "ADMISSION",
+          "elapsedMillis": 44241,
+          "limitMillis": 1016978,
+          "remainingMillis": 972737,
+          "limitingOwner": "NATIVE_PREPARATION",
+          "waitMode": "BOUNDED"
+        },
+        "failure": null
+      }
+    },
+    {
+      "root": "/runtime/kh7f",
+      "logPath": "/runtime/kh7f/state/log/idea.log",
+      "logLine": "2026-11-06 05:42:08,371 [ 243025]   INFO - #io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleApplication - kast_preparation {\"requestId\":\"904f3f9f-b46b-47ba-ac9b-0f73cdd781b1\",\"outcome\":\"COMPLETE\",\"preparation\":{\"stage\":\"ADMISSION\",\"elapsedMillis\":231921,\"limitMillis\":1006944,\"remainingMillis\":775023,\"limitingOwner\":\"NATIVE_PREPARATION\",\"waitMode\":\"BOUNDED\"},\"failure\":null}",
+      "nativePreparation": {
+        "requestId": "904f3f9f-b46b-47ba-ac9b-0f73cdd781b1",
+        "outcome": "COMPLETE",
+        "preparation": {
+          "stage": "ADMISSION",
+          "elapsedMillis": 231921,
+          "limitMillis": 1006944,
+          "remainingMillis": 775023,
+          "limitingOwner": "NATIVE_PREPARATION",
+          "waitMode": "BOUNDED"
+        },
+        "failure": null
+      }
+    },
+    {
+      "root": "/runtime/kh7r",
+      "logPath": "/runtime/kh7r/state/log/idea.log",
+      "logLine": "2026-11-06 06:06:41,416 [ 275744]   INFO - #io.github.amichne.kast.runtime.hosted.lifecycle.IdeLifecycleApplication - kast_preparation {\"requestId\":\"16e0907f-e9b3-4523-9ec3-000eff1f2d44\",\"outcome\":\"COMPLETE\",\"preparation\":{\"stage\":\"ADMISSION\",\"elapsedMillis\":262796,\"limitMillis\":1005466,\"remainingMillis\":742670,\"limitingOwner\":\"NATIVE_PREPARATION\",\"waitMode\":\"BOUNDED\"},\"failure\":null}",
+      "nativePreparation": {
+        "requestId": "16e0907f-e9b3-4523-9ec3-000eff1f2d44",
+        "outcome": "COMPLETE",
+        "preparation": {
+          "stage": "ADMISSION",
+          "elapsedMillis": 262796,
+          "limitMillis": 1005466,
+          "remainingMillis": 742670,
+          "limitingOwner": "NATIVE_PREPARATION",
+          "waitMode": "BOUNDED"
+        },
+        "failure": null
+      }
+    }
+  ]
+}

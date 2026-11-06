@@ -72,6 +72,42 @@
         },
         "querySchema": {
           "const": "kast.query.run.v9"
+        },
+        "application": {
+          "$ref": "#/$defs/managedApplication"
+        }
+      }
+    },
+    "managedApplication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtimeIdentity", "compatibility"],
+      "properties": {
+        "runtimeIdentity": { "$ref": "#/$defs/managedRuntimeIdentity" },
+        "compatibility": { "$ref": "#/$defs/hostedCompatibility" }
+      }
+    },
+    "managedRuntimeIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ideaHome", "profile", "pid", "processStartEpochMillis", "hostLifetime", "buildIdentity", "autoReload", "mode"],
+      "properties": {
+        "ideaHome": { "$ref": "#/$defs/root" },
+        "profile": { "$ref": "#/$defs/root" },
+        "pid": { "type": "integer", "minimum": 1 },
+        "processStartEpochMillis": { "type": "integer", "minimum": 1 },
+        "hostLifetime": { "$ref": "#/$defs/hostLifetime" },
+        "autoReload": { "const": "DISABLED" },
+        "mode": { "const": "MANAGED_HEADLESS" },
+        "buildIdentity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "sourceRevision", "sourceTree"],
+          "properties": {
+            "version": { "$ref": "#/$defs/hostedCompatibility/properties/hostedPluginVersion" },
+            "sourceRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+            "sourceTree": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+          }
         }
       }
     },

@@ -186,10 +186,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-2b629829f5e5fae7962e2e68
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-04T23:27:44.986Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Public intent tools
@@ -502,8 +502,9 @@ tool registration; clients cannot silently discard the branch proof.
 Query retention has two current success shapes: `not_requested` for inline output and `retained` with an issued reference. Required storage failure returns typed completion rejection with original coverage and the finite `RETENTION_UNAVAILABLE` cause. The previous success-shaped capacity outcome has no supported variant.
 
 Pi and Copilot consume `KAST_TOOL_RPC_COMMAND` as their own executable selector
-and remove it from each child environment. Other supplied settings remain
-unchanged. This keeps private adapter selection outside Kast's strict product
+and remove it from each child environment.
+Both adapters also remove the private `KAST_EVALUATION_DEADLINE_MS` setting.
+Ordinary settings keep their values. This keeps private adapter selection outside Kast's strict product
 configuration admission without accepting unknown product settings.
 
 Local declarations use closed `LOCAL_FUNCTION` or `LOCAL_PROPERTY` signatures

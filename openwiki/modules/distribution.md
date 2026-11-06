@@ -337,6 +337,8 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-4c9f1a2f0eff9672edf6ca2f
     resource: repo://packaging/installer_fixture.py
+  - id: openwiki-source-621afc296584eb4217553339
+    resource: repo://packaging/managed_headless.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
   - id: openwiki-source-8faf23d69764b95242de5e09
@@ -351,10 +353,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-05T16:04:45.402Z" }
+generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T16:04:45.402Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Distribution and packaging
@@ -376,6 +378,18 @@ The running coordinator supplies a bounded passive projection for its captured c
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime download adapter, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
 Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Control and host releases have separate artifacts and checksums. Fresh and default checkout installation select both; component installation selects only its artifact. The hosted-plugin ZIP is named for its own version and the IDEA release line (`idea-262.zip`). The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check copies the production Control staging tree directly into an owned fixture before invoking launchers or the installer. It verifies independent artifact identities, required launchers including the native management command, and Control cold staging in the canonical layout beneath that fixture HOME. It first verifies an installed/not-requested report, the exact publication receipt and absence of Host files. It then stages the receipted Host through the production Python owner, creates an empty canonical six-table mutation database, invokes the published native uninstall and checks removal of owned Host, Control, public command and user state while preserving an unrelated sentinel. This owned native composition establishes no live IDE, model or Codex admission. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
+
+## Managed headless assembly
+
+`managed_headless.py` admits an explicit vendor archive digest before it creates a new owned installation.
+It installs the bundled bootstrap descriptor, seals runtime files, and invokes the existing installer with a private HOME and bundled JBR.
+The assembler rejects an existing destination.
+Its manifest records input digests, Host dependency roots, plugin decisions, and each kept or removed file.
+An explicit exclusion removes a whole plugin directory.
+Unknown plugins, Host roots, and dependencies of kept plugins reject before removal.
+The private profile disables excluded plugin IDs through the installer-owned profile receipt.
+Assembly records `NOT_RUN` for Host acceptance.
+Only installed production behavior can establish that acceptance.
 
 Native lifecycle commands fence admission at `<install-root>/shutdown.json`, outside the replaceable payload.
 Direct tools and coordinator startup honor the fence.
