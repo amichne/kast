@@ -1,4 +1,5 @@
 [tools]
+uv = "0.12.9"
 java = "oracle-graalvm-25.0.2"
 node = "24.21.0"
 vale = "3.24.0"
