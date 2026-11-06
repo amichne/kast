@@ -90,7 +90,7 @@ dependencies {
     implementation(
         "com.gradleup.shadow:com.gradleup.shadow.gradle.plugin:${catalog.findVersion("shadow").get().requiredVersion}"
     )
-    implementation("com.diffplug.spotless:com.diffplug.spotless.gradle.plugin:8.10.4")
+    implementation("com.diffplug.spotless:com.diffplug.spotless.gradle.plugin:8.11.0")
     implementation("dev.detekt:detekt-gradle-plugin:2.0.0-alpha.6")
     implementation("org.ow2.asm:asm:9.11.1")
     testImplementation(catalog.findLibrary("junit-jupiter").get())
