@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import pytest
@@ -56,6 +56,27 @@ def test_native_launcher_keeps_required_vendor_field_and_selected_classpath() ->
     encoded: object = json.loads(json.dumps(asdict(result)))
     assert object_fields(encoded)
     assert encoded.get("productVendor") == "JetBrains"
+    assert result.launch[0].bootClassPathJarNames == (
+        "core.jar",
+        "ext/platform-main.jar",
+        "kast-product.jar",
+    )
+
+
+def test_linux_launcher_keeps_native_paths_and_selected_classpath() -> None:
+    launch = replace(
+        VendorMetadata().launch[0],
+        os="Linux",
+        arch="amd64",
+        launcherPath="bin/idea",
+        javaExecutablePath="jbr/bin/java",
+        vmOptionsFilePath="bin/idea64.vmoptions",
+    )
+    raw = json.dumps(asdict(replace(VendorMetadata(), launch=(launch,)))).encode()
+    result = product(raw, frozenset({"lib/core.jar"}), ())
+    assert isinstance(result, Product), result
+    assert result.launch[0].launcherPath == "bin/idea"
+    assert result.launch[0].vmOptionsFilePath == "bin/idea64.vmoptions"
     assert result.launch[0].bootClassPathJarNames == (
         "core.jar",
         "ext/platform-main.jar",

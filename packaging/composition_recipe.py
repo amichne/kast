@@ -13,9 +13,10 @@ from composition_descriptors import (
 )
 from composition_graph import GraphRejected, ModuleId, ModuleResource, parse_module
 from composition_index import IndexRejected, parse_plugin_index
+from composition_platform import HostPlatform
 
 BUILD = "262.10315.125"
-ARCHIVE_SHA256 = "f4a45f451008c86ce4e9342d5931fd89c8553f9d3ab6e8012da7533e9fe5c249"
+ARCHIVE_SHA256 = HostPlatform.MACOS_ARM64.layout.archive_sha256
 
 # Roots name semantic, project, index, and backend service owners. Dependencies stay source-owned.
 ROOTS = tuple(

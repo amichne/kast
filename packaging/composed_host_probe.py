@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 import re
 import subprocess
 from dataclasses import asdict, dataclass
@@ -44,7 +45,7 @@ def complete(value: object) -> dict[object, object]:
     return document
 
 
-def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path) -> ProbeReceipt:
+def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> ProbeReceipt:
     """The caller supplies an owned installation and an explicitly trusted disposable fixture."""
     assert (
         root.is_absolute() and root.resolve() == root and (root / ".kast-headless-owned").is_file()
@@ -52,6 +53,12 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path) -> ProbeRece
     assert fixture.is_absolute() and fixture.resolve() == fixture
     assert not evidence.exists() and evidence.resolve() == evidence
     evidence.mkdir(parents=True)
+    if platform.system() == "Darwin":
+        assert sandbox is not None and sandbox.is_file(), "macOS needs its sandbox profile"
+        prefix = ("/usr/bin/sandbox-exec", "-f", str(sandbox))
+    else:
+        assert platform.system() == "Linux" and sandbox is None, "Unsupported probe isolation"
+        prefix = ()
     environment = {
         "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
         "HOME": str(root / "state/home"),
@@ -59,7 +66,7 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path) -> ProbeRece
     }
 
     def call(case: str, arguments: tuple[str, ...]) -> dict[object, object]:
-        command = ("/usr/bin/sandbox-exec", "-f", str(sandbox), str(root / "bin/kast"), *arguments)
+        command = (*prefix, str(root / "bin/kast"), *arguments)
         result = subprocess.run(
             command,
             cwd=fixture,
@@ -180,8 +187,9 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path) -> ProbeRece
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("root", "fixture", "evidence", "sandbox"):
+    for name in ("root", "fixture", "evidence"):
         _ = parser.add_argument("--" + name, type=Path, required=True)
+    _ = parser.add_argument("--sandbox", type=Path)
     args = parser.parse_args()
     print(json.dumps(asdict(probe(args.root, args.fixture, args.evidence, args.sandbox)), indent=2))
 
