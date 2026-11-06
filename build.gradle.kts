@@ -335,7 +335,7 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.file(hostedPluginArchive)
     val hostRecord = selectedHostReleaseRecord
     inputs.file(hostRecord)
-    inputs.files("install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py")
+    inputs.files("install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py", "packaging/pyproject.toml", "packaging/uv.lock")
     inputs.files(
         "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt",
         "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryDatabase.kt",
@@ -348,7 +348,8 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     doFirst { environment("KAST_HOSTED_PLUGIN_ARCHIVE", archive.get().asFile.absolutePath) }
     environment("KAST_HOST_RELEASE_RECORD", hostRecord.get().asFile.absolutePath)
     environment("KAST_ACCEPTANCE_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
-    commandLine("python3", layout.projectDirectory.file("packaging/run-installed-product.py"))
+    commandLine("uv", "run", "--locked", "--project", layout.projectDirectory.dir("packaging").asFile.absolutePath,
+        "python3", layout.projectDirectory.file("packaging/run-installed-product.py").asFile.absolutePath)
 }
 
 // Resolve tools from this invocation, rather than the daemon's original process environment.

@@ -38,6 +38,24 @@ class VerifyControlDistributionTaskTest {
     }
 
     @Test
+    fun `task tools need their guest receiver module`(@TempDir directory: Path) {
+        val task = guidanceFixture(directory)
+        Files.delete(task.controlDirectory.get().asFile.toPath().resolve(
+            "share/kast/task-vm/packaging/task_vm_guest.py"))
+        assertEquals("control product is missing required entries",
+            assertThrows(IllegalStateException::class.java, task::verify).message)
+    }
+
+    @Test
+    fun `task launcher needs execute permission`(@TempDir directory: Path) {
+        val task = guidanceFixture(directory)
+        val launcher = task.controlDirectory.get().asFile.toPath().resolve("share/kast/task-vm/bin/kast-task-vm")
+        check(launcher.toFile().setExecutable(false, false))
+        assertEquals("task launcher is not executable",
+            assertThrows(IllegalStateException::class.java, task::verify).message)
+    }
+
+    @Test
     fun `optional MCP composition needs its complete transport`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)
         Files.delete(task.controlDirectory.get().asFile.toPath().resolve(
@@ -81,6 +99,11 @@ class VerifyControlDistributionTaskTest {
             "share/kast/install.sh", "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json", "share/kast/wire-schema.json", "share/kast/ide-host.json",
             "share/kast/knowledge/manifest.json", "share/kast/licenses/LICENSE",
+            "share/kast/task-vm/bin/kast-task-vm", "share/kast/task-vm/bin/kast-task-vm.lock",
+            "share/kast/task-vm/bin/setup-kast", "share/kast/task-vm/bin/setup-kast.lock",
+            "share/kast/task-vm/packaging/task_vm.py", "share/kast/task-vm/packaging/task_vm_guest.py",
+            "share/kast/task-vm/packaging/composed_bundle.py", "share/kast/task-vm/packaging/composition_platform.py",
+            "share/kast/task-vm/packaging/managed_headless.py",
         ) + listOf("", "compositions/mcp/").flatMap { composition ->
             val prefix = "share/kast/agent-tools/$composition"
             listOf(".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",

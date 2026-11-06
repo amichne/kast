@@ -4,8 +4,8 @@ title: "Disposable macOS ARM task VM"
 description: "Defines the composed Host, offline VM lifecycle, task inputs, and native evidence limits."
 resource: "repo://docs/reviews/macos-task-vm"
 tags: [kast, packaging, macos, isolation, evidence]
-timestamp: "2026-11-06T18:00:00Z"
-source_revision: 28bfaa7b336fb84cf272c7c0b63a4e202ed5187d
+timestamp: "2026-11-06T21:13:24Z"
+source_revision: 39fcfd84da92dbd8e3fe62b30c15528e682fc7e2
 code_sources:
   - path: bin/kast-task-vm
   - path: packaging/task_vm.py
