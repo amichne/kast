@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:37e327878420d4b2f0baf0ec735b09ebddea20dca5eaec06e8ff57d686f1c660",
+  "pageVersion": "sha256:6096d0b3c9917ad840ad4ca5d39e25369f002ee2fe9d214b05093585cfcd99e7",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -11,7 +11,7 @@
           "version": "repo-file-v1:sha256:b664763ec093af466ba893058ec2d7f7e72beee86c6eea9a9269cb772f0368ff"
         },
         {
-          "resource": "repo://build.gradle.kts#L728-L747",
+          "resource": "repo://build.gradle.kts#L730-L749",
           "version": "repo-lines-v1:sha256:49750b9bcf0a0e582bd76e22d0016b992efa169cd730b00d50f9384f6bc438d1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMjUzOGFhM2MyZWJkMDU4NzM3MTJiYjAwODRmYWFiNjVmYmNmNjUwNzhhZTQ4NzgxOWY2MTA4MDNjMmI3NTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhYmQ0ZjAwYjM2ZGVmNDAyZjMzNDY3ZDdlOGQ0MDJhZDZlYjI1NmJjYWI0YTI4OWU0M2FlYTU2YWQ4NDQzMDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRkN2I4YzBjMTk4NDgwNTRkMDNjMGYwNGM3ZThkOTRjMTE5ODI5MDJlMzc0NDFhMDRmOWVkZDU2OTI4NzYyNjgifQ"
         }
       ]
@@ -31,8 +31,12 @@
       "statement": "Repository policy keeps authored engineering rules distinct from generated navigation and OpenWiki Claims, indexes, and provenance.",
       "evidence": [
         {
-          "resource": "repo://AGENTS.md",
-          "version": "repo-file-v1:sha256:92323ac3a16789052afd21d48aecceb612b690e78f07fbfd5dbb2aadecd2714c"
+          "resource": "repo://AGENTS.md#L119-L143",
+          "version": "repo-lines-v1:sha256:99649d8370ddfd034ca9b59ba695413e7090cf87b09dc1028578e4c1c245465a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ZTI3ZDQ2MGI0NTc3N2E3YTU1ZTRmMTFhM2UwM2ZlMGQ2NmM5ZDI4M2Q4NjJmMTBlN2RiNTIxMzAyNTBmYmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNGFlMTFkNzVlZmE5OWUyMTcyMWZlOGVlNjZmMWM5OTZhMzczODZlMmQ3NjMwMjMyYjEyMTcxZjczYjM1Y2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyNjg0NzhjODc2ZGNhMjFmMTUwYjQyYzliZjQxZWVkMmQ1NmJiYjg5NzA3MmEyMTNhMjY4Y2NkNGQwZTQ3YWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjYjhmNTA5NjZmMDU4MTEyNDEwNjJjZjhhOTFhNWJmMGJlNTY4MDBlZTQzOGZmOTAyMjc4NTc0MzRkYTJkN2QifQ"
+        },
+        {
+          "resource": "repo://AGENTS.md#L203-L210",
+          "version": "repo-lines-v1:sha256:831e864e2d2b37a3d042820d3da091b9f1fe5ef753dabef82f0be70227b01b3f:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM5YmFhZTczYWVkMzJiNGRhNTc3YTM5ZGRhNTJhYTMyMmFjOWQ4Mjc4NTE2NjM3NzM2Y2I3YTkyMGFhZTY0MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTVkM2M3MDg2ODBmZDBiYTIzZDJhOTk1YmNjY2E3YWExMmViMTU2MzQxZDNiNDc1YzM4NDJlMjcwNjEyYjRlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTNjYzRhNzEwYmYzMWEyN2Q3MTk2MDRmYTdkYTEyZWJhNGY5MTY4ZTZjYzRkOWY4NmQ4YjJjOTE5NTYzYzRjZCJ9"
         }
       ]
     },
@@ -87,6 +91,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T14:55:42.277Z"
+    "at": "2026-11-06T15:20:37.572Z"
   }
 }

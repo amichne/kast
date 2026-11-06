@@ -358,7 +358,7 @@
         },
         {
             "path": "build.gradle.kts",
-            "sha256": "4df2fb65b146aa15d33eb524279774aaffd58d6ef6764a807d44d83faed5f936"
+            "sha256": "ca02e0c05756e67d251595e6a2ec7cadaebf7f48e446572c781cac3919b6e608"
         },
         {
             "path": "change/apply/build.gradle.kts",
@@ -446,7 +446,7 @@
         },
         {
             "path": "mise.toml",
-            "sha256": "9204ea58eb4c1446f39bdd3291a78c31d034f4dd94225bd5c907720c75b249b0"
+            "sha256": "0cf916685a7acf4a12e0582ba398fddc6a2b8f29549b0225005fa01a8721dd2f"
         },
         {
             "path": "protocol/contract/build.gradle.kts",

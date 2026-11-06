@@ -4,9 +4,12 @@ title: "Kast packaging"
 description: "Owns installer adapters, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts."
 resource: "repo://packaging"
 tags: [kast, navigation]
-timestamp: "2026-11-06T09:45:06Z"
-source_revision: 35bf4cc5420244babe898ff72330a6a0102015ce
+timestamp: "2026-11-06T17:00:00Z"
+source_revision: 13d0ce4b2c41ad781b88b7e1ba9c2c0624df7c04
 code_sources:
+  - path: bin/setup-kast
+  - path: packaging/composed_bundle.py
+  - path: packaging/composition_platform.py
   - path: packaging/composed_host.py
   - path: packaging/composed_host_probe.py
   - path: packaging/composition_recipe.py
@@ -48,6 +51,8 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - [host-installation.py](host-installation.py) - Host plugin installation and receipts.
 - [managed_headless.py](managed_headless.py) - archive assembly and the shared private installer.
 - [composed_host.py](composed_host.py) - module-based assembly from a pinned donor inventory.
+- [composed_bundle.py](composed_bundle.py) - authenticated portable setup bundles and installer dispatch.
+- [composition_platform.py](composition_platform.py) - pinned donor and layout selection for macOS ARM and Linux x86_64.
 - [composition_recipe.py](composition_recipe.py) - pinned roots and plugin provider candidates.
 - [composed_host_probe.py](composed_host_probe.py) - native callers, Java references, and result rejection.
 - [installation-lifecycle.py](installation-lifecycle.py) - selected-installation retirement and removal.
@@ -79,7 +84,10 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 ## Navigation Hints
 
 - `install_prepared_runtime` owns the installer, bootstrap, private state, and wrapper for both assembly strategies.
-- The composed recipe supports only its pinned macOS ARM donor. Keep vendor bytes unchanged and reject an existing destination.
+- The composed recipe supports pinned macOS ARM and Linux x86_64 donors. Keep vendor bytes unchanged and reject an existing destination.
+- `bin/setup-kast` installs a digest-pinned Linux bundle through `install_prepared_runtime`.
+- Bundle creation uses `python3 packaging/composed_bundle.py pack`. Read the [Linux install report](../docs/reviews/linux-composed-install.md) for its inputs.
+- Explicit workspace trust applies only to the new private profile and the named existing repository.
 - The native probe consumes a disposable fixture with explicit trust and a fresh evidence directory.
 - Add `composed-host-fixture-overlay` to the fixture copy. Keep the original callback fixture unchanged because its oracle admits exact source paths.
 - Assembly receipts carry no readiness proof. Native probe results cover only their stated corpus.

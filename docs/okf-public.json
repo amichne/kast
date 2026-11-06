@@ -1752,7 +1752,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "architecture/change-lifecycle",
@@ -1812,7 +1812,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "architecture/query-reuse",
@@ -2115,7 +2115,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "architecture/topology",
@@ -2195,7 +2195,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "explanation",
@@ -2537,7 +2537,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "explanation/query-lifecycle",
@@ -2621,7 +2621,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "explanation/value-journey",
@@ -2725,7 +2725,7 @@
           "sha256": "6e948fb730e4b47985f1d7397f7020a5c4dc68dd78d6d8a922761d4b53f04c48"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "explanation/value-journey-evidence",
@@ -2821,7 +2821,7 @@
           "sha256": "6e948fb730e4b47985f1d7397f7020a5c4dc68dd78d6d8a922761d4b53f04c48"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "glossary",
@@ -2894,7 +2894,7 @@
           "sha256": "472b3ee29567834323bdb540f1cf25f55ac5cbb6f6ec7de3064d5bcf32b9837b"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "how-to",
@@ -3211,7 +3211,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "how-to/complete-engineering-task",
@@ -3583,7 +3583,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "how-to/inspect-diagnostics",
@@ -3620,7 +3620,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "how-to/read-retained-evidence",
@@ -3907,7 +3907,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "index",
@@ -4378,7 +4378,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference",
@@ -4720,7 +4720,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/api",
@@ -5077,7 +5077,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/callables/add-declaration",
@@ -5118,7 +5118,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/callables/check-diagnostics",
@@ -5159,7 +5159,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/callables/query-symbols",
@@ -5200,7 +5200,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/callables/replace-body",
@@ -5241,7 +5241,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/callables/workspace-lifecycle",
@@ -5282,7 +5282,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/callback-observations",
@@ -5404,7 +5404,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/callbacks",
@@ -5490,7 +5490,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/change",
@@ -5542,7 +5542,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/cli",
@@ -6085,14 +6085,14 @@
         },
         {
           "path": "mise.toml",
-          "sha256": "9204ea58eb4c1446f39bdd3291a78c31d034f4dd94225bd5c907720c75b249b0"
+          "sha256": "0cf916685a7acf4a12e0582ba398fddc6a2b8f29549b0225005fa01a8721dd2f"
         },
         {
           "path": "packaging/configuration-schema.json",
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "e37888ae77b7af99addc1165f1ae981bb7d1309b"
+      "reviewedSourceRevision": "12f6de8e530bf704d63fecbdcbc4dd5c9c91ccd7"
     },
     {
       "route": "reference/compatibility",
@@ -6349,7 +6349,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/composition",
@@ -6406,7 +6406,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/evidence-boundaries",
@@ -6522,7 +6522,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/installation",
@@ -6724,7 +6724,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/integrations",
@@ -6841,7 +6841,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/internals/architecture",
@@ -6882,7 +6882,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/internals/background-startup",
@@ -6967,7 +6967,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/lifecycles",
@@ -7128,7 +7128,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/limits",
@@ -7595,7 +7595,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/management",
@@ -7797,7 +7797,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/mcp-catalog",
@@ -8179,7 +8179,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/models/diagnostic",
@@ -8521,7 +8521,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/models/live-evidence",
@@ -8863,7 +8863,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/models/mcp-change-result",
@@ -9205,7 +9205,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/models/mcp-investigation-result",
@@ -9547,7 +9547,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/models/mcp-read-result",
@@ -9889,7 +9889,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/models/mcp-tool-call-result",
@@ -10231,7 +10231,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/models/query-item",
@@ -10573,7 +10573,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/models/relation-fact",
@@ -10915,7 +10915,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/models/tool-rpc-reply",
@@ -11257,7 +11257,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/program-tracing",
@@ -11413,7 +11413,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/query-pipelines",
@@ -11700,7 +11700,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/responses",
@@ -12057,7 +12057,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/rpc-catalog",
@@ -12439,7 +12439,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/schemas",
@@ -12726,7 +12726,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/search",
@@ -13068,7 +13068,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/source-map",
@@ -13900,7 +13900,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/staleness",
@@ -13964,7 +13964,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/symbols",
@@ -14030,7 +14030,7 @@
           "sha256": "486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/troubleshooting",
@@ -14287,7 +14287,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "reference/walkthrough",
@@ -14574,7 +14574,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "search",
@@ -14980,7 +14980,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "start",
@@ -15511,7 +15511,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "troubleshooting",
@@ -15772,7 +15772,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "tutorials",
@@ -16059,7 +16059,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     },
     {
       "route": "tutorials/first-query",
@@ -16405,7 +16405,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "d1a3d2b09f7bd63b129eb7226062f9202a393a24"
+      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
     }
   ]
 }

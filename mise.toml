@@ -6,4 +6,5 @@ vale = "3.24.0"
 jq = "1.8.2"
 
 [env]
+_.path = ["{{config_root}}/bin"]
 GRAALVM_HOME = { value = "{{ tools.java.path }}", tools = true }

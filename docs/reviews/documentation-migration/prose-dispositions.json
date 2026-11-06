@@ -4560,6 +4560,186 @@
         "severity": "warning"
       },
       "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/development/knowledge-upkeep.md",
+        "sourceSha256": "6096d0b3c9917ad840ad4ca5d39e25369f002ee2fe9d214b05093585cfcd99e7",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.00 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep source-impact assessment, native Claim review, and publication evidence with exact identifiers AGENTS.md, knowledgeImpact, and verifyKnowledgeBase. Comparison with merged main proves the complete page body is unchanged; only the native verification timestamp changed. This disposition binds the current bytes, retains the grade-12 advisory, and makes no reader-comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.76 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 378,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 380,
+        "message": "Long sentence: 36 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 380,
+        "message": "Long sentence: 41 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 550,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 552,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 566,
+        "message": "Long sentence: 37 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 569,
+        "message": "Long sentence: 39 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 646,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 660,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 690,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 705,
+        "message": "Long sentence: 32 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 727,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "b8bda0d8a795584708e9459decc67e5e82f591007b7ea541d748a97ea02e8388",
+        "rule": "Slopsentral.LongSentence",
+        "line": 729,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The native review changed only evidence metadata. The established contract and existing prose remain unchanged. The native review changed only evidence metadata. The established contract and existing prose remain unchanged."
     }
   ]
 }

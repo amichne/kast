@@ -5,6 +5,7 @@ description: "Describes the module-based assembly, native qualification, and lim
 resource: "repo://docs/reviews/composed-analysis-host"
 tags: [kast, runtime, headless, dependencies, evidence]
 timestamp: "2026-11-06T09:15:00Z"
+source_revision: 13d0ce4b2c41ad781b88b7e1ba9c2c0624df7c04
 code_sources:
   - path: packaging/composed_host.py
   - path: packaging/composition_graph.py
@@ -30,6 +31,9 @@ This candidate uses the pinned vendor distribution as a source cache.
 It does not rebuild Community Edition from source or resolve separate Maven artifacts.
 Its smaller installed footprint does not establish a minimum dependency set.
 This report grants no release or deployment authority.
+
+The [Linux installation report](linux-composed-install.md) adds a portable bundle and the action adapter.
+Its evidence remains separate from this macOS corpus.
 
 ## Composition and evidence
 
