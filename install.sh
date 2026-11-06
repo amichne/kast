@@ -291,7 +291,7 @@ canonical_idea_home() {
     *) return 1 ;;
   esac
   [[ -f "$build_file" ]] || return 1
-  [[ "$(cat "$build_file")" =~ ^(IU-|IC-)?262\. ]] || return 1
+  [[ "$(cat "$build_file")" =~ ^(IU-|IC-)?(262|263)\. ]] || return 1
   [[ -d "$physical/plugins/Kotlin" ]] || return 1
   [[ -x "$bundled_java/bin/java" ]] || return 1
   release="$bundled_java/release"
@@ -918,6 +918,7 @@ if [[ "$component" != control ]]; then
   fetch_asset "$plugin_name.sha256" "$temporary_root/$plugin_name.sha256" "$idea_mismatch"
   plugin_digest="$(verify_checksum "$temporary_root/$plugin_name" "$temporary_root/$plugin_name.sha256" "$plugin_name")"
   host_record_name="kast-host-release-v$host_version.json"
+  if [[ "${idea_build%%.*}" == 263 ]]; then host_record_name="kast-host-release-v$host_version-idea-263.json"; fi
   fetch_asset "$host_record_name" "$temporary_root/$host_record_name"
   fetch_asset "$host_record_name.sha256" "$temporary_root/$host_record_name.sha256"
   verify_checksum "$temporary_root/$host_record_name" "$temporary_root/$host_record_name.sha256" "$host_record_name" >/dev/null

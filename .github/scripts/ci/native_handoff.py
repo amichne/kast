@@ -423,8 +423,10 @@ def qualify(payload: Admitted) -> None:
     if isinstance(failure, Failure):
         raise SystemExit(failure.value)
     control = release / f"kast-control-v{identity.version}-macos-aarch64.tar.gz"
-    plugins = list(release.glob(f"kast-ide-hosted-v{identity.version}-idea-*.zip"))
-    if len(plugins) != 1:
+    plugins = sorted(release.glob(f"kast-ide-hosted-v{identity.version}-idea-*.zip"))
+    if len(plugins) not in (1, 2) or len(plugins) == 2 and {path.name for path in plugins} != {
+        f"kast-ide-hosted-v{identity.version}-idea-262.zip", f"kast-ide-hosted-v{identity.version}-idea-263.zip"
+    }:
         raise SystemExit(Failure.INVALID_RECORD.value)
     with tempfile.TemporaryDirectory(prefix="kast-qualification-") as temporary:
         product = Path(temporary)
@@ -433,19 +435,21 @@ def qualify(payload: Admitted) -> None:
             if not safe_members(members):
                 raise SystemExit(Failure.UNSAFE_ARCHIVE.value)
             archive.extractall(product, members=members, filter="data")
-        run(
-            ["python3", "packaging/run-installed-product.py"],
-            environment={
+        for plugin in plugins:
+            suffix = "-idea-263" if plugin.name.endswith("-idea-263.zip") else ""
+            run(
+                ["python3", "packaging/run-installed-product.py"],
+                environment={
                 **os.environ,
                 "KAST_INSTALLED_PRODUCT": str(product),
                 "KAST_CONTROL_ARCHIVE": str(control),
-                "KAST_HOSTED_PLUGIN_ARCHIVE": str(plugins[0]),
+                "KAST_HOSTED_PLUGIN_ARCHIVE": str(plugin),
                 "KAST_HOST_RELEASE_RECORD": str(
-                    release / f"kast-host-release-v{identity.version}.json"
+                    release / f"kast-host-release-v{identity.version}{suffix}.json"
                 ),
                 "KAST_ACCEPTANCE_JAVA_EXECUTABLE": str(Path(os.environ["JAVA_HOME"]) / "bin/java"),
-            },
-        )
+                },
+            )
         gradle(
             identity,
             f"-PkastNativeExecutable={product / 'share/kast/libexec/kast-management'}",

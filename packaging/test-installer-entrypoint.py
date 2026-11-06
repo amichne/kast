@@ -111,7 +111,7 @@ class ControlRecoveryFixture:
 
 class InstallerEntrypointTest(unittest.TestCase):
     def installer_fixture(self, directory: str, *, plugin_line: str = "262", version: str = "1.2.3", reset_capability: bool = False,
-                          completion_capability: bytes | None = b"1\n"):
+                          completion_capability: bytes | None = b"1\n", idea_line: str = "262"):
         root = Path(directory).resolve()
         home = root / "home"
         idea = root / "IntelliJ IDEA.app/Contents"
@@ -124,9 +124,9 @@ class InstallerEntrypointTest(unittest.TestCase):
         uname.write_text('#!/bin/sh\ncase "$1" in -s) echo Darwin ;; -m) echo arm64 ;; *) exit 1 ;; esac\n')
         uname.chmod(0o755)
         (idea / "Resources").mkdir()
-        (idea / "Resources/build.txt").write_text("IU-262.1234\n")
+        (idea / "Resources/build.txt").write_text(f"IU-{idea_line}.1234\n")
         (idea / "Resources/product-info.json").write_text(json.dumps({
-            "buildNumber": "262.1234", "dataDirectoryName": "IntelliJIdea2026.2", "version": "2026.2.1",
+            "buildNumber": f"{idea_line}.1234", "dataDirectoryName": f"IntelliJIdea2026.{int(idea_line) - 260}", "version": f"2026.{int(idea_line) - 260}.1",
         }))
         (idea / "jbr/Contents/Home/release").write_text('JAVA_VERSION="25.0.1"\nOS_ARCH="aarch64"\n')
         (idea / "jbr/Contents/Home/bin/java").write_text("")
@@ -187,7 +187,8 @@ esac
             jar.writestr("META-INF/plugin.xml", descriptor)
         with zipfile.ZipFile(plugin, "w") as archive:
             archive.writestr("kast-ide-hosted/lib/plugin.jar", jar_buffer.getvalue())
-        host_record = assets / f'kast-host-release-v{version}.json'
+        suffix = '-idea-263' if plugin_line == '263' else ''
+        host_record = assets / f'kast-host-release-v{version}{suffix}.json'
         host_record.write_text(json.dumps(asdict(HostReleaseFixture(version,
             ArtifactFixture(plugin_name, 'sha256:' + hashlib.sha256(plugin.read_bytes()).hexdigest(), plugin.stat().st_size), plugin_line))))
         host_helper = assets / 'host-installation.py'
@@ -210,6 +211,33 @@ esac
             self.assertEqual(0, result.returncode, result.stderr)
             expected = Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins'
             self.assertIn('plugin-root=' + str(expected), result.stderr)
+
+    def test_263_install_selects_matching_payload_and_its_metadata_profile(self):
+        for explicit in (True, False):
+            with self.subTest(explicit=explicit), tempfile.TemporaryDirectory(prefix='kast-263-target-') as directory:
+                idea, _, environment = self.installer_fixture(directory, plugin_line='263', idea_line='263')
+                environment['KAST_INSTALL_IDEA_SEARCH_ROOT'] = directory
+                arguments = ['--idea-home', str(idea)] if explicit else []
+                home = Path(environment['HOME'])
+                prior = home / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/keep'
+                prior.parent.mkdir(parents=True)
+                prior.write_text('prior-profile')
+                result = subprocess.run([str(BASH), str(INSTALLER), *arguments, '--dry-run', '--verbose'],
+                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+                self.assertEqual(0, result.returncode, result.stderr)
+                expected = home / 'Library/Application Support/JetBrains/IntelliJIdea2026.3/plugins'
+                self.assertIn('plugin-root=' + str(expected), result.stderr)
+                self.assertIn('build 263.1234', result.stderr)
+                self.assertEqual('prior-profile', prior.read_text())
+
+    def test_unreviewed_264_rejects_before_download_or_installation(self):
+        with tempfile.TemporaryDirectory(prefix='kast-264-target-') as directory:
+            idea, _, environment = self.installer_fixture(directory, plugin_line='264', idea_line='264')
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn('IDEA home is incompatible', result.stderr)
+            self.assertNotIn('profile=', result.stderr)
 
     def test_legacy_control_completion_uses_only_its_supported_commit_protocol(self):
         with tempfile.TemporaryDirectory(prefix='kast-completion-legacy-') as directory:

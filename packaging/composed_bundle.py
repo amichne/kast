@@ -18,6 +18,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal, TypeGuard
 
+from composition_platform import HostPlatform, UnsupportedHost, host_platform
 from managed_headless import (
     AssemblyEntryKind,
     AssemblyFile,
@@ -58,7 +59,7 @@ class BundleManifest:
     files: tuple[AssemblyFile, ...]
     schemaVersion: Literal[1] = field(default=1, init=False)
     kind: Literal["KAST_COMPOSED_SETUP_V1"] = field(default="KAST_COMPOSED_SETUP_V1", init=False)
-    platform: Literal["linux-x86_64"] = field(default="linux-x86_64", init=False)
+    platform: HostPlatform = HostPlatform.LINUX_X86_64
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,9 +163,11 @@ def read_manifest(data: bytes) -> BundleManifest | BundleRejected:
         or raw.get("kind") != "KAST_COMPOSED_SETUP_V1"
         or type(raw.get("schemaVersion")) is not int
         or raw.get("schemaVersion") != 1
-        or raw.get("platform") != "linux-x86_64"
+        or not isinstance(raw.get("platform"), str)
+        or raw.get("platform") not in {item.value for item in HostPlatform}
     ):
         return BundleRejected(BundleFailure.INVALID_MANIFEST, "identity")
+    selected_platform = HostPlatform(str(raw.get("platform")))
     version, build = raw.get("version"), raw.get("platformBuild")
     if (
         not isinstance(version, str)
@@ -186,7 +189,7 @@ def read_manifest(data: bytes) -> BundleManifest | BundleRejected:
         "bootstrap.zip",
         "composition-manifest.json",
         "install.sh",
-        "runtime/product-info.json",
+        "runtime/" + selected_platform.layout.product,
         "runtime/lib/kast-product.jar",
         "runtime/plugins/plugin-classpath.txt",
         "bin/setup-kast",
@@ -196,7 +199,9 @@ def read_manifest(data: bytes) -> BundleManifest | BundleRejected:
     }
     if not required <= {item.path for item in records}:
         return BundleRejected(BundleFailure.INVALID_MANIFEST, "missing required files")
-    return BundleManifest(version, build, digests[0], digests[1], digests[2], records)
+    return BundleManifest(
+        version, build, digests[0], digests[1], digests[2], records, selected_platform
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -261,7 +266,8 @@ def install_bundle(
     version: str,
     trust_workspace: Path | None = None,
 ) -> BundleInstalled | BundleRejected | Rejected:
-    if platform.system() != "Linux" or platform.machine() != "x86_64":
+    target = host_platform(platform.system(), platform.machine())
+    if isinstance(target, UnsupportedHost):
         return BundleRejected(BundleFailure.UNSUPPORTED_PLATFORM, platform.platform())
     if root.exists():
         return Rejected(Failure.EXISTING_TARGET)
@@ -291,6 +297,8 @@ def _install_extracted(
     manifest = read_manifest((source / "manifest.json").read_bytes())
     if isinstance(manifest, BundleRejected):
         return manifest
+    if manifest.platform != host_platform(platform.system(), platform.machine()):
+        return BundleRejected(BundleFailure.UNSUPPORTED_PLATFORM, manifest.platform.value)
     if manifest.version != version:
         return BundleRejected(BundleFailure.INVALID_MANIFEST, "requested version")
     rejected = examine_files(source, manifest.files)
@@ -321,7 +329,7 @@ def _install_extracted(
         return admitted
     root.mkdir(mode=0o700)
     _ = (root / ".kast-headless-owned").write_text("kast-managed-headless-v1\n")
-    home = root / "runtime/kast-analysis-host"
+    home = root / manifest.platform.layout.home
     home.mkdir(parents=True)
     for record in verified.records:
         if not record.path.startswith("runtime/"):
@@ -403,20 +411,21 @@ def pack_bundle(
         if isinstance(parsed, BundleRejected):
             return parsed
         records.extend(parsed)
-    home = root / "runtime/kast-analysis-host"
+    distribution = raw.get("distributionSha256")
+    targets = tuple(item for item in HostPlatform if item.layout.archive_sha256 == distribution)
+    if len(targets) != 1:
+        return BundleRejected(BundleFailure.INVALID_MANIFEST, "donor identity")
+    target = targets[0]
+    home = root / target.layout.home
     rejected = examine_files(home, tuple(records))
     if isinstance(rejected, BundleRejected):
         return rejected
     distribution, bootstrap_sha = raw.get("distributionSha256"), raw.get("bootstrapArchiveSha256")
     if not isinstance(distribution, str) or not isinstance(bootstrap_sha, str):
         return BundleRejected(BundleFailure.INVALID_MANIFEST, "composition digests")
-    from composition_platform import HostPlatform
-
-    if distribution != HostPlatform.LINUX_X86_64.layout.archive_sha256:
-        return BundleRejected(BundleFailure.INVALID_MANIFEST, "Linux donor identity")
     if sha256(bootstrap) != bootstrap_sha:
         return BundleRejected(BundleFailure.DIGEST_MISMATCH, "bootstrap archive")
-    product: object = json.loads((home / "product-info.json").read_bytes())
+    product: object = json.loads((home / target.layout.product).read_bytes())
     if not object_fields(product) or not isinstance(product.get("buildNumber"), str):
         return BundleRejected(BundleFailure.INVALID_MANIFEST, "product")
     build = product.get("buildNumber")
@@ -431,6 +440,7 @@ def pack_bundle(
             ("install.sh", repository / "install.sh"),
             ("packaging/managed_headless.py", repository / "packaging/managed_headless.py"),
             ("packaging/composed_bundle.py", repository / "packaging/composed_bundle.py"),
+            ("packaging/composition_platform.py", repository / "packaging/composition_platform.py"),
             ("bin/setup-kast", repository / "bin/setup-kast"),
             ("bin/setup-kast.lock", repository / "bin/setup-kast.lock"),
         )
@@ -451,6 +461,7 @@ def pack_bundle(
             for name, path in files
             for entry in (file_record(path, path.parent),)
         ),
+        target,
     )
     encoded = json.dumps(asdict(manifest), indent=2).encode() + b"\n"
     parsed_manifest = read_manifest(encoded)

@@ -24,9 +24,10 @@ class IdeHostCompatibilityPolicyTest {
         }
 
     @Test
-    fun `262 builds are admitted with their observed identities retained`() {
-        for (build in listOf("262.1.1", "262.9437.185", "262.10315.125", "262.20000.200")) {
-            val candidate = baseline.copy(ideBuild = build, kotlinPluginBuild = "262.20001.201-IJ")
+    fun `reviewed platform builds are admitted with their observed identities retained`() {
+        for (build in listOf("262.1.1", "262.9437.185", "262.10315.125", "262.20000.200", "263.7307.200")) {
+            val candidate =
+                baseline.copy(ideBuild = build, kotlinPluginBuild = "${build.substringBefore('.')}.20001.201-IJ")
             val admitted =
                 when (val result = policy.admit(candidate)) {
                     is IdeHostCompatibilityAdmission.Admitted -> result.compatibility
@@ -39,14 +40,19 @@ class IdeHostCompatibilityPolicyTest {
     }
 
     @Test
-    fun `IDEA and Kotlin builds outside 262 retain typed mismatches`() {
-        for (line in listOf("261", "263")) {
+    fun `IDEA and Kotlin builds outside reviewed platforms retain typed mismatches`() {
+        for (line in listOf("261", "264")) {
             assertMismatch(baseline.copy(ideBuild = "$line.10315.125"), IdeHostCompatibilityField.IDE_BUILD)
             assertMismatch(
                 baseline.copy(kotlinPluginBuild = "$line.10315.125-IJ"),
                 IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD,
             )
         }
+    }
+
+    @Test
+    fun `reviewed IDEA and Kotlin lines must match each other`() {
+        assertMismatch(baseline.copy(ideBuild = "263.7307.200"), IdeHostCompatibilityField.KOTLIN_PLUGIN_BUILD)
     }
 
     @Test

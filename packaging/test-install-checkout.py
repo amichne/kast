@@ -415,7 +415,8 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
             archive.writestr("kast-ide-hosted/lib/kast-ide-hosted-1.2.3.jar", plugin_jar.getvalue())
 
     def write_host_record(self, plugin, line):
-        record = self.assets / f"kast-host-release-v{self.version}.json"
+        suffix = "-idea-263" if line == "263" else ""
+        record = self.assets / f"kast-host-release-v{self.version}{suffix}.json"
         record.write_text(json.dumps(asdict(HostReleaseFixture(self.version,
             ArtifactFixture(plugin.name, 'sha256:' + hashlib.sha256(plugin.read_bytes()).hexdigest(), plugin.stat().st_size), line))))
         record.with_name(record.name + '.sha256').write_text(

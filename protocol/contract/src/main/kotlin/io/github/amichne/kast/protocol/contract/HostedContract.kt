@@ -102,16 +102,14 @@ data class HostedCompatibilityRequirements(
                 is Refinement.Refined -> parsed.value
                 is Refinement.Rejected -> return IdeHostCompatibilityAdmission.Rejected(parsed.failure)
             }
-        if (observed.ideBuild.releaseLine != ideBuild.releaseLine)
-            return IdeHostCompatibilityAdmission.Rejected(
-                IdeHostCompatibilityFailure.Mismatch(IdeHostCompatibilityMismatch.IdeBuild(ideBuild, observed.ideBuild))
-            )
-        if (observed.kotlinPluginBuild.releaseLine != kotlinPluginBuild.releaseLine)
-            return IdeHostCompatibilityAdmission.Rejected(
-                IdeHostCompatibilityFailure.Mismatch(
-                    IdeHostCompatibilityMismatch.KotlinPluginBuild(kotlinPluginBuild, observed.kotlinPluginBuild)
-                )
-            )
+        when (
+            val platform =
+                admitIdePlatformPair(ideBuild, kotlinPluginBuild, observed.ideBuild, observed.kotlinPluginBuild)
+        ) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected ->
+                return IdeHostCompatibilityAdmission.Rejected(IdeHostCompatibilityFailure.Mismatch(platform.failure))
+        }
         return when (val admitted = HostedCompatibilityPolicy.admit(contract, observed.hostedContract)) {
             is Refinement.Refined -> IdeHostCompatibilityAdmission.Admitted(observed)
             is Refinement.Rejected -> IdeHostCompatibilityAdmission.Rejected(admitted.failure)

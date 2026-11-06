@@ -40,6 +40,15 @@ class AdmittedArtifactPair:
     host: Path
     host_release_record: Path
     host_installer: Path
+    idea_release_line: str
+
+
+@dataclass(frozen=True)
+class TaskVmRejection:
+    stage: str = "ADMISSION"
+    reason: str = "WRONG_BUNDLE"
+    exitCode: int = 1
+    type: str = "rejected"
 
 
 def require(condition: bool, detail: str) -> None:
@@ -62,7 +71,8 @@ def verify_artifacts(product: Path, control: Path, plugin: Path, host_record: Pa
     host_match = re.fullmatch(r"kast-ide-hosted-v(\d+\.\d+\.\d+)-idea-(\d{3})\.zip", plugin.name)
     require(host_match is not None and record["hostedPluginVersion"] == host_match.group(1)
             and record["supportedIntellijReleaseLine"] == host_match.group(2), "host version and platform")
-    require(host_record.name == f"kast-host-release-v{record['hostedPluginVersion']}.json", "host record identity")
+    record_suffix = "-idea-263" if host_match.group(2) == "263" else ""
+    require(host_record.name == f"kast-host-release-v{record['hostedPluginVersion']}{record_suffix}.json", "host record identity")
     artifact = record["artifact"]
     require(set(artifact) == {"fileName", "sha256", "bytes"}
             and artifact["fileName"] == plugin.name and artifact["bytes"] == plugin.stat().st_size, "plugin identity")
@@ -70,7 +80,7 @@ def verify_artifacts(product: Path, control: Path, plugin: Path, host_record: Pa
     require(record["providedHostedContract"] == metadata["requiredHostedContract"], "fresh pair contract")
     for name in ("operation-registry.json", "wire-schema.json", "ide-host.json", "knowledge/manifest.json"):
         require((product / "share/kast" / name).is_file(), "missing resource " + name)
-    verify_plugin_archive(plugin, record["hostedPluginVersion"], record["providedHostedContract"])
+    verify_plugin_archive(plugin, record["hostedPluginVersion"], record["providedHostedContract"], host_match.group(2))
     with tarfile.open(control) as archive:
         for launcher in ("bin/kast", "bin/kast-codex", "share/kast/libexec/kast-daemon",
                          "share/kast/libexec/kast-service", "share/kast/libexec/kast-management"):
@@ -81,10 +91,61 @@ def verify_artifacts(product: Path, control: Path, plugin: Path, host_record: Pa
         require(archive.extractfile("share/kast/public-reset-v1").read() == b"1\n", "public reset capability")
     helper = product / "share/kast/host-installation.py"
     require(helper.is_file() and not helper.is_symlink(), "host installer")
-    return AdmittedArtifactPair(control_match.group(1), host_match.group(1), control, plugin, host_record, helper)
+    return AdmittedArtifactPair(control_match.group(1), host_match.group(1), control, plugin, host_record, helper,
+                                host_match.group(2))
 
 
-def verify_plugin_archive(plugin: Path, host_version: str, provided_contract: dict) -> None:
+def verify_task_tools(fixture: InstallerFixture, control: Path) -> None:
+    """Examine the extracted tools without checkout imports or native VM effects."""
+    prefix = "share/kast/task-vm/"
+    extracted = fixture.root / "extracted-task-tools"
+    with tarfile.open(control) as archive:
+        members = [member for member in archive.getmembers() if member.name.startswith(prefix)]
+        required = {
+            "bin/kast-task-vm", "bin/kast-task-vm.lock", "bin/setup-kast", "bin/setup-kast.lock",
+            "packaging/task_vm.py", "packaging/task_vm_guest.py", "packaging/composed_bundle.py",
+            "packaging/composition_platform.py", "packaging/managed_headless.py",
+        }
+        require({prefix + name for name in required} <= {member.name for member in members},
+                "published task tools are incomplete")
+        archive.extractall(extracted, members=members, filter="data")
+    tools = extracted / prefix
+    cwd = fixture.root / "workspace"
+    for name, option in (("kast-task-vm", "--image"), ("setup-kast", "--archive")):
+        launcher = tools / "bin" / name
+        require(os.access(launcher, os.X_OK), "task launcher is not executable: " + name)
+        result = subprocess.run([str(fixture.tools["python3"]), "-I", str(launcher), "--help"],
+                                cwd=cwd, env=fixture.environment, capture_output=True, text=True, timeout=30)
+        require(result.returncode == 0 and option in result.stdout,
+                "extracted task launcher failed: " + name + "\n" + result.stderr[-4096:])
+    repository = fixture.root / "task-source"
+    repository.mkdir()
+    for arguments in (("init", str(repository)),
+                      ("-C", str(repository), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                       "commit", "--allow-empty", "-m", "Task input")):
+        subprocess.run([str(fixture.tools["git"]), *arguments], cwd=cwd, env=fixture.environment,
+                       capture_output=True, text=True, timeout=30, check=True)
+    marker = fixture.root / "unexpected-tart-call"
+    tart = fixture.root / "rejected-tart"
+    tart.write_text("#!" + str(fixture.tools["python3"]) + "\nfrom pathlib import Path\n"
+                    + "Path(" + repr(str(marker)) + ").touch()\nraise SystemExit(91)\n")
+    tart.chmod(0o700)
+    bundle = fixture.root / "untrusted-bundle.tar.gz"
+    bundle.write_bytes(b"untrusted bundle")
+    output, store = fixture.root / "rejected-task-output", fixture.root / "rejected-task-store"
+    result = subprocess.run([
+        str(fixture.tools["python3"]), "-I", str(tools / "bin/kast-task-vm"),
+        "--tart", str(tart), "--image", "ghcr.io/example/macos@sha256:" + "a" * 64,
+        "--bundle", str(bundle), "--bundle-sha256", "0" * 64, "--version", "0.0.0",
+        "--repository", str(repository), "--store", str(store), "--output", str(output),
+        "--", "kast", "--version",
+    ], cwd=cwd, env=fixture.environment, capture_output=True, text=True, timeout=30)
+    require(result.returncode == 1 and json.loads(result.stdout) == asdict(TaskVmRejection())
+            and not marker.exists() and not output.exists() and not store.exists(),
+            "extracted task runner did not reject the untrusted bundle before effects:\n" + result.stderr[-4096:])
+
+
+def verify_plugin_archive(plugin: Path, host_version: str, provided_contract: dict, idea_release_line: str = "262") -> None:
     with zipfile.ZipFile(plugin) as archive:
         names = archive.namelist()
         require(bool(names) and all(name.startswith("kast-ide-hosted/") for name in names), "plugin layout")
@@ -92,8 +153,11 @@ def verify_plugin_archive(plugin: Path, host_version: str, provided_contract: di
         plugin_jar = "kast-ide-hosted/lib/kast-ide-hosted.jar"
         require(plugin_jar in names, "plugin jar")
         with zipfile.ZipFile(io.BytesIO(archive.read(plugin_jar))) as jar:
-            require(ET.fromstring(jar.read("META-INF/plugin.xml")).findtext("version")
-                    == host_version, "embedded host version")
+            descriptor = ET.fromstring(jar.read("META-INF/plugin.xml"))
+            require(descriptor.findtext("version") == host_version, "embedded host version")
+            compatibility = descriptor.find("idea-version")
+            require(compatibility is not None and compatibility.get("since-build") == idea_release_line
+                    and compatibility.get("until-build") == idea_release_line + ".*", "embedded host release line")
             require(json.loads(jar.read("hosted-contract.json")) == provided_contract,
                     "embedded host contract")
 
@@ -128,12 +192,15 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
         digest = hashlib.sha256(destination.read_bytes()).hexdigest()
         (assets / (source.name + ".sha256")).write_text(f"{digest}  {source.name}\n")
 
-    metadata = json.loads((product / "share/kast/ide-host.json").read_text())
+    product_info = (
+        IdeaProductInfo("263.1234.99", "IntelliJIdea2026.3", "2026.3")
+        if pair.idea_release_line == "263" else IdeaProductInfo("262.1234.99")
+    )
     idea = fixture.root / "IntelliJ IDEA.app/Contents"
     for relative in ("Resources", "MacOS", "plugins/Kotlin", "jbr/Contents/Home/bin"):
         (idea / relative).mkdir(parents=True)
-    (idea / "Resources/build.txt").write_text("IU-" + metadata["ideaBuild"] + "\n")
-    (idea / "Resources/product-info.json").write_text(json.dumps(asdict(IdeaProductInfo(metadata["ideaBuild"]))))
+    (idea / "Resources/build.txt").write_text("IU-" + product_info.buildNumber + "\n")
+    (idea / "Resources/product-info.json").write_text(json.dumps(asdict(product_info)))
     (idea / "jbr/Contents/Home/release").write_text('JAVA_VERSION="25.0.2"\nOS_ARCH="aarch64"\n')
     java = idea / "jbr/Contents/Home/bin/java"
     java.write_text("#!/bin/sh\nexec " + shlex.quote(str(fixture.tools["java"])) + ' "$@"\n')
@@ -171,7 +238,7 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
             and receipt.get("installationRoot") == str(installation)
             and receipt.get("executable") == str(publication)
             and receipt.get("executableSha256") == hashlib.sha256(publication.read_bytes()).hexdigest()
-            and not (Path(environment["HOME"]) / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted").exists()
+            and not (Path(environment["HOME"]) / "Library/Application Support/JetBrains" / product_info.dataDirectoryName / "plugins/kast-ide-hosted").exists()
             and any(report.get("operation") == "installation.install"
                     and report.get("semanticVersion") == pair.control_version
                     and report.get("installation") == str(installation / "installation")
@@ -179,7 +246,7 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
                     and report.get("status") == "installed" for report in reports),
             "assembled installer rejected release:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
     verify_installed_query(fixture, publication, environment)
-    verify_native_uninstall(fixture, pair, product, installation, publication, environment, metadata)
+    verify_native_uninstall(fixture, pair, product, installation, publication, environment, product_info)
 
 
 def verify_installed_query(fixture: InstallerFixture, publication: Path, environment: dict[str, str]) -> None:
@@ -192,14 +259,14 @@ def verify_installed_query(fixture: InstallerFixture, publication: Path, environ
     }, "installed query startup failed:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
 
 
-def verify_native_uninstall(fixture, pair, product, installation, publication, environment, metadata):
+def verify_native_uninstall(fixture, pair, product, installation, publication, environment, product_info: IdeaProductInfo):
     """Real native cleanup; only filesystem and staged Host artifacts inside the owned fixture are used."""
-    plugin_root = Path(environment["HOME"]) / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins"
+    plugin_root = Path(environment["HOME"]) / "Library/Application Support/JetBrains" / product_info.dataDirectoryName / "plugins"
     helper = product / "share/kast/host-installation.py"
     host = subprocess.run([
         str(fixture.tools["python3"]), "-I", str(helper), "--archive", str(pair.host),
         "--sha256", hashlib.sha256(pair.host.read_bytes()).hexdigest(), "--version", pair.host_version,
-        "--idea-build", metadata["ideaBuild"], "--plugin-root", str(plugin_root),
+        "--idea-build", product_info.buildNumber, "--plugin-root", str(plugin_root),
         "--release-record", str(pair.host_release_record),
         "--required-control", str(product / "share/kast/ide-host.json"),
     ], env=environment, capture_output=True, text=True, timeout=60)
@@ -249,10 +316,11 @@ def main() -> None:
         product = fixture.stage_product(paths["KAST_INSTALLED_PRODUCT"])
         pair = verify_artifacts(product, paths["KAST_CONTROL_ARCHIVE"], paths["KAST_HOSTED_PLUGIN_ARCHIVE"],
                                 paths["KAST_HOST_RELEASE_RECORD"])
+        verify_task_tools(fixture, pair.control)
         verify_launcher(fixture, product, pair)
         verify_assembled_installer(fixture, pair, product)
         fixture.mark_passed()
-    print("installed-product: artifact identity, persistent staging, and native Host/SQLite/full cleanup passed")
+    print("installed-product: artifact identity, extracted task tools, persistent staging, and native Host/SQLite/full cleanup passed")
 
 
 if __name__ == "__main__":

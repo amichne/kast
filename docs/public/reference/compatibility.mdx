@@ -6,8 +6,13 @@ hideFooterPagination: true
 ---
 
 Use an Apple silicon Mac and a Kotlin Gradle project.
-Kast needs IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+Kast needs IntelliJ IDEA `262.*` or `263.*` with its bundled Kotlin plugin and Java 25 JBR.
 Your project's JDK does not replace the IDEA runtime.
+
+Each release line has its own Host archive and descriptor.
+Control admits the actual IDEA and Kotlin builds only when both belong to the same supported release line.
+The runtime protocol, operation registry, wire schema, and capabilities must match exactly.
+The composed Host recipe keeps its separate pinned `262` vendor input.
 
 <span id="installed-contract-authority" />
 

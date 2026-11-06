@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d7f65e47b39d0b2d7ddca66103cf3c82245cfbb99b0070f4374eae4f7fd7483b",
+  "pageVersion": "sha256:78299e94c465f579ac8f26519cb259b8129c70898003b6a1f7b470d89b942484",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -36,7 +36,7 @@
         },
         {
           "resource": "repo://distribution/release/component_release.py",
-          "version": "repo-file-v1:sha256:187b8c7d5bf9ad0b58b3b18ccba9d17e92143b424223f0960ec4fd9edbda6661"
+          "version": "repo-file-v1:sha256:376593f0af96ef9180e1655d86feebccc784dce86c3fd332a8cccac0047c8986"
         }
       ]
     },
@@ -60,13 +60,13 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_release.py",
-          "version": "repo-file-v1:sha256:053aee7a20ec7d6248a54c19ba2fe0fc7652e7d579cec9fc8033e9a5328a8a95"
+          "version": "repo-file-v1:sha256:ef4cc70c132b363eb60ab7d7e4cf5570f5a4c63b9d66720ad786b422d1bc2d65"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T00:37:28.525Z"
+    "at": "2026-11-06T20:52:34.571Z"
   }
 }

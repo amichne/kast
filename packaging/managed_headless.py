@@ -130,9 +130,24 @@ class Installed:
     hostReadiness: str = "NOT_RUN"
 
 
+class SupportedIdeReleaseLine(StrEnum):
+    IDEA_262 = "262"
+    IDEA_263 = "263"
+
+    @classmethod
+    def from_build(cls, build: str) -> SupportedIdeReleaseLine | Rejected:
+        parsed = re.fullmatch(r"([0-9]{3})\.[0-9]+(?:\.[0-9]+)*", build)
+        if parsed is not None:
+            for line in cls:
+                if line.value == parsed.group(1):
+                    return line
+        return Rejected(Failure.INVALID_INPUT)
+
+
 @dataclass(frozen=True, slots=True)
 class _AdmittedInput:
     inputs: Input
+    release_line: SupportedIdeReleaseLine
 
 
 def admit(inputs: Input) -> _AdmittedInput | Rejected:
@@ -146,8 +161,9 @@ def admit(inputs: Input) -> _AdmittedInput | Rejected:
         return Rejected(Failure.INVALID_INPUT)
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", inputs.version):
         return Rejected(Failure.INVALID_INPUT)
-    if not re.fullmatch(r"262\.[0-9]+(?:\.[0-9]+)*", inputs.build):
-        return Rejected(Failure.INVALID_INPUT)
+    release_line = SupportedIdeReleaseLine.from_build(inputs.build)
+    if isinstance(release_line, Rejected):
+        return release_line
     if not inputs.assets.is_dir():
         return Rejected(Failure.INVALID_INPUT)
     for path, expected in (
@@ -159,7 +175,7 @@ def admit(inputs: Input) -> _AdmittedInput | Rejected:
         with path.open("rb") as source:
             if hashlib.file_digest(source, "sha256").hexdigest() != expected:
                 return Rejected(Failure.DIGEST_MISMATCH)
-    return _AdmittedInput(inputs)
+    return _AdmittedInput(inputs, release_line)
 
 
 def unpack_archive(archive: Path, target: Path, system: str) -> Path | Rejected:
@@ -345,8 +361,12 @@ def included_descriptor_resources(
     return resources
 
 
-def host_dependency_roots(assets: Path, version: str) -> tuple[str, ...]:
-    artifact = assets / f"kast-ide-hosted-v{version}-idea-262.zip"
+def host_dependency_roots(
+    assets: Path,
+    version: str,
+    release_line: SupportedIdeReleaseLine = SupportedIdeReleaseLine.IDEA_262,
+) -> tuple[str, ...]:
+    artifact = assets / f"kast-ide-hosted-v{version}-idea-{release_line.value}.zip"
     roots: list[tuple[str, ...]] = []
     with zipfile.ZipFile(artifact) as distribution:
         for entry in distribution.infolist():
@@ -421,11 +441,12 @@ def file_record(path: Path, base: Path) -> AssemblyFile:
 
 
 def select_assembly_components(
-    home: Path, inputs: Input, installer: Path
+    home: Path, admitted: _AdmittedInput, installer: Path
 ) -> AssemblyManifest | Rejected:
+    inputs = admitted.inputs
     try:
         components = component_inventory(home)
-        roots = host_dependency_roots(inputs.assets, inputs.version)
+        roots = host_dependency_roots(inputs.assets, inputs.version, admitted.release_line)
         selected = select_components(components, inputs.excluded_plugins, roots)
         if isinstance(selected, Rejected):
             return selected
@@ -552,7 +573,7 @@ def assemble(admitted: _AdmittedInput, installer: Path) -> Installed | Rejected:
     product: object = json.loads(metadata.read_text())
     if not object_fields(product) or product.get("buildNumber") != inputs.build:
         return Rejected(Failure.INVALID_DISTRIBUTION)
-    manifest = select_assembly_components(home, inputs, installer)
+    manifest = select_assembly_components(home, admitted, installer)
     if isinstance(manifest, Rejected):
         return manifest
     _ = (root / "assembly-manifest.json").write_text(json.dumps(asdict(manifest), indent=2) + "\n")

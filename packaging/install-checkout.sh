@@ -113,6 +113,7 @@ if [[ "$component" != control ]]; then
     (cd "$scratch" && shasum -a 256 "$name" > "$name.sha256")
   done
   record_name="kast-host-release-v$version.json"
+  if [[ "${idea_build%%.*}" == 263 ]]; then record_name="kast-host-release-v$version-idea-263.json"; fi
   cp "$checkout/build/generated/host-release/$record_name" "$scratch/$record_name"
   cp "$checkout/build/generated/host-release/$record_name.sha256" "$scratch/$record_name.sha256"
 fi

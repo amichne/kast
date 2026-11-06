@@ -60,28 +60,44 @@ def admit(directory: Path, component: Component, version: str, revision: str) ->
     schema = json.loads(Path(__file__).with_name("component-release.schema.json").read_text())
     hosted_schema = json.loads((source / "protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json").read_text())
     registry = Registry().with_resource(hosted_schema["$id"], Resource.from_contents(hosted_schema))
-    record_path = directory / f"{component.record_prefix}-v{version}.json"
-    try:
-        record = json.loads(record_path.read_text())
-    except (OSError, ValueError):
-        raise ReleaseRejected(ReleaseFailure.INVALID_RECORD) from None
-    if not Draft202012Validator(schema, registry=registry).is_valid(record):
-        raise ReleaseRejected(ReleaseFailure.INVALID_RECORD)
-    version_field = "controlVersion" if component is Component.CONTROL else "hostedPluginVersion"
-    if record["type"] != f"{component.value.upper()}_RELEASE":
-        raise ReleaseRejected(ReleaseFailure.WRONG_OWNER)
-    if record[version_field] != version or record["sourceRevision"] != revision:
-        raise ReleaseRejected(ReleaseFailure.WRONG_IDENTITY)
-    archive_name = record["artifact"]["fileName"]
+    record_paths = [directory / f"{component.record_prefix}-v{version}.json"]
+    if component is Component.HOST:
+        variant = directory / f"kast-host-release-v{version}-idea-263.json"
+        if variant.exists():
+            record_paths = [path for path in record_paths if path.exists()] + [variant]
+    records = []
+    for record_path in record_paths:
+        try:
+            record = json.loads(record_path.read_text())
+        except (OSError, ValueError):
+            raise ReleaseRejected(ReleaseFailure.INVALID_RECORD) from None
+        if not Draft202012Validator(schema, registry=registry).is_valid(record):
+            raise ReleaseRejected(ReleaseFailure.INVALID_RECORD)
+        version_field = "controlVersion" if component is Component.CONTROL else "hostedPluginVersion"
+        if record["type"] != f"{component.value.upper()}_RELEASE":
+            raise ReleaseRejected(ReleaseFailure.WRONG_OWNER)
+        if record[version_field] != version or record["sourceRevision"] != revision:
+            raise ReleaseRejected(ReleaseFailure.WRONG_IDENTITY)
+        if record_path.name.endswith("-idea-263.json") and record["supportedIntellijReleaseLine"] != "263":
+            raise ReleaseRejected(ReleaseFailure.WRONG_IDENTITY)
+        records.append((record_path, record))
     if component is Component.CONTROL:
-        expected_archive = f"kast-control-v{version}-macos-aarch64.tar.gz"
         companion_names = {f"kast-{name}-v{version}.zip" for name in ("plugin", "marketplace")}
     else:
-        expected_archive = f"kast-ide-hosted-v{version}-idea-{record['supportedIntellijReleaseLine']}.zip"
         companion_names = {"host-installation.py"}
-    if archive_name != expected_archive:
-        raise ReleaseRejected(ReleaseFailure.WRONG_OWNER)
-    names = {archive_name, record_path.name} | companion_names
+        if len(records) == 2 and (
+            records[0][1]["supportedIntellijReleaseLine"] != "262"
+            or records[0][1]["providedHostedContract"] != records[1][1]["providedHostedContract"]
+        ):
+            raise ReleaseRejected(ReleaseFailure.WRONG_IDENTITY)
+    names = companion_names.copy()
+    for record_path, record in records:
+        archive_name = record["artifact"]["fileName"]
+        expected_archive = (f"kast-control-v{version}-macos-aarch64.tar.gz" if component is Component.CONTROL
+                            else f"kast-ide-hosted-v{version}-idea-{record['supportedIntellijReleaseLine']}.zip")
+        if archive_name != expected_archive:
+            raise ReleaseRejected(ReleaseFailure.WRONG_OWNER)
+        names.update((archive_name, record_path.name))
     expected_names = names | {f"{name}.sha256" for name in names}
     if not directory.is_dir() or directory.is_symlink() or {item.name for item in directory.iterdir()} != expected_names:
         raise ReleaseRejected(ReleaseFailure.INVENTORY_MISMATCH)
@@ -92,11 +108,12 @@ def admit(directory: Path, component: Component, version: str, revision: str) ->
         digest(checksum_path)
         if checksum_path.read_text().strip() != f"{expected_digest}  {name}":
             raise ReleaseRejected(ReleaseFailure.CHECKSUM_MISMATCH)
-    primary = directory / archive_name
-    if (record["artifact"]["sha256"] != "sha256:" + digest(primary)
-            or record["artifact"]["bytes"] != primary.stat().st_size):
-        raise ReleaseRejected(ReleaseFailure.CHECKSUM_MISMATCH)
-    verify_archive(primary, component, record)
+    for _, record in records:
+        primary = directory / record["artifact"]["fileName"]
+        if (record["artifact"]["sha256"] != "sha256:" + digest(primary)
+                or record["artifact"]["bytes"] != primary.stat().st_size):
+            raise ReleaseRejected(ReleaseFailure.CHECKSUM_MISMATCH)
+        verify_archive(primary, component, record)
     return AdmittedRelease(component, version, revision, tuple(directory / name for name in sorted(expected_names)))
 
 
@@ -119,6 +136,10 @@ def verify_archive(archive: Path, component: Component, record: dict) -> None:
                 with zipfile.ZipFile(io.BytesIO(stream.read(plugin_jar))) as plugin:
                     metadata = ET.fromstring(plugin.read("META-INF/plugin.xml"))
                     if metadata.findtext("version") != record["hostedPluginVersion"]:
+                        raise ReleaseRejected(ReleaseFailure.WRONG_IDENTITY)
+                    compatibility = metadata.find("idea-version")
+                    line = record["supportedIntellijReleaseLine"]
+                    if compatibility is None or compatibility.attrib != {"since-build": line, "until-build": line + ".*"}:
                         raise ReleaseRejected(ReleaseFailure.WRONG_IDENTITY)
                     provided = json.loads(plugin.read("hosted-contract.json"))
                     if provided != record["providedHostedContract"]:

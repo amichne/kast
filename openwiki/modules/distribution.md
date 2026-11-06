@@ -323,6 +323,10 @@ sources:
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
+  - id: openwiki-source-8677e434adb584035406f54a
+    resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
+  - id: openwiki-source-9c28868aa566a6cc319d3878
+    resource: repo://distribution/release/plugin-release.gradle.kts
   - id: openwiki-source-360539b338a8755db6cff27a
     resource: repo://distribution/release/run_product_gate.py
   - id: openwiki-source-eb5e76c5c52dc1f7704250ce
@@ -347,16 +351,18 @@ sources:
     resource: repo://packaging/test-installer-entrypoint.py
   - id: openwiki-source-27c69d628b97ee3d2536e2d1
     resource: repo://packaging/test-installer-removal.py
+  - id: openwiki-source-7fa48d17b46dccf82f4b3238
+    resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-d124e13c6fde72403a229a1e
     resource: repo://runtime/hosted/native/mixed_version_acceptance.py
   - id: openwiki-source-af72e3368d1f0c22109e4ecf
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
+generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-06T15:20:37.572Z
+    at: 2026-11-06T22:26:46.446Z
 ---
 
 # Distribution and packaging
@@ -377,7 +383,7 @@ The running coordinator supplies a bounded passive projection for its captured c
 
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime download adapter, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
-Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Control and host releases have separate artifacts and checksums. Fresh and default checkout installation select both; component installation selects only its artifact. The hosted-plugin ZIP is named for its own version and the IDEA release line (`idea-262.zip`). The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check copies the production Control staging tree directly into an owned fixture before invoking launchers or the installer. It verifies independent artifact identities, required launchers including the native management command, and Control cold staging in the canonical layout beneath that fixture HOME. It first verifies an installed/not-requested report, the exact publication receipt and absence of Host files. It then stages the receipted Host through the production Python owner, creates an empty canonical six-table mutation database, invokes the published native uninstall and checks removal of owned Host, Control, public command and user state while preserving an unrelated sentinel. This owned native composition establishes no live IDE, model or Codex admission. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
+Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Control and host releases have separate artifacts and checksums. Fresh and default checkout installation select both; component installation selects only its artifact. Each hosted-plugin ZIP uses its own version and IDEA release line, with separate `idea-262.zip` and `idea-263.zip` variants. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check copies the production Control staging tree directly into an owned fixture before invoking launchers or the installer. It verifies independent artifact identities, required launchers including the native management command, and Control cold staging in the canonical layout beneath that fixture HOME. It first verifies an installed/not-requested report, the exact publication receipt and absence of Host files. It then stages the receipted Host through the production Python owner, creates an empty canonical six-table mutation database, invokes the published native uninstall and checks removal of owned Host, Control, public command and user state while preserving an unrelated sentinel. This owned native composition establishes no live IDE, model or Codex admission. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
 
 ## Managed headless assembly
 
@@ -603,9 +609,9 @@ Read [configuration](../contracts/configuration.md) for ingress and ownership ru
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
 
-`assembleControlRelease` uses `controlVersion` and emits only the control release
-record, artifact and checksum. `assembleHostRelease` uses `hostedPluginVersion`
-and emits only the host release record, artifact and checksum. Component releases
+`assembleControlRelease` uses `controlVersion` for Control records, artifacts, and checksums.
+`assembleHostRelease` uses `hostedPluginVersion` for Host records, archives, and checksums for the reviewed IDEA release lines.
+Component releases
 resolve latest within `control-v` or `host-v`; their versions need not match.
 `ControlRelease` declares its required hosted contract. `HostRelease` declares its
 provided contract and supported IntelliJ release line. Component publication
@@ -619,7 +625,7 @@ is admitted by contract equality. No isolated semantic payload is shipped.
 Control installation manifests have no necessary plugin digest. Lifecycle
 inspection retains historical records so old control processes can retire safely.
 
-Release asset construction, checksums, SBOM inventory, and publication agree on all five archives.
+Release asset construction, checksums, SBOM inventory, and publication use the same archive inventory.
 
 The [installed knowledge contract](../contracts/installed-knowledge.md) describes
 `kast knowledge`, its isolated PSI extraction, verified module ownership and
@@ -648,7 +654,7 @@ for version-root tracing, and an exact Kast launchd label is booted out before
 its reviewed login item is removed. A process or entry that changes during
 review is retained.
 
-Selected IDEA discovery retains one canonical home across upgrades. Typed metadata resolution identifies its macOS ARM bundle and executable, rejects ambiguity and escapes, and admits the 262 release line rather than an exact patch. Installation inspection includes the launch observation and persists the derived receipt. A legacy selection can still attach to its live lifecycle endpoint when cold-launch metadata is unavailable.
+Selected IDEA discovery retains one canonical home across upgrades. Typed metadata resolution identifies its macOS ARM bundle and executable and rejects ambiguity and escapes. It admits the reviewed `262` and `263` release lines. Installation inspection includes the launch observation and persists the derived receipt. A legacy selection can still attach to its live lifecycle endpoint when cold-launch metadata is unavailable.
 
 Control assembly packages `share/kast/provider-catalog.json` from the same hosted
 schema projection as the CLI. The artifact contains hosted metadata and schemas,

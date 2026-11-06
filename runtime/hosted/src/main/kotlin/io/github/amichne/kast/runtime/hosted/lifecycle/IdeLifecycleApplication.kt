@@ -15,6 +15,7 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
 import io.github.amichne.kast.protocol.contract.ImpactSemanticBasisDocument
+import io.github.amichne.kast.protocol.contract.SupportedIdeReleaseLine
 import io.github.amichne.kast.runtime.hosted.HostedEndpointAdvertisement
 import io.github.amichne.kast.runtime.hosted.HostedEndpointObserver
 import io.github.amichne.kast.runtime.hosted.HostedFrames
@@ -78,7 +79,11 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
         scope.launch(Dispatchers.IO) {
             if (ApplicationManager.getApplication().isHeadlessEnvironment && ManagedHeadlessHost.current() == null)
                 return@launch
-            if (ApplicationInfo.getInstance().build.baselineVersion != 262) return@launch
+            if (
+                SupportedIdeReleaseLine.parse(ApplicationInfo.getInstance().build.baselineVersion.toString())
+                    is Refinement.Rejected
+            )
+                return@launch
             val root =
                 when (val admitted = CanonicalWorkspaceRoot.fromCanonicalPath(home)) {
                     is Refinement.Refined -> admitted.value

@@ -160,12 +160,14 @@ class CandidateFixture(unittest.TestCase):
         archives = (
             f"kast-control-v{VERSION}-macos-aarch64.tar.gz",
             f"kast-ide-hosted-v{VERSION}-idea-262.zip",
+            f"kast-ide-hosted-v{VERSION}-idea-263.zip",
             f"kast-plugin-v{VERSION}.zip",
             f"kast-marketplace-v{VERSION}.zip",
         )
         names = archives + (
             f"kast-control-release-v{VERSION}.json",
             f"kast-host-release-v{VERSION}.json",
+            f"kast-host-release-v{VERSION}-idea-263.json",
             "host-installation.py",
             f"kast-hosted-catalog-v{VERSION}.json",
             f"kast-module-knowledge-v{VERSION}.json",

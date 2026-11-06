@@ -60,7 +60,11 @@ fi
 assets_directory="$(cd "${assets_directory}" && pwd -P)"
 control="${assets_directory}/kast-control-v${version}-macos-aarch64.tar.gz"
 plugins=("${assets_directory}"/kast-ide-hosted-v"${version}"-idea-*.zip)
-[[ "${#plugins[@]}" == 1 && -f "${plugins[0]}" ]] || fail "expected one IDEA-release-line hosted plugin"
+[[ ( "${#plugins[@]}" == 1 || "${#plugins[@]}" == 2 ) && -f "${plugins[0]}" ]] || fail "expected the selected Host or reviewed Host pair"
+if [[ "${#plugins[@]}" == 2 ]]; then
+  [[ "${plugins[0]}" == "${assets_directory}/kast-ide-hosted-v${version}-idea-262.zip" &&
+     "${plugins[1]}" == "${assets_directory}/kast-ide-hosted-v${version}-idea-263.zip" ]] || fail "unsupported Host pair"
+fi
 plugin="${plugins[0]}"
 catalog="${assets_directory}/kast-hosted-catalog-v${version}.json"
 knowledge="${assets_directory}/kast-module-knowledge-v${version}.json"
@@ -92,6 +96,10 @@ assets=(
   "${sbom}"
   "${sbom}.sha256"
 )
+if [[ "${#plugins[@]}" == 2 ]]; then
+  variant_record="${assets_directory}/kast-host-release-v${version}-idea-263.json"
+  assets+=("${plugins[1]}" "${plugins[1]}.sha256" "$variant_record" "$variant_record.sha256")
+fi
 for asset in "${assets[@]}"; do
   [[ -f "${asset}" ]] || fail "missing release asset: ${asset}"
 done
@@ -118,6 +126,9 @@ upload_assets=(
   "${sbom}"
   "${sbom}.sha256"
 )
+if [[ "${#plugins[@]}" == 2 ]]; then
+  upload_assets+=("${plugins[1]}" "${plugins[1]}.sha256" "$variant_record" "$variant_record.sha256")
+fi
 release_notes="$(
   printf '%s\n' \
     "Kast installs a persistent agent broker and a matched IntelliJ IDEA plugin:" \

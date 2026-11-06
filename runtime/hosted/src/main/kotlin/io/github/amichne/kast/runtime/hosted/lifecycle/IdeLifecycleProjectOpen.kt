@@ -28,7 +28,8 @@ internal fun nativeLifecycleProjectTask(
             forceReuseFrame = false
             projectToClose = null
             showWelcomeScreen = false
-            runConfigurators = false
+            // Direct ProjectManager opening treats both SDK defaults as disabled.
+            // The SDK's cache-empty override remains independent of this option.
             runConversionBeforeOpen = false
             isNewProject = !Files.exists(directory)
             beforeOpen = { opening ->

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
+  "pageVersion": "sha256:a6d831c03697c95847684f7bbc4a7faf9ffbecbd6be79a5a55e214ecdcc49f71",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -42,7 +42,7 @@
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt",
-          "version": "repo-file-v1:sha256:be060e68efb493a79dc4bb905720b3e010f03a0c0ad6e41735dd9452114148e9"
+          "version": "repo-file-v1:sha256:ffd05e9ff3a22e2b8c244ba3be71740e88a970052c79262448ffb1eb0f1a5ab2"
         }
       ]
     },
@@ -351,7 +351,7 @@
           "version": "repo-lines-v1:sha256:bda316970519f11edbade4ab96772b4940c74d5ffbff961070b3cfab2dd88aab:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3YzFkYTZlZWFlZjE3NDY4ZDc5ZGI0MGFkMDRjN2NjMzgzZjU1OGNlYzRhYTlhMzI5NmJlZTgxMDc2MDM3YjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgxYTUyNmU5ZTE2ZmNmODFjNjcwNWNkYzAyNGFmY2FjMWYyODdiNDQ1MWU1Mzg4NjQ4YWMyODk3NmRiMTMxOWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4MWVjZGRlZDQxNmEwMjkwNGNlMjdiZWMwMzlkYTY4MTY5YjBmODNiZTgwZjY1ODI1NTJlNjhiODIzZGZjZmUifQ"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt#L137-L145",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt#L138-L146",
           "version": "repo-lines-v1:sha256:4f7fc80bd697d60d8eda399267d9c071de0969e165e2bc875eaa7a62cdcc7a2c:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWViMTVkZGM2MTBmNTRiYzBjODQ1NmQwYjVkYzMzODdhNWM5Y2VjMGE3MTRiYjA4Mjg1ODdlN2I2MjU0Mzk5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjUxZjNhZGY1ZmFhNDk5ODEwOGUyYjkyMWM2YjJlZjgyODgxZjRiZmFlZWI2Njc4NjZjNWY0YmMzNTc0NmZiMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhkMmMyYzIxMjY3M2ZlYTZkZDBkZGM1MTExMzdmZDJkODkyYmNjYmEyZmE4YWNkOGYyMzRhYTU1YWRhZDRlNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
@@ -363,10 +363,46 @@
           "version": "repo-lines-v1:sha256:4b88199fc6558ea19adad9480469cd67e45269d00b5b032d13b6e6517f6ac003:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ZTllM2FmNzUyMTgyNmEwZGE4Njg3NTdmMjhmM2QyODBiNDBlYzYzZGRkN2NmZDI3YTI5MmMzYWVkMWNhNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_09a2534c61734e1d8d0dfed70b93bc74",
+      "statement": "The production Host packages separate archives and descriptors for IDEA release lines 262 and 263.",
+      "evidence": [
+        {
+          "resource": "repo://build.gradle.kts#L245-L271",
+          "version": "repo-lines-v1:sha256:9068766bc806480d3ee0c88c13d71ad2590783774a18f47f4f74dccdea44cd0d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5YjI5ZGY1MmEzZDBhNGI1M2U5Njk4ZTJjODBiN2E4YmI0YTJlOGYwN2Y4MTM1NDY1OTM1OWRkYjlmZjg2NWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlOWQzNGFiOGRhZmRkZjg5N2Y5MDY5ZTdmNzQ1M2E3NmRmOTQzMjc3ZGMyNGI2NTZlNTMzMTZkNTYxY2U0YmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiNTUzNWExY2MyMTI3NWU2YTQxMWQ0ZDEyOGZmNzkxZDhlN2ViOTY5MWRhMTM4Y2NiYTkzYTlmNWFjYzBlN2YifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts#L140-L146",
+          "version": "repo-lines-v1:sha256:0cc2ab74db17804167c7a6d0b53da6e128c898371abd3522f26f638069f18f18:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDkyMGY4NzJjNGFlNThlMWZiMTUyN2YzYjA5NzRlYWMxMWY0M2NhYzZkMjkxMDA5MjZhNGM1YmNjYTY5MGMzNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWEwMzVjZjYxOTdlOGU2MTkwNDUyMzBlY2U0YWM5ODE0MmFlYzI0ZDVmN2YxMTA4MmYyNzYwMDVlZTg3M2E0YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDdlNTE3MzE3YTgwYzQ1NmQwYzY3MTZkZmUzOWI1MzgzZGE2ZTQ4NDdkMzFiOGVhMWZhNTk3ZGNlZjhlOTUwZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmJhN2Y2MGNkZDkzYTM4YjQ1ZDYyYThlZmU1YTI1MTE4Y2ExOGYyZDNlNWFjNDQwMzQxNmIyMTlkNWE1NjhjOSJ9"
+        },
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts#L203-L237",
+          "version": "repo-lines-v1:sha256:f7b953a6ea3ff19a23bc9edab436e771ae302989c7514823569f5f5820ee881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MWVhZWZmMDczZGYwYTFiYjI1ZTYzODllMGEyN2QxYTQxNWRjZDhkOGJjOGYxY2E5MDQ3NjJiNWQ3NzM3OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDJmZWE4MjFlNjZiYjIzODFhZTc4MzMyNTllYmU0NTcyZWFlYmViNjNiNmI5M2NkZWQzYWVkY2FkNzRlYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_40a6819afe5f4f77ac36d57154aa56a8",
+      "statement": "Control and semantic project admission accept reviewed IDEA and bundled Kotlin pairs from the same release line, preserve full observed identities, and keep exact hosted-contract equality.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt#L94-L117",
+          "version": "repo-lines-v1:sha256:c95c325b3c11ae63a68d302953f6a02fcfa60aed0aeb74d3eee21f898910e172:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0ODVhYjZiMDRmOGQwZmU5MDg4NGNjYmViMzcwZDUyM2ZjZDQyZGMxNWM1NjY2Njg5MWNkNjhlZmZiYzRlOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2N2Y4N2ZiNjNjMjBhZDJkZDdlNjIxYjVhOTk3MDdjYWUyNGM1ZmUzNGUzMjQwMTg3NzAzZjYzYmU4MWM4ODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SupportedIdeReleaseLine.kt",
+          "version": "repo-file-v1:sha256:db9d20bfb71b2893fa5a20a86408e78a2852ce1f1e7f9c6efcb7e32093161241"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/compatibility/IdeHostCompatibility.kt#L263-L291",
+          "version": "repo-lines-v1:sha256:884740d17dae5a6cb1a7c79d536000aa98a4d815c57706b2460f790a761c538b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhZWEyMTE5NjY4YjcyMDZkMTgzZmQyOTc5MmM5ZjIwZjVjODUxYjliMDQ4Y2YwYzQzZTNiMzRiZGY1ODhkNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwZmVkNjQ0YjcwNDJiNzFmNjg5NDYxMWEzMWExZTAyMWM3YzU2NWI2MGM1MjYzZDY1MjI4OGUzZDQ5YTliNTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhOWUyZDg5MmIwMmY2NTI2YTFhNGMwZmJlZjQwYWE0ZGIzNzc5MDMxZDM2MDgwZDMwM2Q4NjA5ZDg4ZjY3NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI5OWVmZGE0ZGQwNGNmMjJlZGJlOGU0Mjc0NjRjMDJmZjYwMThlYTZmM2FiZTE5NTEyNWVhMmExMjQxMDJiMGIifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T05:26:56.646Z"
+    "at": "2026-11-06T22:26:46.446Z"
   }
 }

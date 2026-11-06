@@ -300,7 +300,7 @@ sources:
 generated: { by: "codex", at: "2026-11-06T06:35:36.884Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-06T06:35:36.884Z
+    at: 2026-11-06T20:52:34.571Z
 ---
 
 # Runtime and process hosts

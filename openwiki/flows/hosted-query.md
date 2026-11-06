@@ -209,10 +209,16 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt
   - id: openwiki-source-b490c970be179fe22cf68e37
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt
+  - id: openwiki-source-2a9daaac1604f238ef4c63fb
+    resource: repo://build.gradle.kts
   - id: openwiki-source-96405b955de825b77efc48dd
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeReadConfiguration.kt
+  - id: openwiki-source-a2a046e51938d2a300c9b5b4
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/compatibility/IdeHostCompatibility.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
+  - id: openwiki-source-a22391487d1a7c7d55cae2b4
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/SupportedIdeReleaseLine.kt
   - id: openwiki-source-ff46625371d40be09ef9d311
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/RetainedRelationGraphProjection.kt
   - id: openwiki-source-abdee49d351af2be40792496
@@ -257,6 +263,8 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijKotlinLazyBinaryEvidence.kt
   - id: openwiki-source-1fe2efeabc6d3df3eafeb9cc
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt
+  - id: openwiki-source-7fa48d17b46dccf82f4b3238
+    resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - id: openwiki-source-9ddb39fa2f594fe2e1edaa19
@@ -281,10 +289,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
+generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-06T05:26:56.646Z
+    at: 2026-11-06T22:26:46.446Z
 ---
 
 # Existing-IDE semantic query
@@ -450,13 +458,12 @@ permit and a cooperative deadline; cancellation drains before releasing the
 permit. Detachment invalidates the original endpoint, drains its requests, and
 disposes its listener owner. No opener, importer, or isolated worker is used.
 
-The versioned production plugin archive contains compiled adapter code and its
-contract dependencies. Stable release installation verifies the archive checksum,
-plugin identity, release version, and IDEA `262` release line before atomically
-activating it in the selected IDEA user plugin directory. Runtime admission accepts
-IDEA and bundled Kotlin patch builds within that line and retains their full
-observed identities. This broader policy does not expand the recorded native
-acceptance evidence. The earlier manual proof archive still targets its exact build. The [manual runner](../../experiments/host-observation/HOSTED_QUERY.md)
+The versioned production plugin archives contain compiled adapter code and contract dependencies.
+The public installer admits archive checksums, plugin identity, version, and release line before it installs the plugin in the selected profile.
+Separate archives target IDEA `262.*` and `263.*`.
+Runtime admission accepts reviewed IDEA and bundled Kotlin builds from the same release line and keeps their full observed identities.
+This policy does not expand the recorded native acceptance evidence.
+The earlier manual proof archive still targets its exact build. The [manual runner](../../experiments/host-observation/HOSTED_QUERY.md)
 loads that artifact into an existing native IDEA process and records project,
 model, read-lock, result, and retirement evidence. Ordinary library builds have
 no plugin descriptor. Opt-in checkpoints after semantic detachment qualify

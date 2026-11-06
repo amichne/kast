@@ -12,6 +12,7 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
+import io.github.amichne.kast.protocol.contract.SupportedIdeReleaseLine
 import java.nio.file.Path
 
 internal sealed interface IdeLifecycleDeployment {
@@ -109,7 +110,7 @@ internal fun admitWorkspaceLifecycleHost(
         return Refinement.Rejected(IdeLifecycleFailure.CAPABILITY_MISMATCH)
     if (command is IdeLifecycleCommand.Present && IdeLifecycleCapabilityName.PRESENT !in host.capabilities)
         return Refinement.Rejected(IdeLifecycleFailure.CAPABILITY_MISMATCH)
-    if (!host.build.substringAfter('-').startsWith("262."))
+    if (SupportedIdeReleaseLine.parse(host.build.substringAfter('-').substringBefore('.')) is Refinement.Rejected)
         return Refinement.Rejected(IdeLifecycleFailure.UNSUPPORTED_PLATFORM_LINE)
     val required =
         when (val policy = requiredHostedCompatibilityPolicy()) {

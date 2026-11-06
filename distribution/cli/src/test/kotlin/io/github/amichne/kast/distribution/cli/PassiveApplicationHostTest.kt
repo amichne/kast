@@ -15,6 +15,33 @@ class PassiveApplicationHostTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `263 passive identity is admitted while unreviewed and mixed lines reject`() {
+        val fixture = fixture()
+        val original = managementJson.decodeFromString<Advertisement>(Files.readString(fixture.descriptor))
+        for (line in listOf("262", "263", "261", "264")) {
+            val build = "$line.7307.200"
+            val loaded =
+                fixture.loaded.copy(
+                    compatibility = fixture.loaded.compatibility.copy(ideBuild = build, kotlinPluginBuild = "$build-IJ")
+                )
+            Files.writeString(fixture.descriptor, managementJson.encodeToString(original.copy(application = loaded)))
+            val actual = readApplicationHost(fixture.root, fixture.home) { fixture.process }
+            if (line in setOf("262", "263")) assertEquals(Observation.verified(loaded), actual)
+            else assertEquals(ObservationState.UNAVAILABLE, actual.state)
+        }
+        val mixed =
+            fixture.loaded.copy(
+                compatibility =
+                    fixture.loaded.compatibility.copy(ideBuild = "263.7307.200", kotlinPluginBuild = "262.7307.200-IJ")
+            )
+        Files.writeString(fixture.descriptor, managementJson.encodeToString(original.copy(application = mixed)))
+        assertEquals(
+            ObservationState.UNAVAILABLE,
+            readApplicationHost(fixture.root, fixture.home) { fixture.process }.state,
+        )
+    }
+
+    @Test
     fun `passive status keeps managed ownership and rejects an unknown mode`() {
         val fixture = fixture()
         val original = managementJson.decodeFromString<Advertisement>(Files.readString(fixture.descriptor))

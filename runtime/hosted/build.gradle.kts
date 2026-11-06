@@ -200,6 +200,43 @@ val hostedPlugin =
         }
     }
 
+// The lowest supported SDK remains the compiler input. Each release line gets
+// its own descriptor, while the implementation and hosted contract stay equal.
+val hosted263Jar =
+    tasks.register<Jar>("hosted263Jar") {
+        archiveFileName.set("kast-ide-hosted.jar")
+        destinationDirectory.set(layout.buildDirectory.dir("hosted-variants/263"))
+        isPreserveFileTimestamps = false
+        isReproducibleFileOrder = true
+        from(sourceSets.main.get().output) { exclude("META-INF/plugin.xml") }
+        from("src/main/resources/META-INF/plugin.xml") {
+            into("META-INF")
+            expand(mapOf("pluginVersion" to project.version.toString(), "ideReleaseLine" to "263"))
+        }
+    }
+
+val hosted263Plugin =
+    tasks.register<Zip>("hosted263Plugin") {
+        group = "distribution"
+        description = "Packages the reviewed IDEA 263 descriptor with the baseline Host implementation."
+        archiveFileName.set("kast-ide-hosted-v${project.version}-idea-263.zip")
+        destinationDirectory.set(layout.buildDirectory.dir("distributions/variants/263"))
+        isPreserveFileTimestamps = false
+        isReproducibleFileOrder = true
+        // Consume the existing artifact's dependency inventory. ArchiveOperations
+        // owns archive traversal instead of a project-capturing task action.
+        val archives = project.objects.newInstance<HostVariantArchives>()
+        from(hostedPlugin.flatMap { it.archiveFile }.map { archives.operations.zipTree(it.asFile) }) {
+            exclude("kast-ide-hosted/lib/kast-ide-hosted.jar")
+        }
+        into("kast-ide-hosted/lib") { from(hosted263Jar.flatMap { it.archiveFile }) }
+        duplicatesStrategy = DuplicatesStrategy.FAIL
+    }
+
+abstract class HostVariantArchives
+@javax.inject.Inject
+constructor(val operations: org.gradle.api.file.ArchiveOperations)
+
 // The Platform admits projectStorePathCustomizer only from a bundled plugin.
 // Keep this descriptor out of the ordinary desktop Host installation.
 val headlessBootstrapJar =
@@ -400,4 +437,8 @@ registerHostedNativeFixtures(
 
 configurations.consumable("hostedPluginElements") {
     outgoing.artifact(hostedPlugin.flatMap { it.archiveFile })
+}
+
+configurations.consumable("hosted263PluginElements") {
+    outgoing.artifact(hosted263Plugin.flatMap { it.archiveFile })
 }

@@ -11,7 +11,7 @@ Kast brings compiler-grounded evidence into that work.
 ## Get started
 
 Use an Apple silicon Mac and a Kotlin Gradle project.
-Use IntelliJ IDEA `262.*` with its bundled Kotlin plugin and Java 25 JBR.
+Use IntelliJ IDEA `262.*` or `263.*` with its bundled Kotlin plugin and Java 25 JBR.
 Use Python 3.12 or 3.13.
 For upgrades or optional MCP, install uv 0.12.9 or later.
 

@@ -76,6 +76,7 @@ VERSION
   host_record="${KAST_LOCAL_HOST_RELEASE_RECORD:-}"
   [[ -f "$host_record" && ! -L "$host_record" ]] || fail "KAST_LOCAL_HOST_RELEASE_RECORD must be the independently generated host release record"
   record_name="kast-host-release-v$host_version.json"
+  if [[ "$plugin_name" == *-idea-263.zip ]]; then record_name="kast-host-release-v$host_version-idea-263.json"; fi
   cp "$host_record" "$assets/$record_name"
   cp "$control_product/share/kast/host-installation.py" "$assets/host-installation.py"
   asset_names+=("$plugin_name" "$record_name" host-installation.py)

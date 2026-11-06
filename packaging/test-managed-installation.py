@@ -2833,6 +2833,46 @@ class IdeaMetadataTest(unittest.TestCase):
             selected,
         )
 
+    def test_263_metadata_preserves_actual_build_and_profile(self) -> None:
+        @dataclass(frozen=True)
+        class Product:
+            dataDirectoryName: str
+            buildNumber: str
+
+        _ = self.metadata.write_text(
+            json.dumps(asdict(Product("IntelliJIdea2026.3", "263.7307.200")))
+        )
+        self.assertEqual(
+            install.SelectedIdea(
+                self.idea,
+                self.home / "Library/Application Support/JetBrains/IntelliJIdea2026.3",
+                self.idea / "jbr/Contents/Home",
+                "263",
+                "263.7307.200",
+            ),
+            install.select_idea(str(self.idea), self.home, self.home / "managed"),
+        )
+
+    def test_unreviewed_platform_and_profile_traversal_reject(self) -> None:
+        @dataclass(frozen=True)
+        class Product:
+            dataDirectoryName: str
+            buildNumber: str
+
+        for product in (
+            Product("IntelliJIdea2026.4", "264.1.1"),
+            Product("../IntelliJIdea2026.2", "263.7307.200"),
+            Product("IntelliJIdea2026.3", "263.bad"),
+        ):
+            with self.subTest(product=product):
+                _ = self.metadata.write_text(json.dumps(asdict(product)))
+                self.assertEqual(
+                    contract.Rejected(
+                        contract.Stage.PREPARATION, contract.Failure.IDEA_UNAVAILABLE
+                    ),
+                    install.select_idea(str(self.idea), self.home, self.home / "managed"),
+                )
+
     def test_metadata_exception_does_not_weaken_managed_record_ownership(self) -> None:
         with patch.object(install.os, "getuid", return_value=os.getuid() + 1):
             with self.assertRaises(OSError):

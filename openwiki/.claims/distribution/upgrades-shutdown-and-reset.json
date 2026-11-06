@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:af4e0b6dfbdc38d6f7718ed1e42e27109e2e8ab4a3ce1bb886f1a9f551967501",
+  "pageVersion": "sha256:f505a7b8e37a83452e290a48cb352c33c0798d71eba46c4ae7acc7a15006ab9a",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -68,7 +68,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
+          "version": "repo-file-v1:sha256:1251d778d369b2494bccf9ea1f28027d98c9d0118656ed51c334a5d8cede62d3"
         }
       ]
     },
@@ -78,7 +78,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
+          "version": "repo-file-v1:sha256:1251d778d369b2494bccf9ea1f28027d98c9d0118656ed51c334a5d8cede62d3"
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
@@ -96,7 +96,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
+          "version": "repo-file-v1:sha256:1251d778d369b2494bccf9ea1f28027d98c9d0118656ed51c334a5d8cede62d3"
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
@@ -126,7 +126,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3a6163d6eeaa5690ebb9fc5fd1a83e6086652dfe428dbd21af729373fbc65b2e"
+          "version": "repo-file-v1:sha256:1251d778d369b2494bccf9ea1f28027d98c9d0118656ed51c334a5d8cede62d3"
         }
       ]
     },
@@ -135,7 +135,7 @@
       "statement": "After a normal-stop acknowledgment, unavailable process metadata is pending only within the existing Host settlement budget. Success still requires a captured empty process inventory; timeout preserves the native failure code, while changed identity and cancellation remain rejections.",
       "evidence": [
         {
-          "resource": "repo://packaging/managed_installation.py#L836-L876",
+          "resource": "repo://packaging/managed_installation.py#L837-L877",
           "version": "repo-lines-v1:sha256:88178fca41aba78a6cc205a1eed0c83d48f761c39a466d7f6c420ad0c350fd24:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5MzBkOGU5M2E0MjJmODEyOTUxNzFkNzYxN2VkNmQwMzM4ZGZmOTBhYzIzZjg4MTBhMTE0MjM0YTE4MWY0M2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyYjExMDFjMWNlMDgwNmQxYmVhZGZmM2I4MTNiODhlOWNhZjJiNmU5MmRkNjg1YTI5MzFmNjkzMTRiMjYzOGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNhYWVhOTI4NjdiMDc4NmIyMjMwNTk5Y2YyNDNmNDg1OGU2MTE5YzI0NWEzNDFiMzJkM2ZiMzAxYzIwNTY4NDMifQ"
         },
         {
@@ -165,6 +165,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T05:26:56.646Z"
+    "at": "2026-11-06T20:52:34.571Z"
   }
 }

@@ -135,6 +135,9 @@ value class KotlinPluginBuildIdentity private constructor(val value: String) {
         get() = IdeReleaseLine.from(this)
 
     companion object {
+        internal fun forIde(build: IdeBuildIdentity): KotlinPluginBuildIdentity =
+            KotlinPluginBuildIdentity(build.value + "-IJ")
+
         /**
          * Proof transition: `String -> Refinement<KotlinPluginBuildIdentity, IdeHostCompatibilityFailure>`.
          *
@@ -255,36 +258,31 @@ private constructor(
      * Proof transition: `AdmittedIdeHostCompatibility + AdmittedIdeHostCompatibility ->
      * IdeHostCompatibilityComparison`.
      *
-     * Establishes matching IDEA and Kotlin release lines and exact remaining tuple equality, or the first finite
-     * mismatch with both refined full identities retained. Each capability set is already valid; differing membership
-     * or order remains an exact typed mismatch. Raw values may be extracted only at endpoint or generated-report
-     * boundaries.
+     * Establishes reviewed IDEA and Kotlin pairs and exact remaining tuple equality, or the first finite mismatch with
+     * both refined full identities retained. Each capability set is already valid; differing membership or order
+     * remains an exact typed mismatch. Raw values may be extracted only at endpoint or generated-report boundaries.
      */
-    internal fun compareAgainst(expected: AdmittedIdeHostCompatibility): IdeHostCompatibilityComparison =
-        when {
-            ideBuild.releaseLine != expected.ideBuild.releaseLine ->
-                mismatch(IdeHostCompatibilityMismatch.IdeBuild(expected.ideBuild, ideBuild))
-            kotlinPluginBuild.releaseLine != expected.kotlinPluginBuild.releaseLine ->
-                mismatch(
-                    IdeHostCompatibilityMismatch.KotlinPluginBuild(
-                        expected.kotlinPluginBuild,
-                        kotlinPluginBuild,
-                    )
-                )
-            else ->
-                when (val admission = HostedCompatibilityPolicy.admit(expected.hostedContract, hostedContract)) {
-                    is Refinement.Refined -> IdeHostCompatibilityComparison.Compatible
-                    is Refinement.Rejected ->
-                        when (val failure = admission.failure) {
-                            is IdeHostCompatibilityFailure.Mismatch -> mismatch(failure.mismatch)
-                            is IdeHostCompatibilityFailure.Malformed,
-                            is IdeHostCompatibilityFailure.UnknownCapability,
-                            is IdeHostCompatibilityFailure.UnsupportedCapability,
-                            is IdeHostCompatibilityFailure.DuplicateCapability ->
-                                error("Refined hosted contracts cannot fail parsing")
-                        }
+    internal fun compareAgainst(expected: AdmittedIdeHostCompatibility): IdeHostCompatibilityComparison {
+        when (
+            val platform =
+                admitIdePlatformPair(expected.ideBuild, expected.kotlinPluginBuild, ideBuild, kotlinPluginBuild)
+        ) {
+            is Refinement.Refined -> Unit
+            is Refinement.Rejected -> return mismatch(platform.failure)
+        }
+        return when (val admission = HostedCompatibilityPolicy.admit(expected.hostedContract, hostedContract)) {
+            is Refinement.Refined -> IdeHostCompatibilityComparison.Compatible
+            is Refinement.Rejected ->
+                when (val failure = admission.failure) {
+                    is IdeHostCompatibilityFailure.Mismatch -> mismatch(failure.mismatch)
+                    is IdeHostCompatibilityFailure.Malformed,
+                    is IdeHostCompatibilityFailure.UnknownCapability,
+                    is IdeHostCompatibilityFailure.UnsupportedCapability,
+                    is IdeHostCompatibilityFailure.DuplicateCapability ->
+                        error("Refined hosted contracts cannot fail parsing")
                 }
         }
+    }
 
     companion object {
         /**
@@ -352,7 +350,7 @@ class IdeHostCompatibilityPolicy private constructor(val supportedCompatibility:
          * Proof transition: `IdeHostCompatibilityCandidate -> Refinement<IdeHostCompatibilityPolicy,
          * IdeHostCompatibilityFailure>`.
          *
-         * Establishes a fully refined baseline tuple whose IDEA and Kotlin release lines are supported. Expected
+         * Establishes a fully refined baseline tuple. Admission separately examines reviewed platform pairs. Expected
          * malformed policy input remains finite [IdeHostCompatibilityFailure] data. Raw extraction is permitted only
          * when the build-report boundary projects the admitted policy.
          */
@@ -368,7 +366,7 @@ class IdeHostCompatibilityPolicy private constructor(val supportedCompatibility:
     /**
      * Proof transition: `IdeHostCompatibilityCandidate -> IdeHostCompatibilityAdmission`.
      *
-     * Admits IDEA and Kotlin builds in the baseline's release lines, retaining their exact observed identities in
+     * Admits reviewed IDEA and Kotlin pairs, retaining their exact observed identities in
      * [AdmittedIdeHostCompatibility]. Plugin version is provenance. Protocol, digest, and capability equality remains
      * exact. Syntax, capability, and field mismatch failures remain closed [IdeHostCompatibilityFailure] data. Raw
      * extraction is permitted only at the endpoint or generated-report boundary.

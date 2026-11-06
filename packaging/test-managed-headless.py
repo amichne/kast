@@ -22,9 +22,11 @@ from managed_headless import (
     Failure,
     Input,
     Rejected,
+    SupportedIdeReleaseLine,
     add_bootstrap,
     admit,
     configure_removed_plugins,
+    host_dependency_roots,
     select_assembly_components,
     select_components,
     wrapper,
@@ -77,6 +79,68 @@ class SelectedIdeFixture:
 
 
 class ManagedHeadlessTest(unittest.TestCase):
+    def test_reviewed_full_vendor_builds_preserve_identity_and_reject_the_next_line(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="h", dir="/tmp") as temporary:
+            candidate = inputs(Path(temporary).resolve())
+            for build in ("262.10315.125", "263.7307.200"):
+                with self.subTest(build=build):
+                    selected = replace(candidate, build=build)
+                    result = admit(selected)
+                    assert not isinstance(result, Rejected)
+                    assert result.inputs == selected
+                    assert result.release_line.value == build.split(".")[0]
+                    assert not selected.root.exists()
+            for build in ("264.1.1", "263/../../other", "263.*", "263.bad.1", "2630.1.1"):
+                assert admit(replace(candidate, build=build)) == Rejected(Failure.INVALID_INPUT)
+            assert not candidate.root.exists()
+
+    def test_component_archive_roots_follow_the_selected_build_line(self) -> None:
+        for line in ("262", "263"):
+            with (
+                self.subTest(line=line),
+                tempfile.TemporaryDirectory(prefix="h", dir="/tmp") as temporary,
+            ):
+                root = Path(temporary).resolve()
+                candidate = replace(inputs(root), build=f"{line}.1.2")
+                home = root / "idea"
+                required = home / "plugins/required/lib/required.jar"
+                required.parent.mkdir(parents=True)
+                with zipfile.ZipFile(required, "w") as jar:
+                    jar.writestr(
+                        "META-INF/plugin.xml", "<idea-plugin><id>required</id></idea-plugin>"
+                    )
+                for archive_line in ("262", "263"):
+                    host = io.BytesIO()
+                    with zipfile.ZipFile(host, "w") as jar:
+                        jar.writestr(
+                            "META-INF/plugin.xml",
+                            "<idea-plugin><id>io.github.amichne.kast.ide-hosted</id>"
+                            f"<depends>dependency.{archive_line}</depends></idea-plugin>",
+                        )
+                    with zipfile.ZipFile(
+                        root / f"kast-ide-hosted-v0.0.0-idea-{archive_line}.zip", "w"
+                    ) as archive:
+                        archive.writestr("kast/lib/host.jar", host.getvalue())
+                installer = root / "installer"
+                _ = installer.write_bytes(b"installer input")
+                admitted = admit(candidate)
+                assert not isinstance(admitted, Rejected)
+                result = select_assembly_components(home, admitted, installer)
+                assert not isinstance(result, Rejected)
+                assert result.hostRoots == (f"dependency.{line}",)
+                assert host_dependency_roots(root, "0.0.0") == ("dependency.262",)
+                assert host_dependency_roots(root, "0.0.0", SupportedIdeReleaseLine.IDEA_263) == (
+                    "dependency.263",
+                )
+                assert required.is_file()
+                if line == "263":
+                    (root / "kast-ide-hosted-v0.0.0-idea-263.zip").unlink()
+                    assert select_assembly_components(home, admitted, installer) == Rejected(
+                        Failure.INVALID_COMPONENT
+                    )
+                    assert required.is_file()
+                    assert host_dependency_roots(root, "0.0.0") == ("dependency.262",)
+
     def test_removed_plugins_use_the_recorded_private_profile_and_preserve_existing_disabled_ids(
         self,
     ) -> None:
@@ -136,7 +200,7 @@ class ManagedHeadlessTest(unittest.TestCase):
     def test_component_archive_adapter_keeps_vendor_bytes_and_records_exact_removed_inputs(
         self,
     ) -> None:
-        with tempfile.TemporaryDirectory(prefix="hc", dir="/tmp") as temporary:
+        with tempfile.TemporaryDirectory(prefix="h", dir="/tmp") as temporary:
             root = Path(temporary).resolve()
             candidate = inputs(root)
             home = root / "idea"
@@ -166,9 +230,9 @@ class ManagedHeadlessTest(unittest.TestCase):
             _ = installer.write_bytes(b"installer input")
             required_bytes = required.read_bytes()
             optional_digest = hashlib.sha256(optional.read_bytes()).hexdigest()
-            selected = select_assembly_components(
-                home, replace(candidate, excluded_plugins=("optional",)), installer
-            )
+            admitted = admit(replace(candidate, excluded_plugins=("optional",)))
+            assert not isinstance(admitted, Rejected)
+            selected = select_assembly_components(home, admitted, installer)
             assert not isinstance(selected, Rejected)
             assert selected.hostRoots == ("required.alias",)
             assert required.read_bytes() == required_bytes

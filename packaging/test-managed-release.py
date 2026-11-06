@@ -276,6 +276,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         native: bool = True,
         source_tree: str = TREE,
         unified: bool = False,
+        with_263: bool = False,
     ) -> Source:
         control, host = archive_bytes(
             version,
@@ -300,6 +301,17 @@ class ReleaseAdmissionTest(unittest.TestCase):
                 version, Artifact(host_name, "sha256:" + digest(host), len(host)), self.contract
             )
         )
+        if with_263:
+            name = f"kast-ide-hosted-v{version}-idea-263.zip"
+            assets[name] = host
+            assets[f"kast-host-release-v{version}-idea-263.json"] = encoded(
+                HostRecord(
+                    version,
+                    Artifact(name, "sha256:" + digest(host), len(host)),
+                    self.contract,
+                    "263",
+                )
+            )
         assets[release.STABLE_URL] = encoded(StableRelease("v" + version))
         return Source(
             assets
@@ -358,6 +370,28 @@ class ReleaseAdmissionTest(unittest.TestCase):
         self.assertEqual(release.TrackStable(), admitted.policy)
         self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
         self.assertEqual(("keep",), tuple(path.name for path in self.protected.iterdir()))
+
+    def test_main_263_selects_its_authenticated_variant(self) -> None:
+        source = self.source("0.0.123", with_263=True)
+        _ = self.main(source)
+        selected = release.resolve_selection("main", None, None, source)
+        assert isinstance(selected, release.MainSelection)
+        admitted = release.download_composition(selected, "263", self.stage, source)
+        assert isinstance(admitted, release.AdmittedComposition), admitted
+        self.assertEqual("kast-ide-hosted-v0.0.123-idea-263.zip", admitted.host_archive.name)
+        self.assertEqual("kast-host-release-v0.0.123-idea-263.json", admitted.host_record.name)
+        self.assertFalse((self.stage / "downloads/kast-ide-hosted-v0.0.123-idea-262.zip").exists())
+
+    def test_orphan_263_variant_rejects_even_for_262_selection(self) -> None:
+        source = self.source("0.0.123", with_263=True)
+        del source.assets["kast-host-release-v0.0.123-idea-263.json"]
+        del source.assets["kast-host-release-v0.0.123-idea-263.json.sha256"]
+        _ = self.main(source)
+        selected = release.resolve_selection("main", None, None, source)
+        assert isinstance(selected, release.MainSelection)
+        self.assertIsInstance(
+            release.download_composition(selected, "262", self.stage, source), release.Rejected
+        )
 
     def test_changed_catalog_during_download_does_not_change_selection_or_build_provenance(
         self,

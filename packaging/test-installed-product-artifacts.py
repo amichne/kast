@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import sys
+import tarfile
 import tempfile
 import unittest
 import warnings
@@ -26,16 +27,34 @@ class ContractFixture:
 
 
 class InstalledProductArtifactTest(unittest.TestCase):
+    def test_extracted_task_tools_run_without_checkout_imports(self):
+        from installer_fixture import InstallerFixture, admitted_tools
+
+        source = Path(__file__).resolve().parent.parent
+        inputs = (
+            'bin/kast-task-vm', 'bin/kast-task-vm.lock', 'bin/setup-kast', 'bin/setup-kast.lock',
+            'packaging/task_vm.py', 'packaging/task_vm_guest.py', 'packaging/composed_bundle.py',
+            'packaging/composition_platform.py', 'packaging/managed_headless.py',
+        )
+        with InstallerFixture(admitted_tools(), parent=Path('/tmp').resolve()) as fixture:
+            control = fixture.root / 'control.tar'
+            with tarfile.open(control, 'w') as archive:
+                for entry in inputs:
+                    archive.add(source / entry, arcname='share/kast/task-vm/' + entry)
+            product.verify_task_tools(fixture, control)
+            fixture.mark_passed()
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.archive = Path(self.temporary.name) / 'host.zip'
         self.contract = json.loads(json.dumps(asdict(ContractFixture())))
 
-    def write_archive(self, main='kast-ide-hosted.jar', duplicate=False, version='1.2.3', contract=None):
+    def write_archive(self, main='kast-ide-hosted.jar', duplicate=False, version='1.2.3', contract=None, line='262'):
         jar = io.BytesIO()
         with zipfile.ZipFile(jar, 'w') as nested:
-            nested.writestr('META-INF/plugin.xml', f'<idea-plugin><version>{version}</version></idea-plugin>')
+            nested.writestr('META-INF/plugin.xml', f'<idea-plugin><version>{version}</version>'
+                            f'<idea-version since-build="{line}" until-build="{line}.*"/></idea-plugin>')
             nested.writestr('hosted-contract.json', json.dumps(self.contract if contract is None else contract))
         with zipfile.ZipFile(self.archive, 'w') as archive:
             archive.writestr('kast-ide-hosted/lib/' + main, jar.getvalue())
@@ -58,6 +77,14 @@ class InstalledProductArtifactTest(unittest.TestCase):
             self.write_archive(main=name, duplicate=duplicate)
             with self.assertRaises(AssertionError):
                 product.verify_plugin_archive(self.archive, '1.2.3', self.contract)
+
+    def test_selected_263_descriptor_admits_and_another_line_rejects(self):
+        self.write_archive(line='263')
+        before = self.archive.read_bytes()
+        product.verify_plugin_archive(self.archive, '1.2.3', self.contract, '263')
+        self.assertEqual(before, self.archive.read_bytes())
+        with self.assertRaises(AssertionError):
+            product.verify_plugin_archive(self.archive, '1.2.3', self.contract, '262')
 
     def test_embedded_version_and_contract_still_need_exact_selected_identity(self):
         self.write_archive(version='1.2.4')

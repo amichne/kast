@@ -270,7 +270,7 @@ private fun validApplicationProvenance(build: ApplicationHostBuild): Boolean =
     }
 
 private fun validApplicationCompatibility(compatibility: ApplicationHostCompatibility): Boolean =
-    Regex("262\\.[0-9]+\\.[0-9]+").matches(compatibility.ideBuild) &&
+    Regex("(?:262|263)\\.[0-9]+\\.[0-9]+").matches(compatibility.ideBuild) &&
         compatibility.kotlinPluginBuild == "${compatibility.ideBuild}-IJ" &&
         validApplicationContract(compatibility.hostedContract)
 

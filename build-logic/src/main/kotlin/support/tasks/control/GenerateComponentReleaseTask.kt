@@ -5,12 +5,15 @@ import kotlinx.serialization.Serializable
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
@@ -31,6 +34,15 @@ abstract class GenerateComponentReleaseTask : DefaultTask() {
     @get:InputFile @get:PathSensitive(PathSensitivity.NONE) abstract val hostedContractFile: RegularFileProperty
     @get:InputFiles @get:PathSensitive(PathSensitivity.NONE) abstract val companionArtifacts: ConfigurableFileCollection
     @get:OutputDirectory abstract val outputDirectory: DirectoryProperty
+
+    @get:Internal
+    val releaseRecord: Provider<RegularFile>
+        get() = outputDirectory.file(component.flatMap { kind ->
+            releaseVersion.zip(ideaReleaseLine.orElse("")) { version, line ->
+                val suffix = if (kind == ReleaseComponent.HOST && line == "263") "-idea-263" else ""
+                "${kind.recordName}-v$version$suffix.json"
+            }
+        })
 
     @TaskAction
     fun generate() {
@@ -57,7 +69,7 @@ abstract class GenerateComponentReleaseTask : DefaultTask() {
         val output = outputDirectory.get().asFile
         output.deleteRecursively()
         output.mkdirs()
-        val record = output.resolve("${component.get().recordName}-v${releaseVersion.get()}.json")
+        val record = releaseRecord.get().asFile
         record.writeText(controlMetadataJson.encodeToString(ComponentReleaseDocument.serializer(), release))
         (listOf(primary, record) + companionArtifacts.files).forEach { asset ->
             output.resolve("${asset.name}.sha256").writeText("${checksum(asset).removePrefix("sha256:")}  ${asset.name}\n")

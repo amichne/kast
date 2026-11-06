@@ -126,12 +126,15 @@ def digest(path: Path) -> str:
 def validate(directory: Path, version: str, revision: str) -> None:
     if not directory.is_dir() or directory.is_symlink():
         raise CandidateError("candidate directory is missing or not regular")
-    plugins = tuple(directory.glob(f"kast-ide-hosted-v{version}-idea-*.zip"))
-    if len(plugins) != 1 or re.fullmatch(rf"kast-ide-hosted-v{re.escape(version)}-idea-[0-9]+\.zip", plugins[0].name) is None:
-        raise CandidateError("candidate must contain one matching hosted plugin")
+    plugins = tuple(sorted(directory.glob(f"kast-ide-hosted-v{version}-idea-*.zip")))
+    if (len(plugins) not in (1, 2)
+            or any(re.fullmatch(rf"kast-ide-hosted-v{re.escape(version)}-idea-[0-9]{{3}}\.zip", path.name) is None for path in plugins)
+            or len(plugins) == 2 and {path.name for path in plugins} != {
+                f"kast-ide-hosted-v{version}-idea-262.zip", f"kast-ide-hosted-v{version}-idea-263.zip"}):
+        raise CandidateError("candidate must contain a selected Host or the reviewed 262 and 263 pair")
     archives = (
         f"kast-control-v{version}-macos-aarch64.tar.gz",
-        plugins[0].name,
+        *(path.name for path in plugins),
         f"kast-plugin-v{version}.zip",
         f"kast-marketplace-v{version}.zip",
     )
@@ -143,6 +146,8 @@ def validate(directory: Path, version: str, revision: str) -> None:
         f"kast-module-knowledge-v{version}.json",
         f"kast-sbom-v{version}.cdx.json",
     )
+    if len(plugins) == 2:
+        base_names += (f"kast-host-release-v{version}-idea-263.json",)
     expected = set(base_names) | {name + ".sha256" for name in base_names}
     observed = {file.name for file in directory.iterdir()}
     if observed != expected:

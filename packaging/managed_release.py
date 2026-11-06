@@ -960,11 +960,13 @@ def admit_main_records(
         for name in inventory
         if re.fullmatch(rf"kast-ide-hosted-v{re.escape(version)}-idea-[0-9]{{3}}\.zip", name)
     ]
-    if len(hosts) != 1:
+    primary = f"kast-ide-hosted-v{version}-idea-262.zip"
+    variant = f"kast-ide-hosted-v{version}-idea-263.zip"
+    if set(hosts) not in ({primary}, {primary, variant}):
         return Failure.ARTIFACT_INVALID
     bases = {
         f"kast-control-v{version}-{PLATFORM}.tar.gz",
-        hosts[0],
+        primary,
         f"kast-plugin-v{version}.zip",
         f"kast-marketplace-v{version}.zip",
         f"kast-control-release-v{version}.json",
@@ -974,6 +976,8 @@ def admit_main_records(
         f"kast-module-knowledge-v{version}.json",
         f"kast-sbom-v{version}.cdx.json",
     }
+    if variant in hosts:
+        bases |= {variant, f"kast-host-release-v{version}-idea-263.json"}
     if set(inventory) != bases | {name + ".sha256" for name in bases}:
         return Failure.ARTIFACT_INVALID
     return (
@@ -992,7 +996,7 @@ def download_composition(
         else selection.version
     )
     assert requested is not None
-    if not re.fullmatch(r"[0-9]{3}", idea_line) or (
+    if idea_line not in ("262", "263") or (
         isinstance(selection, MainSelection)
         and PLATFORM not in selection.catalogEntry.platformTargets
     ):
@@ -1015,6 +1019,8 @@ def download_composition(
             ("host", host_name, idea_line),
         ):
             name = f"kast-{component}-release-v{selection.version}.json"
+            if component == "host" and line == "263":
+                name = f"kast-host-release-v{selection.version}-idea-263.json"
             raw = checked_record(selection, name, downloads, source)
             if isinstance(raw, Failure):
                 return Rejected(raw, Stage.RECORDS, requested)
