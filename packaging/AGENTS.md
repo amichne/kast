@@ -4,9 +4,14 @@ title: "Kast packaging"
 description: "Owns installer adapters, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts."
 resource: "repo://packaging"
 tags: [kast, navigation]
-timestamp: "2026-11-02T16:47:01Z"
-source_revision: 2e45174f6c6095c0f775e12d4c6c3d8b562f35f3
+timestamp: "2026-11-06T09:45:06Z"
+source_revision: 35bf4cc5420244babe898ff72330a6a0102015ce
 code_sources:
+  - path: packaging/composed_host.py
+  - path: packaging/composed_host_probe.py
+  - path: packaging/composition_recipe.py
+  - path: packaging/managed_headless.py
+  - path: packaging/pyproject.toml
   - path: packaging/generate-public-query.py
   - path: packaging/host-installation.py
   - path: packaging/install-checkout.sh
@@ -28,7 +33,7 @@ code_sources:
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-15 | hash: 76d6f8654970 -->
+<!-- generated: 2026-11-06 | hash: 24ca17b0452d -->
 
 # packaging
 
@@ -41,6 +46,10 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - [install-checkout.sh](install-checkout.sh) - checkout installation with selected IDEA JBR admission.
 - [install-local.sh](install-local.sh) - staged-product installation.
 - [host-installation.py](host-installation.py) - Host plugin installation and receipts.
+- [managed_headless.py](managed_headless.py) - archive assembly and the shared private installer.
+- [composed_host.py](composed_host.py) - module-based assembly from a pinned donor inventory.
+- [composition_recipe.py](composition_recipe.py) - pinned roots and plugin provider candidates.
+- [composed_host_probe.py](composed_host_probe.py) - native callers, Java references, and result rejection.
 - [installation-lifecycle.py](installation-lifecycle.py) - selected-installation retirement and removal.
 - [installation-recovery.py](installation-recovery.py) - Control recovery and update sealing.
 - [generate-public-query.py](generate-public-query.py) - Kotlin and harness projections from the authored public schema.
@@ -57,6 +66,9 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - `install-candidate.sh` invokes the candidate coordinator. It does not replace the current public bootstrap.
 - Candidate admission reads `managed-install-v1`, component manifests, and immutable selected assets before active installation effects.
 - For offline packaging tests, run `python3 packaging/run-portable-tests.py` from the repository root.
+- For managed and composition cases, run `mise exec -- uv run --locked --project packaging pytest packaging -q`.
+- The portable runner selects `test-*.py`. The project command also selects `test_composition_*.py`.
+- Read the [composition review](../docs/reviews/composed-analysis-host.md) for donor inputs, assembly commands, and native evidence limits.
 - The Gradle task `installedProductTest` exercises the assembled product.
 - Native reset scripts need the disposable installation setup stated in their own arguments and documentation.
 - [test-host-installation.py](test-host-installation.py) - Host target and receipt protection.
@@ -65,6 +77,12 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - These cases examine configured commands and host envelopes. They do not establish live IntelliJ preparation.
 
 ## Navigation Hints
+
+- `install_prepared_runtime` owns the installer, bootstrap, private state, and wrapper for both assembly strategies.
+- The composed recipe supports only its pinned macOS ARM donor. Keep vendor bytes unchanged and reject an existing destination.
+- The native probe consumes a disposable fixture with explicit trust and a fresh evidence directory.
+- Add `composed-host-fixture-overlay` to the fixture copy. Keep the original callback fixture unchanged because its oracle admits exact source paths.
+- Assembly receipts carry no readiness proof. Native probe results cover only their stated corpus.
 
 - Managed Host replacement uses `prepare_managed`, `commit_managed`, `rollback_managed`, and `seal_managed` from `host-installation.py`.
 - `prepare_managed` stages and validates complete bytes before publishing its Host record paths.

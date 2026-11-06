@@ -4,9 +4,12 @@ title: "Kast distribution"
 description: "Defines installation contracts, the management command graph, managed filesystem effects, and independent component releases."
 resource: "repo://distribution"
 tags: [kast, navigation]
-timestamp: "2026-11-02T16:49:19Z"
-source_revision: 2e45174f6c6095c0f775e12d4c6c3d8b562f35f3
+timestamp: "2026-11-06T09:45:06Z"
+source_revision: 35bf4cc5420244babe898ff72330a6a0102015ce
 code_sources:
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessInstallation.kt
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessLaunch.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - path: distribution/cli/build.gradle.kts
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: distribution/contract/build.gradle.kts
@@ -18,7 +21,7 @@ code_sources:
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-10-14 | hash: 130861782e6b -->
+<!-- generated: 2026-11-06 | hash: f65ee7251f7d -->
 
 # distribution
 
@@ -51,6 +54,9 @@ Defines installation contracts, the management command graph, managed filesystem
 
 - For public command behavior, read the nested native CLI guide.
 - For configuration meaning, start in `contract`. For filesystem effects, trace admitted values into `managed`.
+- `KAST_MANAGED_HEADLESS_STATE` selects private state through the configuration contract.
+- `ManagedHeadlessInstallation` admits the selected runtime, private paths, bootstrap digest, and bundled JBR.
+- `ManagedHeadlessLaunch` owns process arguments and environment. Installation admission grants no project trust or workspace readiness.
 - For archive or installer failures, continue into the packaging guide.
 - Component versions are independent. Hosted compatibility uses exact contract identities and platform admission.
 - Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.
