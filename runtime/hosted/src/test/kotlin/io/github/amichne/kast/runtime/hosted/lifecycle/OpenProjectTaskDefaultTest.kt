@@ -16,9 +16,8 @@ class OpenProjectTaskDefaultTest {
             val task = OpenProjectTask { isNewProject = newProject }
             assertNotEquals(true, getter.invoke(task), "Direct ProjectManager opening must not request configurators")
         }
-        println(
-            "SDK configurator getter: ${getter.returnType.name}, ${OpenProjectTask::class.java.protectionDomain.codeSource.location}"
-        )
+        val location = OpenProjectTask::class.java.protectionDomain.codeSource.location
+        println("SDK configurator getter: ${getter.returnType.name}, $location")
     }
 
     @Test
