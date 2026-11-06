@@ -211,6 +211,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedAdmissionEvidence.kt
   - id: openwiki-source-cce89281ffa7a590648e9d33
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt
+  - id: openwiki-source-f4cafbcbf8d6282990c24a8a
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt
   - id: openwiki-source-8d38b171e35bb98b83dfbe58
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstallationLifecycleFence.kt
   - id: openwiki-source-88f09847a1cc4b4d806ffe37
@@ -229,6 +231,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt
   - id: openwiki-source-6b063183ca57510a100a1579
     resource: repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json
+  - id: openwiki-source-0a27540bb275eb146f8c9e66
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/LinuxIdeLifecycleTest.kt
   - id: openwiki-source-3adda3013ad0805c51b3ac26
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServicesTest.kt
   - id: openwiki-source-aa73ce5eea589b2954d82387
@@ -251,6 +255,8 @@ sources:
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
   - id: openwiki-source-1905c35a82810ccf74696707
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
+  - id: openwiki-source-d6999ec49aac231ecbc30c0b
+    resource: repo://runtime/hosted/src/headless/resources/META-INF/plugin.xml
   - id: openwiki-source-680008eb9e24b45cf91f6d9d
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt
   - id: openwiki-source-95d1815c680b1c389e562577
@@ -279,6 +285,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
+  - id: openwiki-source-b063b188a00b030d97a5f66b
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt
+  - id: openwiki-source-7669fe754d342a928a513d56
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessProjectStore.kt
   - id: openwiki-source-eed0394918ec9e3d4c1a1c51
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/RegisteredPeerRead.kt
   - id: openwiki-source-738d50046b5f0d1312b7fcb7
@@ -287,10 +297,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+generated: { by: "codex", at: "2026-11-06T06:35:36.884Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-04T23:27:44.986Z
+    at: 2026-11-06T06:35:36.884Z
 ---
 
 # Runtime and process hosts
@@ -596,6 +606,22 @@ owner. Canonical public request admission and installation shutdown admission st
 precede workspace preparation and execution.
 
 Only known root admission failures before dispatch (`WORKSPACE_START_UNAVAILABLE`, `WORKSPACE_START_NOT_DIRECTORY`, `WORKSPACE_ROOT_MARKER_NOT_FOUND`, `WORKSPACE_INVALID_ROOT_MARKER`) settle as known without fencing recovery. Other provider or interrupted effect outcomes preserve uncertainty unless native recovery proves settlement.
+
+## Managed headless Host
+
+The managed headless deployment runs the same hosted plugin inside a private production distribution.
+Its starter admits headless production mode, canonical private paths, and that distribution's bundled JBR.
+Test mode, a forced core classloader, shared state, automatic trust, and a foreign JBR reject startup.
+The bundled descriptor selects the starter and `ManagedHeadlessProjectStore`.
+
+The project-store descriptor keeps the actual repository as its identity and historical base path.
+Admission needs the private metadata directory and native external-storage support before project creation.
+The existing opener, importer, readiness owner, and semantic services remain authoritative.
+The process advertises `MANAGED_HEADLESS` with disabled auto reload and no graphical presentation capability.
+
+Managed cold launch skips desktop process discovery.
+Native private-profile locking owns exclusivity, and a live lifecycle handshake owns admission.
+An exited child cannot grant readiness.
 
 ## Focused runtime and transport explanations
 

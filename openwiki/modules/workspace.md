@@ -34,14 +34,18 @@ code_sources:
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedEpochAdmission.kt
   - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadReplayPolicy.kt
 sources:
+  - id: openwiki-source-9713af85ff6a629a6ce68bf3
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt
+  - id: openwiki-source-30ec45e5d5abc40f250cc287
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleProjectOpen.kt
   - id: openwiki-source-903d531c5eecaec62a353b32
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochObservation.kt
   - id: openwiki-source-26adf1e57264a6d43e0f22c1
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T06:09:31.584Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Workspace
@@ -80,7 +84,12 @@ The hosted workspace lifecycle boundary retains file refresh and Gradle model re
 
 The internal per-host task rule maps one exact IDE-observed successful single-task Gradle invocation to the same lifecycle service. New hosts default off; imports, unsuccessful tasks, other roots and other projects cannot trigger it. Gradle callbacks schedule the request without waiting for readiness. Existing epoch listeners remain the semantic freshness authority.
 
-Explicit application lifecycle opening uses ordinary new-frame project opening for one canonical root. Reuse does not call `toFront()` on the window. It observes admission, then waits for a native import already in progress. If the cached model stays missing or incomplete, it requests one linked Gradle model reload.
+Application lifecycle opens one canonical root through the native project opener.
+Desktop mode requests a new frame.
+Managed headless mode admits private project storage before it opens a project without a frame.
+Project reuse does not change window focus.
+The owner examines admission, then waits for a native import already in progress.
+If the cached model stays missing or incomplete, it requests one linked Gradle model reload.
 
 New managed projects use the existing refresh/readiness owner. The owner applies import data in the background for the first link operation and later reloads. It keeps tool-window activation and error navigation disabled. A project-scoped initial-import operation suppresses native automatic imports during this sequence and restores its prior state afterward. Trust and global unsaved-document checks remain blockers. Background presentation is best effort.
 

@@ -48,12 +48,16 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt
   - id: openwiki-source-5bce5e00d8d37b48b461a27e
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
+  - id: openwiki-source-64703967945cd84894f27ab4
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt
+  - id: openwiki-source-4d9e0980fb11127dc7427b28
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleStop.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
-generated: { by: "codex", at: "2026-11-05T04:04:28.756Z" }
+generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T04:04:28.756Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -140,6 +144,8 @@ A running legacy Host without restart permission rejects before journal creation
 ## Request a scoped VFS refresh
 
 Hot reload needs compatible archives, enabled native auto reload, and the live `HOST_PREPARED_RELOAD_REFRESH` capability.
+`MANAGED_HEADLESS` identity parsing rejects enabled auto reload.
+This mode uses the existing settlement and normal-stop path.
 `SETTLE_RELOAD` prepares the exact cached `lib/kast-ide-hosted.jar` before file exchange.
 The checked acknowledgment keeps the Host, transaction, and prepared marker together.
 Ordinary `SETTLE` remains independent of reload preparation and supports normal stop.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:59c8dd2752120944a68ce81d3224b88fb8a5d272b4d1aefe2a5629a8f07af6d1",
+  "pageVersion": "sha256:1ad47e1bea4c19005c53241c920b6bc57fc30571510c07c1caea418a9c3afa59",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -38,7 +38,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:f4590c2be5828bc52ccd35d728d3f33f2d7ee073fb29e33f19701f462d3f35e7"
+          "version": "repo-file-v1:sha256:ee456e0076b8ddcc4446ea817174f4f47efcf903263067e0e9a7d0fe47dddb57"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt",
@@ -51,12 +51,20 @@
       "statement": "Raw endpoint decoding rejects duplicate fields and trailing documents and retains a positive typed process owner through full current descriptor validation and exact root/socket binding; owner-envelope parsing alone never admits hosted compatibility.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt#L20-L110",
-          "version": "repo-lines-v1:sha256:1cf7f1902ed013f9b4018f5736a943744651f876f0353bdfaf1b0499d4b0d2c2:eyJzZWxlY3RlZExpbmVDb3VudCI6OTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMzZmODlmY2VkOTkzZDc3NTUyNDQ0ZDg3MWRjYjVhNjk3NTEzZjM1OWNjMDRlMTIzMzVjYTVmMzFlZDQ4NjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiMDc0ZjNlNGMwOTdjOTRhMmFkZjk0MTNjMzUxZDU0MTNjNDMxMDk5MGViMDczYjY4YzcyOTllOGM0OTkwMzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5MzgxNmQ1ZTkwYTU3ZTZmMDQ1NzIxNzQxZTI5MTVjZmMzMGNjMjRjMTQ2ZjY3YjUwOTRiODM0M2U3YmQ3M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlNDQ4OWYyYTMxZTljMTBmNzQ1NTdiODMwODJkZjllZTRhMTFhN2UzOGU5ODZkNmQxOTBjNDM5NjM5N2RhM2QifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt#L33-L38",
+          "version": "repo-lines-v1:sha256:ab2fe3730d418aa1ac20ad94d8816a514e4fa3016504698ea4bdf5ce28fa8779:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWU0ZTI0MjU1Y2IyMzA0NzBkYWEzOTQ5MGQwZTI0YjBmZjBhYTIxZTQ4YjY5NjZmMjdmODA1OWY0ZThmM2U2YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzVjYmQyMjRkM2Q1MDQzODQ2YmU2NjJkOTM5MDI5ZjRjYmM3NjM1ZDFjNzA5ZGMyZGY0ZTExZmQyYjNhZWQxZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTBhNThjNzI4ZjQ4NjQxZDM1NDcwOTQ4NGRlZjYwNGQwNjY4NmYwYjg0MzA5NGJmNzc0MWU5Mjk0ZTdkYmYxOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzQ2MjhlNTUyNWQ1ODlhNTNiMjg1NDFmZGRhYzJmOWExMGMwNjM0NzRlNjBmNDUxNWE1YTRkNDMxM2RjODFhNyJ9"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt#L6-L94",
-          "version": "repo-lines-v1:sha256:12541db011e05be32444f688dc40a6d88f74abd5e6132f62908ebcc64d955c4c:eyJzZWxlY3RlZExpbmVDb3VudCI6ODksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlZDFiMzYwMzI4NDk5OTY0NTczZjUxYTdmOThmOGQ0MjNlODBkOTNkZjA5N2M3ZTI1OTcwM2FmZmUyMGM3YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI2M2MxNjMzOWY2ZTA4OWM5Y2E1YjM5NDg3Mjk4ZTk0MTc3NmE5NmU1OGE2YjBkYzRhODkyMTM4OTgyYjNmOGIifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt#L70-L94",
+          "version": "repo-lines-v1:sha256:06ab3c0b0c020a22ba076dd83f94a09b91f7e892ba2e2c00fb4f7c12f7c275dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYjk3YThmOTkxMDA4ZDdiYTNmMTA1Yzk3N2Q1NTMyOGI0ZDkzZDFmNzZjZGI4NGQ3ODk2YzYxMzhjMzRiMzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmMzhkMmYzOThmYWM5NWNiZTBhZGU4NzNiZTRlMTBjODg2NWRiYjJlYWVjOGI3MDBmOTJkNGIzMzFiNjYwMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc0N2JlNzNkNzUxYjAzNmNlZWExZjFmNzFmMTg2ZGJkZTFkMGJiZjg2YjZiMjM2YTg0MTMxODA5Mzk3YzQ5YWEifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt#L39-L109",
+          "version": "repo-lines-v1:sha256:bd1266489f653eaf2392379c65ea83c33181bce08687a90eebddfff1221b72a3:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMWFiMTg4NzU0YmVjY2M1ZDI1YzlmM2VkYzkwMDFkMGIzNTg5NzY5Mzk2ODIzOThiYzhlZmE5NmFhYmQ2MzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MjdjNTA4YjZhOTZiZGM0OWZjYmJjY2E0M2I2YTc3ZTJhN2NlOWEzZTUyMzlmYWU4OTA3YTc4YzBlYWFjM2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ4ZjJiNDE5ZGEyNzg4MmY5NTUzYTA5YjY1YzIwODYxZGRmNmYwMTVkZjg4MWE1NTkwZWVhZWFkMGUzMzZmMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5MmE1ZmYyMTUwMjFiNGM4MDUwMjJlMzQ3NWY2YWE1ZWYxYmYyZjcyOWYwMTZjYjQ1ZWY5NzY4NTAwMzcxN2YifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt#L8-L32",
+          "version": "repo-lines-v1:sha256:c657cd2203d9acdbb15b135e8ac9aaf6d1413dc9e3920203ff0ebd31d75a9bb1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzNDg2MjA4ZmViOTgyNDI5YTkyYmNjM2U3ZGUwOWY4MmE1YzY4MTE5OTY0Y2I1Y2U4YjQ3NTNlZDY3ZWRhNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1MWIyMjNhYzRmZDQ2ZGE0YTEyMTIyODAxMDU3N2JhNmExNTE4NmU5NjY4N2NhYzA2YjU3OGVjYzY2N2Q3YTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
     },
@@ -333,10 +341,32 @@
           "version": "repo-file-v1:sha256:33ca0f6959d0fcd0fe6608f66847b70d738050d32e38deacaef06f4105fa9946"
         }
       ]
+    },
+    {
+      "id": "claim_55e277e241e048789741a1fa9446ecb3",
+      "statement": "Managed semantic access admits the project descriptor's application identity against the selected private installation before dispatch. Existing-reference reads use the same deployment selection.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L109-L160",
+          "version": "repo-lines-v1:sha256:bda316970519f11edbade4ab96772b4940c74d5ffbff961070b3cfab2dd88aab:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3YzFkYTZlZWFlZjE3NDY4ZDc5ZGI0MGFkMDRjN2NjMzgzZjU1OGNlYzRhYTlhMzI5NmJlZTgxMDc2MDM3YjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgxYTUyNmU5ZTE2ZmNmODFjNjcwNWNkYzAyNGFmY2FjMWYyODdiNDQ1MWU1Mzg4NjQ4YWMyODk3NmRiMTMxOWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4MWVjZGRlZDQxNmEwMjkwNGNlMjdiZWMwMzlkYTY4MTY5YjBmODNiZTgwZjY1ODI1NTJlNjhiODIzZGZjZmUifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt#L137-L145",
+          "version": "repo-lines-v1:sha256:4f7fc80bd697d60d8eda399267d9c071de0969e165e2bc875eaa7a62cdcc7a2c:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWViMTVkZGM2MTBmNTRiYzBjODQ1NmQwYjVkYzMzODdhNWM5Y2VjMGE3MTRiYjA4Mjg1ODdlN2I2MjU0Mzk5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjUxZjNhZGY1ZmFhNDk5ODEwOGUyYjkyMWM2YjJlZjgyODgxZjRiZmFlZWI2Njc4NjZjNWY0YmMzNTc0NmZiMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhkMmMyYzIxMjY3M2ZlYTZkZDBkZGM1MTExMzdmZDJkODkyYmNjYmEyZmE4YWNkOGYyMzRhYTU1YWRhZDRlNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt#L8-L45",
+          "version": "repo-lines-v1:sha256:afa7570f00dd1879afdaae20fb87ffa50d8785965c2d27a75e16ca543e8b26f1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2ZDk2YzVjMTU1NzkxMjJjNzk0Y2JmZGFkZTVlZDJiNmIwNDdlNmM1OTViZWNmMzVjNzkwOTE1MjU5NWIxOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMifQ"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeReadConfiguration.kt#L13-L25",
+          "version": "repo-lines-v1:sha256:4b88199fc6558ea19adad9480469cd67e45269d00b5b032d13b6e6517f6ac003:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ZTllM2FmNzUyMTgyNmEwZGE4Njg3NTdmMjhmM2QyODBiNDBlYzYzZGRkN2NmZDI3YTI5MmMzYWVkMWNhNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T06:09:31.584Z"
+    "at": "2026-11-06T05:26:56.646Z"
   }
 }

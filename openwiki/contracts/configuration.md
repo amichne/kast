@@ -49,6 +49,10 @@ code_sources:
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/ModelInputFailure.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt
 sources:
+  - id: openwiki-source-23800b7a30d62f442e3b56ae
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt
+  - id: openwiki-source-b490c970be179fe22cf68e37
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt
   - id: openwiki-source-b49f63bec354bf14b4c28692
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
@@ -81,16 +85,20 @@ sources:
     resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/ReadLimitConfigurationTest.kt
   - id: openwiki-source-40ab5c6f8a11b724c001ed82
     resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
+  - id: openwiki-source-821af660abbe3507ea0b79ee
+    resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessInstallation.kt
   - id: openwiki-source-03ffc32a0ca502ab67c54b25
     resource: repo://install.sh
   - id: openwiki-source-4070dc53852de69cdff3bd47
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-37ffb827b915bda4bcca9865
     resource: repo://packaging/install-local.sh
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+  - id: openwiki-source-621afc296584eb4217553339
+    resource: repo://packaging/managed_headless.py
+generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-05T10:28:11.464Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Installation configuration
@@ -221,6 +229,16 @@ Duplicate declarations, missing quotes, trailing text, and incompatible runtime 
 Ambient Java does not select that runtime.
 Shipped Control launchers select modes in one native executable and need no JVM or bundled JVM libraries.
 The launchers pass `HOME` and `TMPDIR` as explicit native system properties when those variables contain values.
+
+## Managed headless selection
+
+`KAST_MANAGED_HEADLESS_STATE` selects an explicit absolute directory for a managed headless Host.
+The installation and coordinator consume this sensitive setting through the existing configuration catalogue.
+Its private HOME must equal the selected directory plus `/home`.
+The selected IDEA distribution, its bundled JBR, and its assembly record must pass admission before lifecycle or semantic access.
+An invalid explicit selection rejects without desktop fallback.
+The assembler creates a wrapper that supplies this setting and the private HOME.
+It does not grant project trust or workspace readiness.
 
 ## Imported model inputs
 

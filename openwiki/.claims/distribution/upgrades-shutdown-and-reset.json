@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:06c18c80c0e6d0fa62e687df9ecb4292d9d858dd3d5bdd4c68ba863cb3f6eb82",
+  "pageVersion": "sha256:af4e0b6dfbdc38d6f7718ed1e42e27109e2e8ab4a3ce1bb886f1a9f551967501",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -82,7 +82,7 @@
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
-          "version": "repo-file-v1:sha256:f3d6ae01544b7d40e158886573b87cc095a9671b4aa53b7752756f07a3939b2d"
+          "version": "repo-file-v1:sha256:3f19e38f1e06a504ec727f5d51da1cce122a3b7151c4556f33f7f466e040a63d"
         }
       ]
     },
@@ -100,7 +100,7 @@
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
-          "version": "repo-file-v1:sha256:f3d6ae01544b7d40e158886573b87cc095a9671b4aa53b7752756f07a3939b2d"
+          "version": "repo-file-v1:sha256:3f19e38f1e06a504ec727f5d51da1cce122a3b7151c4556f33f7f466e040a63d"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostBundleRefresh.kt",
@@ -143,10 +143,28 @@
           "version": "repo-lines-v1:sha256:ae8288a1a11c42b6447b1407454071119fdc19ce690fc2106eac9c4fa8109a74:eyJzZWxlY3RlZExpbmVDb3VudCI6OTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmNGY1YTAwMDRlZTYyYmQxZGQ1OWYzZjdkZWM2MjM0YzA2ODUzNzEyOTFkNzhhYzJjMjZlMjdjM2YzZjkwMzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlMDFhMTZiOWRhYWI5NDBkODJhYmZmMWE2ODQzYTMyNWQyYTY0N2E1YzM4M2MzYWY1Njk1YWFjOTU5N2EzZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjMjEyNjM5OTU0NzY0YmJhZDljZTQyMmRkYjg3ZDA4YjA1ODU4ZjY1ZGYyNzYxNGU0NjI0MjQ0Njk0MzMwZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjZWNhMDAyZTZkOGZkZGUwODdhOTI1Njc2YTUxMDVlOTEyNWJhMmI3Yjc3NGJjMzdhZDllZjMzMzdjMTk5MjMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_4e2011453c9747d59bd5c8833abff11c",
+      "statement": "Runtime identity parsing rejects MANAGED_HEADLESS with enabled auto reload. The managed headless Host uses existing settlement and normal stop.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_update_contract.py#L337-L389",
+          "version": "repo-lines-v1:sha256:38e8e24fbd290719599f58f6f2a950916ce736cbb46821d3015c58b847c660fb:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkMTcwYjE3ZGQ1ZDBiNDZhOTE5YWNkZjI4NDNkMzc2ODVkZjk2YmRmMDdiYmRlNjVlYzAyZjVjODdlMjQ3OWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyNDNkMDIzYjMyNDk1NDMwMzM2Y2MzM2VkNGIzYjU2MDU1MjQ2YWEwNDk3MjUwYzNmOGNjNjI2YWY2MmUxN2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI3ZDdhNzQ1NjBiODNmOGFjOTNmMTQyYTlkMjRlZjBlNmQxODgwYjI5MzFmYzVlMGZiYjg3ZjcxM2UxNGQ1NDEifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt",
+          "version": "repo-file-v1:sha256:8ff92cdeefa2a594cf259a2de84e87bab28291ba26f8050b37a1b2d886b5c9f7"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleStop.kt",
+          "version": "repo-file-v1:sha256:a6d9e9775c633da7eb774109e46134b67976c83a4adb0cbda3903827c0429de1"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T04:04:28.756Z"
+    "at": "2026-11-06T05:26:56.646Z"
   }
 }

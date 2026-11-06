@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0766fd0e0c1a956a3a5a9c73469107c3dc4651845302b50cdb8fe579bd2d175f",
+  "pageVersion": "sha256:2507915531a30d43aa86dac0627e2aa7b1e29897922652f58551619f2c56e65c",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -76,7 +76,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:7aed52fede75f3767e228416c3e64ec7af6e93d6b85ee4c931e57cab6bdad809"
+          "version": "repo-file-v1:sha256:51c6d1c158ef51f4a91ec188f2756dec1086593181494bbd7db621b401da91fc"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -158,7 +158,7 @@
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:7aed52fede75f3767e228416c3e64ec7af6e93d6b85ee4c931e57cab6bdad809"
+          "version": "repo-file-v1:sha256:51c6d1c158ef51f4a91ec188f2756dec1086593181494bbd7db621b401da91fc"
         },
         {
           "resource": "repo://packaging/installer_fixture.py",
@@ -472,7 +472,7 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:7aed52fede75f3767e228416c3e64ec7af6e93d6b85ee4c931e57cab6bdad809"
+          "version": "repo-file-v1:sha256:51c6d1c158ef51f4a91ec188f2756dec1086593181494bbd7db621b401da91fc"
         }
       ]
     },
@@ -543,10 +543,42 @@
           "version": "repo-lines-v1:sha256:82c9f23aa57e55b9a3e86cd23636c90f4021c8c19212b3fd12ce8745c3b2adac:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5ZjgyZDliMmQxZDRlZWI5NDNhNTAyNTY3ZGVhOWZlOTYzZTM4Yjk0YWEzMDQyYmE2YjMxNzgwZWNlODJkNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExYjJjNThiMTBiZGIzZmIxYzM4NjE1MzM3OTdiMzBmZTBiOGYwMjBiYTJmOGFkNTU0ZDA5ODMzMjkxNDFhZmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY0MjkzMTA4NWU4Y2E4MDNmZjExNWMxMDQzOWRiMGJiMjg1N2E3OGQyOTY4ZDRhYTE2YmY0Y2U1ZDY0MTI4YTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1MzM1NzE4NDA2YWQ2YTU0OTNhN2MxZjQ4MDZmY2YwNDM4ZTQ3NWMxM2Q5ZDA2NGM1N2Q4MmJiNTc4ZTY3NDkifQ"
         }
       ]
+    },
+    {
+      "id": "claim_6043d47ffada47c38ba8a55073c23c43",
+      "statement": "Managed headless assembly admits pinned inputs and a new owned root, then uses the existing installer with private state. Assembly alone grants no Host readiness.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_headless.py#L160-L206",
+          "version": "repo-lines-v1:sha256:7376ac9e9dcf3f679d60f6b030965d8734cfd3e6b2a75f3c900b3e4a5430269d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhMGFjMjIzMjM4NjQ5Mjg2MGZkOGE5ZmNjODk3YzIyYTBiYjdlMzMxMzc2YzI0YWFmYWYwNjY1MzE4YjUzNDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4MjFlNzQ5OWI2YzliMzgwNDRkOWZlYzgwMjQyMTQzODUwMDU1MmFhMWQ0ZGJjNmUyMDk4ZTdkZTA5ZGRjYzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlMjE5ZWJlNzE4OTkwNGMwODU3MDkyYmEzMzMwMDQyNDU0N2U0MjkzZmUwNTdkMjk4MDBjMzQ5OGVlOGY5YzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlMjE3ZjAxMzYxMTcyODQ4OTc5OGViMzk5MjFkOGJmZDYyY2I4NzcwMDc4MWM2ODQ4ZTUwYzM5NjlmYmVhOGIifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_headless.py#L525-L589",
+          "version": "repo-lines-v1:sha256:b66f5ba89a4ccc75a833ae1d492646b7e556eecb7ce133a305892db2686ce851:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjOGY4OTcyZGQzOGI2OGYwMzY1ZTRiNjFlNzhlMzIzYjZiNmMzNDkxMWI2M2YyOGRhNzM1ZjRhMDJiM2I2NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4Y2ZjMDRkZTg5NzRlZTRmYmNkZjY2MzQxNWIwZWE5NWE5YTc1NDc3NzJiMmUxZDMyNGExM2ViZjI0OThjYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1Mzg0YTlhMDVmZmJmNzc3NmQwMTNlNWFkNDFlODA4ZTE0YWQ5YTUzN2VmNjdjNzdhYWNmOGE3MWM4NTRhZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0OGQxYWZjZDFiMjQ1N2EyZjQ3NjZkNDg2YmY5MTZiYmEzN2UyM2ZiMzZiNTczNjA0YWIxMjhkNmQ4OGQxZWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_eb0b00a4c8ea471982241d5ecb2e4948",
+      "statement": "Whole-plugin exclusions reject unknown IDs, Host roots, and dependencies of kept plugins. The manifest records input digests, component decisions, and exact kept or removed files.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_headless.py#L417-L489",
+          "version": "repo-lines-v1:sha256:6d6ddb0a3924733756452d20a4b44418b0a31211bc3f435bb475db97a310ae25:eyJzZWxlY3RlZExpbmVDb3VudCI6NzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlYmRjMzkwNTEzNmNjZjgzNjNjZDIyNjEwMjNhODVlZjE4Yjk0YzU5ZWVhN2RjN2UwZTQ3M2Y3NzdkZjViOTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwMWFhMjUxODAyMGZkOTNjYzMzYmRmNGNjYTE2YzRiNTRlNDllZmI4ZDhmNjljYjYzYTY3NTJiOWEzNmYyMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4MjM2MmI1Y2U3ZmEwY2RjMjM2YzM5N2I5ZjQ0ODMyNDFhODkxNGFlYjJkYzZkYTg3ZjEyOTE5MjJmMzNhZTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE1ZDg2MzExMDFhYjdjMDViZmEzMzQ5ZGU1ZjNlODAxNDQwOTU1YTA0YjBiYTkxYWU4NGVmYzg4OGU0OThmN2UifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_headless.py#L491-L521",
+          "version": "repo-lines-v1:sha256:1f466eeefe3a4e516cb0fb982e857e62577b9ee77911aa528c6a17883d0c0f2b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlN2M5NTdiY2I0NGZiNjczYzk4YjAwNTBhNzVkMzgwODJkYjgxZDkxOGRlMzEzYTNmMDdjMTIzNTMwNmQ3ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5Y2EzYTE2MWYyODg0ZmI5MzZhMmM2OGVkZWVkNTFhNTkxOTYyNzhjZTNlMGEyYmFjNGQwZDEyZjRjNDc3ZTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI3MzYxYmM4Y2EyNTNmMDNhM2M4YzhhY2ZmOTljZWM1NjRmZWFiMDBkNTRkMTM1MmMzOGFmZDcxNGJhZjQ0YzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM1Mzg0YTlhMDVmZmJmNzc3NmQwMTNlNWFkNDFlODA4ZTE0YWQ5YTUzN2VmNjdjNzdhYWNmOGE3MWM4NTRhZTAifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_headless.py#L70-L99",
+          "version": "repo-lines-v1:sha256:d53711bd84ea446e45f2088d44ccd6c88812d854c43520cd666fed74aa5b875c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5OTdlM2RlNTZmOGIyNzY2OGRkNWE3MjE0NjkzZWZlMjE4ZDJkZjc4NjNhZWMzNjYzYjU4NDE1OTQ5N2VkZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5ZDBlNzYxZjNmNzY4ODExMWIyN2M1M2JjNjk0NGZjZjJjMjA4NmI5NThkODkwZWYyMGFlNzQ2MGE0ZmY3YmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUxYjYxNTI3NjU3YTc2NzllMWM5MjQ3NDVlZDU3MDc5NDA1OTI2MGFmODgxMzFjYmEyYTAwY2FkMTNiNmIwNDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhOGI5Y2MwZmJmZGU2Y2ZlMGRiNjFlMTBjOGFmYTkzNzg4NDkxZTY5ZWViZGRhMjJkNWZjOWUzODkxODNlMzYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T16:04:45.402Z"
+    "at": "2026-11-06T05:26:56.646Z"
   }
 }

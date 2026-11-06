@@ -63,6 +63,8 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt
   - id: openwiki-source-c2eebc668e2b6f4fe4c4b7ed
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryDeferredSupplierExecutionDocument.kt
+  - id: openwiki-source-3206e378903869638a68fb5a
+    resource: repo://protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
   - id: openwiki-source-207ff2d32f1b70dfee08054c
     resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
   - id: openwiki-source-1905c35a82810ccf74696707
@@ -81,10 +83,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-c7caab29dec6e41d0046710e
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-04T23:27:44.986Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Protocol
@@ -194,6 +196,12 @@ The live capability is `HOST_PREPARED_RELOAD_REFRESH`.
 Ordinary settlement remains independent of reload preparation.
 `CanonicalHostedContract` fingerprints this request and response with the existing lifecycle types.
 The response carries the settled runtime identity. Loaded replacement identity remains separate evidence.
+
+Runtime identity carries the closed `DESKTOP` or `MANAGED_HEADLESS` mode.
+Serialization includes the default `DESKTOP` value.
+The project endpoint can carry a managed application advertisement with its runtime identity and hosted compatibility.
+That schema needs `MANAGED_HEADLESS`, disabled auto reload, and positive process identity fields.
+This advertisement supplies no semantic completion or workspace readiness proof.
 
 
 Impact documents keep exact value-site basis, callable identity, source range, and role. They also keep reviewed model identity, version, and provenance. Their compiler transfers, boundary positions and obligations, original question, and investigation accounting stay attached. Required discriminators and closed causes survive canonical wire and CLI projections. Complete projection validates conserved impact closure, while qualified projection validates accounting without discharging unresolved obligations.

@@ -19,6 +19,10 @@ The service composes passive semantic reads and explicitly requested workspace l
 Its endpoint identity, project admission, refresh owner, and retirement state belong to that project lifetime.
 Another process cannot manufacture a current endpoint by copying a descriptor.
 
+A managed headless endpoint also publishes the application's captured runtime identity and hosted compatibility.
+Desktop endpoints keep the existing descriptor shape without that advertisement.
+Application identity does not replace project ownership, fresh read admission, or final publication proof.
+
 The endpoint admits request framing and connection ownership before semantic dispatch.
 `HostedConnectionAdmission` bounds concurrent connection jobs.
 After accept, the listener waits for a permit before it starts another dispatch.

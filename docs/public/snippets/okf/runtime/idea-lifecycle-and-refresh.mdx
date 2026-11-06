@@ -105,6 +105,15 @@ Lifecycle frames keep separate 5-second transport limits.
 EXCHANGE_DEADLINE_EXCEEDED reports command, stage, cause, and timing without proving that IDEA exited.
 Semantic execution has separate limits after preparation.
 
+After native `Pending` admission, a status observation can lose its read-only `INSPECT` or `STATUS` frame deadline.
+The same preparation owner then repeats status for the same Host and request within its original allowance.
+It records the original exchange failure without another open effect or a readiness claim.
+An initial Open timeout cannot enter this path.
+Malformed responses, changed identity, import failure, shutdown, cancellation, and the owner deadline still end the wait.
+
+During an active native `MODEL_RELOAD`, lifecycle inspection reports pending through the existing refresh snapshot.
+It defers native project readiness access until that refresh settles.
+
 A settled import can still need MODEL_RELOAD_REQUIRED recovery.
 Preparation can reload once within its allowance.
 Later source-input changes remain pending until an import covers them.

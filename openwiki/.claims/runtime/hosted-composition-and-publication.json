@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1cdcb7c6407dac81785b70daa7031310f5f63d9efb1b0f197e61d1e5a395a4d9",
+  "pageVersion": "sha256:ecf81e8a404f78b0bfc6655617ac5d6c9038b5b774eb784446ab369ea0e6ecd1",
   "claims": [
     {
       "id": "claim_cef6aa14cee14d75b0fedd02c53e9033",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
-          "version": "repo-file-v1:sha256:bacdc82c21c19caca7ad495c4074fada1d98ca8f026897d5542e7d13194456e4"
+          "version": "repo-file-v1:sha256:96b790802da4eb83a8d35d4cd4dc09b03ffac12b7f1adca61c0495428bb9a8bc"
         },
         {
           "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
@@ -43,10 +43,24 @@
           "version": "repo-file-v1:sha256:f32da97a8099656b1705681bdf3500140f8c4f46182f3722621d17362e36e623"
         }
       ]
+    },
+    {
+      "id": "claim_32d5f580987f4c30a6b4f8e4041f60f3",
+      "statement": "The project endpoint publishes an application advertisement only for the admitted managed headless Host. Desktop endpoints preserve their existing descriptor shape.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt#L209-L234",
+          "version": "repo-lines-v1:sha256:6c6703cda67fdf6b009bb3ca143b91477ab2b060ea72cd46bad669fc4bebac02:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiNTRmZDk0MTA4NDljMzg5NjgzZTJmNmRmNjBjZjJiZGQ1ZTdiOTY1MjQ3ZmVlNzU1NGYwNmNlMjI3MDE5YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhNTZmMTA1MzkzNzE2ODQ3NDBjY2I5YzNiYjg2MjBmMDI1NzY0OThhZGRhMzJmZDU4ZjhjMzhkNmU2MDMyNWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3Njc5M2ViYTEzNzIxMDJjYWNlZGQ1OTE2MjM0ZjhlNTEzZGIwMzEzM2M2MDQxNzA1ZDQ1ZDY0NTczMmU1YjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4ZTk2MjZiM2I4NTMyMDEwMmFjYmJjNGUxZTBkNDI3YTgxODljNzIyZDdmYWVlNjFkZTRjNDc0OTljOGU5YTUifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt",
+          "version": "repo-file-v1:sha256:bf7e02000cdd33801f4b01529efaa544d5885d3b45a1b7fd4c9b30ecad7b7ede"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T23:27:44.986Z"
+    "at": "2026-11-06T05:26:56.646Z"
   }
 }

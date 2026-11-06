@@ -205,6 +205,12 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-235a629b1cad4fc91515f118
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt
+  - id: openwiki-source-23800b7a30d62f442e3b56ae
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt
+  - id: openwiki-source-b490c970be179fe22cf68e37
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt
+  - id: openwiki-source-96405b955de825b77efc48dd
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeReadConfiguration.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
   - id: openwiki-source-ff46625371d40be09ef9d311
@@ -275,17 +281,26 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T06:09:31.584Z
+    at: 2026-11-06T05:26:56.646Z
 ---
 
 # Existing-IDE semantic query
 
 ## Default canonical read path
 
-The connected provider admits hosted tool requests and selects the exact enrolled workspace. The daemon prepares the selected IDEA project, then sends one native read to that project's endpoint. An absent host rejects without starting an isolated worker or falling back to a direct CLI socket.
+The connected provider admits hosted tool requests and selects the exact enrolled workspace.
+The daemon prepares the selected IDEA project, then sends one native read to that project's endpoint.
+The semantic socket client rejects an absent endpoint.
+Control can start the selected managed Host through the existing lifecycle owner.
+This path uses the same hosted semantic services.
+It does not start a retired sidecar or a second analyzer.
+
+Managed headless selection also admits the application advertisement attached to the project descriptor.
+Its selected distribution, private profile, process owner, mode, and disabled auto reload must match before semantic dispatch.
+Existing references use this same selection rule.
 
 The ordinary-query scope gate has a separate project-bound capture for exact
 imported Gradle names. It reads `ExternalProjectDataCache` and joins explicit

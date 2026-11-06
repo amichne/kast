@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:48a73c55975eea9277c069d267b861f7edfac1779b329a5b20705beb4f3ab534",
+  "pageVersion": "sha256:dc315d94fdf0f15b4aaf94ff6a10d34d6c4b9888d919f9ad77a4418fc6125806",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -18,7 +18,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
+          "version": "repo-file-v1:sha256:b58c255d7ee30b4781ea96349f308d7534b47a0d124c1d4df0504a2fde44576f"
         },
         {
           "resource": "repo://topology/service/build.gradle.kts",
@@ -36,11 +36,11 @@
         },
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:7aed52fede75f3767e228416c3e64ec7af6e93d6b85ee4c931e57cab6bdad809"
+          "version": "repo-file-v1:sha256:51c6d1c158ef51f4a91ec188f2756dec1086593181494bbd7db621b401da91fc"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
+          "version": "repo-file-v1:sha256:b58c255d7ee30b4781ea96349f308d7534b47a0d124c1d4df0504a2fde44576f"
         }
       ]
     },
@@ -50,11 +50,11 @@
       "evidence": [
         {
           "resource": "repo://build.gradle.kts",
-          "version": "repo-file-v1:sha256:7aed52fede75f3767e228416c3e64ec7af6e93d6b85ee4c931e57cab6bdad809"
+          "version": "repo-file-v1:sha256:51c6d1c158ef51f4a91ec188f2756dec1086593181494bbd7db621b401da91fc"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
+          "version": "repo-file-v1:sha256:b58c255d7ee30b4781ea96349f308d7534b47a0d124c1d4df0504a2fde44576f"
         }
       ]
     },
@@ -64,7 +64,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:15f0a0473db12ebf07ab6afd90647b1ff434eb18dc152f290b37b87a383737d1"
+          "version": "repo-file-v1:sha256:b58c255d7ee30b4781ea96349f308d7534b47a0d124c1d4df0504a2fde44576f"
         },
         {
           "resource": "repo://topology/service/build.gradle.kts",
@@ -111,10 +111,32 @@
           "version": "repo-file-v1:sha256:41addc36f155754d7f6733090688c469adf97320ec38439aa7791c913de1d3c1"
         }
       ]
+    },
+    {
+      "id": "claim_9d5bbef224bb433b82205fb924c4dee4",
+      "statement": "The headless bootstrap packages only its bundled descriptor. Implementation classes remain in the existing hosted plugin and no second semantic runtime module is added.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts#L215-L233",
+          "version": "repo-lines-v1:sha256:791e4c6e2b6fb7e78e6e5a327a88910e3f6434c11eb1e6431e467ad840bfd980:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZlMzAzOTkzMmU5MzAzZDM2NmUwMzViZjEwNzcyNzYzMmNmNGY2Yjg1ZDBkNTJlMjdmNzk4YWUzY2JlMDk4NTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3OWJhOTA5ZjFkY2Y3ZjhkZjg3MDc2NmFlMGIzNTNkMmU3NDJkZjU5MDc3NjQxZmZjNWEyZDUxOWYwNGU3ZmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwNTU0MzZhMmUzNTgyNTRmZTgzYjNkMTBkZmM5MDk5MzBhNDMwMzRkZjRhYzllN2FiM2FlYTdiM2UzY2ZhMzYifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/headless/resources/META-INF/plugin.xml",
+          "version": "repo-file-v1:sha256:e0feb24d915f3ecf73fa6d5d7f6d62840aa50e8742eba6d13f9e0026ec0ab4e1"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
+          "version": "repo-file-v1:sha256:7f75a18583818145b9892c77fa19e20d9a30b941e6f4c380e583050d470d76d6"
+        },
+        {
+          "resource": "repo://settings.gradle.kts",
+          "version": "repo-file-v1:sha256:a0bfafaf3a6f7d042dde551309835a2c9aba6cbab3edca93ae20889dc964bbd5"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-05T10:28:11.464Z"
+    "at": "2026-11-06T05:26:56.646Z"
   }
 }

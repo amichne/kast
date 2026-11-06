@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b97e9c08517cb5da0e544e6feba523a9d094d62565f6de25c8a36e1311b1cb8e",
+  "pageVersion": "sha256:752ab0d77bc4001440d90d51ed0c57d31af2d702362b1ece451cb4726b1f44c2",
   "claims": [
     {
       "id": "claim_06e2aac3fd894966a82caf7cfced11b7",
@@ -60,14 +60,14 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/NativePreparationAwaiter.kt",
-          "version": "repo-file-v1:sha256:0e29c05f9cfb8d5000694ab755de3f7fee37b73fac0ea793d7e441687700b374"
+          "version": "repo-file-v1:sha256:3e8c640b1f6e77d157e48b729dff5a7cc3fdb9193caf4c481d8fe023f5f291af"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
           "version": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4"
         },
         {
-          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L312-L322",
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L325-L335",
           "version": "repo-lines-v1:sha256:6235ce096d62b7956d1f2e3de890c24abbc17400cca664ed0f7748547cbf8b13:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyY2RkNTFjNGY3YWZjYzllZmJlNmU5ZWQzM2JjZTMyZmE5YzA4ZjA2ZGM2YzkzYTcxNjc3ZThkZTBhOWMyZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1Mjg5ZWQ0ODg4ZDRmMWI0MDQwNjRiZmEyYjg3YTg1M2IxN2YzYjYzNTAyZGNiZGU0YmZjOThiNDA0ZDdlZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNhODdkY2JiM2UwZjg4NDBiNDRiNTc4OGMyZDA4OWE4MjJkNjRiMDgzZTE1MjZlZmIyZWY4YzhkZDAxOWQyN2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4YTE4N2MxMzgyOGYxYmRkZThlNTlhNGUyZjQwODkyNmFmMjU0NzBhYmJjZjVkOGM3MDhhMWIxZDIyMWI1ZWUifQ"
         },
         {
@@ -75,7 +75,7 @@
           "version": "repo-file-v1:sha256:74f0a6c45de95fa10be39413fc52fb46c0d67c9b0a7341a50338e2cbe6154b0a"
         },
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt#L115-L129",
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt#L116-L130",
           "version": "repo-lines-v1:sha256:1c0404fc8c4fd2fb37792944ccdeb7126ca16b8df74c3078e3bb1e5b7e340506:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhYTk1ZWUyMGZjZDJiNGFmZTQxZTZhYWEwZTkxNDY2OTY4MWY2NzE1M2NmYWQ1ZmZiNzhmNzMxNGI3MTZiNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4NzUzOGIyYjE0MTcwZDRkM2Y1ZTIyOWUwM2QwNDQ5NzUzMGFmMDdhOGI5YTM3NjA4MGQ4ODIzMWQxM2MzMmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVhMmNkZjBkZTljMmJjMTEyMTkwNjcwY2Y3YjVkNWVlOGIzMDI1NmQxYTBmMThlYTNhYWM0ZWE1YTdiY2Y1NGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxMTY5ODRkMWMwN2NjMzQwNWJiMTQzMjMzYjkwNWFiM2RmNDU4ZWM1NzE5NmU5ZDVkZWE3ODM4MWM3MDhjZTQifQ"
         },
         {
@@ -89,8 +89,12 @@
       "statement": "Settled preparation can request one model-reload recovery within its admitted allowance, while later input changes stay pending until import covers them and finite operation history returns UNKNOWN_OPERATION after reclamation.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L194-L242",
-          "version": "repo-lines-v1:sha256:b819793296757651324a215ed36bc818f987ad4f8e9450e3323968e5941754bc:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjNWVkZjBlNzQ3MDRlYzhkZGMwM2U1MmU5YzRkMjEyNzcyMzFmMTAyMjU4OTVhMzQ4YWEyNjM3NGMyMjZjNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiNjk3ZTNhOGIyZTI3Nzc1YmI4MDZlMjVhYjRhZjY0ZGUyY2U3ZjZkZTc1NTQ1OTg0YTViNmE1MDVjZTVmOTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBjMGVkOTE1OGFlMjY5YjhkOGQ5OTJiNWQwZjQ1MGI2NzBjMTc2Y2IyNTIxZDE5ZDUyYzA2NTlhNTc0Y2M0MTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjYjQzNmRjZDAwNzE3NDE1OWM2ODlhM2FhMzMxNWM3Njk3MzJjODdhYjA1Njk1YzkxNGY4MDdlZjQwNGNlNTMifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L248-L277",
+          "version": "repo-lines-v1:sha256:a44e673ffab7dcfe171ec0a2f7f21bd88e6ac50b4731d4fc74ef8466c66b6394:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhYjIyMTUyMDZjNjcyODIxZjE5ZjEzZmQ2YzQ0NmVjNjY2YmY1MjI1MDZiNWY4NjRmMWNmNTJiOTQxZDZkZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFmODFhMWUxNWE1MzgxODZiNzJmMDFkYjQ3YjFiM2Y3OTdjMWNmZjEwMDY3NGQ5YWQ4N2I0NTU5NDc4NTRiMmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0NmY0YjdhNDJjN2RlOTFlYjg2ZDAyOWY2ZGQzNjdjZTc0MjljMjBlNGQ0MjExMzdlZmI5YTcyZjAwZjdkMTQifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleReadiness.kt",
+          "version": "repo-file-v1:sha256:5852238477c097b9a587c8fcd359e4ac850e677477657586e6a476634747d020"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleState.kt",
@@ -104,17 +108,45 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt",
-          "version": "repo-file-v1:sha256:f01c13f015c843aca17900058f94b4a59b98ee19a1c3e5816901c4f6f57d6da9"
+          "version": "repo-file-v1:sha256:48fa79d192b5fad4c1e677b8a3ba400f28694de9cee79b91c7a4965f71e308d1"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt",
           "version": "repo-file-v1:sha256:2abc2275ec88e1d1ed4ec8e892e1ed9287f79c5f2044e823d106884dbc9930a6"
         }
       ]
+    },
+    {
+      "id": "claim_476fd95fd4c24907882d79e4cdc2c4c8",
+      "statement": "After native Pending admission, read-only INSPECT or STATUS frame deadlines repeat status under the same preparation owner, Host, request, and allowance. Initial Open timeout, native failure, identity change, and cancellation remain terminal.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/NativePreparationAwaiter.kt#L84-L121",
+          "version": "repo-lines-v1:sha256:659e3901d36cd6aabcfef165075f0ea9d77b51a2880741a30e110adfcdf20d47:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmNTk0MDFkNzAwYTg5MmI5NGZjYzEzNGM1OWFjZTI5MDU4NDdjYWQ4ZmIxZWZiYmU4OGNlYWJkOWM4ZjNiYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4ODg3MjI3MmMzNDgxYjE3ZjZkZjEzMzZmZjFiYzg1NTAzN2U1NTBjYmUzMmUxZTM4ZjdjYTRiMjM0NDI2MDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQwZTUyMjQ2NzZlZjFkNDRjNGI2ZmRhODBkNmQ1YzdjZTU5NGNlMGUyZGFhZTE4YmNkYzIzNzhhZTVhMmEzNGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlMTVmZDBmYzhlOGJjZDliYzZhMzgyYmMyOTZhMjM2OWE0NmM5Y2ZjYWRlYWE4MDVhMTgwZmNlYWFhZDU3MDAifQ"
+        },
+        {
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparationExchangeTest.kt",
+          "version": "repo-file-v1:sha256:503330395edae8c124697d54fbb49c50a967e2b159420e4530e8ecb7bee71097"
+        }
+      ]
+    },
+    {
+      "id": "claim_758849258bfc4a869cd4b12b941be8d5",
+      "statement": "Lifecycle inspection defers native project readiness while the existing refresh owner reports active MODEL_RELOAD, preserving Pending without granting readiness.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleProjectInspection.kt#L18-L34",
+          "version": "repo-lines-v1:sha256:e7af4bb7665c38a041fd0dc1625f093495327cb164a78b4a93669918a3210534:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmODk3MTg5ZjFkNGU3MDZkZWJkNDZjZGY4ZTU0MWRiMzM3NDVhMzE4Yjk1ODJmMWI4OGViOGI3MDI0Nzg3ODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmOGYyYjBmNTkwNTkxOTk3NGRjZTZkMzU3YWIwYjhhM2QwNTk5MTk4OWI1MGI5MDdkODQ0OTk5NDk0YzkwYjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNGY2ZTMyNDAxZTc0YzczODE0NmI1ZWQ5ZGY2YWM4N2Y5OWU1ZTY4NmNjZTgzZDZhZjViN2EyZjRjYjk1YmMifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleProjectReadinessObservationTest.kt",
+          "version": "repo-file-v1:sha256:508f692ef7b2906796a69f8d36ca44e855dd57b0830fb1978aa4cb62f346cbd1"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T23:47:48.767Z"
+    "at": "2026-11-06T05:26:56.646Z"
   }
 }
