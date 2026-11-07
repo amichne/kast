@@ -8,9 +8,8 @@ import tarfile
 from pathlib import Path
 from typing import BinaryIO
 
-import pytest
-
 import dev_container
+import pytest
 from dev_container import (
     Architecture,
     Rejected,

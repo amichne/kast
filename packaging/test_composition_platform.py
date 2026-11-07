@@ -3,7 +3,6 @@
 from dataclasses import asdict
 
 import pytest
-
 from composed_bundle import BundleManifest, BundleRejected, read_manifest
 from composition_platform import HostPlatform, UnsupportedHost, host_platform
 from test_composition_bundle import manifest_bytes

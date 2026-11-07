@@ -76,8 +76,16 @@ class Workspace:
     name: str
 
 
+def object_fields(value: object) -> TypeGuard[dict[object, object]]:
+    return isinstance(value, dict)
+
+
 def fields(value: object) -> TypeGuard[dict[str, object]]:
-    return isinstance(value, dict) and all(isinstance(key, str) for key in value)
+    return object_fields(value) and all(isinstance(key, str) for key in value)
+
+
+def elements(value: object) -> TypeGuard[list[object]]:
+    return isinstance(value, list)
 
 
 def native_architecture(machine: str) -> Architecture | Rejected:
@@ -228,7 +236,7 @@ def image_identity(runtime: Runtime) -> str | Rejected:
     if not listing.stdout.strip():
         return Rejected(Failure.MISSING_IMAGE, "Run kast-container build")
     raw = observe(runtime, ["image", "inspect", runtime.image])
-    if not isinstance(raw, list) or len(raw) != 1 or not fields(raw[0]):
+    if not elements(raw) or len(raw) != 1 or not fields(raw[0]):
         return Rejected(Failure.INVALID_IMAGE, "Run kast-container build")
     image = raw[0]
     config = image.get("Config")
@@ -435,7 +443,7 @@ def open_workspace(
     if observed.stdout.strip() != workspace.name.encode():
         return Rejected(Failure.INVALID_OBSERVATION, "workspace name")
     raw = observe(runtime, ["container", "inspect", workspace.name])
-    if not isinstance(raw, list) or len(raw) != 1 or not fields(raw[0]):
+    if not elements(raw) or len(raw) != 1 or not fields(raw[0]):
         return Rejected(Failure.INVALID_OBSERVATION, "container inspection")
     container = raw[0]
     host = container.get("HostConfig")
