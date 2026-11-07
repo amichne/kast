@@ -10,6 +10,14 @@ plugins {
 }
 
 val repositoryRoot = project.isolated.rootProject.projectDirectory
+val nativeBuildMetricsReports =
+    providers
+        .gradleProperty("kastNativeBuildMetrics")
+        .map { enabled ->
+            if (enabled.toBooleanStrict()) listOf(repositoryRoot.file("build/reports/native/build-output.json"))
+            else emptyList()
+        }
+        .orElse(emptyList())
 
 val jqEngineMetadata =
     tasks.register<WriteProperties>("jqEngineMetadata") {
@@ -46,6 +54,17 @@ graalvmNative {
             sharedLibrary.set(false)
             fallback.set(false)
             buildArgs.addAll(
+                nativeBuildMetricsReports.map { reports ->
+                    reports.flatMap { report ->
+                        listOf(
+                            "-H:+UnlockExperimentalVMOptions",
+                            "-H:BuildOutputJSONFile=${report.asFile.absolutePath}",
+                            "-H:-UnlockExperimentalVMOptions",
+                        )
+                    }
+                }
+            )
+            buildArgs.addAll(
                 providers.fileContents(layout.projectDirectory.file("native-image.args")).asText.map {
                     it.lines().filter(String::isNotBlank)
                 }
@@ -59,6 +78,10 @@ graalvmNative {
             }
         }
     }
+}
+
+tasks.named<BuildNativeImageTask>("nativeCompile") {
+    outputs.files(nativeBuildMetricsReports)
 }
 
 val importedNativeExecutable = providers.gradleProperty("kastNativeExecutable")
