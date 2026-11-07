@@ -5933,7 +5933,7 @@
         },
         {
           "path": "cli/build.gradle.kts",
-          "sha256": "d31ae1e1069157e9210b4a304c3d6f8bcad56d5305574448535b9f82ad8e2381"
+          "sha256": "3fdba09274f861814014570a7d58632f3dcc28e94e6938c4651a4f0d7f7c3016"
         },
         {
           "path": "cli/native-image.args",
@@ -6092,7 +6092,7 @@
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "12f6de8e530bf704d63fecbdcbc4dd5c9c91ccd7"
+      "reviewedSourceRevision": "d65f3fc122d5c95af996360d4710c1a06b499ff8"
     },
     {
       "route": "reference/compatibility",

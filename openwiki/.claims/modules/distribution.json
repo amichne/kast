@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b0ee09b40b983a3a068e565b645a77947f287da89266acecc2e168530b5a5023",
+  "pageVersion": "sha256:b8e0995b3697d17dc10563197dc75cd0d51cee6a7344718620af16d5baff549f",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -266,7 +266,7 @@
       "evidence": [
         {
           "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:d31ae1e1069157e9210b4a304c3d6f8bcad56d5305574448535b9f82ad8e2381"
+          "version": "repo-file-v1:sha256:3fdba09274f861814014570a7d58632f3dcc28e94e6938c4651a4f0d7f7c3016"
         },
         {
           "resource": "repo://cli/src/main/native-launchers/bin/kast",
@@ -611,6 +611,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T22:26:46.446Z"
+    "at": "2026-11-07T06:23:53.865Z"
   }
 }
