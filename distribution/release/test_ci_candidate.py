@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+from typing import Literal
 import unittest
 
 
@@ -32,6 +33,113 @@ VERSION = "0.44.4"
 class ArchiveProperty:
     name: str
     value: str
+
+
+@dataclass(frozen=True)
+class CandidateMetadata:
+    properties: tuple[ArchiveProperty, ...]
+
+
+@dataclass(frozen=True)
+class CandidateSbom:
+    metadata: CandidateMetadata
+    bomFormat: Literal["CycloneDX"] = "CycloneDX"
+
+
+class SelectedHostInventoryTest(unittest.TestCase):
+    # These literal names are the producer's independent 262/263 record contract.
+    INVENTORIES = (
+        (
+            "262",
+            (f"kast-ide-hosted-v{VERSION}-idea-262.zip",),
+            (f"kast-host-release-v{VERSION}.json",),
+        ),
+        (
+            "263",
+            (f"kast-ide-hosted-v{VERSION}-idea-263.zip",),
+            (f"kast-host-release-v{VERSION}-idea-263.json",),
+        ),
+        (
+            "paired",
+            (
+                f"kast-ide-hosted-v{VERSION}-idea-262.zip",
+                f"kast-ide-hosted-v{VERSION}-idea-263.zip",
+            ),
+            (
+                f"kast-host-release-v{VERSION}.json",
+                f"kast-host-release-v{VERSION}-idea-263.json",
+            ),
+        ),
+    )
+
+    @staticmethod
+    def materialize(directory: Path, plugins: tuple[str, ...], records: tuple[str, ...]) -> None:
+        archives = (
+            f"kast-control-v{VERSION}-macos-aarch64.tar.gz",
+            *plugins,
+            f"kast-plugin-v{VERSION}.zip",
+            f"kast-marketplace-v{VERSION}.zip",
+        )
+        sbom_name = f"kast-sbom-v{VERSION}.cdx.json"
+        names = archives + (
+            f"kast-control-release-v{VERSION}.json",
+            *records,
+            "host-installation.py",
+            f"kast-hosted-catalog-v{VERSION}.json",
+            f"kast-module-knowledge-v{VERSION}.json",
+            sbom_name,
+        )
+        for name in names[:-1]:
+            (directory / name).write_bytes(name.encode())
+        properties = (ArchiveProperty("kast:source-revision", REVISION),) + tuple(
+            ArchiveProperty(f"kast:archive:{name}", f"sha256:{candidate.digest(directory / name)}")
+            for name in archives
+        )
+        (directory / sbom_name).write_text(
+            json.dumps(asdict(CandidateSbom(CandidateMetadata(properties))))
+        )
+        for name in names:
+            (directory / f"{name}.sha256").write_text(
+                f"{candidate.digest(directory / name)}  {name}\n"
+            )
+
+    def test_each_produced_host_inventory_is_admitted(self) -> None:
+        for label, plugins, records in self.INVENTORIES:
+            with self.subTest(hosts=label), tempfile.TemporaryDirectory() as temporary:
+                directory = Path(temporary)
+                self.materialize(directory, plugins, records)
+                candidate.validate(directory, VERSION, REVISION)
+
+    def test_263_cannot_substitute_a_checksummed_generic_262_record(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            self.materialize(
+                directory,
+                (f"kast-ide-hosted-v{VERSION}-idea-263.zip",),
+                (f"kast-host-release-v{VERSION}.json",),
+            )
+            with self.assertRaisesRegex(candidate.CandidateError, "inventory"):
+                candidate.validate(directory, VERSION, REVISION)
+
+    def test_each_selected_record_is_required_and_its_checksum_remains_binding(self) -> None:
+        for label, plugins, records in self.INVENTORIES:
+            for record in records:
+                for mutation in ("missing-record", "missing-checksum", "changed-record"):
+                    with (
+                        self.subTest(hosts=label, record=record, mutation=mutation),
+                        tempfile.TemporaryDirectory() as temporary,
+                    ):
+                        directory = Path(temporary)
+                        self.materialize(directory, plugins, records)
+                        if mutation == "missing-record":
+                            (directory / record).unlink()
+                        elif mutation == "missing-checksum":
+                            (directory / f"{record}.sha256").unlink()
+                        else:
+                            (directory / record).write_bytes(b"changed selected record")
+                        reason = "checksum" if mutation == "changed-record" else "inventory"
+                        with self.assertRaisesRegex(candidate.CandidateError, reason):
+                            candidate.validate(directory, VERSION, REVISION)
 
 
 class CiCandidateTest(unittest.TestCase):

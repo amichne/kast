@@ -138,16 +138,20 @@ def validate(directory: Path, version: str, revision: str) -> None:
         f"kast-plugin-v{version}.zip",
         f"kast-marketplace-v{version}.zip",
     )
+    host_records = tuple(
+        f"kast-host-release-v{version}"
+        + ("-idea-263" if path.name == f"kast-ide-hosted-v{version}-idea-263.zip" else "")
+        + ".json"
+        for path in plugins
+    )
     base_names = archives + (
         f"kast-control-release-v{version}.json",
-        f"kast-host-release-v{version}.json",
+        *host_records,
         "host-installation.py",
         f"kast-hosted-catalog-v{version}.json",
         f"kast-module-knowledge-v{version}.json",
         f"kast-sbom-v{version}.cdx.json",
     )
-    if len(plugins) == 2:
-        base_names += (f"kast-host-release-v{version}-idea-263.json",)
     expected = set(base_names) | {name + ".sha256" for name in base_names}
     observed = {file.name for file in directory.iterdir()}
     if observed != expected:
