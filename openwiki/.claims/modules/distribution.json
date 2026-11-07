@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b8e0995b3697d17dc10563197dc75cd0d51cee6a7344718620af16d5baff549f",
+  "pageVersion": "sha256:bbbd382e1eec50e69ded1214455e107dae13f8e22382ca393f4d5832cd5d62bd",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -79,7 +79,7 @@
           "version": "repo-lines-v1:sha256:1f809cbe56fb43c60678bb4eae7c28529eb3d35c334884cafdf85acb755f73c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNGU0NWUyOWRhNjc2ZGM0MDVkODNiN2Q2MDVjMjE0MmRjYTZhZjU0N2NmNDVhMzZkM2JlY2NlNDE2NDQ0MTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOTgwZTUxYjM3MTQzYjdmMjhlN2M1ZmVkMzIxYzcxYjhiNjIyYzdiZjc4ZmFiMWUzMzg3NWNmMWVkZjU2OTUifQ"
         },
         {
-          "resource": "repo://build.gradle.kts#L232-L270",
+          "resource": "repo://build.gradle.kts#L235-L273",
           "version": "repo-lines-v1:sha256:64d31b63bafcae0d3882982679ca4a806d4b79df6159b4913d0e93046927a286:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZThlNDk0NDUxZmQ4OTQ2YWZhNDU2NWVmNmYwYjJkYjQ4MzU1MjYyNjA2N2Y3NDdhYjlkMDJhMTA3ZmQ3MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxOWQyZTA0ZGIwYzViYWUyMjVlYzllOGY0MDgzN2U3OGQwZmIxYmQ2YzViMmQ0ZGQxOTkxNDAzN2I1Mzk3OGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhZjU1Y2ExMjEzYzlmNzQxYzc4ODNiNTJmMDhhNmExYTZkYjFhM2Y3YWNlMGY2MmZkOThlZjU3Y2RlODQzMTMifQ"
         },
         {
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:f37016858beffadb75fb23ff80e7af29f00b7a2f784ea5c238be8f39a463dd46"
+          "version": "repo-file-v1:sha256:d56eec2730ea1d1a44b014dac0498af3e0853fe96aae4c3b97a433a5fa0227d7"
         },
         {
           "resource": "repo://packaging/test-installer-removal.py",
@@ -161,7 +161,7 @@
       "statement": "Assembled-product acceptance stages production Control in an owned HOME, verifies canonical cold staging and publication, then stages the receipted Host, creates an empty canonical mutation database and invokes the real published native uninstall, requiring owned Host, Control, public executable and user-state removal while preserving an unrelated sentinel; it does not establish live IDE or Codex behavior.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L328-L350",
+          "resource": "repo://build.gradle.kts#L331-L353",
           "version": "repo-lines-v1:sha256:3a885e91346a1f2e79d957ca95bc3d7ca8de9d6935ccf39dae3b65f9e1c195f5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNWI1MjU5ODlhYmEzZTYxMjE2ZWNkOWZlMzBhNmRkNzZjZDI0NWQ5YjE5ODcxM2U3ZDUwOGZlZTgwNjk3YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3NTU4ZjJjYmFjMWVmNzhlZjE3ZDliYzY4ZjdlYWE3NTY0MDJhYzJmZTA5NThmMmJlYWYxZDIxZTE4NWJmYWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzOTIxNDZjMjFkN2EzOGZjNjNkNWM4Y2RlODFhMmVjYTc2MGQxNmE4Y2Q5MDg2OWYyODc3ZDFkZTBlNjM3YjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYwMTMxZDNlNWIyYWJjZGY5ODE2ZjI1MDI0NTlhYWQyZjBmNDlhNGIyOGFlNDQ0NWZmMmIwNzEzZGE0NzkyMjQifQ"
         },
         {
@@ -252,11 +252,11 @@
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:f37016858beffadb75fb23ff80e7af29f00b7a2f784ea5c238be8f39a463dd46"
+          "version": "repo-file-v1:sha256:d56eec2730ea1d1a44b014dac0498af3e0853fe96aae4c3b97a433a5fa0227d7"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:fe31231e86557517d7e643be371fb34d46326852f8307b9aedfae062d63c20f5"
+          "version": "repo-file-v1:sha256:8e89f03c991dcc51911247bf929db691acc950a633b6c82bc7e44367f544411b"
         }
       ]
     },
@@ -489,8 +489,8 @@
           "version": "repo-file-v1:sha256:457d982edd85feb5d02e6f4124448a143866e6c461d54820197ea48f8f0780e2"
         },
         {
-          "resource": "repo://distribution/release/test_run_product_gate.py#L95-L234",
-          "version": "repo-lines-v1:sha256:c15baedbf92a1cd5547716181cf47b4dcead511c3feed3ec699dfb77d4264b08:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlY2JiNjA4MWIyZGU2NWY5ZjJlYjFiYWZhYmRhMzg1ZGZhYWNlYTZlZTliODQ1ZTBlNDY3YjI0Yzg3NjhjMjU1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJhYzdkODEzZTAxZTAyODMwOGY1MGVmNzBiMjNjMGYyYTBlOGEzNGU0NGZjYzFiNWMwNTdlMDFlNTM4MDcwMDJhIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkNTUxOTE1MGQxMjZmOTI1YWY2MTNkOTQ1NDFkODMzYTZjNmRhNjA3YzM4NTA5MzJjZmU1OWEwNDY1MjlhMTAyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzY2VhOWUyNWZmOWY1MWQxNjdhNzFlMWJjNDY0ZTY5OWY2NTY4NTBmN2YzODM5OGQyMTYyZWUyMTk2YzBlNjY3In0"
+          "resource": "repo://distribution/release/test_run_product_gate.py#L95-L225",
+          "version": "repo-lines-v1:sha256:1cebaa5985c893b4f95580371de087b73edbfaf881fd33352cf9982813ec9370:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlY2JiNjA4MWIyZGU2NWY5ZjJlYjFiYWZhYmRhMzg1ZGZhYWNlYTZlZTliODQ1ZTBlNDY3YjI0Yzg3NjhjMjU1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIyNTIyNWNmMWFjZTVmZThlZDEwNzI0YTA5OTc3MjZlNDcwODk1MzY2ODZhMWUyZTc3NGQ2NmNhZGYwOWIxM2Y1IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkNTUxOTE1MGQxMjZmOTI1YWY2MTNkOTQ1NDFkODMzYTZjNmRhNjA3YzM4NTA5MzJjZmU1OWEwNDY1MjlhMTAyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzZDQxMzQwY2MyMzlhMTU5Y2U5YjYwMjJlOWY2MzIyODMyZTJlYWQ3NmNhZTllNDc1NGQyMTBlYjhmYjZkNWU4In0"
         }
       ]
     },
@@ -607,10 +607,28 @@
           "version": "repo-lines-v1:sha256:f7b953a6ea3ff19a23bc9edab436e771ae302989c7514823569f5f5820ee881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MWVhZWZmMDczZGYwYTFiYjI1ZTYzODllMGEyN2QxYTQxNWRjZDhkOGJjOGYxY2E5MDQ3NjJiNWQ3NzM3OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDJmZWE4MjFlNjZiYjIzODFhZTc4MzMyNTllYmU0NTcyZWFlYmViNjNiNmI5M2NkZWQzYWVkY2FkNzRlYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_79810330934d4264a2a2e271854d4129",
+      "statement": "The automatic Kast push gate and installer are retired. Existing Kast dispatchers permit pushes without local qualification, while the manual fast_checks.py pre-push sequence keeps cheap checks before the local product gate.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/fast_checks.py#L174-L182",
+          "version": "repo-lines-v1:sha256:ece63b2942831222dc869d9c128c2c8d47d18224483ebea2193da58f2b6a9168:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2YyNzVjNDk2N2E4YzZkYmJkYzBkZGM1MTc4YTczNjdlNjg5ODZjZjg3NTVjN2MwMzYxN2VhNGViNTRkOGU2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2NhZjg0MDBhNzU3OTMzYzhiMDdhZGIxZDM3MDc5MTA5YmY2MjYyMDUxZWI5NGM5MzBjNWNjMmNiNDA2ZjgxZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjVmNDIxYmUyYmJjYjkxMGZiZmQ1M2M2ZjkxNmU4ZGNjN2M4YThkZmFkNjMwZjg2OWM2Y2E1MDc4NmJmN2ZmZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZThmZTNkMTgyYzQyYWRmODRhMTdhMzFmODcwOThhODNjN2FhMmMxYWZhZjQ4OGM1M2ViZGU3ZDM1ZmZlZDk3YiJ9"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/test_push_policy.py",
+          "version": "repo-file-v1:sha256:ae5d47d61b60e49428399ed33cd79d18d99dd436809be7a33291c75ddbae1b54"
+        },
+        {
+          "resource": "repo://docs/development.md#L262-L281",
+          "version": "repo-lines-v1:sha256:c4f6ae46aa27af919ed70dd6b2e3c5bad7f6189f1d8bf364e51ad3f76f71c424:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwZjVjOTNhNThjODQyNmUwYzQ3ODUwNzk3ZmQxY2I1ZjkyZGJkOWU1MmUxOWUyZTU1MTE1NzFhY2E3ZWZmMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY4NGE4YTNhZTFlY2U5NmQzZGI2YjY0MmNhNTNkMGU0MGI0MTM0NWQ3ZjJiZDY4NTAxMGZkNjRjNjk5YzMwYzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjZGVjNzFlODMzMjdkNGQ2NWNkMGJjMWU3ZDBiMDEzMzAwY2IzNjBlNzkyMjdlZTc4ZjBlNjExMzlhMmMwMzcifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-07T06:23:53.865Z"
+    "at": "2026-11-07T21:20:33.234Z"
   }
 }

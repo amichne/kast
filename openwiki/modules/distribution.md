@@ -203,7 +203,7 @@ code_sources:
   - path: .github/scripts/ci/validation_outcome.py
   - path: .github/scripts/ci/test_validation_outcome.py
   - path: .github/scripts/ci/verify-checks.py
-  - path: .githooks/pre-push
+  - path: .github/scripts/ci/test_push_policy.py
   - path: distribution/release/plugin-release.gradle.kts
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
     symbols:
@@ -243,6 +243,8 @@ code_sources:
 sources:
   - id: openwiki-source-3b28c686cbf92ac682eb5142
     resource: repo://.github/scripts/ci/build_execution.py
+  - id: openwiki-source-0e96c1b9a971eb3f67a64455
+    resource: repo://.github/scripts/ci/fast_checks.py
   - id: openwiki-source-970d1a886c7a46d7b0335a81
     resource: repo://.github/scripts/ci/gradle_diagnostics.py
   - id: openwiki-source-d09e57e512e655a9f4013dba
@@ -255,6 +257,8 @@ sources:
     resource: repo://.github/scripts/ci/routine_gate.py
   - id: openwiki-source-eaec0145ee5bcb15fda00e9c
     resource: repo://.github/scripts/ci/source_validation.py
+  - id: openwiki-source-5830aecb2b5f6a16093ed507
+    resource: repo://.github/scripts/ci/test_push_policy.py
   - id: openwiki-source-d7f5bb97a65625ecdf33ddcf
     resource: repo://.github/scripts/ci/test_routine_gate.py
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
@@ -331,6 +335,8 @@ sources:
     resource: repo://distribution/release/run_product_gate.py
   - id: openwiki-source-eb5e76c5c52dc1f7704250ce
     resource: repo://distribution/release/test_run_product_gate.py
+  - id: openwiki-source-70991026f1538e8215a8789e
+    resource: repo://docs/development.md
   - id: openwiki-source-a27a8f11a4689cb821b5f6e8
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
   - id: openwiki-source-03ffc32a0ca502ab67c54b25
@@ -359,10 +365,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
+generated: { by: "codex", at: "2026-11-07T21:20:33.234Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-07T06:23:53.865Z
+    at: 2026-11-07T21:20:33.234Z
 ---
 
 # Distribution and packaging
@@ -437,7 +443,11 @@ Installer examples, generated schemas, scripts, build configuration, protected p
 The completion job requires every selected job to succeed and every excluded job to be skipped.
 It then seals a validation record with the exact source revision, source tree, comparison base, event, and producer run identities.
 One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run number>`.
-Local pre-push qualification uses version `0.0.0` with a `LOCAL_VALIDATION` record.
+Git pushes start no automatic Kast qualification.
+The repository hook and its installer are retired.
+Existing Kast dispatchers remain inert, and foreign hooks keep their own behavior.
+The manual `fast_checks.py pre-push` sequence keeps cheap checks before the local product gate.
+Manual local qualification uses version `0.0.0` with a `LOCAL_VALIDATION` record.
 The full source commit and tree identify the checkout; no published release label is selected.
 The wrapper sets source, Control, and Host versions and passes the admitted source revision.
 Clean source is checked before execution and again after Gradle succeeds.

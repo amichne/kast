@@ -16,6 +16,12 @@ code_sources:
 - path: .github/workflows/ci.yml
 - path: experiments/host-observation/ACCEPTANCE.md
 sources:
+  - id: openwiki-source-0e96c1b9a971eb3f67a64455
+    resource: repo://.github/scripts/ci/fast_checks.py
+  - id: openwiki-source-5830aecb2b5f6a16093ed507
+    resource: repo://.github/scripts/ci/test_push_policy.py
+  - id: openwiki-source-164e2da859b5277df81c7d94
+    resource: repo://.github/workflows/ci.yml
   - id: openwiki-source-70991026f1538e8215a8789e
     resource: repo://docs/development.md
   - id: openwiki-source-553a1d23cddbdd6ecdb69f5d
@@ -26,10 +32,10 @@ sources:
     resource: repo://runtime/hosted/NATIVE_FIXTURES.md
   - id: openwiki-source-af72e3368d1f0c22109e4ecf
     resource: repo://runtime/hosted/native/README.md
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "codex", at: "2026-11-07T21:20:33.234Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-03T05:07:02.262Z
+    at: 2026-11-07T21:20:33.234Z
 ---
 
 # Tests and native qualification
@@ -59,6 +65,15 @@ An adverse operation can still emit legitimate stage or transition evidence.
 The assertion must distinguish that evidence from a forbidden external effect.
 Use a controlled callback or scheduler when the behavior consumes that transition.
 Do not use sleep or a race to manufacture a timeout.
+
+## Choose local qualification explicitly
+
+Git pushes start no automatic Kast checks.
+The retired hook installer no longer supplies a repository hook.
+Existing Kast dispatchers remain inert, and foreign hooks keep their own behavior.
+The manual `fast_checks.py pre-push` command still runs cheap checks before complete local product qualification.
+CI selects checks for pull requests and main.
+A successful push supplies no qualification evidence.
 
 ## Native and installed evidence
 

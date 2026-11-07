@@ -187,8 +187,10 @@ actionlint .github/workflows/ci.yml .github/workflows/docs.yml .github/workflows
 decisions, candidate rules, release preflight suites, and portable packaging tests.
 It accepts an uncommitted tree and stops at the first failed stage.
 CI runs its `decisions` mode before scope selection; the separate portable job
-retains the Linux container boundary. Pre-push uses its `pre-push` mode, which
-adds the unchanged full product gate only after every cheap stage passes.
+retains the Linux container boundary. The manual `pre-push` mode adds the full
+product gate only after every cheap stage passes. Git pushes start no local checks.
+The repository hook and its installer are retired. Existing Kast dispatchers remain inert.
+Foreign hooks keep their own behavior. CI still selects checks for pull requests and main.
 
 Use uv 0.12.9 or newer. The script locks its dependencies and selects Python 3.12.
 Initial environment provisioning can use the network. Test execution uses private

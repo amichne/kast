@@ -179,7 +179,7 @@ Source, policy, tool, environment, and report changes rerun their consumers.
 Failed commands preserve their diagnostics and remain failures on later invocations.
 
 The scoped loop supplies local evidence for selected owners.
-Before a push, the existing hook still runs the full product gate on the committed source.
+Pushes start no automatic local checks. CI selects checks for pull requests and main.
 Live installation and release-catalog reads keep their existing freshness rules.
 
 Run all offline packaging suites in an isolated Linux container with:
@@ -259,27 +259,25 @@ Gradle provisions the pinned Python dependencies for its schema tests in
 `build/python-tests/env`. The build does not depend on the active shell's Python
 packages or the interpreter search path retained by an existing Gradle daemon.
 
-Install the repository's pre-push gate once per Git clone. It preserves other
-hooks and requires a clean checked-out commit before a push. Pre-push runs the
-cheap checks first, then the existing `productBuildGate` through `mise`.
-A cheap failure stops before release-catalog access or Gradle configuration.
-After cheap checks pass, the product gate fetches the published GitHub release
-catalog and builds with the highest stable semantic version.
-It requires authenticated `gh` access and fails if the catalog is unavailable or
-has no published stable version. Local tags and a previous gate run cannot supply
-a fallback:
+Kast supplies no automatic pre-push gate or hook installer.
+An existing `kast-pre-push-dispatch` hook remains inert because its repository target no longer exists.
+Foreign hooks keep their own behavior.
+Pushes can contain committed references while the checkout contains uncommitted work.
+CI selects source, native product, portable packaging, and documentation checks for pull requests and main.
+This policy removes local qualification before publication. A push alone supplies no qualification evidence.
+
+For complete local qualification, run the existing manual sequence:
 
 ```shell
-./.githooks/install.sh
-# Run cheap checks followed by the full product gate manually:
 mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py pre-push
 ```
 
-The manual command does not enforce the hook's clean-tree or pushed-HEAD checks.
-The wrapper logs the selected release version before starting Gradle. It builds
-the current checkout with that version; it does not download or validate released
-binaries. Exact release-candidate builds continue to pass their intended version
-explicitly.
+The `pre-push` mode remains a manual command for compatibility.
+It runs the cheap checks before `productBuildGate` and stops at the first failure.
+The product gate needs a clean committed checkout and uses local version `0.0.0`.
+Its receipt binds the result to the source revision and source tree.
+It does not qualify a published release or need a release-catalog query.
+Exact release-candidate procedures keep their explicit versions and separate qualification.
 
 ## CI candidates and developer publication
 
