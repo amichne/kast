@@ -1,12 +1,21 @@
 ---
 type: Module Guide
 title: "Kast packaging"
-description: "Owns installer adapters, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts."
+description: "Owns installer adapters, development containers, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts."
 resource: "repo://packaging"
 tags: [kast, navigation]
-timestamp: "2026-11-06T17:00:00Z"
-source_revision: 13d0ce4b2c41ad781b88b7e1ba9c2c0624df7c04
+timestamp: "2026-11-07T19:51:31Z"
+source_revision: 08bc4e75693a260c1bfe0ffaad667800934cc0ed
 code_sources:
+  - path: bin/kast-container
+  - path: packaging/dev_container.py
+  - path: packaging/container_compile.py
+  - path: packaging/container_install.py
+  - path: packaging/container/Dockerfile
+  - path: packaging/container/compiler.Dockerfile
+  - path: packaging/container/kastbox
+  - path: packaging/test_dev_container.py
+  - path: packaging/test_composition_platform.py
   - path: bin/setup-kast
   - path: bin/kast-task-vm
   - path: packaging/task_vm.py
@@ -40,13 +49,13 @@ code_sources:
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
-<!-- generated: 2026-11-06 | hash: 24ca17b0452d -->
+<!-- generated: 2026-11-07 | hash: ce2893d75164 -->
 
 # packaging
 
 ## Purpose
 
-Owns installer adapters, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts.
+Owns installer adapters, development containers, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts.
 
 ## Key Files
 
@@ -58,7 +67,10 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - [composed_bundle.py](composed_bundle.py) - authenticated portable setup bundles and installer dispatch.
 - [task_vm.py](task_vm.py) - offline macOS ARM task coordination through Tart.
 - [task_vm_guest.py](task_vm_guest.py) - the shared installer and literal task process inside the guest.
-- [composition_platform.py](composition_platform.py) - pinned donor and layout selection for macOS ARM and Linux x86_64.
+- [composition_platform.py](composition_platform.py) - pinned donor and layout selection for macOS ARM, Linux ARM64, and Linux x86_64.
+- [dev_container.py](dev_container.py) - native image builds and persistent repository copies in a dedicated Colima VM.
+- [container_compile.py](container_compile.py) - native Control compilation with digest-pinned GraalVM.
+- [container_install.py](container_install.py) - native donor admission and composition through the shared installer.
 - [composition_recipe.py](composition_recipe.py) - pinned roots and plugin provider candidates.
 - [composed_host_probe.py](composed_host_probe.py) - native callers, Java references, and result rejection.
 - [installation-lifecycle.py](installation-lifecycle.py) - selected-installation retirement and removal.
@@ -69,6 +81,7 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 
 ## Subdirectories
 
+- [container/](container/README.md) - development image definitions, the `kastbox` shell adapter, and usage instructions.
 - [topology/](topology/) - explicit Git byte attribution for supplied historical paths.
 
 ## Entry Points
@@ -78,7 +91,9 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - Candidate admission reads `managed-install-v1`, component manifests, and immutable selected assets before active installation effects.
 - For offline packaging tests, run `python3 packaging/run-portable-tests.py` from the repository root.
 - For managed and composition cases, run `mise exec -- uv run --locked --project packaging pytest packaging -q`.
-- The portable runner selects `test-*.py`. The project command also selects `test_composition_*.py`.
+- The portable runner selects `test-*.py`. The project command also selects `test_composition_*.py` and `test_dev_container.py`.
+- For container policy and shell adapter cases, run `mise exec -- uv run --locked --project packaging pytest packaging/test_dev_container.py packaging/test_composition_platform.py -q`. These cases do not prove native compiler behavior.
+- `mise exec -- kast-container --help` describes native development containers. The [container guide](container/README.md) covers prerequisites and the separate image build.
 - Read the [composition review](../docs/reviews/composed-analysis-host.md) for donor inputs, assembly commands, and native evidence limits.
 - The Gradle task `installedProductTest` exercises the assembled product.
 - Native reset scripts need the disposable installation setup stated in their own arguments and documentation.
@@ -90,7 +105,7 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 ## Navigation Hints
 
 - `install_prepared_runtime` owns the installer, bootstrap, private state, and wrapper for both assembly strategies.
-- The composed recipe supports pinned macOS ARM and Linux x86_64 donors. Keep vendor bytes unchanged and reject an existing destination.
+- The composed recipe supports pinned macOS ARM, Linux ARM64, and Linux x86_64 donors. Keep vendor bytes unchanged and reject an existing destination.
 - `bin/setup-kast` installs a digest-pinned Linux or macOS ARM bundle through `install_prepared_runtime`.
 - `mise exec -- kast-task-vm --help` describes disposable macOS ARM tasks. Read the [VM report](../docs/reviews/macos-task-vm.md) for the image contract and native gaps.
 - Bundle creation uses `python3 packaging/composed_bundle.py pack`. Read the [Linux install report](../docs/reviews/linux-composed-install.md) for its inputs.
@@ -98,6 +113,10 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - The native probe consumes a disposable fixture with explicit trust and a fresh evidence directory.
 - Add `composed-host-fixture-overlay` to the fixture copy. Keep the original callback fixture unchanged because its oracle admits exact source paths.
 - Assembly receipts carry no readiness proof. Native probe results cover only their stated corpus.
+- `bin/kast-container` delegates to `dev_container.py`. Keep its script lock beside the launcher. `packaging/uv.lock` owns the project test and tool dependencies.
+- The container builder selects explicit assembly modules from this directory. It reuses `install_prepared_runtime` through the existing donor and composition owners.
+- Docker images, Docker build caches, and copied workspaces stay in the dedicated Colima runtime. The launcher does not publish them or copy installed caches into source.
+- Keep repository edits inside the retained container copy until an explicit export. Network access is enabled by default; the container guide describes the isolation limits.
 
 - Managed Host replacement uses `prepare_managed`, `commit_managed`, `rollback_managed`, and `seal_managed` from `host-installation.py`.
 - `prepare_managed` stages and validates complete bytes before publishing its Host record paths.
@@ -114,7 +133,7 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - `managed_update_journal.py` owns shared recovery records. Keep it beside the offline recovery helper in the retained bundle.
 - Read the [candidate evidence guide](../docs/reviews/managed-installation-cli.md) before qualification or public rollout.
 
-- For a helper change, start with its corresponding `test-*.py` file and selected-installation rejection cases.
+- For a helper change, start with its focused tests and selected-installation rejection cases.
 - For generated syntax, change the authored schema and generator together, then examine generation parity.
 - Keep semantic rules in their Kotlin owners. Packaging tests do not establish live IDEA or Codex behavior.
 - Read the [root guide](../AGENTS.md) for engineering rules and optional OpenWiki retrieval.

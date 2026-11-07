@@ -1236,7 +1236,7 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             self.assertIn(str(selected), result.stderr)
             self.assertFalse(ignored.exists())
 
-    def linux_installer_fixture(self, directory):
+    def linux_installer_fixture(self, directory, architecture='x86_64'):
         idea, assets, environment = self.installer_fixture(directory)
         root = Path(directory)
         linux = root / 'Linux IDEA with spaces'
@@ -1248,10 +1248,11 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
         (linux / 'jbr/Contents/Home/release').rename(linux / 'jbr/release')
         (linux / 'jbr/Contents/Home').rmdir()
         (linux / 'jbr/Contents').rmdir()
-        (linux / 'jbr/release').write_text('JAVA_VERSION="25.0.1"\nOS_ARCH="amd64"\n')
-        (root / 'bin/uname').write_text('#!/bin/sh\ncase "$1" in -s) echo Linux ;; -m) echo x86_64 ;; *) exit 1 ;; esac\n')
+        jbr_arch = 'amd64' if architecture == 'x86_64' else 'aarch64'
+        (linux / 'jbr/release').write_text(f'JAVA_VERSION="25.0.1"\nOS_ARCH="{jbr_arch}"\n')
+        (root / 'bin/uname').write_text(f'#!/bin/sh\ncase "$1" in -s) echo Linux ;; -m) echo {architecture} ;; *) exit 1 ;; esac\n')
         for archive in assets.glob('*-macos-aarch64.tar.gz'):
-            selected = archive.with_name(archive.name.replace('macos-aarch64', 'linux-x86_64'))
+            selected = archive.with_name(archive.name.replace('macos-aarch64', f'linux-{architecture}'))
             archive.rename(selected)
             selected.with_name(selected.name + '.sha256').write_text(hashlib.sha256(selected.read_bytes()).hexdigest() + '  ' + selected.name + '\n')
         environment['XDG_DATA_HOME'] = str(Path(environment['HOME']) / '.local/share')
@@ -1265,6 +1266,20 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             self.assertEqual(0, result.returncode, result.stderr)
             expected = Path(environment['HOME']) / '.local/share/JetBrains/IntelliJIdea2026.2/plugins'
             self.assertIn('plugin-root=' + str(expected), result.stderr)
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_linux_arm64_fresh_plan_selects_native_archive_and_rejects_x86_jbr(self):
+        with tempfile.TemporaryDirectory(prefix='kast-installer-arm64-') as directory:
+            idea, _, environment = self.linux_installer_fixture(directory, 'aarch64')
+            command = [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run']
+            result = subprocess.run(command, cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            (idea / 'jbr/release').write_text('JAVA_VERSION="25.0.1"\nOS_ARCH="amd64"\n')
+            rejected = subprocess.run(command, cwd=ROOT, env=environment,
+                text=True, capture_output=True, timeout=10)
+            self.assertNotEqual(0, rejected.returncode)
+            self.assertIn('IDEA home is incompatible', rejected.stderr)
             self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
     def test_linux_replacement_control_upgrade_and_nondefault_profile_reject_before_assets(self):
@@ -1286,14 +1301,14 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
         with tempfile.TemporaryDirectory(prefix="kast-installer-os-") as directory:
             idea, _, environment = self.installer_fixture(directory)
             (Path(directory) / 'bin/uname').write_text(
-                '#!/bin/sh\ncase "$1" in -s) echo Linux ;; -m) echo aarch64 ;; *) exit 1 ;; esac\n'
+                '#!/bin/sh\ncase "$1" in -s) echo Linux ;; -m) echo riscv64 ;; *) exit 1 ;; esac\n'
             )
             result = subprocess.run(
                 [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run'],
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertNotEqual(0, result.returncode)
-            self.assertIn('supported platforms are macOS Apple silicon and Linux x86_64 local builds', result.stderr)
+            self.assertIn('supported platforms are macOS Apple silicon and Linux x86_64 or ARM64 local builds', result.stderr)
             self.assertFalse((Path(directory) / 'install').exists())
 
     def test_install_prepares_the_managed_payload_without_prompting(self):

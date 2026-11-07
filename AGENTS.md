@@ -4,9 +4,11 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-11-04T15:48:12Z"
-source_revision: e76c008f45cca6193a474aac08684b1f5206a7b3
+timestamp: "2026-11-07T19:51:31Z"
+source_revision: 08bc4e75693a260c1bfe0ffaad667800934cc0ed
 code_sources:
+  - path: bin/kast-container
+  - path: packaging/dev_container.py
   - path: build.gradle.kts
   - path: .github/scripts/ci/fast_checks.py
   - path: .vale.ini
@@ -81,6 +83,7 @@ This guide owns repository rules and routes source investigation.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
 - Composed setup: `mise exec -- uv run --locked --script bin/setup-kast --help`. The packaging owner supplies bundle admission and installation.
 - Disposable macOS ARM task: `mise exec -- kast-task-vm --help`. Read [the VM report](docs/reviews/macos-task-vm.md) for the offline image contract and evidence limits.
+- Native Linux development shell on macOS: `mise exec -- kast-container --help`. The [container guide](packaging/container/README.md) covers image builds, persistent repository copies, and the `kastbox` shell adapter. Packaging owns this local setup; it does not replace public installation.
 - Unified native entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt`.
 - Management commands: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
 - Public semantic entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.

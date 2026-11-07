@@ -3,11 +3,24 @@ import java.nio.file.Path
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertFalse
+import support.tasks.nativeQueryHeaderMatches
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import support.tasks.VerifyControlDistributionTask
 
 class VerifyControlDistributionTaskTest {
+    @Test
+    fun `Linux ARM64 requires a native AArch64 ELF rather than an x86 or Mach-O payload`() {
+        val arm = java.util.HexFormat.of().parseHex("7f454c460201010000000000000000000200b700")
+        val x86 = java.util.HexFormat.of().parseHex("7f454c4602010100000000000000000002003e00")
+        assertTrue(nativeQueryHeaderMatches(arm, "linux-aarch64"))
+        assertFalse(nativeQueryHeaderMatches(x86, "linux-aarch64"))
+        assertFalse(nativeQueryHeaderMatches(arm, "linux-x86_64"))
+        assertFalse(nativeQueryHeaderMatches(arm, "macos-aarch64"))
+    }
+
     @Test
     fun `control rejects a JVM library`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)

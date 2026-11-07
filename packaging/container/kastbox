@@ -1,0 +1,8 @@
+emulate -L zsh
+local checkout="${KAST_CONTAINER_CHECKOUT:-$HOME/code/kast}"
+if [[ ! -f "$checkout/bin/kast-container" ]]; then
+    print -u2 -- 'kastbox: set KAST_CONTAINER_CHECKOUT to your Kast checkout'
+    return 1
+fi
+KAST_CONTAINER_REPOSITORY="$PWD" command mise -C "$checkout" exec -- \
+    uv run --locked --script "$checkout/bin/kast-container" "$@"

@@ -1,0 +1,21 @@
+#!/usr/bin/env -S uv run --locked --script
+# /// script
+# requires-python = ">=3.12,<3.14"
+# dependencies = ["PyYAML==6.0.3"]
+# [tool.uv]
+# no-build = true
+# [[tool.uv.index]]
+# name = "pypi"
+# url = "https://pypi.org/simple"
+# default = true
+# ///
+"""Build and open native Kast development containers."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "packaging"))
+from dev_container import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -2,7 +2,7 @@
 name = "kast-managed-installation"
 version = "0.1.0"
 requires-python = ">=3.12,<3.14"
-dependencies = ["defusedxml==0.7.1", "types-defusedxml==0.7.0.20260504"]
+dependencies = ["defusedxml==0.7.1", "types-defusedxml==0.7.0.20260504", "PyYAML==6.0.3", "types-PyYAML==6.0.12.20250915"]
 
 [dependency-groups]
 dev = ["ruff==0.14.0", "pyright[nodejs]==1.1.407", "pytest==9.0.3"]
@@ -20,7 +20,7 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["../bin/kast-task-vm", "task_vm.py", "task_vm_guest.py", "test_composition_task_vm.py", "../bin/setup-kast", "composition_platform.py", "composed_bundle.py", "test_composition_bundle.py", "composed_host_probe.py", "test_composition_descriptors.py", "test_composition_host.py", "composed_host.py", "composition_descriptors.py", "composition_recipe.py", "composition_index.py", "test_composition_index.py", "composition_graph.py", "test_composition_graph.py", "managed_headless.py", "test-managed-headless.py", "managed_installation.py", "managed_release.py", "managed_update_journal.py", "managed_update_contract.py", "test-managed-installation.py", "test-managed-release.py", "test-managed-update-contract.py"]
+include = ["../bin/kast-container", "dev_container.py", "container_compile.py", "container_install.py", "test_dev_container.py", "test_composition_platform.py", "../bin/kast-task-vm", "task_vm.py", "task_vm_guest.py", "test_composition_task_vm.py", "../bin/setup-kast", "composition_platform.py", "composed_bundle.py", "test_composition_bundle.py", "composed_host_probe.py", "test_composition_descriptors.py", "test_composition_host.py", "composed_host.py", "composition_descriptors.py", "composition_recipe.py", "composition_index.py", "test_composition_index.py", "composition_graph.py", "test_composition_graph.py", "managed_headless.py", "test-managed-headless.py", "managed_installation.py", "managed_release.py", "managed_update_journal.py", "managed_update_contract.py", "test-managed-installation.py", "test-managed-release.py", "test-managed-update-contract.py"]
 extraPaths = ["."]
 reportUnusedCallResult = "error"
 reportMatchNotExhaustive = "error"
@@ -29,7 +29,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["../bin/kast-task-vm", "**/task_vm.py", "**/task_vm_guest.py", "**/test_composition_task_vm.py", "../bin/setup-kast", "**/composition_platform.py", "**/composed_bundle.py", "**/test_composition_bundle.py", "**/composed_host_probe.py", "**/test_composition_descriptors.py", "**/test_composition_host.py", "**/composed_host.py", "**/composition_descriptors.py", "**/composition_recipe.py", "**/composition_index.py", "**/test_composition_index.py", "**/composition_graph.py", "**/test_composition_graph.py", "**/managed_headless.py", "**/test-managed-headless.py", "**/managed_installation.py", "**/managed_release.py", "**/managed_update_journal.py", "**/managed_update_contract.py", "**/test-managed-installation.py", "**/test-managed-release.py", "**/test-managed-update-contract.py"]
+include = ["../bin/kast-container", "**/dev_container.py", "**/container_compile.py", "**/container_install.py", "**/test_dev_container.py", "**/test_composition_platform.py", "../bin/kast-task-vm", "**/task_vm.py", "**/task_vm_guest.py", "**/test_composition_task_vm.py", "../bin/setup-kast", "**/composition_platform.py", "**/composed_bundle.py", "**/test_composition_bundle.py", "**/composed_host_probe.py", "**/test_composition_descriptors.py", "**/test_composition_host.py", "**/composed_host.py", "**/composition_descriptors.py", "**/composition_recipe.py", "**/composition_index.py", "**/test_composition_index.py", "**/composition_graph.py", "**/test_composition_graph.py", "**/managed_headless.py", "**/test-managed-headless.py", "**/managed_installation.py", "**/managed_release.py", "**/managed_update_journal.py", "**/managed_update_contract.py", "**/test-managed-installation.py", "**/test-managed-release.py", "**/test-managed-update-contract.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -40,5 +40,5 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --import-mode=importlib -ra"
 pythonpath = ["."]
-python_files = ["test-managed-*.py", "test_composition_*.py"]
+python_files = ["test-managed-*.py", "test_composition_*.py", "test_dev_container.py"]
 testpaths = ["."]
