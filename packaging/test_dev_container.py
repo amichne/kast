@@ -257,6 +257,8 @@ def test_shell_adapter_preserves_repository_and_literal_arguments(tmp_path: Path
         "uv",
         "run",
         "--locked",
+        "--directory",
+        str(repository),
         "--script",
         str(checkout / "bin/kast-container"),
         "--",
@@ -266,9 +268,7 @@ def test_shell_adapter_preserves_repository_and_literal_arguments(tmp_path: Path
     ]
     stub = commands / "mise"
     _ = stub.write_text(
-        f"#!{sys.executable}\nimport os,sys\n"
-        f"assert sys.argv[1:] == {expected!r}, sys.argv\n"
-        f"assert os.environ['KAST_CONTAINER_REPOSITORY'] == {str(repository)!r}\n"
+        f"#!{sys.executable}\nimport sys\nassert sys.argv[1:] == {expected!r}, sys.argv\n"
     )
     stub.chmod(0o755)
     result = subprocess.run(

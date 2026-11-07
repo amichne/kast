@@ -634,7 +634,7 @@ def main() -> int:
     shell = commands.add_parser(
         "shell", help="Copy a repository once, then reopen its persistent development shell"
     )
-    default_repository = Path(os.environ.get("KAST_CONTAINER_REPOSITORY", str(Path.cwd())))
+    default_repository = Path.cwd()
     _ = shell.add_argument("--repository", type=Path, default=default_repository)
     _ = shell.add_argument("--offline", action="store_true", help="Disable the container network")
     _ = shell.add_argument("--cpus", type=int, choices=range(1, 9), default=4)
