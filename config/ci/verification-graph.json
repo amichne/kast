@@ -390,7 +390,7 @@
         },
         {
             "path": "cli/build.gradle.kts",
-            "sha256": "d31ae1e1069157e9210b4a304c3d6f8bcad56d5305574448535b9f82ad8e2381"
+            "sha256": "3fdba09274f861814014570a7d58632f3dcc28e94e6938c4651a4f0d7f7c3016"
         },
         {
             "path": "diagnostic/contract/build.gradle.kts",
