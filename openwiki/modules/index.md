@@ -2,7 +2,7 @@
 
 - [Verified module architecture](architecture.md) - Gradle verifies module roles, dependencies, exports, and scoped agent guidance before projecting module knowledge.
 - [Semantic change](change.md) - Supported source changes move through closed intent, pure planning, exact admission, application with external effects, verification, and recovery.
-- [Distribution and packaging](distribution.md) - Typed configuration and runtime identity contracts constrain managed installation effects, release assembly, and acceptance harnesses.
+- [Distribution and packaging](distribution.md) - Explains how installation owners and lifecycle controls compose Control and Host artifacts, and how candidate validation, release admission, and CI qualification govern distribution.
 - [Kernel](kernel.md) - Small shared types carry proof, published or live evidence, finite outcomes, validation, budgets, and observability capabilities.
 - [Protocol](protocol.md) - Canonical operation contracts are completed by an exact registry and projected into generated wire documents.
 - [Query protocol](query-protocol.md) - Shared semantic-read admission and projection bind canonical requests and detached references to an authority supplied by the owning host.

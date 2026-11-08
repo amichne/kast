@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b8e0995b3697d17dc10563197dc75cd0d51cee6a7344718620af16d5baff549f",
+  "pageVersion": "sha256:d4da2f2da014adefe58e25f24ba4f826f16e46e6500088de71f7a21fe57cab9f",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -314,7 +314,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
+          "version": "repo-file-v1:sha256:13b09025f14330e70aa96c6bc7d6df8eb98089ba04f9b8f3ede96eb390864897"
         }
       ]
     },
@@ -368,7 +368,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
+          "version": "repo-file-v1:sha256:13b09025f14330e70aa96c6bc7d6df8eb98089ba04f9b8f3ede96eb390864897"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
@@ -406,7 +406,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:c5c81c5a03b1da0f1e7071a5377a344f9e22e9442b944ae0544f0f1e61e03e37"
+          "version": "repo-file-v1:sha256:aea0bc438814f988e0a80636fea05eb3b13fa737252c153f8ed1daaa1e1b0265"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt",
@@ -446,7 +446,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:c5c81c5a03b1da0f1e7071a5377a344f9e22e9442b944ae0544f0f1e61e03e37"
+          "version": "repo-file-v1:sha256:aea0bc438814f988e0a80636fea05eb3b13fa737252c153f8ed1daaa1e1b0265"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt",
@@ -472,7 +472,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
+          "version": "repo-file-v1:sha256:13b09025f14330e70aa96c6bc7d6df8eb98089ba04f9b8f3ede96eb390864897"
         },
         {
           "resource": "repo://build.gradle.kts#L67-L88",
@@ -607,10 +607,32 @@
           "version": "repo-lines-v1:sha256:f7b953a6ea3ff19a23bc9edab436e771ae302989c7514823569f5f5820ee881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MWVhZWZmMDczZGYwYTFiYjI1ZTYzODllMGEyN2QxYTQxNWRjZDhkOGJjOGYxY2E5MDQ3NjJiNWQ3NzM3OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDJmZWE4MjFlNjZiYjIzODFhZTc4MzMyNTllYmU0NTcyZWFlYmViNjNiNmI5M2NkZWQzYWVkY2FkNzRlYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_fdb8f743bde14f9688b9dd630850aa42",
+      "statement": "Distribution composes independently owned Control and Host artifacts through installation owners; CI qualifies product bytes as a retained candidate, while release publication and developer promotion are separate admitted steps.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml#L238-L365",
+          "version": "repo-lines-v1:sha256:bc8499ebf7e3f9d0eeafab800039c6af6b22d3ca1c8df084aa0459471be9f0ab:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0OWVhZjYxODc2OWJkMTgwMDUwMWYyNTIzNGNkODA1NDcyMjgyODdjYzI3NTUyNDdiNmU3OTMyNGUzMTZiZDVkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJkOTJkMDZkZWQ0YWQ4OTQ3OTAzM2ZjZTBjMThhMTM0MzVjZGZjZWJkZjc5ZTNjY2ZiZTk0NTM5NzRkZjZmMTFlIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0ZGVjY2IxZmFjNDIwZTYzNTBiZjFkOThhYzI5MmFkMzJlNWM4ZjdlMjNjZjEyZDBhMDBjYzc4NGY5NWIxNTM2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzM2UyMTY3Y2U3NDQzZmExZGQ5MTgyMTdhNWUyM2JmYzZlYWQwZTZiMjM3MTQ1NWUyODcyMmYyZGM3YmNjOTk4In0"
+        },
+        {
+          "resource": "repo://.github/workflows/developer-release.yml",
+          "version": "repo-file-v1:sha256:33ae914c8711d44bab1cdc39f640ca4610ece54d75279332cae0aca5d0a009fb"
+        },
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt",
+          "version": "repo-file-v1:sha256:91dc7954fbb0e71d38b6c849f56736cbd8eea6f7e656b44c4e35d471f0faf9db"
+        },
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+        }
+      ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-07T06:23:53.865Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-08T22:20:55.770Z"
   }
 }

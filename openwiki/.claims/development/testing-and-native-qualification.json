@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6c716568a25dc4fe4bc8bd3b8b1069e3df7abd7a196cb12f9ea4e5b1e04df4dd",
+  "pageVersion": "sha256:5586aa8887d34f2950ecee4f78b10701980f5d47fbaa20930f2ac63c7046cd62",
   "claims": [
     {
       "id": "claim_b360f4c00a974d9fa3febbb40e81500c",
@@ -39,10 +39,74 @@
           "version": "repo-file-v1:sha256:fc247d569820f8ba286481b22f0f0e20ed0a4e775d1b891a51250eaa1ec189c9"
         }
       ]
+    },
+    {
+      "id": "claim_b2325031df97461c954f2251abf7f9c3",
+      "statement": "CI narrows validation only for explicitly classified, consistent diff inputs; uncertain or invalid selection inputs broaden to full checks, and affected plans are validated against source ownership and the resolved Gradle proof graph.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/routine_gate.py",
+          "version": "repo-file-v1:sha256:702aefea5f3d281680745144f5deb0f6292f6a4719f0937200961f9bfba4f228"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/validation_scope.py",
+          "version": "repo-file-v1:sha256:55e069c1304170ad0ce7e37986dabdc225be0e400bcedb9d6093873e79772363"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:13b09025f14330e70aa96c6bc7d6df8eb98089ba04f9b8f3ede96eb390864897"
+        },
+        {
+          "resource": "repo://config/ci/verification-graph.json",
+          "version": "repo-file-v1:sha256:588a8bc602314991c08cd04f4abeded2e5debcf4bebae1c6a0c379696fa7b8e5"
+        }
+      ]
+    },
+    {
+      "id": "claim_7e9b4be951cb48dc9176ab694bd54b2d",
+      "statement": "The CI native handoff binds compiled inputs and native outputs to source revision, tree, version, payload digest, platform, and toolchain identity, and rejects identity/payload mismatch or unsafe archives before assembly.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/native_handoff.py",
+          "version": "repo-file-v1:sha256:89cc86c4e5bc7abf75894d626e9e21ff871665e2794dbf761adf7bb04a769e7c"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:13b09025f14330e70aa96c6bc7d6df8eb98089ba04f9b8f3ede96eb390864897"
+        }
+      ]
+    },
+    {
+      "id": "claim_fd992822693a4ea9896241cf6988a050",
+      "statement": "The CI workflow separates source obligations, macOS native compilation, Linux release assembly, and assembled-product checks; artifact structural verification does not replace live host behavior checks.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:13b09025f14330e70aa96c6bc7d6df8eb98089ba04f9b8f3ede96eb390864897"
+        },
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
+          "version": "repo-file-v1:sha256:9e32a8f74d4343b6ad2c0714965cb8df2c3394eb9342c14de284b44b82b2a8e1"
+        }
+      ]
+    },
+    {
+      "id": "claim_239d8925f0174afba85b6952bb4b2f15",
+      "statement": "The portable packaging runner discovers all packaging test scripts, runs each with isolated owned home/temp/XDG state, and rejects unexpected skips; its Linux-container result does not establish macOS or IDE behavior.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:13b09025f14330e70aa96c6bc7d6df8eb98089ba04f9b8f3ede96eb390864897"
+        },
+        {
+          "resource": "repo://packaging/run-portable-tests.py",
+          "version": "repo-file-v1:sha256:df7f05f496d917706f677ebfc08b84d6e2ab336d1e70f932902a9d1ad2b4bf33"
+        }
+      ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T05:07:02.262Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-08T22:20:55.770Z"
   }
 }

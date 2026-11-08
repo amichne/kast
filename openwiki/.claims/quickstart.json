@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ed8765899062979d77b813d7bee72fc2b9200c109dded4c7500e7f48e4f15d82",
+  "pageVersion": "sha256:42d177970e05e2a83c2712b355fde62eafaecf7e86636b6c3cce0405edc23653",
   "claims": [
     {
       "id": "claim_68b3b4212912400cb4aaca348651f813",
@@ -33,10 +33,48 @@
           "version": "repo-lines-v1:sha256:6b6db196818aa8a0ab6fb01a1bc7cb914d0abbb262e25c932254399c199dca8a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwNmFlMWMwYTBmNGM1MGRiNjMxZGUzZDZmMDQxNTEwZGZkODEzYWJiZTdhZmM0ZTMxYjA0NTllMTIzMGM0ZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2N2NiMDZmZWE5ZGFhNGQyMjg2NTg0M2Y1ZDMzYWNiYzJkODAwZjFlZDgzMDIzNDIxYmNlNmEyY2Q1ZWI2ODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5ZmE0NzU1ZjcwMGUwOWUxYTk0N2YxNzUyNTRlMDFmNzYxMTQ3MDYyNmY2OTNhNWY4ODBiZjY1ZWI3ZjFkNGQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_a62f2ec4b1984f848e70bf3d74fd0ebd",
+      "statement": "Kast separates active system responsibilities across contracts, services, native adapters, hosted composition, transport, and distribution, while historical capture, SQLite storage, and graph queries have separate ownership boundaries.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/build.gradle.kts",
+          "version": "repo-file-v1:sha256:13543ee5578c06c6f265e968d183b5498ce95a9ee80bf302865218be26589b68"
+        },
+        {
+          "resource": "repo://settings.gradle.kts",
+          "version": "repo-file-v1:sha256:a0bfafaf3a6f7d042dde551309835a2c9aba6cbab3edca93ae20889dc964bbd5"
+        }
+      ]
+    },
+    {
+      "id": "claim_e2e032b7a8ac45b798a01da4a0a2691f",
+      "statement": "Repository knowledge maintenance distinguishes source impact checking from full knowledge-base verification: source changes call for ./gradlew knowledgeImpact, and source or wiki changes call for ./gradlew verifyKnowledgeBase.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md",
+          "version": "repo-file-v1:sha256:96a0280a772af00406c8acaa17c6eb6881b10e623a1896b03b682f0f5f67f09c"
+        },
+        {
+          "resource": "repo://README.md",
+          "version": "repo-file-v1:sha256:cec5b27c95058ee30cd2c3aa08ccd852c006112662d7b2e5164e0d6880b739cc"
+        }
+      ]
+    },
+    {
+      "id": "claim_13a72ac352204d26adc6a8c0e3cb0997",
+      "statement": "Source-level syntax and declaration checks do not establish compiler resolution or real-host runtime behavior, so native and runtime claims require appropriately qualified evidence.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md",
+          "version": "repo-file-v1:sha256:96a0280a772af00406c8acaa17c6eb6881b10e623a1896b03b682f0f5f67f09c"
+        }
+      ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-06T20:52:34.571Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-08T22:20:55.770Z"
   }
 }

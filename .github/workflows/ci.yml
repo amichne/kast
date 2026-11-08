@@ -251,7 +251,8 @@ jobs:
         with:
           validate-wrappers: true
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
+          # This persistent runner retains Gradle User Home locally; do not transfer it.
+          cache-disabled: true
       - name: Exercise macOS reset adapters
         run: >-
           ./gradlew :distribution:cli:test

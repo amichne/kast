@@ -13,12 +13,15 @@ import rollout
 class RolloutTest(unittest.TestCase):
     def test_cold_phase_disables_cache_transport_in_the_rollout_job_only(self):
         workflow = (rollout.ROOT / ".github/workflows/ci.yml").read_text()
-        source = workflow.split("\n  source-work:\n", 1)[1].split("\n  kotlin:", 1)[0]
+        source = workflow.split("\n  source-work:\n", 1)[1].split("\n  native:\n", 1)[0]
+        native = workflow.split("\n  native:\n", 1)[1].split("\n  assembly:\n", 1)[0]
         measured = workflow.split("\n  rollout:\n", 1)[1].split("\n  rollout-feedback:", 1)[0]
         self.assertIn("cache-disabled: ${{ inputs.rollout == 'cold' }}", measured)
         self.assertIn("cache: ${{ inputs.rollout != 'cold' && 'pip' || '' }}", measured)
         self.assertNotIn("cache-disabled:", source)
         self.assertNotIn("inputs.rollout != 'cold'", source)
+        self.assertIn("cache-disabled: true", native)
+        self.assertNotIn("inputs.rollout", native)
 
     def test_frozen_patch_bytes_ignore_repository_default_abbreviation(self):
         cases = rollout.corpus((rollout.ROOT / "config/ci/rollout-corpus.json").read_bytes())

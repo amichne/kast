@@ -4,7 +4,7 @@ okf_version: "0.2"
 
 # Files
 
-- [Kast repository guide](quickstart.md) - Find Kast architecture, semantic contracts, runtime flows, installation and focused verification through source-bound OpenWiki concepts.
+- [Kast repository guide](quickstart.md) - Route coding agents from Kast's repository overview to architectural ownership, runtime workflows, distribution, and focused verification. Use the topic map to locate the relevant wiki domain, then confirm behavior against source and tests.
 
 # Directories
 

@@ -1,25 +1,27 @@
 ---
 type: System Explanation
 title: Release candidates and promotion
-description: Explains immutable CI candidates, exact-source component records, checksum
-  admission, and byte-preserving release promotion.
+description: Explains how CI qualifies source-bound build candidates, admits their artifacts for reuse, and publishes validated releases. Covers CI policy, component inventory constraints, and publication ordering.
 tags:
 - kast
 - distribution
+- release
 code_sources:
 - path: .github/workflows/ci.yml
-- path: .github/scripts/ci/required_checks.py
-- path: .github/scripts/ci/validation_scope.py
-- path: .github/scripts/ci/validation_outcome.py
-- path: .github/scripts/ci/test_validation_outcome.py
-- path: .github/scripts/ci/verify-checks.py
 - path: .github/scripts/release/build_candidate.py
+- path: .github/scripts/release/ci-candidate.py
+- path: .github/scripts/release/publish-release.sh
 - path: distribution/release/component_release.py
 - path: distribution/release/component-release.schema.json
-- path: distribution/release/plugin-release.gradle.kts
-- path: .github/workflows/release-component.yml
-- path: .github/scripts/release/test_build_candidate.py
+- path: packaging/composed_release.py
+- path: .github/scripts/release/developer_catalog.py
+- path: .github/scripts/release/publish_developer.py
+verified:
+  - by: openwiki/0.9.0
+    at: 2026-11-08T22:20:55.770Z
 sources:
+  - id: openwiki-source-43d206677342592403ab5f63
+    resource: repo://.github/scripts/ci/validation_outcome.py
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
     resource: repo://.github/scripts/release/build_candidate.py
   - id: openwiki-source-939501634c56c6ffea2fec6b
@@ -34,103 +36,52 @@ sources:
     resource: repo://distribution/release/component-release.schema.json
   - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
     resource: repo://packaging/managed_release.py
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
-verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-06T20:52:34.571Z
+generated: { by: "openwiki/0.9.0", at: "2026-11-08T22:20:55.770Z" }
 ---
 
 # Release candidates and promotion
 
-## One tested immutable candidate
+## CI policy and candidate lifecycle
 
-CI checks out the exact pull-request head for its selected product work.
-It creates and tests a candidate once, then seals its repository, source revision, source tree, run identity, toolchain, and asset inventory.
-Each asset record keeps its name, byte count, and digest.
-The candidate artifact belongs to that exact successful producer run.
+CI's `scope` job checks out the event's exact head and derives a validation plan. Documentation-only validation is limited to reviewed authored site inputs; product, installer, generated-schema, script, build-configuration, protected, mixed, and unknown changes keep the applicable broader obligations. The aggregate gate verifies the selected plan and check outcomes rather than treating an arbitrary passing run as authorization.
 
-The required aggregate examines the jobs selected by the scope decision.
-After those checks succeed, it seals the selected plan, exact source revision, source tree, and producer run identities.
-A successful unrelated run or a passing earlier head does not authorize the current candidate.
-Product failures, missing producer evidence, and incomplete check state remain distinct rejection causes.
+When product work is required, `source-work` attempts candidate reuse only on a main push, with semantic fixtures disabled. If no reusable candidate is admitted, it builds and validates the payload, then retains the candidate artifact with a manifest identifying repository, source commit and tree, CI run and attempt, event, platform, toolchain, version, and assets (names, byte counts, SHA-256). Candidate identity is therefore tied to tested inputs and producer, not just a version label.
 
-## Successful documentation validation
+```mermaid
+flowchart TD
+    Scope["CI selects validation plan"] --> Docs{"Documentation-only?"}
+    Docs -->|yes| DocsGate["Validate docs and gate outcome"]
+    Docs -->|no| Product["Run product obligations"]
+    Product --> Reuse{"Eligible main push reuse?"}
+    Reuse -->|candidate admitted| Retain["Reuse admitted payload"]
+    Reuse -->|missing or ineligible| Build["Build and test payload"]
+    Build --> Seal["Seal manifest and artifact"]
+    Retain --> Gate["Aggregate verifies selected checks"]
+    Seal --> Gate
+    DocsGate --> Publish{"Publication outcome"}
+    Gate --> Publish
+    Publish -->|DOCS_VALIDATED| NoRelease["No product candidate or pointer update"]
+    Publish -->|PRODUCT_VALIDATED| Promote["Admit and promote product candidate"]
+```
 
-Only the reviewed authored site inputs can select documentation-only validation.
-Installer examples, generated schemas, scripts, build configuration, protected paths, and unknown or mixed inputs keep full validation.
-The documentation lane runs Mintlify, the Markdown parser, glossary tests, and glossary projection checks.
+This diagram shows how CI scope, candidate creation or reuse, and validation outcomes constrain publication.
 
-Developer promotion requires the outcome record from the exact successful main push run and attempt.
-`DOCS_VALIDATED` completes without a candidate, promotion record, product release, or developer pointer update.
-It does not assign the documentation revision to an earlier binary.
-`PRODUCT_VALIDATED` is required before the existing candidate admission.
-Missing, malformed, contradictory, or mismatched outcome evidence rejects promotion.
+## Documentation and developer publication
 
-## Reuse after merge
+Developer promotion distinguishes `DOCS_VALIDATED` from `PRODUCT_VALIDATED`. The documentation outcome completes without creating a candidate, promotion record, product release, or updating the developer pointer; it does not associate a documentation revision with an older binary. Product publication requires the outcome record from the exact successful main push run and attempt. Missing, malformed, contradictory, or mismatched evidence rejects promotion.
 
-`build_candidate.py` admits the merged source against the sealed candidate.
-Tree equality permits reuse when a squash merge changes the commit identifier but preserves the tested source tree.
-The promotion record keeps the candidate producer and merged revision together.
-Downloaded assets must match the admitted inventory and digests before reuse.
-
-A missing candidate and a rejected candidate are different states.
-The workflow can build a candidate when no reusable candidate exists under its policy.
-It cannot call changed bytes the previously tested artifact.
-Destination contamination, payload mismatch, wrong producer, or source-tree mismatch rejects admission.
+On a main push, `build_candidate.py reuse` looks for the candidate associated with the exact successful producer workflow and source, checks source-tree equality, and admits downloaded files against the candidate inventory and digests. Equal trees permit reuse across a squash merge whose commit ID differs, while the promotion record preserves both the candidate build revision/producer and merged revision/main run. `MISSING` means no candidate was available under policy and permits a fresh build; rejection of a candidate is not permission to reinterpret changed bytes as the tested payload. Incomplete observations, wrong producers, source mismatch, payload mismatch, destination contamination, and download errors fail closed.
 
 ## Independent component releases
 
-Control and Host have separate component records and archive ownership.
-`component_release.py` admits the selected component, semantic version, exact source revision, contract evidence, and asset inventory.
-The directory must contain the expected owned names and checksum companions.
-The archive byte count and SHA-256 must match the record and checksum files.
-Archive admission then examines the component's expected contents.
+`distribution/release/component_release.py` admits Control and Host artifacts independently. Its schema-backed records bind the component/version and exact source revision to archive name, digest, size, and component-specific contract metadata. Admission requires exactly the expected owned files and checksum companions; checksums, archive size and digest, and archive contents are verified. Host variants carry their IntelliJ release line, and paired Host variants must agree on the hosted contract. Control and Host archives therefore cannot be substituted merely because their version strings match.
 
-`assembleControlRelease` and `assembleHostRelease` package independent components.
-`assembleRelease` composes a fresh pair for an ordinary installation.
-Hosted contract equality and platform admission govern mixed-version compatibility.
-Matching component release numbers alone do not establish a usable pair.
+`packaging/composed_release.py` composes a fresh pair for an ordinary installation, while `assembleControlRelease` and `assembleHostRelease` assemble their respective independent components. Hosted-contract equality and platform admission constrain compatible mixed-version combinations. This component release boundary is separate from the CI candidate manifest and its source/run provenance.
 
-## Bounded published main discovery
+## Published main catalog
 
-The developer catalog contains at most five already published immutable releases.
-Each entry keeps the main revision, original build revision, source tree, platform, release tag, version, and candidate and promotion digests.
-Main ancestry orders the entries. Job completion time and numeric version do not determine order.
-An out-of-order publication cannot replace a newer selection.
+The developer catalog retains at most five already-published immutable releases. Entries include main revision, original build revision, source tree, platform, tag/version, and candidate/promotion digests. Ordering follows proven main ancestry, not job completion time or numeric version; an out-of-order publication cannot displace a newer selection. Guarded publication admits assets before updating the catalog and latest pointer together, and rereads after contention.
 
-Publication admits immutable release assets before it changes the catalog and latest pointer together.
-The commit uses a guarded fast-forward update and rereads the current catalog after contention.
-Conflicting identity, unproven ancestry, changed assets, and exhausted contention return finite failures.
-An older main revision remains a selector only while it appears in this bounded discovery window.
+## Focused verification
 
-The management command captures one admitted selection before the installer downloads artifacts.
-`managed_release.py` admits that selection, exact component records, candidate and promotion digests, archive bytes, and hosted compatibility.
-A main selection keeps original producer provenance through reuse after merge.
-It does not rerun latest selection after capture.
-
-## Proof limits
-
-Candidate and component gates establish source and artifact provenance under their admitted records.
-They do not establish that an installed IDEA instance loaded a Host or enrolled a specific workspace.
-Keep publication permission, artifact integrity, and installed semantic qualification as separate facts.
-
-## Focused tests
-
-- [test_build_candidate.py](../../.github/scripts/release/test_build_candidate.py)
-
-## Source owners
-
-- [ci.yml](../../.github/workflows/ci.yml)
-- [required_checks.py](../../.github/scripts/ci/required_checks.py)
-- [verify-checks.py](../../.github/scripts/ci/verify-checks.py)
-- [build_candidate.py](../../.github/scripts/release/build_candidate.py)
-- [component_release.py](../../distribution/release/component_release.py)
-- [component-release.schema.json](../../distribution/release/component-release.schema.json)
-- [`plugin-release.gradle.kts`](../../distribution/release/plugin-release.gradle.kts)
-- [release-component.yml](../../.github/workflows/release-component.yml)
-
-## Read next
-
-- [Installation](installation-and-managed-files.md)
-- [Architecture checks](../development/build-and-architecture.md)
-- [Native qualification](../development/testing-and-native-qualification.md)
+Candidate parsing, producer qualification, source-tree reuse, payload integrity, and failure paths are exercised by `.github/scripts/release/test_build_candidate.py` and `distribution/release/test_ci_candidate.py`. Component inventory, record ownership, checksums, and archive constraints are covered by the component release tests. CI validation policy and exact outcome handling have focused tests under `.github/scripts/ci/`.

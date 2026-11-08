@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:78299e94c465f579ac8f26519cb259b8129c70898003b6a1f7b470d89b942484",
+  "pageVersion": "sha256:bddaa5b2126d5e6591803bf4f5cd3e22dd5ccfb307fd9a24966f1ad7851afaf2",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
+          "version": "repo-file-v1:sha256:13b09025f14330e70aa96c6bc7d6df8eb98089ba04f9b8f3ede96eb390864897"
         }
       ]
     },
@@ -63,10 +63,56 @@
           "version": "repo-file-v1:sha256:ef4cc70c132b363eb60ab7d7e4cf5570f5a4c63b9d66720ad786b422d1bc2d65"
         }
       ]
+    },
+    {
+      "id": "claim_24fead75fb514a75853fe5932383732f",
+      "statement": "CI distinguishes documentation validation from product publication: DOCS_VALIDATED completes without a product candidate or developer-pointer update, while product publication requires matching outcome evidence from the exact successful main push run and attempt.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/validation_outcome.py",
+          "version": "repo-file-v1:sha256:6869d33e0d01a613e8f1b15f3a8e7c2caecd11ebaab7fec61aa870cd54232c25"
+        },
+        {
+          "resource": "repo://.github/scripts/release/build_candidate.py",
+          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:13b09025f14330e70aa96c6bc7d6df8eb98089ba04f9b8f3ede96eb390864897"
+        }
+      ]
+    },
+    {
+      "id": "claim_4334b7edfd51416182702c8ea1fafc64",
+      "statement": "Host component admission binds archive contents to the record's IntelliJ release line and hosted contract; paired Host variants are accepted only when their hosted contracts agree.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/release/component-release.schema.json",
+          "version": "repo-file-v1:sha256:5aab86181097f9067e67c98c3ee93baa72292366ed884d37d7705e195df76abc"
+        },
+        {
+          "resource": "repo://distribution/release/component_release.py",
+          "version": "repo-file-v1:sha256:376593f0af96ef9180e1655d86feebccc784dce86c3fd332a8cccac0047c8986"
+        }
+      ]
+    },
+    {
+      "id": "claim_2ed51fd4cb4d4ea7b5509f2f01369865",
+      "statement": "The main developer catalog is bounded to five published releases, ordered by main ancestry, and guarded publication updates catalog and latest pointer only after asset admission, retrying through reread after contention.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/developer_catalog.py",
+          "version": "repo-file-v1:sha256:42d55a59436e67eb3ef900dc642cd79865a26bce17ca755e5eb8176f2ea5eaba"
+        },
+        {
+          "resource": "repo://.github/scripts/release/publish_developer.py",
+          "version": "repo-file-v1:sha256:f095afe38633b13aff1287c76d49a7039c069ca436ef1618b062b4f537562726"
+        }
+      ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-06T20:52:34.571Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-08T22:20:55.770Z"
   }
 }

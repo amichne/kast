@@ -1,8 +1,7 @@
 ---
 type: Kotlin Module Group
 title: Distribution and packaging
-description: Typed configuration and runtime identity contracts constrain managed
-  installation effects, release assembly, and acceptance harnesses.
+description: Explains how installation owners and lifecycle controls compose Control and Host artifacts, and how candidate validation, release admission, and CI qualification govern distribution.
 resource: file://distribution
 tags:
   - distribution
@@ -359,13 +358,32 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
+generated: { by: "openwiki/0.9.0", at: "2026-11-08T22:20:55.770Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-07T06:23:53.865Z
+  - by: openwiki/0.9.0
+    at: 2026-11-08T22:20:55.770Z
 ---
 
 # Distribution and packaging
+
+Distribution is a composition of owners rather than one monolithic installer: component builders produce independently identified Control and Host artifacts, the installation owners admit and apply them, and CI supplies qualification evidence before release admission. The graph below summarizes the product path and its candidate/publication boundary.
+
+```mermaid
+flowchart LR
+  C["Control builder"] --> CR["Control artifact"]
+  H["Host builder"] --> HR["Host artifact"]
+  CR --> I["Installation owners"]
+  HR --> I
+  I --> Q["Installed composition"]
+  CR --> V["CI candidate validation"]
+  HR --> V
+  V --> P["Candidate retention"]
+  P --> R["Release or developer promotion"]
+  D["Documentation validation"] --> O["Validation outcome"]
+  V --> O
+```
+
+*Component artifacts flow through their installation owners; candidate validation qualifies tested bytes, while publication is a separately admitted action.*
 
 The Control payload contains CLI-first Codex and Copilot plugins from the canonical `agent-tools` skill.
 `kast install <harness>` admits the installed bundle and exact provider resources before setup.
