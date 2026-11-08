@@ -1,0 +1,7 @@
+{
+  "type": "KNOWLEDGE_IMPACT",
+  "schemaVersion": 1,
+  "backend": "OPENWIKI",
+  "documents": "openwiki",
+  "instructions": "openwiki/INSTRUCTIONS.md"
+}
