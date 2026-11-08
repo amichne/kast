@@ -10,6 +10,30 @@ class ResetProcessRetirementTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `exit before capture skips signalling but still requires the final process inventory`() {
+        val root = root()
+        val prior = snapshot(root)
+        val cases =
+            listOf(
+                ResetProcessTable.Observed(emptyList()) to ResetEffect.Completed,
+                ResetProcessTable.Observed(listOf(prior)) to
+                    ResetEffect.Rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED),
+            )
+        for ((final, expected) in cases) {
+            val runtime =
+                ResetRuntimeScript(
+                    root,
+                    listOf(
+                        ResetScriptStep.Table(ResetProcessTable.Observed(listOf(prior))),
+                        ResetScriptStep.Capture(prior, ResetScriptCaptureResult.RETIRED),
+                    ) + absentJobs() + listOf(ResetScriptStep.Table(final)),
+                )
+            assertEquals(expected, ForceDaemonRetirement(runtime).retire(root, home()))
+            runtime.assertConsumed()
+        }
+    }
+
+    @Test
     fun `observing the same process incarnation after force termination refuses quiescence`() {
         val root = root()
         val prior = snapshot(root)

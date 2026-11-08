@@ -50,6 +50,9 @@ internal sealed interface ResetSharedSocketCapture {
         }
     }
 
+    /** The selected process exited before any shared socket ownership was acquired. */
+    data object Retired : ResetSharedSocketCapture
+
     data object Rejected : ResetSharedSocketCapture
 }
 
@@ -91,6 +94,7 @@ internal class ResetOwnedSharedSocket private constructor(private val path: Path
                     ResetProcessStage.SOCKET_CAPTURE,
                     when (result) {
                         is ResetSharedSocketCapture.Captured -> ResetProcessResult.IDENTITY_VERIFIED
+                        ResetSharedSocketCapture.Retired -> ResetProcessResult.RETIRED
                         ResetSharedSocketCapture.Rejected -> ResetProcessResult.OBSERVATION_REJECTED
                     },
                 )

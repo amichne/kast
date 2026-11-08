@@ -19,6 +19,7 @@ internal sealed interface ResetScriptStep {
 
 internal enum class ResetScriptCaptureResult {
     NO_SHARED_DESCRIPTORS,
+    RETIRED,
     REJECTED,
 }
 
@@ -66,6 +67,7 @@ internal class ResetRuntimeScript(private val root: Path, steps: List<ResetScrip
         return when (step.result) {
             ResetScriptCaptureResult.NO_SHARED_DESCRIPTORS ->
                 ResetSharedSocketCapture.Captured(process, emptyList()).also(captured::addLast)
+            ResetScriptCaptureResult.RETIRED -> ResetSharedSocketCapture.Retired
             ResetScriptCaptureResult.REJECTED -> ResetSharedSocketCapture.Rejected
         }
     }
