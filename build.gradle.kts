@@ -412,7 +412,8 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
         "packaging/test-managed-update-contract.py", "packaging/test-managed-headless.py",
         "packaging/test_composition_graph.py", "packaging/test_composition_index.py",
         "packaging/test_composition_descriptors.py", "packaging/test_composition_host.py",
-        "packaging/test_composition_bundle.py", "packaging/test_composition_task_vm.py", "-q"))
+        "packaging/test_composition_bundle.py", "packaging/test_composition_release.py",
+        "packaging/test_composition_task_vm.py", "-q"))
 }
 
 val developerPublicationTest = tasks.register<VerificationReportTask>("developerPublicationTest") {
