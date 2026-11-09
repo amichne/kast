@@ -112,6 +112,8 @@ class VerifyControlDistributionTaskTest {
             "share/kast/install.sh", "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json", "share/kast/wire-schema.json", "share/kast/ide-host.json",
             "share/kast/knowledge/manifest.json", "share/kast/licenses/LICENSE",
+            "share/kast/container/bin/kast-container", "share/kast/container/bin/kast-container.lock",
+            "share/kast/container/packaging/dev_container.py",
             "share/kast/task-vm/bin/kast-task-vm", "share/kast/task-vm/bin/kast-task-vm.lock",
             "share/kast/task-vm/bin/setup-kast", "share/kast/task-vm/bin/setup-kast.lock",
             "share/kast/task-vm/packaging/task_vm.py", "share/kast/task-vm/packaging/task_vm_guest.py",
