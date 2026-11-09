@@ -41,13 +41,20 @@ jobs:
           PRODUCER: ${{ inputs.qualified_run_id }}
         run: python3 packaging/composed_oci.py "$PRODUCER" "$RUNNER_TEMP/bundle"
 
+      - name: Set up the OCI image store
+        uses: docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6 # v5.7.0
+        with:
+          version: v29.5.2
+          set-host: true
+          daemon-config: '{"features":{"containerd-snapshotter":true}}'
+
       - name: Build with the qualified archive
         env:
           BUNDLE_SHA256: ${{ steps.bundle.outputs.digest }}
           BUNDLE_REVISION: ${{ steps.bundle.outputs.revision }}
           KAST_VERSION: ${{ steps.bundle.outputs.version }}
         run: |
-          docker build --platform linux/amd64 --load --provenance=false \
+          docker build --platform linux/amd64 --output type=image,oci-mediatypes=true --provenance=false \
             --build-context "bundle=$RUNNER_TEMP/bundle" \
             --build-arg "KAST_VERSION=$KAST_VERSION" --build-arg "BUNDLE_SHA256=$BUNDLE_SHA256" \
             --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
@@ -89,6 +96,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          expected="$(docker image inspect --format '{{json .Descriptor}}' "$IMAGE" \
+            | jq -er 'select(.mediaType == "application/vnd.oci.image.manifest.v1+json") | .digest')"
           export DOCKER_CONFIG="$RUNNER_TEMP/kast-registry"
           mkdir -m 700 "$DOCKER_CONFIG"
           trap 'docker logout ghcr.io >/dev/null' EXIT
@@ -96,6 +105,7 @@ jobs:
           docker push "$IMAGE"
           digest="$(docker buildx imagetools inspect "$IMAGE" --format '{{json .Manifest}}' \
             | jq -er '.digest | select(test("^sha256:[0-9a-f]{64}$"))')"
+          [[ "$digest" == "$expected" ]]
           reference="${IMAGE%:*}@$digest"
           docker pull --platform linux/amd64 "$reference"
           [[ "$(docker image inspect --format '{{.Id}}' "$IMAGE")" == \
