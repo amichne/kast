@@ -1081,6 +1081,7 @@ class HostInstallationTest(unittest.TestCase):
         self.plugins.mkdir(parents=True)
         retained = self.plugins.parent / '.kast-plugin-recovery'
         retained.mkdir(mode=0o755)
+        retained.chmod(0o755)
         with self.assertRaises(host.Rejected) as rejected:
             host.remove_host(self.plugins)
         self.assertEqual(host.Failure.OWNERSHIP_UNPROVEN, rejected.exception.failure)

@@ -27,6 +27,7 @@ jobs:
   publish:
     name: Promote tested bytes to the developer channel
     if: >-
+      vars.KAST_MACOS_CHECKS == 'true' &&
       vars.KAST_NATIVE_COMPILATION != 'false' &&
       ((github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.conclusion == 'success') ||

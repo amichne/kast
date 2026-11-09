@@ -84,13 +84,19 @@ class ManagedHeadlessInstallationTest {
                 )
                 .value
         val specification =
-            assertInstanceOf<Refinement.Refined<ManagedHeadlessLaunch>>(ManagedHeadlessLaunch.prepare(installation))
+            assertInstanceOf<Refinement.Refined<ManagedHeadlessLaunch>>(
+                    ManagedHeadlessLaunch.prepare(installation, "/cloud/python/bin:/cloud/node/bin:/usr/bin:/bin")
+                )
                 .value
         assertEquals(listOf(fixture.launch.executable, "kast-headless"), specification.arguments)
         org.junit.jupiter.api.Assertions.assertTrue("-Dvendor.required=true\n" in specification.options)
         org.junit.jupiter.api.Assertions.assertFalse("-Xmx2048m" in specification.options)
         assertEquals(installation.userHome.toString(), specification.environment["HOME"])
         assertEquals(installation.launch.bundledJavaHome.toString(), specification.environment["IDEA_JDK"])
+        assertEquals(
+            "${installation.launch.bundledJavaHome}/bin:/cloud/python/bin:/cloud/node/bin:/usr/bin:/bin",
+            specification.environment["PATH"],
+        )
         org.junit.jupiter.api.Assertions.assertFalse("DISPLAY" in specification.environment)
         org.junit.jupiter.api.Assertions.assertFalse("JAVA_TOOL_OPTIONS" in specification.environment)
         val borrowed = Files.writeString(fixture.root.resolve("borrowed"), "protected")

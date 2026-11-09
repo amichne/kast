@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver.runtime
 
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -56,9 +57,23 @@ class InvocationFenceTest {
     fun `corrupt journal never permits execution`(@TempDir root: Path) {
         val file = root.toRealPath().resolve("invocations.json")
         Files.writeString(file, "broken")
+        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"))
+        assertEquals(
+            InvocationAdmission.Rejected(InvocationFenceFailure.DOCUMENT_MALFORMED),
+            InvocationFence(file).admit("call", InvocationFence.digest("x")),
+        )
+        assertEquals("broken", Files.readString(file))
+    }
+
+    @Test
+    fun `non-private corrupt journal is rejected before parsing`(@TempDir root: Path) {
+        val file = root.toRealPath().resolve("invocations.json")
+        Files.writeString(file, "broken")
+        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-r--r--"))
         assertEquals(
             InvocationAdmission.Rejected(InvocationFenceFailure.STORE_REJECTED),
             InvocationFence(file).admit("call", InvocationFence.digest("x")),
         )
+        assertEquals("broken", Files.readString(file))
     }
 }

@@ -29,7 +29,7 @@ concurrency:
 jobs:
   release:
     name: Build and publish selected service
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.KAST_MACOS_CHECKS == 'true' && vars.KAST_NATIVE_COMPILATION != 'false'
     runs-on: [self-hosted, macOS, ARM64, kast-main]
     timeout-minutes: 60
     env:
