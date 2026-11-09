@@ -9,6 +9,10 @@ on:
         description: Successful manual Composed Linux bundle run
         required: true
         type: string
+      publish:
+        description: Push the image to GitHub Container Registry after qualification
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -86,13 +90,15 @@ jobs:
               mkdir "$fixture/gradle"
               cp -R /source/gradle/wrapper "$fixture/gradle/wrapper"
               cp /source/gradlew "$fixture/gradlew"
-              python3 /opt/kast/packaging/composed_bundle.py trust \
-                --root /opt/kast/runtime --workspace "$fixture"
-              python3 /source/packaging/composed_host_probe.py \
+              rejected=0
+              kast-task /workspace true || rejected=$?
+              [[ "$rejected" -eq 2 ]]
+              kast-task "$fixture" python3 /source/packaging/composed_host_probe.py \
                 --root /opt/kast/runtime --fixture "$fixture" --evidence /workspace/evidence
             '
 
       - name: Push and pull the qualified image by digest
+        if: inputs.publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
