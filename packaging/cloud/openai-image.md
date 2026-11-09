@@ -5,13 +5,18 @@ description: "Install an exact qualified Linux bundle during image setup and ver
 resource: "repo://packaging/cloud/openai-image"
 tags: [kast, cloud, linux, installation]
 timestamp: "2026-11-09T00:00:00Z"
-source_revision: a54a5b04ceee306f520ac20f87f2f4a608c1f5da
+source_revision: 326055e675ff4574077a9d98445655d145bd6856
 code_sources:
   - path: packaging/cloud/openai-image.py
+  - path: packaging/cloud/openai-kast.env
+  - path: packaging/cloud/setup-openai-image.sh
+  - path: packaging/cloud/activate-openai-image.sh
+  - path: packaging/cloud/prepare-openai-workspace.sh
   - path: packaging/test-openai-image.py
   - path: packaging/composed_bundle.py
   - path: packaging/managed_headless.py
   - path: .github/workflows/composed-linux.yml
+  - path: .github/workflows/cloud-image-transfer.yml
 ---
 
 # Prepare an OpenAI cloud image with Kast
@@ -22,9 +27,57 @@ It performs no download, build, upgrade, or Host startup.
 The environment owner still needs to test and publish the saved OpenAI environment configuration.
 Changes inside a running task do not publish a new image.
 
-This guide prepares the setup commands. A complete image qualification still needs a successful
-Linux bundle build and an installation in the target image.
-No bundle digest or deployment result is assumed here.
+The preset was validated in the selected cloud container.
+A newly saved image still needs fresh setup and resumed-task tests before publication.
+The preset below pins a qualified build. Creating the saved environment still requires the environment settings flow.
+
+## Qualified preset
+
+Use **Kast Linux + Slopsentral** as the new environment name.
+The checked-in [pin file](openai-kast.env) selects this input:
+
+| Setting | Value |
+| --- | --- |
+| Native package version | `0.0.0` |
+| Source revision | `fdf7c6d55662bf8dc162cb120b7464fd6757bafc` |
+| Qualified build | [42543736511, attempt 1](https://github.com/amichne/kast/actions/runs/42543736511) |
+| Setup artifact | `13642593952` |
+| Setup SHA-256 | `aa001a8c56497473644978f2e585549e8d3f09d9e12d04c1404b89da26f543ec` |
+| Slopsentral command | `4.0.12` |
+| Prepared runtime | `/workspace/kc` |
+
+From a reviewed checkout, install the prepared preset with:
+
+```sh
+bash packaging/cloud/setup-openai-image.sh /path/to/kast-composed-setup-v0.0.0-linux-x86_64.tar.gz
+```
+
+Setup installs the native package and five selected Slopsentral plugins.
+It copies committed public setup code into the runtime profile and prepares the checkout's Gradle wrapper with `--version`.
+That command downloads the wrapper distribution through the current proxy without building the project.
+The copied profile lets task activation work from any directory after the source checkout changes.
+
+In each task shell, activate the prepared profile:
+
+```sh
+set -eu
+kast_exports="$(bash /workspace/kc/profile/packaging/cloud/activate-openai-image.sh)"
+eval "$kast_exports"
+```
+
+Activation uses the prepared Python environment offline and refreshes the private Gradle proxy and public CA settings.
+For another repository or wrapper version, prepare its wrapper before requesting a compiler query:
+
+```sh
+bash /workspace/kc/profile/packaging/cloud/prepare-openai-workspace.sh /absolute/repository
+```
+
+Workspace preparation grants no IDE trust and performs no project build.
+Repository trust remains a separate explicit choice.
+
+The successful build was also installed and probed in the OpenAI cloud container.
+After proxy-aware wrapper preparation, it returned four exact Kotlin callers and three Java reference contexts, then rejected an unknown result.
+The probe used a separate disposable runtime and fixture; the image profile itself starts no Host and trusts no workspace.
 
 ## Choose the exact CI output
 
@@ -40,6 +93,12 @@ For routine rebuilds, keep the approved archive in a durable artifact location a
 Do not select a moving `latest` URL during task startup.
 An authenticated archive download belongs in image setup, using the environment's credential settings.
 Keep credentials out of archives, activation scripts, and image receipts.
+
+If the connector cannot transfer the complete archive, run **Transfer qualified cloud image input**.
+Supply the qualified run and setup artifact IDs from the pin file.
+The workflow verifies the producer and qualification records, then splits the unchanged archive into two smaller artifacts.
+Download both parts through the connector, verify their artifact and part digests, concatenate `archive.part00` and `archive.part01`, and verify the original setup digest again.
+This procedure preserves the qualified bytes and performs no native rebuild.
 
 ## Image install command
 
@@ -88,13 +147,14 @@ eval "$kast_exports"
 Check the assignment's exit status before evaluating exports; `set -e` does that here.
 Activation adds the wrapper directory to `PATH`.
 It preserves the current task's proxy and CA settings, `HOME`, and `JAVA_HOME`.
+It refreshes only its marked section in the private Gradle properties file.
 The helper starts no Host and accepts no project trust.
 Installation and verification JSON report `semanticReadiness: NOT_RUN`.
 Receipt and version checks prove no compiler query.
 
 The wrapper uses the bundle's private Host state.
 Project dependency downloads still need the current task's approved network access and Java trust configuration.
-Validate those connections after task resume; do not bake a proxy address or credential into the image.
+Validate those connections after task resume; activation reads current proxy values rather than a pinned proxy address.
 The existing development toolchain activation can continue to configure Gradle for source builds separately.
 
 ## Slopsentral and image validation

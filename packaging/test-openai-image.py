@@ -19,6 +19,57 @@ spec.loader.exec_module(image)
 
 
 class OpenAIImageTest(unittest.TestCase):
+    def test_proxy_admission_rejects_credentials_and_malformed_endpoints(self):
+        with tempfile.TemporaryDirectory() as directory:
+            trust = Path(directory).resolve() / "cacerts"
+            trust.write_bytes(b"public trust fixture")
+            for proxy in (
+                "http://user:secret@proxy:8080",
+                "http://proxy:invalid",
+                "https://proxy:8080",
+                "http://proxy:8080\nother",
+            ):
+                result = image.network_properties(
+                    {"CLOUD_IMAGE_JAVA_TRUSTSTORE": str(trust), "HTTPS_PROXY": proxy}
+                )
+                self.assertEqual(image.ImageRejected(image.Failure.INVALID_PROXY), result)
+            missing = image.network_properties(
+                {"CLOUD_IMAGE_JAVA_TRUSTSTORE": str(trust / "absent")}
+            )
+            self.assertEqual(image.ImageRejected(image.Failure.TRUSTSTORE_MISSING), missing)
+
+    def test_current_proxy_replaces_only_its_owned_section(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pin = self.runtime(Path(directory).resolve() / "runtime")
+            path = pin.root / "state/home/.gradle/gradle.properties"
+            path.parent.mkdir(parents=True)
+            path.write_text("org.gradle.parallel=true\n")
+            for host in ("first", "second"):
+                settings = image.NetworkProperties((("https.proxyHost", host),))
+                result = image.configure_network(pin, settings)
+                self.assertIsInstance(result, image.ConfiguredNetwork)
+                text = path.read_text()
+                self.assertIn("org.gradle.parallel=true", text)
+                self.assertEqual(1, text.count("systemProp.https.proxyHost="))
+                self.assertIn("systemProp.https.proxyHost=" + host, text)
+            path.write_text("# BEGIN Kast cloud task network\nunsettled\n")
+            before = path.read_bytes()
+            rejected = image.configure_network(pin, settings)
+            self.assertEqual(image.ImageRejected(image.Failure.NETWORK_STATE_CONFLICT), rejected)
+            self.assertEqual(before, path.read_bytes())
+
+    def test_network_configuration_rejects_a_symlinked_private_home(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            pin = self.runtime(root / "runtime")
+            (pin.root / "state").mkdir()
+            foreign = root / "foreign"
+            foreign.mkdir()
+            (pin.root / "state/home").symlink_to(foreign, target_is_directory=True)
+            rejected = image.configure_network(pin, image.NetworkProperties(()))
+            self.assertEqual(image.ImageRejected(image.Failure.NETWORK_STATE_CONFLICT), rejected)
+            self.assertEqual([], list(foreign.iterdir()))
+
     def test_failed_activation_emits_no_shell_exports(self):
         with tempfile.TemporaryDirectory() as directory:
             result = subprocess.run(

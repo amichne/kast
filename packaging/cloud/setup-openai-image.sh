@@ -29,6 +29,9 @@ fi
 uv run --locked --project "$profile_root/packaging" python \
   "$profile_root/packaging/cloud/openai-image.py" verify \
   --sha256 "$bundle_sha256" --version "$bundle_version" --root "$image_root"
+uv run --locked --project "$profile_root/packaging" python \
+  "$profile_root/packaging/cloud/openai-image.py" prepare --workspace "$repository_root" \
+  --sha256 "$bundle_sha256" --version "$bundle_version" --root "$image_root"
 
 slopsentral_command="$HOME/.local/bin/slopsentral"
 if [[ -x "$slopsentral_command" ]]; then
