@@ -141,7 +141,7 @@ def provision(root: Path, with_idea: bool, with_fixture: bool, with_control: boo
         'source "$PI_EVAL_ROOT/gradle-runtime.sh"\n'
     )
     if with_control:
-        activation += 'export GRAALVM_HOME="$PI_EVAL_ROOT/graalvm-25.0.2"\n'
+        activation += f"export GRAALVM_HOME={quote(str(root / pins['artifacts']['graalvm']['directory']))}\n"
     (root / "activate.sh").write_text(activation)
     run(str(node_bin / "node"), "--version")
     run(str(root / pins["artifacts"]["uv"]["directory"] / "uv"), "--version")

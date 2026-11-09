@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from contextlib import redirect_stdout
 from itertools import combinations
@@ -457,6 +458,31 @@ class ExactDiffTest(unittest.TestCase):
 
 
 class SourceInventoryTest(unittest.TestCase):
+    def test_native_toolchain_pins_and_reports_do_not_require_oracle(self):
+        root = Path(__file__).resolve().parents[3]
+        pins = json.loads((root / "packaging/cloud/pins.json").read_text())
+        url = unquote(pins["artifacts"]["graalvm"]["url"])
+        self.assertTrue(url.startswith("https://github.com/bell-sw/LibericaNIK/releases/"))
+        release = re.search(r"bellsoft-liberica-vm-openjdk([\d.+]+)-([\d.+]+)-linux-amd64.tar.gz$", url)
+        self.assertIsNotNone(release)
+        jdk, nik = release.groups()
+        mise = tomllib.loads((root / "mise.toml").read_text())
+        self.assertEqual(f"liberica-nik-openjdk{jdk.split('.')[0]}-{nik}", mise["tools"]["java"])
+        self.assertEqual(f"liberica-nik-{nik}", pins["artifacts"]["graalvm"]["directory"])
+        producers = []
+        for path in (root / ".github/workflows").glob("*.yml"):
+            for distribution, version in re.findall(
+                r"(?m)^\s+distribution: (\S+)\n\s+java-version: ([^\n]+)", path.read_text()
+            ):
+                with self.subTest(workflow=path.name, distribution=distribution):
+                    self.assertEqual("liberica-nik", distribution)
+                    self.assertEqual(jdk, version.strip("'\""))
+                producers.append(path.name)
+        self.assertTrue(producers)
+        arguments = (root / "cli/native-image.args").read_text().splitlines()
+        self.assertNotIn("--emit", arguments)
+        self.assertIn("-H:+GenerateEmbeddedResourcesFile", arguments)
+
     def test_candidate_retention_routes_reuse_to_linux_before_fresh_mac_selection(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
         product = workflow.split("\n  kotlin:\n", 1)[1].split("\n  source:\n", 1)[0]
