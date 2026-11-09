@@ -13,7 +13,6 @@ import zipfile
 from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
 from pathlib import Path
-from typing import TypeGuard
 from xml.etree.ElementTree import tostring
 
 from composition_descriptors import DescriptorRejected, DescriptorSelection, parse_xml
@@ -31,6 +30,7 @@ from managed_headless import (
     file_record,
     install_prepared_runtime,
     object_fields,
+    object_items,
 )
 
 
@@ -186,10 +186,6 @@ def examine_source(item: InputFile) -> _VerifiedFile | CompositionRejected:
     if file_record(path, item.source) != item.record:
         return CompositionRejected(CompositionFailure.SOURCE_DIGEST_MISMATCH, item.record.path)
     return _VerifiedFile(item.record, item.source)
-
-
-def object_items(value: object) -> TypeGuard[list[object]]:
-    return isinstance(value, list)
 
 
 def _strings(value: object) -> tuple[str, ...] | None:
