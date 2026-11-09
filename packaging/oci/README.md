@@ -1,6 +1,6 @@
 # Kast OCI base image
 
-The private GitHub Container Registry package contains Control, the composed
+The GitHub Container Registry package contains Control, the composed
 Host, and its JetBrains Runtime for Linux x86-64. It starts without a Kast
 checkout or an installer download. A Gradle project can still need its own
 wrapper distribution and dependencies.
@@ -28,7 +28,7 @@ The workflow then pulls the image by digest and compares its local image ID.
 
 ## Start a task
 
-After you authenticate to `ghcr.io`, start a container with the digest reference.
+Start a container with the digest reference.
 
 ```sh
 docker run --rm -it --init --platform linux/amd64 ghcr.io/amichne/kast-base@sha256:DIGEST
