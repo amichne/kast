@@ -93,11 +93,11 @@
       "completedRunId": "404dbd12-5524-4e38-b01c-638d85b98c78"
     },
     "/openwiki/development/testing-and-native-qualification.md": {
+      "gitHead": "767b5979059de24466c4e9b68d9574a3484902a1",
+      "sourceFingerprint": "sha256:9c693243e202229810f2e69dc992e755319c534087e0c87e5746f39489f74703",
       "pageVersion": "sha256:0a1a805df0f16a5c73bc5cc05202161e029a8b958401964488a3293ce25c3f44",
       "completedBy": "codex",
-      "completedRunId": "05ff2131-62d7-4c31-aa27-cec3c4233594",
-      "gitHead": "767b5979059de24466c4e9b68d9574a3484902a1",
-      "sourceFingerprint": "sha256:9c693243e202229810f2e69dc992e755319c534087e0c87e5746f39489f74703"
+      "completedRunId": "05ff2131-62d7-4c31-aa27-cec3c4233594"
     },
     "/openwiki/distribution/installation-and-managed-files.md": {
       "gitHead": "63d644121a5f9c394b4500ab6456249992c4edb3",
@@ -219,11 +219,11 @@
       "completedRunId": "bb7d762b-e640-426b-bae8-f8fa41505944"
     },
     "/openwiki/modules/distribution.md": {
-      "pageVersion": "sha256:23cd75dd6b1b8bfbf559ccb127222445b48a3626fc771e44ed6917ef0b1aff97",
+      "pageVersion": "sha256:1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
       "completedBy": "codex",
-      "completedRunId": "05ff2131-62d7-4c31-aa27-cec3c4233594",
-      "gitHead": "767b5979059de24466c4e9b68d9574a3484902a1",
-      "sourceFingerprint": "sha256:9c693243e202229810f2e69dc992e755319c534087e0c87e5746f39489f74703"
+      "completedRunId": "e1a10dd7-18da-4eb6-9aad-a423ae81cf66",
+      "gitHead": "125226bb399d5f563a80745510c3dea6a7152be5",
+      "sourceFingerprint": "sha256:c09bb2b5c52a411ef8e50f5f5a444cd426377f2e30becfef02bf56dcd596a406"
     },
     "/openwiki/modules/kernel.md": {
       "gitHead": "c00f3bfa71dd40e9897d714e378b21eacf673073",
