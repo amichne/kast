@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parents[3]
 class Mode(StrEnum):
     LOCAL = "local"
     DECISIONS = "decisions"
-    PRE_PUSH = "pre-push"
+    FULL = "full"
 
 
 class Stage(StrEnum):
@@ -172,7 +172,7 @@ def run(
             )
             if isinstance(result, Rejected):
                 return result.exit_code
-    if mode is Mode.PRE_PUSH:
+    if mode is Mode.FULL:
         # Only the unchanged full gate receives the caller's project JDK and gh credentials.
         result = run_stage(
             Stage.PRODUCT,
@@ -195,7 +195,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
         nargs="?",
         default=Mode.LOCAL,
         help="local: decisions and packaging (default); decisions: CI scope checks; "
-        "pre-push: cheap checks followed by the full product gate",
+        "full: explicitly run cheap checks followed by the full product gate",
     )
     args = parser.parse_args(arguments)
     return run(Mode(args.mode), ROOT, os.environ.copy())

@@ -27,6 +27,7 @@ def docs_only_results():
         },
         "source": {"result": "skipped"},
         "kotlin": {"result": "skipped"},
+        "linux-native": {"result": "skipped"},
         "portable": {"result": "skipped"},
         "documentation": {"result": "success"},
     }
@@ -105,7 +106,7 @@ class RequiredChecksTest(unittest.TestCase):
         needs["scope"]["outputs"]["scope"] = "FULL"
         needs["kotlin"]["result"] = "skipped"
         self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
-        needs["source"]["result"] = needs["kotlin"]["result"] = needs["portable"]["result"] = "success"
+        needs["source"]["result"] = needs["kotlin"]["result"] = needs["linux-native"]["result"] = needs["portable"]["result"] = "success"
         self.assertEqual(Verdict.COMPLETE, inspect(needs))
 
     def test_selector_failure_is_not_hidden_by_skipped_dependents(self):
@@ -144,9 +145,31 @@ class RequiredChecksTest(unittest.TestCase):
     def test_product_plan_retains_the_original_product_proofs(self):
         needs = docs_only_results()
         needs["scope"]["outputs"].update(source="run", product="run", portable="run", documentation="skip", scope="PRODUCT")
-        needs["source"]["result"] = needs["kotlin"]["result"] = needs["portable"]["result"] = "success"
+        needs["source"]["result"] = needs["kotlin"]["result"] = needs["linux-native"]["result"] = needs["portable"]["result"] = "success"
         needs["documentation"]["result"] = "skipped"
         self.assertEqual(Verdict.COMPLETE, inspect(needs))
+
+    def test_linux_native_failure_cannot_hide_behind_macos_product_success(self):
+        needs = docs_only_results()
+        needs["scope"]["outputs"].update(source="run", product="run", portable="run", documentation="skip", scope="PRODUCT")
+        for job in ("source", "kotlin", "portable", "linux-native"):
+            needs[job]["result"] = "success"
+        needs["documentation"]["result"] = "skipped"
+        self.assertEqual(Verdict.COMPLETE, inspect(needs))
+        for result in ("failure", "cancelled", "skipped", ""):
+            with self.subTest(result=result):
+                needs["linux-native"]["result"] = result
+                self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
+                self.assertEqual(Verdict.COMPLETE, inspect(needs, Gate.SOURCE_FEEDBACK))
+        del needs["linux-native"]
+        self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
+
+    def test_unselected_linux_native_job_must_be_skipped(self):
+        for result in ("success", "failure", "cancelled", ""):
+            needs = docs_only_results()
+            needs["linux-native"]["result"] = result
+            with self.subTest(result=result):
+                self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
 
     def test_unselected_jobs_must_really_be_skipped(self):
         for result in ("success", "failure", "cancelled", ""):

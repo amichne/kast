@@ -14,6 +14,20 @@ on:
         description: Exact numeric version for this source-bound bundle
         required: true
         type: string
+      source_revision:
+        description: Exact source revision selected by the calling workflow
+        required: true
+        type: string
+    outputs:
+      control_artifact_id:
+        description: GitHub artifact ID for the qualified Linux Control archive
+        value: ${{ jobs.bundle.outputs.control_artifact_id }}
+      setup_artifact_id:
+        description: GitHub artifact ID for the qualified complete Linux setup bundle
+        value: ${{ jobs.bundle.outputs.setup_artifact_id }}
+      setup_archive_sha256:
+        description: SHA-256 of the setup tar.gz inside the uploaded artifact
+        value: ${{ jobs.bundle.outputs.setup_archive_sha256 }}
 
 # This producer retains tested bytes. It cannot publish a release or move tags.
 permissions:
@@ -22,21 +36,26 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   BUNDLE_VERSION: ${{ inputs.version }}
+  SOURCE_REVISION: ${{ inputs.source_revision || github.sha }}
 
 jobs:
   bundle:
     name: Assemble and qualify the portable Linux archive
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    outputs:
+      control_artifact_id: ${{ steps.control.outputs.artifact-id }}
+      setup_artifact_id: ${{ steps.setup.outputs.artifact-id }}
+      setup_archive_sha256: ${{ steps.qualify.outputs.archive_sha256 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.SOURCE_REVISION }}
           persist-credentials: false
 
       - name: Admit source and version before provisioning
         run: |
-          bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
+          bash .github/scripts/release/admit-source.sh --expected-source-revision "$SOURCE_REVISION"
           python3 -c 'import os,re; assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", os.environ["BUNDLE_VERSION"]), "numeric version required"'
 
       - name: Set up pinned tools
@@ -64,8 +83,8 @@ jobs:
       - name: Assemble matching Linux Control, Host, and bootstrap from this source
         run: >-
           mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
-          -Dorg.gradle.jvmargs=-Xmx4g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
-          assembleRelease :runtime:hosted:headlessBootstrapPlugin
+          -Dorg.gradle.jvmargs=-Xmx4g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$SOURCE_REVISION"
+          assembleRelease :runtime:hosted:headlessBootstrapPlugin publicLauncherTest
 
       - name: Download the pinned donor and compose the portable archive
         run: |
@@ -76,24 +95,42 @@ jobs:
             --bootstrap "$PWD/runtime/hosted/build/distributions/kast-managed-headless-v${BUNDLE_VERSION}-idea-262.zip" \
             --assets "$PWD/build/release/v${BUNDLE_VERSION}" \
             --root /tmp/kp --output "$PWD/build/composed-release" \
-            --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
+            --version "$BUNDLE_VERSION" --source-revision "$SOURCE_REVISION"
 
       - name: Install the actual archive and prove compiler queries in an independent fixture
+        id: qualify
         run: |
           archive="$PWD/build/composed-release/kast-composed-setup-v${BUNDLE_VERSION}-linux-x86_64.tar.gz"
+          archive_sha256="$(cut -d ' ' -f1 "${archive}.sha256")"
           mise exec -- uv run --locked --project packaging python packaging/composed_release.py qualify \
-            --archive "$archive" --archive-sha256 "$(cut -d ' ' -f1 "${archive}.sha256")" \
+            --archive "$archive" --archive-sha256 "$archive_sha256" \
             --root /tmp/kc --fixture /tmp/kw --evidence "$PWD/build/composed-evidence" \
-            --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
+            --version "$BUNDLE_VERSION" --source-revision "$SOURCE_REVISION"
           cp build/composed-evidence/qualification.json build/composed-release/qualification.json
+          echo "archive_sha256=$archive_sha256" >> "$GITHUB_OUTPUT"
 
       - name: Re-admit unchanged source after qualification
-        run: bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
+        run: bash .github/scripts/release/admit-source.sh --expected-source-revision "$SOURCE_REVISION"
 
-      - name: Retain the qualified bundle without publishing
+      - name: Retain the Linux Control archive and release record
+        id: control
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: kast-composed-linux-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: kast-control-linux-${{ env.SOURCE_REVISION }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/release/v${{ env.BUNDLE_VERSION }}/kast-control-v${{ env.BUNDLE_VERSION }}-linux-x86_64.tar.gz
+            build/release/v${{ env.BUNDLE_VERSION }}/kast-control-v${{ env.BUNDLE_VERSION }}-linux-x86_64.tar.gz.sha256
+            build/release/v${{ env.BUNDLE_VERSION }}/kast-control-release-v${{ env.BUNDLE_VERSION }}.json
+            build/release/v${{ env.BUNDLE_VERSION }}/kast-control-release-v${{ env.BUNDLE_VERSION }}.json.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Retain the qualified bundle without publishing
+        id: setup
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-composed-linux-${{ env.SOURCE_REVISION }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/composed-release/
           if-no-files-found: error
           compression-level: 0
@@ -103,7 +140,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: kast-composed-evidence-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: kast-composed-evidence-${{ env.SOURCE_REVISION }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             build/composed-evidence/
             build/composed-release/assembly.json

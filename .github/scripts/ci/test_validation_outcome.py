@@ -241,7 +241,7 @@ class ValidationOutcomeTest(unittest.TestCase):
     def test_checkout_mismatch_cannot_seal_even_a_complete_full_plan(self):
         needs = docs_only_results()
         needs["scope"]["outputs"].update(source="run", product="run", portable="run", gate_graph="run", scope="FULL")
-        needs["source"]["result"] = needs["kotlin"]["result"] = needs["portable"]["result"] = "success"
+        needs["source"]["result"] = needs["kotlin"]["result"] = needs["linux-native"]["result"] = needs["portable"]["result"] = "success"
         with patch.object(outcome, "select", return_value=Selection(ALL_CHECKS, Reason.CHECKOUT_MISMATCH)):
             self.assertEqual(
                 outcome.Failure.SELECTION_MISMATCH,

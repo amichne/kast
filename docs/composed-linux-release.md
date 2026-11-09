@@ -4,9 +4,11 @@ title: "Build a composed Linux bundle for Devin"
 description: "Build and retain a source-bound Linux bundle, then prepare Devin snapshot initialization without publishing or changing an environment."
 resource: "repo://docs/composed-linux-release"
 tags: [kast, distribution, linux, devin]
-timestamp: "2026-11-08T00:00:00Z"
-source_revision: 08bc4e75693a260c1bfe0ffaad667800934cc0ed
+timestamp: "2026-11-09T00:00:00Z"
+source_revision: 84574334668fe32cac996187540718568f242183
 code_sources:
+  - path: .github/workflows/ci.yml
+  - path: .github/scripts/ci/required_checks.py
   - path: .github/workflows/composed-linux.yml
   - path: packaging/composed_release.py
   - path: packaging/composed_bundle.py
@@ -21,11 +23,33 @@ Use the **Composed Linux bundle** workflow to produce an archive for `kast-actio
 The workflow retains artifacts; it does not publish releases, move action tags, or change Devin environments.
 The existing macOS release and developer publication flows stay unchanged.
 
+## Automatic CI builds
+
+Regular product CI calls this workflow through the `linux-native` job on Ubuntu 24.04.
+The caller passes its exact source revision and version `0.0.RUN_NUMBER`.
+Pull-request builds use the selected head revision, rather than the synthetic merge revision.
+The job runs even when CI reuses a macOS candidate, because that candidate supplies no Linux executable.
+Source-only and documentation-only selections skip it, as do frozen `rollout` runs.
+The final **CI required checks** gate requires Linux success whenever product validation is selected.
+
+Successful runs keep two reusable artifacts for 30 days:
+
+- `kast-control-linux-SHA-RUN_ID-ATTEMPT` contains the native Linux x86_64 Control archive, its release record, and their SHA-256 companions.
+- `kast-composed-linux-SHA-RUN_ID-ATTEMPT` contains the complete setup archive, its digest, assembly receipt, and compiler-query qualification receipt.
+
+Use the complete setup archive for a cloud environment without a separate IntelliJ installation.
+Use the Control archive when assembling a compatible Host separately.
+Both uploads follow native launcher tests, compiler-query qualification, and final source admission.
+Select the exact successful run and attempt when downloading artifacts; do not infer compatibility from the version alone.
+Retained artifacts expire, so archive approved bytes and their digests before using them in a durable environment configuration.
+The reusable workflow exposes `control_artifact_id`, `setup_artifact_id`, and `setup_archive_sha256` for later jobs.
+The setup digest covers the inner `.tar.gz`, which the bundle installer verifies, rather than GitHub's outer artifact archive.
+
 ## Build and inspect the artifact
 
 1. Select a reviewed source revision in the workflow's **Run workflow** form.
    Enter an exact numeric version, such as `0.0.0` for a qualification build.
-   The reusable `workflow_call` entry accepts the same version input.
+   The reusable `workflow_call` entry accepts the version and requires an exact `source_revision` input.
 2. Wait for the single Linux job to finish.
    It builds matching Control, Host, and bootstrap components from the checked-out source.
    It checks the pinned donor archive digest before extraction.

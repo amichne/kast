@@ -77,7 +77,13 @@ def admit_checks(needs: object, gate: Gate = Gate.COMPLETE) -> CompletedChecks |
     if isinstance(selected_scope_value, Verdict):
         return selected_scope_value
     selected = SCOPE_CHECKS[selected_scope_value]
-    for check, job in ((Check.SOURCE, "source"), (Check.PRODUCT, "kotlin"), (Check.PORTABLE, "portable"), (Check.DOCUMENTATION, "documentation")):
+    for check, job in (
+        (Check.SOURCE, "source"),
+        (Check.PRODUCT, "kotlin"),
+        (Check.PRODUCT, "linux-native"),
+        (Check.PORTABLE, "portable"),
+        (Check.DOCUMENTATION, "documentation"),
+    ):
         if gate is Gate.SOURCE_FEEDBACK and check is Check.PRODUCT:
             continue
         expected = "success" if check in selected else "skipped"

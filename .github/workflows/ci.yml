@@ -222,6 +222,15 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  linux-native:
+    name: Build and qualify Linux native package
+    needs: [scope, source-work]
+    if: needs.scope.outputs.product == 'run' && (inputs.rollout == '' || inputs.rollout == 'none')
+    uses: ./.github/workflows/composed-linux.yml
+    with:
+      version: 0.0.${{ github.run_number }}
+      source_revision: ${{ github.event.pull_request.head.sha || github.sha }}
+
   native:
     name: Compile macOS native executable
     needs: [scope, source-work]
@@ -456,7 +465,7 @@ jobs:
 
   required:
     name: CI required checks
-    needs: [scope, source, documentation, portable, kotlin]
+    needs: [scope, source, documentation, portable, kotlin, linux-native]
     if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ubuntu-latest
     timeout-minutes: 5

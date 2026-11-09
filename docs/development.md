@@ -259,27 +259,25 @@ Gradle provisions the pinned Python dependencies for its schema tests in
 `build/python-tests/env`. The build does not depend on the active shell's Python
 packages or the interpreter search path retained by an existing Gradle daemon.
 
-Install the repository's pre-push gate once per Git clone. It preserves other
-hooks and requires a clean checked-out commit before a push. Pre-push runs the
-cheap checks first, then the existing `productBuildGate` through `mise`.
-A cheap failure stops before release-catalog access or Gradle configuration.
-After cheap checks pass, the product gate fetches the published GitHub release
-catalog and builds with the highest stable semantic version.
-It requires authenticated `gh` access and fails if the catalog is unavailable or
-has no published stable version. Local tags and a previous gate run cannot supply
-a fallback:
+Pushes run no automatic local verification. CI runs the required source and
+product gates. Remove a previously installed Kast hook once per clone:
 
 ```shell
-./.githooks/install.sh
-# Run cheap checks followed by the full product gate manually:
-mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py pre-push
+bash .githooks/uninstall.sh
 ```
 
-The manual command does not enforce the hook's clean-tree or pushed-HEAD checks.
-The wrapper logs the selected release version before starting Gradle. It builds
-the current checkout with that version; it does not download or validate released
-binaries. Exact release-candidate builds continue to pass their intended version
-explicitly.
+The removal preserves hooks that Kast does not own. Local checks remain available
+when they help investigate a change:
+
+```shell
+# Cheap checks, without Gradle or native compilation:
+mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py
+# Explicit full qualification of a clean commit:
+mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py full
+```
+
+Full qualification builds the current checkout with local version `0.0.0`.
+It does not download a released binary or grant publication authority.
 
 ## CI candidates and developer publication
 

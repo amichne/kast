@@ -26,7 +26,7 @@ class FastChecksTest(unittest.TestCase):
                 return 23 if len(consumed) == failure_at + 1 else 0
 
             with redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(23, fast.run(fast.Mode.PRE_PUSH, fast.ROOT, {}, execute))
+                self.assertEqual(23, fast.run(fast.Mode.FULL, fast.ROOT, {}, execute))
             self.assertEqual(failure_at + 1, len(consumed))
             self.assertIn("PROCESS_FAILED exit=23", output.getvalue())
             self.assertNotIn("product STARTED", output.getvalue())
@@ -51,7 +51,7 @@ class FastChecksTest(unittest.TestCase):
 
             with redirect_stdout(io.StringIO()):
                 result = fast.run(mode, fast.ROOT, caller, execute)
-            self.assertEqual(7 if mode is fast.Mode.PRE_PUSH else 0, result)
+            self.assertEqual(7 if mode is fast.Mode.FULL else 0, result)
             self.assertEqual(expected_count, len(observed))
             self.assertEqual(".github/scripts/ci", observed[0][0][-1])
             self.assertEqual(".github/scripts/release/test_build_candidate.py", observed[1][0][-1])
@@ -70,13 +70,13 @@ class FastChecksTest(unittest.TestCase):
                 self.assertFalse(Path(environment["HOME"]).exists(), "owned home was not removed")
             if expected_count >= 4:
                 self.assertEqual("packaging/run-portable-tests.py", observed[3][0][-1])
-            if mode is fast.Mode.PRE_PUSH:
+            if mode is fast.Mode.FULL:
                 self.assertEqual(caller, observed[-1][1])
 
         for mode, expected_count in (
             (fast.Mode.DECISIONS, 3),
             (fast.Mode.LOCAL, 4),
-            (fast.Mode.PRE_PUSH, 5),
+            (fast.Mode.FULL, 5),
         ):
             with self.subTest(mode=mode):
                 check(mode, expected_count)
@@ -94,7 +94,7 @@ class FastChecksTest(unittest.TestCase):
                 return result
 
             with redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(expected, fast.run(fast.Mode.PRE_PUSH, fast.ROOT, {}, execute))
+                self.assertEqual(expected, fast.run(fast.Mode.FULL, fast.ROOT, {}, execute))
             self.assertEqual(1, calls)
             self.assertIn(outcome, output.getvalue())
 
@@ -106,7 +106,7 @@ class FastChecksTest(unittest.TestCase):
                 check(result, expected, outcome)
 
     def test_unknown_arguments_cannot_start_checks(self) -> None:
-        for arguments in (["native"], ["--prod"], ["local", "extra"]):
+        for arguments in (["native"], ["pre-push"], ["--prod"], ["local", "extra"]):
             with self.subTest(arguments=arguments), patch.object(fast, "run") as run:
                 with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as rejected:
                     fast.main(arguments)
@@ -133,7 +133,7 @@ class FastChecksProcessTest(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="kast empty checks ") as directory:
             root = Path(directory)
             self.fixture(root, "# No selected tests.\n")
-            self.assertEqual(5, fast.run(fast.Mode.PRE_PUSH, root, {}))
+            self.assertEqual(5, fast.run(fast.Mode.FULL, root, {}))
 
     def test_real_decision_process_ignores_hook_git_state_and_user_test_filters(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kast checks ; ") as directory:
