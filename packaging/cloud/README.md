@@ -1,5 +1,10 @@
 # Linux evaluation environment
 
+For routine OpenAI cloud image setup using a built package, start with
+[the image setup guide](openai-image.md). It uses a qualified composed archive
+and an offline activation check. The evaluation bootstrap below remains a separate
+source-build and Pi evaluation profile.
+
 This profile provisions an isolated Linux x86_64 runtime for Kast evaluation.
 It does not install personal shell configuration or change credentials.
 Runtime directories and evaluation receipts belong outside the repository.

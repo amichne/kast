@@ -74,10 +74,15 @@ jobs:
 
       - name: Check composition contracts and source guards
         run: |
-          mise exec -- uv run --locked --project packaging ruff check packaging/composed_release.py packaging/test_composition_release.py
-          mise exec -- uv run --locked --project packaging ruff format --check packaging/composed_release.py packaging/test_composition_release.py
+          mise exec -- uv run --locked --project packaging ruff check \
+            packaging/composed_release.py packaging/test_composition_release.py \
+            packaging/cloud/openai-image.py packaging/test-openai-image.py
+          mise exec -- uv run --locked --project packaging ruff format --check \
+            packaging/composed_release.py packaging/test_composition_release.py \
+            packaging/cloud/openai-image.py packaging/test-openai-image.py
           mise exec -- uv run --locked --project packaging pyright --project packaging
-          mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test-managed-headless.py -q
+          mise exec -- uv run --locked --project packaging pytest \
+            packaging/test_composition_*.py packaging/test-managed-headless.py packaging/test-openai-image.py -q
           mise exec -- ./gradlew --no-daemon verifyJsonContracts verifyKastArchitecture
 
       - name: Assemble matching Linux Control, Host, and bootstrap from this source
