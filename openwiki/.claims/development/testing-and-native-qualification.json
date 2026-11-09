@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:137fa102df5663d9cd68bc75ad8e7273db23ac1f7e47022f74d81b9f9c4a0e4c",
+  "pageVersion": "sha256:0a1a805df0f16a5c73bc5cc05202161e029a8b958401964488a3293ce25c3f44",
   "claims": [
     {
       "id": "claim_b360f4c00a974d9fa3febbb40e81500c",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:d9f5a826d6e0bdff746247e74755acaada858d7be0deec3d986dd9d96f136691"
+          "version": "repo-file-v1:sha256:a9fa26f444bdcfc1de9bd62b11af525aa6d9949059cdb4446069ae5ce4cdc2ef"
         }
       ]
     },
@@ -39,32 +39,10 @@
           "version": "repo-file-v1:sha256:fc247d569820f8ba286481b22f0f0e20ed0a4e775d1b891a51250eaa1ec189c9"
         }
       ]
-    },
-    {
-      "id": "claim_539e20614de943b6ad8d81e57ef4cc9d",
-      "statement": "Git pushes start no automatic Kast qualification. Existing Kast dispatchers remain inert after hook retirement. The manual fast_checks.py pre-push sequence keeps cheap checks before the complete local product gate, while CI selects checks for pull requests and main.",
-      "evidence": [
-        {
-          "resource": "repo://.github/scripts/ci/fast_checks.py#L174-L182",
-          "version": "repo-lines-v1:sha256:ece63b2942831222dc869d9c128c2c8d47d18224483ebea2193da58f2b6a9168:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2YyNzVjNDk2N2E4YzZkYmJkYzBkZGM1MTc4YTczNjdlNjg5ODZjZjg3NTVjN2MwMzYxN2VhNGViNTRkOGU2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2NhZjg0MDBhNzU3OTMzYzhiMDdhZGIxZDM3MDc5MTA5YmY2MjYyMDUxZWI5NGM5MzBjNWNjMmNiNDA2ZjgxZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjVmNDIxYmUyYmJjYjkxMGZiZmQ1M2M2ZjkxNmU4ZGNjN2M4YThkZmFkNjMwZjg2OWM2Y2E1MDc4NmJmN2ZmZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZThmZTNkMTgyYzQyYWRmODRhMTdhMzFmODcwOThhODNjN2FhMmMxYWZhZjQ4OGM1M2ViZGU3ZDM1ZmZlZDk3YiJ9"
-        },
-        {
-          "resource": "repo://.github/scripts/ci/test_push_policy.py",
-          "version": "repo-file-v1:sha256:ae5d47d61b60e49428399ed33cd79d18d99dd436809be7a33291c75ddbae1b54"
-        },
-        {
-          "resource": "repo://.github/workflows/ci.yml#L1-L24",
-          "version": "repo-lines-v1:sha256:5826f57e024ab327c6b53cec8a3029b01de5c7b87864ff2c4e08473800606389:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2ZTFiMzJmYTA5MDc5YWUyZjAwMDFmZmYwZWNhMjdiNDk4NTk1N2Q0ZWI0ODU3OTI5YjNjZjA1OGZhYWU1NDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0MzdlYjYxYmI1NDg1OWFiMDkxZDExMTE1NTBiNTFmOGY4ZTMzMGNkYmY3NzM3NzczM2NhMWRiZDcxZjM0MzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwNmFmNzA5YmQzOWJlNGJkMWQ1Yjg2YWU3OTI5MTkxNGU3OTJiNjM4MzdkYzk4ZDc2YWFkMTJmYjAwNjIzNWYifQ"
-        },
-        {
-          "resource": "repo://docs/development.md#L262-L281",
-          "version": "repo-lines-v1:sha256:c4f6ae46aa27af919ed70dd6b2e3c5bad7f6189f1d8bf364e51ad3f76f71c424:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwZjVjOTNhNThjODQyNmUwYzQ3ODUwNzk3ZmQxY2I1ZjkyZGJkOWU1MmUxOWUyZTU1MTE1NzFhY2E3ZWZmMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY4NGE4YTNhZTFlY2U5NmQzZGI2YjY0MmNhNTNkMGU0MGI0MTM0NWQ3ZjJiZDY4NTAxMGZkNjRjNjk5YzMwYzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjZGVjNzFlODMzMjdkNGQ2NWNkMGJjMWU3ZDBiMDEzMzAwY2IzNjBlNzkyMjdlZTc4ZjBlNjExMzlhMmMwMzcifQ"
-        }
-      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-07T21:20:33.234Z"
+    "at": "2026-11-09T13:10:12.658Z"
   }
 }

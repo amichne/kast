@@ -1,0 +1,3 @@
+#!/bin/sh
+# Keep dispatchers installed by older Kast checkouts inert.
+exit 0

@@ -15,6 +15,7 @@ code_sources:
   - path: packaging/container/compiler.Dockerfile
   - path: packaging/container/kastbox
   - path: packaging/test_dev_container.py
+  - path: packaging/test_dev_container_simulation.py
   - path: packaging/test_composition_platform.py
   - path: bin/setup-kast
   - path: bin/kast-task-vm
@@ -22,6 +23,7 @@ code_sources:
   - path: packaging/task_vm_guest.py
   - path: packaging/test_composition_task_vm.py
   - path: packaging/composed_bundle.py
+  - path: packaging/oci_task.py
   - path: packaging/composition_platform.py
   - path: packaging/composed_host.py
   - path: packaging/composed_host_probe.py
@@ -69,7 +71,7 @@ Owns installer adapters, development containers, offline lifecycle helpers, cont
 - [task_vm_guest.py](task_vm_guest.py) - the shared installer and literal task process inside the guest.
 - [composition_platform.py](composition_platform.py) - pinned donor and layout selection for macOS ARM, Linux ARM64, and Linux x86_64.
 - [dev_container.py](dev_container.py) - native image builds and persistent repository copies in a dedicated Colima VM.
-- [container_compile.py](container_compile.py) - native Control compilation with digest-pinned GraalVM.
+- [container_compile.py](container_compile.py) - native Control compilation with digest-pinned Liberica NIK.
 - [container_install.py](container_install.py) - native donor admission and composition through the shared installer.
 - [composition_recipe.py](composition_recipe.py) - pinned roots and plugin provider candidates.
 - [composed_host_probe.py](composed_host_probe.py) - native callers, Java references, and result rejection.
@@ -91,8 +93,8 @@ Owns installer adapters, development containers, offline lifecycle helpers, cont
 - Candidate admission reads `managed-install-v1`, component manifests, and immutable selected assets before active installation effects.
 - For offline packaging tests, run `python3 packaging/run-portable-tests.py` from the repository root.
 - For managed and composition cases, run `mise exec -- uv run --locked --project packaging pytest packaging -q`.
-- The portable runner selects `test-*.py`. The project command also selects `test_composition_*.py` and `test_dev_container.py`.
-- For container policy and shell adapter cases, run `mise exec -- uv run --locked --project packaging pytest packaging/test_dev_container.py packaging/test_composition_platform.py -q`. These cases do not prove native compiler behavior.
+- The portable runner selects `test-*.py`. The project command also selects `test_composition_*.py`. Run the development-container tests explicitly.
+- For container policy and shell adapter cases, run `mise exec -- uv run --locked --project packaging pytest packaging/test_dev_container.py packaging/test_dev_container_simulation.py packaging/test_composition_platform.py -q`. These cases do not prove native compiler behavior.
 - `mise exec -- kast-container --help` describes native development containers. The [container guide](container/README.md) covers prerequisites and the separate image build.
 - Read the [composition review](../docs/reviews/composed-analysis-host.md) for donor inputs, assembly commands, and native evidence limits.
 - The Gradle task `installedProductTest` exercises the assembled product.
@@ -109,6 +111,7 @@ Owns installer adapters, development containers, offline lifecycle helpers, cont
 - `bin/setup-kast` installs a digest-pinned Linux or macOS ARM bundle through `install_prepared_runtime`.
 - `mise exec -- kast-task-vm --help` describes disposable macOS ARM tasks. Read the [VM report](../docs/reviews/macos-task-vm.md) for the image contract and native gaps.
 - Bundle creation uses `python3 packaging/composed_bundle.py pack`. Read the [Linux install report](../docs/reviews/linux-composed-install.md) for its inputs.
+- Start an OCI task with `kast-task`. The [image guide](oci/README.md) describes how the command selects one workspace.
 - Explicit workspace trust applies only to the new private profile and the named existing repository.
 - The native probe consumes a disposable fixture with explicit trust and a fresh evidence directory.
 - Add `composed-host-fixture-overlay` to the fixture copy. Keep the original callback fixture unchanged because its oracle admits exact source paths.

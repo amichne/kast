@@ -8,6 +8,9 @@ internal object HostedWorkspaceRefreshAuthority {
     private val bundleSubmit = JvmMember.of(bundleOwner.internalName, "submit",
         "(Lkotlin/jvm/functions/Function0;)Lio/github/amichne/kast/runtime/hosted/lifecycle/HostRefreshSubmission;")
     private const val BUILDER = "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder"
+    private val managedArguments = JvmMember.of(BUILDER, "withArguments", "(Ljava/lang/String;)L$BUILDER;")
+    private val quietImport = JvmMember.of(specOwner.internalName, "quietWorkspaceImport",
+        "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;Z)L$BUILDER;")
     private val importTargets = setOf(
         JvmMember.of(BUILDER, "<type>", ""),
         JvmMember.of(BUILDER, "<init>", "(Lcom/intellij/openapi/project/Project;Lcom/intellij/openapi/externalSystem/model/ProjectSystemId;)V"),
@@ -36,7 +39,8 @@ internal object HostedWorkspaceRefreshAuthority {
         return when (effect.effect) {
             ForbiddenEffect.GRADLE_IMPORT ->
                 effect.module == ModuleId.RUNTIME_HOSTED &&
-                    effect.caller.owner in setOf(owner, specOwner) && effect.target in importTargets
+                    ((effect.caller.owner in setOf(owner, specOwner) && effect.target in importTargets) ||
+                        (effect.caller == quietImport && effect.target == managedArguments))
             ForbiddenEffect.RECURSIVE_VFS_REFRESH ->
                 effect.module == ModuleId.RUNTIME_HOSTED &&
                     when {

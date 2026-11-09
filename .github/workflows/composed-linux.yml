@@ -1,0 +1,116 @@
+name: Composed Linux bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact numeric version for this source-bound bundle (not a release tag)
+        required: true
+        default: 0.0.0
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: Exact numeric version for this source-bound bundle
+        required: true
+        type: string
+
+# This producer retains tested bytes. It cannot publish a release or move tags.
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  BUNDLE_VERSION: ${{ inputs.version }}
+
+jobs:
+  bundle:
+    name: Assemble and qualify the portable Linux archive
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Admit source and version before provisioning
+        run: |
+          bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
+          python3 -c 'import os,re; assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", os.environ["BUNDLE_VERSION"]), "numeric version required"'
+
+      - name: Set up pinned tools
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+
+      - name: Install Linux runtime and native compilation prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential zlib1g-dev libxi6 libxrender1 libxtst6 libfontconfig1 libgtk-3-0 libnss3 libasound2t64 libgbm1
+
+      - name: Check composition contracts and source guards
+        run: |
+          mise exec -- uv run --locked --project packaging ruff check packaging/composed_release.py packaging/test_composition_release.py
+          mise exec -- uv run --locked --project packaging ruff format --check packaging/composed_release.py packaging/test_composition_release.py
+          mise exec -- uv run --locked --project packaging pyright --project packaging
+          mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test-managed-headless.py -q
+          mise exec -- ./gradlew --no-daemon verifyJsonContracts verifyKastArchitecture
+
+      - name: Assemble matching Linux Control, Host, and bootstrap from this source
+        run: >-
+          mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
+          -Dorg.gradle.jvmargs=-Xmx4g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
+          assembleRelease :runtime:hosted:headlessBootstrapPlugin
+
+      - name: Download the pinned donor and compose the portable archive
+        run: |
+          mkdir -p build/cloud-input
+          curl --fail --location --retry 3 https://download.jetbrains.com/idea/idea-2026.2.2.tar.gz --output build/cloud-input/idea.tar.gz
+          mise exec -- uv run --locked --project packaging python packaging/composed_release.py assemble \
+            --archive "$PWD/build/cloud-input/idea.tar.gz" \
+            --bootstrap "$PWD/runtime/hosted/build/distributions/kast-managed-headless-v${BUNDLE_VERSION}-idea-262.zip" \
+            --assets "$PWD/build/release/v${BUNDLE_VERSION}" \
+            --root /tmp/kp --output "$PWD/build/composed-release" \
+            --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
+
+      - name: Install the actual archive and prove compiler queries in an independent fixture
+        run: |
+          archive="$PWD/build/composed-release/kast-composed-setup-v${BUNDLE_VERSION}-linux-x86_64.tar.gz"
+          mise exec -- uv run --locked --project packaging python packaging/composed_release.py qualify \
+            --archive "$archive" --archive-sha256 "$(cut -d ' ' -f1 "${archive}.sha256")" \
+            --root /tmp/kc --fixture /tmp/kw --evidence "$PWD/build/composed-evidence" \
+            --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
+          cp build/composed-evidence/qualification.json build/composed-release/qualification.json
+
+      - name: Re-admit unchanged source after qualification
+        run: bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
+
+      - name: Retain the qualified bundle without publishing
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-composed-linux-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/composed-release/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Retain stage and native evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-composed-evidence-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/composed-evidence/
+            build/composed-release/assembly.json
+            build/reports/
+            /tmp/kp/donor-manifest.json
+            /tmp/kp/p/composition-manifest.json
+            /tmp/kp/p/installer.log
+            /tmp/kc/installer.log
+          if-no-files-found: warn
+          retention-days: 14

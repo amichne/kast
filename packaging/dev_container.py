@@ -384,6 +384,15 @@ def copy_workspace(runtime: Runtime, workspace: Workspace) -> Rejected | None:
         ],
         [
             "python3",
+            "/opt/kast/packaging/composed_bundle.py",
+            "trust",
+            "--root",
+            "/opt/kast",
+            "--workspace",
+            "/work",
+        ],
+        [
+            "python3",
             "-c",
             "from pathlib import Path; "
             "Path('/home/developer/.kast-workspace-ready').write_text('1\\n')",

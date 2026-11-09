@@ -254,6 +254,10 @@ def object_fields(value: object) -> TypeGuard[dict[object, object]]:
     return isinstance(value, dict)
 
 
+def object_items(value: object) -> TypeGuard[list[object]]:
+    return isinstance(value, list)
+
+
 def descriptor_facts(
     data: bytes,
     resources: dict[str, bytes],

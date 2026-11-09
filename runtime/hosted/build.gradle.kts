@@ -133,6 +133,7 @@ dependencies {
     testImplementation(testFixtures(project(":workspace:intellij-read")))
     testImplementation(platform)
     testImplementation(libs.json.schema.validator)
+    testImplementation(libs.asm)
 }
 
 val hostedPlugin =

@@ -11,6 +11,7 @@ class ManagedHeadlessLaunch
 private constructor(
     val installation: ManagedHeadlessInstallation,
     val options: String,
+    private val executablePath: ManagedHeadlessExecutablePath,
 ) {
     val arguments: List<String>
         get() = listOf(installation.launch.executable, "kast-headless")
@@ -21,7 +22,7 @@ private constructor(
             val state = runtime.state
             val java = runtime.launch.bundledJavaHome
             return mapOf(
-                "PATH" to "$java/bin:/usr/bin:/bin",
+                "PATH" to executablePath.value,
                 "HOME" to runtime.userHome.toString(),
                 "JAVA_HOME" to java.toString(),
                 "IDEA_JDK" to java.toString(),
@@ -37,18 +38,25 @@ private constructor(
         private const val MAXIMUM_PRODUCT_BYTES = 1_048_576
 
         fun prepare(
-            runtime: ManagedHeadlessInstallation
-        ): Refinement<ManagedHeadlessLaunch, ManagedHeadlessLaunchFailure> =
-            try {
-                val path = vendorOptions(runtime)
-                if (path == null) Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
-                else {
-                    val vendor = Files.readAllLines(path).filterNot { it.startsWith("-Xmx") || it.startsWith("-Xms") }
-                    val lines = vendor + overrides(runtime)
-                    if (lines.any { it.contains('\n') || it.contains('\r') })
-                        Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
-                    else Refinement.Refined(ManagedHeadlessLaunch(runtime, lines.joinToString("\n", postfix = "\n")))
+            runtime: ManagedHeadlessInstallation,
+            executablePath: String? = null,
+        ): Refinement<ManagedHeadlessLaunch, ManagedHeadlessLaunchFailure> {
+            val search =
+                when (
+                    val admitted = ManagedHeadlessExecutablePath.parse(runtime.launch.bundledJavaHome, executablePath)
+                ) {
+                    is Refinement.Rejected -> return admitted
+                    is Refinement.Refined -> admitted.value
                 }
+            return try {
+                val path =
+                    vendorOptions(runtime) ?: return Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
+                val vendor = Files.readAllLines(path).filterNot { it.startsWith("-Xmx") || it.startsWith("-Xms") }
+                val lines = vendor + overrides(runtime)
+                if (lines.any { it.contains('\n') || it.contains('\r') })
+                    Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
+                else
+                    Refinement.Refined(ManagedHeadlessLaunch(runtime, lines.joinToString("\n", postfix = "\n"), search))
             } catch (_: java.io.IOException) {
                 Refinement.Rejected(ManagedHeadlessLaunchFailure.METADATA_UNAVAILABLE)
             } catch (_: kotlinx.serialization.SerializationException) {
@@ -56,6 +64,7 @@ private constructor(
             } catch (_: IllegalArgumentException) {
                 Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
             }
+        }
 
         private fun vendorOptions(runtime: ManagedHeadlessInstallation): Path? {
             val target = runtime.launch
@@ -101,6 +110,7 @@ private constructor(
 enum class ManagedHeadlessLaunchFailure {
     METADATA_UNAVAILABLE,
     INVALID_METADATA,
+    INVALID_EXECUTABLE_PATH,
     WRITE_FAILED,
 }
 

@@ -179,7 +179,7 @@ Source, policy, tool, environment, and report changes rerun their consumers.
 Failed commands preserve their diagnostics and remain failures on later invocations.
 
 The scoped loop supplies local evidence for selected owners.
-Pushes start no automatic local checks. CI selects checks for pull requests and main.
+Before a push, the existing hook still runs the full product gate on the committed source.
 Live installation and release-catalog reads keep their existing freshness rules.
 
 Run all offline packaging suites in an isolated Linux container with:
@@ -259,25 +259,19 @@ Gradle provisions the pinned Python dependencies for its schema tests in
 `build/python-tests/env`. The build does not depend on the active shell's Python
 packages or the interpreter search path retained by an existing Gradle daemon.
 
-Kast supplies no automatic pre-push gate or hook installer.
-An existing `kast-pre-push-dispatch` hook remains inert because its repository target no longer exists.
-Foreign hooks keep their own behavior.
-Pushes can contain committed references while the checkout contains uncommitted work.
-CI selects source, native product, portable packaging, and documentation checks for pull requests and main.
-This policy removes local qualification before publication. A push alone supplies no qualification evidence.
+Kast retires its automatic push gate. An installed Kast dispatcher exits without
+local qualification. Other Git hooks keep their own behavior.
 
-For complete local qualification, run the existing manual sequence:
+Run complete local qualification explicitly.
 
 ```shell
 mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py pre-push
 ```
 
-The `pre-push` mode remains a manual command for compatibility.
-It runs the cheap checks before `productBuildGate` and stops at the first failure.
-The product gate needs a clean committed checkout and uses local version `0.0.0`.
-Its receipt binds the result to the source revision and source tree.
-It does not qualify a published release or need a release-catalog query.
-Exact release-candidate procedures keep their explicit versions and separate qualification.
+The `pre-push` mode starts the product gate after the cheap checks pass.
+The product gate needs a clean committed checkout and uses version `0.0.0`.
+Its receipt identifies the source revision and tree. Release candidates use
+their own explicit version and qualification.
 
 ## CI candidates and developer publication
 

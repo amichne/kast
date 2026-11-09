@@ -266,6 +266,7 @@ internal class ForceDaemonRetirement(
                 is ResetProcessSelection.Selected -> {
                     when (val captured = runtime.capture(selected.process)) {
                         is ResetSharedSocketCapture.Captured -> processes += captured
+                        ResetSharedSocketCapture.Retired -> Unit
                         ResetSharedSocketCapture.Rejected ->
                             return ResetRetirementPreparation.Rejected(
                                 rejected(ForceResetFailure.PROCESS_RETIREMENT_REJECTED)

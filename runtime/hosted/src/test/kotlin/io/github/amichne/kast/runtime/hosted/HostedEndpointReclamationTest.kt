@@ -15,8 +15,37 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.EnabledOnOs
+import org.junit.jupiter.api.condition.OS
 
 class HostedEndpointReclamationTest {
+    @Test
+    @EnabledOnOs(OS.LINUX)
+    fun `unreaped zombie endpoint is reclaimed without signalling its parent`() = fixture { directory, root, host ->
+        val parent =
+            ProcessBuilder(
+                    "python3",
+                    "-c",
+                    "import os,sys; pid=os.fork(); " +
+                        "os._exit(0) if pid == 0 else None; " +
+                        "os.waitid(os.P_PID,pid,os.WEXITED|os.WNOWAIT); " +
+                        "print(pid,flush=True); sys.stdin.readline(); os.waitpid(pid,0)",
+                )
+                .start()
+        try {
+            val pid = parent.inputStream.bufferedReader().readLine().toLong()
+            assertTrue(ProcessHandle.of(pid).isPresent)
+            stale(directory, root, pid)
+            val opened = OwnedHostedEndpoint.open(directory, root, host)
+            assertTrue(opened is Refinement.Refined, opened.toString())
+            (opened as Refinement.Refined).value.close()
+            assertTrue(parent.isAlive, "Reclamation must not signal the zombie's parent")
+        } finally {
+            parent.outputStream.bufferedWriter().use { it.write("reap\n") }
+            assertEquals(0, parent.waitFor())
+        }
+    }
+
     @Test
     fun `dead matching endpoint is reclaimed under exclusive ownership`() = fixture { directory, root, host ->
         stale(directory, root, deadPid())

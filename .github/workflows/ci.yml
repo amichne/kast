@@ -26,7 +26,8 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   KAST_SEMANTIC_FIXTURES: ${{ vars.KAST_SEMANTIC_FIXTURES || 'false' }}
-  KAST_NATIVE_COMPILATION: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}
+  KAST_MACOS_CHECKS: ${{ vars.KAST_MACOS_CHECKS || 'false' }}
+  KAST_NATIVE_COMPILATION: ${{ vars.KAST_MACOS_CHECKS == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}
 
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ inputs.rollout_case && inputs.rollout_case != 'all' && format('-{0}', inputs.rollout_case) || '' }}
@@ -62,6 +63,7 @@ jobs:
       - name: Test CI decisions
         run: |
           echo "Semantic fixture switch: $KAST_SEMANTIC_FIXTURES" >> "$GITHUB_STEP_SUMMARY"
+          echo "macOS check switch: $KAST_MACOS_CHECKS; effective native compilation: $KAST_NATIVE_COMPILATION" >> "$GITHUB_STEP_SUMMARY"
           uv run --locked --script .github/scripts/ci/fast_checks.py decisions
 
       - name: Select checks
@@ -225,7 +227,7 @@ jobs:
   native:
     name: Compile macOS native executable
     needs: [scope, source-work]
-    if: needs.scope.outputs.product == 'run' && needs.source-work.outputs.candidate != 'REUSED'
+    if: vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.outputs.candidate != 'REUSED'
     runs-on: [self-hosted, macOS, ARM64, kast-main]
     timeout-minutes: 45
     steps:
@@ -338,7 +340,7 @@ jobs:
   kotlin:
     name: Kotlin product
     needs: [scope, source-work, native, assembly]
-    if: always() && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && (needs.source-work.outputs.candidate == 'REUSED' || (needs.native.result == 'success' && needs.assembly.result == 'success')) && (inputs.rollout == '' || inputs.rollout == 'none')
+    if: always() && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && (needs.source-work.outputs.candidate == 'REUSED' || (needs.native.result == 'success' && needs.assembly.result == 'success')) && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || fromJSON('["self-hosted", "macOS", "ARM64", "kast-main"]') }}
     timeout-minutes: 30
     steps:

@@ -68,7 +68,7 @@ jobs:
 
   native:
     name: Populate macOS adapter cache
-    if: github.ref == 'refs/heads/main' && vars.KAST_NATIVE_COMPILATION != 'false'
+    if: github.ref == 'refs/heads/main' && vars.KAST_MACOS_CHECKS == 'true' && vars.KAST_NATIVE_COMPILATION != 'false'
     runs-on: macos-15
     timeout-minutes: 20
     steps:

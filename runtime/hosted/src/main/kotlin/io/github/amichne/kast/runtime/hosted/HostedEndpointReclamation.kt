@@ -7,7 +7,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 
-/** Only an exclusively locked, unchanged endpoint whose recorded process is absent can be retired. */
+/** Only an exclusively locked, unchanged endpoint whose recorded process cannot execute can be retired. */
 internal object HostedEndpointReclamation {
     fun prepare(
         directory: Path,
@@ -64,7 +64,7 @@ private constructor(
     private val owner: DeadHostedEndpointOwner,
 ) {
     fun retire(lock: FileLock): Refinement<Unit, HostedEndpointFailure> {
-        if (!lock.isValid || !owner.remainsAbsent()) return rejected()
+        if (!lock.isValid || !owner.remainsExited()) return rejected()
         if (listOf(directory, lockFile, socket, descriptor).any { it.verify() is Refinement.Rejected })
             return rejected()
         Files.delete(socket.path)

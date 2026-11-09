@@ -74,12 +74,13 @@ internal fun launchManagedHeadless(
     installation: ManagedHeadlessInstallation,
     platform: IdeLaunchPlatform,
 ): Refinement<IdeLaunchLifetime, IdeLifecycleFailure> =
-    when (val specification = ManagedHeadlessLaunch.prepare(installation)) {
+    when (val specification = ManagedHeadlessLaunch.prepare(installation, platform.executablePath())) {
         is Refinement.Rejected ->
             Refinement.Rejected(
                 when (specification.failure) {
                     ManagedHeadlessLaunchFailure.METADATA_UNAVAILABLE -> IdeLifecycleFailure.LAUNCH_METADATA_UNAVAILABLE
                     ManagedHeadlessLaunchFailure.INVALID_METADATA -> IdeLifecycleFailure.LAUNCH_METADATA_INVALID
+                    ManagedHeadlessLaunchFailure.INVALID_EXECUTABLE_PATH -> IdeLifecycleFailure.LAUNCH_METADATA_INVALID
                     ManagedHeadlessLaunchFailure.WRITE_FAILED -> IdeLifecycleFailure.LAUNCH_FAILED
                 }
             )

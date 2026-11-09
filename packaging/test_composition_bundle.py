@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import sys
 import tarfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -17,8 +18,10 @@ from composed_bundle import (
     admit_trust_workspace,
     configure_trusted_workspace,
     extract_bundle,
+    main,
     read_manifest,
     sha256,
+    trust_installed_workspace,
 )
 from composition_platform import HostPlatform
 from managed_headless import AssemblyEntryKind, AssemblyFile, Failure, Rejected
@@ -121,7 +124,7 @@ class Selection:
 
 
 def test_explicit_trust_uses_only_the_private_profile_and_preserves_existing_settings(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     state = tmp_path / "install/state"
     plugins = state / "home/profile/plugins"
@@ -133,7 +136,8 @@ def test_explicit_trust_uses_only_the_private_profile_and_preserves_existing_set
     workspace.mkdir()
     admitted = admit_trust_workspace(workspace, tmp_path / "install")
     assert not isinstance(admitted, BundleRejected)
-    result = configure_trusted_workspace(state, admitted)
+    _ = (state.parent / ".kast-headless-owned").write_text("kast-managed-headless-v1\n")
+    result = trust_installed_workspace(state.parent, workspace)
     assert isinstance(result, ConfiguredTrust)
     assert (
         result.workspace == workspace
@@ -148,6 +152,18 @@ def test_explicit_trust_uses_only_the_private_profile_and_preserves_existing_set
     assert result.sha256 == hashlib.sha256(expected).hexdigest()
     assert configure_trusted_workspace(state, admitted) == Rejected(Failure.INVALID_COMPONENT)
     assert result.settings.read_bytes() == expected
+    result.settings.unlink()
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["composed_bundle.py", "trust", "--root", str(state.parent), "--workspace", str(workspace)],
+    )
+    assert main() == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "workspace": str(workspace),
+        "settings": str(result.settings),
+        "sha256": hashlib.sha256(expected).hexdigest(),
+    }
 
 
 def test_trust_cannot_include_the_installation_state(tmp_path: Path) -> None:
@@ -291,3 +307,14 @@ def test_bundle_round_trip_keeps_each_native_layout_before_installer_effects(
 @dataclass(frozen=True)
 class BundleProduct:
     buildNumber: str
+
+
+def test_runtime_trust_rejects_an_unowned_installation(tmp_path: Path) -> None:
+    root = tmp_path / "install"
+    workspace = tmp_path / "repository"
+    root.mkdir()
+    workspace.mkdir()
+    assert trust_installed_workspace(root, workspace) == BundleRejected(
+        BundleFailure.UNSAFE_PATH,
+        "installed root",
+    )

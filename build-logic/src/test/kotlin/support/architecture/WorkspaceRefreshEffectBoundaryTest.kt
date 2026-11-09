@@ -78,6 +78,22 @@ class WorkspaceRefreshEffectBoundaryTest {
     }
 
     @Test
+    fun `managed import arguments belong only to the exact quiet import adapter`() {
+        val builder = "com/intellij/openapi/externalSystem/importing/ImportSpecBuilder"
+        val target = JvmMember.of(builder, "withArguments", "(Ljava/lang/String;)L$builder;")
+        val caller = JvmMember.of(refreshOwner + "Kt", "quietWorkspaceImport",
+            "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;Z)L$builder;")
+        assertInstanceOf<ArchitectureAdmission.Accepted>(admit(ModuleId.RUNTIME_HOSTED, caller, target))
+        for (other in listOf(caller.copy(name = JvmMemberName("other")), caller.copy(descriptor = JvmDescriptor("()V")),
+            JvmMember.of("io/github/amichne/kast/runtime/hosted/HostedSemanticServices", "effect", "()V"))) {
+            assertInstanceOf<ArchitectureAdmission.Rejected>(admit(ModuleId.RUNTIME_HOSTED, other, target))
+        }
+        assertInstanceOf<ArchitectureAdmission.Rejected>(admit(ModuleId.WORKSPACE_INTELLIJ_READ, caller, target))
+        assertInstanceOf<ArchitectureAdmission.Rejected>(admit(ModuleId.RUNTIME_HOSTED, caller,
+            target.copy(name = JvmMemberName("withVmOptions"))))
+    }
+
+    @Test
     fun `refresh permission cannot open reconfigure rebuild or refresh all projects`() {
         for (target in listOf(
             refresh.copy(name = JvmMemberName("linkExternalProject")),

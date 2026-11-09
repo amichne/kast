@@ -93,6 +93,60 @@ class NativeResetListenerTest {
         }
 
     @Test
+    fun `native retirement accepts exit before capture without acquiring socket ownership`() =
+        withScopedDaemon { selected, socket, listener ->
+            listener.destroyForcibly()
+            assertTrue(listener.waitFor(5, TimeUnit.SECONDS))
+            Files.delete(socket)
+            Files.writeString(socket, "uncaptured replacement")
+            val observations = mutableListOf<ResetProcessObservation>()
+            assertEquals(
+                LifecycleProcessObservation.Absent,
+                NativeForceDaemonRuntime.retireObserved(selected, Duration.ofSeconds(5), observations::add),
+            )
+            assertEquals(ResetProcessResult.RETIRED, observations.last().outcome)
+            assertEquals("uncaptured replacement", Files.readString(socket))
+        }
+
+    @Test
+    fun `native retirement accepts exit during capture without erasing an unproven socket`() =
+        withScopedDaemon { selected, socket, listener ->
+            val observations = mutableListOf<ResetProcessObservation>()
+            assertEquals(
+                LifecycleProcessObservation.Absent,
+                NativeForceDaemonRuntime.retireObserved(selected, Duration.ofSeconds(5)) { observation ->
+                    observations += observation
+                    if (observations.size == 1) {
+                        assertEquals(ResetProcessResult.IDENTITY_VERIFIED, observation.outcome)
+                        listener.destroyForcibly()
+                        assertTrue(listener.waitFor(5, TimeUnit.SECONDS))
+                        Files.delete(socket)
+                        Files.writeString(socket, "uncaptured replacement")
+                    }
+                },
+            )
+            assertTrue(observations.any { it.outcome == ResetProcessResult.RETIRED })
+            assertEquals("uncaptured replacement", Files.readString(socket))
+        }
+
+    @Test
+    fun `native capture rejects changed identity without retiring the live owner`() =
+        withScopedDaemon { selected, socket, listener ->
+            val changed =
+                listOf(
+                    selected.snapshot.copy(startEpochMillis = selected.snapshot.startEpochMillis + 1),
+                    selected.snapshot.copy(arguments = selected.snapshot.arguments + "changed"),
+                )
+            for (snapshot in changed) {
+                val prior =
+                    (ResetScopedProcess.select(snapshot, selected.root) as ResetProcessSelection.Selected).process
+                assertEquals(ResetSharedSocketCapture.Rejected, NativeForceDaemonRuntime.captureObserved(prior) {})
+                assertTrue(listener.isAlive)
+                assertTrue(Files.exists(socket))
+            }
+        }
+
+    @Test
     fun `shared socket retirement preserves a live owner`() = withScopedDaemon { selected, socket, listener ->
         val captured = ResetOwnedSharedSocket.capture(selected) as ResetSharedSocketCapture.Captured
         val observations = mutableListOf<ResetProcessObservation>()
