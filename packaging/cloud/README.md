@@ -69,7 +69,9 @@ well as the main Gradle process.
 
 Bootstrap also checks the IDE build, bundled Kotlin plugin version, and JBR 25+.
 The Host distribution and native test distribution have separate exact pins.
-GraalVM supplies Native Image for Control builds; the ordinary JDK supplies Gradle.
+Oracle GraalVM matches `mise.toml` and supplies Native Image for Control builds,
+including the native build report. GraalVM Community does not support the report
+option used by this build. The ordinary JDK supplies Gradle.
 The wrapper owns the Gradle distribution checksum. The generated activation file
 configures only the owned Gradle directory through the current approved proxy.
 Set `PI_EVAL_JAVA_TRUSTSTORE` if the platform provides a different Java certificate store.
