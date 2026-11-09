@@ -513,6 +513,12 @@ val productGateVersionTest = tasks.register<Exec>("productGateVersionTest") {
     commandLine("python3", layout.projectDirectory.file("distribution/release/test_run_product_gate.py"))
 }
 
+val documentationDependencyEnvironment = providers.provider {
+    validationEnvironment.get() + support.tasks.DependencyBootstrapEnvironment.network { name ->
+        providers.environmentVariable(name).orNull
+    }
+}
+
 val documentationMarkdownDependencies = tasks.register<Exec>("documentationMarkdownDependencies") {
     group = "verification"
     description = "Installs the locked CommonMark parser without package scripts."
@@ -520,7 +526,7 @@ val documentationMarkdownDependencies = tasks.register<Exec>("documentationMarkd
     outputs.dir("docs/tooling/markdown/node_modules")
     inputs.files(validationExecutable("node"), validationExecutable("npm"))
     inputs.property("validationEnvironment", validationEnvironment)
-    environment("PATH", providers.environmentVariable("PATH").get())
+    setEnvironment(documentationDependencyEnvironment.get())
     val emptyConfig = layout.buildDirectory.file("documentation/npm-global-empty")
     environment("NPM_CONFIG_USERCONFIG", "/dev/null")
     environment("NPM_CONFIG_GLOBALCONFIG", emptyConfig.get().asFile.absolutePath)
@@ -545,7 +551,7 @@ val documentationPythonDependencies = tasks.register<Exec>("documentationPythonD
     inputs.file(documentationPython)
     inputs.property("validationEnvironment", validationEnvironment)
     outputs.dir(documentationEnvironment)
-    setEnvironment(validationEnvironment.get())
+    setEnvironment(documentationDependencyEnvironment.get())
     environment("UV_PROJECT_ENVIRONMENT", documentationEnvironment.get().asFile.absolutePath)
     commandLine(validationExecutable("uv").get().asFile, "sync", "--locked", "--project", "docs/tooling", "--python", documentationPython.get())
 }

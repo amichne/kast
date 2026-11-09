@@ -226,7 +226,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt",
-            "sha256": "1526f0c660ab1499a6eb9916a76cc5a04db3a61ac1d145cf563949ed1d57f373"
+            "sha256": "29e8633c75b95538b60bf20691ae5a29eb0a9b0222ddd3496631658448d64d57"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/JvmEffectRules.kt",
@@ -279,6 +279,10 @@
         {
             "path": "build-logic/src/main/kotlin/support/tasks/DefaultTestTagSelection.kt",
             "sha256": "2d2408af2bd28617c6370f69d903fb061376c38bb417f1204d927f8ca17c86c3"
+        },
+        {
+            "path": "build-logic/src/main/kotlin/support/tasks/DependencyBootstrapEnvironment.kt",
+            "sha256": "271dac5d38fe26382d78b5ae17e83e54f1d8bfee143119d1a53c46a477c5ff67"
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/ExtractIdeaDistributionTask.kt",
@@ -358,7 +362,7 @@
         },
         {
             "path": "build.gradle.kts",
-            "sha256": "cca0fa23ede2cfaade53cc9ff74ad6026c6ce3ff8f84d565930dd51c1d2b1ea6"
+            "sha256": "833748fcb453e5dc92a0eb28c2b687deb9e980f8c7cb6ecccd4009d5e2eaf953"
         },
         {
             "path": "change/apply/build.gradle.kts",
@@ -438,7 +442,7 @@
         },
         {
             "path": "gradle/libs.versions.toml",
-            "sha256": "39ebc210d38a5d88a048f12c2a1790a19fb1615f534c194cacbd378b0a0685b4"
+            "sha256": "8ddf6942326a714f185fe7c92b3a33cba95613c8cd5ef3d781f6c716b19d5b71"
         },
         {
             "path": "kernel/build.gradle.kts",
@@ -486,7 +490,7 @@
         },
         {
             "path": "runtime/hosted/build.gradle.kts",
-            "sha256": "13543ee5578c06c6f265e968d183b5498ce95a9ee80bf302865218be26589b68"
+            "sha256": "89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce"
         },
         {
             "path": "settings.gradle.kts",

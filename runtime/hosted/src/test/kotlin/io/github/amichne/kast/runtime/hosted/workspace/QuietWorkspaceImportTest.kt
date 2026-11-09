@@ -24,6 +24,7 @@ class QuietWorkspaceImportTest {
             } as Project
         val completion = CompletableFuture<Void>()
         val spec = quietWorkspaceImport(project, completion).build()
+        assertEquals(null, spec.arguments)
         assertEquals(ProgressExecutionMode.IN_BACKGROUND_ASYNC, spec.progressExecutionMode)
         assertTrue(spec.shouldImportProjectData())
         assertFalse(spec.isActivateBuildToolWindowOnStart)
@@ -43,5 +44,23 @@ class QuietWorkspaceImportTest {
         assertEquals(0, completion.numberOfDependents)
         spec.callback!!.onFailure("late failure", null)
         assertEquals(1, callbacks)
+    }
+
+    @Test
+    fun `managed import disables isolated projects without changing desktop imports`() {
+        val project =
+            Proxy.newProxyInstance(Project::class.java.classLoader, arrayOf(Project::class.java)) { _, method, _ ->
+                when (method.name) {
+                    "isDisposed" -> false
+                    "toString" -> "headless-import-fixture"
+                    else -> null
+                }
+            } as Project
+        val completion = CompletableFuture<Void>()
+        assertEquals(
+            "-Dorg.gradle.isolated-projects=false",
+            quietWorkspaceImport(project, completion, managedHeadless = true).build().arguments,
+        )
+        assertEquals(null, quietWorkspaceImport(project, completion, managedHeadless = false).build().arguments)
     }
 }
