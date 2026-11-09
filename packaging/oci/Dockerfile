@@ -26,5 +26,6 @@ RUN --network=none --mount=type=bind,from=bundle,target=/bundle \
 FROM runtime
 COPY --from=installed --chown=kast:kast /opt/kast/runtime /opt/kast/runtime
 COPY composed_bundle.py composition_platform.py managed_headless.py /opt/kast/packaging/
-ENV PATH=/opt/kast/runtime/bin:$PATH
+COPY --chmod=0755 oci_task.py /opt/kast/packaging/kast-task
+ENV PATH=/opt/kast/runtime/bin:/opt/kast/packaging:$PATH
 CMD ["bash"]

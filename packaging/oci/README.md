@@ -25,23 +25,22 @@ The image workflow checks the source revision and archive digest against the
 native qualification receipt. It starts Control and Java offline. A fresh
 container must pass the compiler probe before the workflow pushes the image.
 The workflow then pulls the image by digest and compares its local image ID.
+To qualify an image without a registry push, add `-f publish=false` to step 2.
 
 ## Start a task
 
-Start a container with the digest reference.
+Start a container from the repository directory.
 
 ```sh
-docker run --rm -it --init --platform linux/amd64 ghcr.io/amichne/kast-base@sha256:DIGEST
+docker run --rm -it --init --platform linux/amd64 \
+  --mount "type=bind,src=$PWD,dst=/workspace/project" \
+  ghcr.io/amichne/kast-base@sha256:DIGEST kast-task /workspace/project
 ```
 
-The default user is `kast` with UID `10001`. Use a writable project directory
-under `/workspace`. After you review the project, grant trust to its exact path.
+The project directory must be writable by `kast` with UID `10001`.
+`kast-task` grants Gradle import access to that path in the container's
+private IDEA profile. It opens a shell in the selected directory.
 
-```sh
-python3 /opt/kast/packaging/composed_bundle.py trust \
-  --root /opt/kast/runtime --workspace /workspace/project
-kast workspace wait --workspace /workspace/project
-```
-
-Use a fresh container for another project. The trust command preserves an
-existing trust file. The published image starts with an empty trust configuration.
+To run a command instead of a shell, add it after the workspace path.
+If you clone a repository inside the container, run `kast-task /workspace/project` there.
+Use a fresh container for each task. The base image starts without a workspace grant.
