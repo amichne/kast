@@ -151,6 +151,7 @@ class HostedPluginPayload:
 
 class HostInstallMode(str, Enum):
     PLAN = 'PLAN'
+    PLAN_RESET = 'PLAN_RESET'
     APPLY = 'APPLY'
     RESET = 'RESET'
 
@@ -1357,15 +1358,22 @@ def admit_retained_entries(retained: Path) -> None:
             raise Rejected(Failure.RECOVERY_REQUIRED, HostInstallationStage.RETAINED_RECOVERY)
 
 
-def admit_installation_target(root: Path) -> bytes | None:
+def admit_install_retention(observed: os.stat_result, mode: HostInstallMode) -> int:
+    permissions = stat.S_IMODE(observed.st_mode)
+    if (observed.st_uid != os.getuid() or not stat.S_ISDIR(observed.st_mode)
+            or (permissions != 0o700 and not (
+                permissions == 0o755 and mode in (HostInstallMode.PLAN_RESET, HostInstallMode.RESET)))):
+        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+    return permissions
+
+
+def admit_installation_target(root: Path, mode: HostInstallMode = HostInstallMode.PLAN) -> bytes | None:
     if os.path.lexists(root):
         Identity.observe(root)
     retained = root.parent / '.kast-plugin-recovery'
     receipt = None
     if os.path.lexists(retained):
-        Identity.observe(retained)
-        if stat.S_IMODE(retained.lstat().st_mode) != 0o700:
-            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        admit_install_retention(retained.lstat(), mode)
         receipt_path = retained / 'host-install.json'
         if os.path.lexists(receipt_path):
             owned_file(receipt_path)
@@ -1570,16 +1578,15 @@ def install(request):
     admit_root(root)
     with tempfile.TemporaryDirectory(prefix='kast-host-stage-') as temporary:
         plugin = validate_payload(request.payload, Path(temporary))
-        if request.mode is HostInstallMode.PLAN:
-            admit_installation_target(root)
+        if request.mode in (HostInstallMode.PLAN, HostInstallMode.PLAN_RESET):
+            admit_installation_target(root, request.mode)
             return HostReport(HostReportType.PLANNED, request.payload.version, str(root / 'kast-ide-hosted'))
         root.mkdir(parents=True, exist_ok=True)
         Identity.observe(root)
         retained = root.parent / '.kast-plugin-recovery'
         retained.mkdir(mode=0o700, exist_ok=True)
-        Identity.observe(retained)
-        if stat.S_IMODE(retained.lstat().st_mode) != 0o700:
-            raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+        retained_before = retained.lstat()
+        admit_install_retention(retained_before, request.mode)
         lock_descriptor = os.open(retained / 'host-install.lock', os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
         with os.fdopen(lock_descriptor, 'r+') as lock:
             if os.fstat(lock.fileno()).st_uid != os.getuid():
@@ -1587,7 +1594,17 @@ def install(request):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             admit_unreserved_host_lock(lock)
             receipt_path = retained / 'host-install.json'
-            previous_receipt = admit_installation_target(root)
+            previous_receipt = admit_installation_target(root, request.mode)
+            if request.mode is HostInstallMode.RESET:
+                descriptor = os.open(retained, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                try:
+                    observed = os.fstat(descriptor)
+                    if not os.path.samestat(retained_before, observed):
+                        raise Rejected(Failure.OWNERSHIP_UNPROVEN)
+                    if admit_install_retention(observed, request.mode) == 0o755:
+                        os.fchmod(descriptor, 0o700)
+                finally:
+                    os.close(descriptor)
             destination = root / 'kast-ide-hosted'
             prior = Identity.observe(destination) if os.path.lexists(destination) else None
             token = uuid.uuid4().hex
@@ -1673,7 +1690,10 @@ def main():
             raise Rejected(Failure.PAYLOAD_REJECTED)
         payload = HostedPluginPayload(arguments.archive, arguments.sha256, arguments.version, arguments.idea_build)
         admit_host_release(arguments.release_record, payload, arguments.required_control)
-        mode = HostInstallMode.PLAN if arguments.dry_run else HostInstallMode.RESET if arguments.force else HostInstallMode.APPLY
+        if arguments.dry_run:
+            mode = HostInstallMode.PLAN_RESET if arguments.force else HostInstallMode.PLAN
+        else:
+            mode = HostInstallMode.RESET if arguments.force else HostInstallMode.APPLY
         report = install(HostInstallRequest(payload, arguments.plugin_root, mode))
         print(encode(report), end='')
         return 0

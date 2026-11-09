@@ -7,6 +7,8 @@ import io
 from contextlib import redirect_stderr, redirect_stdout
 import os
 import shutil
+import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -990,6 +992,45 @@ class HostInstallationTest(unittest.TestCase):
         self.assertEqual(lock_inode, lock.stat().st_ino)
         self.assertEqual({'host-install.json', 'host-install.lock'}, {path.name for path in retained.iterdir()})
         self.assertEqual(self.payload.version, host.read_active_receipt(retained / 'host-install.json').version)
+        self.assert_control_unchanged()
+
+    def test_force_install_repairs_legacy_recovery_permissions(self):
+        host.install(host.HostInstallRequest(self.make_payload('1.0.0'), self.plugins))
+        retained = self.plugins.parent / '.kast-plugin-recovery'
+        lock = retained / 'host-install.lock'
+        receipt = retained / 'host-install.json'
+        before = (lock.stat().st_ino, receipt.read_bytes())
+        record = self.root / 'release.json'
+        record.write_text(json.dumps(asdict(HostReleaseFixture(self.payload.version,
+            ArtifactFixture(self.payload.archive.name, 'sha256:' + self.payload.sha256, self.payload.archive.stat().st_size)))))
+        command = [sys.executable, host.__file__, '--archive', str(self.payload.archive),
+                   '--sha256', self.payload.sha256, '--version', self.payload.version,
+                   '--idea-build', self.payload.idea_build, '--plugin-root', str(self.plugins),
+                   '--release-record', str(record)]
+
+        for permissions, options in ((0o755, ['--dry-run']), (0o755, []),
+                                     (0o775, ['--dry-run', '--force']), (0o775, ['--force'])):
+            with self.subTest(permissions=permissions, options=options):
+                retained.chmod(permissions)
+                result = subprocess.run(command + options, capture_output=True, text=True, timeout=10)
+                self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                self.assertEqual('OWNERSHIP_UNPROVEN', json.loads(result.stderr)['failure'])
+                self.assertEqual(permissions, stat.S_IMODE(retained.stat().st_mode))
+                self.assertEqual(before, (lock.stat().st_ino, receipt.read_bytes()))
+
+        retained.chmod(0o755)
+        plan = subprocess.run(command + ['--dry-run', '--force'], capture_output=True, text=True, timeout=10)
+        self.assertEqual(0, plan.returncode, plan.stderr)
+        self.assertEqual('PLANNED', json.loads(plan.stdout)['type'])
+        self.assertEqual(0o755, stat.S_IMODE(retained.stat().st_mode))
+        self.assertEqual(before, (lock.stat().st_ino, receipt.read_bytes()))
+
+        result = subprocess.run(command + ['--force'], capture_output=True, text=True, timeout=10)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('ACTIVATED', json.loads(result.stdout)['type'])
+        self.assertEqual(0o700, stat.S_IMODE(retained.stat().st_mode))
+        self.assertEqual(before[0], lock.stat().st_ino)
+        self.assertEqual(self.payload.version, host.read_active_receipt(receipt).version)
         self.assert_control_unchanged()
 
     def test_reinstallation_replaces_partial_existing_inventory(self):
