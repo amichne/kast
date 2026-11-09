@@ -40,13 +40,16 @@ The checked-in [pin file](openai-kast.env) selects this input:
 | --- | --- |
 | Native package version | `0.0.0` |
 | Source revision | `fdf7c6d55662bf8dc162cb120b7464fd6757bafc` |
+| Setup profile revision | `ed105da510774b5195505cfd24edb2e4a28590ae` |
 | Qualified build | [42543736511, attempt 1](https://github.com/amichne/kast/actions/runs/42543736511) |
 | Setup artifact | `13642593952` |
 | Setup SHA-256 | `aa001a8c56497473644978f2e585549e8d3f09d9e12d04c1404b89da26f543ec` |
 | Slopsentral command | `4.0.12` |
 | Prepared runtime | `/workspace/kc` |
 
-From a reviewed checkout, install the prepared preset with:
+Use a clean setup checkout at the setup profile revision in the table.
+Keep that revision fixed for repeated setup.
+Install the prepared preset with:
 
 ```sh
 bash packaging/cloud/setup-openai-image.sh /path/to/kast-composed-setup-v0.0.0-linux-x86_64.tar.gz
