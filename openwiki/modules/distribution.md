@@ -365,10 +365,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-09T13:10:12.658Z" }
+generated: { by: "codex", at: "2026-11-09T15:20:50.213Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-09T13:14:05.805Z
+    at: 2026-11-09T15:23:50.674Z
 ---
 
 # Distribution and packaging
@@ -492,7 +492,7 @@ A supplied key alone does not establish that configuration-cache state was captu
 Successful main candidate reuse skips Gradle setup.
 An authorized full CI dispatch on accepted main can seed the shared cache without automatic developer publication.
 Configured transport does not establish an observed task cache hit or lower build time.
-CI pins GraalVM 25.0.2. It keeps native analysis/resource metrics and finite build outcome records for matched comparisons. The unified producer uses `-Os` and transfers one exact executable through the native handoff.
+CI pins the BellSoft `liberica-nik` distribution at `25.0.2+13`. It keeps native analysis/resource metrics and finite build outcome records for matched comparisons. The unified producer uses `-Os` and transfers one exact executable through the native handoff.
 Mac qualification imports the executable from the assembled Control archive into the existing `publicLauncherTest` suite before candidate sealing.
 The workflow keeps the native suite's XML and HTML reports with the Mac qualification evidence.
 Stable full and component releases keep explicit versions that affect compiled bytes, so a different version requires another build.

@@ -289,7 +289,7 @@ def test_bundle_round_trip_keeps_each_native_layout_before_installer_effects(
         monkeypatch.setattr(
             composed_bundle.platform,
             "machine",
-            lambda: "arm64" if target.value == "macos-aarch64" else "x86_64",
+            lambda: "x86_64" if target == HostPlatform.LINUX_X86_64 else "arm64",
         )
         assert install_bundle(archive, packed.sha256, destination, "0.0.0") == Rejected(
             Failure.INSTALLER_FAILED

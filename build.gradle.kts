@@ -174,14 +174,17 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
 }
 
 val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip(providers.gradleProperty("kastNativeExecutable").orElse("")) { platform, executable ->
-    require(platform == "macos-aarch64") { "Imported native archives must target macos-aarch64" }
+    require(platform in setOf("macos-aarch64", "linux-x86_64", "linux-aarch64")) {
+        "Imported native archives require a supported native platform"
+    }
     require(executable.isNotBlank()) { "An imported platform needs a native executable" }
     platform
 }.orElse(providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
     when {
         os.startsWith("Mac") && arch in setOf("aarch64", "arm64") -> "macos-aarch64"
         os == "Linux" && arch in setOf("amd64", "x86_64") -> "linux-x86_64"
-        else -> throw GradleException("Control archive requires macOS Apple silicon or Linux x86_64")
+        os == "Linux" && arch in setOf("aarch64", "arm64") -> "linux-aarch64"
+        else -> throw GradleException("Control archive requires macOS Apple silicon or Linux x86_64/ARM64")
     }
 })
 

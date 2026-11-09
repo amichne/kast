@@ -4877,7 +4877,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/release-candidates-and-promotion.md",
-        "sourceSha256": "c820e6c7a622b28deed9a1bfeaf6da079f1dcf08ac563d8442fb07f25df4df96",
+        "sourceSha256": "058b351e9f8c3ae712f3d9028c2a2524e9dc2530c24ccd0280b09d551f6185c0",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 11.62 exceeds the shared advisory target of 8.",
@@ -5741,7 +5741,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/configuration.md",
-        "sourceSha256": "061323fbbbcc115d36d0570be08fdda4acea749c2bd298e7970c9f36fea86288",
+        "sourceSha256": "e3c17a9b636e95081d47c470fb26ae7960fc828daabe4fa2bbb1d5a0398ac49e",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.72 exceeds the shared advisory target of 8.",
@@ -5753,7 +5753,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/configuration.md",
-        "sourceSha256": "061323fbbbcc115d36d0570be08fdda4acea749c2bd298e7970c9f36fea86288",
+        "sourceSha256": "e3c17a9b636e95081d47c470fb26ae7960fc828daabe4fa2bbb1d5a0398ac49e",
         "rule": "Slopsentral.LongSentence",
         "line": 117,
         "message": "Long sentence: 26 words.",
@@ -5765,7 +5765,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/configuration.md",
-        "sourceSha256": "061323fbbbcc115d36d0570be08fdda4acea749c2bd298e7970c9f36fea86288",
+        "sourceSha256": "e3c17a9b636e95081d47c470fb26ae7960fc828daabe4fa2bbb1d5a0398ac49e",
         "rule": "Slopsentral.LongSentence",
         "line": 159,
         "message": "Long sentence: 29 words.",
@@ -5777,7 +5777,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/configuration.md",
-        "sourceSha256": "061323fbbbcc115d36d0570be08fdda4acea749c2bd298e7970c9f36fea86288",
+        "sourceSha256": "e3c17a9b636e95081d47c470fb26ae7960fc828daabe4fa2bbb1d5a0398ac49e",
         "rule": "Slopsentral.LongSentence",
         "line": 217,
         "message": "Long sentence: 29 words.",
@@ -5801,7 +5801,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/installation-and-managed-files.md",
-        "sourceSha256": "73814a5b98ec47ecb8e6e37485444fd808f66b886265b68cc3efaeed72b1310d",
+        "sourceSha256": "da9dfe92297744c802f4ee8efb0775481d168a8faac109ccb22aaeee18d13300",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.17 exceeds the shared advisory target of 8.",
@@ -5813,7 +5813,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/installation-and-managed-files.md",
-        "sourceSha256": "73814a5b98ec47ecb8e6e37485444fd808f66b886265b68cc3efaeed72b1310d",
+        "sourceSha256": "da9dfe92297744c802f4ee8efb0775481d168a8faac109ccb22aaeee18d13300",
         "rule": "Slopsentral.LongSentence",
         "line": 105,
         "message": "Long sentence: 26 words.",
@@ -5861,169 +5861,169 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.77 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep independent Control/Host artifacts, selected IDEA profiles, exact recovery identities, and native qualification limits. The grade target remains unmet and does not establish reader comprehension. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep independent Control/Host artifacts, selected IDEA profiles, exact recovery identities, and native qualification limits. The grade target remains unmet and does not establish reader comprehension. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 390,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
-      "reason": "Keep the retired isolated-runtime adapters together. IDEA owns import and trust configuration after those adapters leave the active graph. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep the retired isolated-runtime adapters together. IDEA owns import and trust configuration after those adapters leave the active graph. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 392,
         "message": "Long sentence: 36 words.",
         "severity": "warning"
       },
-      "reason": "Keep checksum, release version, plugin identity, descriptor line, and exact Kast-only atomic replacement together before installation. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep checksum, release version, plugin identity, descriptor line, and exact Kast-only atomic replacement together before installation. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 392,
         "message": "Long sentence: 41 words.",
         "severity": "warning"
       },
-      "reason": "Keep the staged Host receipt, canonical six-table database, native uninstall, owned removal targets, and unrelated sentinel in the same acceptance sequence. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep the staged Host receipt, canonical six-table database, native uninstall, owned removal targets, and unrelated sentinel in the same acceptance sequence. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 562,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
-      "reason": "Keep the bounded launchctl retirement deadline and finite failures beside OBSERVE_BEFORE, BOOTOUT, and OBSERVE_AFTER outcomes. Command arguments and child output stay excluded. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep the bounded launchctl retirement deadline and finite failures beside OBSERVE_BEFORE, BOOTOUT, and OBSERVE_AFTER outcomes. Command arguments and child output stay excluded. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 564,
         "message": "Long sentence: 29 words.",
         "severity": "warning"
       },
-      "reason": "Keep the shell bootstrap, installed lifecycle, build verifier, and Kotlin owner under one product-entry limit before publication. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep the shell bootstrap, installed lifecycle, build verifier, and Kotlin owner under one product-entry limit before publication. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 578,
         "message": "Long sentence: 37 words.",
         "severity": "warning"
       },
-      "reason": "Keep historical paired-receipt maintenance distinct from Control-only detachment. The new recovery receipt removes Host ownership without changes to plugin files. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep historical paired-receipt maintenance distinct from Control-only detachment. The new recovery receipt removes Host ownership without changes to plugin files. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 581,
         "message": "Long sentence: 39 words.",
         "severity": "warning"
       },
-      "reason": "Keep service retirement, exact transport cleanup, and payload/recovery quarantine under the activation lock before the next staging step. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep service retirement, exact transport cleanup, and payload/recovery quarantine under the activation lock before the next staging step. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 658,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
-      "reason": "Keep runtime command-line evidence and exact launchd-label retirement before removal of the reviewed login item. Changed entries remain preserved. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep runtime command-line evidence and exact launchd-label retirement before removal of the reviewed login item. Changed entries remain preserved. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 672,
         "message": "Long sentence: 35 words.",
         "severity": "warning"
       },
-      "reason": "Keep bounded property-list equality, the exact Codex-home profile, and legacy one-shot recognition as offline recovery conditions. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep bounded property-list equality, the exact Codex-home profile, and legacy one-shot recognition as offline recovery conditions. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 702,
         "message": "Long sentence: 35 words.",
         "severity": "warning"
       },
-      "reason": "Keep all three compiler-query witnesses and both unchanged-identity obligations across independent Control and Host upgrades. Routine tests do not establish native behavior. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep all three compiler-query witnesses and both unchanged-identity obligations across independent Control and Host upgrades. Routine tests do not establish native behavior. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 717,
         "message": "Long sentence: 32 words.",
         "severity": "warning"
       },
-      "reason": "Keep unavailable legacy loaded-version evidence qualified. The restored coordinator, new epoch, fresh generation, and ready-service evidence must agree. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep unavailable legacy loaded-version evidence qualified. The restored coordinator, new epoch, fresh generation, and ready-service evidence must agree. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 739,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
-      "reason": "Keep the closed cleanup inventory, immutable Host receipt, and persistent exterior journal together. Journal removal waits for all owned effects. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep the closed cleanup inventory, immutable Host receipt, and persistent exterior journal together. Journal removal waits for all owned effects. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+        "sourceSha256": "d37896a48b07f8066f3e078b47077432c5d0af9a39f46c869bb066968d55337d",
         "rule": "Slopsentral.LongSentence",
         "line": 741,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
-      "reason": "Keep exact SQLite schemas and bounded typed records under read-only inspection. The adapter does not initialize, checkpoint, or manufacture recovery. The native lifecycle refreshed source bindings and verification metadata only. The prose stays unchanged. The advisory remains visible."
+      "reason": "Keep exact SQLite schemas and bounded typed records under read-only inspection. The adapter does not initialize, checkpoint, or manufacture recovery. The native lifecycle refreshed source bindings and verification metadata. The CI toolchain sentence now names the configured BellSoft distribution and exact version; this advisory location and message stay unchanged. The advisory remains visible."
     }
   ]
 }
