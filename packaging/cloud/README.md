@@ -19,9 +19,69 @@ reinstall the locked package tree. Use a new runtime directory for a clean setup
 An optional `--download-cache` selects a read-only cache of public vendor archives.
 Every archive digest is still checked. Concurrent setup in one runtime is rejected.
 
+## Managed cloud handoff
+
+For an installed composed Host, prepare the reusable image and each task separately:
+
+1. Install the pinned bundle and expose `bin/kast` and its bundled skill to the actual
+   agent user. Grant trust only for an explicitly selected repository with
+   `--trust-workspace`; installation alone does not grant project trust.
+2. Load the pinned tools from `mise.toml` during setup and task startup. This
+   includes Java 25 and Node 24.21.0. Set `JAVA_HOME` and put its `bin` directory on
+   `PATH`; some checks invoke `java` directly. The managed launcher preserves
+   absolute executable directories and places its bundled JBR first. It does not
+   copy the caller's complete environment into the Host.
+3. Configure the current task's proxy and Java certificate trust in the private
+   Gradle home. Managed headless imports disable Isolated Projects for that import
+   invocation because the IDE Gradle plugin changes excluded tasks after settings
+   evaluation. Repository Gradle properties and desktop imports stay unchanged.
+4. Keep the Host under the cloud runner's process supervisor, with child reaping.
+   Verify that it survives separate CLI invocations. A launched process alone is
+   insufficient evidence that the runner will preserve it after a tool call exits.
+5. Warm dependency downloads before saving the image. Stop owned processes before
+   saving, and exclude endpoint descriptors, sockets, IDE locks, daemon records,
+   and derived IDE caches from the saved state. Keep verified runtime files and
+   dependency downloads. Recreate transient state when the next task starts.
+6. Run the semantic readiness check before agent handoff. For a Kast checkout:
+
+   ```sh
+   python3 packaging/cloud/verify-kast.py \
+     --root /absolute/installed-kast --workspace "$PWD" \
+     --name KastDirectToolSession --in cli/src/main --source-set main \
+     --expected-qualified-name io.github.amichne.kast.cli.direct.KastDirectToolSession
+   ```
+
+For another repository, select a known declaration and its exact qualified name.
+The check requires completed workspace preparation and one complete compiler result
+with the expected declaration, exhaustive coverage, and no failures or omissions.
+It preserves rejected child documents. A timeout reports `WORK_UNCERTAIN` and does
+not retry native work. Version output and installation receipts do not satisfy this
+handoff check. Publish the reusable environment only after validating this sequence
+from a fresh task instance.
+
+The product gate supplies validation version `0.0.0`. For direct Gradle module
+checks, set `version`, `controlVersion`, and `hostedPluginVersion` to `0.0.0` so
+packaging tests receive valid version metadata.
+
+For source gates, use `umask 022`, as `checks.sh` does. Gradle TestKit uses a
+separate home. Pass the approved Java proxy and CA settings to its child JVMs as
+well as the main Gradle process.
+
 Bootstrap also checks the IDE build, bundled Kotlin plugin version, and JBR 25+.
 The Host distribution and native test distribution have separate exact pins.
-GraalVM supplies Native Image for Control builds; the ordinary JDK supplies Gradle.
+BellSoft Liberica Native Image Kit (NIK) 25.0.2+1 supplies Native Image for Control
+builds, using Java 25.0.2+13. This matches `mise.toml` and the `liberica-nik`
+distribution in CI. The build retains JSON metrics and embedded-resource reports.
+It does not request the Oracle-only HTML build report. The ordinary JDK supplies
+Gradle in this cloud profile.
+
+BellSoft describes NIK as open-source software under the applicable
+[OpenJDK, GraalVM, and third-party licenses](https://bell-sw.com/liberica_nik_eula/).
+The Classpath Exception permits linking independent application modules under
+their own terms. Keep applicable license notices and source obligations when
+distributing runtime components. Changing the compiler does not change the
+licenses of existing Oracle-built binaries; rebuild those for the new toolchain.
+Kast remains `GPL-3.0-only`; changing its build toolchain does not relicense the project.
 The wrapper owns the Gradle distribution checksum. The generated activation file
 configures only the owned Gradle directory through the current approved proxy.
 Set `PI_EVAL_JAVA_TRUSTSTORE` if the platform provides a different Java certificate store.
@@ -153,7 +213,7 @@ python3 packaging/cloud/probe-idea.py --idea-home "$PI_EVAL_ROOT/idea-2026.2.2" 
 ```
 
 Use `docker run --init` when the probe runs as the container entry point, so the
-runtime reaps orphaned IDE and Xvfb children. The probe accepts no first-run choices,
+runtime reaps orphaned IDE and `Xvfb` children. The probe accepts no first-run choices,
 installs no plugin, and records startup costs plus logs. A timeout or clean exit is a probe outcome, never semantic readiness.
 
 Record bootstrap CPU, peak RAM, disk, and import cost separately from native query

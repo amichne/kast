@@ -11,14 +11,21 @@ internal object NativeResetProcessRetirement {
     fun captureObserved(
         process: ResetScopedProcess,
         observe: (ResetProcessObservation) -> Unit,
-    ): ResetSharedSocketCapture {
-        if (revalidate(process.snapshot, observe) != NativeResetAdmission.Admitted)
-            return ResetSharedSocketCapture.Rejected
-        val captured = ResetOwnedSharedSocket.capture(process, observe = observe)
-        if (revalidate(process.snapshot, observe) != NativeResetAdmission.Admitted)
-            return ResetSharedSocketCapture.Rejected
-        return captured
-    }
+    ): ResetSharedSocketCapture =
+        when (val before = revalidate(process.snapshot, observe)) {
+            NativeResetAdmission.Admitted -> {
+                val captured = ResetOwnedSharedSocket.capture(process, observe = observe)
+                when (val after = revalidate(process.snapshot, observe)) {
+                    NativeResetAdmission.Admitted -> captured
+                    is NativeResetAdmission.Finished ->
+                        if (after.observation == LifecycleProcessObservation.Absent) captured
+                        else ResetSharedSocketCapture.Rejected
+                }
+            }
+            is NativeResetAdmission.Finished ->
+                if (before.observation == LifecycleProcessObservation.Absent) ResetSharedSocketCapture.Retired
+                else ResetSharedSocketCapture.Rejected
+        }
 
     fun retireObserved(
         process: ResetScopedProcess,
@@ -28,6 +35,7 @@ internal object NativeResetProcessRetirement {
         val captured =
             when (val result = captureObserved(process, observe)) {
                 is ResetSharedSocketCapture.Captured -> result
+                ResetSharedSocketCapture.Retired -> return LifecycleProcessObservation.Absent
                 ResetSharedSocketCapture.Rejected -> return LifecycleProcessObservation.Unavailable
             }
         return retireCapturedObserved(captured, allowance, observe)

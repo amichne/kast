@@ -47,14 +47,14 @@ class PushPolicyTest(unittest.TestCase):
                 "GIT_TERMINAL_PROMPT": "0",
             }
 
-            def git(*arguments: str) -> subprocess.CompletedProcess[str]:
+            def git(*arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
                 return subprocess.run(
                     ("git", *arguments),
                     cwd=checkout,
                     env=environment,
                     capture_output=True,
                     text=True,
-                    check=True,
+                    check=check,
                 )
 
             _ = git("init", "-q")
@@ -95,7 +95,8 @@ class PushPolicyTest(unittest.TestCase):
                 _ = shutil.copy2(current_hook, destination)
             remote = owned / "remote.git"
             _ = git("init", "--bare", "-q", str(remote))
-            _ = git("push", str(remote), "candidate:refs/heads/candidate")
+            pushed = git("push", str(remote), "candidate:refs/heads/candidate", check=False)
+            self.assertEqual(0, pushed.returncode, pushed.stderr)
             self.assertEqual(
                 expected,
                 git("--git-dir", str(remote), "rev-parse", "refs/heads/candidate").stdout.strip(),

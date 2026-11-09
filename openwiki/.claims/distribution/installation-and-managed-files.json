@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e911493aa2f966ee7b05a537bbe35b49d24163a04709333893366d5edb0b75f0",
+  "pageVersion": "sha256:73814a5b98ec47ecb8e6e37485444fd808f66b886265b68cc3efaeed72b1310d",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -46,7 +46,7 @@
         },
         {
           "resource": "repo://packaging/test-host-installation.py",
-          "version": "repo-file-v1:sha256:08409a133887702db202539b0e095a90b6cac26db5417c203ca07b5097ad4bef"
+          "version": "repo-file-v1:sha256:31036b9d5380f6e3cc374bb8048fcb5a574dba71fb5caafa919766daf8c2b7d7"
         }
       ]
     },
@@ -120,7 +120,7 @@
         },
         {
           "resource": "repo://packaging/test-host-installation.py",
-          "version": "repo-file-v1:sha256:08409a133887702db202539b0e095a90b6cac26db5417c203ca07b5097ad4bef"
+          "version": "repo-file-v1:sha256:31036b9d5380f6e3cc374bb8048fcb5a574dba71fb5caafa919766daf8c2b7d7"
         }
       ]
     },
@@ -130,7 +130,7 @@
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-          "version": "repo-file-v1:sha256:023d3985756d8b8e79e015c12896cb8dad27619a6765c6637bcd15de603aa7de"
+          "version": "repo-file-v1:sha256:9e32a8f74d4343b6ad2c0714965cb8df2c3394eb9342c14de284b44b82b2a8e1"
         },
         {
           "resource": "repo://cli/build.gradle.kts",
@@ -163,6 +163,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-07T21:20:33.234Z"
+    "at": "2026-11-09T12:12:21.037Z"
   }
 }

@@ -4,7 +4,7 @@ title: "Native Kast development shell"
 description: "Build and reopen a Linux development container without sharing the developer HOME."
 resource: "repo://packaging/container"
 tags: [kast, packaging, development, isolation]
-timestamp: "2026-11-07T19:25:00Z"
+timestamp: "2026-11-09T14:35:00Z"
 source_revision: 08bc4e75693a260c1bfe0ffaad667800934cc0ed
 code_sources:
   - path: bin/kast-container
@@ -15,6 +15,7 @@ code_sources:
   - path: packaging/container/compiler.Dockerfile
   - path: packaging/composition_platform.py
   - path: packaging/test_dev_container.py
+  - path: packaging/test_dev_container_simulation.py
   - path: packaging/test_composition_platform.py
 ---
 
@@ -34,7 +35,7 @@ mise exec -- kast-container build
 ```
 
 The first build compiles native Control and Host from this checkout.
-It downloads digest-pinned GraalVM and IntelliJ IDEA donors.
+It downloads digest-pinned Liberica NIK and IntelliJ IDEA donors.
 Debian packages follow the configured Debian repositories.
 The image contains the composed Host, bundled JBR, Git, Python, Node.js, `npm`, and common development tools.
 It needs no complete IntelliJ installation on the Mac.
@@ -52,6 +53,8 @@ The first shell copies tracked files into `/work`.
 It also copies new files not excluded by Git ignore rules.
 It preserves uncommitted source edits but excludes the original Git metadata and ignored files.
 It creates a new Git baseline inside the container.
+The image has no workspace grant. After copying files, the launcher grants `/work` in the private Host profile.
+It records workspace readiness only after the grant succeeds.
 That baseline does not claim the original commit identity.
 Submodules reject rather than produce an incomplete copy.
 Review the selected repository before copying it: a tracked secret remains a tracked file.
@@ -122,3 +125,26 @@ The export excludes the container's Git metadata and includes the current `/work
 The launcher refuses an existing output file and never extracts the archive on the host.
 Review exported files before applying changes.
 The VM can be stopped with `colima stop --profile kast-dev`; this retains container files and caches.
+
+
+## Manual qualification
+
+Run the local process simulation without Docker or a VM:
+
+```sh
+mise exec -- uv run --locked --project packaging pytest \
+  packaging/test_dev_container.py packaging/test_dev_container_simulation.py \
+  packaging/test_composition_platform.py packaging/test_composition_oci_task.py -q
+```
+
+The simulation starts a fake Docker CLI as a local process.
+It keeps container observations and files in temporary directories.
+Real Git and archive operations exercise copying, reopening, retained edits, resource changes, and failure handling.
+These checks do not establish VM isolation, Linux image startup, or compiler behavior.
+They are manual checks and add no build or VM job to CI.
+
+The separate [OCI image workflow](../oci/README.md) builds a Linux x86_64 image on demand.
+Run [42631931178](https://github.com/amichne/kast/actions/runs/42631931178) qualified source `d589cf87d04228d9c88401bab96a8b8948ed77cc`.
+It started Control and Java offline, then passed the compiler probe in a fresh container with network access.
+It skipped registry publication. That evidence does not qualify this native ARM64 development image.
+Native development-image startup and a Devin query, edit, and compiler check remain unverified.

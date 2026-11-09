@@ -16,6 +16,7 @@ RUN python3 /opt/kast-build/packaging/container_install.py
 
 FROM development
 COPY --from=assembly --chown=developer:developer /opt/kast /opt/kast
+COPY packaging/composed_bundle.py packaging/composition_platform.py packaging/managed_headless.py /opt/kast/packaging/
 ENV PATH="/opt/kast/bin:/opt/kast/runtime/kast-analysis-host/jbr/bin:/home/developer/.local/bin:${PATH}" \
     JAVA_HOME="/opt/kast/runtime/kast-analysis-host/jbr" \
     HOME="/home/developer" \

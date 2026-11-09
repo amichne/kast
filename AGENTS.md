@@ -4,11 +4,9 @@ title: "Kast repository engineering guide"
 description: "Defines repository rules, source owners, development entry points, and the contract for scoped OKF guides."
 resource: "repo://kast"
 tags: [kast, navigation]
-timestamp: "2026-11-07T19:51:31Z"
-source_revision: 08bc4e75693a260c1bfe0ffaad667800934cc0ed
+timestamp: "2026-11-04T15:48:12Z"
+source_revision: e76c008f45cca6193a474aac08684b1f5206a7b3
 code_sources:
-  - path: bin/kast-container
-  - path: packaging/dev_container.py
   - path: build.gradle.kts
   - path: .github/scripts/ci/fast_checks.py
   - path: .vale.ini
@@ -69,8 +67,8 @@ This guide owns repository rules and routes source investigation.
 
 - Build and tests: `./gradlew build`.
 - Scoped edit loop: `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue`. Select each module with its fully qualified task path.
-- Cheap local checks: `mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py`. This command accepts an uncommitted tree. Pushes start no automatic local checks.
-- Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`. Select local checks for the changed behavior. CI selects checks for pull requests and main.
+- Cheap local checks: `mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py`. This command accepts an uncommitted tree.
+- Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`.
 - Complete source gate: `mise exec -- python3 .github/scripts/ci/source_validation.py`. This command needs a clean committed tree and uses stable version `0.0.0`.
 - Affected source gate: add `--affected --base <full-sha>` to that command. Unknown ownership keeps full source validation.
 - Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
@@ -83,7 +81,6 @@ This guide owns repository rules and routes source investigation.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
 - Composed setup: `mise exec -- uv run --locked --script bin/setup-kast --help`. The packaging owner supplies bundle admission and installation.
 - Disposable macOS ARM task: `mise exec -- kast-task-vm --help`. Read [the VM report](docs/reviews/macos-task-vm.md) for the offline image contract and evidence limits.
-- Native Linux development shell on macOS: `mise exec -- kast-container --help`. The [container guide](packaging/container/README.md) covers image builds, persistent repository copies, and the `kastbox` shell adapter. Packaging owns this local setup; it does not replace public installation.
 - Unified native entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt`.
 - Management commands: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
 - Public semantic entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.

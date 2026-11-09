@@ -1,5 +1,6 @@
 """A usable development shell must not silently emulate or share host state."""
 
+import json
 import os
 import shutil
 import subprocess
@@ -8,8 +9,10 @@ import tarfile
 from pathlib import Path
 from typing import BinaryIO
 
-import dev_container
 import pytest
+
+import container_compile
+import dev_container
 from dev_container import (
     Architecture,
     Rejected,
@@ -155,11 +158,20 @@ def test_copy_preserves_working_files_without_history_ignored_secrets_or_symlink
 
     monkeypatch.setattr(dev_container, "invoke", scripted)
     assert dev_container.copy_workspace(runtime, selected) is None
-    assert len(effects) == 5
+    assert len(effects) == 6
     assert effects[1][3:] == ["git", "init", "--quiet", "--initial-branch=work"]
     assert effects[2][3:] == ["git", "add", "--all", "--force"]
     assert effects[3][-1] == "Copied workspace baseline"
-    assert effects[4][3:5] == ["python3", "-c"]
+    assert effects[4][3:] == [
+        "python3",
+        "/opt/kast/packaging/composed_bundle.py",
+        "trust",
+        "--root",
+        "/opt/kast",
+        "--workspace",
+        "/work",
+    ]
+    assert effects[5][3:5] == ["python3", "-c"]
     assert (repository / "tracked.kt").read_text() == "dirty contents"
     assert outside.read_text() == "must not dereference"
 
@@ -288,3 +300,72 @@ def test_shell_adapter_preserves_repository_and_literal_arguments(tmp_path: Path
         check=False,
     )
     assert result.returncode == 0, result.stderr.decode()
+
+
+def test_container_compiler_uses_the_shared_liberica_nik_pin() -> None:
+    pins = json.loads((dev_container.ROOT / "packaging/cloud/pins.json").read_text())
+    arch, digest = container_compile.NIK["x86_64"]
+    assert container_compile.archive_url(arch) == pins["artifacts"]["graalvm"]["url"]
+    assert digest == pins["artifacts"]["graalvm"]["sha256"]
+    assert container_compile.NIK["aarch64"] == (
+        "aarch64",
+        "0b022d9fd134677a1cacccb2e26fcd3353f08876232a327148c67c3de096f5c3",
+    )
+
+
+def test_image_assembly_does_not_pregrant_a_workspace() -> None:
+    source = (dev_container.ROOT / "packaging/container_install.py").read_text()
+    assert "configure_trusted_workspace" not in source
+    assert "admit_trust_workspace" not in source
+    assert "trust_installed_workspace" not in source
+    image = (dev_container.ROOT / "packaging/container/Dockerfile").read_text()
+    assert "packaging/composed_bundle.py" in image
+    assert "/opt/kast/packaging/" in image
+
+
+def test_copy_rejects_an_indexed_file_beneath_a_symlinked_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    environment = {"PATH": os.defpath, "HOME": str(tmp_path)}
+    source = repository / "src"
+    source.mkdir()
+    tracked = source / "config.env"
+    _ = tracked.write_text("tracked contents")
+    for args in (["init", "--quiet"], ["add", "src/config.env"]):
+        _ = subprocess.run(["git", *args], cwd=repository, env=environment, check=True)
+    tracked.unlink()
+    source.rmdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    secret = outside / "config.env"
+    _ = secret.write_text("outside private contents")
+    source.symlink_to(outside, target_is_directory=True)
+    actual_invoke = dev_container.invoke
+    effects: list[list[str]] = []
+
+    def scripted(
+        args: list[str],
+        env: dict[str, str],
+        *,
+        capture: bool = False,
+        stdin: BinaryIO | None = None,
+        stdout: BinaryIO | None = None,
+        cwd: Path = dev_container.ROOT,
+    ) -> subprocess.CompletedProcess[bytes] | Rejected:
+        if args[0] == "git":
+            return actual_invoke(args, env, capture=capture, stdin=stdin, stdout=stdout, cwd=cwd)
+        effects.append(args)
+        return subprocess.CompletedProcess(args, 0, b"", b"")
+
+    monkeypatch.setattr(dev_container, "invoke", scripted)
+    result = dev_container.copy_workspace(
+        dev_container.Runtime(("docker",), Architecture.ARM64, environment),
+        dev_container.Workspace(repository, "fixture-key", "fixture-container"),
+    )
+    assert isinstance(result, Rejected)
+    assert result.reason is dev_container.Failure.INVALID_WORKSPACE
+    assert effects == []
+    assert secret.read_text() == "outside private contents"

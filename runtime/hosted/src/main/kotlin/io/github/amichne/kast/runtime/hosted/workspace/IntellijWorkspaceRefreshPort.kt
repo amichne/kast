@@ -280,7 +280,13 @@ internal class IntellijWorkspaceRefreshPort(
                     complete(outcome)
                 }
             callback = preparedCallback
-            val spec = quietWorkspaceImport(project, preparedCallback.nativeCompletion)
+            val spec =
+                quietWorkspaceImport(
+                    project,
+                    preparedCallback.nativeCompletion,
+                    managedHeadless =
+                        io.github.amichne.kast.runtime.hosted.lifecycle.ManagedHeadlessHost.current() != null,
+                )
             importTicket.set(modelInputs.beginOwnedImport())
             boundary.mayHaveStarted()
             when (link) {
@@ -309,6 +315,7 @@ internal fun WorkspaceRefreshEffectResult.refreshObservation(): String =
 internal fun quietWorkspaceImport(
     project: Project,
     completion: java.util.concurrent.CompletableFuture<Void>,
+    managedHeadless: Boolean = false,
 ): ImportSpecBuilder =
     ImportSpecBuilder(project, IntellijWorkspaceRefreshPort.GRADLE)
         .use(ProgressExecutionMode.IN_BACKGROUND_ASYNC)
@@ -317,6 +324,11 @@ internal fun quietWorkspaceImport(
         .withActivateToolWindowOnFailure(false)
         .dontNavigateToError()
         .withCallback(completion)
+        .apply {
+            // JetGradlePlugin mutates excluded tasks after settings evaluation during IDE import.
+            // Scope compatibility to the managed import; saved Gradle settings stay authoritative elsewhere.
+            if (managedHeadless) withArguments("-Dorg.gradle.isolated-projects=false")
+        }
 
 private fun PublicFailure.startResult(): WorkspaceRefreshEffectResult =
     when (this) {

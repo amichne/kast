@@ -10,6 +10,8 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 internal interface IdeLaunchPlatform {
     fun display(): String?
 
+    fun executablePath(): String? = null
+
     fun start(arguments: List<String>): Process
 
     fun startManaged(specification: ManagedHeadlessLaunch): Refinement<Process, IdeLifecycleFailure>
@@ -18,6 +20,8 @@ internal interface IdeLaunchPlatform {
 
     data object Native : IdeLaunchPlatform {
         override fun display(): String? = System.getenv("DISPLAY")
+
+        override fun executablePath(): String? = System.getenv("PATH")
 
         override fun start(arguments: List<String>): Process =
             ProcessBuilder(arguments)

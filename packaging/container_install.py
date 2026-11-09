@@ -8,11 +8,10 @@ from dataclasses import replace
 from pathlib import Path
 from urllib.request import urlopen
 
-from composed_bundle import BundleRejected, admit_trust_workspace, configure_trusted_workspace
 from composed_host import compose
 from composition_platform import UnsupportedHost, host_platform
 from composition_recipe import BUILD
-from managed_headless import Input, Installed, Rejected, install
+from managed_headless import Input, Installed, install
 
 
 def sha256(path: Path) -> str:
@@ -64,12 +63,6 @@ def main() -> int:
     )
     if not isinstance(result, Installed):
         print(f"kast-container: stage=compose outcome={result.reason.value}", flush=True)
-        return 2
-    trust = admit_trust_workspace(Path("/work"), Path("/opt/kast"))
-    if isinstance(trust, BundleRejected):
-        return 2
-    configured = configure_trusted_workspace(Path("/opt/kast/state"), trust)
-    if isinstance(configured, (Rejected, BundleRejected)):
         return 2
     print(f"kast-container: stage=compose outcome=INSTALLED platform={target.value}", flush=True)
     return 0

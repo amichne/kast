@@ -203,7 +203,7 @@ code_sources:
   - path: .github/scripts/ci/validation_outcome.py
   - path: .github/scripts/ci/test_validation_outcome.py
   - path: .github/scripts/ci/verify-checks.py
-  - path: .github/scripts/ci/test_push_policy.py
+  - path: .githooks/pre-push
   - path: distribution/release/plugin-release.gradle.kts
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
     symbols:
@@ -241,6 +241,8 @@ code_sources:
     symbols:
       - GenerateComponentReleaseTask
 sources:
+  - id: openwiki-source-baf30c604828cfde90a8ab63
+    resource: repo://.githooks/pre-push
   - id: openwiki-source-3b28c686cbf92ac682eb5142
     resource: repo://.github/scripts/ci/build_execution.py
   - id: openwiki-source-0e96c1b9a971eb3f67a64455
@@ -335,8 +337,6 @@ sources:
     resource: repo://distribution/release/run_product_gate.py
   - id: openwiki-source-eb5e76c5c52dc1f7704250ce
     resource: repo://distribution/release/test_run_product_gate.py
-  - id: openwiki-source-70991026f1538e8215a8789e
-    resource: repo://docs/development.md
   - id: openwiki-source-a27a8f11a4689cb821b5f6e8
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
   - id: openwiki-source-03ffc32a0ca502ab67c54b25
@@ -365,10 +365,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-07T21:20:33.234Z" }
+generated: { by: "codex", at: "2026-11-09T13:10:12.658Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-07T21:20:33.234Z
+    at: 2026-11-09T13:14:05.805Z
 ---
 
 # Distribution and packaging
@@ -443,11 +443,7 @@ Installer examples, generated schemas, scripts, build configuration, protected p
 The completion job requires every selected job to succeed and every excluded job to be skipped.
 It then seals a validation record with the exact source revision, source tree, comparison base, event, and producer run identities.
 One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run number>`.
-Git pushes start no automatic Kast qualification.
-The repository hook and its installer are retired.
-Existing Kast dispatchers remain inert, and foreign hooks keep their own behavior.
-The manual `fast_checks.py pre-push` sequence keeps cheap checks before the local product gate.
-Manual local qualification uses version `0.0.0` with a `LOCAL_VALIDATION` record.
+The installed Kast dispatcher exits without qualification. Explicit local qualification uses version `0.0.0` with a `LOCAL_VALIDATION` record.
 The full source commit and tree identify the checkout; no published release label is selected.
 The wrapper sets source, Control, and Host versions and passes the admitted source revision.
 Clean source is checked before execution and again after Gradle succeeds.

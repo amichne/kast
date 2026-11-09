@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from contextlib import redirect_stdout
 from itertools import combinations
@@ -457,6 +458,31 @@ class ExactDiffTest(unittest.TestCase):
 
 
 class SourceInventoryTest(unittest.TestCase):
+    def test_native_toolchain_pins_and_reports_do_not_require_oracle(self):
+        root = Path(__file__).resolve().parents[3]
+        pins = json.loads((root / "packaging/cloud/pins.json").read_text())
+        url = unquote(pins["artifacts"]["graalvm"]["url"])
+        self.assertTrue(url.startswith("https://github.com/bell-sw/LibericaNIK/releases/"))
+        release = re.search(r"bellsoft-liberica-vm-openjdk([\d.+]+)-([\d.+]+)-linux-amd64.tar.gz$", url)
+        self.assertIsNotNone(release)
+        jdk, nik = release.groups()
+        mise = tomllib.loads((root / "mise.toml").read_text())
+        self.assertEqual(f"liberica-nik-openjdk{jdk.split('.')[0]}-{nik}", mise["tools"]["java"])
+        self.assertEqual(f"liberica-nik-{nik}", pins["artifacts"]["graalvm"]["directory"])
+        producers = []
+        for path in (root / ".github/workflows").glob("*.yml"):
+            for distribution, version in re.findall(
+                r"(?m)^\s+distribution: (\S+)\n\s+java-version: ([^\n]+)", path.read_text()
+            ):
+                with self.subTest(workflow=path.name, distribution=distribution):
+                    self.assertEqual("liberica-nik", distribution)
+                    self.assertEqual(jdk, version.strip("'\""))
+                producers.append(path.name)
+        self.assertTrue(producers)
+        arguments = (root / "cli/native-image.args").read_text().splitlines()
+        self.assertNotIn("--emit", arguments)
+        self.assertIn("-H:+GenerateEmbeddedResourcesFile", arguments)
+
     def test_candidate_retention_routes_reuse_to_linux_before_fresh_mac_selection(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
         product = workflow.split("\n  kotlin:\n", 1)[1].split("\n  source:\n", 1)[0]
@@ -493,11 +519,44 @@ class SourceInventoryTest(unittest.TestCase):
     def test_native_compilation_is_main_only_before_scope_selection(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
         self.assertIn(
-            "KAST_NATIVE_COMPILATION: ${{ github.ref == 'refs/heads/main' && "
+            "KAST_NATIVE_COMPILATION: ${{ vars.KAST_MACOS_CHECKS == 'true' && "
+            "github.ref == 'refs/heads/main' && "
             "(github.event_name == 'push' || github.event_name == 'workflow_dispatch') && "
             "(vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}",
             workflow,
         )
+
+    def test_every_mac_runner_requires_explicit_platform_opt_in(self):
+        workflows = Path(__file__).resolve().parents[2] / "workflows"
+        guarded = set()
+        for path in workflows.glob("*.yml"):
+            for job, body in re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", path.read_text()):
+                runner = re.search(r"^    runs-on: (.+)$", body, re.M)
+                if runner is None or "macos" not in runner[1].lower():
+                    continue
+                with self.subTest(workflow=path.name, job=job):
+                    condition = re.search(r"^    if: (.+)$", body, re.M)
+                    self.assertIsNotNone(condition)
+                    self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", condition[1])
+                guarded.add((path.name, job))
+        self.assertEqual({("ci.yml", "native"), ("ci.yml", "kotlin"),
+                          ("gradle-cache.yml", "native"), ("release.yml", "release"),
+                          ("release-component.yml", "release")}, guarded)
+
+    def test_mac_disable_defaults_off_without_disabling_linux_or_allowing_promotion(self):
+        workflows = Path(__file__).resolve().parents[2] / "workflows"
+        workflow = (workflows / "ci.yml").read_text()
+        self.assertIn("KAST_MACOS_CHECKS: ${{ vars.KAST_MACOS_CHECKS || 'false' }}", workflow)
+        for job in ("scope", "source-work", "source", "portable", "source-feedback"):
+            body = workflow.split(f"\n  {job}:\n", 1)[1]
+            body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
+            self.assertNotIn("vars.KAST_MACOS_CHECKS", body)
+        cache = (workflows / "gradle-cache.yml").read_text().split("\n  native:\n", 1)[0]
+        self.assertNotIn("vars.KAST_MACOS_CHECKS", cache)
+        promotion = (workflows / "developer-release.yml").read_text()
+        self.assertIn("vars.KAST_MACOS_CHECKS == 'true' &&", promotion)
+        for filename in ("gradle-cache.yml", "release.yml", "release-component.yml", "developer-release.yml"):
+            self.assertIn("vars.KAST_NATIVE_COMPILATION != 'false'", (workflows / filename).read_text())
 
     def test_cache_producers_provision_validation_tools_before_gradle(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()

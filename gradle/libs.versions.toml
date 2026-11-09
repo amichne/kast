@@ -21,6 +21,7 @@ jtoon = "3.0.0"
 ktoon = "6.0.0"
 jackson-jq = "1.6.5"
 jackson2 = "2.22.4"
+asm = "9.11.1"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
@@ -51,6 +52,7 @@ jtoon = { module = "dev.toonformat:jtoon", version.ref = "jtoon" }
 ktoon = { module = "com.lukelast.ktoon:ktoon", version.ref = "ktoon" }
 jackson-jq = { module = "net.thisptr:jackson-jq", version.ref = "jackson-jq" }
 jackson2-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson2" }
+asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 
 [bundles]
 test = [
