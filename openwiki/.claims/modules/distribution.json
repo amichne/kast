@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a2f6eb6838ee114237a01c05fb55ff064c5bd96297dd960b4ab0529e8aa237b1",
+  "pageVersion": "sha256:23cd75dd6b1b8bfbf559ccb127222445b48a3626fc771e44ed6917ef0b1aff97",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -557,7 +557,7 @@
           "version": "repo-lines-v1:sha256:ce158195f144a3e5b2b31bcb9424af6e4779113f44d1d936cdca670e5750635b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhMGFjMjIzMjM4NjQ5Mjg2MGZkOGE5ZmNjODk3YzIyYTBiYjdlMzMxMzc2YzI0YWFmYWYwNjY1MzE4YjUzNDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4MjFlNzQ5OWI2YzliMzgwNDRkOWZlYzgwMjQyMTQzODUwMDU1MmFhMWQ0ZGJjNmUyMDk4ZTdkZTA5ZGRjYzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlMjE5ZWJlNzE4OTkwNGMwODU3MDkyYmEzMzMwMDQyNDU0N2U0MjkzZmUwNTdkMjk4MDBjMzQ5OGVlOGY5YzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlMjE3ZjAxMzYxMTcyODQ4OTc5OGViMzk5MjFkOGJmZDYyY2I4NzcwMDc4MWM2ODQ4ZTUwYzM5NjlmYmVhOGIifQ"
         },
         {
-          "resource": "repo://packaging/managed_headless.py#L558-L638",
+          "resource": "repo://packaging/managed_headless.py#L562-L642",
           "version": "repo-lines-v1:sha256:96a5ac077004f6d1b7499df1152778ac84945a5360c24a9f69cb1d5fa7dbc742:eyJzZWxlY3RlZExpbmVDb3VudCI6ODEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjOGY4OTcyZGQzOGI2OGYwMzY1ZTRiNjFlNzhlMzIzYjZiNmMzNDkxMWI2M2YyOGRhNzM1ZjRhMDJiM2I2NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4Y2ZjMDRkZTg5NzRlZTRmYmNkZjY2MzQxNWIwZWE5NWE5YTc1NDc3NzJiMmUxZDMyNGExM2ViZjI0OThjYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1Mzg0YTlhMDVmZmJmNzc3NmQwMTNlNWFkNDFlODA4ZTE0YWQ5YTUzN2VmNjdjNzdhYWNmOGE3MWM4NTRhZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0OGQxYWZjZDFiMjQ1N2EyZjQ3NjZkNDg2YmY5MTZiYmEzN2UyM2ZiMzZiNTczNjA0YWIxMjhkNmQ4OGQxZWQifQ"
         }
       ]
@@ -567,11 +567,11 @@
       "statement": "Whole-plugin exclusions reject unknown IDs, Host roots, and dependencies of kept plugins. The manifest records input digests, component decisions, and exact kept or removed files.",
       "evidence": [
         {
-          "resource": "repo://packaging/managed_headless.py#L402-L425",
+          "resource": "repo://packaging/managed_headless.py#L406-L429",
           "version": "repo-lines-v1:sha256:1f889d7210f3676246bc3151c86867b0d393dc0d4904c5c657e70cd5ec0d3830:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNWZmYTI0NTVmMWFiNzI5MzM1MDRiYjIxY2Y2MjViMjMxZjQ4MGRkMzVmMDVjMmUxYTE4NzRlZmJkYzZmNTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhOGI5Y2MwZmJmZGU2Y2ZlMGRiNjFlMTBjOGFmYTkzNzg4NDkxZTY5ZWViZGRhMjJkNWZjOWUzODkxODNlMzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmNTc5MTkwMmUzZjM2MGVjNjUxNzBiZjNlYzFjMzBjZDVhZjhkZmYzMjBjY2NmYzhjNDQ3NzdiOGY3Y2Y2ODgifQ"
         },
         {
-          "resource": "repo://packaging/managed_headless.py#L443-L507",
+          "resource": "repo://packaging/managed_headless.py#L447-L511",
           "version": "repo-lines-v1:sha256:82e3bc9fa0a82be018d1d9654130293e9bf4a7a7d88b4506c95e8d706dc68260:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkNDMyNzI4NmIyOWE1MTMzY2MxNWFmOTBlYWM1YTU1MjQzZDM3MDVhMWQzMDllNzY3YTNjNmMwZjllNGFhNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzYTRmMmNjYzBmYzIxNTJlMjYzZmIzNGVlMzc5NWQyZjIwOWFjYjIzOWQxNDM4OTZkMmZkZDc2OTE3ODY2MjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhOGI5Y2MwZmJmZGU2Y2ZlMGRiNjFlMTBjOGFmYTkzNzg4NDkxZTY5ZWViZGRhMjJkNWZjOWUzODkxODNlMzYifQ"
         },
         {
@@ -607,10 +607,28 @@
           "version": "repo-lines-v1:sha256:f7b953a6ea3ff19a23bc9edab436e771ae302989c7514823569f5f5820ee881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MWVhZWZmMDczZGYwYTFiYjI1ZTYzODllMGEyN2QxYTQxNWRjZDhkOGJjOGYxY2E5MDQ3NjJiNWQ3NzM3OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDJmZWE4MjFlNjZiYjIzODFhZTc4MzMyNTllYmU0NTcyZWFlYmViNjNiNmI5M2NkZWQzYWVkY2FkNzRlYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_2b71436d56cf47e6a6dd07eecc02570c",
+      "statement": "The installed Kast dispatcher exits without local qualification. The manual pre-push mode still starts the full product gate after the cheap checks pass.",
+      "evidence": [
+        {
+          "resource": "repo://.githooks/pre-push",
+          "version": "repo-file-v1:sha256:4dd6f32a0ae912eb4ff97c05fbed5ef115ea48da65956fca5efe2ca2dc953f65"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/fast_checks.py",
+          "version": "repo-file-v1:sha256:84c55f75b894e8eac7e2fed7f236d30076d0f58ec050da71cbdaa94cf3b53c7e"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/test_push_policy.py",
+          "version": "repo-file-v1:sha256:b92ddb8438e6ddc906806cdad828c9b67e99d720d09141564a17a802231bf537"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-09T12:12:21.037Z"
+    "at": "2026-11-09T13:10:12.658Z"
   }
 }

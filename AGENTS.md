@@ -67,8 +67,8 @@ This guide owns repository rules and routes source investigation.
 
 - Build and tests: `./gradlew build`.
 - Scoped edit loop: `mise exec -- ./gradlew :distribution:cli:scopedCheck --continue`. Select each module with its fully qualified task path.
-- Cheap local checks: `mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py`. This command accepts an uncommitted tree. Pre-push still needs the full product gate.
-- Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`. The full pre-push gate remains necessary.
+- Cheap local checks: `mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py`. This command accepts an uncommitted tree.
+- Scoped prose: add `verifyDocumentationGlossary verifyScopedProse -PkastProsePaths=docs/development.md`.
 - Complete source gate: `mise exec -- python3 .github/scripts/ci/source_validation.py`. This command needs a clean committed tree and uses stable version `0.0.0`.
 - Affected source gate: add `--affected --base <full-sha>` to that command. Unknown ownership keeps full source validation.
 - Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
