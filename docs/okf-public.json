@@ -6077,7 +6077,7 @@
         },
         {
           "path": "gradle/libs.versions.toml",
-          "sha256": "39ebc210d38a5d88a048f12c2a1790a19fb1615f534c194cacbd378b0a0685b4"
+          "sha256": "8ddf6942326a714f185fe7c92b3a33cba95613c8cd5ef3d781f6c716b19d5b71"
         },
         {
           "path": "gradle/verification-metadata.xml",
@@ -6092,7 +6092,7 @@
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "d65f3fc122d5c95af996360d4710c1a06b499ff8"
+      "reviewedSourceRevision": "63d644121a5f9c394b4500ab6456249992c4edb3"
     },
     {
       "route": "reference/compatibility",

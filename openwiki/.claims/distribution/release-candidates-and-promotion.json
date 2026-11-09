@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:78299e94c465f579ac8f26519cb259b8129c70898003b6a1f7b470d89b942484",
+  "pageVersion": "sha256:c820e6c7a622b28deed9a1bfeaf6da079f1dcf08ac563d8442fb07f25df4df96",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
+          "version": "repo-file-v1:sha256:479377416e79538aafedbc0a46c66035078546603bf64e710daf1ddb7bca3f4f"
         }
       ]
     },
@@ -67,6 +67,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T20:52:34.571Z"
+    "at": "2026-11-09T12:12:21.037Z"
   }
 }
