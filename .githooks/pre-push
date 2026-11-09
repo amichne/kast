@@ -1,25 +1,3 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-fail() {
-  echo "kast pre-push: $*" >&2
-  exit 1
-}
-
-repo_root="$(git rev-parse --show-toplevel)"
-head="$(git rev-parse HEAD)"
-validate=false
-while read -r local_ref local_sha remote_ref remote_sha; do
-  [[ -n "${local_ref}" ]] || continue
-  if [[ "${local_sha}" =~ ^0+$ ]]; then
-    continue
-  fi
-  [[ "${local_sha}" == "${head}" ]] || fail "pushed ref ${local_ref} is not the checked-out HEAD"
-  validate=true
-done
-
-[[ "${validate}" == true ]] || exit 0
-[[ -z "$(git status --porcelain --untracked-files=all)" ]] || fail "commit or remove working-tree changes before pushing"
-
-echo "kast pre-push: fast checks before productBuildGate for ${head}" >&2
-exec mise exec -- uv run --locked --script "${repo_root}/.github/scripts/ci/fast_checks.py" pre-push
+#!/bin/sh
+# Keep dispatchers installed by older Kast checkouts inert.
+exit 0

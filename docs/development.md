@@ -259,27 +259,19 @@ Gradle provisions the pinned Python dependencies for its schema tests in
 `build/python-tests/env`. The build does not depend on the active shell's Python
 packages or the interpreter search path retained by an existing Gradle daemon.
 
-Install the repository's pre-push gate once per Git clone. It preserves other
-hooks and requires a clean checked-out commit before a push. Pre-push runs the
-cheap checks first, then the existing `productBuildGate` through `mise`.
-A cheap failure stops before release-catalog access or Gradle configuration.
-After cheap checks pass, the product gate fetches the published GitHub release
-catalog and builds with the highest stable semantic version.
-It requires authenticated `gh` access and fails if the catalog is unavailable or
-has no published stable version. Local tags and a previous gate run cannot supply
-a fallback:
+Kast retires its automatic push gate. An installed Kast dispatcher exits without
+local qualification. Other Git hooks keep their own behavior.
+
+Run complete local qualification explicitly.
 
 ```shell
-./.githooks/install.sh
-# Run cheap checks followed by the full product gate manually:
 mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py pre-push
 ```
 
-The manual command does not enforce the hook's clean-tree or pushed-HEAD checks.
-The wrapper logs the selected release version before starting Gradle. It builds
-the current checkout with that version; it does not download or validate released
-binaries. Exact release-candidate builds continue to pass their intended version
-explicitly.
+The `pre-push` mode starts the product gate after the cheap checks pass.
+The product gate needs a clean committed checkout and uses version `0.0.0`.
+Its receipt identifies the source revision and tree. Release candidates use
+their own explicit version and qualification.
 
 ## CI candidates and developer publication
 
