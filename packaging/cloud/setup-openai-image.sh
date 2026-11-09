@@ -8,12 +8,12 @@ command -v uv >/dev/null
 command -v codex >/dev/null
 
 uv run --locked --project "$setup_directory/.." python "$setup_directory/openai-image.py" install \
-  --archive "$1" --sha256 "$KAST_BUNDLE_SHA256" \
-  --version "$KAST_BUNDLE_VERSION" --root "$KAST_IMAGE_ROOT"
+  --archive "$1" --sha256 "$bundle_sha256" \
+  --version "$bundle_version" --root "$image_root"
 
 repository_root="$(git -C "$setup_directory" rev-parse --show-toplevel)"
 profile_revision="$(git -C "$repository_root" rev-parse HEAD)"
-profile_root="$KAST_IMAGE_ROOT/profile"
+profile_root="$image_root/profile"
 if [[ -e "$profile_root" || -L "$profile_root" ]]; then
   [[ ! -L "$profile_root" && -f "$profile_root/source-revision" &&
     "$(cat "$profile_root/source-revision")" == "$profile_revision" ]] || {
@@ -21,14 +21,14 @@ if [[ -e "$profile_root" || -L "$profile_root" ]]; then
     exit 1
   }
 else
-  profile_stage="$(mktemp -d "$KAST_IMAGE_ROOT/.profile-stage.XXXXXX")"
+  profile_stage="$(mktemp -d "$image_root/.profile-stage.XXXXXX")"
   git -C "$repository_root" archive HEAD packaging bin | tar -x -C "$profile_stage"
   printf '%s\n' "$profile_revision" > "$profile_stage/source-revision"
   mv -- "$profile_stage" "$profile_root"
 fi
 uv run --locked --project "$profile_root/packaging" python \
   "$profile_root/packaging/cloud/openai-image.py" verify \
-  --sha256 "$KAST_BUNDLE_SHA256" --version "$KAST_BUNDLE_VERSION" --root "$KAST_IMAGE_ROOT"
+  --sha256 "$bundle_sha256" --version "$bundle_version" --root "$image_root"
 
 slopsentral_command="$HOME/.local/bin/slopsentral"
 if [[ -x "$slopsentral_command" ]]; then
@@ -48,5 +48,5 @@ fi
   --plugin software-engineering --plugin kotlin-engineering \
   --plugin intellij-plugin-development --plugin repository-knowledge --plugin developer-tooling
 
-codex plugin list --json > "$KAST_IMAGE_ROOT/codex-plugins.json"
-printf 'Prepared Kast %s and Slopsentral %s for the image user.\n' "$KAST_BUNDLE_VERSION" "$SLOPSENTRAL_VERSION"
+codex plugin list --json > "$image_root/codex-plugins.json"
+printf 'Prepared Kast %s and Slopsentral %s for the image user.\n' "$bundle_version" "$SLOPSENTRAL_VERSION"
