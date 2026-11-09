@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b8e0995b3697d17dc10563197dc75cd0d51cee6a7344718620af16d5baff549f",
+  "pageVersion": "sha256:a2f6eb6838ee114237a01c05fb55ff064c5bd96297dd960b4ab0529e8aa237b1",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -314,7 +314,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
+          "version": "repo-file-v1:sha256:479377416e79538aafedbc0a46c66035078546603bf64e710daf1ddb7bca3f4f"
         }
       ]
     },
@@ -332,7 +332,7 @@
         },
         {
           "resource": "repo://.github/workflows/developer-release.yml",
-          "version": "repo-file-v1:sha256:33ae914c8711d44bab1cdc39f640ca4610ece54d75279332cae0aca5d0a009fb"
+          "version": "repo-file-v1:sha256:ef3e1f513478b27e90c21170e931a5505a220db053daf86c6f899e3f81bc1eec"
         }
       ]
     },
@@ -349,7 +349,7 @@
           "version": "repo-lines-v1:sha256:c5584eba3bd4655f48a278bca246bcda76e2b1ab12dd454b93f1d58f41afe5a0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkNTg4ODYyYWFiZTkzMjRlMDJjMzI5ZWNkYzIzNTg1NzM3MDAxOTcxOWRlZWQ4ZDIwZDA5MzA4YzFmMTI1NTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkZGNmMGE4ZDkwYmRiNjI2Yjc3ZmNlNzViZWNlNzk0OWExY2JiNDUwMjgzYmU5MWE5YWI5ZGVhMTU3ODRhYTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzMTFjNWI3ODVmNDc3NzUzMDY2NzUxZGQ1OGE4ODliNzRkYWE4OGIyNGFjODBjNjc0YzRlMWZmNmZhYmUwOWMifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L125-L168",
+          "resource": "repo://.github/workflows/ci.yml#L127-L170",
           "version": "repo-lines-v1:sha256:783195e7969bb4f6f5b181596777a5b797b80fe7c07fd710c76afd874f1d2790:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzliMjU4NDhlYzM1NmFkYjM4OGE5YjhhNzBkMDdlZTBiMWUxMGQxMTYxYjMzYjIwZjlhYmRlMDY3NzYyNmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMmNmNDFjMmUyMGM4MmJkYTRkZTY2ZGIzNjA2YjdmZGEwMTk0OWVlNjQ5MWExODFhYTA0Y2M4NzA2YjVmMzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4ODc1NGM1ZTAwOTk5MjE5MjExNWZmNjA0MGU3ZmViOGFlMWZhMDM0ZmUyNTIwZWU1M2I1NjM1NDllOGQyZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjYmQwMzg4ZWY5MjJlMDhmZDAzNmYyNjA0ZGEyN2VjNWNlYzFmODZmZTVjMTMxY2IyYTQzZTVhZTE2MjliYmUifQ"
         },
         {
@@ -368,7 +368,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
+          "version": "repo-file-v1:sha256:479377416e79538aafedbc0a46c66035078546603bf64e710daf1ddb7bca3f4f"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
@@ -406,7 +406,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:c5c81c5a03b1da0f1e7071a5377a344f9e22e9442b944ae0544f0f1e61e03e37"
+          "version": "repo-file-v1:sha256:aea0bc438814f988e0a80636fea05eb3b13fa737252c153f8ed1daaa1e1b0265"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt",
@@ -446,7 +446,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:c5c81c5a03b1da0f1e7071a5377a344f9e22e9442b944ae0544f0f1e61e03e37"
+          "version": "repo-file-v1:sha256:aea0bc438814f988e0a80636fea05eb3b13fa737252c153f8ed1daaa1e1b0265"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt",
@@ -472,7 +472,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:3813c351bb09e0b1319e3439b10402e4657448151788d0b3d92613f41d9449cb"
+          "version": "repo-file-v1:sha256:479377416e79538aafedbc0a46c66035078546603bf64e710daf1ddb7bca3f4f"
         },
         {
           "resource": "repo://build.gradle.kts#L67-L88",
@@ -599,11 +599,11 @@
           "version": "repo-lines-v1:sha256:67864dc636d4dda977d294a0b25a23cb9242d4f41ce3c33a8ff40feec9123602:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhMGExNDU5MDk5YjcwNzg4YTJkYTZiMjdlZTYzYTI5ZGEyOGU2YjkzZDYzZDFiMzA1MmRkMTEzMmZjMDM2ZWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYwMjBmMjNmOGFmNzEyYTgzMzBmMzk1OWZkZjI0YzgxOWVlYWJjZTQwOWE3N2E1Mzk0NWE4NTY5Y2E0MTM0Y2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYwZjFjZDAxZmRhMGJjZTVjZWFmNmFjNDhjNjY4MTliMWM2NjgzYmZjMzMzZmRiN2NlMDA2YzRkZjNlMjJmMjAifQ"
         },
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L140-L146",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L141-L147",
           "version": "repo-lines-v1:sha256:0cc2ab74db17804167c7a6d0b53da6e128c898371abd3522f26f638069f18f18:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDkyMGY4NzJjNGFlNThlMWZiMTUyN2YzYjA5NzRlYWMxMWY0M2NhYzZkMjkxMDA5MjZhNGM1YmNjYTY5MGMzNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWEwMzVjZjYxOTdlOGU2MTkwNDUyMzBlY2U0YWM5ODE0MmFlYzI0ZDVmN2YxMTA4MmYyNzYwMDVlZTg3M2E0YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDdlNTE3MzE3YTgwYzQ1NmQwYzY3MTZkZmUzOWI1MzgzZGE2ZTQ4NDdkMzFiOGVhMWZhNTk3ZGNlZjhlOTUwZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmJhN2Y2MGNkZDkzYTM4YjQ1ZDYyYThlZmU1YTI1MTE4Y2ExOGYyZDNlNWFjNDQwMzQxNmIyMTlkNWE1NjhjOSJ9"
         },
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L203-L237",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L204-L238",
           "version": "repo-lines-v1:sha256:f7b953a6ea3ff19a23bc9edab436e771ae302989c7514823569f5f5820ee881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MWVhZWZmMDczZGYwYTFiYjI1ZTYzODllMGEyN2QxYTQxNWRjZDhkOGJjOGYxY2E5MDQ3NjJiNWQ3NzM3OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDJmZWE4MjFlNjZiYjIzODFhZTc4MzMyNTllYmU0NTcyZWFlYmViNjNiNmI5M2NkZWQzYWVkY2FkNzRlYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEifQ"
         }
       ]
@@ -611,6 +611,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-07T06:23:53.865Z"
+    "at": "2026-11-09T12:12:21.037Z"
   }
 }
