@@ -64,8 +64,8 @@ jobs:
           --repository "$GITHUB_REPOSITORY" --component "$RELEASE_COMPONENT" --bump "$RELEASE_BUMP"
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
-          distribution: graalvm
-          java-version: 25.0.2
+          distribution: liberica-nik
+          java-version: '25.0.2+13'
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           validate-wrappers: true

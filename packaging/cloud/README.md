@@ -69,9 +69,19 @@ well as the main Gradle process.
 
 Bootstrap also checks the IDE build, bundled Kotlin plugin version, and JBR 25+.
 The Host distribution and native test distribution have separate exact pins.
-Oracle GraalVM matches `mise.toml` and supplies Native Image for Control builds,
-including the native build report. GraalVM Community does not support the report
-option used by this build. The ordinary JDK supplies Gradle.
+BellSoft Liberica Native Image Kit (NIK) 25.0.2+1 supplies Native Image for Control
+builds, using Java 25.0.2+13. This matches `mise.toml` and the `liberica-nik`
+distribution in CI. The build retains JSON metrics and embedded-resource reports.
+It does not request the Oracle-only HTML build report. The ordinary JDK supplies
+Gradle in this cloud profile.
+
+BellSoft describes NIK as open-source software under the applicable
+[OpenJDK, GraalVM, and third-party licenses](https://bell-sw.com/liberica_nik_eula/).
+The Classpath Exception permits linking independent application modules under
+their own terms. Keep applicable license notices and source obligations when
+distributing runtime components. Changing the compiler does not change the
+licenses of existing Oracle-built binaries; rebuild those for the new toolchain.
+Kast remains `GPL-3.0-only`; changing its build toolchain does not relicense the project.
 The wrapper owns the Gradle distribution checksum. The generated activation file
 configures only the owned Gradle directory through the current approved proxy.
 Set `PI_EVAL_JAVA_TRUSTSTORE` if the platform provides a different Java certificate store.

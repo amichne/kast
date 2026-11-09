@@ -11,9 +11,9 @@
       "flat": true
     },
     "graalvm": {
-      "url": "https://download.oracle.com/graalvm/25/archive/graalvm-jdk-25.0.2_linux-x64_bin.tar.gz",
-      "sha256": "af545b1bc12ecd24a5ba95e2370da2163e87c4cf13991a482d5b176bf4165c12",
-      "directory": "graalvm-25.0.2"
+      "url": "https://github.com/bell-sw/LibericaNIK/releases/download/25.0.2%2B1-25.0.2%2B13/bellsoft-liberica-vm-openjdk25.0.2%2B13-25.0.2%2B1-linux-amd64.tar.gz",
+      "sha256": "fe9d71a107e523a19ec2eddf77618cca7c98fe6fdfa609f4dc93df7d798429d0",
+      "directory": "liberica-nik-25.0.2+1"
     },
     "node": {
       "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz",

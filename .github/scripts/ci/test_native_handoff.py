@@ -192,6 +192,7 @@ class NativeHandoffTest(unittest.TestCase):
                     self.assertEqual(classes[executable.name], command[5])
                     self.assertEqual(executable.name, cwd.name)
                     self.assertTrue((cwd / "native-image.args").is_file())
+                    self.assertIn(f"-H:BuildOutputJSONFile={root / 'build/reports/native/build-output.json'}", command)
                     self.assertIn(
                         "-H:ConfigurationFileDirectories=reachability-metadata/fixture/alpha/1.0,"
                         "reachability-metadata/fixture/beta/1.0",
@@ -214,9 +215,6 @@ class NativeHandoffTest(unittest.TestCase):
                         bytes.fromhex("cffaedfe0c000001") + executable.name.encode()
                     )
                     (executable.parent / "embedded-resources.json").write_text("{}")
-                    (executable.parent / f"{executable.name}-build-report.html").write_text(
-                        "report"
-                    )
 
                 def inspect_effect(command, *, text, stderr=None):
                     self.assertTrue(text)
