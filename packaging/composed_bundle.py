@@ -374,16 +374,40 @@ def configure_trusted_workspace(
     if isinstance(profile, Rejected):
         return profile
     path = profile.directory / "options/trusted-paths.xml"
-    if path.exists() or path.is_symlink():
-        return Rejected(Failure.INVALID_COMPONENT)
+    if path.parent.resolve() != path.parent:
+        return Rejected(Failure.SHARED_STATE)
     root = XML.Element("application")
     component = XML.SubElement(root, "component", {"name": "Trusted.Paths"})
     option = XML.SubElement(component, "option", {"name": "TRUSTED_PROJECT_PATHS"})
     entries = XML.SubElement(option, "map")
     _ = XML.SubElement(entries, "entry", {"key": str(workspace.path), "value": "true"})
     path.parent.mkdir(parents=True, exist_ok=True)
-    _ = path.write_bytes(XML.tostring(root, encoding="utf-8"))
-    return ConfiguredTrust(workspace.path, path, sha256(path))
+    data = XML.tostring(root, encoding="utf-8")
+    try:
+        with path.open("xb") as output:
+            _ = output.write(data)
+    except FileExistsError:
+        return Rejected(Failure.INVALID_COMPONENT)
+    return ConfiguredTrust(workspace.path, path, hashlib.sha256(data).hexdigest())
+
+
+def trust_installed_workspace(
+    root: Path, workspace: Path
+) -> ConfiguredTrust | BundleRejected | Rejected:
+    marker = root / ".kast-headless-owned"
+    state = root / "state"
+    if (
+        root.resolve() != root
+        or state.resolve() != state
+        or marker.is_symlink()
+        or not marker.is_file()
+        or marker.read_text() != "kast-managed-headless-v1\n"
+    ):
+        return BundleRejected(BundleFailure.UNSAFE_PATH, "installed root")
+    admitted = admit_trust_workspace(workspace, root)
+    if isinstance(admitted, BundleRejected):
+        return admitted
+    return configure_trusted_workspace(state, admitted)
 
 
 def pack_bundle(
@@ -510,10 +534,15 @@ def main() -> int:
     _ = install.add_argument("--archive-sha256", required=True)
     _ = install.add_argument("--version", required=True)
     _ = install.add_argument("--trust-workspace", type=Path)
+    trust = sub.add_parser("trust")
+    for name in ("root", "workspace"):
+        _ = trust.add_argument("--" + name, type=Path, required=True)
     args = parser.parse_args()
     try:
-        result = (
-            pack_bundle(
+        if args.command == "trust":
+            result = trust_installed_workspace(args.root, args.workspace)
+        elif args.command == "pack":
+            result = pack_bundle(
                 args.root,
                 args.assets,
                 args.bootstrap,
@@ -521,15 +550,14 @@ def main() -> int:
                 args.output,
                 args.version,
             )
-            if args.command == "pack"
-            else install_bundle(
+        else:
+            result = install_bundle(
                 args.archive, args.archive_sha256, args.root, args.version, args.trust_workspace
             )
-        )
     except (OSError, ValueError, tarfile.TarError) as error:
         result = BundleRejected(BundleFailure.EFFECT_FAILED, type(error).__name__)
-    print(json.dumps(asdict(result), indent=2))
-    return 0 if isinstance(result, (PackedBundle, BundleInstalled)) else 1
+    print(json.dumps(asdict(result), default=os.fspath, indent=2))
+    return 0 if isinstance(result, (PackedBundle, BundleInstalled, ConfiguredTrust)) else 1
 
 
 if __name__ == "__main__":
