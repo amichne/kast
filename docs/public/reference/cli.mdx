@@ -14,6 +14,24 @@ hideFooterPagination: true
 Use the native `kast` command for Kotlin queries in one exact repository or worktree.
 The persistent IntelliJ IDEA Host supplies compiler analysis. CLI queries need no MCP registration.
 
+## Delegate a container task
+
+`kast container` opens a copied workspace with a self-contained IDEA runtime.
+The container needs macOS, Colima, the Docker CLI, uv, and a prepared native image.
+Each task name selects separate files, caches, and an IDEA profile:
+
+```shell
+kast container --help
+kast container run --name fix-parser -- ./gradlew test
+kast container shell --name fix-parser
+kast container export --name fix-parser --output /absolute/path/new-workspace.tar.gz
+```
+
+The launcher preserves literal arguments and the command exit code.
+It forwards no host HOME or credentials. Network access stays on unless the first call selects `--offline`.
+The image still needs a source build or an explicit digest. This change supplies no default public image.
+See the [container guide](https://github.com/amichne/kast/blob/main/packaging/container/README.md) for image setup and isolation limits.
+
 ## Discover the installed contract
 
 ```shell

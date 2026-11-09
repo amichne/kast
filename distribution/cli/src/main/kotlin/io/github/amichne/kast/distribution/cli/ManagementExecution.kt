@@ -17,6 +17,8 @@ internal fun perform(command: ManagementCommand, output: ManagementOutput = Mana
         }
     when (command) {
         is ManagementCommand.PublicQuery -> error("Public query dispatch already returned")
+        is ManagementCommand.Container ->
+            exitProcess(runInstalledContainer(root, command.arguments, Path.of("").toAbsolutePath(), environment))
         is ManagementCommand.Status -> printManagementStatus(root, command.json, output)
         is ManagementCommand.Install ->
             presentProvisioning(installGuidance(root, Path.of(home), command.target, environment), command.json, output)

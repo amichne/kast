@@ -37,6 +37,9 @@ internal sealed interface ManagementCommand {
     /** Opaque argv. Only the JVM public command owner interprets semantic options. */
     data class PublicQuery(val arguments: List<String>) : ManagementCommand
 
+    /** The packaged container owner interprets these literal arguments. */
+    data class Container(val arguments: List<String>) : ManagementCommand
+
     data class Status(val json: Boolean) : ManagementCommand
 
     data object Version : ManagementCommand

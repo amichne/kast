@@ -109,6 +109,18 @@ def verify_task_tools(fixture: InstallerFixture, control: Path) -> None:
         require({prefix + name for name in required} <= {member.name for member in members},
                 "published task tools are incomplete")
         archive.extractall(extracted, members=members, filter="data")
+    container_prefix = "share/kast/container/"
+    with tarfile.open(control) as archive:
+        members = [member for member in archive.getmembers() if member.name.startswith(container_prefix)]
+        required = {"bin/kast-container", "bin/kast-container.lock", "packaging/dev_container.py"}
+        require({container_prefix + name for name in required} <= {member.name for member in members},
+                "published container tools are incomplete")
+        archive.extractall(extracted, members=members, filter="data")
+    launcher = extracted / container_prefix / "bin/kast-container"
+    result = subprocess.run([str(fixture.tools["python3"]), "-I", str(launcher), "run", "--help"],
+                            cwd=fixture.root, env=fixture.environment, capture_output=True, text=True, timeout=30)
+    require(result.returncode == 0 and "--name" in result.stdout and "--offline" in result.stdout,
+            "extracted container help failed: " + result.stderr[-4096:])
     tools = extracted / prefix
     cwd = fixture.root / "workspace"
     for name, option in (("kast-task-vm", "--image"), ("setup-kast", "--archive")):

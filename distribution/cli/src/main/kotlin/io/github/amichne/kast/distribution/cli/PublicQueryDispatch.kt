@@ -13,8 +13,16 @@ internal val publicQueryNamespaces = setOf("query", "result", "source", "diagnos
 
 internal class PublicQueryNamespace(private val namespace: String) : ManagementNode(namespace) {
     override fun help(context: Context) =
-        if (namespace == "hook") "Prepare a supported workspace through the shared session hook."
-        else "Use the public query CLI and its packaged contract."
+        when (namespace) {
+            "query" -> "Find Kotlin declarations and read source relationships."
+            "result" -> "Read or resume a retained query result."
+            "source" -> "Read source from an issued reference."
+            "diagnostic" -> "Read compiler diagnostics for a selected path."
+            "describe" -> "Discover installed commands, schemas, and examples."
+            "hook" -> "Prepare a supported workspace through the shared session hook."
+            "workspace" -> "Wait for the selected workspace to become ready."
+            else -> error("Unknown public query namespace: $namespace")
+        }
 
     override fun selection(): ManagementCommand? = null
 }

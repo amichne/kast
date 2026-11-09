@@ -41,6 +41,8 @@ class InstalledProductArtifactTest(unittest.TestCase):
             with tarfile.open(control, 'w') as archive:
                 for entry in inputs:
                     archive.add(source / entry, arcname='share/kast/task-vm/' + entry)
+                for entry in ('bin/kast-container', 'bin/kast-container.lock', 'packaging/dev_container.py'):
+                    archive.add(source / entry, arcname='share/kast/container/' + entry)
             product.verify_task_tools(fixture, control)
             fixture.mark_passed()
 

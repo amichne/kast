@@ -4,8 +4,8 @@ title: "Native Kast development shell"
 description: "Build and reopen a Linux development container without sharing the developer HOME."
 resource: "repo://packaging/container"
 tags: [kast, packaging, development, isolation]
-timestamp: "2026-11-09T14:35:00Z"
-source_revision: 08bc4e75693a260c1bfe0ffaad667800934cc0ed
+timestamp: "2026-11-09T22:39:26Z"
+source_revision: e8e46975e4ae90079d1b0a8c1a452f15a89a85b9
 code_sources:
   - path: bin/kast-container
   - path: packaging/dev_container.py
@@ -21,130 +21,146 @@ code_sources:
 
 # Native Kast development shell
 
-Use this checkout MVP on macOS with Colima, the Docker CLI, mise, and the repository toolchain installed.
-The image uses the host CPU architecture: Linux ARM64 on Apple Silicon, or Linux x86_64 on an Intel Mac.
-It does not use Rosetta or forward the graphical IntelliJ installation.
-Linux assets remain local builds, not published releases.
+`kast container` opens a copied Git workspace with a self-contained IDEA runtime.
+The image contains Control, Host, the bundled JBR, Git, Python, Node.js, and development tools.
+The runtime needs no graphical IDEA installation on the Mac.
+The public CLI installation still needs IDEA. A host-independent bootstrap remains a 1.0.0 release requirement.
 
-## Open a shell
+Use macOS with Colima, the Docker CLI, uv, and Python 3.12 or 3.13.
+The container uses Linux ARM64 on Apple Silicon or Linux x86_64 on an Intel Mac.
+The public Control release supports Apple Silicon. Intel support here describes the source runner only.
 
-From the Kast checkout, build the image once:
+## Prepare an image
 
-```sh
-mise exec -- kast-container build
-```
-
-The first build compiles native Control and Host from this checkout.
-It downloads digest-pinned Liberica NIK and IntelliJ IDEA donors.
-Debian packages follow the configured Debian repositories.
-The image contains the composed Host, bundled JBR, Git, Python, Node.js, `npm`, and common development tools.
-It needs no complete IntelliJ installation on the Mac.
-The build uses the working checkout; it does not qualify a release.
-Build records keep their existing source-revision fields, which do not authenticate uncommitted changes.
-
-Open any target Git repository:
+Install the container prerequisites:
 
 ```sh
-mise exec -- kast-container shell --repository /absolute/path/to/repository
+brew install colima docker uv
 ```
 
-An absent image triggers the first build automatically.
-The first shell copies tracked files into `/work`.
-It also copies new files not excluded by Git ignore rules.
-It preserves uncommitted source edits but excludes the original Git metadata and ignored files.
-It creates a new Git baseline inside the container.
-The image has no workspace grant. After copying files, the launcher grants `/work` in the private Host profile.
-It records workspace readiness only after the grant succeeds.
-That baseline does not claim the original commit identity.
-Submodules reject rather than produce an incomplete copy.
-Review the selected repository before copying it: a tracked secret remains a tracked file.
-
-Later calls reopen the same container, including its edits and dependency caches.
-They do not overwrite it with another host copy.
-Exit the shell normally; the container stays available.
-Changes inside `/work` do not change host files.
-
-For the installed shell function:
+Examine the command without VM or network effects:
 
 ```sh
-cd /path/to/repository
-kastbox
-kastbox -- kast --version
+kast container --help
+kast container run --help
 ```
 
-The function delegates to this checkout's launcher.
-A fresh interactive `zsh` session loads the installed function.
-To load it in an existing session, run `autoload -Uz kastbox`.
-The adapter uses `$HOME/code/kast` by default.
-Set `KAST_CONTAINER_CHECKOUT` to select another checkout.
-Management commands also work through the function: `kastbox build`, `kastbox status`, and `kastbox export`.
+For a prepared image, use its immutable registry digest or local image ID:
 
-## Boundaries and options
+```sh
+kast container shell --image REGISTRY/IMAGE@sha256:DIGEST
+```
+
+Replace the example with a trusted image that uses the native Kast container v2 layout.
+The command downloads an absent registry image by its digest.
+It rejects mutable tags, a different CPU architecture, and an incompatible image layout.
+A local image ID starts with `sha256:` and needs an existing local image.
+No default public image exists in this change.
+
+To prepare the image from source, use a Kast checkout with its mise tools installed:
+
+```sh
+mise -C /path/to/kast exec -- kast container build --checkout /path/to/kast
+```
+
+The build compiles native Control and Host from the selected checkout.
+It downloads the digest-pinned Native Image compiler and IDEA archives.
+Debian packages use the configured Debian repositories.
+The build uses local source and does not qualify a release.
+The checkout command `mise exec -- kast-container build` remains available.
+An absent default image triggers a source build only when the runner resides in a checkout.
+An installed runner instead names the necessary build command.
+
+## Open a task
+
+From the target Git repository, open the default workspace:
+
+```sh
+kast container
+```
+
+The first call copies tracked files and new files that Git ignore rules permit into `/work`.
+It preserves source edits and excludes the original Git metadata and ignored files.
+A tracked secret remains a tracked file.
+The runner rejects submodules because their contents need a separate source owner.
+The guest creates a new Git baseline and grants only `/work` to its private Host profile.
+The new baseline does not claim the original commit identity.
+
+Later calls reopen the same files and dependency caches.
+They preserve edits inside the container and do not copy host changes again.
+Use `--repository /absolute/path` when the current directory differs from the target repository.
+
+Select a task name for a separate copy of the same repository:
+
+```sh
+kast container run --name fix-parser -- ./gradlew test
+kast container run --name review-api -- python3 -c 'print("literal arguments")'
+kast container shell --name fix-parser
+```
+
+Each name selects a separate container, workspace, HOME, and IDEA profile.
+A repeated name reopens that task.
+Arguments after `--` reach the command unchanged. Shell syntax needs an explicit shell command.
+`run` needs a command and returns its exit code.
+Progress uses stderr. The child owns stdout and stderr.
+The shell exits normally while the container stays available.
+
+Agent tools and authentication belong inside the selected container.
+The launcher forwards no host credentials, SSH agent, or complete host environment.
+This change provides command delegation. It does not provision an agent account or transfer authentication.
+
+## Isolation and resources
 
 The dedicated `kast-dev` Colima VM has no host directory shares or forwarded SSH agent.
-The launcher uses its socket explicitly and leaves the active Docker context unchanged.
-Containers have no host mounts, published ports, forwarded environment, or Docker socket.
-They run as UID 10001, without Linux capabilities or permission to gain new privileges.
-The default limits are four CPU cores, eight GiB of memory, no swap allowance, and 2,048 processes.
+The launcher selects its Docker socket without changes to the active Docker context.
+Containers have no host mounts, published ports, or Docker socket.
+They use UID 10001, drop Linux capabilities, and cannot gain new privileges.
+The default allocation is four CPU cores, eight GiB of memory, and 2,048 processes, with no swap allowance.
 The VM has four CPU cores, twelve GiB of memory, and a 48 GiB data disk.
-Disk allocation and caches remain until explicitly retired; no automatic pruning runs.
+Files and caches remain until explicit retirement. Automatic pruning stays off.
 
-Network access is enabled for dependency downloads and ordinary development.
-It also permits connections to reachable host and local-network services.
-This setup is not a boundary for deliberately hostile code.
-Select offline networking when creating a workspace if the task needs it:
+Network access permits dependency downloads and connections to reachable host and local-network services.
+Select `--offline` on the first call to remove external network access:
 
 ```sh
-kastbox --offline
-kastbox --cpus 2 --memory-gib 6
-kastbox -- python3 -c 'print("literal arguments; no implicit shell")'
+kast container run --name offline-review --offline -- kast --version
+kast container shell --name offline-review --offline --cpus 2 --memory-gib 6
 ```
 
-Later sessions can update the CPU and memory limits without replacing files.
-Existing workspaces reject a different image or network mode and keep their files.
-Choose offline mode before the first session.
-Rebuilding the image does not migrate an existing container.
+An existing workspace rejects a different image or network mode without changes to its files.
+Resource changes update the existing container.
+A different task name selects a fresh copy for another image or network mode.
+These controls do not establish protection against deliberately hostile code.
 
 ## Keep results
 
 List the retained containers:
 
 ```sh
-mise exec -- kast-container status
+kast container status
 ```
 
-Export a new archive without changing host source:
+Export a task to a new archive:
 
 ```sh
-mise exec -- kast-container export \
-  --repository /absolute/path/to/repository \
-  --output /absolute/path/to/new-workspace.tar.gz
+kast container export --name fix-parser --output /absolute/path/new-workspace.tar.gz
 ```
 
-The export excludes the container's Git metadata and includes the current `/work` contents.
-The launcher refuses an existing output file and never extracts the archive on the host.
-Review exported files before applying changes.
-The VM can be stopped with `colima stop --profile kast-dev`; this retains container files and caches.
+The archive contains the current `/work` contents and excludes its Git metadata.
+The command refuses an existing output file and never extracts the archive on the host.
+Examine exported files before changes to host source.
+`colima stop --profile kast-dev` stops the VM and keeps container files and caches.
 
+## Evidence
 
-## Manual qualification
-
-Run the local process simulation without Docker or a VM:
+Run the focused tests:
 
 ```sh
 mise exec -- uv run --locked --project packaging pytest \
-  packaging/test_dev_container.py packaging/test_dev_container_simulation.py \
-  packaging/test_composition_platform.py packaging/test_composition_oci_task.py -q
+  packaging/test_dev_container.py packaging/test_dev_container_simulation.py -q
 ```
 
-The simulation starts a fake Docker CLI as a local process.
-It keeps container observations and files in temporary directories.
-Real Git and archive operations exercise copying, reopening, retained edits, resource changes, and failure handling.
-These checks do not establish VM isolation, Linux image startup, or compiler behavior.
-They are manual checks and add no build or VM job to CI.
-
-The separate [OCI image workflow](../oci/README.md) builds a Linux x86_64 image on demand.
-Run [42631931178](https://github.com/amichne/kast/actions/runs/42631931178) qualified source `d589cf87d04228d9c88401bab96a8b8948ed77cc`.
-It started Control and Java offline, then passed the compiler probe in a fresh container with network access.
-It skipped registry publication. That evidence does not qualify this native ARM64 development image.
-Native development-image startup and a Devin query, edit, and compiler check remain unverified.
+These tests exercise real Git, archive operations, and a Docker process double.
+They cover literal arguments, copied files, preserved edits, image admission, and rejected policy changes.
+They do not prove compiler behavior or hypervisor security.
+The [1.0.0 readiness report](../../docs/reviews/1.0-readiness.md) records native evidence and release gaps.

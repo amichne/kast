@@ -1,5 +1,6 @@
 """A usable development shell must not silently emulate or share host state."""
 
+import argparse
 import json
 import os
 import shutil
@@ -20,6 +21,65 @@ from dev_container import (
     native_architecture,
     validate_vm,
 )
+
+
+@pytest.mark.parametrize(
+    "arguments", [["run"], ["run", "--"], ["unknown"], ["shell", "--name", "../other"]]
+)
+def test_invalid_command_rejects_before_runtime_effects(
+    arguments: list[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def forbidden_runtime() -> dev_container.Runtime:
+        pytest.fail("Invalid command reached the VM owner")
+
+    monkeypatch.setattr(dev_container, "runtime", forbidden_runtime)
+    monkeypatch.setattr(sys, "argv", ["kast-container", *arguments])
+    with pytest.raises(SystemExit) as rejected:
+        _ = dev_container.main()
+    assert rejected.value.code == 2
+
+
+def test_named_tasks_have_separate_repeatable_workspace_identities(tmp_path: Path) -> None:
+    _ = subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
+    first = dev_container.workspace(tmp_path, Architecture.ARM64, "task-one")
+    second = dev_container.workspace(tmp_path, Architecture.ARM64, "task-two")
+    default = dev_container.workspace(tmp_path, Architecture.ARM64)
+    assert isinstance(first, dev_container.Workspace)
+    assert isinstance(second, dev_container.Workspace)
+    assert isinstance(default, dev_container.Workspace)
+    assert len({first.name, second.name, default.name}) == 3
+    assert first == dev_container.workspace(tmp_path, Architecture.ARM64, "task-one")
+    with pytest.raises(argparse.ArgumentTypeError):
+        _ = dev_container.workspace_name("../another-task")
+
+
+def test_packaged_help_needs_no_checkout_runtime_or_python_dependencies(tmp_path: Path) -> None:
+    source = Path(__file__).resolve().parent.parent
+    for relative in ("bin/kast-container", "bin/kast-container.lock", "packaging/dev_container.py"):
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _ = shutil.copyfile(source / relative, target)
+    for arguments in (["--help"], ["run", "--help"], ["build", "--help"]):
+        result = subprocess.run(
+            [sys.executable, "-I", str(tmp_path / "bin/kast-container"), *arguments],
+            cwd=tmp_path.parent,
+            env={"PATH": os.defpath, "HOME": str(tmp_path)},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "kast container" in result.stdout
+    assert not list(tmp_path.rglob("__pycache__"))
+
+
+def test_installed_launcher_rejects_missing_build_source_before_child_effects(
+    tmp_path: Path,
+) -> None:
+    runtime = dev_container.Runtime(("must-not-run",), Architecture.ARM64, {})
+    assert dev_container.build_image(runtime, tmp_path) == dev_container.Rejected(
+        dev_container.Failure.MISSING_IMAGE, "Run kast container build --checkout /path/to/kast"
+    )
 
 
 @pytest.mark.parametrize("machine", ["arm64", "aarch64"])
@@ -369,3 +429,32 @@ def test_copy_rejects_an_indexed_file_beneath_a_symlinked_directory(
     assert result.reason is dev_container.Failure.INVALID_WORKSPACE
     assert effects == []
     assert secret.read_text() == "outside private contents"
+
+
+@pytest.mark.parametrize(
+    "value", ["kast-dev:latest", "registry/image:1.0.0", "sha256:short", "../image"]
+)
+def test_image_selection_rejects_mutable_or_invalid_references(value: str) -> None:
+    with pytest.raises(argparse.ArgumentTypeError):
+        _ = dev_container.pinned_image(value)
+
+
+def test_image_selection_preserves_exact_local_and_registry_digests() -> None:
+    for value in ("sha256:" + "a" * 64, "ghcr.io/amichne/kast-dev@sha256:" + "b" * 64):
+        selected = dev_container.pinned_image(value)
+        runtime = dev_container.Runtime(("docker",), Architecture.ARM64, {}, selected)
+        assert runtime.image == value
+
+
+def test_source_build_uses_selected_checkout_and_preserves_gradle_failure(tmp_path: Path) -> None:
+    checkout = tmp_path / "selected source"
+    dockerfile = checkout / "packaging/container/Dockerfile"
+    dockerfile.parent.mkdir(parents=True)
+    _ = dockerfile.write_text("fixture input\n")
+    gradle = checkout / "gradlew"
+    _ = gradle.write_text("#!/bin/sh\npwd > selected-cwd\nexit 17\n")
+    gradle.chmod(0o755)
+    runtime = dev_container.Runtime(("must-not-run-docker",), Architecture.ARM64, {})
+    result = dev_container.build_image(runtime, checkout)
+    assert result == Rejected(dev_container.Failure.PROCESS_FAILED, "gradlew exited 17")
+    assert (checkout / "selected-cwd").read_text().strip() == str(checkout.resolve())

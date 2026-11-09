@@ -171,6 +171,12 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(listOf("packaging/task_vm.py", "packaging/task_vm_guest.py", "packaging/composed_bundle.py", "packaging/composition_platform.py", "packaging/managed_headless.py")) {
         into("share/kast/task-vm/packaging")
     }
+    from("bin/kast-container") {
+        into("share/kast/container/bin")
+        filePermissions { unix("755") }
+    }
+    from("bin/kast-container.lock") { into("share/kast/container/bin") }
+    from("packaging/dev_container.py") { into("share/kast/container/packaging") }
 }
 
 val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip(providers.gradleProperty("kastNativeExecutable").orElse("")) { platform, executable ->

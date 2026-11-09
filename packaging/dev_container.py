@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -14,12 +15,10 @@ import tarfile
 import tempfile
 import uuid
 from collections.abc import Mapping
-from dataclasses import dataclass
-from enum import StrEnum
+from dataclasses import dataclass, replace
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import BinaryIO, TypeGuard
-
-import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = "kast-dev"
@@ -58,15 +57,37 @@ class Rejected:
     detail: str
 
 
+class LocalImage(Enum):
+    NATIVE = "native"
+
+
+@dataclass(frozen=True)
+class PinnedImage:
+    reference: str
+
+
+def pinned_image(value: str) -> PinnedImage:
+    if re.fullmatch(r"(?:[a-z0-9][a-z0-9._:/-]*@)?sha256:[a-f0-9]{64}", value) is None:
+        raise argparse.ArgumentTypeError(
+            "Use a local sha256 image ID or a registry image with @sha256 digest"
+        )
+    return PinnedImage(value)
+
+
 @dataclass(frozen=True)
 class Runtime:
     docker: tuple[str, ...]
     architecture: Architecture
     environment: dict[str, str]
+    source: LocalImage | PinnedImage = LocalImage.NATIVE
 
     @property
     def image(self) -> str:
-        return "kast-dev:" + self.architecture.value
+        return (
+            self.source.reference
+            if isinstance(self.source, PinnedImage)
+            else "kast-dev:" + self.architecture.value
+        )
 
 
 @dataclass(frozen=True)
@@ -99,6 +120,8 @@ def native_architecture(machine: str) -> Architecture | Rejected:
 
 
 def validate_vm(config: Path, arch: Architecture) -> Architecture | Rejected:
+    import yaml
+
     try:
         raw: object = yaml.safe_load(config.read_text())
     except (OSError, yaml.YAMLError):
@@ -165,7 +188,7 @@ def runtime() -> Runtime | Rejected:
     colima = shutil.which("colima")
     if docker is None or colima is None:
         return Rejected(
-            Failure.MISSING_TOOL, "Install Docker CLI and Colima before running kast-container"
+            Failure.MISSING_TOOL, "Install Docker CLI and Colima: brew install docker colima"
         )
     environment = effect_environment(os.environ)
     environment["PATH"] = (
@@ -226,18 +249,34 @@ def observe(runtime: Runtime, args: list[str]) -> object | Rejected:
 
 
 def image_identity(runtime: Runtime) -> str | Rejected:
+    listing_args = (
+        [
+            "image",
+            "ls",
+            "--all",
+            "--no-trunc",
+            "--digests",
+            "--format",
+            "{{.Repository}}@{{.Digest}} {{.ID}}",
+        ]
+        if isinstance(runtime.source, PinnedImage)
+        else ["image", "ls", "--filter=reference=" + runtime.image, "--quiet"]
+    )
     listing = invoke(
-        [*runtime.docker, "image", "ls", "--filter=reference=" + runtime.image, "--quiet"],
+        [*runtime.docker, *listing_args],
         runtime.environment,
         capture=True,
     )
     if isinstance(listing, Rejected):
         return listing
-    if not listing.stdout.strip():
-        return Rejected(Failure.MISSING_IMAGE, "Run kast-container build")
+    if not listing.stdout.strip() or (
+        isinstance(runtime.source, PinnedImage)
+        and runtime.image.encode() not in listing.stdout.split()
+    ):
+        return Rejected(Failure.MISSING_IMAGE, "Run kast container build --checkout /path/to/kast")
     raw = observe(runtime, ["image", "inspect", runtime.image])
     if not elements(raw) or len(raw) != 1 or not fields(raw[0]):
-        return Rejected(Failure.INVALID_IMAGE, "Run kast-container build")
+        return Rejected(Failure.INVALID_IMAGE, "Run kast container build --checkout /path/to/kast")
     image = raw[0]
     config = image.get("Config")
     labels = config.get("Labels") if fields(config) else None
@@ -246,13 +285,16 @@ def image_identity(runtime: Runtime) -> str | Rejected:
         image.get("Architecture") != runtime.architecture.value
         or image.get("Os") != "linux"
         or not fields(labels)
-        or labels.get("io.kast.dev-container") != "1"
+        or labels.get("io.kast.dev-container") != "2"
         or not fields(config)
         or config.get("User") != "developer"
         or not isinstance(identity, str)
         or not identity.startswith("sha256:")
     ):
-        return Rejected(Failure.INVALID_IMAGE, "Image is not a native Kast development image")
+        return Rejected(
+            Failure.INVALID_IMAGE,
+            "Image needs the native Kast container v2 layout. Build or select a current image.",
+        )
     return identity
 
 
@@ -286,7 +328,7 @@ def container_arguments(
     ]
 
 
-def workspace(path: Path, arch: Architecture) -> Workspace | Rejected:
+def workspace(path: Path, arch: Architecture, name: str = "default") -> Workspace | Rejected:
     root = path.resolve()
     result = invoke(
         ["git", "-c", "core.fsmonitor=false", "rev-parse", "--show-toplevel"],
@@ -302,7 +344,8 @@ def workspace(path: Path, arch: Architecture) -> Workspace | Rejected:
             Failure.INVALID_WORKSPACE, "Git repository identity differs from this directory"
         )
     root = repository
-    key = hashlib.sha256(os.fsencode(root)).hexdigest()[:16]
+    identity = os.fsencode(root) + (b"\0" + name.encode() if name != "default" else b"")
+    key = hashlib.sha256(identity).hexdigest()[:16]
     return Workspace(root, key, f"kast-work-{key}-{arch.value}")
 
 
@@ -527,17 +570,23 @@ def open_workspace(
     )
 
 
-def build_image(runtime: Runtime) -> Rejected | None:
+def build_image(runtime: Runtime, checkout: Path = ROOT) -> Rejected | None:
+    if (
+        not (checkout / "gradlew").is_file()
+        or not (checkout / "packaging/container/Dockerfile").is_file()
+    ):
+        return Rejected(Failure.MISSING_IMAGE, "Run kast container build --checkout /path/to/kast")
     options = ["-PcontrolVersion=" + VERSION, "-PhostedPluginVersion=" + VERSION, "--console=plain"]
     built = invoke(
         [
-            str(ROOT / "gradlew"),
+            str(checkout / "gradlew"),
             ":cli:assembleNativeImageInputs",
             ":runtime:hosted:headlessBootstrapPlugin",
             "generateHostReleaseRecord",
             *options,
         ],
         runtime.environment,
+        cwd=checkout,
     )
     if isinstance(built, Rejected):
         return built
@@ -545,11 +594,11 @@ def build_image(runtime: Runtime) -> Rejected | None:
         context = Path(directory)
         for source, destination in (
             (
-                ROOT / "cli/build/distributions/native-inputs.tar.gz",
+                checkout / "cli/build/distributions/native-inputs.tar.gz",
                 context / "native-inputs.tar.gz",
             ),
-            (ROOT / "packaging/container_compile.py", context / "container_compile.py"),
-            (ROOT / "packaging/container/compiler.Dockerfile", context / "Dockerfile"),
+            (checkout / "packaging/container_compile.py", context / "container_compile.py"),
+            (checkout / "packaging/container/compiler.Dockerfile", context / "Dockerfile"),
         ):
             _ = shutil.copyfile(source, destination)
         compiler = "kast-native-compiler:" + runtime.architecture.value
@@ -563,6 +612,7 @@ def build_image(runtime: Runtime) -> Rejected | None:
                 str(context),
             ],
             runtime.environment,
+            cwd=checkout,
         )
         if isinstance(compiled, Rejected):
             return compiled
@@ -583,7 +633,7 @@ def build_image(runtime: Runtime) -> Rejected | None:
             return retired
         built = invoke(
             [
-                str(ROOT / "gradlew"),
+                str(checkout / "gradlew"),
                 "assembleKastControlDist",
                 "verifyKastControlDistLayout",
                 "-PkastNativeExecutable=" + str(native),
@@ -591,17 +641,19 @@ def build_image(runtime: Runtime) -> Rejected | None:
                 *options,
             ],
             runtime.environment,
+            cwd=checkout,
         )
         if isinstance(built, Rejected):
             return built
         assets = context / "assets"
         assets.mkdir()
         for source in (
-            ROOT
+            checkout
             / f"build/distributions/kast-control-v{VERSION}-{runtime.architecture.platform}.tar.gz",
-            ROOT / f"runtime/hosted/build/distributions/kast-ide-hosted-v{VERSION}-idea-262.zip",
-            ROOT / f"build/generated/host-release/kast-host-release-v{VERSION}.json",
-            ROOT / "packaging/host-installation.py",
+            checkout
+            / f"runtime/hosted/build/distributions/kast-ide-hosted-v{VERSION}-idea-262.zip",
+            checkout / f"build/generated/host-release/kast-host-release-v{VERSION}.json",
+            checkout / "packaging/host-installation.py",
         ):
             destination = assets / source.name
             _ = shutil.copyfile(source, destination)
@@ -611,11 +663,11 @@ def build_image(runtime: Runtime) -> Rejected | None:
                 f"{digest}  {destination.name}\n"
             )
         _ = shutil.copyfile(
-            ROOT
+            checkout
             / f"runtime/hosted/build/distributions/kast-managed-headless-v{VERSION}-idea-262.zip",
             context / "bootstrap.zip",
         )
-        _ = shutil.copyfile(ROOT / "install.sh", context / "install.sh")
+        _ = shutil.copyfile(checkout / "install.sh", context / "install.sh")
         modules = context / "packaging"
         modules.mkdir()
         for name in (
@@ -629,8 +681,8 @@ def build_image(runtime: Runtime) -> Rejected | None:
             "composition_platform.py",
             "composition_recipe.py",
         ):
-            _ = shutil.copyfile(ROOT / "packaging" / name, modules / name)
-        _ = shutil.copyfile(ROOT / "packaging/container/Dockerfile", context / "Dockerfile")
+            _ = shutil.copyfile(checkout / "packaging" / name, modules / name)
+        _ = shutil.copyfile(checkout / "packaging/container/Dockerfile", context / "Dockerfile")
         result = invoke(
             [
                 *runtime.docker,
@@ -641,50 +693,76 @@ def build_image(runtime: Runtime) -> Rejected | None:
                 str(context),
             ],
             runtime.environment,
+            cwd=checkout,
         )
         return result if isinstance(result, Rejected) else None
 
 
+def workspace_name(value: str) -> str:
+    if re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,47}", value) is None:
+        raise argparse.ArgumentTypeError("Use 1 to 48 letters, digits, underscores, or hyphens")
+    return value
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(prog="kast container", description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
-    _ = commands.add_parser(
-        "build",
-        help="Build the native image from this checkout; first build can take several minutes",
-    )
-    shell = commands.add_parser(
-        "shell", help="Copy a repository once, then reopen its persistent development shell"
-    )
+    build = commands.add_parser("build", help="Build a native image from a Kast source checkout")
+    _ = build.add_argument("--checkout", type=Path, default=ROOT, help="Kast source checkout")
     default_repository = Path.cwd()
-    _ = shell.add_argument("--repository", type=Path, default=default_repository)
-    _ = shell.add_argument("--offline", action="store_true", help="Disable the container network")
-    _ = shell.add_argument("--cpus", type=int, choices=range(1, 9), default=4)
-    _ = shell.add_argument("--memory-gib", type=int, choices=range(2, 13), default=8)
-    _ = shell.add_argument("command", nargs=argparse.REMAINDER)
+    for action, help_text in (
+        ("shell", "Open the retained workspace shell"),
+        ("run", "Run a literal command in a retained workspace"),
+    ):
+        command_parser = commands.add_parser(action, help=help_text)
+        _ = command_parser.add_argument("--repository", type=Path, default=default_repository)
+        _ = command_parser.add_argument(
+            "--image",
+            type=pinned_image,
+            default=LocalImage.NATIVE,
+            help="Use an immutable prepared image without a source checkout",
+        )
+        _ = command_parser.add_argument(
+            "--name",
+            type=workspace_name,
+            default="default",
+            help="Select a separate task copy of this repository",
+        )
+        _ = command_parser.add_argument(
+            "--offline", action="store_true", help="Disable the container network"
+        )
+        _ = command_parser.add_argument("--cpus", type=int, choices=range(1, 9), default=4)
+        _ = command_parser.add_argument("--memory-gib", type=int, choices=range(2, 13), default=8)
+        _ = command_parser.add_argument("command", nargs=argparse.REMAINDER)
     export = commands.add_parser(
-        "export", help="Save a workspace tarball without extracting or overwriting host files"
+        "export", help="Save a new workspace archive without changing host source"
     )
     _ = export.add_argument("--repository", type=Path, default=default_repository)
+    _ = export.add_argument("--name", type=workspace_name, default="default")
     _ = export.add_argument("--output", type=Path, required=True)
     _ = commands.add_parser("status", help="List retained Kast workspace containers")
     arguments = sys.argv[1:]
-    if not arguments or arguments[0] not in {"build", "shell", "status", "export", "-h", "--help"}:
+    # Options and an explicit separator retain the original shorthand shell syntax.
+    if not arguments or (arguments[0].startswith("-") and arguments[0] not in {"-h", "--help"}):
         arguments = ["shell", *arguments]
     args = parser.parse_args(arguments)
+    if args.action == "run" and not [part for part in args.command if part != "--"]:
+        parser.error("run needs a command after --")
     try:
         selected = runtime()
         if isinstance(selected, Rejected):
             return report(selected)
         if args.action == "build":
-            result = build_image(selected)
+            result = build_image(selected, args.checkout.resolve())
             return report(result) if isinstance(result, Rejected) else 0
         if args.action == "status":
             status = invoke(
                 [*selected.docker, "ps", "-a", "--filter", "label=io.kast.workspace"],
                 selected.environment,
+                stdout=sys.stdout.buffer,
             )
             return report(status) if isinstance(status, Rejected) else 0
-        admitted = workspace(Path(args.repository), selected.architecture)
+        admitted = workspace(Path(args.repository), selected.architecture, args.name)
         if isinstance(admitted, Rejected):
             return report(admitted)
         if args.action == "export":
@@ -706,10 +784,25 @@ def main() -> int:
                     stdout=output,
                 )
             return report(result) if isinstance(result, Rejected) else 0
+        selected = replace(selected, source=args.image)
         image = image_identity(selected)
         if isinstance(image, Rejected) and image.reason is Failure.MISSING_IMAGE:
-            print("kast-container: building the first native image", file=sys.stderr)
-            built = build_image(selected)
+            if isinstance(selected.source, PinnedImage):
+                if "@sha256:" not in selected.source.reference:
+                    return report(image)
+                pulled = invoke(
+                    [
+                        *selected.docker,
+                        "pull",
+                        "--platform=linux/" + selected.architecture.value,
+                        selected.source.reference,
+                    ],
+                    selected.environment,
+                )
+                built = pulled if isinstance(pulled, Rejected) else None
+            else:
+                print("kast container: preparing the first native image", file=sys.stderr)
+                built = build_image(selected)
             if isinstance(built, Rejected):
                 return report(built)
             image = image_identity(selected)
@@ -729,7 +822,7 @@ def main() -> int:
             command = ["bash"]
         flags = ["-it"] if sys.stdin.isatty() and sys.stdout.isatty() else ["-i"]
         print(
-            f"kast-container: {admitted.name}; /work is a retained copy, not a host mount",
+            f"kast container: {admitted.name}; /work is a retained copy, not a host mount",
             file=sys.stderr,
         )
         # Pass the actual command exit code through; a failed command is not a setup error.
@@ -746,7 +839,7 @@ def main() -> int:
 
 
 def report(rejected: Rejected) -> int:
-    print(f"kast-container: outcome={rejected.reason.value}; {rejected.detail}", file=sys.stderr)
+    print(f"kast container: outcome={rejected.reason.value}; {rejected.detail}", file=sys.stderr)
     return 1
 
 

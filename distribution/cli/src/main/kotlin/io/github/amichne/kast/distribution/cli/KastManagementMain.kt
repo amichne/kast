@@ -64,6 +64,8 @@ internal sealed interface ManagementParsing {
 }
 
 internal fun parseManagementCommand(arguments: List<String>): ManagementParsing {
+    if (arguments.firstOrNull() == "container")
+        return ManagementParsing.Selected(ManagementCommand.Container(arguments.drop(1)))
     if (arguments.firstOrNull() in publicQueryNamespaces)
         return ManagementParsing.Selected(ManagementCommand.PublicQuery(arguments.toList()))
     if (arguments.firstOrNull() in setOf("connect", "plugin"))
@@ -79,6 +81,7 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
                 VersionsCommand(),
                 UpgradeCommand(),
                 UninstallCommand(),
+                ContainerNamespace(),
                 PublicQueryNamespace("query"),
                 PublicQueryNamespace("result"),
                 PublicQueryNamespace("source"),
@@ -113,7 +116,7 @@ internal class ManagementRoot : ManagementNode("kast") {
         eagerOption("--version", help = "Print this executable's version") { throw PrintMessage(MANAGEMENT_VERSION) }
     }
 
-    override fun help(context: Context) = "Query Kotlin and manage one Kast installation and its agent integrations."
+    override fun help(context: Context) = "Query Kotlin, run isolated tasks, and manage agent integrations."
 
     override fun selection() = if (currentContext.invokedSubcommand == null) ManagementCommand.Status(false) else null
 }
@@ -121,7 +124,7 @@ internal class ManagementRoot : ManagementNode("kast") {
 private class StatusCommand : ManagementNode("status") {
     private val json by option("--json", help = "Print a typed JSON status document").flag()
 
-    override fun help(context: Context) = "Inspect installation receipts and passive runtime observations."
+    override fun help(context: Context) = "Show installation and runtime status without startup."
 
     override fun selection() = ManagementCommand.Status(json)
 }

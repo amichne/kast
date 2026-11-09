@@ -64,11 +64,18 @@ if args[:2] == ["container", "ls"]:
 elif args[:2] == ["container", "inspect"] and state and args[2:] == [state["Name"]]:
     print(json.dumps([state]))
 elif args[:2] == ["image", "ls"]:
-    print("sha256:simulated-image")
+    if control.get("fail") != "missing-image":
+        print("sha256:simulated-image")
+    elif (root / "pulled").exists():
+        print((root / "pulled").read_text() + " sha256:simulated-image")
+elif args[0] == "pull":
+    (root / "pulled").write_text(args[-1])
 elif args[:2] == ["image", "inspect"]:
     print(json.dumps([{
         "Id": "sha256:simulated-image", "Architecture": "arm64", "Os": "linux",
-        "Config": {"User": "developer", "Labels": {"io.kast.dev-container": "1"}},
+        "Config": {"User": "developer", "Labels": {
+            "io.kast.dev-container": "1" if control.get("fail") == "stale-image" else "2",
+        }},
     }]))
 elif args[0] == "create":
     if state is not None:
@@ -303,17 +310,19 @@ def test_partial_initialization_never_becomes_ready_or_recopies_on_reopen(
     assert not any("tar" in call for call in simulation.calls()[before:])
 
 
+@pytest.mark.parametrize("action", ["shell", "run"])
 def test_main_preserves_literal_arguments_and_child_exit_code(
-    simulation: Simulation, monkeypatch: pytest.MonkeyPatch
+    simulation: Simulation, monkeypatch: pytest.MonkeyPatch, action: str
 ) -> None:
     monkeypatch.setattr(dev_container, "runtime", lambda: simulation.runtime)
+    monkeypatch.chdir(simulation.workspace.root)
     literal = ["space argument", "$(touch SHOULD_NOT_EXIST)", "; exit 0", "*.kt", "--flag=x"]
     monkeypatch.setattr(
         sys,
         "argv",
         [
             "kast-container",
-            "shell",
+            action,
             "--repository",
             str(simulation.workspace.root),
             "--",
@@ -346,3 +355,41 @@ def test_failed_creation_does_not_start_or_copy(simulation: Simulation) -> None:
     assert [call[0] for call in simulation.calls()] == ["container", "create"]
     assert not (simulation.root / "work").exists()
     assert not (simulation.root / "ready").exists()
+
+
+def test_stale_image_rejects_before_workspace_creation(simulation: Simulation) -> None:
+    simulation.control("stale-image")
+    result = dev_container.image_identity(simulation.runtime)
+    assert isinstance(result, Rejected)
+    assert result.reason is Failure.INVALID_IMAGE
+    assert not any(call[0] == "create" for call in simulation.calls())
+
+
+def test_registry_image_pull_uses_the_exact_digest_before_task_effects(
+    simulation: Simulation, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    simulation.control("missing-image")
+    monkeypatch.setattr(dev_container, "runtime", lambda: simulation.runtime)
+    reference = "registry.invalid/kast@sha256:" + "a" * 64
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "kast-container",
+            "run",
+            "--repository",
+            str(simulation.workspace.root),
+            "--image",
+            reference,
+            "--",
+            "literal-probe",
+            "exact task",
+        ],
+    )
+    assert dev_container.main() == 23
+    calls = simulation.calls()
+    pull = ["pull", "--platform=linux/arm64", reference]
+    assert calls.count(pull) == 1
+    assert calls.index(pull) < next(
+        index for index, call in enumerate(calls) if call[0] == "create"
+    )

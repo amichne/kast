@@ -21,7 +21,7 @@ ENV PATH="/opt/kast/bin:/opt/kast/runtime/kast-analysis-host/jbr/bin:/home/devel
     JAVA_HOME="/opt/kast/runtime/kast-analysis-host/jbr" \
     HOME="/home/developer" \
     KAST_INSTALL_ROOT="/opt/kast/state/home/.local/share/kast"
-LABEL io.kast.dev-container="1"
+LABEL io.kast.dev-container="2"
 USER developer
 WORKDIR /work
 CMD ["bash"]
