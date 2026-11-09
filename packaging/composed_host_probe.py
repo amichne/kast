@@ -10,8 +10,7 @@ import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from composed_host import object_items
-from managed_headless import object_fields
+from managed_headless import object_fields, object_items
 
 CALLERS = frozenset({"forwardOnce", "mutualSecond", "aliasWrapper", "mutableAliasWrapper"})
 

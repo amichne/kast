@@ -13,6 +13,7 @@ code_sources:
   - path: packaging/task_vm_guest.py
   - path: packaging/test_composition_task_vm.py
   - path: packaging/composed_bundle.py
+  - path: packaging/oci_task.py
   - path: packaging/composition_platform.py
   - path: packaging/composed_host.py
   - path: packaging/composed_host_probe.py
@@ -94,6 +95,7 @@ Owns installer adapters, offline lifecycle helpers, contract generation, and ass
 - `bin/setup-kast` installs a digest-pinned Linux or macOS ARM bundle through `install_prepared_runtime`.
 - `mise exec -- kast-task-vm --help` describes disposable macOS ARM tasks. Read the [VM report](../docs/reviews/macos-task-vm.md) for the image contract and native gaps.
 - Bundle creation uses `python3 packaging/composed_bundle.py pack`. Read the [Linux install report](../docs/reviews/linux-composed-install.md) for its inputs.
+- Start an OCI task with `kast-task`. The [image guide](oci/README.md) describes how the command selects one workspace.
 - Explicit workspace trust applies only to the new private profile and the named existing repository.
 - The native probe consumes a disposable fixture with explicit trust and a fresh evidence directory.
 - Add `composed-host-fixture-overlay` to the fixture copy. Keep the original callback fixture unchanged because its oracle admits exact source paths.
