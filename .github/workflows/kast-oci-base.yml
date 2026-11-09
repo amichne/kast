@@ -1,0 +1,113 @@
+name: Publish Kast OCI base
+
+on:
+  pull_request:
+    paths: [.github/workflows/kast-oci-base.yml]
+  workflow_dispatch:
+    inputs:
+      qualified_run_id:
+        description: Successful manual Composed Linux bundle run
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  image:
+    name: Build, qualify, and publish the Linux image
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'amichne/kast' && github.triggering_actor == 'amichne'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      actions: read
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/amichne/kast-base:build-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Get the exact qualified bundle
+        id: bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRODUCER: ${{ inputs.qualified_run_id }}
+        run: python3 packaging/composed_oci.py "$PRODUCER" "$RUNNER_TEMP/bundle"
+
+      - name: Set up the OCI image store
+        uses: docker/setup-docker-action@3f1ab1ab0e29231562e4db4ca600c1a49653bac6 # v5.7.0
+        with:
+          version: v29.5.2
+          set-host: true
+          daemon-config: '{"features":{"containerd-snapshotter":true}}'
+
+      - name: Build with the qualified archive
+        env:
+          BUNDLE_SHA256: ${{ steps.bundle.outputs.digest }}
+          BUNDLE_REVISION: ${{ steps.bundle.outputs.revision }}
+          KAST_VERSION: ${{ steps.bundle.outputs.version }}
+        run: |
+          docker build --platform linux/amd64 --output type=image,oci-mediatypes=true --provenance=false \
+            --build-context "bundle=$RUNNER_TEMP/bundle" \
+            --build-arg "KAST_VERSION=$KAST_VERSION" --build-arg "BUNDLE_SHA256=$BUNDLE_SHA256" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$BUNDLE_REVISION" \
+            --label "org.opencontainers.image.version=$KAST_VERSION" \
+            --label "io.github.amichne.kast.bundle-sha256=$BUNDLE_SHA256" \
+            --label "io.github.amichne.kast.recipe-revision=$GITHUB_SHA" \
+            --file packaging/oci/Dockerfile --tag "$IMAGE" packaging
+
+      - name: Start Control and the bundled Java runtime offline
+        env:
+          KAST_VERSION: ${{ steps.bundle.outputs.version }}
+        run: |
+          version="$(docker run --rm --network none --platform linux/amd64 "$IMAGE" kast --version)"
+          printf '%s\n' "$version"
+          [[ "$version" == "$KAST_VERSION" ]]
+          docker run --rm --network none --platform linux/amd64 "$IMAGE" \
+            /opt/kast/runtime/runtime/kast-analysis-host/jbr/bin/java -version
+
+      - name: Prove compiler queries through the image in a fresh container
+        run: |
+          docker run --rm --init --platform linux/amd64 \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/source,readonly" \
+            "$IMAGE" bash -euc '
+              fixture=/workspace/fixture
+              mkdir "$fixture"
+              cp -R /source/experiments/host-observation/static-callback-fixture/. "$fixture"
+              cp -R /source/experiments/host-observation/composed-host-fixture-overlay/. "$fixture"
+              mkdir "$fixture/gradle"
+              cp -R /source/gradle/wrapper "$fixture/gradle/wrapper"
+              cp /source/gradlew "$fixture/gradlew"
+              python3 /opt/kast/packaging/composed_bundle.py trust \
+                --root /opt/kast/runtime --workspace "$fixture"
+              python3 /source/packaging/composed_host_probe.py \
+                --root /opt/kast/runtime --fixture "$fixture" --evidence /workspace/evidence
+            '
+
+      - name: Push and pull the qualified image by digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          expected="$(docker image inspect --format '{{json .Descriptor}}' "$IMAGE" \
+            | jq -er 'select(.mediaType == "application/vnd.oci.image.manifest.v1+json") | .digest')"
+          export DOCKER_CONFIG="$RUNNER_TEMP/kast-registry"
+          mkdir -m 700 "$DOCKER_CONFIG"
+          trap 'docker logout ghcr.io >/dev/null' EXIT
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE"
+          digest="$(docker buildx imagetools inspect "$IMAGE" --format '{{json .Manifest}}' \
+            | jq -er '.digest | select(test("^sha256:[0-9a-f]{64}$"))')"
+          [[ "$digest" == "$expected" ]]
+          reference="${IMAGE%:*}@$digest"
+          docker pull --platform linux/amd64 "$reference"
+          [[ "$(docker image inspect --format '{{.Id}}' "$IMAGE")" == \
+             "$(docker image inspect --format '{{.Id}}' "$reference")" ]]
+          printf 'Image %s\n\nTag %s\n' "$reference" "$IMAGE" >> "$GITHUB_STEP_SUMMARY"

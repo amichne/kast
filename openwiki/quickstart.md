@@ -13,7 +13,7 @@ sources:
 generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-06T20:52:34.571Z
+    at: 2026-11-09T12:12:21.037Z
 ---
 
 # Kast repository guide
