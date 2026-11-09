@@ -241,8 +241,12 @@ code_sources:
     symbols:
       - GenerateComponentReleaseTask
 sources:
+  - id: openwiki-source-baf30c604828cfde90a8ab63
+    resource: repo://.githooks/pre-push
   - id: openwiki-source-3b28c686cbf92ac682eb5142
     resource: repo://.github/scripts/ci/build_execution.py
+  - id: openwiki-source-0e96c1b9a971eb3f67a64455
+    resource: repo://.github/scripts/ci/fast_checks.py
   - id: openwiki-source-970d1a886c7a46d7b0335a81
     resource: repo://.github/scripts/ci/gradle_diagnostics.py
   - id: openwiki-source-d09e57e512e655a9f4013dba
@@ -255,6 +259,8 @@ sources:
     resource: repo://.github/scripts/ci/routine_gate.py
   - id: openwiki-source-eaec0145ee5bcb15fda00e9c
     resource: repo://.github/scripts/ci/source_validation.py
+  - id: openwiki-source-5830aecb2b5f6a16093ed507
+    resource: repo://.github/scripts/ci/test_push_policy.py
   - id: openwiki-source-d7f5bb97a65625ecdf33ddcf
     resource: repo://.github/scripts/ci/test_routine_gate.py
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
@@ -359,10 +365,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
+generated: { by: "codex", at: "2026-11-09T13:10:12.658Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-07T06:23:53.865Z
+    at: 2026-11-09T13:14:05.805Z
 ---
 
 # Distribution and packaging
@@ -437,7 +443,7 @@ Installer examples, generated schemas, scripts, build configuration, protected p
 The completion job requires every selected job to succeed and every excluded job to be skipped.
 It then seals a validation record with the exact source revision, source tree, comparison base, event, and producer run identities.
 One product invocation tests and assembles the complete Control/Host pair at `0.0.<CI run number>`.
-Local pre-push qualification uses version `0.0.0` with a `LOCAL_VALIDATION` record.
+The installed Kast dispatcher exits without qualification. Explicit local qualification uses version `0.0.0` with a `LOCAL_VALIDATION` record.
 The full source commit and tree identify the checkout; no published release label is selected.
 The wrapper sets source, Control, and Host versions and passes the admitted source revision.
 Clean source is checked before execution and again after Gradle succeeds.

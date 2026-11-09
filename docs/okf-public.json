@@ -5937,7 +5937,7 @@
         },
         {
           "path": "cli/native-image.args",
-          "sha256": "5ffc60ee390eb4710222880114b87867a5e48c1cd949faaae5e2865961f37700"
+          "sha256": "f18c5706a1e604f38b1c30cc7ecc7e01f81535cb0a27c868dfce929c0b03fb5f"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt",
@@ -6077,7 +6077,7 @@
         },
         {
           "path": "gradle/libs.versions.toml",
-          "sha256": "39ebc210d38a5d88a048f12c2a1790a19fb1615f534c194cacbd378b0a0685b4"
+          "sha256": "8ddf6942326a714f185fe7c92b3a33cba95613c8cd5ef3d781f6c716b19d5b71"
         },
         {
           "path": "gradle/verification-metadata.xml",
@@ -6085,14 +6085,14 @@
         },
         {
           "path": "mise.toml",
-          "sha256": "0cf916685a7acf4a12e0582ba398fddc6a2b8f29549b0225005fa01a8721dd2f"
+          "sha256": "fc90f00a82400c4a910774d98e76db92b7cc4b0e5c4d6b349a2be9445907a782"
         },
         {
           "path": "packaging/configuration-schema.json",
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "d65f3fc122d5c95af996360d4710c1a06b499ff8"
+      "reviewedSourceRevision": "4e3aa24c55228bc2ffe48d04b6f246545484f439"
     },
     {
       "route": "reference/compatibility",

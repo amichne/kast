@@ -4,6 +4,7 @@
   "include": [
     "required_checks.py",
     "fast_checks.py",
+    "test_push_policy.py",
     "gradle_graph.py",
     "gradle_diagnostics.py",
     "native_handoff.py",
