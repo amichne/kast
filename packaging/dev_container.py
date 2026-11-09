@@ -344,6 +344,10 @@ def copy_workspace(runtime: Runtime, workspace: Workspace) -> Rejected | None:
                 if name.is_absolute() or any(part in {"..", ".git"} for part in name.parts):
                     return Rejected(Failure.INVALID_WORKSPACE, "Unsafe repository path")
                 source = workspace.root / name
+                # Keep leaf symlinks as links, but never open indexed children
+                # through a replaced directory outside the selected repository.
+                if source.parent.resolve() != source.parent:
+                    return Rejected(Failure.INVALID_WORKSPACE, "Symlinked repository directory")
                 if source.is_file() or source.is_symlink():
                     archive.add(source, arcname=str(name), recursive=False)
         _ = snapshot.seek(0)

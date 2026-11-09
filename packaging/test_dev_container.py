@@ -321,3 +321,51 @@ def test_image_assembly_does_not_pregrant_a_workspace() -> None:
     image = (dev_container.ROOT / "packaging/container/Dockerfile").read_text()
     assert "packaging/composed_bundle.py" in image
     assert "/opt/kast/packaging/" in image
+
+
+def test_copy_rejects_an_indexed_file_beneath_a_symlinked_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    environment = {"PATH": os.defpath, "HOME": str(tmp_path)}
+    source = repository / "src"
+    source.mkdir()
+    tracked = source / "config.env"
+    _ = tracked.write_text("tracked contents")
+    for args in (["init", "--quiet"], ["add", "src/config.env"]):
+        _ = subprocess.run(["git", *args], cwd=repository, env=environment, check=True)
+    tracked.unlink()
+    source.rmdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    secret = outside / "config.env"
+    _ = secret.write_text("outside private contents")
+    source.symlink_to(outside, target_is_directory=True)
+    actual_invoke = dev_container.invoke
+    effects: list[list[str]] = []
+
+    def scripted(
+        args: list[str],
+        env: dict[str, str],
+        *,
+        capture: bool = False,
+        stdin: BinaryIO | None = None,
+        stdout: BinaryIO | None = None,
+        cwd: Path = dev_container.ROOT,
+    ) -> subprocess.CompletedProcess[bytes] | Rejected:
+        if args[0] == "git":
+            return actual_invoke(args, env, capture=capture, stdin=stdin, stdout=stdout, cwd=cwd)
+        effects.append(args)
+        return subprocess.CompletedProcess(args, 0, b"", b"")
+
+    monkeypatch.setattr(dev_container, "invoke", scripted)
+    result = dev_container.copy_workspace(
+        dev_container.Runtime(("docker",), Architecture.ARM64, environment),
+        dev_container.Workspace(repository, "fixture-key", "fixture-container"),
+    )
+    assert isinstance(result, Rejected)
+    assert result.reason is dev_container.Failure.INVALID_WORKSPACE
+    assert effects == []
+    assert secret.read_text() == "outside private contents"
