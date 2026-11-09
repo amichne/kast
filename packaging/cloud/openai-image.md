@@ -5,7 +5,7 @@ description: "Install an exact qualified Linux bundle during image setup and ver
 resource: "repo://packaging/cloud/openai-image"
 tags: [kast, cloud, linux, installation]
 timestamp: "2026-11-09T00:00:00Z"
-source_revision: 326055e675ff4574077a9d98445655d145bd6856
+source_revision: ed105da510774b5195505cfd24edb2e4a28590ae
 code_sources:
   - path: packaging/cloud/openai-image.py
   - path: packaging/cloud/openai-kast.env
@@ -57,7 +57,7 @@ It copies committed public setup code into the runtime profile and prepares the 
 That command downloads the wrapper distribution through the current proxy without building the project.
 The copied profile lets task activation work from any directory after the source checkout changes.
 
-In each task shell, activate the prepared profile:
+In each task shell, load the prepared profile:
 
 ```sh
 set -eu
@@ -109,20 +109,20 @@ Use the environment's normal system-package installer if the target image lacks 
 
 Set these non-secret values in the reviewed setup configuration:
 
-- `KAST_BUNDLE_ARCHIVE`: the local path to the downloaded setup `.tar.gz`.
-- `KAST_BUNDLE_SHA256`: the approved digest of that archive, not the outer GitHub artifact ZIP.
-- `KAST_BUNDLE_VERSION`: the exact version recorded by the producer.
+- `CLOUD_IMAGE_ARCHIVE`: the local path to the downloaded setup `.tar.gz`.
+- `CLOUD_IMAGE_SHA256`: the approved digest of that archive, not the outer GitHub artifact ZIP.
+- `CLOUD_IMAGE_VERSION`: the exact version recorded by the producer.
 
 From the prepared Kast checkout, use this install command:
 
 ```sh
 set -eu
-: "${KAST_BUNDLE_ARCHIVE:?Select a downloaded qualified archive}"
-: "${KAST_BUNDLE_SHA256:?Pin its approved SHA-256 digest}"
-: "${KAST_BUNDLE_VERSION:?Pin its exact version}"
+: "${CLOUD_IMAGE_ARCHIVE:?Select a downloaded qualified archive}"
+: "${CLOUD_IMAGE_SHA256:?Pin its approved SHA-256 digest}"
+: "${CLOUD_IMAGE_VERSION:?Pin its exact version}"
 uv run --locked --project packaging python packaging/cloud/openai-image.py install \
-  --archive "$KAST_BUNDLE_ARCHIVE" --sha256 "$KAST_BUNDLE_SHA256" \
-  --version "$KAST_BUNDLE_VERSION" --root /workspace/kr
+  --archive "$CLOUD_IMAGE_ARCHIVE" --sha256 "$CLOUD_IMAGE_SHA256" \
+  --version "$CLOUD_IMAGE_VERSION" --root /workspace/kr
 ```
 
 The helper delegates archive admission and installation to the existing bundle installer.
@@ -140,7 +140,7 @@ Run from the prepared checkout, or use absolute paths to its helper and packagin
 ```sh
 set -eu
 kast_exports="$(uv run --locked --project packaging python packaging/cloud/openai-image.py activate \
-  --sha256 "$KAST_BUNDLE_SHA256" --version "$KAST_BUNDLE_VERSION" --root /workspace/kr)"
+  --sha256 "$CLOUD_IMAGE_SHA256" --version "$CLOUD_IMAGE_VERSION" --root /workspace/kr)"
 eval "$kast_exports"
 ```
 
