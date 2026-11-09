@@ -23,11 +23,11 @@
       "completedRunId": "192ffb55-7ede-4cd8-89b0-7b7e855dfa57"
     },
     "/openwiki/contracts/configuration.md": {
-      "gitHead": "d65f3fc122d5c95af996360d4710c1a06b499ff8",
-      "sourceFingerprint": "sha256:5dd8fa3386f620a64da4a445680ca67cf444d23b1de97c9a5896cd05181e071b",
-      "pageVersion": "sha256:061323fbbbcc115d36d0570be08fdda4acea749c2bd298e7970c9f36fea86288",
+      "gitHead": "2fa7a6ca52155802beee16e8ae0dd3ed8f41cab9",
+      "sourceFingerprint": "sha256:838cf26f6a130caabceeac4883680ccdaef8e4262e4387b2a9257d68f3095de7",
+      "pageVersion": "sha256:b92aa9883d75a1267fb6f11ddc377ba58739a3b5b3ed942ccdbbd34147cda3b5",
       "completedBy": "codex",
-      "completedRunId": "1f8211b2-ebe0-4a74-a6c4-127f35e0ab6d"
+      "completedRunId": "72b00ea8-50e5-4d35-8a20-fc67897ea869"
     },
     "/openwiki/contracts/installed-knowledge.md": {
       "gitHead": "8e72170cfead603d15de95be0a9ddea8516cb061",
@@ -100,11 +100,11 @@
       "completedRunId": "05ff2131-62d7-4c31-aa27-cec3c4233594"
     },
     "/openwiki/distribution/installation-and-managed-files.md": {
-      "gitHead": "63d644121a5f9c394b4500ab6456249992c4edb3",
-      "sourceFingerprint": "sha256:ba56c01d322dcab7ca9c7bd002a3b40ea548209b2f372c769ef2a6bcea20af47",
-      "pageVersion": "sha256:73814a5b98ec47ecb8e6e37485444fd808f66b886265b68cc3efaeed72b1310d",
+      "gitHead": "2fa7a6ca52155802beee16e8ae0dd3ed8f41cab9",
+      "sourceFingerprint": "sha256:838cf26f6a130caabceeac4883680ccdaef8e4262e4387b2a9257d68f3095de7",
+      "pageVersion": "sha256:cc611606bc3f1f22ea7c1f2601628190a4ba2bd55b2755085191d53858a18fb8",
       "completedBy": "codex",
-      "completedRunId": "fc16d82f-c8b9-43e3-a77a-71a565563726"
+      "completedRunId": "72b00ea8-50e5-4d35-8a20-fc67897ea869"
     },
     "/openwiki/distribution/management-and-connections.md": {
       "gitHead": "d65f3fc122d5c95af996360d4710c1a06b499ff8",
@@ -114,11 +114,11 @@
       "completedRunId": "1f8211b2-ebe0-4a74-a6c4-127f35e0ab6d"
     },
     "/openwiki/distribution/release-candidates-and-promotion.md": {
-      "gitHead": "63d644121a5f9c394b4500ab6456249992c4edb3",
-      "sourceFingerprint": "sha256:ba56c01d322dcab7ca9c7bd002a3b40ea548209b2f372c769ef2a6bcea20af47",
-      "pageVersion": "sha256:c820e6c7a622b28deed9a1bfeaf6da079f1dcf08ac563d8442fb07f25df4df96",
+      "gitHead": "2fa7a6ca52155802beee16e8ae0dd3ed8f41cab9",
+      "sourceFingerprint": "sha256:838cf26f6a130caabceeac4883680ccdaef8e4262e4387b2a9257d68f3095de7",
+      "pageVersion": "sha256:f9f187664bfb0aebe713d0e30688063dbce76cc7661e3d4323e6b5affc09630c",
       "completedBy": "codex",
-      "completedRunId": "fc16d82f-c8b9-43e3-a77a-71a565563726"
+      "completedRunId": "72b00ea8-50e5-4d35-8a20-fc67897ea869"
     },
     "/openwiki/distribution/upgrades-shutdown-and-reset.md": {
       "gitHead": "4564e18f9e7ee51b87c124894a5327780d99fafb",
@@ -219,11 +219,11 @@
       "completedRunId": "bb7d762b-e640-426b-bae8-f8fa41505944"
     },
     "/openwiki/modules/distribution.md": {
-      "pageVersion": "sha256:1b9ff13f435cb0bc3915a0655e3b7df67c9dd37408ff119dec482e9feac3feb5",
+      "pageVersion": "sha256:e18e30d9806afdb289f8b6dc98f840c9c772ed55985cc3bed1ddf4e0fc8d3dcd",
       "completedBy": "codex",
-      "completedRunId": "e1a10dd7-18da-4eb6-9aad-a423ae81cf66",
-      "gitHead": "125226bb399d5f563a80745510c3dea6a7152be5",
-      "sourceFingerprint": "sha256:c09bb2b5c52a411ef8e50f5f5a444cd426377f2e30becfef02bf56dcd596a406"
+      "completedRunId": "3832e69b-4b4c-4c78-9da3-1af72a2c193f",
+      "gitHead": "2fa7a6ca52155802beee16e8ae0dd3ed8f41cab9",
+      "sourceFingerprint": "sha256:838cf26f6a130caabceeac4883680ccdaef8e4262e4387b2a9257d68f3095de7"
     },
     "/openwiki/modules/kernel.md": {
       "gitHead": "c00f3bfa71dd40e9897d714e378b21eacf673073",
