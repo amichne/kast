@@ -28,7 +28,7 @@ import subprocess
 import sys
 import tarfile
 
-root = Path(os.environ["KAST_SIM_ROOT"])
+root = Path(__file__).resolve().parent
 args = sys.argv[1:]
 with (root / "calls.jsonl").open("a") as log:
     log.write(json.dumps(args) + "\n")
@@ -188,7 +188,6 @@ def simulation(tmp_path: Path) -> Iterator[Simulation]:
     environment = {
         "PATH": os.defpath,
         "HOME": str(home),
-        "KAST_SIM_ROOT": str(tmp_path),
         "GIT_CONFIG_NOSYSTEM": "1",
         "GIT_CONFIG_GLOBAL": os.devnull,
     }
