@@ -4210,7 +4210,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_ebf354104beb4909bb0ebaebdfe55831",
-          "statementSha256": "75e3eff9c95c6f74e24866b226673725199eb1fbbf5bdb20c7c72949771f3cd1"
+          "statementSha256": "fed494b2e60c15db58e803baff8666907b0f661032b9bd1cf985d3d422325e77"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -4378,7 +4378,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "bb98f0a6bb943fa7871fdb7663b97b896a5401f5"
     },
     {
       "route": "reference",
@@ -6201,7 +6201,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_ebf354104beb4909bb0ebaebdfe55831",
-          "statementSha256": "75e3eff9c95c6f74e24866b226673725199eb1fbbf5bdb20c7c72949771f3cd1"
+          "statementSha256": "fed494b2e60c15db58e803baff8666907b0f661032b9bd1cf985d3d422325e77"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -6349,7 +6349,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "9a3be4465f5543a044cd172760850094af13a80c"
+      "reviewedSourceRevision": "bb98f0a6bb943fa7871fdb7663b97b896a5401f5"
     },
     {
       "route": "reference/composition",
@@ -6606,7 +6606,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_ebf354104beb4909bb0ebaebdfe55831",
-          "statementSha256": "75e3eff9c95c6f74e24866b226673725199eb1fbbf5bdb20c7c72949771f3cd1"
+          "statementSha256": "fed494b2e60c15db58e803baff8666907b0f661032b9bd1cf985d3d422325e77"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -6724,7 +6724,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "9a3be4465f5543a044cd172760850094af13a80c"
+      "reviewedSourceRevision": "bb98f0a6bb943fa7871fdb7663b97b896a5401f5"
     },
     {
       "route": "reference/integrations",
@@ -7427,7 +7427,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_ebf354104beb4909bb0ebaebdfe55831",
-          "statementSha256": "75e3eff9c95c6f74e24866b226673725199eb1fbbf5bdb20c7c72949771f3cd1"
+          "statementSha256": "fed494b2e60c15db58e803baff8666907b0f661032b9bd1cf985d3d422325e77"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -7595,7 +7595,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "bb98f0a6bb943fa7871fdb7663b97b896a5401f5"
     },
     {
       "route": "reference/management",
@@ -7679,7 +7679,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_ebf354104beb4909bb0ebaebdfe55831",
-          "statementSha256": "75e3eff9c95c6f74e24866b226673725199eb1fbbf5bdb20c7c72949771f3cd1"
+          "statementSha256": "fed494b2e60c15db58e803baff8666907b0f661032b9bd1cf985d3d422325e77"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -7797,7 +7797,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "bb98f0a6bb943fa7871fdb7663b97b896a5401f5"
     },
     {
       "route": "reference/mcp-catalog",
@@ -13422,7 +13422,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_ebf354104beb4909bb0ebaebdfe55831",
-          "statementSha256": "75e3eff9c95c6f74e24866b226673725199eb1fbbf5bdb20c7c72949771f3cd1"
+          "statementSha256": "fed494b2e60c15db58e803baff8666907b0f661032b9bd1cf985d3d422325e77"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -13900,7 +13900,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "bb98f0a6bb943fa7871fdb7663b97b896a5401f5"
     },
     {
       "route": "reference/staleness",
@@ -14139,7 +14139,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_ebf354104beb4909bb0ebaebdfe55831",
-          "statementSha256": "75e3eff9c95c6f74e24866b226673725199eb1fbbf5bdb20c7c72949771f3cd1"
+          "statementSha256": "fed494b2e60c15db58e803baff8666907b0f661032b9bd1cf985d3d422325e77"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -14287,7 +14287,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "bb98f0a6bb943fa7871fdb7663b97b896a5401f5"
     },
     {
       "route": "reference/walkthrough",
@@ -15283,7 +15283,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_ebf354104beb4909bb0ebaebdfe55831",
-          "statementSha256": "75e3eff9c95c6f74e24866b226673725199eb1fbbf5bdb20c7c72949771f3cd1"
+          "statementSha256": "fed494b2e60c15db58e803baff8666907b0f661032b9bd1cf985d3d422325e77"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -15511,7 +15511,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "9a3be4465f5543a044cd172760850094af13a80c"
+      "reviewedSourceRevision": "bb98f0a6bb943fa7871fdb7663b97b896a5401f5"
     },
     {
       "route": "troubleshooting",
@@ -15624,7 +15624,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_ebf354104beb4909bb0ebaebdfe55831",
-          "statementSha256": "75e3eff9c95c6f74e24866b226673725199eb1fbbf5bdb20c7c72949771f3cd1"
+          "statementSha256": "fed494b2e60c15db58e803baff8666907b0f661032b9bd1cf985d3d422325e77"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -15772,7 +15772,7 @@
           "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "bb98f0a6bb943fa7871fdb7663b97b896a5401f5"
     },
     {
       "route": "tutorials",

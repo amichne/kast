@@ -35,10 +35,10 @@ sources:
     resource: repo://packaging/test-installation-lifecycle.py
   - id: openwiki-source-988817829b83f3eaab1d41af
     resource: repo://packaging/test-managed-installation.py
-generated: { by: "codex", at: "2026-11-05T04:04:28.756Z" }
+generated: { by: "codex", at: "2026-11-09T21:25:32.196Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-09T15:23:50.674Z
+    at: 2026-11-09T21:29:52.400Z
 ---
 
 
@@ -105,17 +105,20 @@ The active receipt records the plugin root, destination, and artifact inventory 
 If the device identifier changes, admission keeps the recorded inode and owner constraints and keeps a consistent mapping from recorded device identities to their current identities.
 The current root and destination must remain stable through the inventory examination.
 
-Reinstall needs the exact current inventory.
+Managed Host replacement needs the exact recorded inventory.
 Removal permits missing recorded entries, but each remaining entry must match the recorded artifact.
 A foreign or changed file rejects ownership admission.
 An absent plugin destination does not erase the receipt's root proof or permit deletion elsewhere.
 
-Plan mode examines the existing target and recovery entries before Control installation changes.
-Host installation and removal keep historical Control backups in `.kast-plugin-recovery`.
-Host does not read or delete these backups.
-This exception covers exact legacy baseline, detached, and replaced names with 32-character hexadecimal tokens.
-Pending Host transactions, legacy installation candidates, and unknown retained names still reject the operation.
-An active receipt still needs the exact plugin inventory before replacement.
+Host preflight examines the existing target before Control installation changes.
+Ordinary Host installation keeps legacy Control backups and unselected recovery entries in `.kast-plugin-recovery`.
+Host removal keeps those backups and rejects pending Host transactions and unknown recovery entries.
+Legacy backup names include baseline, detached, and replaced names with 32-character hexadecimal tokens.
+Force installation can remove entries with known recovery names. It unlinks symbolic links without traversing their targets.
+
+A force dry run accepts a user-owned recovery directory with mode `0755` and keeps that mode.
+Force installation restores mode `0700` under the Host lock.
+Both force modes reject a group-writable recovery directory.
 
 Terminal Host cleanup first admits the selected or restored files and their active receipt.
 The Host owner then moves each admitted candidate or prior payload outside the pending journal before recursive deletion.

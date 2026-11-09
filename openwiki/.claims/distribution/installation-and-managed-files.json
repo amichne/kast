@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:da9dfe92297744c802f4ee8efb0775481d168a8faac109ccb22aaeee18d13300",
+  "pageVersion": "sha256:53f21e9f47c63930fac0136e597ff64609f327e5cf76716480697c981abfbee7",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
         }
       ]
     },
@@ -38,15 +38,15 @@
     },
     {
       "id": "claim_ebf354104beb4909bb0ebaebdfe55831",
-      "statement": "Host preflight examines the existing target. Host installation and removal preserve exact legacy Control history names without traversing them, while pending Host transactions and unknown recovery entries still reject.",
+      "statement": "Host preflight examines the selected target. Ordinary installation keeps legacy backups and unselected recovery entries. Removal keeps legacy backups and rejects unknown recovery entries. Force installation can remove known recovery entries without traversing symbolic links.",
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
         },
         {
           "resource": "repo://packaging/test-host-installation.py",
-          "version": "repo-file-v1:sha256:31036b9d5380f6e3cc374bb8048fcb5a574dba71fb5caafa919766daf8c2b7d7"
+          "version": "repo-file-v1:sha256:01ded12200e41cfe9757d1fabf1c9436a554b0987fe7dba4acd25407933e13aa"
         }
       ]
     },
@@ -84,7 +84,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
@@ -112,7 +112,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
         },
         {
           "resource": "repo://packaging/host_directory_exchange.py",
@@ -120,7 +120,7 @@
         },
         {
           "resource": "repo://packaging/test-host-installation.py",
-          "version": "repo-file-v1:sha256:31036b9d5380f6e3cc374bb8048fcb5a574dba71fb5caafa919766daf8c2b7d7"
+          "version": "repo-file-v1:sha256:01ded12200e41cfe9757d1fabf1c9436a554b0987fe7dba4acd25407933e13aa"
         }
       ]
     },
@@ -159,10 +159,24 @@
           "version": "repo-lines-v1:sha256:1a91f218776a1f98fd7a50ee81a98522fc7789e4cc2f699cbf4da139c17cf6ca:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzOGMxNjU2NTdhY2RjMDk3NDQ1ZDZmYmZhOGRhYmM3MmM2MzcyZDYwZWIyOTBjODAzNDMyMzg4ZmFmMDMxMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhNjhjMzE4ZThjNDQzNmFhYTM2NjViNzFlZDAxMjAwZmQ0MTY4NGE2ODEwNTg0NmI5OGRhYjhkYzBiODJlMDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAzNzllMmRmNjRkY2MyODAyMmY0YWMyY2VlY2UzYWNjYjdkYmQ2MGFiMjNlOWY4ZjgzOGRlZWQ2NmJlNDY3NWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0YTU5YjE4ZjZhODFjZTk1ZTBkOWQ1NmI4NzkyMGM3NDU4YjJmZmM5YWVkN2YzNjMwOWRkYjBkMGEwZjljOWEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_b6557785fd8647bea9337e26a2e28626",
+      "statement": "A force dry run accepts a user-owned recovery directory with mode 0755 and keeps that mode. Force installation restores mode 0700 under the Host lock. Both force modes reject group-writable recovery directories.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py",
+          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+        },
+        {
+          "resource": "repo://packaging/test-host-installation.py",
+          "version": "repo-file-v1:sha256:01ded12200e41cfe9757d1fabf1c9436a554b0987fe7dba4acd25407933e13aa"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-09T15:23:50.674Z"
+    "at": "2026-11-09T21:29:52.400Z"
   }
 }
