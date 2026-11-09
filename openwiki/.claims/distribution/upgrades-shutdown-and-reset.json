@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f505a7b8e37a83452e290a48cb352c33c0798d71eba46c4ae7acc7a15006ab9a",
+  "pageVersion": "sha256:703f83a8bed3fc7129f85debd02004844d0b94406477588d49f6d926f2385ebd",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -92,7 +92,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
@@ -122,7 +122,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:1bdf66a2ef395400bdc8a6fccc99e1f5b58babd118ca9b91cb9d90597f415dd0"
+          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
@@ -165,6 +165,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T20:52:34.571Z"
+    "at": "2026-11-09T21:25:32.196Z"
   }
 }
