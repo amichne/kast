@@ -150,6 +150,7 @@ jobs:
             build/composed-evidence/
             build/composed-release/assembly.json
             build/reports/
+            build/test-results/publicLauncherTest/
             /tmp/kp/donor-manifest.json
             /tmp/kp/p/composition-manifest.json
             /tmp/kp/p/installer.log

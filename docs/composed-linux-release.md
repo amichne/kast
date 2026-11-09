@@ -40,6 +40,8 @@ Successful runs keep two reusable artifacts for 30 days:
 Use the complete setup archive for a cloud environment without a separate IntelliJ installation.
 Use the Control archive when assembling a compatible Host separately.
 Both uploads follow native launcher tests, compiler-query qualification, and final source admission.
+Launcher cases that need macOS syscall sampling or macOS force-uninstall support run only on macOS.
+The Linux job keeps the remaining launcher cases and its separate compiler-query probe.
 Select the exact successful run and attempt when downloading artifacts; do not infer compatibility from the version alone.
 Retained artifacts expire, so archive approved bytes and their digests before using them in a durable environment configuration.
 The reusable workflow exposes `control_artifact_id`, `setup_artifact_id`, and `setup_archive_sha256` for later jobs.
@@ -62,7 +64,7 @@ The setup digest covers the inner `.tar.gz`, which the bundle installer verifies
    - `qualification.json`, with the same archive digest and native probe result
 4. Inspect the separate `kast-composed-evidence-SHA-RUN_ID-ATTEMPT` artifact.
    It retains manifests, installer logs, and native probe output, including failures.
-   A failed assembly, probe, or source check blocks the qualified bundle upload.
+   A failed assembly, launcher check, probe, or source check blocks the qualified bundle upload.
 
 The workflow installs the produced archive into a fresh private root before it runs the native probe.
 The probe checks four exact Kotlin callers, three Java references, exhaustive coverage, and an unknown-result rejection.

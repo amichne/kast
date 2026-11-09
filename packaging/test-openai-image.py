@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import os
+import platform
 import subprocess
 import sys
 import tempfile
@@ -38,7 +39,12 @@ class OpenAIImageTest(unittest.TestCase):
             )
             self.assertEqual(1, result.returncode)
             self.assertEqual("", result.stdout)
-            self.assertEqual("INCOMPLETE_INSTALLATION", json.loads(result.stderr)["reason"])
+            expected = (
+                "INCOMPLETE_INSTALLATION"
+                if (platform.system(), platform.machine()) == ("Linux", "x86_64")
+                else "UNSUPPORTED_PLATFORM"
+            )
+            self.assertEqual(expected, json.loads(result.stderr)["reason"])
 
     def runtime(self, root):
         from composed_bundle import BundleInstallationReceipt

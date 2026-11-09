@@ -14,6 +14,7 @@ import org.junit.jupiter.api.io.TempDir
 
 /** Actual native writer with an unread pipe, established syscall evidence and exact public-child ownership. */
 @Tag("public-launcher")
+@org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.MAC)
 class PublicOutputCancellationTest {
     @TempDir(cleanup = CleanupMode.ON_SUCCESS) lateinit var temporary: Path
 

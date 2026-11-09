@@ -136,6 +136,7 @@ class PublicLauncherCompositionTest {
     }
 
     @Test
+    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.MAC)
     fun `public native launcher cancels proven incomplete stdin and reaps its exact child`() {
         NativePublicFixture(temporary).use { fixture ->
             for ((signal, exit) in listOf("INT" to 130, "TERM" to 143)) {

@@ -22,6 +22,7 @@ import org.junit.jupiter.api.io.TempDir
 
 /** Actual force uninstall under a disposable HOME with one live native client and no Host. */
 @Tag("public-launcher")
+@org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.MAC)
 class NativeForceResetCompositionTest {
     @Test
     fun `force uninstall retires a live native jq worker and preserves a foreign installation`(
