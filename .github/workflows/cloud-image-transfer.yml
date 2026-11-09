@@ -1,6 +1,9 @@
 name: Transfer qualified cloud image input
 
 on:
+  pull_request:
+    paths:
+      - .github/workflows/cloud-image-transfer.yml
   workflow_dispatch:
     inputs:
       qualified_run_id:
@@ -21,6 +24,7 @@ env:
 
 jobs:
   transfer:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
