@@ -36,7 +36,7 @@ The source plan accepts main/test Kotlin sources outside the native executable a
 The product plan covers those release-sensitive owners.
 Candidate preflight compares the native owner inventory with the actual native compilation graph.
 Changes to build configuration select full validation and must pass that comparison.
-Main pushes with source changes select product validation before automatic developer promotion.
+Main pushes with source changes select product validation before automatic developer promotion when Mac checks are enabled.
 A source-inventory test checks that each listed root remains included in `settings.gradle.kts`.
 New modules, fixtures and unknown roots keep full validation until their scope is reviewed.
 
@@ -68,7 +68,7 @@ Cleanup runs after successful builds, and existing encrypted configuration-cache
 A successful main candidate reuse skips Gradle setup and retains the existing fast path.
 The separate `Populate Gradle caches` workflow supplies cache entries after main pushes and daily at 08:00 UTC.
 Its Linux job runs the complete source gate with the fixed validation version `0.0.0`.
-Its macOS job runs the three reset-adapter suites when native compilation is enabled.
+Its macOS job runs the three reset-adapter suites when Mac checks and native compilation are enabled.
 Both jobs use the same platform, toolchain, cache owner and job identifiers as their CI consumers.
 The workflow also accepts a manual dispatch on main.
 Other refs skip both cache producers.
@@ -93,11 +93,38 @@ Gradle then identified that generated source as the changed compilation input.
 These observations explain version-driven work; they do not measure a CI improvement or explain every hosted cache miss.
 No build scan evidence is available for this change.
 
-## CI native compilation switch
+## Platform checks and native compilation
 
-CI enables native compilation for main pushes and manual main runs by default.
+Mac checks are off by default while the self-hosted Mac is unavailable.
+Set the GitHub repository variable `KAST_MACOS_CHECKS` to `true` to enable them.
+An absent variable or `false` leaves them off.
+The switch covers native compilation, fresh Mac product qualification, the Mac cache job,
+both manual release workflows, and automatic developer promotion.
+Linux source, portable packaging, documentation, and Linux cache jobs keep their selected checks.
+The separate Linux composed-bundle workflow also keeps its existing manual trigger.
+
+Set the variable in [Actions variables](https://github.com/amichne/kast/settings/variables/actions),
+or use an account with repository-variable write access:
+
+```sh
+gh variable set KAST_MACOS_CHECKS --repo amichne/kast --body false
+```
+
+When the Mac runner is available again, opt in:
+
+```sh
+gh variable set KAST_MACOS_CHECKS --repo amichne/kast --body true
+```
+
+Changing a repository variable affects future runs. It does not remove jobs already queued in an existing run.
+Cancel an obsolete run and start a new run after changing the setting.
+Workflow changes take effect after the updated workflow is merged.
+These switches control GitHub Actions job selection. They do not disable local Gradle checks.
+
+When Mac checks are enabled, CI enables native compilation for main pushes and manual main runs by default.
 Pull requests and merge groups keep source, documentation, and portable-packaging checks without native compilation or product qualification.
-Set the GitHub repository variable `KAST_NATIVE_COMPILATION` to `false` to omit native compilation and its dependent product jobs:
+The existing `KAST_NATIVE_COMPILATION` variable remains a second switch.
+Set it to `false` to omit native compilation and its dependent product jobs:
 
 ```sh
 gh variable set KAST_NATIVE_COMPILATION --repo amichne/kast --body false
@@ -107,18 +134,17 @@ Source, portable packaging and documentation keep their selected checks.
 A full selection becomes `SOURCE_FULL` and runs the complete source gate.
 Its validation record says `SOURCE_VALIDATED` and grants no product publication authority.
 The source gate cannot reuse a product candidate while native compilation is disabled.
-Developer promotion also skips while the variable is `false`.
+Mac cache jobs, both manual release workflows, and developer promotion also skip while the variable is `false`.
 An earlier source-only record still rejects product promotion after the variable returns to `true`.
-Explicit release workflows keep their native compilation obligations.
 
-Set the variable to `true` to restore CI native compilation:
+Set the variable to `true` to restore CI native compilation while Mac checks are enabled:
 
 ```sh
 gh variable set KAST_NATIVE_COMPILATION --repo amichne/kast --body true
 ```
 
-An absent variable also enables native compilation.
-Values other than `true` and `false` reject the CI selection.
+An absent native-compilation variable also enables compilation when Mac checks are enabled.
+On eligible main runs, other native-compilation values reject the CI selection.
 
 ## Temporary semantic fixture switch
 
@@ -153,7 +179,8 @@ Linux cannot execute those binaries.
 Main pushes and manual main runs use the self-hosted `kast-main` runner for native compilation and fresh product qualification.
 Both release workflows use that runner and accept only main dispatches.
 These jobs never select a GitHub-hosted Mac, even when `KAST_SELF_HOSTED_RUNNER` is absent or false.
-An unavailable self-hosted Mac leaves these jobs queued.
+With `KAST_MACOS_CHECKS=true`, an unavailable self-hosted Mac leaves these jobs queued.
+Leave the switch off to keep validation on Linux until that runner returns.
 The reused-candidate Linux route remains unchanged.
 
 The runner service keeps its checkout under its own work directory.

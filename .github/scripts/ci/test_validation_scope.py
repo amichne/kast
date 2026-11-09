@@ -493,11 +493,44 @@ class SourceInventoryTest(unittest.TestCase):
     def test_native_compilation_is_main_only_before_scope_selection(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
         self.assertIn(
-            "KAST_NATIVE_COMPILATION: ${{ github.ref == 'refs/heads/main' && "
+            "KAST_NATIVE_COMPILATION: ${{ vars.KAST_MACOS_CHECKS == 'true' && "
+            "github.ref == 'refs/heads/main' && "
             "(github.event_name == 'push' || github.event_name == 'workflow_dispatch') && "
             "(vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}",
             workflow,
         )
+
+    def test_every_mac_runner_requires_explicit_platform_opt_in(self):
+        workflows = Path(__file__).resolve().parents[2] / "workflows"
+        guarded = set()
+        for path in workflows.glob("*.yml"):
+            for job, body in re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", path.read_text()):
+                runner = re.search(r"^    runs-on: (.+)$", body, re.M)
+                if runner is None or "macos" not in runner[1].lower():
+                    continue
+                with self.subTest(workflow=path.name, job=job):
+                    condition = re.search(r"^    if: (.+)$", body, re.M)
+                    self.assertIsNotNone(condition)
+                    self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", condition[1])
+                guarded.add((path.name, job))
+        self.assertEqual({("ci.yml", "native"), ("ci.yml", "kotlin"),
+                          ("gradle-cache.yml", "native"), ("release.yml", "release"),
+                          ("release-component.yml", "release")}, guarded)
+
+    def test_mac_disable_defaults_off_without_disabling_linux_or_allowing_promotion(self):
+        workflows = Path(__file__).resolve().parents[2] / "workflows"
+        workflow = (workflows / "ci.yml").read_text()
+        self.assertIn("KAST_MACOS_CHECKS: ${{ vars.KAST_MACOS_CHECKS || 'false' }}", workflow)
+        for job in ("scope", "source-work", "source", "portable", "source-feedback"):
+            body = workflow.split(f"\n  {job}:\n", 1)[1]
+            body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
+            self.assertNotIn("vars.KAST_MACOS_CHECKS", body)
+        cache = (workflows / "gradle-cache.yml").read_text().split("\n  native:\n", 1)[0]
+        self.assertNotIn("vars.KAST_MACOS_CHECKS", cache)
+        promotion = (workflows / "developer-release.yml").read_text()
+        self.assertIn("vars.KAST_MACOS_CHECKS == 'true' &&", promotion)
+        for filename in ("gradle-cache.yml", "release.yml", "release-component.yml", "developer-release.yml"):
+            self.assertIn("vars.KAST_NATIVE_COMPILATION != 'false'", (workflows / filename).read_text())
 
     def test_cache_producers_provision_validation_tools_before_gradle(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()
