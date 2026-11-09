@@ -1,0 +1,114 @@
+name: Transfer qualified cloud image input
+
+on:
+  workflow_dispatch:
+    inputs:
+      qualified_run_id:
+        description: Successful Composed Linux bundle run
+        required: true
+        type: string
+      setup_artifact_id:
+        description: Complete setup artifact from that exact run
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  transfer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Admit the successful producer and its exact artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALIFIED_RUN_ID: ${{ inputs.qualified_run_id }}
+          SETUP_ARTIFACT_ID: ${{ inputs.setup_artifact_id }}
+        run: |
+          [[ "$QUALIFIED_RUN_ID" =~ ^[1-9][0-9]*$ && "$SETUP_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$QUALIFIED_RUN_ID" > producer.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$SETUP_ARTIFACT_ID" > artifact.json
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          run = json.loads(Path('producer.json').read_text())
+          artifact = json.loads(Path('artifact.json').read_text())
+          assert run['id'] == int(os.environ['QUALIFIED_RUN_ID'])
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          assert run['path'] == '.github/workflows/composed-linux.yml'
+          assert re.fullmatch('[a-f0-9]{40}', run['head_sha'])
+          assert artifact['id'] == int(os.environ['SETUP_ARTIFACT_ID'])
+          assert not artifact['expired']
+          assert artifact['workflow_run']['id'] == run['id']
+          assert artifact['workflow_run']['head_sha'] == run['head_sha']
+          assert artifact['name'] == f"kast-composed-linux-{run['head_sha']}-{run['id']}-{run['run_attempt']}"
+          PY
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          artifact-ids: ${{ inputs.setup_artifact_id }}
+          run-id: ${{ inputs.qualified_run_id }}
+          github-token: ${{ github.token }}
+          path: input
+          merge-multiple: true
+
+      - name: Verify the original qualification and split its unchanged archive
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, shutil
+          from pathlib import Path
+          source = Path('input')
+          assembly = json.loads((source/'assembly.json').read_text())
+          qualification = json.loads((source/'qualification.json').read_text())
+          producer = json.loads(Path('producer.json').read_text())
+          assert assembly['sourceRevision'] == qualification['sourceRevision'] == producer['head_sha']
+          assert qualification['qualification'] == 'COMPLETE'
+          archive = source / Path(assembly['bundle']['archive']).name
+          assert archive.name == f"kast-composed-setup-v{assembly['version']}-linux-x86_64.tar.gz"
+          assert hashlib.file_digest(archive.open('rb'), 'sha256').hexdigest() == assembly['bundle']['sha256'] == qualification['bundleSha256']
+          assert 384 * 1024**2 < archive.stat().st_size <= 768 * 1024**2
+          parts = Path('parts')
+          parts.mkdir()
+          for name in ('assembly.json', 'qualification.json'):
+              shutil.copyfile(source/name, parts/name)
+          (parts/'original.sha256').write_text(f"{qualification['bundleSha256']}  {archive.name}\n")
+          with archive.open('rb') as stream:
+              for number in (0, 1):
+                  target = parts / f'archive.part{number:02d}'
+                  with target.open('wb') as output:
+                      remaining = 384 * 1024**2
+                      while remaining and (data := stream.read(min(1024**2, remaining))):
+                          output.write(data)
+                          remaining -= len(data)
+                  digest = hashlib.file_digest(target.open('rb'), 'sha256').hexdigest()
+                  target.with_suffix(target.suffix+'.sha256').write_text(f"{digest}  {target.name}\n")
+              assert stream.read(1) == b''
+          PY
+
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-setup-${{ inputs.setup_artifact_id }}-part00
+          path: |
+            parts/archive.part00
+            parts/archive.part00.sha256
+            parts/assembly.json
+            parts/qualification.json
+            parts/original.sha256
+          compression-level: 0
+          retention-days: 30
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-setup-${{ inputs.setup_artifact_id }}-part01
+          path: |
+            parts/archive.part01
+            parts/archive.part01.sha256
+          compression-level: 0
+          retention-days: 30
+          if-no-files-found: error
