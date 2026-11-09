@@ -5,8 +5,6 @@
 -H:IncludeResources=jq-engine[.]properties
 --exact-reachability-metadata
 -Os
---emit
-build-report
 -H:+UnlockExperimentalVMOptions
 -H:+GenerateEmbeddedResourcesFile
 -H:-UnlockExperimentalVMOptions
