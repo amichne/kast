@@ -26,7 +26,7 @@ For an installed composed Host, prepare the reusable image and each task separat
 1. Install the pinned bundle and expose `bin/kast` and its bundled skill to the actual
    agent user. Grant trust only for an explicitly selected repository with
    `--trust-workspace`; installation alone does not grant project trust.
-2. Activate the pinned tools from `mise.toml` during setup and task startup. This
+2. Load the pinned tools from `mise.toml` during setup and task startup. This
    includes Java 25 and Node 24.21.0. Set `JAVA_HOME` and put its `bin` directory on
    `PATH`; some checks invoke `java` directly. The managed launcher preserves
    absolute executable directories and places its bundled JBR first. It does not
@@ -62,6 +62,10 @@ from a fresh task instance.
 The product gate supplies validation version `0.0.0`. For direct Gradle module
 checks, set `version`, `controlVersion`, and `hostedPluginVersion` to `0.0.0` so
 packaging tests receive valid version metadata.
+
+For source gates, use `umask 022`, as `checks.sh` does. Gradle TestKit uses a
+separate home. Pass the approved Java proxy and CA settings to its child JVMs as
+well as the main Gradle process.
 
 Bootstrap also checks the IDE build, bundled Kotlin plugin version, and JBR 25+.
 The Host distribution and native test distribution have separate exact pins.
