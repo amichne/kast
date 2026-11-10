@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2be18075b492aa51f0457dd7e944a0d78e8c5647232089bd8afc212bfdafbaf4",
+  "pageVersion": "sha256:2683c28b861f53accdca665e6dffcb63e96df5d5672699cd3bcca146f771c8c1",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -68,7 +68,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3cd94cd8017dcba512559f56fe6513546145917205fb8b8b6edf25b85ca1a3f0"
+          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
         }
       ]
     },
@@ -78,7 +78,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3cd94cd8017dcba512559f56fe6513546145917205fb8b8b6edf25b85ca1a3f0"
+          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
@@ -96,7 +96,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3cd94cd8017dcba512559f56fe6513546145917205fb8b8b6edf25b85ca1a3f0"
+          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
         },
         {
           "resource": "repo://packaging/managed_update_contract.py",
@@ -126,7 +126,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3cd94cd8017dcba512559f56fe6513546145917205fb8b8b6edf25b85ca1a3f0"
+          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
         }
       ]
     },
@@ -139,7 +139,7 @@
           "version": "repo-lines-v1:sha256:88178fca41aba78a6cc205a1eed0c83d48f761c39a466d7f6c420ad0c350fd24:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5MzBkOGU5M2E0MjJmODEyOTUxNzFkNzYxN2VkNmQwMzM4ZGZmOTBhYzIzZjg4MTBhMTE0MjM0YTE4MWY0M2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyYjExMDFjMWNlMDgwNmQxYmVhZGZmM2I4MTNiODhlOWNhZjJiNmU5MmRkNjg1YTI5MzFmNjkzMTRiMjYzOGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNhYWVhOTI4NjdiMDc4NmIyMjMwNTk5Y2YyNDNmNDg1OGU2MTE5YzI0NWEzNDFiMzJkM2ZiMzAxYzIwNTY4NDMifQ"
         },
         {
-          "resource": "repo://packaging/test-managed-installation.py#L225-L318",
+          "resource": "repo://packaging/test-managed-installation.py#L226-L319",
           "version": "repo-lines-v1:sha256:ae8288a1a11c42b6447b1407454071119fdc19ce690fc2106eac9c4fa8109a74:eyJzZWxlY3RlZExpbmVDb3VudCI6OTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmNGY1YTAwMDRlZTYyYmQxZGQ1OWYzZjdkZWM2MjM0YzA2ODUzNzEyOTFkNzhhYzJjMjZlMjdjM2YzZjkwMzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlMDFhMTZiOWRhYWI5NDBkODJhYmZmMWE2ODQzYTMyNWQyYTY0N2E1YzM4M2MzYWY1Njk1YWFjOTU5N2EzZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjMjEyNjM5OTU0NzY0YmJhZDljZTQyMmRkYjg3ZDA4YjA1ODU4ZjY1ZGYyNzYxNGU0NjI0MjQ0Njk0MzMwZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjZWNhMDAyZTZkOGZkZGUwODdhOTI1Njc2YTUxMDVlOTEyNWJhMmI3Yjc3NGJjMzdhZDllZjMzMzdjMTk5MjMifQ"
         }
       ]
@@ -165,6 +165,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T17:49:52.067Z"
+    "at": "2026-11-10T18:25:20.058Z"
   }
 }

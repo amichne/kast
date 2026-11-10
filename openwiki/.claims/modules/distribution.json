@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
+  "pageVersion": "sha256:4ad287f8bf8e84f536f7817bd10785049e5015a35008db14c35b91c73002be5a",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:a52daf1cf8a6ad1b6b74e1c1ead2105c75b5022b551a6965b6fde9874f1eb00d"
+          "version": "repo-file-v1:sha256:783f4a44f6540af7b7dd969f56c820eb362c4b0d644f8a457a4b0ad74763e9a7"
         },
         {
           "resource": "repo://packaging/test-installer-removal.py",
@@ -252,11 +252,11 @@
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:a52daf1cf8a6ad1b6b74e1c1ead2105c75b5022b551a6965b6fde9874f1eb00d"
+          "version": "repo-file-v1:sha256:783f4a44f6540af7b7dd969f56c820eb362c4b0d644f8a457a4b0ad74763e9a7"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:34efa5c5ae7ee1a404b8728ae5474e1ef31f3e11f0217f0ac10b1e60414dca74"
+          "version": "repo-file-v1:sha256:c7b0a97e760bc09fbd0968b67f6c7ac3880d8b3122119e3ab1ee6d1b00767a07"
         }
       ]
     },
@@ -399,7 +399,7 @@
           "version": "repo-lines-v1:sha256:a2abdcf6f95bfacb4d7bdec3087b6747dd0c1629a376c46de164697829aa9513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTg1ZjgxMzFkNTg5MGJiMGUzMTNmZDM0YzhlMzViNmU0OWJkMDYzYWNlNmFhMjE5ZGMwYjliM2QzZjI5MmVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MjJjYjVkYjA2NTY4OWFkOGJlNmVlYWY4ZDVjYmY0MjRiN2VlZGMzODY1YTUyYTIwMDVlYTg4YWM4MmViZDFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmMjQ4MDUxODRmODZkNGVlZDExOWVkZjNiMTBlZDc0YTNhOGRhMWVhOTg4MzUwMzUwNGFhODk0Zjk2M2I4Y2RhIn0"
         },
         {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L798-L855",
+          "resource": "repo://packaging/test-installer-entrypoint.py#L805-L862",
           "version": "repo-lines-v1:sha256:72ed803b67a7c29c67caad1d8974e873e2c70a76e549ffb5072c33f616d412a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOWUzNzA5ZTg1MTg4MTE5MDBkODEzNWI4MTY1ZjI1MmU4NDUwMGQ2ZmQyYTcxZDRhNGI2ODU4ZGQ3ZDA3OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjM2YzVhNTg1ZGM4YWUwNTlmM2JmNDlkM2JlY2YxNzliYmI4MTU0MDI5ZjQwNWNiMGZiM2FhZDkzYjEzZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhMWI3NGViNzI0ZjA2YzlhNDRjMTFkZTJiYmUzODYyMzdiMzIxZWJjYmNlMjFlMGJiOGYyMDZhMzk1MDEzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMjgwNDc1ODQzYTA3MTc2NDlkNDdhMzVlNDM1Yzk0OTFiNDI5YzE0ZGQ0N2ExMTQ1ODE1MWNlOTVlMWQ2MTUifQ"
         }
       ]
@@ -436,7 +436,7 @@
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3cd94cd8017dcba512559f56fe6513546145917205fb8b8b6edf25b85ca1a3f0"
+          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
         }
       ]
     },
@@ -694,21 +694,21 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt",
-          "version": "repo-file-v1:sha256:590932a3306730ebacff9de31a05a2bd59beb28940b49d3cfb57ec7aa8399dc7"
+          "version": "repo-file-v1:sha256:52adf19f328b05a64f715b756b6d0e62c48d110cd197407529142befb2e0f7fb"
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:a52daf1cf8a6ad1b6b74e1c1ead2105c75b5022b551a6965b6fde9874f1eb00d"
+          "version": "repo-file-v1:sha256:783f4a44f6540af7b7dd969f56c820eb362c4b0d644f8a457a4b0ad74763e9a7"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3cd94cd8017dcba512559f56fe6513546145917205fb8b8b6edf25b85ca1a3f0"
+          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T17:49:52.067Z"
+    "at": "2026-11-10T18:25:20.058Z"
   }
 }

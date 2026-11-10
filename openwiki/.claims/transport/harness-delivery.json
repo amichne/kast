@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d339946d9ae2386a00cc24e63855872224839f5e6b0a9b0f2a58d435df11a8a1",
+  "pageVersion": "sha256:e1d7d4c7a74267ef26e0fb1fb387f90b0d47a25415ee3081578a39b5cc657c83",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -124,21 +124,21 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt",
-          "version": "repo-file-v1:sha256:f79f97778401937322462373f3d895943c90037dee9a1e264a3e2e221b5e2c1c"
+          "version": "repo-file-v1:sha256:52adf19f328b05a64f715b756b6d0e62c48d110cd197407529142befb2e0f7fb"
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:a52daf1cf8a6ad1b6b74e1c1ead2105c75b5022b551a6965b6fde9874f1eb00d"
+          "version": "repo-file-v1:sha256:783f4a44f6540af7b7dd969f56c820eb362c4b0d644f8a457a4b0ad74763e9a7"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:3cd94cd8017dcba512559f56fe6513546145917205fb8b8b6edf25b85ca1a3f0"
+          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T17:49:52.067Z"
+    "at": "2026-11-10T18:25:20.058Z"
   }
 }
