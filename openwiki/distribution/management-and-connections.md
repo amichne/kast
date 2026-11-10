@@ -51,7 +51,7 @@ sources:
 generated: { by: "codex", at: "2026-11-05T04:04:28.756Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-07T06:23:53.865Z
+    at: 2026-11-10T03:54:32.522Z
 ---
 
 # Native management and harness connections

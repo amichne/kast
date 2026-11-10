@@ -5549,7 +5549,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "22285edfe4428ae35a62ad4940383dadc753f95f0b3c5c71cae3b41c2056b367"
+          "sha256": "9649dec2ff2547cc8e7c4a2031240222d4cf834adcd154a93366978c81c99a7d"
         }
       ],
       "claims": [
@@ -6036,8 +6036,16 @@
           "sha256": "5d891f9ad579b86eb529d0d27143c973f275116239d83942e3bbf55e9057851b"
         },
         {
+          "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt",
+          "sha256": "5931d5d33e60817ccbca751bd47f3150554df35f0fd24ba0b31b342fc5541646"
+        },
+        {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "sha256": "51e0da7567f086f692a0a33b4ff6ef1ad2ba3217246ccdbbb7000aa3e92b7cb6"
+          "sha256": "9db9b45572b336725244572e20bbb261fc00c39af93160c26beff863e44e3dd4"
+        },
+        {
+          "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
+          "sha256": "c7a1d29d8f5710d828f58d87a3a9ca73aee0d0324188de92c74bb1e1c8996ac2"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt",
@@ -6090,9 +6098,13 @@
         {
           "path": "packaging/configuration-schema.json",
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
+        },
+        {
+          "path": "packaging/dev_container.py",
+          "sha256": "086dcb57064940c7d40e72865bd28f2cb312ee1d2a7976566fa519f2be654dff"
         }
       ],
-      "reviewedSourceRevision": "0f0fac01e37d72222a1993bc4fa77e91f2bd542e"
+      "reviewedSourceRevision": "35de2ceeb7d06e7e2dea78ab762f09de1fc8b268"
     },
     {
       "route": "reference/compatibility",
