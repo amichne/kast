@@ -100,7 +100,7 @@
         },
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+          "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ]
     },
@@ -121,6 +121,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-03T05:45:59.282Z"
+    "at": "2026-11-10T15:20:01.732Z"
   }
 }

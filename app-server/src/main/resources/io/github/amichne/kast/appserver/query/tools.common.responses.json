@@ -2,7 +2,7 @@
   {
     "type": "function",
     "name": "kast_query_symbols",
-    "description": "Find exact Kotlin declarations with NAME, LOCATION, and SIGNATURE. Select the exact overload before relations or TRACE. Copy issued references unchanged. READ_RESULT and READ_SOURCE preserve original authority and freshness. This session exposes the common query grammar. Start a COMPLETE session for advanced operations.",
+    "description": "Choose upfront: declaration selection returns symbols without implicit expansion; EXPAND_RELATION follows one selected compiler-confirmed hop; TRACE uses a fixed affected-use recipe (references, implementations or overrides, direct callers and one further caller layer), returning grouped symbols. TRACE does not track runtime values. Custom-depth WALK and forward value IMPACT require the COMPLETE catalog; COMMON rejects them without promotion. READ_RESULT and RESUME deliver existing evidence; READ_SOURCE reads issued source selectors. Select exact overloads, copy issued references unchanged, and preserve original authority, freshness, completion and recovery evidence. A presentation page does not prove semantic completion.",
     "parameters": {
       "type": "object",
       "properties": {

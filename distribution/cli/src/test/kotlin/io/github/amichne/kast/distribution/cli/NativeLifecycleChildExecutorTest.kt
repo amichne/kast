@@ -12,6 +12,43 @@ import org.junit.jupiter.api.io.TempDir
 class NativeLifecycleChildExecutorTest {
     @Test
     @Timeout(10)
+    fun `interrupted wait retires and reaps its owned child before restoring interruption`(@TempDir root: Path) {
+        val child = ProcessBuilder("/bin/sh", "-c", "read line").start()
+        try {
+            Thread.currentThread().interrupt()
+            val events = mutableListOf<LifecycleChildExecutionObservation>()
+            val result =
+                NativeLifecycleChildExecutor.executeBounded(
+                    listOf("owned-service", "disable"),
+                    root,
+                    emptyMap(),
+                    LifecycleChildPurpose.SERVICE,
+                    start = { command, directory, environment, purpose ->
+                        assertEquals(listOf("owned-service", "disable"), command)
+                        assertEquals(root, directory)
+                        assertEquals(emptyMap<String, String>(), environment)
+                        assertEquals(LifecycleChildPurpose.SERVICE, purpose)
+                        child
+                    },
+                    observe = events::add,
+                )
+            assertEquals(LifecycleChildObservation.Unavailable, result)
+            org.junit.jupiter.api.Assertions.assertTrue(Thread.currentThread().isInterrupted)
+            assertFalse(child.isAlive)
+            assertEquals(child.exitValue(), child.waitFor())
+            assertEquals(
+                LifecycleChildUnavailability.INTERRUPTED,
+                (events.last() as LifecycleChildExecutionObservation.Unavailable).failure,
+            )
+        } finally {
+            Thread.interrupted()
+            child.destroyForcibly()
+            child.waitFor()
+        }
+    }
+
+    @Test
+    @Timeout(10)
     fun `service execution reports exact exit and drains large child output without exposing it`(@TempDir root: Path) {
         val script = root.resolve("service-child.sh")
         Files.writeString(

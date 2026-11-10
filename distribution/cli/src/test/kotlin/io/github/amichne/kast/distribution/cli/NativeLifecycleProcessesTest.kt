@@ -19,6 +19,30 @@ class NativeLifecycleProcessesTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.LINUX)
+    @org.junit.jupiter.api.Timeout(10)
+    fun `zombie is retired without signalling its still live parent`() {
+        val parent =
+            ProcessBuilder(
+                    "python3",
+                    "-c",
+                    "import os,sys; pid=os.fork(); os._exit(0) if pid == 0 else None; " +
+                        "os.waitid(os.P_PID,pid,os.WEXITED|os.WNOWAIT); " +
+                        "print(pid,flush=True); sys.stdin.readline(); os.waitpid(pid,0)",
+                )
+                .start()
+        try {
+            val pid = parent.inputReader().readLine().toLong()
+            assertTrue(ProcessHandle.of(pid).isPresent)
+            assertEquals(LifecycleProcessObservation.Absent, NativeLifecycleProcesses.observe(pid))
+            assertTrue(parent.isAlive)
+        } finally {
+            parent.outputStream.close()
+            assertEquals(0, parent.waitFor())
+        }
+    }
+
+    @Test
     fun `native stop force retires only the recorded disposable installed JVM and verifies OS exit`() {
         val fixture = createLifecycleFixture(temporary)
         val jar = createChildJar(fixture.installation)

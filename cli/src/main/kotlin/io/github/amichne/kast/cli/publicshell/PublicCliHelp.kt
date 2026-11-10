@@ -14,6 +14,10 @@ internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
             flagsFor(selected).joinToString(" ") { flag ->
                 listOf("[", flag.spelling, if (flag.takesValue) " VALUE" else "", "]").joinToString("")
             } +
+            "\n" +
+            selected
+                .toolIdentity()
+                .descriptionFor(io.github.amichne.kast.protocol.registry.PublicToolCatalog.COMPLETE) +
             "\nContract: kast describe ${selected.id}" +
             "\nSchema page: kast describe ${selected.id} --section input --pointer '' --json"
     } +

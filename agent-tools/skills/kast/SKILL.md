@@ -10,7 +10,13 @@ The persistent IntelliJ IDEA Host owns compiler authority and project state.
 Separate CLI calls use that Host without a client JVM or a new daemon.
 Use ordinary source tools for other languages.
 
-Read [Public CLI reads](public-cli.md) for command examples.
+Choose the operation before execution.
+Selection returns declarations. Relation expansion follows one hop.
+`WALK` repeats one relation to an explicit depth.
+`TRACE` uses a fixed affected-use recipe.
+`IMPACT` follows values from an exact producer invocation with qualified transfer evidence.
+These are pipeline choices within `query`, not interchangeable analyses.
+Read [Public CLI reads](public-cli.md) for their inputs, outputs, limits, and command examples.
 Use `kast describe` for the installed contract.
 For unfamiliar query arguments, inspect these sections:
 

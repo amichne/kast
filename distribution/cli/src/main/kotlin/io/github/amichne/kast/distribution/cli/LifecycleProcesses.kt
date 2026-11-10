@@ -255,9 +255,15 @@ internal object NativeLifecycleProcesses : LifecycleProcesses {
         if (!process.isAlive) return LifecycleProcessObservation.Absent
         val pid = process.pid()
         val info = process.info()
-        val start = info.startInstant().orElse(null) ?: return LifecycleProcessObservation.Unavailable
         val command = info.command().orElse(null)
         val arguments = info.arguments().orElse(null)
+        if (
+            (command == null || arguments == null) &&
+                io.github.amichne.kast.distribution.cli.observeManagedProcessState(pid) ==
+                    io.github.amichne.kast.distribution.contract.ObservedProcessState.EXITED
+        )
+            return LifecycleProcessObservation.Absent
+        val start = info.startInstant().orElse(null) ?: return LifecycleProcessObservation.Unavailable
         return if (command == null || arguments == null)
             LifecycleProcessObservation.IdentityOnly(pid, start.toEpochMilli())
         else
@@ -306,7 +312,12 @@ internal object NativeLifecycleProcesses : LifecycleProcesses {
         }
 
     private fun inspectHost(executable: Path, user: String, observed: List<ProcessHandle>): LifecycleEffect {
-        val alive = observed.filter { it.isAlive }
+        val alive = observed.filter {
+            it.isAlive &&
+                !(it.info().command().isEmpty &&
+                    io.github.amichne.kast.distribution.cli.observeManagedProcessState(it.pid()) ==
+                        io.github.amichne.kast.distribution.contract.ObservedProcessState.EXITED)
+        }
         if (alive.any { it.info().command().orElse("") == executable.toString() })
             return LifecycleEffect.Rejected(LifecycleFailure.HOST_RESTART_REQUIRED)
         if (alive.any { it.info().user().orElse(null) == user && it.info().command().isEmpty })

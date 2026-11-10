@@ -279,7 +279,9 @@ internal fun installationLifecycleEnvironment(
     installation: Path,
     environment: Map<String, String>,
 ): Map<String, String> =
-    environment.filterKeys { it in setOf("PATH", "JAVA_HOME", "CODEX_EXECUTABLE", "TMPDIR") } +
+    environment.filterKeys {
+        it in setOf("PATH", "JAVA_HOME", "CODEX_EXECUTABLE", "TMPDIR", "KAST_MANAGED_HEADLESS_STATE")
+    } +
         mapOf(
             "HOME" to home.toString(),
             "KAST_CONFIGURATION_FILE" to installation.resolve("config/environment").toString(),

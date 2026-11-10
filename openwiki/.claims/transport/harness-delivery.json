@@ -56,7 +56,7 @@
       "evidence": [
         {
           "resource": "repo://agent-tools/skills/kast/SKILL.md",
-          "version": "repo-file-v1:sha256:1cf36670a552feb7f1ed68a6228a11f062629f1ebc734fcb6bf62dff25b569dd"
+          "version": "repo-file-v1:sha256:ad33a4640db824db4c43228fc7b549d543e665e87e28e06e3070b7966a95d162"
         },
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
@@ -88,7 +88,7 @@
       "evidence": [
         {
           "resource": "repo://agent-tools/onboarding.template.md",
-          "version": "repo-file-v1:sha256:91ab7a906e7a27decddc36aa87df44f986283be0b6fe996f4594ddc6d4aa9126"
+          "version": "repo-file-v1:sha256:eade4eb8378ee754e30aa3319100ed0a28fee062a4ff191b7e597d4196e812ee"
         },
         {
           "resource": "repo://packaging/generate-public-query.py",
@@ -117,6 +117,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-04T23:27:44.986Z"
+    "at": "2026-11-10T15:20:01.732Z"
   }
 }
