@@ -73,7 +73,7 @@ private fun provisionAdmittedPiSkill(root: Path, home: Path, target: PiGuidanceT
             )
     }
     val prior = receipt.guidance.singleOrNull { it.harness == Harness.PI }
-    if (prior != null && !admitPriorPiSkill(target.skill, prior))
+    if (prior != null && prior.destination != target.skill.toString())
         return ProvisionOutcome.Rejected(
             ProvisionStage.RESOURCE_INSPECTION,
             ProvisionFailure.PROVIDER_CONFLICT,
@@ -89,7 +89,8 @@ private fun provisionAdmittedPiSkill(root: Path, home: Path, target: PiGuidanceT
             )
     }
     val result =
-        if (prior != null) refreshPiSkill(root, target.skill, prior.files) { commitPiGuidance(root, target.skill, it) }
+        if (prior != null && !Files.notExists(target.skill, NOFOLLOW_LINKS))
+            refreshPiSkill(root, target.skill) { commitPiGuidance(root, target.skill, it) }
         else exportCliSkill(root, target.skill.parent)
     return commitPiSkillResult(root, target.skill, result)
 }
@@ -153,9 +154,6 @@ private fun admitPiExtension(receipt: ManagementReceipt, extension: Path): Plugi
         PluginObservation.Observed(Unit)
     else PluginObservation.Rejected(PluginInstallFailure.LegacyRegistrationRejected)
 }
-
-private fun admitPriorPiSkill(destination: Path, prior: ManagedGuidance): Boolean =
-    prior.destination == destination.toString() && matchesGuidance(destination, prior.files)
 
 private fun preparePiMcp(root: Path, home: Path, composition: HarnessComposition): PluginObservation<Unit> {
     if (composition == HarnessComposition.CliOnly) return PluginObservation.Observed(Unit)

@@ -32,6 +32,11 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
         }
         "managed-retire" -> return retireManagedInstallation(root, environment)
         "managed-publish" -> return publishManagedInstallation(root, environment)
+        "refresh-guidance" ->
+            return when (val refreshed = refreshCompletedInstallation(root, environment)) {
+                LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
+                is LifecycleEffect.Rejected -> throw ManagementRejected("guidance-refresh", refreshed.failure.name)
+            }
         "preflight-reset",
         "reset" -> return internalPublicReset(root, environment, arguments[1])
         "restore-connections" ->

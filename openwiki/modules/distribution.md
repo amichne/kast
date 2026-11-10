@@ -315,6 +315,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt
   - id: openwiki-source-4a775e59f7cd3b1cc2d7cc10
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt
+  - id: openwiki-source-4ea7092ecf62f475b11026f1
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt
   - id: openwiki-source-2141db5e92ccbb5de75a1544
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - id: openwiki-source-b30c7b16cf2f49971ca55950
@@ -379,10 +381,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-10T13:00:52.429Z" }
+generated: { by: "codex", at: "2026-11-10T17:49:52.067Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-10T13:00:52.429Z
+    at: 2026-11-10T17:49:52.067Z
 ---
 
 # Distribution and packaging
@@ -391,7 +393,9 @@ The Control payload contains CLI-first Codex and Copilot plugins from the canoni
 `kast install <harness>` admits the installed bundle and exact provider resources before setup.
 The default composition includes native preparation hooks without an automatic MCP server.
 Explicit `--mcp` selects the optional transport.
-Codex and Copilot own their plugins. Pi uses native skill discovery and exact receipt-owned files.
+Codex and Copilot own their plugins. The Pi receipt identifies the owned skill directory.
+Control assembly stamps the version in the skill front matter.
+After Control replacement commits, the installer refreshes the owned harness guidance.
 Release assembly emits plugin and marketplace ZIP archives without a standalone skill archive.
 Query examples come from the public tool schema.
 

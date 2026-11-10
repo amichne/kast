@@ -265,6 +265,7 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
                     and report.get("status") == "installed" for report in reports),
             "assembled installer rejected release:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
     verify_installed_query(fixture, publication, environment)
+    verify_installed_guidance(fixture, pair.control_version, installation, publication, environment)
     verify_native_uninstall(fixture, pair, product, installation, publication, environment, product_info)
 
 
@@ -276,6 +277,41 @@ def verify_installed_query(fixture: InstallerFixture, publication: Path, environ
     require(result.returncode == 3 and json.loads(result.stdout) == {
         "type": "rejected", "failure": "OUT_OF_SCOPE"
     }, "installed query startup failed:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
+
+
+def verify_installed_guidance(fixture: InstallerFixture, version: str, root: Path,
+                              publication: Path, environment: dict[str, str]) -> None:
+    home = Path(environment["HOME"])
+    pi = home / "private-pi"
+    env = {**environment, "KAST_INSTALL_ROOT": str(root), "PI_CODING_AGENT_DIR": str(pi),
+           "KAST_OUTPUT_TOON": "0"}
+    first = subprocess.run([str(publication), "install", "pi", "--json"], env=env,
+                           cwd=fixture.root, capture_output=True, text=True, timeout=60)
+    require(first.returncode == 0, "Pi guidance installation:\n" + first.stderr[-4096:])
+    skill = pi / "skills/kast/SKILL.md"
+    canonical = skill.read_bytes()
+    require(f'\nmetadata:\n  version: "{version}"\n---\n'.encode() in canonical, "installed skill version")
+    sibling = pi / "skills/foreign.md"
+    sibling.write_text("foreign")
+    skill.write_text("stale")
+    (skill.parent / "old.md").write_text("obsolete resource")
+    native = root / "installation/share/kast/libexec/kast-management"
+    env["PI_CODING_AGENT_DIR"] = str(home / "unselected-pi")
+    refresh = subprocess.run([str(native), "--internal-install", "refresh-guidance"], env=env,
+                             cwd=fixture.root, capture_output=True, text=True, timeout=60)
+    require(refresh.returncode == 0, "Pi guidance refresh:\n" + refresh.stderr[-4096:])
+    require(skill.read_bytes() == canonical and not (skill.parent / "old.md").exists()
+            and sibling.read_text() == "foreign" and not (home / "unselected-pi").exists(),
+            "refresh changed bytes outside the recorded slot or kept stale resources")
+    link_target = home / "foreign-target.md"
+    link_target.write_text("protected")
+    (skill.parent / "foreign-link").symlink_to(link_target)
+    rejected = subprocess.run([str(native), "--internal-install", "refresh-guidance"], env=env,
+                              cwd=fixture.root, capture_output=True, text=True, timeout=60)
+    require(rejected.returncode != 0 and "UNSUPPORTED_FILE_KIND" in rejected.stderr
+            and (skill.parent / "foreign-link").is_symlink() and link_target.read_text() == "protected",
+            "refresh followed a link inside the managed skill")
+    (skill.parent / "foreign-link").unlink()
 
 
 def verify_native_uninstall(fixture, pair, product, installation, publication, environment, product_info: IdeaProductInfo):

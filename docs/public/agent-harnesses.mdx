@@ -47,7 +47,8 @@ For optional MCP, add `--mcp` to your agent's command. See the [MCP runtime requ
 
 ## Refresh guidance
 
-A Kast update does not refresh copied skills or cached provider resources.
+Kast refreshes the skill for each harness that it identifies as a Kast installation.
+The skill front matter records the installed Control version.
 If Kast reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before a fresh session.
 Keep `--mcp` if you select the optional MCP composition.
 

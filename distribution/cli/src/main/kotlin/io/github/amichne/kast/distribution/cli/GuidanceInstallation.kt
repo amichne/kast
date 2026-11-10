@@ -71,7 +71,7 @@ internal fun presentProvisioning(
 
 private const val FRESH_GUIDANCE_SESSION = "kast: start a fresh agent session to use the selected guidance"
 
-private fun codexGuidance(
+internal fun codexGuidance(
     root: Path,
     home: Path,
     composition: HarnessComposition,

@@ -73,6 +73,7 @@ Do not infer live readiness from registration or schema admission.
 ## Fresh sessions
 
 A core update interrupts owned work and invalidates Host-issued references after a Host transition.
+Kast refreshes guidance for its installed harness integrations.
 Start a fresh agent session after installation or an update.
 If the core result reports `HARNESS_REFRESH_REQUIRED`, repeat `kast install <harness>` before that session.
 A standalone skill export keeps its bytes until explicit removal or another output directory.

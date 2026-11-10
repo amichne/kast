@@ -7,7 +7,7 @@ import java.nio.file.Path
 private data class PiSkillExchange(
     val destination: Path,
     val staged: Path,
-    val previous: List<GuidanceFile>,
+    val previous: GuidanceInventoryRead.Read,
     val skill: AdmittedCliSkill,
 )
 
@@ -20,7 +20,6 @@ private sealed interface PiStageOutcome {
 internal fun refreshPiSkill(
     root: Path,
     destination: Path,
-    previous: List<GuidanceFile>,
     commit: (List<GuidanceFile>) -> Unit,
 ): ProvisionOutcome {
     val skill =
@@ -33,13 +32,23 @@ internal fun refreshPiSkill(
                     destination.toString(),
                 )
         }
+    val previous =
+        when (val inventory = guidanceInventory(destination)) {
+            is GuidanceInventoryRead.Read -> inventory
+            is GuidanceInventoryRead.Rejected ->
+                return ProvisionOutcome.Rejected(
+                    ProvisionStage.RESOURCE_INSPECTION,
+                    inventory.reason,
+                    destination.toString(),
+                )
+        }
     if (skill.identical(destination)) return ProvisionOutcome.AlreadyInstalled(destination.toString())
     val staged = Files.createTempDirectory(destination.parent, ".kast-guidance-")
     val exchange = PiSkillExchange(destination, staged, previous, skill)
     val result =
         try {
             skill.materialize(staged)
-            if (matchesGuidance(destination, previous)) replacePiSkill(exchange, commit)
+            if (guidanceInventory(destination) == previous) replacePiSkill(exchange, commit)
             else
                 PiStageOutcome.Disposable(
                     ProvisionOutcome.Rejected(
@@ -84,7 +93,7 @@ private fun replacePiSkill(exchange: PiSkillExchange, commit: (List<GuidanceFile
 
 private fun settlePiSkill(exchange: PiSkillExchange, commit: (List<GuidanceFile>) -> Unit): PiStageOutcome =
     try {
-        if (!matchesGuidance(exchange.staged, exchange.previous) || !exchange.skill.identical(exchange.destination))
+        if (guidanceInventory(exchange.staged) != exchange.previous || !exchange.skill.identical(exchange.destination))
             restorePiSkill(exchange)
         else
             when (val inventory = guidanceInventory(exchange.destination)) {

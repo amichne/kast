@@ -49,28 +49,31 @@ internal fun savePublicResetConnections(root: Path, environment: Map<String, Str
         connectionRecoveryRejected()
     }
 
-internal fun publicResetConnections(root: Path, environment: Map<String, String>): List<ManagedRegistration> {
+private fun publicResetReceipt(root: Path, environment: Map<String, String>): ManagementReceipt? {
     val file =
         when (val selected = PublicRecoveryFile.admit(root, environment["KAST_PUBLIC_RESET_RECOVERY"])) {
-            PublicRecoverySelection.Absent -> return emptyList()
+            PublicRecoverySelection.Absent -> return null
             PublicRecoverySelection.Rejected ->
                 throw ManagementRejected("reset-connections", "recovery path is invalid")
             is PublicRecoverySelection.Selected -> selected.file
         }
-    if (Files.notExists(file.path, NOFOLLOW_LINKS)) return emptyList()
+    if (Files.notExists(file.path, NOFOLLOW_LINKS)) return null
     return when (val admitted = admitManagementReceipt(root, readBoundedFile(file.path, PUBLIC_RESET_RECEIPT_BYTES))) {
-        is ReceiptRead.Read -> admitted.receipt.registrations
+        is ReceiptRead.Read -> admitted.receipt
         is ReceiptRead.Unavailable -> throw ManagementRejected("reset-connections", admitted.reason)
     }
 }
 
+internal fun publicResetConnections(root: Path, environment: Map<String, String>): List<ManagedRegistration> =
+    publicResetReceipt(root, environment)?.registrations.orEmpty()
+
 internal fun restorePublicResetConnections(root: Path, environment: Map<String, String>): LifecycleEffect {
     return try {
-        val registrations = publicResetConnections(root, environment)
-        if (registrations.isEmpty()) return LifecycleEffect.Completed
+        val saved = publicResetReceipt(root, environment) ?: return LifecycleEffect.Completed
+        val registrations = saved.registrations
         val homeRaw = environment["HOME"] ?: return connectionRecoveryRejected()
         val home = Path.of(homeRaw)
-        keepLegacyCodexRemovalFacts(root, registrations)
+        keepResetIntegrationFacts(root, saved)
         for (registration in registrations.filter { it.connection.harness != Harness.CODEX }) restorePublicConnection(
             root,
             home,
@@ -90,9 +93,9 @@ internal fun restorePublicResetConnections(root: Path, environment: Map<String, 
 }
 
 /** Reset recovery keeps removal evidence without recreating either retired Codex transport. */
-private fun keepLegacyCodexRemovalFacts(root: Path, registrations: List<ManagedRegistration>) {
-    val legacy = registrations.filter { it.connection.harness == Harness.CODEX }
-    if (legacy.isEmpty()) return
+private fun keepResetIntegrationFacts(root: Path, saved: ManagementReceipt) {
+    val legacy = saved.registrations.filter { it.connection.harness == Harness.CODEX }
+    if (legacy.isEmpty() && saved.guidance.isEmpty()) return
     withRegistrationLock(root) {
         val current = admittedReceipt(root)
         for (registration in legacy) {
@@ -103,9 +106,12 @@ private fun keepLegacyCodexRemovalFacts(root: Path, registrations: List<ManagedR
         writeManagementReceipt(
             root,
             current.copy(
+                guidance =
+                    current.guidance +
+                        saved.guidance.filter { old -> current.guidance.none { it.harness == old.harness } },
                 registrations =
                     current.registrations +
-                        legacy.filter { saved -> current.registrations.none { it.connection == saved.connection } }
+                        legacy.filter { saved -> current.registrations.none { it.connection == saved.connection } },
             ),
         )
     }

@@ -146,7 +146,7 @@ class GuidanceInstallationTest {
 
     @Test
     @EnabledOnOs(OS.MAC)
-    fun `Pi preserves unknown files and directories inside a copied skill`() {
+    fun `Pi replaces files and directories inside its recorded skill slot`() {
         val root = pluginFixture(temporary)
         val home = temporary.toRealPath().resolve("home")
         assertInstanceOf(
@@ -158,14 +158,10 @@ class GuidanceInstallationTest {
         Files.writeString(foreign, "foreign data")
         Files.createDirectory(destination.resolve("foreign-directory"))
         assertEquals(
-            ProvisionOutcome.Rejected(
-                ProvisionStage.RESOURCE_INSPECTION,
-                ProvisionFailure.PROVIDER_CONFLICT,
-                destination.toString(),
-            ),
+            ProvisionOutcome.Installed(destination.toString()),
             installPiGuidance(root, home, HarnessComposition.CliOnly, emptyMap()),
         )
-        assertEquals("foreign data", Files.readString(foreign))
-        assertTrue(Files.isDirectory(destination.resolve("foreign-directory")))
+        assertTrue(Files.notExists(foreign))
+        assertTrue(Files.notExists(destination.resolve("foreign-directory")))
     }
 }

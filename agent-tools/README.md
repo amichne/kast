@@ -86,7 +86,10 @@ A complete identical skill returns `ALREADY_INSTALLED` without writes.
 A different or incomplete skill returns `SKILL_EXISTS` and keeps every byte.
 Select another output directory or explicitly remove the old skill before another export.
 
-Core replacement does not refresh copied skills or cached provider resources.
+After installation or upgrade, Kast refreshes guidance for the harness integrations that it owns.
+Kast replaces the recorded Pi skill directory as a unit.
+Codex and Copilot keep control of their plugin resources.
+Each bundled skill records the Control version in `metadata.version`.
 If the result reports `HARNESS_REFRESH_REQUIRED`, repeat `kast install <harness>` before a fresh session.
 Standalone exports keep their no-overwrite contract.
 
