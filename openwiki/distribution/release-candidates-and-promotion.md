@@ -20,24 +20,34 @@ code_sources:
 - path: .github/workflows/release-component.yml
 - path: .github/scripts/release/test_build_candidate.py
 sources:
+  - id: openwiki-source-0475f74ce9e8867a7d899c7d
+    resource: repo://.github/scripts/ci/test_validation_outcome.py
+  - id: openwiki-source-43d206677342592403ab5f63
+    resource: repo://.github/scripts/ci/validation_outcome.py
+  - id: openwiki-source-3da7270665885f2d3fdf6d53
+    resource: repo://.github/scripts/ci/validation_scope.py
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
     resource: repo://.github/scripts/release/build_candidate.py
   - id: openwiki-source-939501634c56c6ffea2fec6b
     resource: repo://.github/scripts/release/developer_catalog.py
   - id: openwiki-source-f02c30e87f3db4d071a7be5b
     resource: repo://.github/scripts/release/publish_developer.py
+  - id: openwiki-source-876d58467609bbf82c40cdc2
+    resource: repo://.github/scripts/release/test_build_candidate.py
   - id: openwiki-source-164e2da859b5277df81c7d94
     resource: repo://.github/workflows/ci.yml
+  - id: openwiki-source-804f227d6f0416062f3436fe
+    resource: repo://.github/workflows/developer-release.yml
   - id: openwiki-source-b0e51d5f05a72ea5b0fff73c
     resource: repo://distribution/release/component_release.py
   - id: openwiki-source-8ac360e10edcbd99c75fa338
     resource: repo://distribution/release/component-release.schema.json
   - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
     resource: repo://packaging/managed_release.py
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+generated: { by: "codex", at: "2026-11-10T13:00:52.429Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-09T15:23:50.674Z
+    at: 2026-11-10T13:00:52.429Z
 ---
 
 # Release candidates and promotion
@@ -60,7 +70,9 @@ Only the reviewed authored site inputs can select documentation-only validation.
 Installer examples, generated schemas, scripts, build configuration, protected paths, and unknown or mixed inputs keep full validation.
 The documentation lane runs Mintlify, the Markdown parser, glossary tests, and glossary projection checks.
 
-Developer promotion requires the outcome record from the exact successful main push run and attempt.
+Developer promotion needs the outcome record from the exact successful main push or manual CI run and attempt.
+The record and producer must agree on the workflow event.
+Manual CI selects full validation and needs an explicit developer publication dispatch.
 `DOCS_VALIDATED` completes without a candidate, promotion record, product release, or developer pointer update.
 It does not assign the documentation revision to an earlier binary.
 `PRODUCT_VALIDATED` is required before the existing candidate admission.

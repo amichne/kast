@@ -17,6 +17,7 @@ from required_checks import CompletedChecks, admit_checks
 from validation_scope import ROOT, SHA, NativeCompilation, Reason, Scope, select
 
 WORKFLOW = ".github/workflows/ci.yml"
+MAIN_PUBLICATION_EVENTS = ("push", "workflow_dispatch")
 REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
 
 
@@ -130,7 +131,7 @@ def admit(
         case {
             "repository": {"full_name": str() as producer_repository},
             "path": str() as workflow,
-            "event": "push",
+            "event": str() as event,
             "head_branch": "main",
             "head_sha": str() as source,
             "id": int() as run_id,
@@ -143,7 +144,8 @@ def admit(
                 producer_repository != repository
                 or record.repository != repository
                 or workflow != WORKFLOW
-                or record.event != "push"
+                or event not in MAIN_PUBLICATION_EVENTS
+                or record.event != event
                 or source != revision
                 or record.sourceRevision != revision
                 or run_id != record.runId

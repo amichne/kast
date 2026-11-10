@@ -6624,6 +6624,198 @@
         "severity": "warning"
       },
       "reason": "Keep exact SQLite schemas and bounded typed records under read-only inspection. The adapter does not initialize, checkpoint, or manufacture recovery. This sentence matches the parent of 992e857. Its current line and source digest bind this review. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/development/testing-and-native-qualification.md",
+        "sourceSha256": "3aabc7768cbace0a25ceed9211d34c45cbefb9710bb310b7083148070489cc80",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.18 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep focused test ownership and separate fixture, installed IDE, and release evidence. The page prose stays unchanged after native metadata refresh. The grade advisory remains unmet. Reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/release-candidates-and-promotion.md",
+        "sourceSha256": "e71c366548cbd8ab0e2e8e2b9abc2813852afe345e745646af1a48e99c532d03",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.61 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep immutable candidate provenance, exact producer identities, PRODUCT_VALIDATED, and DOCS_VALIDATED. The new sentences describe manual main CI admission and explicit developer publication. The grade advisory remains unmet. Reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.74 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep independent Control and Host artifacts, recovery identities, and native evidence limits. The changed sentence permits manual CI with matching event and producer evidence. The grade advisory remains unmet. Reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 404,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the retired isolated-runtime adapters together. IDEA owns import and trust configuration after those adapters leave the active graph. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 406,
+        "message": "Long sentence: 36 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep checksum, release version, plugin identity, descriptor line, and exact Kast-only atomic replacement together before installation. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 406,
+        "message": "Long sentence: 41 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the staged Host receipt, canonical six-table database, native uninstall, owned removal targets, and unrelated sentinel in the same acceptance sequence. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 591,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the bounded launchctl retirement deadline and finite failures beside OBSERVE_BEFORE, BOOTOUT, and OBSERVE_AFTER outcomes. Command arguments and child output stay excluded. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 593,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the shell bootstrap, installed lifecycle, build verifier, and Kotlin owner under one product-entry limit before publication. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 607,
+        "message": "Long sentence: 37 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep historical paired-receipt maintenance distinct from Control-only detachment. The new recovery receipt removes Host ownership without changes to plugin files. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 610,
+        "message": "Long sentence: 39 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep service retirement, exact transport cleanup, and payload/recovery quarantine under the activation lock before the next staging step. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 687,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep runtime command-line evidence and exact launchd-label retirement before removal of the reviewed login item. Changed entries remain preserved. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 701,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep bounded property-list equality, the exact Codex-home profile, and legacy one-shot recognition as offline recovery conditions. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 731,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all three compiler-query witnesses and both unchanged-identity obligations across independent Control and Host upgrades. Routine tests do not establish native behavior. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 746,
+        "message": "Long sentence: 32 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep unavailable legacy loaded-version evidence qualified. The restored coordinator, new epoch, fresh generation, and ready-service evidence must agree. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 768,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the closed cleanup inventory, immutable Host receipt, and persistent exterior journal together. Journal removal waits for all owned effects. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "rule": "Slopsentral.LongSentence",
+        "line": 770,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact SQLite schemas and bounded typed records under read-only inspection. The adapter does not initialize, checkpoint, or manufacture recovery. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
     }
   ]
 }

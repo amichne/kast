@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:058b351e9f8c3ae712f3d9028c2a2524e9dc2530c24ccd0280b09d551f6185c0",
+  "pageVersion": "sha256:e71c366548cbd8ab0e2e8e2b9abc2813852afe345e745646af1a48e99c532d03",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
+          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
+          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
         }
       ]
     },
@@ -63,10 +63,40 @@
           "version": "repo-file-v1:sha256:ef4cc70c132b363eb60ab7d7e4cf5570f5a4c63b9d66720ad786b422d1bc2d65"
         }
       ]
+    },
+    {
+      "id": "claim_681ef97d88b44dd58919983da9ec6ab6",
+      "statement": "Developer promotion admits successful main push or manual CI runs only when the validation record matches the exact producer event and identity. Manual CI selects full validation and needs explicit developer publication.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/test_validation_outcome.py",
+          "version": "repo-file-v1:sha256:b211e844dc11851713d818751e14834e9e3cd087c5664e6ebedd741929e503b1"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/validation_outcome.py",
+          "version": "repo-file-v1:sha256:24a30aefa486182b37f74dd54a2e2345536e283163e046ac60bdc2fa3804760b"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/validation_scope.py",
+          "version": "repo-file-v1:sha256:55e069c1304170ad0ce7e37986dabdc225be0e400bcedb9d6093873e79772363"
+        },
+        {
+          "resource": "repo://.github/scripts/release/build_candidate.py",
+          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
+        },
+        {
+          "resource": "repo://.github/scripts/release/test_build_candidate.py",
+          "version": "repo-file-v1:sha256:9b9dc41792914a472735c47da798ff97348ae484ee3c0067cf9ded5d8d77cf3f"
+        },
+        {
+          "resource": "repo://.github/workflows/developer-release.yml",
+          "version": "repo-file-v1:sha256:ef3e1f513478b27e90c21170e931a5505a220db053daf86c6f899e3f81bc1eec"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-09T15:23:50.674Z"
+    "at": "2026-11-10T13:00:52.429Z"
   }
 }

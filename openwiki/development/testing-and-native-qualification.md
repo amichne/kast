@@ -29,7 +29,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-09T13:10:12.658Z
+    at: 2026-11-10T13:00:52.429Z
 ---
 
 # Tests and native qualification

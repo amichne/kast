@@ -48,7 +48,9 @@ The record retains the repository, source revision, source tree, comparison base
 CI retains it as `ci-validation-outcome-<source>-<attempt>` for 30 days.
 
 
-Developer promotion requires that record from the exact successful main push run.
+Developer promotion needs that record from the exact successful main push or manual CI run.
+The record and producer must agree on the event, source, run ID, and attempt.
+Manual CI runs select full validation and need an explicit developer publication dispatch.
 A missing, malformed, contradictory or mismatched record rejects promotion.
 `SOURCE_VALIDATED` rejects promotion before candidate download.
 `PRODUCT_VALIDATED` retains the existing candidate, source-tree and payload admission checks.

@@ -6,7 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -26,19 +26,27 @@ def record():
     )
 
 
+@dataclass(frozen=True)
+class RepositoryFixture:
+    full_name: str = REPOSITORY
+
+
+@dataclass(frozen=True)
+class RunFixture:
+    repository: RepositoryFixture = RepositoryFixture()
+    path: str = outcome.WORKFLOW
+    id: int = 456
+    run_number: int = 123
+    run_attempt: int = 1
+    event: str = "push"
+    head_sha: str = SOURCE
+    head_branch: str = "main"
+    status: str = "completed"
+    conclusion: str = "success"
+
+
 def producer():
-    return {
-        "repository": {"full_name": REPOSITORY},
-        "path": outcome.WORKFLOW,
-        "id": 456,
-        "run_number": 123,
-        "run_attempt": 1,
-        "event": "push",
-        "head_sha": SOURCE,
-        "head_branch": "main",
-        "status": "completed",
-        "conclusion": "success",
-    }
+    return asdict(RunFixture())
 
 
 class ValidationOutcomeTest(unittest.TestCase):
@@ -130,6 +138,29 @@ class ValidationOutcomeTest(unittest.TestCase):
                 self.assertEqual(
                     outcome.ProductValidated(value), outcome.admit(value, producer(), REPOSITORY, SOURCE, TREE)
                 )
+
+    def test_manual_main_product_keeps_exact_event_and_producer_identity(self):
+        value = replace(record(), scope=Scope.FULL, outcome=outcome.Outcome.PRODUCT_VALIDATED,
+                        baseRevision="", event="workflow_dispatch")
+        run = asdict(replace(RunFixture(), event="workflow_dispatch"))
+        self.assertEqual(value, outcome.decode(asdict(value)))
+        self.assertEqual(outcome.ProductValidated(value),
+                         outcome.admit(value, run, REPOSITORY, SOURCE, TREE))
+        for changes in (
+            {"event": "push"}, {"event": "pull_request"}, {"event": "merge_group"},
+            {"event": "unknown"}, {"head_branch": "feature"}, {"run_attempt": 2},
+            {"head_sha": BASE}, {"repository": {"full_name": "foreign/kast"}},
+            {"path": "foreign.yml"},
+        ):
+            with self.subTest(changes=changes):
+                self.assertEqual(outcome.Failure.WRONG_PRODUCER,
+                                 outcome.admit(value, run | changes, REPOSITORY, SOURCE, TREE))
+        for changes in ({"status": "in_progress"}, {"conclusion": "failure"}):
+            with self.subTest(changes=changes):
+                self.assertEqual(outcome.Failure.PRODUCER_NOT_SUCCESSFUL,
+                                 outcome.admit(value, run | changes, REPOSITORY, SOURCE, TREE))
+        self.assertEqual(outcome.Failure.SOURCE_TREE_MISMATCH,
+                         outcome.admit(value, run, REPOSITORY, SOURCE, BASE))
 
     def test_unknown_malformed_and_contradictory_records_reject(self):
         for changes in (
