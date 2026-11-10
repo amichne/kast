@@ -51,6 +51,16 @@ class VerifyControlDistributionTaskTest {
     }
 
     @Test
+    fun `native container command rejects the retired Python payload`(@TempDir directory: Path) {
+        val task = guidanceFixture(directory)
+        val helper = task.controlDirectory.get().asFile.toPath().resolve("share/kast/container/bin/kast-container")
+        Files.createDirectories(helper.parent)
+        Files.write(helper, byteArrayOf())
+        assertEquals("control product contains a retired Python container payload",
+            assertThrows(IllegalStateException::class.java, task::verify).message)
+    }
+
+    @Test
     fun `task tools need their guest receiver module`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)
         Files.delete(task.controlDirectory.get().asFile.toPath().resolve(
@@ -112,8 +122,6 @@ class VerifyControlDistributionTaskTest {
             "share/kast/install.sh", "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json", "share/kast/wire-schema.json", "share/kast/ide-host.json",
             "share/kast/knowledge/manifest.json", "share/kast/licenses/LICENSE",
-            "share/kast/container/bin/kast-container", "share/kast/container/bin/kast-container.lock",
-            "share/kast/container/packaging/dev_container.py",
             "share/kast/task-vm/bin/kast-task-vm", "share/kast/task-vm/bin/kast-task-vm.lock",
             "share/kast/task-vm/bin/setup-kast", "share/kast/task-vm/bin/setup-kast.lock",
             "share/kast/task-vm/packaging/task_vm.py", "share/kast/task-vm/packaging/task_vm_guest.py",

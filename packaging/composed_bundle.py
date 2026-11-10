@@ -96,6 +96,11 @@ class ConfiguredTrust:
     sha256: str
 
 
+class TrustMode(StrEnum):
+    CREATE = "CREATE"
+    REUSE_EXACT = "REUSE_EXACT"
+
+
 def admit_trust_workspace(workspace: Path, root: Path) -> _TrustedWorkspace | BundleRejected:
     if (
         workspace.resolve() != workspace
@@ -368,6 +373,7 @@ def _install_extracted(
 def configure_trusted_workspace(
     state: Path,
     workspace: _TrustedWorkspace,
+    mode: TrustMode = TrustMode.CREATE,
 ) -> ConfiguredTrust | Rejected:
     """Only an explicit caller request writes trust into the new private profile."""
     profile = selected_private_profile(state)
@@ -387,12 +393,65 @@ def configure_trusted_workspace(
         with path.open("xb") as output:
             _ = output.write(data)
     except FileExistsError:
+        return (
+            _read_exact_workspace_trust(path, workspace)
+            if mode == TrustMode.REUSE_EXACT
+            else Rejected(Failure.INVALID_COMPONENT)
+        )
+    return ConfiguredTrust(workspace.path, path, hashlib.sha256(data).hexdigest())
+
+
+def _read_exact_workspace_trust(
+    path: Path, workspace: _TrustedWorkspace
+) -> ConfiguredTrust | Rejected:
+    if path.is_symlink() or path.resolve() != path:
+        return Rejected(Failure.SHARED_STATE)
+    if not path.is_file():
         return Rejected(Failure.INVALID_COMPONENT)
+    try:
+        with path.open("rb") as source:
+            data = source.read(65_537)
+        if len(data) > 65_536:
+            return Rejected(Failure.INVALID_COMPONENT)
+        document = data.decode("utf-8")
+        if "<!DOCTYPE" in document or "<!ENTITY" in document:
+            return Rejected(Failure.INVALID_COMPONENT)
+        node = XML.fromstring(
+            document,
+            parser=XML.XMLParser(target=XML.TreeBuilder(insert_comments=True, insert_pis=True)),
+        )
+    except (UnicodeDecodeError, XML.ParseError):
+        return Rejected(Failure.INVALID_COMPONENT)
+    except OSError:
+        return Rejected(Failure.EFFECT_FAILED)
+    shape: tuple[tuple[str, dict[str, str]], ...] = (
+        ("application", {}),
+        ("component", {"name": "Trusted.Paths"}),
+        ("option", {"name": "TRUSTED_PROJECT_PATHS"}),
+        ("map", {}),
+        ("entry", {"key": str(workspace.path), "value": "true"}),
+    )
+    for index, (tag, attributes) in enumerate(shape):
+        if (
+            node.tag != tag
+            or node.attrib != attributes
+            or (node.text or "").strip()
+            or (node.tail or "").strip()
+        ):
+            return Rejected(Failure.INVALID_COMPONENT)
+        children = list(node)
+        if index == len(shape) - 1:
+            if children:
+                return Rejected(Failure.INVALID_COMPONENT)
+        elif len(children) != 1:
+            return Rejected(Failure.INVALID_COMPONENT)
+        else:
+            node = children[0]
     return ConfiguredTrust(workspace.path, path, hashlib.sha256(data).hexdigest())
 
 
 def trust_installed_workspace(
-    root: Path, workspace: Path
+    root: Path, workspace: Path, mode: TrustMode = TrustMode.CREATE
 ) -> ConfiguredTrust | BundleRejected | Rejected:
     marker = root / ".kast-headless-owned"
     state = root / "state"
@@ -407,7 +466,7 @@ def trust_installed_workspace(
     admitted = admit_trust_workspace(workspace, root)
     if isinstance(admitted, BundleRejected):
         return admitted
-    return configure_trusted_workspace(state, admitted)
+    return configure_trusted_workspace(state, admitted, mode)
 
 
 def pack_bundle(

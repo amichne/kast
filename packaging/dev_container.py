@@ -1,4 +1,4 @@
-"""Native Kast development containers with private, persistent repository copies."""
+"""Build a native Kast development image from a source checkout."""
 
 from __future__ import annotations
 
@@ -7,18 +7,16 @@ import hashlib
 import json
 import os
 import platform
-import re
 import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
 import uuid
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
-from enum import Enum, StrEnum
+from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
-from typing import BinaryIO, TypeGuard
+from typing import TypeGuard
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = "kast-dev"
@@ -43,10 +41,7 @@ class Failure(StrEnum):
     MISSING_TOOL = "MISSING_TOOL"
     PROCESS_FAILED = "PROCESS_FAILED"
     INVALID_VM = "INVALID_VM"
-    MISSING_IMAGE = "MISSING_IMAGE"
-    INVALID_IMAGE = "INVALID_IMAGE"
-    INVALID_WORKSPACE = "INVALID_WORKSPACE"
-    POLICY_MISMATCH = "POLICY_MISMATCH"
+    INVALID_CHECKOUT = "INVALID_CHECKOUT"
     INVALID_OBSERVATION = "INVALID_OBSERVATION"
     IO_FAILED = "IO_FAILED"
 
@@ -57,44 +52,15 @@ class Rejected:
     detail: str
 
 
-class LocalImage(Enum):
-    NATIVE = "native"
-
-
-@dataclass(frozen=True)
-class PinnedImage:
-    reference: str
-
-
-def pinned_image(value: str) -> PinnedImage:
-    if re.fullmatch(r"(?:[a-z0-9][a-z0-9._:/-]*@)?sha256:[a-f0-9]{64}", value) is None:
-        raise argparse.ArgumentTypeError(
-            "Use a local sha256 image ID or a registry image with @sha256 digest"
-        )
-    return PinnedImage(value)
-
-
 @dataclass(frozen=True)
 class Runtime:
     docker: tuple[str, ...]
     architecture: Architecture
     environment: dict[str, str]
-    source: LocalImage | PinnedImage = LocalImage.NATIVE
 
     @property
     def image(self) -> str:
-        return (
-            self.source.reference
-            if isinstance(self.source, PinnedImage)
-            else "kast-dev:" + self.architecture.value
-        )
-
-
-@dataclass(frozen=True)
-class Workspace:
-    root: Path
-    key: str
-    name: str
+        return "kast-dev:" + self.architecture.value
 
 
 def object_fields(value: object) -> TypeGuard[dict[object, object]]:
@@ -103,10 +69,6 @@ def object_fields(value: object) -> TypeGuard[dict[object, object]]:
 
 def fields(value: object) -> TypeGuard[dict[str, object]]:
     return object_fields(value) and all(isinstance(key, str) for key in value)
-
-
-def elements(value: object) -> TypeGuard[list[object]]:
-    return isinstance(value, list)
 
 
 def native_architecture(machine: str) -> Architecture | Rejected:
@@ -141,8 +103,6 @@ def invoke(
     environment: dict[str, str],
     *,
     capture: bool = False,
-    stdin: BinaryIO | None = None,
-    stdout: BinaryIO | None = None,
     cwd: Path = ROOT,
 ) -> subprocess.CompletedProcess[bytes] | Rejected:
     try:
@@ -150,8 +110,7 @@ def invoke(
             args,
             env=environment,
             cwd=cwd,
-            stdin=stdin,
-            stdout=subprocess.PIPE if capture else (stdout if stdout is not None else sys.stderr),
+            stdout=subprocess.PIPE if capture else sys.stderr,
             stderr=subprocess.PIPE if capture else None,
             check=False,
         )
@@ -198,6 +157,8 @@ def runtime() -> Runtime | Rejected:
         [
             colima,
             "start",
+            "--runtime",
+            "docker",
             "--profile",
             PROFILE,
             "--arch",
@@ -248,334 +209,14 @@ def observe(runtime: Runtime, args: list[str]) -> object | Rejected:
         return Rejected(Failure.INVALID_OBSERVATION, args[0])
 
 
-def image_identity(runtime: Runtime) -> str | Rejected:
-    listing_args = (
-        [
-            "image",
-            "ls",
-            "--all",
-            "--no-trunc",
-            "--digests",
-            "--format",
-            "{{.Repository}}@{{.Digest}} {{.ID}}",
-        ]
-        if isinstance(runtime.source, PinnedImage)
-        else ["image", "ls", "--filter=reference=" + runtime.image, "--quiet"]
-    )
-    listing = invoke(
-        [*runtime.docker, *listing_args],
-        runtime.environment,
-        capture=True,
-    )
-    if isinstance(listing, Rejected):
-        return listing
-    if not listing.stdout.strip() or (
-        isinstance(runtime.source, PinnedImage)
-        and runtime.image.encode() not in listing.stdout.split()
-    ):
-        return Rejected(Failure.MISSING_IMAGE, "Run kast container build --checkout /path/to/kast")
-    raw = observe(runtime, ["image", "inspect", runtime.image])
-    if not elements(raw) or len(raw) != 1 or not fields(raw[0]):
-        return Rejected(Failure.INVALID_IMAGE, "Run kast container build --checkout /path/to/kast")
-    image = raw[0]
-    config = image.get("Config")
-    labels = config.get("Labels") if fields(config) else None
-    identity = image.get("Id")
-    if (
-        image.get("Architecture") != runtime.architecture.value
-        or image.get("Os") != "linux"
-        or not fields(labels)
-        or labels.get("io.kast.dev-container") != "2"
-        or not fields(config)
-        or config.get("User") != "developer"
-        or not isinstance(identity, str)
-        or not identity.startswith("sha256:")
-    ):
-        return Rejected(
-            Failure.INVALID_IMAGE,
-            "Image needs the native Kast container v2 layout. Build or select a current image.",
-        )
-    return identity
-
-
-def container_arguments(
-    name: str,
-    image: str,
-    key: str,
-    cpus: int,
-    memory: int,
-    offline: bool,
-) -> list[str]:
-    return [
-        "create",
-        "--init",
-        "--name",
-        name,
-        "--label=io.kast.dev-container=1",
-        "--label=io.kast.workspace=" + key,
-        "--user=10001:10001",
-        "--workdir=/work",
-        "--cap-drop=ALL",
-        "--security-opt=no-new-privileges",
-        "--pids-limit=2048",
-        f"--cpus={cpus}",
-        f"--memory={memory}g",
-        f"--memory-swap={memory}g",
-        "--network=none" if offline else "--network=bridge",
-        image,
-        "sleep",
-        "infinity",
-    ]
-
-
-def workspace(path: Path, arch: Architecture, name: str = "default") -> Workspace | Rejected:
-    root = path.resolve()
-    result = invoke(
-        ["git", "-c", "core.fsmonitor=false", "rev-parse", "--show-toplevel"],
-        effect_environment(os.environ),
-        capture=True,
-        cwd=root,
-    )
-    if isinstance(result, Rejected):
-        return Rejected(Failure.INVALID_WORKSPACE, "Select a directory inside a Git repository")
-    repository = Path(os.fsdecode(result.stdout).rstrip("\n")).resolve()
-    if not root.is_relative_to(repository):
-        return Rejected(
-            Failure.INVALID_WORKSPACE, "Git repository identity differs from this directory"
-        )
-    root = repository
-    identity = os.fsencode(root) + (b"\0" + name.encode() if name != "default" else b"")
-    key = hashlib.sha256(identity).hexdigest()[:16]
-    return Workspace(root, key, f"kast-work-{key}-{arch.value}")
-
-
-def copy_workspace(runtime: Runtime, workspace: Workspace) -> Rejected | None:
-    env = runtime.environment
-    index = invoke(
-        ["git", "-c", "core.fsmonitor=false", "ls-files", "--stage", "-z"],
-        env,
-        capture=True,
-        cwd=workspace.root,
-    )
-    if isinstance(index, Rejected):
-        return index
-    if any(entry.startswith(b"160000 ") for entry in index.stdout.split(b"\0")):
-        return Rejected(
-            Failure.INVALID_WORKSPACE, "Submodules need a separate source copy; none was imported"
-        )
-    files = invoke(
-        [
-            "git",
-            "-c",
-            "core.fsmonitor=false",
-            "ls-files",
-            "-z",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-        ],
-        env,
-        capture=True,
-        cwd=workspace.root,
-    )
-    if isinstance(files, Rejected):
-        return files
-    with tempfile.TemporaryFile() as snapshot:
-        with tarfile.open(fileobj=snapshot, mode="w") as archive:
-            for raw in sorted(set(files.stdout.split(b"\0")) - {b""}):
-                name = Path(os.fsdecode(raw))
-                if name.is_absolute() or any(part in {"..", ".git"} for part in name.parts):
-                    return Rejected(Failure.INVALID_WORKSPACE, "Unsafe repository path")
-                source = workspace.root / name
-                # Keep leaf symlinks as links, but never open indexed children
-                # through a replaced directory outside the selected repository.
-                if source.parent.resolve() != source.parent:
-                    return Rejected(Failure.INVALID_WORKSPACE, "Symlinked repository directory")
-                if source.is_file() or source.is_symlink():
-                    archive.add(source, arcname=str(name), recursive=False)
-        _ = snapshot.seek(0)
-        copied = invoke(
-            [
-                *runtime.docker,
-                "exec",
-                "-i",
-                workspace.name,
-                "tar",
-                "--no-same-owner",
-                "-xf",
-                "-",
-                "-C",
-                "/work",
-            ],
-            env,
-            stdin=snapshot,
-        )
-    if isinstance(copied, Rejected):
-        return copied
-    commands = [
-        ["git", "init", "--quiet", "--initial-branch=work"],
-        ["git", "add", "--all", "--force"],
-        [
-            "git",
-            "-c",
-            "user.name=Kast workspace",
-            "-c",
-            "user.email=workspace@invalid",
-            "-c",
-            "commit.gpgsign=false",
-            "commit",
-            "--quiet",
-            "--allow-empty",
-            "-m",
-            "Copied workspace baseline",
-        ],
-        [
-            "python3",
-            "/opt/kast/packaging/composed_bundle.py",
-            "trust",
-            "--root",
-            "/opt/kast",
-            "--workspace",
-            "/work",
-        ],
-        [
-            "python3",
-            "-c",
-            "from pathlib import Path; "
-            "Path('/home/developer/.kast-workspace-ready').write_text('1\\n')",
-        ],
-    ]
-    for command in commands:
-        result = invoke([*runtime.docker, "exec", workspace.name, *command], env)
-        if isinstance(result, Rejected):
-            return result
-    return None
-
-
-def open_workspace(
-    runtime: Runtime,
-    workspace: Workspace,
-    image: str,
-    cpus: int,
-    memory: int,
-    offline: bool,
-) -> Rejected | None:
-    observed = invoke(
-        [
-            *runtime.docker,
-            "container",
-            "ls",
-            "-a",
-            "--filter",
-            "name=^/" + workspace.name + "$",
-            "--format",
-            "{{.Names}}",
-        ],
-        runtime.environment,
-        capture=True,
-    )
-    if isinstance(observed, Rejected):
-        return observed
-    if not observed.stdout.strip():
-        # Docker otherwise injects proxy settings from the host client config,
-        # even without --env. Creation needs no registry credentials: the image
-        # was already admitted by immutable local identity.
-        with tempfile.TemporaryDirectory(prefix="kast-docker-client-") as config:
-            created = invoke(
-                [
-                    *runtime.docker,
-                    *container_arguments(
-                        workspace.name, image, workspace.key, cpus, memory, offline
-                    ),
-                ],
-                {**runtime.environment, "DOCKER_CONFIG": config},
-            )
-        if isinstance(created, Rejected):
-            return created
-        started = invoke([*runtime.docker, "start", workspace.name], runtime.environment)
-        if isinstance(started, Rejected):
-            return started
-        return copy_workspace(runtime, workspace)
-    if observed.stdout.strip() != workspace.name.encode():
-        return Rejected(Failure.INVALID_OBSERVATION, "workspace name")
-    raw = observe(runtime, ["container", "inspect", workspace.name])
-    if not elements(raw) or len(raw) != 1 or not fields(raw[0]):
-        return Rejected(Failure.INVALID_OBSERVATION, "container inspection")
-    container = raw[0]
-    host = container.get("HostConfig")
-    config = container.get("Config")
-    labels = config.get("Labels") if fields(config) else None
-    if (
-        container.get("Image") != image
-        or container.get("Mounts") != []
-        or not fields(config)
-        or config.get("User") != "10001:10001"
-        or not fields(labels)
-        or labels.get("io.kast.workspace") != workspace.key
-        or labels.get("io.kast.dev-container") != "1"
-        or not fields(host)
-        or host.get("Privileged") is not False
-        or host.get("CapDrop") != ["ALL"]
-        or host.get("CapAdd") not in (None, [])
-        or host.get("SecurityOpt") != ["no-new-privileges"]
-        or host.get("NetworkMode") != ("none" if offline else "bridge")
-    ):
-        return Rejected(
-            Failure.POLICY_MISMATCH,
-            "Existing workspace differs from requested image or network mode; "
-            "export it before replacing it",
-        )
-    if (
-        host.get("NanoCpus") != cpus * 1_000_000_000
-        or host.get("Memory") != memory * 1024**3
-        or host.get("MemorySwap") != memory * 1024**3
-        or host.get("PidsLimit") != 2048
-    ):
-        updated = invoke(
-            [
-                *runtime.docker,
-                "update",
-                f"--cpus={cpus}",
-                f"--memory={memory}g",
-                f"--memory-swap={memory}g",
-                "--pids-limit=2048",
-                workspace.name,
-            ],
-            runtime.environment,
-        )
-        if isinstance(updated, Rejected):
-            return updated
-    started = invoke([*runtime.docker, "start", workspace.name], runtime.environment)
-    if isinstance(started, Rejected):
-        return started
-    ready = invoke(
-        [
-            *runtime.docker,
-            "exec",
-            workspace.name,
-            "test",
-            "-f",
-            "/home/developer/.kast-workspace-ready",
-        ],
-        runtime.environment,
-        capture=True,
-    )
-    return (
-        Rejected(
-            ready.reason,
-            ready.detail + "; workspace readiness is unproven; existing files were preserved",
-        )
-        if isinstance(ready, Rejected)
-        else None
-    )
-
-
 def build_image(runtime: Runtime, checkout: Path = ROOT) -> Rejected | None:
     if (
         not (checkout / "gradlew").is_file()
         or not (checkout / "packaging/container/Dockerfile").is_file()
     ):
-        return Rejected(Failure.MISSING_IMAGE, "Run kast container build --checkout /path/to/kast")
+        return Rejected(
+            Failure.INVALID_CHECKOUT, "Use kast-container build --checkout /path/to/kast"
+        )
     options = ["-PcontrolVersion=" + VERSION, "-PhostedPluginVersion=" + VERSION, "--console=plain"]
     built = invoke(
         [
@@ -672,6 +313,7 @@ def build_image(runtime: Runtime, checkout: Path = ROOT) -> Rejected | None:
         modules.mkdir()
         for name in (
             "container_install.py",
+            "oci_task.py",
             "managed_headless.py",
             "composed_bundle.py",
             "composed_host.py",
@@ -698,148 +340,30 @@ def build_image(runtime: Runtime, checkout: Path = ROOT) -> Rejected | None:
         return result if isinstance(result, Rejected) else None
 
 
-def workspace_name(value: str) -> str:
-    if re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,47}", value) is None:
-        raise argparse.ArgumentTypeError("Use 1 to 48 letters, digits, underscores, or hyphens")
-    return value
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="kast container", description=__doc__)
+    parser = argparse.ArgumentParser(
+        prog="kast-container",
+        description=__doc__,
+        epilog="Use kast container to open a workspace or run a task.",
+    )
     commands = parser.add_subparsers(dest="action", required=True)
     build = commands.add_parser("build", help="Build a native image from a Kast source checkout")
     _ = build.add_argument("--checkout", type=Path, default=ROOT, help="Kast source checkout")
-    default_repository = Path.cwd()
-    for action, help_text in (
-        ("shell", "Open the retained workspace shell"),
-        ("run", "Run a literal command in a retained workspace"),
-    ):
-        command_parser = commands.add_parser(action, help=help_text)
-        _ = command_parser.add_argument("--repository", type=Path, default=default_repository)
-        _ = command_parser.add_argument(
-            "--image",
-            type=pinned_image,
-            default=LocalImage.NATIVE,
-            help="Use an immutable prepared image without a source checkout",
-        )
-        _ = command_parser.add_argument(
-            "--name",
-            type=workspace_name,
-            default="default",
-            help="Select a separate task copy of this repository",
-        )
-        _ = command_parser.add_argument(
-            "--offline", action="store_true", help="Disable the container network"
-        )
-        _ = command_parser.add_argument("--cpus", type=int, choices=range(1, 9), default=4)
-        _ = command_parser.add_argument("--memory-gib", type=int, choices=range(2, 13), default=8)
-        _ = command_parser.add_argument("command", nargs=argparse.REMAINDER)
-    export = commands.add_parser(
-        "export", help="Save a new workspace archive without changing host source"
-    )
-    _ = export.add_argument("--repository", type=Path, default=default_repository)
-    _ = export.add_argument("--name", type=workspace_name, default="default")
-    _ = export.add_argument("--output", type=Path, required=True)
-    _ = commands.add_parser("status", help="List retained Kast workspace containers")
-    arguments = sys.argv[1:]
-    # Options and an explicit separator retain the original shorthand shell syntax.
-    if not arguments or (arguments[0].startswith("-") and arguments[0] not in {"-h", "--help"}):
-        arguments = ["shell", *arguments]
-    args = parser.parse_args(arguments)
-    if args.action == "run" and not [part for part in args.command if part != "--"]:
-        parser.error("run needs a command after --")
+    args = parser.parse_args()
     try:
         selected = runtime()
         if isinstance(selected, Rejected):
             return report(selected)
-        if args.action == "build":
-            result = build_image(selected, args.checkout.resolve())
-            return report(result) if isinstance(result, Rejected) else 0
-        if args.action == "status":
-            status = invoke(
-                [*selected.docker, "ps", "-a", "--filter", "label=io.kast.workspace"],
-                selected.environment,
-                stdout=sys.stdout.buffer,
-            )
-            return report(status) if isinstance(status, Rejected) else 0
-        admitted = workspace(Path(args.repository), selected.architecture, args.name)
-        if isinstance(admitted, Rejected):
-            return report(admitted)
-        if args.action == "export":
-            with Path(args.output).open("xb") as output:
-                result = invoke(
-                    [
-                        *selected.docker,
-                        "exec",
-                        admitted.name,
-                        "tar",
-                        "--exclude=./.git",
-                        "-czf",
-                        "-",
-                        "-C",
-                        "/work",
-                        ".",
-                    ],
-                    selected.environment,
-                    stdout=output,
-                )
-            return report(result) if isinstance(result, Rejected) else 0
-        selected = replace(selected, source=args.image)
-        image = image_identity(selected)
-        if isinstance(image, Rejected) and image.reason is Failure.MISSING_IMAGE:
-            if isinstance(selected.source, PinnedImage):
-                if "@sha256:" not in selected.source.reference:
-                    return report(image)
-                pulled = invoke(
-                    [
-                        *selected.docker,
-                        "pull",
-                        "--platform=linux/" + selected.architecture.value,
-                        selected.source.reference,
-                    ],
-                    selected.environment,
-                )
-                built = pulled if isinstance(pulled, Rejected) else None
-            else:
-                print("kast container: preparing the first native image", file=sys.stderr)
-                built = build_image(selected)
-            if isinstance(built, Rejected):
-                return report(built)
-            image = image_identity(selected)
-            if isinstance(image, Rejected):
-                return report(image)
-        if isinstance(image, Rejected):
-            return report(image)
-        opened = open_workspace(
-            selected, admitted, image, int(args.cpus), int(args.memory_gib), bool(args.offline)
-        )
-        if isinstance(opened, Rejected):
-            return report(opened)
-        command = list(args.command)
-        if command[:1] == ["--"]:
-            command = command[1:]
-        if not command:
-            command = ["bash"]
-        flags = ["-it"] if sys.stdin.isatty() and sys.stdout.isatty() else ["-i"]
-        print(
-            f"kast container: {admitted.name}; /work is a retained copy, not a host mount",
-            file=sys.stderr,
-        )
-        # Pass the actual command exit code through; a failed command is not a setup error.
-        result = subprocess.run(
-            [*selected.docker, "exec", *flags, admitted.name, *command],
-            env=selected.environment,
-            check=False,
-        )
-        return result.returncode
+        result = build_image(selected, args.checkout.resolve())
+        return report(result) if isinstance(result, Rejected) else 0
     except KeyboardInterrupt:
         return 130
-    except (OSError, tarfile.TarError) as error:
+    except OSError as error:
         return report(Rejected(Failure.IO_FAILED, type(error).__name__))
 
 
 def report(rejected: Rejected) -> int:
-    print(f"kast container: outcome={rejected.reason.value}; {rejected.detail}", file=sys.stderr)
+    print(f"kast-container: outcome={rejected.reason.value}; {rejected.detail}", file=sys.stderr)
     return 1
 
 

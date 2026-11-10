@@ -84,6 +84,78 @@ def test_task_selects_one_workspace_and_runs_the_command(image: Image) -> None:
     assert image.settings.read_bytes() == before
 
 
+def test_reuse_admits_the_same_workspace_without_replacing_its_grant(image: Image) -> None:
+    project = image.workspaces / "project with spaces & symbols"
+    project.mkdir()
+    first = image.run(project, sys.executable, "-c", "print('first')", options=("--reuse",))
+    assert first.returncode == 0, first.stderr
+    assert first.stdout == "first\n"
+    before = image.settings.read_bytes()
+    identity = image.settings.stat()
+    repeated = image.run(
+        project,
+        sys.executable,
+        "-c",
+        "import sys; print(sys.argv[1]); sys.exit(23)",
+        "literal; $(false) *",
+        options=("--reuse",),
+    )
+    assert repeated.returncode == 23, repeated.stderr
+    assert repeated.stdout == "literal; $(false) *\n"
+    assert image.settings.read_bytes() == before
+    assert image.settings.stat().st_ino == identity.st_ino
+    assert image.settings.stat().st_mtime_ns == identity.st_mtime_ns
+
+    default = image.run(project, sys.executable, "-c", "print('unexpected child')")
+    assert default.returncode == 2
+    assert "INVALID_COMPONENT" in default.stderr
+    assert default.stdout == ""
+    assert image.settings.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "grant", ["malformed", "foreign", "multiple", "false", "extra", "symlink", "oversized"]
+)
+def test_reuse_rejects_an_unproven_grant_without_starting_the_child(
+    image: Image, grant: str
+) -> None:
+    project = image.workspaces / "project"
+    project.mkdir()
+    installed = image.run(project, sys.executable, "-c", "pass")
+    assert installed.returncode == 0, installed.stderr
+    tree = ElementTree.parse(image.settings)
+    entries = tree.findall("./component/option/map/entry")
+    assert len(entries) == 1
+    if grant == "foreign":
+        entries[0].set("key", str(image.workspaces / "other"))
+    elif grant == "multiple":
+        mapping = tree.find("./component/option/map")
+        assert mapping is not None
+        _ = ElementTree.SubElement(mapping, "entry", {"key": str(project), "value": "true"})
+    elif grant == "false":
+        entries[0].set("value", "false")
+    elif grant == "extra":
+        entries[0].set("foreign", "true")
+    tree.write(image.settings, encoding="utf-8")
+    if grant == "malformed":
+        _ = image.settings.write_text("<application>")
+    elif grant == "oversized":
+        _ = image.settings.write_bytes(b" " * 65_537 + image.settings.read_bytes())
+    elif grant == "symlink":
+        outside = image.workspaces / "foreign-settings.xml"
+        _ = image.settings.rename(outside)
+        image.settings.symlink_to(outside)
+    before = image.settings.read_bytes()
+
+    rejected = image.run(
+        project, sys.executable, "-c", "print('unexpected child')", options=("--reuse",)
+    )
+    assert rejected.returncode == 2
+    assert ("SHARED_STATE" if grant == "symlink" else "INVALID_COMPONENT") in rejected.stderr
+    assert rejected.stdout == ""
+    assert image.settings.read_bytes() == before
+
+
 @pytest.mark.parametrize("workspace", ["root", "outside", "symlink"])
 def test_task_rejects_a_path_outside_the_selected_project(image: Image, workspace: str) -> None:
     outside = image.workspaces.parent / "outside"

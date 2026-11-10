@@ -41,9 +41,20 @@ class InstalledProductArtifactTest(unittest.TestCase):
             with tarfile.open(control, 'w') as archive:
                 for entry in inputs:
                     archive.add(source / entry, arcname='share/kast/task-vm/' + entry)
-                for entry in ('bin/kast-container', 'bin/kast-container.lock', 'packaging/dev_container.py'):
-                    archive.add(source / entry, arcname='share/kast/container/' + entry)
             product.verify_task_tools(fixture, control)
+            fixture.mark_passed()
+
+    def test_retired_container_payload_rejects_before_extraction(self):
+        from installer_fixture import InstallerFixture, admitted_tools
+
+        with InstallerFixture(admitted_tools(), parent=Path('/tmp').resolve()) as fixture:
+            control = fixture.root / 'control.tar'
+            with tarfile.open(control, 'w') as archive:
+                entry = tarfile.TarInfo('share/kast/container/packaging/dev_container.py')
+                archive.addfile(entry, io.BytesIO())
+            with self.assertRaisesRegex(AssertionError, 'retired Python container payload'):
+                product.verify_task_tools(fixture, control)
+            self.assertFalse((fixture.root / 'extracted-task-tools').exists())
             fixture.mark_passed()
 
     def setUp(self):

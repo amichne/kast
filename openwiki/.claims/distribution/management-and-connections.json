@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:6f6176608a6d83f3f2ce3d962a7d9a0fd605e19aad3322ae5b8d9f4f3749ff43",
+  "pageVersion": "sha256:785db3ed2ccfa441728ca199238addf0c50440ce81eae67b061252716c0f1989",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "version": "repo-file-v1:sha256:9db9b45572b336725244572e20bbb261fc00c39af93160c26beff863e44e3dd4"
+          "version": "repo-file-v1:sha256:6a31b85a835cb98a8b37d4813b127d1857168b0d2cf51031e91a059dc0f6e766"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
-          "version": "repo-file-v1:sha256:c7a1d29d8f5710d828f58d87a3a9ca73aee0d0324188de92c74bb1e1c8996ac2"
+          "version": "repo-file-v1:sha256:695021b6d21c6319ced70b9829cb7bde0da97e2f708de7140d6516468470ccc5"
         }
       ]
     },
@@ -113,10 +113,126 @@
           "version": "repo-lines-v1:sha256:072dea805fe8cf7acaabe0cfa7d667f2ebfa232ea134dbd8c62ff6ae1c52a023:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3NzQ5OGFiMjA3MTY0Y2I5ZWM5M2U4NGNkODZhN2M1NjMwNjQ3Yjg1ZWQzNzU2ZGJiNTM3ZWRiMzg2NWIyYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3OWFjZmUwNGRjNzY2NGQ4MTY1NzY1MmFlMjFlOGNkZjY5OThjNWQwZWY3Mjk2MjFkZjMzY2EwMzhmOTg1M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFiNzIwNDEwZTNjNGE1ZmM5MDkwMzNlNTBkMzg5NjMxMDY5M2EyOGFhNGIzMGEwZGFmYzI0NThlYzIwOTk3ZmIifQ"
         }
       ]
+    },
+    {
+      "id": "claim_1cdb3b5dd0d54f578f25582b3ac37f24",
+      "statement": "The native container command selects a shell, a task with literal arguments, or passive status. It dispatches before installed-root admission and needs no selected Kast installation.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt",
+          "version": "repo-file-v1:sha256:c150e3f46147a403d712fcda919ecb48dd74dc6e1ded577ddcbc421b52788543"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt",
+          "version": "repo-file-v1:sha256:7c722aafcdecc006de56d21980143a6e18027221b452f374f2284f03c96a9307"
+        }
+      ]
+    },
+    {
+      "id": "claim_aa23c4bbe3dd4cb5983b749efa96c380",
+      "statement": "Native ARM64 and x86_64 macOS hosts use Colima and Lima without host Docker CLI, uv, Python, Java, or Git executables. Bundled nerdctl manages containerd in kast-native. Task transport uses Lima and ctr to preserve the guest exit status.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerExecution.kt",
+          "version": "repo-file-v1:sha256:ff636c66e225301187b465559acefecf2c3654f883e0e369c3eac0e0f9d92e93"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt",
+          "version": "repo-file-v1:sha256:9821737eae7c1338ed54dff80b510b4b90cb3440e5140fd2398af424cea18f1b"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerWorkspace.kt",
+          "version": "repo-file-v1:sha256:2c2d21eef4547baafe84d7735001fce554580b5dce109cb2b69611421f8f29e8"
+        }
+      ]
+    },
+    {
+      "id": "claim_0deb013bf33b40a78a01be5012755dd9",
+      "statement": "The worktree and linked Git metadata use writable mounts at their original absolute paths. Canonical worktree, name, and architecture select a retained container and private Gradle volume. Different names share source and build outputs but separate runtime state and caches.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerPlan.kt",
+          "version": "repo-file-v1:sha256:732681d91907f3ac539dddc157d98355f49db7e58f7869745d7610a4e994cdbc"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerWorkspace.kt",
+          "version": "repo-file-v1:sha256:2c2d21eef4547baafe84d7735001fce554580b5dce109cb2b69611421f8f29e8"
+        }
+      ]
+    },
+    {
+      "id": "claim_e14a19c522ea41b6aabeaaf582bb5209",
+      "statement": "The retained container keeps IDEA state. Shell builds and IDEA imports use /opt/kast/state/home/.gradle. Its named volume keeps dependencies, wrapper distributions, and enabled build-cache entries without mounting the host Gradle cache.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerPlan.kt",
+          "version": "repo-file-v1:sha256:732681d91907f3ac539dddc157d98355f49db7e58f7869745d7610a4e994cdbc"
+        },
+        {
+          "resource": "repo://packaging/composition_platform.py",
+          "version": "repo-file-v1:sha256:14084f23472f5786cad34900d71682a5741e126c8d937c28a9f19af97000c01b"
+        },
+        {
+          "resource": "repo://packaging/container/Dockerfile",
+          "version": "repo-file-v1:sha256:0c014eb874fccc03470d7ab824f0f79a3921ce6bea713352f467b36b33308d60"
+        },
+        {
+          "resource": "repo://packaging/managed_headless.py",
+          "version": "repo-file-v1:sha256:70c0ac71dd7d5d870a4ef060d5cc9dceaf330e8583d73b76bd0aacb1b0b0a8c3"
+        }
+      ]
+    },
+    {
+      "id": "claim_5080f74100a4424fa9a793a740e6d9e5",
+      "statement": "Image admission needs Linux, native architecture, the developer user, and layout label io.kast.dev-container=3. Explicit image selection accepts only immutable digests. First unqualified use selects the local development image, and later unqualified use keeps the retained image. Normal use never builds an image.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt",
+          "version": "repo-file-v1:sha256:c150e3f46147a403d712fcda919ecb48dd74dc6e1ded577ddcbc421b52788543"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerPlan.kt",
+          "version": "repo-file-v1:sha256:732681d91907f3ac539dddc157d98355f49db7e58f7869745d7610a4e994cdbc"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt",
+          "version": "repo-file-v1:sha256:9821737eae7c1338ed54dff80b510b4b90cb3440e5140fd2398af424cea18f1b"
+        },
+        {
+          "resource": "repo://packaging/dev_container.py",
+          "version": "repo-file-v1:sha256:23f67e1254e4bae728b9089f69f25cdd57a7edb2961acac79ad7f953de4bbe45"
+        }
+      ]
+    },
+    {
+      "id": "claim_e50c0fd7d2234ffd8bf23a5f6ca95780",
+      "statement": "Each task admits the retained identity, image, mounts, user, network, and exact workspace trust. The guest helper uses --reuse and rejects conflicting grants before command execution. Offline selection disables the container network and must match retained inputs. Status starts no VM or container.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerExecution.kt",
+          "version": "repo-file-v1:sha256:ff636c66e225301187b465559acefecf2c3654f883e0e369c3eac0e0f9d92e93"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerPlan.kt",
+          "version": "repo-file-v1:sha256:732681d91907f3ac539dddc157d98355f49db7e58f7869745d7610a4e994cdbc"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt",
+          "version": "repo-file-v1:sha256:9821737eae7c1338ed54dff80b510b4b90cb3440e5140fd2398af424cea18f1b"
+        },
+        {
+          "resource": "repo://packaging/composed_bundle.py",
+          "version": "repo-file-v1:sha256:196342b742ae52430478e12334733441fbe789cdb17e0377de715b0dec2aee46"
+        },
+        {
+          "resource": "repo://packaging/oci_task.py",
+          "version": "repo-file-v1:sha256:f2651e452c5a791e9b5d7d5426e05b35bd721a2ca28bf2e67fb31e98f1278398"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T03:54:32.522Z"
+    "at": "2026-11-10T06:08:39.586Z"
   }
 }

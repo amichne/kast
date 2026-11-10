@@ -4,9 +4,10 @@ title: "Kast distribution"
 description: "Defines installation contracts, the management command graph, managed filesystem effects, and independent component releases."
 resource: "repo://distribution"
 tags: [kast, navigation]
-timestamp: "2026-11-06T09:45:06Z"
-source_revision: 35bf4cc5420244babe898ff72330a6a0102015ce
+timestamp: "2026-11-10T06:13:00Z"
+source_revision: 85d30d515a1d777c5a83781f40813e32e69fa2e6
 code_sources:
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ContainerCoordinator.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessInstallation.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessLaunch.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
@@ -33,6 +34,7 @@ Defines installation contracts, the management command graph, managed filesystem
 
 - [ConfigurationSchemaDocument.kt](contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt) - typed installed configuration.
 - [ManagedInstallationOwnedTree.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt) - the admitted installation tree.
+- [ContainerCoordinator.kt](managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ContainerCoordinator.kt) - the filesystem lock for native container preparation.
 - `cli` composes the single native Control executable. This module supplies management commands.
 - [KastManagementMain.kt](cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt) - the management process entry.
 - [`plugin-release.gradle.kts`](release/plugin-release.gradle.kts) - Control and Host release tasks.

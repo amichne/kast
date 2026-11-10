@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fb44f9b7c2285184996157f7aeefe41f1daa4d68da80379ad39aec1a1ae95a33",
+  "pageVersion": "sha256:0a83d4cb99d84598175acd66f1a1506a1ae7b868a47dab736335f780649ee9b2",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -126,11 +126,11 @@
     },
     {
       "id": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-      "statement": "The cli module produces one native Control executable at share/kast/libexec/kast-management. Thin launchers select the installed command and transport entry points. The producer guard rejects lib, JARs, class files, a second native image, and a canonical image that differs from its qualified producer. Published-release admission preserves the historical pair when native-control-v1 is absent.",
+      "statement": "The cli module produces one native Control executable at share/kast/libexec/kast-management. Thin launchers select installed command and transport entry points. The producer guard rejects lib, JARs, class files, a second native image, and canonical bytes that differ from the qualified producer. It also rejects share/kast/container and its descendants. Published-release admission keeps the historical pair when native-control-v1 is absent.",
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-          "version": "repo-file-v1:sha256:ab62bc9f6823a0d5fd5e2293cbea6a960473d10d5d82c19b8a8366ee35b3399e"
+          "version": "repo-file-v1:sha256:792507ce0897daa1f34bc475fbf4541b864061c5afed14293247e5d3ae7a1aea"
         },
         {
           "resource": "repo://cli/build.gradle.kts",
@@ -177,6 +177,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T03:54:32.522Z"
+    "at": "2026-11-10T06:03:12.348Z"
   }
 }

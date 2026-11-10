@@ -1,166 +1,169 @@
 ---
 type: How-to Guide
-title: "Native Kast development shell"
-description: "Build and reopen a Linux development container without sharing the developer HOME."
+title: "Run a task in a container"
+description: "Use the native CLI with a mounted Git worktree and persistent Gradle and IDEA state."
 resource: "repo://packaging/container"
-tags: [kast, packaging, development, isolation]
-timestamp: "2026-11-09T22:39:26Z"
-source_revision: e8e46975e4ae90079d1b0a8c1a452f15a89a85b9
+tags: [kast, container, cli, worktree]
+timestamp: "2026-11-10T05:30:00Z"
+source_revision: 85d30d515a1d777c5a83781f40813e32e69fa2e6
 code_sources:
-  - path: bin/kast-container
-  - path: packaging/dev_container.py
-  - path: packaging/container_compile.py
-  - path: packaging/container_install.py
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerWorkspace.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerPlan.kt
   - path: packaging/container/Dockerfile
-  - path: packaging/container/compiler.Dockerfile
-  - path: packaging/composition_platform.py
-  - path: packaging/test_dev_container.py
-  - path: packaging/test_dev_container_simulation.py
-  - path: packaging/test_composition_platform.py
+  - path: packaging/oci_task.py
+  - path: packaging/composed_bundle.py
+  - path: packaging/dev_container.py
 ---
 
-# Native Kast development shell
+# Run a task in a container
 
-`kast container` opens a copied Git workspace with a self-contained IDEA runtime.
-The image contains Control, Host, the bundled JBR, Git, Python, Node.js, and development tools.
-The runtime needs no graphical IDEA installation on the Mac.
-The public CLI installation still needs IDEA. A host-independent bootstrap remains a 1.0.0 release requirement.
+`kast container` runs commands in the current Git worktree with a self-contained IDEA runtime.
+Edits and build outputs appear directly in the local directory.
+The retained container keeps its IDEA profile and indexes.
+A private volume keeps Gradle dependencies, wrapper distributions, and build-cache entries.
 
-Use macOS with Colima, the Docker CLI, uv, and Python 3.12 or 3.13.
-The container uses Linux ARM64 on Apple Silicon or Linux x86_64 on an Intel Mac.
-The public Control release supports Apple Silicon. Intel support here describes the source runner only.
+## Prepare the runtime
 
-## Prepare an image
+Normal use needs the native Kast executable, Colima on macOS, and a prepared native image.
+The host needs no Docker CLI, uv, Python, Java, or desktop IDEA for this command.
+The image contains its own tools, including Python for workspace setup.
 
-Install the container prerequisites:
+Install Colima:
 
-```sh
-brew install colima docker uv
+```shell
+brew install colima
 ```
 
-Examine the command without VM or network effects:
+Kast uses Colima's bundled `nerdctl` client and containerd in the `kast-native` profile.
+Task transport uses Colima's Lima dependency and containerd's `ctr` client to preserve guest exit codes.
+The first task starts that profile when necessary.
+Existing Docker profiles stay separate.
+See [Colima runtimes](https://colima.run/docs/runtimes/) for the bundled client contract.
 
-```sh
-kast container --help
-kast container run --help
-```
+The supported runner is Colima/containerd on native ARM64 or x86_64 macOS.
+OCI defines the image format. Other runners need their own adapter and qualification.
+This command does not claim support for every OCI runner.
 
-For a prepared image, use its immutable registry digest or local image ID:
+## Select an image
 
-```sh
+Use a trusted native Kast image with the v3 development layout:
+
+```shell
 kast container shell --image REGISTRY/IMAGE@sha256:DIGEST
 ```
 
-Replace the example with a trusted image that uses the native Kast container v2 layout.
-The command downloads an absent registry image by its digest.
-It rejects mutable tags, a different CPU architecture, and an incompatible image layout.
-A local image ID starts with `sha256:` and needs an existing local image.
-No default public image exists in this change.
+Replace the example with an actual immutable image reference.
+Kast pulls an absent registry image, then admits its architecture, user, layout, and digest.
+A local containerd image ID also works with `--image sha256:DIGEST`.
+The first unqualified call selects the local `kast-dev:arm64` or `kast-dev:amd64` image.
+Later unqualified calls keep the image of the retained workspace.
 
-To prepare the image from source, use a Kast checkout with its mise tools installed:
+A default public image remains a release prerequisite.
+The separate OCI base image uses another layout and does not satisfy the v3 development contract.
+The [OCI image guide](../oci/README.md) describes that cloud path.
 
-```sh
-mise -C /path/to/kast exec -- kast container build --checkout /path/to/kast
+For source builds, use the checkout tool:
+
+```shell
+mise exec -- kast-container build --checkout /path/to/kast
 ```
 
-The build compiles native Control and Host from the selected checkout.
-It downloads the digest-pinned Native Image compiler and IDEA archives.
-Debian packages use the configured Debian repositories.
-The build uses local source and does not qualify a release.
-The checkout command `mise exec -- kast-container build` remains available.
-An absent default image triggers a source build only when the runner resides in a checkout.
-An installed runner instead names the necessary build command.
+The source builder still uses Docker, uv, and the repository toolchain.
+It prepares an image in the separate `kast-dev` Docker profile.
+Transfer that image to the `kast-native` containerd profile before native CLI use.
+Source builds are separate from normal installed commands.
 
-## Open a task
+For an ARM64 source build, start the containerd profile and transfer the image:
 
-From the target Git repository, open the default workspace:
+```shell
+colima start --profile kast-native --runtime containerd --vm-type vz \
+  --mount-type virtiofs --mount "$HOME:w" --mount /private/tmp:w \
+  --cpus 4 --memory 8 --disk 48 --ssh-agent=false --activate=false --template=false
+docker --host="unix://$HOME/.colima/kast-dev/docker.sock" save kast-dev:arm64 \
+  | colima nerdctl --profile kast-native -- load
+```
 
-```sh
+For an x86_64 source build, replace `arm64` with `amd64`.
+The transfer uses Docker only because the source builder owns a Docker image store.
+
+## Run worktree commands
+
+From a Git worktree, open a shell:
+
+```shell
 kast container
 ```
 
-The first call copies tracked files and new files that Git ignore rules permit into `/work`.
-It preserves source edits and excludes the original Git metadata and ignored files.
-A tracked secret remains a tracked file.
-The runner rejects submodules because their contents need a separate source owner.
-The guest creates a new Git baseline and grants only `/work` to its private Host profile.
-The new baseline does not claim the original commit identity.
+Run a command with literal arguments:
 
-Later calls reopen the same files and dependency caches.
-They preserve edits inside the container and do not copy host changes again.
-Use `--repository /absolute/path` when the current directory differs from the target repository.
-
-Select a task name for a separate copy of the same repository:
-
-```sh
-kast container run --name fix-parser -- ./gradlew test
-kast container run --name review-api -- python3 -c 'print("literal arguments")'
-kast container shell --name fix-parser
+```shell
+kast container run -- ./gradlew --build-cache test
+kast container run -- git status --short
 ```
 
-Each name selects a separate container, workspace, HOME, and IDEA profile.
-A repeated name reopens that task.
-Arguments after `--` reach the command unchanged. Shell syntax needs an explicit shell command.
-`run` needs a command and returns its exit code.
-Progress uses stderr. The child owns stdout and stderr.
-The shell exits normally while the container stays available.
+Use `--workspace /absolute/path/to/worktree` to select another worktree.
+Kast mounts the worktree at its original absolute path.
+For linked worktrees, it also mounts the Git metadata directory at its original path.
+The host needs no Git subprocess for this discovery.
+Git inside the container admits only the selected worktree through `safe.directory`.
 
-Agent tools and authentication belong inside the selected container.
-The launcher forwards no host credentials, SSH agent, or complete host environment.
-This change provides command delegation. It does not provision an agent account or transfer authentication.
+The command preserves stdin, stdout, stderr, and the task's exit status.
+Progress goes to stderr. Shell exit keeps the container available.
+If another invocation prepares a container, retry after that preparation completes.
+Each later command reexamines the image, mount scope, and exact workspace trust.
+An incompatible retained container rejects before a task starts.
 
-## Isolation and resources
+An interrupt signals only the current task's containerd exec ID.
+The CLI reports a bounded cancellation result. That result does not prove retirement of detached child processes.
 
-The dedicated `kast-dev` Colima VM has no host directory shares or forwarded SSH agent.
-The launcher selects its Docker socket without changes to the active Docker context.
-Containers have no host mounts, published ports, or Docker socket.
-They use UID 10001, drop Linux capabilities, and cannot gain new privileges.
-The default allocation is four CPU cores, eight GiB of memory, and 2,048 processes, with no swap allowance.
-The VM has four CPU cores, twelve GiB of memory, and a 48 GiB data disk.
-Files and caches remain until explicit retirement. Automatic pruning stays off.
+## Keep caches and runtime state
 
-Network access permits dependency downloads and connections to reachable host and local-network services.
-Select `--offline` on the first call to remove external network access:
+The default name selects one container and Gradle volume per canonical worktree and architecture.
+IDEA imports and shell builds use `/opt/kast/state/home/.gradle` inside that container.
+The host's live Gradle cache is not mounted.
+Build-cache entries persist when the project or command enables Gradle's build cache.
 
-```sh
-kast container run --name offline-review --offline -- kast --version
-kast container shell --name offline-review --offline --cpus 2 --memory-gib 6
+Use a name when the same worktree needs another private runtime:
+
+```shell
+kast container run --name review -- ./gradlew test
+kast container shell --name review
 ```
 
-An existing workspace rejects a different image or network mode without changes to its files.
-Resource changes update the existing container.
-A different task name selects a fresh copy for another image or network mode.
-These controls do not establish protection against deliberately hostile code.
+Names separate runtime state and caches. They share the same mounted source files and build outputs.
+Use separate Git worktrees for independent edits or concurrent builds.
+Avoid concurrent host and container builds in the same worktree.
 
-## Keep results
+A repeated command can reuse downloaded dependencies and existing indexes.
+That mechanism alone does not establish a startup or build-time improvement.
+This command does not copy a live host cache or supply a shared dependency seed.
+Gradle's [cache guide](https://docs.gradle.org/current/userguide/dependency_caching.html) describes shared read-only dependency caches.
 
-List the retained containers:
+## Select network access and inspect state
 
-```sh
+Network access stays on by default. Select offline mode for a new named runtime:
+
+```shell
+kast container run --name offline --offline -- kast --version
 kast container status
 ```
 
-Export a task to a new archive:
+Repeat `--offline` for that runtime. A different network selection rejects.
+`status` starts no VM or container. It reports a stopped or absent profile as unavailable.
 
-```sh
-kast container export --name fix-parser --output /absolute/path/new-workspace.tar.gz
+Stop the VM while preserving its containers and caches:
+
+```shell
+colima stop --profile kast-native
 ```
 
-The archive contains the current `/work` contents and excludes its Git metadata.
-The command refuses an existing output file and never extracts the archive on the host.
-Examine exported files before changes to host source.
-`colima stop --profile kast-dev` stops the VM and keeps container files and caches.
+The next task restarts the profile and its selected container.
+Container removal discards that container's IDEA profile and indexes.
+The named Gradle volume remains separate.
 
-## Evidence
-
-Run the focused tests:
-
-```sh
-mise exec -- uv run --locked --project packaging pytest \
-  packaging/test_dev_container.py packaging/test_dev_container_simulation.py -q
-```
-
-These tests exercise real Git, archive operations, and a Docker process double.
-They cover literal arguments, copied files, preserved edits, image admission, and rejected policy changes.
-They do not prove compiler behavior or hypervisor security.
-The [1.0.0 readiness report](../../docs/reviews/1.0-readiness.md) records native evidence and release gaps.
+The VM shares HOME and `/private/tmp` so it can mount worktrees beneath those paths.
+Each workspace container receives its selected source and Git metadata mounts.
+For another host location, configure a Colima mount before the task.
+Mounted writes change host files. This workflow supplies a controlled executable environment, not a disposable source copy.

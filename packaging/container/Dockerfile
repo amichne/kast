@@ -17,11 +17,14 @@ RUN python3 /opt/kast-build/packaging/container_install.py
 FROM development
 COPY --from=assembly --chown=developer:developer /opt/kast /opt/kast
 COPY packaging/composed_bundle.py packaging/composition_platform.py packaging/managed_headless.py /opt/kast/packaging/
-ENV PATH="/opt/kast/bin:/opt/kast/runtime/kast-analysis-host/jbr/bin:/home/developer/.local/bin:${PATH}" \
+COPY --chmod=0755 packaging/oci_task.py /opt/kast/packaging/kast-task
+RUN install -d -o developer -g developer /opt/kast/state/home/.gradle
+ENV PATH="/opt/kast/bin:/opt/kast/packaging:/opt/kast/runtime/kast-analysis-host/jbr/bin:/home/developer/.local/bin:${PATH}" \
     JAVA_HOME="/opt/kast/runtime/kast-analysis-host/jbr" \
     HOME="/home/developer" \
+    GRADLE_USER_HOME="/opt/kast/state/home/.gradle" \
     KAST_INSTALL_ROOT="/opt/kast/state/home/.local/share/kast"
-LABEL io.kast.dev-container="2"
+LABEL io.kast.dev-container="3"
 USER developer
 WORKDIR /work
 CMD ["bash"]

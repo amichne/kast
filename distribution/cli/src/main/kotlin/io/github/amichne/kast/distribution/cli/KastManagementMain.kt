@@ -64,8 +64,7 @@ internal sealed interface ManagementParsing {
 }
 
 internal fun parseManagementCommand(arguments: List<String>): ManagementParsing {
-    if (arguments.firstOrNull() == "container")
-        return ManagementParsing.Selected(ManagementCommand.Container(arguments.drop(1)))
+    if (arguments.firstOrNull() == "container") return parseContainerCommand(arguments.drop(1))
     if (arguments.firstOrNull() in publicQueryNamespaces)
         return ManagementParsing.Selected(ManagementCommand.PublicQuery(arguments.toList()))
     if (arguments.firstOrNull() in setOf("connect", "plugin"))
@@ -116,7 +115,7 @@ internal class ManagementRoot : ManagementNode("kast") {
         eagerOption("--version", help = "Print this executable's version") { throw PrintMessage(MANAGEMENT_VERSION) }
     }
 
-    override fun help(context: Context) = "Query Kotlin, run isolated tasks, and manage agent integrations."
+    override fun help(context: Context) = "Query Kotlin, run workspace tasks, and manage agent integrations."
 
     override fun selection() = if (currentContext.invokedSubcommand == null) ManagementCommand.Status(false) else null
 }

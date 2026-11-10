@@ -8,7 +8,7 @@ import os
 import sys
 from pathlib import Path
 
-from composed_bundle import BundleFailure, BundleRejected, trust_installed_workspace
+from composed_bundle import BundleFailure, BundleRejected, TrustMode, trust_installed_workspace
 from managed_headless import Rejected
 
 
@@ -24,6 +24,11 @@ def main(
         type=Path,
         default=workspace_root,
         help="Canonical parent directory for task workspaces",
+    )
+    _ = parser.add_argument(
+        "--reuse",
+        action="store_true",
+        help="Admit an existing trust grant for this exact workspace",
     )
     _ = parser.add_argument("workspace", type=Path)
     _ = parser.add_argument("command", nargs=argparse.REMAINDER)
@@ -43,7 +48,8 @@ def main(
         ):
             print(f"kast-task: {BundleFailure.UNSAFE_PATH}", file=sys.stderr)
             return 2
-        grant = trust_installed_workspace(runtime_root, workspace)
+        mode = TrustMode.REUSE_EXACT if args.reuse else TrustMode.CREATE
+        grant = trust_installed_workspace(runtime_root, workspace, mode)
         if isinstance(grant, (BundleRejected, Rejected)):
             print(f"kast-task: {grant.reason}", file=sys.stderr)
             return 2
