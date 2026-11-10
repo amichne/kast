@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e1d7d4c7a74267ef26e0fb1fb387f90b0d47a25415ee3081578a39b5cc657c83",
+  "pageVersion": "sha256:12bf1d76d4b30bc2a728fa1b452e79e105097305678a32b065548188bf514661",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -56,7 +56,7 @@
       "evidence": [
         {
           "resource": "repo://agent-tools/skills/kast/SKILL.md",
-          "version": "repo-file-v1:sha256:23948b25c058d4ad3dc61a233cb819a77312598b0b83b6dcaae76f80fb242b3e"
+          "version": "repo-file-v1:sha256:1de11a0ea918bae49362e61af90a0b0b2ef9dcf8341450bf561971916efa47cb"
         },
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
@@ -139,6 +139,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T18:25:20.058Z"
+    "at": "2026-11-10T18:27:13.243Z"
   }
 }

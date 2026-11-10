@@ -1,6 +1,6 @@
 ---
 name: kast
-description: Use the installed native Kast CLI for Kotlin declaration discovery, callers, references, implementations, source reads, and compiler diagnostics in one exact workspace. Read the installed contract before unfamiliar syntax.
+description: Use the installed Kast CLI for Kotlin declaration discovery, relationships, source reads, and compiler diagnostics in one exact workspace.
 ---
 
 # Kast
@@ -10,20 +10,24 @@ The persistent IntelliJ IDEA Host owns compiler authority and project state.
 Separate CLI calls use that Host without a client JVM or a new daemon.
 Use ordinary source tools for other languages.
 
-Choose the operation before execution.
-Selection returns declarations. Relation expansion follows one hop.
-`WALK` repeats one relation to an explicit depth.
-`TRACE` uses a fixed affected-use recipe.
-`IMPACT` follows values from an exact producer invocation with qualified transfer evidence.
-These are pipeline choices within `query`, not interchangeable analyses.
-Read [Public CLI reads](public-cli.md) for their inputs, outputs, limits, and command examples.
-Use `kast describe` for the installed contract.
-For unfamiliar query arguments, inspect these sections:
+Use flags for exact-name selection and one-hop relations.
+Use `--kind class` for interfaces.
 
 ```sh
-kast describe query --section input
-kast describe query --section examples
+kast query --name OrderService --kind class --in services/orders --source-set main \
+  --fields name,signature,location
+kast query --ref "$exact_ref" --relation callers
 ```
+
+Use `kast query --help` for flag names.
+For one flag's accepted values, select its entry from the installed summary.
+
+```sh
+kast describe query --jq '.content.flags[] | select(.name == "--kind")'
+```
+
+For request documents, use the [targeted discovery commands](public-cli.md#discover-only-what-you-need).
+Export a full descriptor only when the task needs the full contract.
 
 ## Select the exact declaration
 
@@ -35,7 +39,7 @@ kast describe query --section examples
 Apply known path and source-set exclusions before discovery and each source read.
 The default source sets are `main` and `test`.
 A directory at a call site does not establish the declaration's directory.
-An interface selector can search the CLASS family. Examine source before an interface claim.
+Examine source before an interface claim.
 A cursor at a call selects the enclosing declaration. It does not select the callee.
 Ambiguous overloads need a qualified stop.
 

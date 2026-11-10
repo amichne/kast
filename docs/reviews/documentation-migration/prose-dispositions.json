@@ -3077,7 +3077,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/transport/harness-delivery.md",
-        "sourceSha256": "e1d7d4c7a74267ef26e0fb1fb387f90b0d47a25415ee3081578a39b5cc657c83",
+        "sourceSha256": "12bf1d76d4b30bc2a728fa1b452e79e105097305678a32b065548188bf514661",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 11.59 exceeds the shared advisory target of 8.",
