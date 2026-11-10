@@ -6089,13 +6089,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/development/knowledge-upkeep.md",
-        "sourceSha256": "8ac14cf385f4d496876ff61efde88818b1e436dea0cdc2dacfcee780b705c284",
+        "sourceSha256": "4f3c834690946521cbeff93ca151e4c546b3fc1b3c69c05ccb1870765e509a28",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.00 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep source-impact assessment, native Claim review, and publication evidence with exact identifiers AGENTS.md, knowledgeImpact, and verifyKnowledgeBase. The page body matches the parent of 992e857. Only evidence metadata changed. The advisory remains visible."
+      "reason": "Keep source-impact assessment, native Claim review, and publication evidence with exact identifiers AGENTS.md, knowledgeImpact, and verifyKnowledgeBase. The page body matches 0b18cf165. OpenWiki changed the verification timestamp. The advisory remains visible."
     },
     {
       "finding": {

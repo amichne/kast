@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8ac14cf385f4d496876ff61efde88818b1e436dea0cdc2dacfcee780b705c284",
+  "pageVersion": "sha256:4f3c834690946521cbeff93ca151e4c546b3fc1b3c69c05ccb1870765e509a28",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -11,7 +11,7 @@
           "version": "repo-file-v1:sha256:b664763ec093af466ba893058ec2d7f7e72beee86c6eea9a9269cb772f0368ff"
         },
         {
-          "resource": "repo://build.gradle.kts#L765-L784",
+          "resource": "repo://build.gradle.kts#L766-L785",
           "version": "repo-lines-v1:sha256:49750b9bcf0a0e582bd76e22d0016b992efa169cd730b00d50f9384f6bc438d1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMjUzOGFhM2MyZWJkMDU4NzM3MTJiYjAwODRmYWFiNjVmYmNmNjUwNzhhZTQ4NzgxOWY2MTA4MDNjMmI3NTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhYmQ0ZjAwYjM2ZGVmNDAyZjMzNDY3ZDdlOGQ0MDJhZDZlYjI1NmJjYWI0YTI4OWU0M2FlYTU2YWQ4NDQzMDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRkN2I4YzBjMTk4NDgwNTRkMDNjMGYwNGM3ZThkOTRjMTE5ODI5MDJlMzc0NDFhMDRmOWVkZDU2OTI4NzYyNjgifQ"
         }
       ]
@@ -84,13 +84,13 @@
       "evidence": [
         {
           "resource": "repo://docs/tooling/publication.py",
-          "version": "repo-file-v1:sha256:3e5952dcee965fccae5c606d5f417142d914a0a9d1037158281837943075f863"
+          "version": "repo-file-v1:sha256:8af80802dcdcf3e532894e24f603fe9ad9c06d47d1fa925f90cfe32473309988"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T06:03:12.348Z"
+    "at": "2026-11-10T20:10:16.546Z"
   }
 }
