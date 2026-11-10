@@ -182,7 +182,7 @@
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
-          "version": "repo-file-v1:sha256:da82afb7d2af69c594149e270a7a9c24a3d46f71d99c703e0c5490f797030087"
+          "version": "repo-file-v1:sha256:1362c14cd6cfbc35f0e2e4c8d0b69087dfede2e9ed1a238dce05f862ca1de74b"
         }
       ]
     },
@@ -398,7 +398,7 @@
         },
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+          "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ]
     },
@@ -412,7 +412,7 @@
         },
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+          "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ]
     },
@@ -426,7 +426,7 @@
         },
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+          "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ]
     },
@@ -450,7 +450,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:486932ed90b3800121b6f8d6dfe1290bd018711c6fb19f999bafa084477e1a66"
+          "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt",
@@ -461,6 +461,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T05:26:56.646Z"
+    "at": "2026-11-10T15:20:01.732Z"
   }
 }
