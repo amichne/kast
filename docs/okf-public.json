@@ -2828,7 +2828,7 @@
       "content": [
         {
           "path": "docs/public/glossary.mdx",
-          "sha256": "1556ef4c821b70b97c2505fab5db3cf9edddfde4081110d7852a414b47a89f00"
+          "sha256": "52d79faed75b4fd80c876558647a424d0167156b181e4fe668979aa97e37bd6d"
         }
       ],
       "claims": [
@@ -5088,7 +5088,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
+          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         },
         {
           "path": "docs/public/reference/callables/add-declaration.mdx",
@@ -5129,7 +5129,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
+          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         },
         {
           "path": "docs/public/reference/callables/check-diagnostics.mdx",
@@ -5170,11 +5170,11 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
+          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         },
         {
           "path": "docs/public/reference/callables/query-symbols.mdx",
-          "sha256": "56839b153c4e1c06e598d3f8769a9e464bd13c3b2868edf001cb5989763a0ca4"
+          "sha256": "c2e4f3a1ba8e2f1be244733b05f3dd7ade7261536a2de9e7ff4fa5b9554d9264"
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
@@ -5211,7 +5211,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
+          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         },
         {
           "path": "docs/public/reference/callables/replace-body.mdx",
@@ -5252,7 +5252,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "4d785c7bd08aa6fdfc60f03a981adeee0ebf1e6f64885fa476a0fe3a46192ba8"
+          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         },
         {
           "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
