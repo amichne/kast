@@ -18,7 +18,9 @@ class Image:
     workspaces: Path
     settings: Path
 
-    def run(self, workspace: Path, *command: str) -> subprocess.CompletedProcess[str]:
+    def run(
+        self, workspace: Path, *command: str, options: tuple[str, ...] = ()
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [
                 sys.executable,
@@ -27,6 +29,7 @@ class Image:
                 "raise SystemExit(main(Path(sys.argv.pop(1)), Path(sys.argv.pop(1))))",
                 str(self.root),
                 str(self.workspaces),
+                *options,
                 str(workspace),
                 *command,
             ],
@@ -92,4 +95,49 @@ def test_task_rejects_a_path_outside_the_selected_project(image: Image, workspac
     assert rejected.returncode == 2
     assert "UNSAFE_PATH" in rejected.stderr
     assert rejected.stdout == ""
+    assert not image.settings.exists()
+
+
+def test_cloud_task_selects_explicit_runtime_and_workspace_parent(image: Image) -> None:
+    parent = image.workspaces.parent / "cloud repos"
+    project = parent / "project"
+    project.mkdir(parents=True)
+    # The public options must override the image defaults, including its runtime location.
+    defaults = Image(image.root.parent / "absent-default", image.workspaces, image.settings)
+    result = defaults.run(
+        project,
+        sys.executable,
+        "-c",
+        "from pathlib import Path; import sys; print(Path.cwd()); print(sys.argv[1]); sys.exit(19)",
+        "literal; $(false) *",
+        options=("--runtime-root", str(image.root), "--workspace-root", str(parent)),
+    )
+    assert result.returncode == 19, result.stderr
+    assert result.stdout.splitlines() == [str(project), "literal; $(false) *"]
+    entries = ElementTree.parse(image.settings).findall("./component/option/map/entry")
+    assert [entry.attrib for entry in entries] == [{"key": str(project), "value": "true"}]
+
+
+@pytest.mark.parametrize("selection", ["parent", "outside", "alias"])
+def test_cloud_task_rejects_invalid_explicit_scope(image: Image, selection: str) -> None:
+    parent = image.workspaces.parent / "cloud"
+    parent.mkdir()
+    project = parent / "project"
+    project.mkdir()
+    alias = image.workspaces.parent / "alias"
+    alias.symlink_to(parent, target_is_directory=True)
+    scope = alias if selection == "alias" else parent
+    workspace = {"parent": parent, "outside": image.workspaces, "alias": alias / "project"}[
+        selection
+    ]
+    result = image.run(
+        workspace,
+        sys.executable,
+        "-c",
+        "print('unexpected child')",
+        options=("--workspace-root", str(scope)),
+    )
+    assert result.returncode == 2
+    assert "UNSAFE_PATH" in result.stderr
+    assert result.stdout == ""
     assert not image.settings.exists()

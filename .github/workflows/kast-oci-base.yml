@@ -78,13 +78,19 @@ jobs:
           docker run --rm --network none --platform linux/amd64 "$IMAGE" \
             /opt/kast/runtime/runtime/kast-analysis-host/jbr/bin/java -version
 
-      - name: Prove compiler queries through the image in a fresh container
+      - name: Prove compiler queries across separate cloud commands
         run: |
-          docker run --rm --init --platform linux/amd64 \
+          evidence="$RUNNER_TEMP/kast-cloud-evidence"
+          install -d -m 777 "$evidence"
+          container="$(docker create --init --platform linux/amd64 \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/source,readonly" \
-            "$IMAGE" bash -euc '
-              fixture=/workspace/fixture
-              mkdir "$fixture"
+            --mount "type=bind,src=$evidence,dst=/evidence" \
+            "$IMAGE" sleep infinity)"
+          trap 'docker rm --force "$container" >/dev/null' EXIT
+          docker start "$container" >/dev/null
+          docker exec "$container" bash -euc '
+              fixture=/home/kast/task-repos/fixture
+              mkdir -p "$fixture"
               cp -R /source/experiments/host-observation/static-callback-fixture/. "$fixture"
               cp -R /source/experiments/host-observation/composed-host-fixture-overlay/. "$fixture"
               mkdir "$fixture/gradle"
@@ -93,9 +99,27 @@ jobs:
               rejected=0
               kast-task /workspace true || rejected=$?
               [[ "$rejected" -eq 2 ]]
-              kast-task "$fixture" python3 /source/packaging/composed_host_probe.py \
-                --root /opt/kast/runtime --fixture "$fixture" --evidence /workspace/evidence
+              kast-task --runtime-root /opt/kast/runtime --workspace-root /home/kast/task-repos \
+                "$fixture" true
             '
+          docker exec "$container" python3 /source/packaging/composed_host_probe.py \
+            --root /opt/kast/runtime --fixture /home/kast/task-repos/fixture \
+            --evidence /evidence/first-command
+          docker exec "$container" python3 /source/packaging/cloud/verify-kast.py \
+            --root /opt/kast/runtime --workspace /home/kast/task-repos/fixture \
+            --name invokeCallback --in invocation --source-set main \
+            --expected-qualified-name fixture.staticcallbacks.invocation.invokeCallback \
+            > "$evidence/second-command.json"
+          cat "$evidence/second-command.json"
+
+      - name: Preserve cloud command evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-oci-evidence-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/kast-cloud-evidence
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Push and pull the qualified image by digest
         if: inputs.publish
