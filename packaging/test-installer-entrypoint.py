@@ -400,9 +400,9 @@ if [ "$1" = --internal-install ]; then
   case "$2" in
     preflight|preflight-reset) ;;
     restore-connections) printf 'restore-connections\\n' >> "$TEST_LOG" ;;
-    refresh-guidance)
+    refresh-guidance|refresh-guidance-with-codex)
       [ ! -d "$KAST_INSTALL_ROOT/recovery/replacement" ] || exit 94
-      printf 'guidance:%s\\n' "$KAST_INSTALL_CODEX_GUIDANCE" >> "$TEST_LOG"
+      printf 'guidance:%s\\n' "$2" >> "$TEST_LOG"
       [ "${FAIL_GUIDANCE:-0}" = 0 ] || exit "$FAIL_GUIDANCE"
       ;;
     reset)
@@ -675,18 +675,25 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertNotIn('connect:codex:mcp', log.read_text().splitlines())
 
     def test_guidance_refresh_runs_after_seal_for_existing_harnesses(self):
-        for refresh_exit in (0, 17):
-            with self.subTest(refresh_exit=refresh_exit), tempfile.TemporaryDirectory() as directory:
+        for option, action, refresh_exit in (
+            ('--skip-codex-plugin', 'refresh-guidance', 0),
+            ('--skip-codex-plugin', 'refresh-guidance', 17),
+            ('--install-codex-plugin', 'refresh-guidance-with-codex', 0),
+        ):
+            with self.subTest(option=option, refresh_exit=refresh_exit), tempfile.TemporaryDirectory() as directory:
                 idea, environment, _, log = self.upgrade_fixture(
                     directory, retained_replacement=True, guidance_refresh=True,
                 )
+                codex = Path(directory) / 'bin/codex'
+                codex.write_text('#!/bin/sh\nexit 92\n')
+                codex.chmod(0o755)
                 environment['FAIL_GUIDANCE'] = str(refresh_exit)
                 result = subprocess.run(
-                    [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--skip-codex-plugin'],
+                    [str(BASH), str(INSTALLER), '--idea-home', str(idea), option],
                     cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
                 )
                 self.assertEqual(result.returncode == 0, refresh_exit == 0, result.stderr)
-                self.assertEqual(log.read_text().splitlines(), ['service', 'plugin', 'review', 'guidance:skip'])
+                self.assertEqual(log.read_text().splitlines(), ['service', 'plugin', 'review', f'guidance:{action}'])
                 self.assertTrue((Path(environment['HOME']) / '.local/bin/kast').is_file())
                 if refresh_exit:
                     self.assertIn('Kast is installed, but guidance refresh is incomplete', result.stderr)

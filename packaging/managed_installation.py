@@ -2472,7 +2472,6 @@ def refresh_installed_guidance(
             | {
                 "HOME": str(home),
                 "KAST_INSTALL_ROOT": str(root),
-                "KAST_INSTALL_CODEX_GUIDANCE": "skip",
             },
             GUIDANCE_REFRESH_TIMEOUT_SECONDS,
         )

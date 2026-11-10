@@ -32,8 +32,12 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
         }
         "managed-retire" -> return retireManagedInstallation(root, environment)
         "managed-publish" -> return publishManagedInstallation(root, environment)
-        "refresh-guidance" ->
-            return when (val refreshed = refreshCompletedInstallation(root, environment)) {
+        "refresh-guidance",
+        "refresh-guidance-with-codex" ->
+            return when (
+                val refreshed =
+                    refreshCompletedInstallation(root, environment, arguments[1] == "refresh-guidance-with-codex")
+            ) {
                 LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
                 is LifecycleEffect.Rejected -> throw ManagementRejected("guidance-refresh", refreshed.failure.name)
             }

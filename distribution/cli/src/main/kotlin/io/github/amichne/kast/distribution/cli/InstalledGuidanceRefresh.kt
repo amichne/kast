@@ -5,7 +5,11 @@ import java.nio.file.Path
 
 internal const val GUIDANCE_REFRESH_CAPABILITY = "share/kast/guidance-refresh-v1"
 
-internal fun refreshCompletedInstallation(root: Path, environment: Map<String, String>): LifecycleEffect =
+internal fun refreshCompletedInstallation(
+    root: Path,
+    environment: Map<String, String>,
+    enrollCodex: Boolean,
+): LifecycleEffect =
     try {
         val installation = selectedInstallation(root)
         val manifest = readBundledManifest(installation)
@@ -26,7 +30,7 @@ internal fun refreshCompletedInstallation(root: Path, environment: Map<String, S
                         root,
                         home.directory.path,
                         environment,
-                        environment["KAST_INSTALL_CODEX_GUIDANCE"] == "register",
+                        enrollCodex,
                     )
                 is ConnectionDirectoryAdmission.Rejected ->
                     LifecycleEffect.Rejected(LifecycleFailure.OWNERSHIP_UNPROVEN)

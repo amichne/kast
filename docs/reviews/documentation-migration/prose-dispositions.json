@@ -29,7 +29,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/agent-harnesses.mdx",
-        "sourceSha256": "4d8177380d5126cf1a47533955a619bc7235d2a503e95cbfc961d4224d62a5b1",
+        "sourceSha256": "94184ae3e6a115ba67fc9d6c10b651f3af1d9af43b44c86c74be0109bf7446d7",
         "rule": "HowTo.Steps",
         "line": 1,
         "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
@@ -221,7 +221,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/integrations.mdx",
-        "sourceSha256": "abeac0d98f21430f3c545336f1be24f2ef1dbfe497b6ae2b70186093617f81d2",
+        "sourceSha256": "dfd818109256b677dceb64580193645a4124f56837eabd380ef1f0405e7d8298",
         "rule": "HowTo.Steps",
         "line": 1,
         "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
@@ -893,7 +893,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/public-tools.md",
-        "sourceSha256": "8ba47dbc1793d38125fcd3a629114f82f53ecd38568eae328a4756c3ef17438a",
+        "sourceSha256": "e7542e2a161244f2de26b7f6a0f99a33f358de1627c5c2c52008799a8ad8cbe6",
         "rule": "Slopsentral.LongSentence",
         "line": 290,
         "message": "Long sentence: 26 words.",
@@ -905,7 +905,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/public-tools.md",
-        "sourceSha256": "8ba47dbc1793d38125fcd3a629114f82f53ecd38568eae328a4756c3ef17438a",
+        "sourceSha256": "e7542e2a161244f2de26b7f6a0f99a33f358de1627c5c2c52008799a8ad8cbe6",
         "rule": "Slopsentral.LongSentence",
         "line": 292,
         "message": "Long sentence: 44 words.",
@@ -917,7 +917,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/public-tools.md",
-        "sourceSha256": "8ba47dbc1793d38125fcd3a629114f82f53ecd38568eae328a4756c3ef17438a",
+        "sourceSha256": "e7542e2a161244f2de26b7f6a0f99a33f358de1627c5c2c52008799a8ad8cbe6",
         "rule": "Slopsentral.LongSentence",
         "line": 292,
         "message": "Long sentence: 51 words.",
@@ -929,7 +929,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/public-tools.md",
-        "sourceSha256": "8ba47dbc1793d38125fcd3a629114f82f53ecd38568eae328a4756c3ef17438a",
+        "sourceSha256": "e7542e2a161244f2de26b7f6a0f99a33f358de1627c5c2c52008799a8ad8cbe6",
         "rule": "Slopsentral.LongSentence",
         "line": 334,
         "message": "Long sentence: 28 words.",
@@ -941,7 +941,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/public-tools.md",
-        "sourceSha256": "8ba47dbc1793d38125fcd3a629114f82f53ecd38568eae328a4756c3ef17438a",
+        "sourceSha256": "e7542e2a161244f2de26b7f6a0f99a33f358de1627c5c2c52008799a8ad8cbe6",
         "rule": "Slopsentral.LongSentence",
         "line": 364,
         "message": "Long sentence: 26 words.",
@@ -953,7 +953,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/public-tools.md",
-        "sourceSha256": "8ba47dbc1793d38125fcd3a629114f82f53ecd38568eae328a4756c3ef17438a",
+        "sourceSha256": "e7542e2a161244f2de26b7f6a0f99a33f358de1627c5c2c52008799a8ad8cbe6",
         "rule": "Slopsentral.LongSentence",
         "line": 433,
         "message": "Long sentence: 26 words.",
@@ -965,7 +965,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/public-tools.md",
-        "sourceSha256": "8ba47dbc1793d38125fcd3a629114f82f53ecd38568eae328a4756c3ef17438a",
+        "sourceSha256": "e7542e2a161244f2de26b7f6a0f99a33f358de1627c5c2c52008799a8ad8cbe6",
         "rule": "Slopsentral.LongSentence",
         "line": 437,
         "message": "Long sentence: 29 words.",
@@ -977,7 +977,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/public-tools.md",
-        "sourceSha256": "8ba47dbc1793d38125fcd3a629114f82f53ecd38568eae328a4756c3ef17438a",
+        "sourceSha256": "e7542e2a161244f2de26b7f6a0f99a33f358de1627c5c2c52008799a8ad8cbe6",
         "rule": "Slopsentral.LongSentence",
         "line": 481,
         "message": "Long sentence: 31 words.",
@@ -1157,10 +1157,10 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/management-and-connections.md",
-        "sourceSha256": "636af4042071bfe5c471e6903c87d0d5fdee82a3d2ffd6f37b9fe136da6e3c2c",
+        "sourceSha256": "7af2dbc86aee1ab3d7c811ff35fc0c192ae49e5ad3f33c78fdc0a665fba8a583",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 13.10 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 11.50 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
       "reason": "Keep native management ownership, captured release selection and optional MCP registration. The new physical temporary-file rule explains how aliased macOS temporary directories produce physical record paths while consumers retain strict ownership checks. Exact KastManagementMain and CLI identifiers are source routes. The grade-8 advisory remains unmet and reader comprehension is unmeasured."
@@ -2705,7 +2705,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/queries/public-admission.md",
-        "sourceSha256": "cab50c0b9277ffcec0bc398e4ed082839e020baaa5aff6f346dc02cf69716813",
+        "sourceSha256": "b49979a1b643b09e765a7763385f6cc143a86c28a4425ed349ce11ea4c0ae0d4",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 13.79 exceeds the shared advisory target of 8.",
@@ -2729,7 +2729,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/queries/trace-and-completion.md",
-        "sourceSha256": "308ecf0fff110afd99fc6ba6554036ae6469fa1d9b707c1403cbae23e82d040f",
+        "sourceSha256": "2e1b4edd6251f82ef1d67ed80d1bb5725a6b2e0b89e4d510483d85668bd6cfce",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.76 exceeds the shared advisory target of 8.",
@@ -3077,10 +3077,10 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/transport/harness-delivery.md",
-        "sourceSha256": "0867ca90f3f8f46cbd9c61ad1ffe89138450368b9c6dca748a4059a4aa50c303",
+        "sourceSha256": "d339946d9ae2386a00cc24e63855872224839f5e6b0a9b0f2a58d435df11a8a1",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 11.61 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 11.59 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
       "reason": "Keep asynchronous exact-workspace preparation, model-visible wait guidance, stale-session rejection, bounded context, and optional MCP availability distinct. Exact CLI, MCP, Node, and resource identifiers preserve these contracts. The grade target remains unmet; reader comprehension remains unmeasured."
@@ -3233,7 +3233,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/public-tools.md",
-        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "sourceSha256": "e7542e2a161244f2de26b7f6a0f99a33f358de1627c5c2c52008799a8ad8cbe6",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.77 exceeds the shared advisory target of 8.",
@@ -3341,7 +3341,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/public-tools.md",
-        "sourceSha256": "2f312476a8de903983b08b7a56f1f14d8b5fdaf7b9a9ddd23dcd5d515b76858b",
+        "sourceSha256": "e7542e2a161244f2de26b7f6a0f99a33f358de1627c5c2c52008799a8ad8cbe6",
         "rule": "Slopsentral.LongSentence",
         "line": 524,
         "message": "Long sentence: 27 words.",
@@ -3365,7 +3365,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
-        "sourceSha256": "af4e0b6dfbdc38d6f7718ed1e42e27109e2e8ab4a3ce1bb886f1a9f551967501",
+        "sourceSha256": "2be18075b492aa51f0457dd7e944a0d78e8c5647232089bd8afc212bfdafbaf4",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 11.82 exceeds the shared advisory target of 8.",
@@ -3737,7 +3737,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/architecture.md",
-        "sourceSha256": "dc315d94fdf0f15b4aaf94ff6a10d34d6c4b9888d919f9ad77a4418fc6125806",
+        "sourceSha256": "13d576abf494b76527e76e9fee52584c52c359b678a1b5169b5be70f3c44cfc3",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.91 exceeds the shared advisory target of 8.",
@@ -3749,7 +3749,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/architecture.md",
-        "sourceSha256": "dc315d94fdf0f15b4aaf94ff6a10d34d6c4b9888d919f9ad77a4418fc6125806",
+        "sourceSha256": "13d576abf494b76527e76e9fee52584c52c359b678a1b5169b5be70f3c44cfc3",
         "rule": "Slopsentral.LongSentence",
         "line": 126,
         "message": "Long sentence: 27 words.",
@@ -5957,9 +5957,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "c8291a0d7938fa9aec2843a98782c0fc0b9ad8c9adff8d32a95f0b2d805bda51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 702,
+        "line": 705,
         "message": "Long sentence: 35 words.",
         "severity": "warning"
       },
@@ -6101,7 +6101,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/installation-and-managed-files.md",
-        "sourceSha256": "0a83d4cb99d84598175acd66f1a1506a1ae7b868a47dab736335f780649ee9b2",
+        "sourceSha256": "77f06a1becc415e56676a1db0b41fc465bad9119f35ae96ca97b091eb6462727",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.05 exceeds the shared advisory target of 8.",
@@ -6113,7 +6113,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/installation-and-managed-files.md",
-        "sourceSha256": "0a83d4cb99d84598175acd66f1a1506a1ae7b868a47dab736335f780649ee9b2",
+        "sourceSha256": "77f06a1becc415e56676a1db0b41fc465bad9119f35ae96ca97b091eb6462727",
         "rule": "Slopsentral.LongSentence",
         "line": 106,
         "message": "Long sentence: 26 words.",
@@ -6437,7 +6437,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "51b2bc5778a6d023dfeacb3768c960c986b2b8f7b8f44a39e708d896edfd4418",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.74 exceeds the shared advisory target of 8.",
@@ -6485,13 +6485,13 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "51b2bc5778a6d023dfeacb3768c960c986b2b8f7b8f44a39e708d896edfd4418",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 589,
+        "line": 595,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
-      "reason": "Keep the bounded launchctl retirement deadline and finite failures beside OBSERVE_BEFORE, BOOTOUT, and OBSERVE_AFTER outcomes. Command arguments and child output stay excluded. This sentence matches the parent of 992e857. Its current line and source digest bind this review. The advisory remains visible."
+      "reason": "Keep the bounded launchctl retirement deadline and finite failures beside OBSERVE_BEFORE, BOOTOUT, and OBSERVE_AFTER outcomes. Command arguments and child output stay excluded. This sentence matches the parent of 992e857. Its current line and source digest bind this review. The advisory remains visible. Keep the bounded launchctl retirement deadline and finite failures beside OBSERVE_BEFORE, BOOTOUT, and OBSERVE_AFTER outcomes. Command arguments and child output stay excluded. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
     },
     {
       "finding": {
@@ -6641,9 +6641,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 404,
+        "line": 408,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
@@ -6653,9 +6653,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 406,
+        "line": 410,
         "message": "Long sentence: 36 words.",
         "severity": "warning"
       },
@@ -6665,9 +6665,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 406,
+        "line": 410,
         "message": "Long sentence: 41 words.",
         "severity": "warning"
       },
@@ -6677,21 +6677,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 591,
-        "message": "Long sentence: 27 words.",
-        "severity": "warning"
-      },
-      "reason": "Keep the bounded launchctl retirement deadline and finite failures beside OBSERVE_BEFORE, BOOTOUT, and OBSERVE_AFTER outcomes. Command arguments and child output stay excluded. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
-    },
-    {
-      "finding": {
-        "stage": "root-vale-3.24.0",
-        "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
-        "rule": "Slopsentral.LongSentence",
-        "line": 593,
+        "line": 597,
         "message": "Long sentence: 29 words.",
         "severity": "warning"
       },
@@ -6701,9 +6689,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 607,
+        "line": 611,
         "message": "Long sentence: 37 words.",
         "severity": "warning"
       },
@@ -6713,9 +6701,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 610,
+        "line": 614,
         "message": "Long sentence: 39 words.",
         "severity": "warning"
       },
@@ -6725,9 +6713,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 687,
+        "line": 691,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
@@ -6749,9 +6737,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 731,
+        "line": 735,
         "message": "Long sentence: 35 words.",
         "severity": "warning"
       },
@@ -6761,9 +6749,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 746,
+        "line": 750,
         "message": "Long sentence: 32 words.",
         "severity": "warning"
       },
@@ -6773,9 +6761,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 768,
+        "line": 772,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
@@ -6785,9 +6773,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
+        "sourceSha256": "059359ace0283f4f643910f5c3388b81868b8287dbdbd2cdc50b782e7fd182f4",
         "rule": "Slopsentral.LongSentence",
-        "line": 770,
+        "line": 774,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },

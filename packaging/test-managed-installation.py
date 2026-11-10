@@ -2494,8 +2494,10 @@ class FilesystemCoordinatorTest(unittest.TestCase):
         def run(
             arguments: list[str], environment: dict[str, str], timeout: float
         ) -> subprocess.CompletedProcess[bytes]:
-            self.assertEqual(environment["HOME"], str(self.home))
-            self.assertEqual(environment["KAST_INSTALL_ROOT"], str(self.root))
+            self.assertLessEqual(
+                {"HOME": str(self.home), "KAST_INSTALL_ROOT": str(self.root)}.items(),
+                environment.items(),
+            )
             self.assertGreater(timeout, 0)
             calls.append(arguments)
             return subprocess.CompletedProcess(arguments, exit_code, b"", b"")
