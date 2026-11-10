@@ -100,6 +100,8 @@ def verify_task_tools(fixture: InstallerFixture, control: Path) -> None:
     prefix = "share/kast/task-vm/"
     extracted = fixture.root / "extracted-task-tools"
     with tarfile.open(control) as archive:
+        require(not any(member.name == "share/kast/container" or member.name.startswith("share/kast/container/")
+                        for member in archive.getmembers()), "retired Python container payload")
         members = [member for member in archive.getmembers() if member.name.startswith(prefix)]
         required = {
             "bin/kast-task-vm", "bin/kast-task-vm.lock", "bin/setup-kast", "bin/setup-kast.lock",
@@ -143,6 +145,23 @@ def verify_task_tools(fixture: InstallerFixture, control: Path) -> None:
     require(result.returncode == 1 and json.loads(result.stdout) == asdict(TaskVmRejection())
             and not marker.exists() and not output.exists() and not store.exists(),
             "extracted task runner did not reject the untrusted bundle before effects:\n" + result.stderr[-4096:])
+
+
+def verify_native_container_help(fixture: InstallerFixture, product: Path) -> None:
+    """Use the actual native executable without installed resources, HOME, or host tools."""
+    isolated = fixture.root / "native-container-help"
+    isolated.mkdir()
+    empty_path = isolated / "empty-path"
+    empty_path.mkdir()
+    launcher = isolated / "kast"
+    shutil.copy2(product / "share/kast/libexec/kast-management", launcher)
+    for arguments in (("container", "--help"), ("container", "run", "--help")):
+        result = subprocess.run([str(launcher), *arguments], cwd=isolated,
+                                env={"PATH": str(empty_path), "LANG": "C", "NO_COLOR": "1"},
+                                capture_output=True, text=True, timeout=30)
+        require(result.returncode == 0 and "Colima" in result.stdout and "--image" in result.stdout
+                and "--workspace" in result.stdout,
+                "native container help failed without host tools:\n" + result.stderr[-4096:])
 
 
 def verify_plugin_archive(plugin: Path, host_version: str, provided_contract: dict, idea_release_line: str = "262") -> None:
@@ -317,6 +336,7 @@ def main() -> None:
         pair = verify_artifacts(product, paths["KAST_CONTROL_ARCHIVE"], paths["KAST_HOSTED_PLUGIN_ARCHIVE"],
                                 paths["KAST_HOST_RELEASE_RECORD"])
         verify_task_tools(fixture, pair.control)
+        verify_native_container_help(fixture, product)
         verify_launcher(fixture, product, pair)
         verify_assembled_installer(fixture, pair, product)
         fixture.mark_passed()

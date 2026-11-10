@@ -13,8 +13,16 @@ internal val publicQueryNamespaces = setOf("query", "result", "source", "diagnos
 
 internal class PublicQueryNamespace(private val namespace: String) : ManagementNode(namespace) {
     override fun help(context: Context) =
-        if (namespace == "hook") "Prepare a supported workspace through the shared session hook."
-        else "Use the public query CLI and its packaged contract."
+        when (namespace) {
+            "query" -> "Find Kotlin declarations and read source relationships."
+            "result" -> "Read or resume a retained query result."
+            "source" -> "Read source from an issued reference."
+            "diagnostic" -> "Read compiler diagnostics for a selected path."
+            "describe" -> "Discover installed commands, schemas, and examples."
+            "hook" -> "Prepare a supported workspace through the shared session hook."
+            "workspace" -> "Wait for the selected workspace to become ready."
+            else -> error("Unknown public query namespace: $namespace")
+        }
 
     override fun selection(): ManagementCommand? = null
 }
@@ -115,24 +123,40 @@ internal fun runOwnedPublicQueryChild(
     directory: Path,
     environment: Map<String, String>,
     output: OwnedChildOutput = OwnedChildOutput.Inherited,
-): Int {
-    val owner = PublicQueryChildOwner()
-    val interrupt = Signal("INT")
-    val terminate = Signal("TERM")
-    // These process-entry handlers stay installed through exit, including after the child is reaped.
-    Signal.handle(interrupt) { owner.cancel(PublicQuerySignal.INTERRUPT) }
-    Signal.handle(terminate) { owner.cancel(PublicQuerySignal.TERMINATE) }
-    return owner.run(output) {
-        ProcessBuilder(command)
-            .directory(directory.toFile())
-            .apply {
-                environment().clear()
-                environment().putAll(environment)
-            }
-            .inheritIO()
-            .apply { if (output is OwnedChildOutput.Document) redirectOutput(ProcessBuilder.Redirect.PIPE) }
-            .start()
+): Int = OwnedChildSession().run(command, directory, environment, output)
+
+/** One process-entry signal owner spans setup children, gaps, and the final task. */
+internal class OwnedChildSession {
+    private val owner = PublicQueryChildOwner()
+
+    init {
+        Signal.handle(Signal("INT")) { cancel(PublicQuerySignal.INTERRUPT) }
+        Signal.handle(Signal("TERM")) { cancel(PublicQuerySignal.TERMINATE) }
     }
+
+    fun cancel(signal: PublicQuerySignal) = owner.cancel(signal)
+
+    fun run(
+        command: List<String>,
+        directory: Path,
+        environment: Map<String, String>,
+        output: OwnedChildOutput = OwnedChildOutput.Inherited,
+        onCancel: (PublicQuerySignal, Process) -> Unit = { _, _ -> },
+    ): Int =
+        owner.run(output, onCancel) {
+            ProcessBuilder(command)
+                .directory(directory.toFile())
+                .apply {
+                    environment().clear()
+                    environment().putAll(environment)
+                }
+                .inheritIO()
+                .apply {
+                    if (output != OwnedChildOutput.Inherited) redirectOutput(ProcessBuilder.Redirect.PIPE)
+                    if (output is OwnedChildOutput.Capture) redirectInput(ProcessBuilder.Redirect.PIPE)
+                }
+                .start()
+        }
 }
 
 private sealed interface PublicQueryChildState {
@@ -140,7 +164,7 @@ private sealed interface PublicQueryChildState {
 
     data class Cancelled(val signal: PublicQuerySignal) : PublicQueryChildState
 
-    data class Running(val child: Process) : PublicQueryChildState
+    data class Running(val child: Process, val onCancel: (PublicQuerySignal, Process) -> Unit) : PublicQueryChildState
 
     data object Reaped : PublicQueryChildState
 }
@@ -148,14 +172,18 @@ private sealed interface PublicQueryChildState {
 private class PublicQueryChildOwner {
     private var state: PublicQueryChildState = PublicQueryChildState.Pending
 
-    fun run(output: OwnedChildOutput, start: () -> Process): Int {
+    fun run(
+        output: OwnedChildOutput,
+        onCancel: (PublicQuerySignal, Process) -> Unit,
+        start: () -> Process,
+    ): Int {
         val started =
             synchronized(this) {
                 when (val current = state) {
-                    PublicQueryChildState.Pending -> PublicQueryChildState.Running(start()).also { state = it }
+                    PublicQueryChildState.Pending,
+                    PublicQueryChildState.Reaped -> PublicQueryChildState.Running(start(), onCancel).also { state = it }
                     is PublicQueryChildState.Cancelled -> current
-                    is PublicQueryChildState.Running,
-                    PublicQueryChildState.Reaped -> error("Public query child already started")
+                    is PublicQueryChildState.Running -> error("Owned child already running")
                 }
             }
         return when (started) {
@@ -169,10 +197,17 @@ private class PublicQueryChildOwner {
     @Synchronized
     fun cancel(signal: PublicQuerySignal) {
         when (val current = state) {
-            PublicQueryChildState.Pending -> state = PublicQueryChildState.Cancelled(signal)
-            is PublicQueryChildState.Running -> forwardPublicQuerySignal(current.child, signal)
-            is PublicQueryChildState.Cancelled,
-            PublicQueryChildState.Reaped -> Unit
+            PublicQueryChildState.Pending,
+            PublicQueryChildState.Reaped -> state = PublicQueryChildState.Cancelled(signal)
+            is PublicQueryChildState.Running -> {
+                state = PublicQueryChildState.Cancelled(signal)
+                try {
+                    if (current.child.isAlive) current.onCancel(signal, current.child)
+                } finally {
+                    forwardPublicQuerySignal(current.child, signal)
+                }
+            }
+            is PublicQueryChildState.Cancelled -> Unit
         }
     }
 
@@ -181,12 +216,9 @@ private class PublicQueryChildOwner {
             val delivery = deliverOwnedChildOutput(child, output)
             if (delivery is ChildOutputDelivery.Rejected && child.isAlive) child.destroyForcibly()
             val status = child.waitFor()
-            when (delivery) {
-                ChildOutputDelivery.Delivered -> status
-                is ChildOutputDelivery.Rejected ->
-                    if (status in PublicQuerySignal.entries.map { it.exit }) status else delivery.exit
-            }
+            completedExit(status, delivery)
         } catch (_: InterruptedException) {
+            cancel(PublicQuerySignal.TERMINATE)
             child.destroy()
             waitForOwnedChild(child)
             Thread.currentThread().interrupt()
@@ -196,7 +228,24 @@ private class PublicQueryChildOwner {
                 child.destroyForcibly()
                 waitForOwnedChild(child)
             }
-            synchronized(this) { state = PublicQueryChildState.Reaped }
+            synchronized(this) {
+                if (state !is PublicQueryChildState.Cancelled) state = PublicQueryChildState.Reaped
+            }
+        }
+
+    private fun completedExit(status: Int, delivery: ChildOutputDelivery): Int =
+        synchronized(this) {
+            when (val current = state) {
+                is PublicQueryChildState.Cancelled -> current.signal.exit
+                is PublicQueryChildState.Running ->
+                    when (delivery) {
+                        ChildOutputDelivery.Delivered -> status
+                        is ChildOutputDelivery.Rejected ->
+                            if (status in PublicQuerySignal.entries.map { it.exit }) status else delivery.exit
+                    }
+                PublicQueryChildState.Pending,
+                PublicQueryChildState.Reaped -> error("Owned child lost before reap")
+            }
         }
 }
 

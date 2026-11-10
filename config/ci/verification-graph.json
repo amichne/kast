@@ -358,7 +358,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-            "sha256": "023d3985756d8b8e79e015c12896cb8dad27619a6765c6637bcd15de603aa7de"
+            "sha256": "792507ce0897daa1f34bc475fbf4541b864061c5afed14293247e5d3ae7a1aea"
         },
         {
             "path": "build.gradle.kts",

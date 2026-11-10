@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a6d831c03697c95847684f7bbc4a7faf9ffbecbd6be79a5a55e214ecdcc49f71",
+  "pageVersion": "sha256:7abb9715862ae09f50f762ea5f92d3f1e77ef7cfd6ce6bfc1eb755ee18d467ff",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -351,7 +351,7 @@
           "version": "repo-lines-v1:sha256:bda316970519f11edbade4ab96772b4940c74d5ffbff961070b3cfab2dd88aab:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3YzFkYTZlZWFlZjE3NDY4ZDc5ZGI0MGFkMDRjN2NjMzgzZjU1OGNlYzRhYTlhMzI5NmJlZTgxMDc2MDM3YjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgxYTUyNmU5ZTE2ZmNmODFjNjcwNWNkYzAyNGFmY2FjMWYyODdiNDQ1MWU1Mzg4NjQ4YWMyODk3NmRiMTMxOWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4MWVjZGRlZDQxNmEwMjkwNGNlMjdiZWMwMzlkYTY4MTY5YjBmODNiZTgwZjY1ODI1NTJlNjhiODIzZGZjZmUifQ"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt#L138-L146",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt#L139-L147",
           "version": "repo-lines-v1:sha256:4f7fc80bd697d60d8eda399267d9c071de0969e165e2bc875eaa7a62cdcc7a2c:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWViMTVkZGM2MTBmNTRiYzBjODQ1NmQwYjVkYzMzODdhNWM5Y2VjMGE3MTRiYjA4Mjg1ODdlN2I2MjU0Mzk5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjUxZjNhZGY1ZmFhNDk5ODEwOGUyYjkyMWM2YjJlZjgyODgxZjRiZmFlZWI2Njc4NjZjNWY0YmMzNTc0NmZiMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhkMmMyYzIxMjY3M2ZlYTZkZDBkZGM1MTExMzdmZDJkODkyYmNjYmEyZmE4YWNkOGYyMzRhYTU1YWRhZDRlNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
@@ -369,15 +369,15 @@
       "statement": "The production Host packages separate archives and descriptors for IDEA release lines 262 and 263.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L245-L271",
+          "resource": "repo://build.gradle.kts#L248-L274",
           "version": "repo-lines-v1:sha256:9068766bc806480d3ee0c88c13d71ad2590783774a18f47f4f74dccdea44cd0d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5YjI5ZGY1MmEzZDBhNGI1M2U5Njk4ZTJjODBiN2E4YmI0YTJlOGYwN2Y4MTM1NDY1OTM1OWRkYjlmZjg2NWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlOWQzNGFiOGRhZmRkZjg5N2Y5MDY5ZTdmNzQ1M2E3NmRmOTQzMjc3ZGMyNGI2NTZlNTMzMTZkNTYxY2U0YmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiNTUzNWExY2MyMTI3NWU2YTQxMWQ0ZDEyOGZmNzkxZDhlN2ViOTY5MWRhMTM4Y2NiYTkzYTlmNWFjYzBlN2YifQ"
         },
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L140-L146",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L141-L147",
           "version": "repo-lines-v1:sha256:0cc2ab74db17804167c7a6d0b53da6e128c898371abd3522f26f638069f18f18:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDkyMGY4NzJjNGFlNThlMWZiMTUyN2YzYjA5NzRlYWMxMWY0M2NhYzZkMjkxMDA5MjZhNGM1YmNjYTY5MGMzNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWEwMzVjZjYxOTdlOGU2MTkwNDUyMzBlY2U0YWM5ODE0MmFlYzI0ZDVmN2YxMTA4MmYyNzYwMDVlZTg3M2E0YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDdlNTE3MzE3YTgwYzQ1NmQwYzY3MTZkZmUzOWI1MzgzZGE2ZTQ4NDdkMzFiOGVhMWZhNTk3ZGNlZjhlOTUwZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmJhN2Y2MGNkZDkzYTM4YjQ1ZDYyYThlZmU1YTI1MTE4Y2ExOGYyZDNlNWFjNDQwMzQxNmIyMTlkNWE1NjhjOSJ9"
         },
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L203-L237",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L204-L238",
           "version": "repo-lines-v1:sha256:f7b953a6ea3ff19a23bc9edab436e771ae302989c7514823569f5f5820ee881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MWVhZWZmMDczZGYwYTFiYjI1ZTYzODllMGEyN2QxYTQxNWRjZDhkOGJjOGYxY2E5MDQ3NjJiNWQ3NzM3OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDJmZWE4MjFlNjZiYjIzODFhZTc4MzMyNTllYmU0NTcyZWFlYmViNjNiNmI5M2NkZWQzYWVkY2FkNzRlYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEifQ"
         }
       ]
@@ -403,6 +403,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T22:26:46.446Z"
+    "at": "2026-11-10T06:03:12.348Z"
   }
 }

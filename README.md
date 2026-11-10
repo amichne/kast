@@ -44,6 +44,19 @@ Kast results keep their source scope, completion status, and evidence limits.
 [CLI reference](https://kast.michne.com/reference/cli/) ·
 [Help](https://kast.michne.com/troubleshooting/)
 
+## Container workspace
+
+`kast container` runs tasks in a mounted Git worktree with a self-contained IDEA runtime.
+Use a task name to keep private runtime state and caches for that worktree:
+
+```shell
+kast container run --name fix-parser -- ./gradlew test
+```
+
+Normal use needs Colima and a prepared native image. Gradle caches and IDEA state persist across commands.
+See the [container guide](packaging/container/README.md) for image setup, mounted files, and cache behavior.
+The [1.0.0 readiness report](docs/reviews/1.0-readiness.md) records the remaining release requirements.
+
 ## More
 
 - [Agent capabilities](https://kast.michne.com/search/).

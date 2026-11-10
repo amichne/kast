@@ -44,6 +44,19 @@ class InstalledProductArtifactTest(unittest.TestCase):
             product.verify_task_tools(fixture, control)
             fixture.mark_passed()
 
+    def test_retired_container_payload_rejects_before_extraction(self):
+        from installer_fixture import InstallerFixture, admitted_tools
+
+        with InstallerFixture(admitted_tools(), parent=Path('/tmp').resolve()) as fixture:
+            control = fixture.root / 'control.tar'
+            with tarfile.open(control, 'w') as archive:
+                entry = tarfile.TarInfo('share/kast/container/packaging/dev_container.py')
+                archive.addfile(entry, io.BytesIO())
+            with self.assertRaisesRegex(AssertionError, 'retired Python container payload'):
+                product.verify_task_tools(fixture, control)
+            self.assertFalse((fixture.root / 'extracted-task-tools').exists())
+            fixture.mark_passed()
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

@@ -35,10 +35,10 @@ sources:
     resource: repo://packaging/test-installation-lifecycle.py
   - id: openwiki-source-988817829b83f3eaab1d41af
     resource: repo://packaging/test-managed-installation.py
-generated: { by: "codex", at: "2026-11-09T21:25:32.196Z" }
+generated: { by: "codex", at: "2026-11-10T06:03:12.348Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-09T21:29:52.400Z
+    at: 2026-11-10T06:03:12.348Z
 ---
 
 
@@ -75,6 +75,7 @@ The `cli` module produces one native Control executable at `share/kast/libexec/k
 Thin launchers select management, query, MCP, tool RPC, service, daemon, Codex, or installer entry points in that executable.
 The Control archive contains no `lib` directory, JARs, or class files.
 The producer guard rejects a second native image and compares the canonical executable with its qualified producer.
+It also rejects `share/kast/container` and its descendants, which held the retired Python container runtime.
 Published-release admission keeps support for the historical pair of native executables when the new layout marker is absent.
 `ManagedInstallationOwnedTree` admits exact destructive-recovery trees under the physical selected installation.
 Its admission rejects aliases and symlink substitutions before deletion.

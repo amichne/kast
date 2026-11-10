@@ -367,7 +367,7 @@ case "$*" in
     cp "$0" "$destination"
     printf '%s\\n' "$destination"
     ;;
-  'plugin codex') printf '%s\\n' 'plugin codex' >> "$MCP_LOG" ;;
+  'install codex') printf '%s\\n' 'install codex' >> "$MCP_LOG" ;;
   *) exit 94 ;;
 esac
 ''')
@@ -505,7 +505,7 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         result = self.run_installer()
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn('completion=commit-active', result.stderr)
-        self.assertIn("plugin codex", (self.root / "mcp-calls").read_text())
+        self.assertIn("install codex", (self.root / "mcp-calls").read_text())
         installed = self.root / "Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted"
         self.assertTrue((installed / "lib/kast-ide-hosted-1.2.3.jar").is_file())
         self.assertIn("Restart IntelliJ IDEA", result.stderr)
@@ -527,7 +527,7 @@ print(json.dumps({'status': 'retained', 'removed': [], 'retained': []}))
         result = self.run_interactive_installer("\n")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("Install the Kast plugin in Codex? [Y/n]", result.stderr)
-        self.assertIn("plugin codex", (self.root / "mcp-calls").read_text())
+        self.assertIn("install codex", (self.root / "mcp-calls").read_text())
 
     def test_staged_installer_receives_no_tool_selection(self):
         self.env.pop("KAST_APP_SERVER_TOOLS", None)

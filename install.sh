@@ -241,8 +241,8 @@ of the latest stable release. Developer installs reset the user installation aut
 
 Development builds use packaging/install-checkout.sh persistent.
 
-Installation prepares the managed MCP launcher and the IntelliJ host plugin.
-The Codex plugin starts Kast when a session needs its tools.
+Installation prepares the native CLI and the IntelliJ host plugin.
+The Codex plugin supplies CLI guidance and prepares the selected workspace.
 Upgrades review historical Kast entries one at a time when current ownership
 checks cannot admit them. Only an exact `yes` removes a reviewed entry; without
 a terminal, uncertain entries are retained and reported.
@@ -1001,9 +1001,9 @@ if [[ "$mode" == apply && "$management_preflight" == preflight-reset ]]; then
   run_installer_step "Fresh installation reset" "" "$reset_management" --internal-install reset
 fi
 
-info "The Codex plugin uses the installed MCP launcher and the IntelliJ host plugin."
+info "The Codex plugin uses the native CLI and the IntelliJ host plugin."
 if [[ "$codex_plugin_choice" == skip ]]; then
-  info "Codex plugin installation is skipped; use kast connect for your harness."
+  info "Codex plugin installation is skipped; use kast install <harness> for CLI guidance."
 fi
 note "$([[ "$mode" == plan ]] && printf 'planning' || printf 'installing') the managed payload and IntelliJ host plugin"
 
@@ -1070,7 +1070,6 @@ else
     run_installer_step "Recorded connection recovery" "" "$management_executable" --internal-install restore-connections
   fi
   if [[ "$codex_plugin_choice" == register ]]; then
-    [[ -x "$install_root/installation/bin/kast-mcp-complete" ]] || fail "installed Kast MCP launcher is unavailable"
-    "$management_executable" plugin codex
+    "$management_executable" install codex
   fi
 fi

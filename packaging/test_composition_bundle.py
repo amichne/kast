@@ -15,6 +15,7 @@ from composed_bundle import (
     BundleManifest,
     BundleRejected,
     ConfiguredTrust,
+    TrustMode,
     admit_trust_workspace,
     configure_trusted_workspace,
     extract_bundle,
@@ -152,6 +153,13 @@ def test_explicit_trust_uses_only_the_private_profile_and_preserves_existing_set
     assert result.sha256 == hashlib.sha256(expected).hexdigest()
     assert configure_trusted_workspace(state, admitted) == Rejected(Failure.INVALID_COMPONENT)
     assert result.settings.read_bytes() == expected
+    formatted = b'<?xml version="1.0" encoding="UTF-8"?>\n' + expected.replace(b"><", b">\n<")
+    _ = result.settings.write_bytes(formatted)
+    reused = trust_installed_workspace(state.parent, workspace, TrustMode.REUSE_EXACT)
+    assert reused == ConfiguredTrust(
+        workspace, result.settings, hashlib.sha256(formatted).hexdigest()
+    )
+    assert result.settings.read_bytes() == formatted
     result.settings.unlink()
     monkeypatch.setattr(
         sys,

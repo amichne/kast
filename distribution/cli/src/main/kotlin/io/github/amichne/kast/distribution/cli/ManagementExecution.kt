@@ -9,6 +9,9 @@ internal fun perform(command: ManagementCommand, output: ManagementOutput = Mana
     if (command is ManagementCommand.PublicQuery) {
         exitProcess(runInstalledPublicQuery(command.arguments, Path.of("").toAbsolutePath(), environment, output))
     }
+    if (command is ManagementCommand.Container) {
+        exitProcess(runContainer(command.command, Path.of("").toAbsolutePath(), environment))
+    }
     val home = environment["HOME"] ?: throw ManagementRejected("environment", "HOME is unavailable")
     val root =
         when (val resolved = resolveManagementRoot(environment)) {
@@ -17,6 +20,7 @@ internal fun perform(command: ManagementCommand, output: ManagementOutput = Mana
         }
     when (command) {
         is ManagementCommand.PublicQuery -> error("Public query dispatch already returned")
+        is ManagementCommand.Container -> error("Container dispatch already returned")
         is ManagementCommand.Status -> printManagementStatus(root, command.json, output)
         is ManagementCommand.Install ->
             presentProvisioning(installGuidance(root, Path.of(home), command.target, environment), command.json, output)

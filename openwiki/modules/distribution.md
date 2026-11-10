@@ -20,6 +20,8 @@ code_sources:
   - path: runtime/hosted/native/README.md
   - path: runtime/hosted/native/mixed_version_acceptance.py
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
     symbols:
       - PluginInstallOutcome
@@ -277,6 +279,8 @@ sources:
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - id: openwiki-source-16803a9d8df1ded50a107e29
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt
+  - id: openwiki-source-a387d9d545afff426d34a10a
+    resource: repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
   - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
@@ -293,6 +297,8 @@ sources:
     resource: repo://cli/src/main/native-launchers/bin/kast
   - id: openwiki-source-6e0cb99be2f37815eed2066a
     resource: repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativeForceResetCompositionTest.kt
+  - id: openwiki-source-96cd9ece37ebf3517499a8c3
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt
   - id: openwiki-source-ea2b24fdd206a91568317996
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt
   - id: openwiki-source-bae14a3ed4bc7ba21f443356
@@ -307,8 +313,12 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt
   - id: openwiki-source-4a775e59f7cd3b1cc2d7cc10
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt
+  - id: openwiki-source-2141db5e92ccbb5de75a1544
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - id: openwiki-source-b30c7b16cf2f49971ca55950
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt
+  - id: openwiki-source-e1eccbe769b8e78a5354c5ca
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt
   - id: openwiki-source-7cd4eb997a7878eca6390142
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - id: openwiki-source-ae4b8d5875d797e7d0c59ae5
@@ -341,6 +351,8 @@ sources:
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
   - id: openwiki-source-03ffc32a0ca502ab67c54b25
     resource: repo://install.sh
+  - id: openwiki-source-92f253dc3dcfce3b1698c227
+    resource: repo://packaging/dev_container.py
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
   - id: openwiki-source-4070dc53852de69cdff3bd47
@@ -365,10 +377,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-09T15:20:50.213Z" }
+generated: { by: "codex", at: "2026-11-10T06:03:12.348Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-09T21:25:32.196Z
+    at: 2026-11-10T06:03:12.348Z
 ---
 
 # Distribution and packaging
@@ -381,7 +393,7 @@ Codex and Copilot own their plugins. Pi uses native skill discovery and exact re
 Release assembly emits plugin and marketplace ZIP archives without a standalone skill archive.
 Query examples come from the public tool schema.
 
-The `distribution:cli` module owns the `Clikt` management implementation. The `cli` module composes it with the existing private entry points in one GraalVM executable. It reads a separate management ownership receipt and keeps the selected public executable path across upgrades. The executable exposes installation status, version, supplied harness registration, verified stop/reinstall (with force flags), upgrade, and uninstall. Thin private launchers select query, MCP, tool RPC, service, daemon, Codex, or installer modes in the same native executable. The Control archive contains no bundled JVM libraries.
+The `distribution:cli` module owns the `Clikt` management implementation. The `cli` module composes it with the existing private entry points in one GraalVM executable. It reads a separate management ownership receipt and keeps the selected public executable path across upgrades. The executable exposes container tasks, installation status, version, supplied harness registration, verified stop/reinstall (with force flags), upgrade, and uninstall. Thin private launchers select query, MCP, tool RPC, service, daemon, Codex, or installer modes in the same native executable. The Control archive contains no bundled JVM libraries.
 
 Installer path preflight runs before service retirement; executable publication follows control activation; fresh-pair installation also performs host activation. The release manifest qualifies bundled integration bytes before registration. Status reads installation receipts without starting Java or preparing a workspace.
 
@@ -390,6 +402,21 @@ The running coordinator supplies a bounded passive projection for its captured c
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime download adapter, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
 Root and packaging scripts orchestrate checkout installation, persistent lifecycle, release layout, and artifact checking. Control and host releases have separate artifacts and checksums. Fresh and default checkout installation select both; component installation selects only its artifact. Each hosted-plugin ZIP uses its own version and IDEA release line, with separate `idea-262.zip` and `idea-263.zip` variants. The public installer verifies its checksum, release version, plugin identity, and descriptor release line before atomically replacing only the Kast directory under IDEA's user plugin root; dry-run validates the archive without writing plugin state. The assembled-product check copies the production Control staging tree directly into an owned fixture before invoking launchers or the installer. It verifies independent artifact identities, required launchers including the native management command, and Control cold staging in the canonical layout beneath that fixture HOME. It first verifies an installed/not-requested report, the exact publication receipt and absence of Host files. It then stages the receipted Host through the production Python owner, creates an empty canonical six-table mutation database, invokes the published native uninstall and checks removal of owned Host, Control, public command and user state while preserving an unrelated sentinel. This owned native composition establishes no live IDE, model or Codex admission. The checked [configuration schema](../../packaging/configuration-schema.json) is a public boundary and must remain aligned with the Kotlin catalogue.
+
+## Native container distribution
+
+`kast container` belongs to the native management command and dispatches before installed-root admission.
+Its [runtime owner](../distribution/management-and-connections.md#native-container-tasks) selects the mounted worktree, Colima runtime, prepared image, and persistent state.
+The checkout builder prepares source images separately from ordinary installed use.
+
+Control staging excludes the retired `share/kast/container` payload.
+The producer guard and installed-product runner reject that directory and its descendants.
+The Control payload still includes the separate task-VM and installation helpers.
+
+The installed-product runner copies the actual native executable into an isolated directory for container-help admission.
+It invokes `container --help` and `container run --help` without HOME, host tools on PATH, or installed resources.
+Both commands must succeed and describe Colima, image selection, and workspace selection.
+This procedure proves standalone help when it passes. It does not prove a prepared image, task completion, or live semantic behavior.
 
 ## Managed headless assembly
 

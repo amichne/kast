@@ -415,7 +415,7 @@ if [ "$1" = --internal-install ]; then
     *) exit 93 ;;
   esac
   printf '%s\\n' "$HOME/.local/bin/kast"
-elif [ "$1" = connect ] || [ "$1" = plugin ]; then
+elif [ "$1" = install ] && [ "$2" = codex ]; then
   printf '%s' "$1" >> "$TEST_LOG"
   shift
   for argument in "$@"; do printf ':%s' "$argument" >> "$TEST_LOG"; done
@@ -663,7 +663,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertIn('plugin:codex', log.read_text().splitlines())
+            self.assertIn('install:codex', log.read_text().splitlines())
             self.assertNotIn('connect:codex:mcp', log.read_text().splitlines())
 
     def test_upgrade_finalizes_only_after_plugin_activation(self):
@@ -698,7 +698,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
                 self.assertEqual(plugin_exit, result.returncode, result.stderr)
                 self.assertEqual('Active', json.loads(receipt.read_text())['stage'])
                 self.assertFalse(transaction.exists())
-                self.assertEqual(['service', 'plugin', 'review', 'plugin:codex'], log.read_text().splitlines())
+                self.assertEqual(['service', 'plugin', 'review', 'install:codex'], log.read_text().splitlines())
                 self.assertTrue((installation / 'bin/kast-mcp-complete').is_file())
                 self.assertTrue((Path(environment['KAST_BIN_DIR']) / 'kast').is_file())
                 if plugin_exit:
@@ -1322,7 +1322,7 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
         self.assertIn("██╗  ██╗", result.stderr)
         self.assertIn("IntelliJ IDEA 2026.2.1 (build 262.1234)", result.stderr)
         self.assertIn("managed payload", result.stderr)
-        self.assertIn("installed MCP launcher", result.stderr)
+        self.assertIn("native CLI", result.stderr)
         self.assertNotIn("Install the Kast plugin in Codex?", result.stderr)
         self.assertIn("profile=persistent mode=plan", result.stderr)
 

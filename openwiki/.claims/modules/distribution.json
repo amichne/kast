@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5af67405c1a818fb454cc4bbac9bf8d5425082df786a27a1d5c7ccfe2fb2672b",
+  "pageVersion": "sha256:51b2bc5778a6d023dfeacb3768c960c986b2b8f7b8f44a39e708d896edfd4418",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:d56eec2730ea1d1a44b014dac0498af3e0853fe96aae4c3b97a433a5fa0227d7"
+          "version": "repo-file-v1:sha256:1ce74689e435a36166290065b282c450f452e685d763492a926aeed59fbff0d9"
         },
         {
           "resource": "repo://packaging/test-installer-removal.py",
@@ -169,7 +169,7 @@
           "version": "repo-file-v1:sha256:82f00cd72889105c170a2dd2bd2b326775607ef7634b0ba6cfc2619ea772c67c"
         },
         {
-          "resource": "repo://packaging/run-installed-product.py#L202-L307",
+          "resource": "repo://packaging/run-installed-product.py#L221-L326",
           "version": "repo-lines-v1:sha256:85d5fa8f8232b14bc2eb53f37b693c2ce16c2faf2b3bca029f5d74bbc7f89d25:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0ODU1MGY3OTVlZjcxNTcyNjAzZjVlZGNlY2I5MGYzYWFlZTExOTBjYzg4YWNjNTM3ZGQxY2EwZjA1YzA2NmY3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJkNmQ0ZTA1ZmQ4ZWJmYmM3YjZjNzRkM2M1ODY3MzFjNGVjNTEwNjQ0M2MxNDliYTJjZDBkODIxOTU1OTA1MzVlIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJiYzI1ZDgxNzNkZmEwNjczYWViOGMyMDc2MzI4ZGViN2VjZmI4Zjc1NWMwZWJiOTM5YzJlNDllZWFmYTI1MjBiIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjMzg0OTFiZDAzZTYwOTYwYTJjZmU5NjA2NGIxMzE1YzFiYjIyNWE1NzMzYTUwYThjZmQzMTFkMWU2NTM4YWNlIn0"
         }
       ]
@@ -252,11 +252,11 @@
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:d56eec2730ea1d1a44b014dac0498af3e0853fe96aae4c3b97a433a5fa0227d7"
+          "version": "repo-file-v1:sha256:1ce74689e435a36166290065b282c450f452e685d763492a926aeed59fbff0d9"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:8e89f03c991dcc51911247bf929db691acc950a633b6c82bc7e44367f544411b"
+          "version": "repo-file-v1:sha256:1e5446684688e0165a31ad98758199c9d65dee36a4d922e56a1b399cd967c390"
         }
       ]
     },
@@ -625,10 +625,64 @@
           "version": "repo-file-v1:sha256:b92ddb8438e6ddc906806cdad828c9b67e99d720d09141564a17a802231bf537"
         }
       ]
+    },
+    {
+      "id": "claim_2ffe4fec2ab940839a1e68844243cf4b",
+      "statement": "Native container tasks belong to the management command and dispatch before installed-root admission. The checkout builder prepares source images separately from ordinary installed use.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt",
+          "version": "repo-file-v1:sha256:c150e3f46147a403d712fcda919ecb48dd74dc6e1ded577ddcbc421b52788543"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
+          "version": "repo-file-v1:sha256:6a31b85a835cb98a8b37d4813b127d1857168b0d2cf51031e91a059dc0f6e766"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt",
+          "version": "repo-file-v1:sha256:7c722aafcdecc006de56d21980143a6e18027221b452f374f2284f03c96a9307"
+        },
+        {
+          "resource": "repo://packaging/dev_container.py",
+          "version": "repo-file-v1:sha256:23f67e1254e4bae728b9089f69f25cdd57a7edb2961acac79ad7f953de4bbe45"
+        }
+      ]
+    },
+    {
+      "id": "claim_ddf52f5dde574ec893500e0b1901bde9",
+      "statement": "Control staging excludes share/kast/container. The producer guard and installed-product runner reject that directory and its descendants. Separate task-VM and installation helpers remain in the Control payload.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
+          "version": "repo-file-v1:sha256:792507ce0897daa1f34bc475fbf4541b864061c5afed14293247e5d3ae7a1aea"
+        },
+        {
+          "resource": "repo://build.gradle.kts#L135-L174",
+          "version": "repo-lines-v1:sha256:741bacae57d519eb873c7b2637f31c5f539bfb083fdeebadc637ad28bb6d47db:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmMjg3ZmYyYmE3MjFjMTU3NzNkMTAwZWVjM2QzYzMwM2YzZWFhNmE1YjAyZWU3NzRhMTg0N2Y4Yjc5N2ZmZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyNWNkYjlhMjNlYTQxNWU0NmVmNjZiYzE2YWI1NGRhMzg0MjE2MDFlOWU3OWQwMTVhMjJiM2UxMzZjYzg3ZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI2MTJkZTlkNmU5ODg0OTdmZjg1NWQ4MjM1ZDZmNjU3YjA2OTcwZDM5MmEzZDMzYTg1NGQ4NGY1YjhjZmNlZmEifQ"
+        },
+        {
+          "resource": "repo://packaging/run-installed-product.py#L98-L110",
+          "version": "repo-lines-v1:sha256:d1df9b25a989bf76a895cd49084af63c33680fd34f3b717509f329068b85172c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmZGI2Y2JhMDI1NjU0Njc1ZjU1NzJiNjg3NDQ4ZDQyNzQzZDRjYTY0NTgwMzg2NTJkNTIxZmY1YzZmZGEzNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyNDZkOTEzNmJlMzFjZDkxMjQzMDU1ZWJlMzQzNjRiMzY4ODg1Mjk5Y2FkNmFiYTc1MWY0NmQ5MmZkMTYyMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0NDY2Y2YyMDBkNTUwZGRhMDk2OTlkNjZjZTBhN2M3YTY3N2RiMzEyMTY3N2IwMWVhNjkxMDExZjJkZGVmNTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_af14ce6ee7e945bbaa2d9b74de341079",
+      "statement": "The installed-product runner copies the actual native executable into an isolated directory and invokes container --help and container run --help without HOME, host tools on PATH, or installed resources. Both invocations must succeed and describe Colima, image selection, and workspace selection. This admission covers standalone help, not task completion or live semantic behavior.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/run-installed-product.py#L150-L164",
+          "version": "repo-lines-v1:sha256:984705fb505d65ef7ed86a5406c77af4b6e1ec9c8ed226e7b75d270133c1a85c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNmIwYjZhMzcwMzFhNWFhN2QxMTA2YTg3Yzc2ZGNhMTRmMzM1MjdlYzA5OTI2ZDczZjg2Zjc4MDJmYThiMGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmZjQzZTcwZTZkNWZhYWIxODBhMTQyYmQ2MzBmOGY0YzM3ZjA5MDlhYzVmZWU0MzVlNGVjZWM0ZjJlN2RlZTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxNzA4MWNjNmRiYWY2ZWY0ZDU1NTRhMTVlNjEzZTAzOGZkOWRhYWU5Nzk1MWNiZDEzMDA5NmEwMzRhMGEyMzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4NzFlNGZlN2RkNDE3MjcwYzZhZGU2ZjUyMzE1N2VlMDIwY2Q5ZjA0YzYxYmFiODQ1YzQ3MDM0MDE3NDhlYmUifQ"
+        },
+        {
+          "resource": "repo://packaging/run-installed-product.py#L324-L342",
+          "version": "repo-lines-v1:sha256:09403559a931e72775c18b0cf658e97a9a0757a0a6453234708dfb6afafcecfa:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwYmM1MTI2NWRhM2M0OTRiZGQyOTQwOGMwZTE3NzY2NWJmZWFkNmZkMjc5MzZmMDU5ZDJjNTU3YjE5YTNjZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1ZjBlZThlOTJhMjdlOWNmMjE1NTAzZTkyZGQ1ZDMxMzdkMjY0Mzc0MzRiZTlhNDA4YzA3YWI4YWJhN2U1MWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczODc1ZTQzNzU5ZjdlNWU5YzcyZmViMDc3ODE1ZjI0Mzc4YzA5ZGE4OTMwZDJkNzIxOTRkOTNlZmIzNzUyNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFiOGRlYzQxZjA0OTA5YjQ3OTNkYzZlNmNmZThiNjAwNWFjZmRiZjlkYmYwNjBjYjI3NjNlMjQ5N2Y2YWU5ZTEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-09T21:25:32.196Z"
+    "at": "2026-11-10T06:03:12.348Z"
   }
 }

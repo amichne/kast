@@ -11,7 +11,41 @@ internal sealed interface OwnedChildOutput {
     data object Inherited : OwnedChildOutput
 
     data class Document(val format: CliOutputFormat) : OwnedChildOutput
+
+    class Capture : OwnedChildOutput {
+        var result: CapturedChildOutput = CapturedChildOutput.Pending
+            private set
+
+        fun read(child: Process): ChildOutputDelivery =
+            try {
+                child.outputStream.close()
+                val bytes = child.inputStream.readNBytes(MAXIMUM_CAPTURE_BYTES + 1)
+                if (bytes.size > MAXIMUM_CAPTURE_BYTES) {
+                    result = CapturedChildOutput.Rejected
+                    ChildOutputDelivery.Rejected.IO
+                } else {
+                    result = CapturedChildOutput.Read(bytes.decodeToString(throwOnInvalidSequence = true))
+                    ChildOutputDelivery.Delivered
+                }
+            } catch (_: CharacterCodingException) {
+                result = CapturedChildOutput.Rejected
+                ChildOutputDelivery.Rejected.ENCODING
+            } catch (_: IOException) {
+                result = CapturedChildOutput.Rejected
+                ChildOutputDelivery.Rejected.IO
+            }
+    }
 }
+
+internal sealed interface CapturedChildOutput {
+    data object Pending : CapturedChildOutput
+
+    data object Rejected : CapturedChildOutput
+
+    data class Read(val text: String) : CapturedChildOutput
+}
+
+private const val MAXIMUM_CAPTURE_BYTES = 1_048_576
 
 internal sealed interface ChildOutputDelivery {
     data object Delivered : ChildOutputDelivery
@@ -28,6 +62,7 @@ internal fun deliverOwnedChildOutput(child: Process, output: OwnedChildOutput): 
     when (output) {
         OwnedChildOutput.Inherited -> ChildOutputDelivery.Delivered
         is OwnedChildOutput.Document -> deliverChildDocument(child, output.format)
+        is OwnedChildOutput.Capture -> output.read(child)
     }
 
 private fun deliverChildDocument(child: Process, format: CliOutputFormat): ChildOutputDelivery =

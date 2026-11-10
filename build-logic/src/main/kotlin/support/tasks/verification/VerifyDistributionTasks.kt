@@ -62,6 +62,9 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         check(entries.none { entry ->
             entry == "lib" || entry.startsWith("lib/") || entry.endsWith(".jar") || entry.endsWith(".class")
         }) { "control product contains JVM libraries or bytecode" }
+        check(entries.none { entry -> entry == "share/kast/container" || entry.startsWith("share/kast/container/") }) {
+            "control product contains a retired Python container payload"
+        }
         val nativeExecutables = paths.filter(Files::isRegularFile).filter { path ->
             Files.newInputStream(path).use { input ->
                 java.util.HexFormat.of().formatHex(input.readNBytes(4)) in setOf(

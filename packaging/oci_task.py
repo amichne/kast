@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start a command in one selected workspace in a fresh Kast container."""
+"""Start a command in one selected workspace in a fresh Kast environment."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import os
 import sys
 from pathlib import Path
 
-from composed_bundle import BundleFailure, BundleRejected, trust_installed_workspace
+from composed_bundle import BundleFailure, BundleRejected, TrustMode, trust_installed_workspace
 from managed_headless import Rejected
 
 
@@ -16,6 +16,20 @@ def main(
     runtime_root: Path = Path("/opt/kast/runtime"), workspace_root: Path = Path("/workspace")
 ) -> int:
     parser = argparse.ArgumentParser(prog="kast-task", description=__doc__)
+    _ = parser.add_argument(
+        "--runtime-root", type=Path, default=runtime_root, help="Installed composed runtime"
+    )
+    _ = parser.add_argument(
+        "--workspace-root",
+        type=Path,
+        default=workspace_root,
+        help="Canonical parent directory for task workspaces",
+    )
+    _ = parser.add_argument(
+        "--reuse",
+        action="store_true",
+        help="Admit an existing trust grant for this exact workspace",
+    )
     _ = parser.add_argument("workspace", type=Path)
     _ = parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -23,11 +37,19 @@ def main(
     command: list[str] = args.command or ["bash"]
     if not command[0]:
         parser.error("Expected a command name")
-    if workspace == workspace_root or not workspace.is_relative_to(workspace_root):
-        print(f"kast-task: {BundleFailure.UNSAFE_PATH}", file=sys.stderr)
-        return 2
+    runtime_root = args.runtime_root
+    workspace_root = args.workspace_root
     try:
-        grant = trust_installed_workspace(runtime_root, workspace)
+        if (
+            workspace_root.resolve() != workspace_root
+            or not workspace_root.is_dir()
+            or workspace == workspace_root
+            or not workspace.is_relative_to(workspace_root)
+        ):
+            print(f"kast-task: {BundleFailure.UNSAFE_PATH}", file=sys.stderr)
+            return 2
+        mode = TrustMode.REUSE_EXACT if args.reuse else TrustMode.CREATE
+        grant = trust_installed_workspace(runtime_root, workspace, mode)
         if isinstance(grant, (BundleRejected, Rejected)):
             print(f"kast-task: {grant.reason}", file=sys.stderr)
             return 2

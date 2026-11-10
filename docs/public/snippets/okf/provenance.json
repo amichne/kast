@@ -79,8 +79,8 @@
     },
     {
       "path": "openwiki/contracts/operation-outcomes.md",
-      "sha256": "ab1a75a77804baa3204698883db9a46b452ae837d83a238660e665907746058c",
-      "claimsSha256": "a639d29ae3dc1a0653355713054bb6496c19839fc8f2bd6169554ef8d16725d6",
+      "sha256": "74315d2425deadddc6e647b80e38c43916a1709d500107a2e654d506fa0990d4",
+      "claimsSha256": "d8302b83e3519c195581a5407edefcec7a48f6a496d3da7693186460093d2892",
       "evidence": [
         {
           "claim": "claim_55bbe06398c44272b3f13d3df179d4ee",
@@ -387,8 +387,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "d1dc82455ff11b708a25754dc2ad063bab40eee3fe3f0c9deb1faedb679fc789",
-      "claimsSha256": "33e3503893c7f4a5f47f8f5c5f55a2d70fde5e471d233b1c8e5e6f2a8befea40",
+      "sha256": "a43dd536d8a736953c3e4bbb95ee2c90c9b60247042bee0fba9f755e3cfe79d6",
+      "claimsSha256": "49b26a641675f4bf91aa61405a4e2b5c86c0b17da065dde4a41fd3641130a507",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -441,7 +441,7 @@
         },
         {
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
-          "resource": "repo://build.gradle.kts#L822-L859",
+          "resource": "repo://build.gradle.kts#L825-L862",
           "recordedVersion": "repo-lines-v1:sha256:a8eae36b4a254b4a99e0ff299b1ada839533417a38d3ce1c79dd5117b566d38a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjYzAyOWJkYWJiMWEwM2RkNzUyMjQ0MGM4MGU3YTlkMzlmNjhiZTA1OTUzZDA4Y2NjZTA0MjI0OGM0YmQ2YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzMmRlYzFiZDA1NTEyYTEzNDBkZjkyNTI3YWQ0NWQzNWI1NmQ1MjA0ZjU3YmQ3MjA4NDI2M2UzYWQ1OGRkZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkxOTIwNTE1MzMzN2JjMzEwNGE4ZDBiNmMwYWM0NTg1YzliNzcxOTRjZGU5NDk3ZDBlZjgwMDhhNjI4NzNhMTIifQ",
           "currentVersion": "repo-file-v1:sha256:3adca4b0be004c3a6c897ab2ab0615d91e38756faa4d25b140b3e52a5071605b",
           "status": "NOT_ASSESSED"

@@ -138,3 +138,11 @@ allowlist
 
 # Apple developer product named in the macOS task image contract.
 Xcode
+
+# Native container runtime and source-builder terminology, reviewed against their command contracts.
+containerd
+containerd's
+nerdctl
+Liberica
+runtimes
+subprocess

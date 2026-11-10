@@ -119,10 +119,51 @@ class PublicQueryDispatchTest {
         for (signal in PublicQuerySignal.entries) assertOwnedSignal(signal, toon = true)
     }
 
-    private fun assertOwnedSignal(signal: PublicQuerySignal, toon: Boolean = false) {
+    @Test
+    fun `signals preserve cancellation while runtime output is captured`() {
+        for (signal in PublicQuerySignal.entries) assertOwnedSignal(signal, capture = true)
+    }
+
+    @Test
+    fun `cancellation between setup children prevents the next process`() {
+        val parent = startOwner(temporary, "cancel-between")
+        try {
+            assertTrue(parent.waitFor(10, TimeUnit.SECONDS))
+            assertEquals(143, parent.exitValue(), parent.errorReader().readText())
+        } finally {
+            stopFixture(parent)
+        }
+    }
+
+    @Test
+    fun `owned cancellation callback runs before the local signal`() {
         ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress()).use { listener ->
             listener.soTimeout = 10_000
-            val parent = startOwner(temporary, "peer", listener.localPort.toString(), toon = toon)
+            val parent = startOwner(temporary, "cancel-callback", listener.localPort.toString())
+            try {
+                listener.accept().use { peer ->
+                    peer.soTimeout = 10_000
+                    val input = peer.getInputStream().bufferedReader()
+                    val childPid = input.readLine().toLong()
+                    val sender = ProcessBuilder("/bin/kill", "-s", "TERM", parent.pid().toString()).start()
+                    assertTrue(sender.waitFor(5, TimeUnit.SECONDS))
+                    assertEquals(0, sender.exitValue())
+                    assertEquals(-1, input.read())
+                    assertTrue(parent.waitFor(10, TimeUnit.SECONDS))
+                    assertEquals(143, parent.exitValue())
+                    assertEquals("callback TERM $childPid true\n", parent.errorReader().readText())
+                    assertFalse(ProcessHandle.of(childPid).map(ProcessHandle::isAlive).orElse(false))
+                }
+            } finally {
+                stopFixture(parent)
+            }
+        }
+    }
+
+    private fun assertOwnedSignal(signal: PublicQuerySignal, toon: Boolean = false, capture: Boolean = false) {
+        ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress()).use { listener ->
+            listener.soTimeout = 10_000
+            val parent = startOwner(temporary, "peer", listener.localPort.toString(), toon = toon, capture = capture)
             try {
                 listener.accept().use { peer ->
                     peer.soTimeout = 10_000
@@ -246,13 +287,19 @@ class PublicQueryDispatchTest {
         )
     }
 
-    private fun startOwner(directory: Path, vararg arguments: String, toon: Boolean = false): Process =
+    private fun startOwner(
+        directory: Path,
+        vararg arguments: String,
+        toon: Boolean = false,
+        capture: Boolean = false,
+    ): Process =
         ProcessBuilder(javaCommand(PublicQueryOwnerFixture::class.java.name) + arguments)
             .directory(directory.toFile())
             .apply {
                 environment().clear()
                 environment()["KAST_PUBLIC_QUERY_FIXTURE"] = "selected"
                 if (toon) environment()["KAST_PUBLIC_OUTPUT_TOON_FIXTURE"] = "1"
+                if (capture) environment()["KAST_PUBLIC_OUTPUT_CAPTURE_FIXTURE"] = "1"
             }
             .start()
 
@@ -278,6 +325,25 @@ internal data class PublicQueryProbeDocument(val arguments: List<String>, val di
 internal object PublicQueryOwnerFixture {
     @JvmStatic
     fun main(arguments: Array<String>) {
+        if (arguments.firstOrNull() == "cancel-callback") {
+            exitProcess(
+                OwnedChildSession()
+                    .run(
+                        javaCommand(PublicQueryProbe::class.java.name) + listOf("peer", arguments[1]),
+                        Path.of("").toAbsolutePath(),
+                        System.getenv(),
+                        onCancel = { signal, child ->
+                            System.err.println("callback ${signal.signalName} ${child.pid()} ${child.isAlive}")
+                        },
+                    )
+            )
+        }
+        if (arguments.firstOrNull() == "cancel-between") {
+            val owner = OwnedChildSession()
+            check(owner.run(listOf("/usr/bin/true"), Path.of("").toAbsolutePath(), emptyMap()) == 0)
+            owner.cancel(PublicQuerySignal.TERMINATE)
+            exitProcess(owner.run(listOf("/must-not-start"), Path.of("").toAbsolutePath(), emptyMap()))
+        }
         exitProcess(
             runOwnedPublicQueryChild(
                 javaCommand(PublicQueryProbe::class.java.name) + arguments,
@@ -285,6 +351,7 @@ internal object PublicQueryOwnerFixture {
                 System.getenv(),
                 if (System.getenv("KAST_PUBLIC_OUTPUT_TOON_FIXTURE") == "1")
                     OwnedChildOutput.Document(CliOutputFormat.TOON)
+                else if (System.getenv("KAST_PUBLIC_OUTPUT_CAPTURE_FIXTURE") == "1") OwnedChildOutput.Capture()
                 else OwnedChildOutput.Inherited,
             )
         )
