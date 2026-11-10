@@ -144,6 +144,9 @@ class KastServiceMainTest {
         val cases =
             listOf(
                 ServiceControlFailureDocument.Arguments to "arguments",
+                ServiceControlFailureDocument.Headless(
+                    io.github.amichne.kast.cli.installation.ManagedHeadlessShutdownFailure.HOST_NOT_SETTLED
+                ) to "MANAGED_HEADLESS_SHUTDOWN_REJECTED",
                 ServiceControlFailureDocument.Host(
                     io.github.amichne.kast.appserver.ide.ExistingIdeFailure.COMPATIBILITY_REJECTED
                 ) to "HOST_ADMISSION_REJECTED",
@@ -177,6 +180,10 @@ class KastServiceMainTest {
         encoded: kotlinx.serialization.json.JsonObject,
     ) {
         when (document) {
+            is ServiceControlFailureDocument.Headless -> {
+                assertEquals(setOf("type", "failure"), encoded.keys)
+                assertEquals("HOST_NOT_SETTLED", encoded.getValue("failure").jsonPrimitive.content)
+            }
             ServiceControlFailureDocument.Arguments -> assertEquals(setOf("type"), encoded.keys)
             is ServiceControlFailureDocument.Host -> {
                 assertEquals(setOf("type", "failure"), encoded.keys)

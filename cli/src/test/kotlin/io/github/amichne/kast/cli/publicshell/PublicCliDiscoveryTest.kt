@@ -26,6 +26,25 @@ import org.junit.jupiter.api.Test
 
 class PublicCliDiscoveryTest {
     @Test
+    fun `operation boundaries are available before schema browsing or semantic effects`() {
+        val inventory = document(null, PublicCliDescribeSection.INVENTORY)
+        val query =
+            inventory
+                .getValue("content")
+                .jsonArray
+                .map { it.jsonObject }
+                .single { it.getValue("command").jsonPrimitive.content == "query" }
+        val description = query.getValue("description").jsonPrimitive.content
+        for (choice in listOf("SELECT:", "RELATION/TRAVERSAL:", "TRACE:", "IMPACT:")) {
+            assertTrue(description.contains(choice), choice)
+            assertTrue(publicCliHelp(PublicCliCommandId.QUERY).contains(choice), choice)
+        }
+        assertTrue(description.contains("whole invocation range"))
+        assertTrue(description.contains("no arbitrary depth control"))
+        assertTrue(description.contains("not a general declaration dependency walk"))
+    }
+
+    @Test
     fun `inventory has fixed contract fields and the supported commands`() {
         val result = document(null, PublicCliDescribeSection.INVENTORY)
         assertEquals(setOf("schema", "catalog", "public_contract_version", "section", "content"), result.keys)

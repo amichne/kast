@@ -10,7 +10,30 @@ Management commands keep their human output unless `--json` or TOON is selected.
 Keep JSON request documents and issued references unchanged.
 Help, version text, stderr diagnostics, MCP, and tool RPC keep their existing formats.
 
-First inspect the installed contract:
+## Choose the operation first
+
+`query` runs one pipeline. Selection, traversal, trace, and impact are choices inside that pipeline.
+Choose from the question before reading schemas or executing requests.
+
+| Question | Operation | Inputs and expansion | Evidence returned |
+| --- | --- | --- | --- |
+| Which declaration is this? | Selection | Name, scope, location, or issued exact refs; no implicit relationship expansion | Exact symbols with signatures and locations |
+| Who calls it, or what lies within N relationship hops? | Relation / traversal | `EXPAND_RELATION` follows one selected relation; `WALK` repeats it to `maximumDepth` | Symbols or individual occurrences; `TRAVERSAL_RECORDS` preserve walk depth |
+| What declarations are affected through the standard use recipe? | `TRACE` terminal | Exact declarations; references, implementations or overrides, direct callers, and one further caller layer | Grouped symbols with proven connections and occurrences |
+| Where does this produced value flow? | `IMPACT` source | Exact enclosing and callable refs plus the whole producer invocation range; forward Kotlin value flow | `VALUE_PATHS` or six `IMPACT_WITNESS` views, retaining model provenance and unresolved boundaries |
+
+`TRACE` has a fixed topology. `WALK` has an explicit relation and depth.
+`IMPACT` investigates values and their qualified transfers.
+None establishes runtime behavior or unrestricted transitive reachability.
+Discovery scope selects seeds; expansion scope restricts destinations.
+`CALLERS` follows incoming calls; `CALLEES` follows outgoing calls, including constructors.
+
+`source read` reads source under an issued selector.
+`result read` and `result resume` deliver existing evidence without another semantic investigation.
+Keep the original output kind for retained reads, including canonical detail reads.
+Use a retained cursor with `result read`; use `result resume` only with an issued output continuation.
+
+For unfamiliar syntax, inspect only the needed installed contract section:
 
 ```sh
 kast describe query --section input

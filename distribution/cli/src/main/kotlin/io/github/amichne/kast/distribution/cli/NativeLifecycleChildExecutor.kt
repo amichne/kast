@@ -26,6 +26,7 @@ internal object NativeLifecycleChildExecutor : LifecycleChildExecutor {
         directory: Path,
         environment: Map<String, String>,
         purpose: LifecycleChildPurpose,
+        start: (List<String>, Path, Map<String, String>, LifecycleChildPurpose) -> Process = ::startChild,
         observe: (LifecycleChildExecutionObservation) -> Unit = {
             System.err.println(managementJson.encodeToString<LifecycleChildExecutionObservation>(it))
         },
@@ -34,7 +35,7 @@ internal object NativeLifecycleChildExecutor : LifecycleChildExecutor {
         observe(LifecycleChildExecutionObservation.Started(action, purpose))
         val child =
             try {
-                startChild(command, directory, environment, purpose)
+                start(command, directory, environment, purpose)
             } catch (_: Exception) {
                 observe(
                     LifecycleChildExecutionObservation.Unavailable(
@@ -72,7 +73,9 @@ internal object NativeLifecycleChildExecutor : LifecycleChildExecutor {
                     failure = LifecycleChildUnavailability.OBSERVATION_REJECTED,
                 )
             } finally {
-                if (child.isAlive) terminateChild(child, purpose)
+                io.github.amichne.kast.distribution.cli.retireAndReapOwnedProcess(child) {
+                    terminateChild(child, purpose)
+                }
             }
         observe(observed)
         return observed.asChildObservation()

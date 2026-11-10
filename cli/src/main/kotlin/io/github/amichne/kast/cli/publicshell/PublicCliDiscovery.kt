@@ -55,6 +55,7 @@ internal data class PublicCliCommandDescriptor(
     @SerialName("output_schema") val outputSchema: String,
     @SerialName("catalog_restriction") val catalogRestriction: String,
     val projection: PublicCliProjectionContract,
+    val description: String,
 )
 
 @Serializable
@@ -162,6 +163,7 @@ private fun commandDescriptor(command: PublicCliCommandId, catalog: PublicToolCa
             PublicToolCatalog.COMPLETE -> "COMPLETE admits the complete packaged query_symbols grammar."
         },
         PublicCliProjectionContract(generatedRequestSchema(PublicJqRejection.serializer())),
+        publicCliDescription(command, catalog),
     )
 }
 
@@ -317,3 +319,28 @@ internal val discoveryJson = Json {
     encodeDefaults = true
     explicitNulls = false
 }
+
+/** Purpose is available in inventory and help without schema navigation or a semantic session. */
+internal fun publicCliDescription(command: PublicCliCommandId, catalog: PublicToolCatalog): String =
+    when (command) {
+        PublicCliCommandId.QUERY -> PublicToolIdentity.QUERY_SYMBOLS.descriptionFor(catalog)
+        PublicCliCommandId.QUERY_PLAN ->
+            "Inspect request shape without workspace preparation or semantic execution. " +
+                PublicToolIdentity.QUERY_SYMBOLS.descriptionFor(catalog)
+        PublicCliCommandId.RESULT_READ ->
+            "Present one page of retained evidence without semantic replay. Preserve the original output kind, " +
+                "result reference, row and evidence cursors, completion verdict and qualifications. " +
+                "Canonical detail reads also require the original output kind."
+        PublicCliCommandId.RESULT_RESUME ->
+            "Deliver produced output using an issued query-output continuation; no new semantic execution. " +
+                "A retained-result cursor belongs to result read, not result resume."
+        PublicCliCommandId.SOURCE_READ ->
+            "Read a source region under an issued exact or occurrence selector. This does not expand " +
+                "relationships or investigate value flow. Stale selectors reject."
+        PublicCliCommandId.DIAGNOSTIC_CHECK ->
+            "Read compiler diagnostics for one workspace-relative file or directory; preserve coverage and " +
+                "incomplete verdicts. This does not perform a declaration traversal, trace or impact investigation."
+        PublicCliCommandId.DESCRIBE ->
+            "Read the installed command purposes, schemas and examples offline. No workspace preparation " +
+                "or semantic execution. Choose the operation from its purpose before inspecting its syntax."
+    }

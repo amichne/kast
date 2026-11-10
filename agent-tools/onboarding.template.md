@@ -2,6 +2,12 @@
 
 Use reachable Kast tools first for supported Kotlin semantic tasks in this exact workspace.
 Use `find`, relationship tasks, `source`, and `diagnostics`. Use `schema` and `raw` for advanced existing operations.
+Choose the semantic question upfront. Selection finds declarations without implicit expansion.
+Relation expansion follows one hop; WALK repeats one relation to an explicit depth.
+TRACE uses the fixed affected-use recipe: references, implementations or overrides, direct callers, and one further caller layer.
+IMPACT investigates forward value flow from an exact producer invocation, preserving model and boundary qualifications.
+TRACE and WALK follow declaration relationships; neither establishes value flow or runtime behavior.
+READ_RESULT and RESUME deliver produced evidence. READ_SOURCE inspects source under an issued selector.
 Read source for unresolved questions. Reuse returned or listed paths.
 
 Do not enumerate the repository for supplied paths.

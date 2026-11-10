@@ -7,10 +7,14 @@ const val PUBLIC_TOOL_CONTRACT_VERSION = 18
 enum class PublicToolCatalog { COMMON, COMPLETE }
 
 const val PUBLIC_COMMON_QUERY_DESCRIPTION =
-    "Find exact Kotlin declarations with NAME, LOCATION, and SIGNATURE. Select the exact overload befor" +
-            "e relations or TRACE. Copy issued references unchanged. READ_RESULT and READ_SOURCE preserve origi" +
-            "nal authority and freshness. This session exposes the common query grammar. Start a COMPLETE sessi" +
-            "on for advanced operations."
+    "Choose upfront: declaration selection returns symbols without implicit expansion; EXPAND_RELATION " +
+            "follows one selected compiler-confirmed hop; TRACE uses a fixed affected-use recipe (references, i" +
+            "mplementations or overrides, direct callers and one further caller layer), returning grouped symbo" +
+            "ls. TRACE does not track runtime values. Custom-depth WALK and forward value IMPACT require the CO" +
+            "MPLETE catalog; COMMON rejects them without promotion. READ_RESULT and RESUME deliver existing evi" +
+            "dence; READ_SOURCE reads issued source selectors. Select exact overloads, copy issued references u" +
+            "nchanged, and preserve original authority, freshness, completion and recovery evidence. A presenta" +
+            "tion page does not prove semantic completion."
 
 const val PUBLIC_TOOL_NAMESPACE_DESCRIPTION = "Compiler-grounded Kotlin source intelligence from Kast."
 
@@ -22,32 +26,25 @@ enum class PublicToolIdentity(
     val loading: HostedToolLoading,
 ) {
     QUERY_SYMBOLS("query_symbols", CanonicalOperation.QUERY_RUN,
-        "Run, resume, and read compiler-grounded Kotlin queries in the bound workspace. For RUN, provide a " +
-            "source, zero or more nonterminal steps, and exactly one terminalStep object tagged EMIT or TRACE. " +
-            "Put output in terminalStep.output. EMIT accepts all output choices. TRACE accepts only symbols and" +
-            " owns expansionScope directly. Never put TRACE in steps or output on RUN. Apply known name, kind, " +
-            "scope, and source-set constraints before discovery. Start with request {\"type\":\"RUN\",\"source" +
-            "\":{\"type\":\"SEARCH_DECLARATIONS\",\"declarationName\":\"Order\",\"declarationKinds\":[\"CLASS\"" +
-            "],\"scope\":{\"type\":\"DIRECTORY\",\"relativeDirectoryPath\":\"orders\",\"sourceSetNames\":[\"mai" +
-            "n\"]}},\"terminalStep\":{\"type\":\"EMIT\"}}. Select the exact owner, receiver, signature, and loc" +
-            "ation, never the first overload. Pass its unchanged issued ref in source {\"type\":\"SYMBOL_REFS\"" +
-            ",\"symbolRefs\":[\"<issued ref>\"]}. Use EXPAND_RELATION for direct references or callers. Use TRA" +
-            "CE for references, implementations or overrides, direct callers, and one further caller layer. Dis" +
-            "covery scope selects seeds. Expansion scope selects destinations. SOURCE_DOMAIN applies source-set" +
-            ", production/test, and generated-source constraints before enumeration. If the host supports tool " +
-            "composition, chain discovery, exact selection, and expansion inside code. Keep successful intermed" +
-            "iate results inside that call. Return task findings with scope, completion, omissions, and recover" +
-            "y facts. Do not omit requested matches or hide failures to reduce tokens. Apply path exclusions be" +
-            "fore read batches. Remove duplicate paths. Reuse unchanged source reads until a source change or f" +
-            "reshness rejection. Inspect unresolved imports, companion qualifiers, and unmatched source sites b" +
-            "efore a complete source-use answer. Every RUN uses COMPLETE_ONLY within COMPILER_RESOLVED_STATIC_V" +
-            "1. Preserve typed rejection and recovery evidence when completion is unproven. Use RESUME only wit" +
-            "h an issued output continuation, READ_RESULT with an issued result reference and cursor, and READ_" +
-            "SOURCE with an issued candidateSelector as candidateRef. Keep these capabilities distinct. Set ret" +
-            "ention RETAIN for later presentation. Budgets share one admitted grant under host ceilings. The sc" +
-            "hema also defines graph walk with WALK, predicates, retained composition, joins, and value IMPACT." +
-            " Use known request shapes directly. Read only the needed schema section or named example for unfam" +
-            "iliar shapes. Stop when evidence answers the task.",
+        "Choose the operation before execution. QUERY is the pipeline envelope, not a separate analysis alg" +
+            "orithm. SELECT: use SEARCH_DECLARATIONS, ALL_DECLARATIONS, AT_LOCATION or issued SYMBOL_REFS to re" +
+            "turn declarations; no relationship expansion is implicit. RELATION/TRAVERSAL: EXPAND_RELATION foll" +
+            "ows one compiler-confirmed relationship hop; WALK repeats one selected relation to an explicit max" +
+            "imumDepth and returns depth-bearing TRAVERSAL_RECORDS. CALLERS follows incoming calls; CALLEES fol" +
+            "lows outgoing calls, including constructors. TRACE: a fixed affected-use recipe over exact declara" +
+            "tions: references, implementations or overrides, direct callers, and one further caller layer. It " +
+            "returns grouped SYMBOLS with proven connections and occurrences; it has no arbitrary depth control" +
+            " and does not follow runtime values. IMPACT: a forward Kotlin value investigation from an exact pr" +
+            "oducer invocation, requiring enclosing and callable refs plus the whole invocation range. It retur" +
+            "ns VALUE_PATHS or IMPACT_WITNESS; model-assisted transfers and unresolved boundaries retain their " +
+            "qualifications. It is not a general declaration dependency walk. Expansion scope restricts destina" +
+            "tions independently of discovery scope. None of these proves runtime behavior or unrestricted tran" +
+            "sitive reachability. READ_RESULT and RESUME only deliver produced evidence; READ_SOURCE reads sour" +
+            "ce under an issued selector. Use simple exact-name flags for discovery; use one JSON RUN request f" +
+            "or WALK or IMPACT. Inspect only the needed syntax after choosing the operation. Every RUN uses COM" +
+            "PLETE_ONLY under COMPILER_RESOLVED_STATIC_V1. Preserve incomplete verdicts and recovery evidence. " +
+            "Presentation limits do not reduce the semantic question. Copy issued references unchanged; inspect" +
+            " overload signatures before exact selection.",
         HostedToolLoading.DEFERRED,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,

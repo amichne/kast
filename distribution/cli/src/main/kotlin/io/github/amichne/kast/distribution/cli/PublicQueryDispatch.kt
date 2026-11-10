@@ -14,7 +14,7 @@ internal val publicQueryNamespaces = setOf("query", "result", "source", "diagnos
 internal class PublicQueryNamespace(private val namespace: String) : ManagementNode(namespace) {
     override fun help(context: Context) =
         when (namespace) {
-            "query" -> "Find Kotlin declarations and read source relationships."
+            "query" -> "Select declarations, traverse relations, trace affected uses, or investigate value flow."
             "result" -> "Read or resume a retained query result."
             "source" -> "Read source from an issued reference."
             "diagnostic" -> "Read compiler diagnostics for a selected path."

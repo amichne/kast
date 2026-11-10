@@ -293,3 +293,51 @@ Source evidence:
 
 - [`responses`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/docs/public/reference/responses.mdx), checked 2026-10-13.
 - `docs/public/reference/responses.mdx`: `responses`.
+
+### query pipeline
+
+A request that selects a source, applies ordered steps, and runs one terminal operation.
+
+Example: A RUN request selects OrderService and emits its exact declaration.
+Keep distinct: A query pipeline can select declarations, traverse relations, trace affected uses, or investigate value impact. These choices have different evidence obligations.
+
+Source evidence:
+
+- [`RunAction`](https://github.com/amichne/kast/blob/24f4ea89a50f176a88d38b40e6a91e875607e961/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json), checked 2026-11-10.
+- `app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json`: `RunAction`.
+
+### declaration traversal
+
+Repeated expansion of one compiler-confirmed declaration relationship to an explicit maximum depth.
+
+Example: WALK follows CALLERS for two hops and emits TRAVERSAL_RECORDS.
+Keep distinct: A single relation expansion follows one hop. A traversal repeats that relation. It does not establish value flow or runtime behavior.
+
+Source evidence:
+
+- [`Walk`](https://github.com/amichne/kast/blob/24f4ea89a50f176a88d38b40e6a91e875607e961/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json), checked 2026-11-10.
+- `app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json`: `Walk`.
+
+### affected-use trace
+
+A fixed recipe that collects references, implementations or overrides, direct callers, and one further caller layer for exact declarations.
+
+Example: TRACE collects the standard affected-use evidence for one exact function.
+Keep distinct: TRACE returns grouped symbols with proven connections and occurrences. It has no arbitrary depth control and does not investigate value flow.
+
+Source evidence:
+
+- [`Trace`](https://github.com/amichne/kast/blob/24f4ea89a50f176a88d38b40e6a91e875607e961/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json), checked 2026-11-10.
+- `app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json`: `Trace`.
+
+### value impact investigation
+
+A forward Kotlin value-flow investigation from an exact producer invocation.
+
+Example: IMPACT starts from normalize(id) with exact enclosing and callable references and the whole invocation range.
+Keep distinct: IMPACT preserves compiler evidence, model provenance, and unresolved boundary qualifications. It is separate from declaration traversal and affected-use trace.
+
+Source evidence:
+
+- [`ImpactSource`](https://github.com/amichne/kast/blob/24f4ea89a50f176a88d38b40e6a91e875607e961/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json), checked 2026-11-10.
+- `app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json`: `ImpactSource`.

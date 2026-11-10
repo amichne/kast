@@ -59,6 +59,7 @@ object KastServiceMain {
             }
             exitProcess(exit.code)
         }
+        if (tryManagedHeadlessShutdown(arguments.toList())) return
         val outcome = runServiceControl(selectServiceControl(arguments.toList()))
         when (outcome) {
             ServiceControlOutcome.Completed -> Unit
@@ -186,6 +187,11 @@ internal sealed interface ServiceControlFailureDocument {
     data class Host(val failure: io.github.amichne.kast.appserver.ide.ExistingIdeFailure) :
         ServiceControlFailureDocument
 
+    @Serializable
+    @SerialName("MANAGED_HEADLESS_SHUTDOWN_REJECTED")
+    data class Headless(val failure: io.github.amichne.kast.cli.installation.ManagedHeadlessShutdownFailure) :
+        ServiceControlFailureDocument
+
     @Serializable @SerialName("arguments") data object Arguments : ServiceControlFailureDocument
 
     @Serializable
@@ -207,3 +213,28 @@ internal sealed interface ServiceControlFailureDocument {
 internal val serviceControlJson = Json { encodeDefaults = true }
 
 private const val SERVICE_CONTROL_REJECTED_EXIT_CODE = 64
+
+private fun tryManagedHeadlessShutdown(arguments: List<String>): Boolean {
+    if (arguments != listOf("disable") || System.getenv("KAST_MANAGED_HEADLESS_STATE") == null) return false
+    val installed = installedKastExecutable()
+    val outcome =
+        if (installed is Refinement.Refined)
+            io.github.amichne.kast.cli.installation.shutdownManagedHeadless(
+                installed.value.parent.parent,
+                Path.of(System.getProperty("user.home")),
+                Path.of(System.getenv("KAST_MANAGED_HEADLESS_STATE")),
+            )
+        else
+            io.github.amichne.kast.cli.installation.ManagedHeadlessShutdownOutcome.Rejected(
+                io.github.amichne.kast.cli.installation.ManagedHeadlessShutdownFailure.ADMISSION_REJECTED
+            )
+    if (outcome is io.github.amichne.kast.cli.installation.ManagedHeadlessShutdownOutcome.Rejected) {
+        System.err.println(
+            serviceControlJson.encodeToString<ServiceControlFailureDocument>(
+                ServiceControlFailureDocument.Headless(outcome.failure)
+            )
+        )
+        exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
+    }
+    return true
+}

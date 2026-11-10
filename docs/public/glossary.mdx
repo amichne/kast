@@ -146,6 +146,30 @@ A view of produced rows with a fixed size limit. It describes the output shown. 
 
 [Source: `responses`](https://github.com/amichne/kast/blob/e62692cc5e0be164941a6c551c00d35ad6739ded/docs/public/reference/responses.mdx).
 
+## query pipeline
+
+A request that selects a source, applies ordered steps, and runs one terminal operation.
+
+[Source: `RunAction`](https://github.com/amichne/kast/blob/24f4ea89a50f176a88d38b40e6a91e875607e961/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json).
+
+## declaration traversal
+
+Repeated expansion of one compiler-confirmed declaration relationship to an explicit maximum depth.
+
+[Source: `Walk`](https://github.com/amichne/kast/blob/24f4ea89a50f176a88d38b40e6a91e875607e961/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json).
+
+## affected-use trace
+
+A fixed recipe that collects references, implementations or overrides, direct callers, and one further caller layer for exact declarations.
+
+[Source: `Trace`](https://github.com/amichne/kast/blob/24f4ea89a50f176a88d38b40e6a91e875607e961/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json).
+
+## value impact investigation
+
+A forward Kotlin value-flow investigation from an exact producer invocation.
+
+[Source: `ImpactSource`](https://github.com/amichne/kast/blob/24f4ea89a50f176a88d38b40e6a91e875607e961/app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json).
+
 ## Read an answer
 
 [How to understand a Kast answer](/explanation) introduces the answer's evidence and limits.
