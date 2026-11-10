@@ -2,7 +2,6 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 internal class ColimaContainerRuntime(
@@ -161,7 +160,7 @@ internal class ColimaContainerRuntime(
                 is Refinement.Refined -> Unit
             }
         }
-        System.err.println("kast container: stage=create workspace=${plan.workspace.root} cache=${plan.cache}")
+        System.err.println("kast container: stage=create outcome=CREATING")
         return process.capture(runner + plan.createArguments)
     }
 
@@ -195,18 +194,39 @@ internal class ColimaContainerRuntime(
     private fun readImage(
         reference: String,
         selection: ContainerImageSelection,
-    ): Refinement<ContainerImage, ContainerFailure> {
-        val documents =
-            when (val result = process.capture(runner + listOf("image", "inspect", "--mode", "native", reference))) {
-                is Refinement.Rejected -> return result
-                is Refinement.Refined ->
-                    when (val decoded = decode { json.decodeFromString<List<ContainerImageDocument>>(result.value) }) {
-                        is Refinement.Rejected -> return decoded
-                        is Refinement.Refined -> decoded.value
+    ): Refinement<ContainerImage, ContainerFailure> =
+        when (
+            val result =
+                process.capture(runner + listOf("image", "inspect", "--mode", "native", "--format=json", reference))
+        ) {
+            is Refinement.Rejected -> result
+            is Refinement.Refined -> admitImageOutput(result.value, reference, selection)
+        }.also { result ->
+            if (result is Refinement.Rejected)
+                System.err.println("kast container: stage=image-inspect outcome=${result.failure.name}")
+        }
+
+    private fun admitImageOutput(
+        output: String,
+        reference: String,
+        selection: ContainerImageSelection,
+    ): Refinement<ContainerImage, ContainerFailure> =
+        if (output.isBlank()) Refinement.Rejected(ContainerFailure.IMAGE_INSPECT_EMPTY)
+        else
+            when (
+                val decoded =
+                    decode(ContainerFailure.IMAGE_INSPECT_DOCUMENT_REJECTED) {
+                        // nerdctl emits one compact JSON object per alias for --format=json.
+                        output
+                            .lineSequence()
+                            .filter { it.isNotBlank() }
+                            .map { json.decodeFromString<ContainerImageDocument>(it) }
+                            .toList()
                     }
+            ) {
+                is Refinement.Rejected -> decoded
+                is Refinement.Refined -> ContainerImage.admitAliases(decoded.value, architecture, selection, reference)
             }
-        return ContainerImage.admitAliases(documents, architecture, selection, reference)
-    }
 
     private fun fetchImage(selection: ContainerImageSelection): Refinement<Unit, ContainerFailure> {
         // Pull only immutable registry selections. Local images stay offline and never trigger a build.
@@ -271,13 +291,14 @@ internal class ColimaContainerRuntime(
                 }
         }
 
-    private fun <T> decode(operation: () -> T): Refinement<T, ContainerFailure> =
+    private fun <T> decode(
+        failure: ContainerFailure = ContainerFailure.OUTPUT_REJECTED,
+        operation: () -> T,
+    ): Refinement<T, ContainerFailure> =
         try {
             Refinement.Refined(operation())
-        } catch (_: SerializationException) {
-            Refinement.Rejected(ContainerFailure.OUTPUT_REJECTED)
         } catch (_: IllegalArgumentException) {
-            Refinement.Rejected(ContainerFailure.OUTPUT_REJECTED)
+            Refinement.Rejected(failure)
         }
 }
 
