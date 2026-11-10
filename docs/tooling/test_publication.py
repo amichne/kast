@@ -10,9 +10,8 @@ from collections.abc import Iterator
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
-import pytest
-
 import okf_public
+import pytest
 import reader_contracts
 from publication import (
     Failure,
@@ -132,6 +131,9 @@ def root(tmp_path: Path) -> Iterator[Path]:
         cwd=tmp_path,
         check=True,
     )
+    _ = subprocess.run(
+        [git, "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=tmp_path, check=True
+    )
     yield tmp_path
 
 
@@ -194,6 +196,44 @@ def test_review_revision_must_identify_an_existing_commit(root: Path) -> None:
         root, wire(ManifestFixture((association,))), wire(NativeFixture())
     )
     assert [item.status for item in obligations] == [State.UNRESOLVED]
+
+
+def test_review_revision_on_pr_head_does_not_survive_a_squash_merge(root: Path) -> None:
+    git = shutil.which("git")
+    assert git is not None
+    _ = subprocess.run(
+        [
+            git,
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "PR-only review",
+        ],
+        cwd=root,
+        check=True,
+    )
+    association = binding(root)
+    obligations = assess_associations(
+        root, wire(ManifestFixture((association,))), wire(NativeFixture())
+    )
+    assert [item.status for item in obligations] == [State.UNRESOLVED]
+    assert association.reviewedSourceRevision in obligations[0].detail
+    assert "origin/main" in obligations[0].detail
+
+
+def test_review_revision_requires_the_main_ref(root: Path) -> None:
+    git = shutil.which("git")
+    assert git is not None
+    _ = subprocess.run([git, "update-ref", "-d", "refs/remotes/origin/main"], cwd=root, check=True)
+    obligations = assess_associations(
+        root, wire(ManifestFixture((binding(root),))), wire(NativeFixture())
+    )
+    assert [item.status for item in obligations] == [State.UNRESOLVED]
+    assert "origin/main" in obligations[0].detail
 
 
 @pytest.mark.parametrize("status", ["stale", "unresolved"])

@@ -1762,7 +1762,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "e49bf8c2cc0dcea6fec2645cc924b03e0efa6d9e"
+      "reviewedSourceRevision": "72fef3119c818354086fc6e6f04e5dfffb2d4f13"
     },
     {
       "route": "architecture/change-lifecycle",
@@ -6908,7 +6908,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "e49bf8c2cc0dcea6fec2645cc924b03e0efa6d9e"
+      "reviewedSourceRevision": "72fef3119c818354086fc6e6f04e5dfffb2d4f13"
     },
     {
       "route": "reference/internals/architecture",

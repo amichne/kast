@@ -113,6 +113,9 @@ It counts imported content and hidden panels without treating static counts as r
 `publication.py` admits the exact candidate after the native, projection, reader, prose, contract, and rendered procedures complete.
 Reviewed associations bind imported authored bytes, canonical Claim statements, and contract-owner bytes.
 A change to either side needs a new review.
+Use a commit in `origin/main` as the source baseline for `reviewedSourceRevision`.
+Record the exact accepted inputs for the candidate in the association.
+Fetch `origin/main` with full history before source qualification if the local checkout lacks that history.
 The report preserves `failed`, `stale`, `unresolved`, `not-assessed`, and `mismatched` obligations separately.
 
 ```shell

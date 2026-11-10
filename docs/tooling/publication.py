@@ -8,6 +8,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path, PurePosixPath
@@ -18,6 +19,7 @@ import reader_contracts
 
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = "docs/okf-public.json"
+MAIN_REF = "refs/remotes/origin/main"
 PROSE_DISPOSITIONS = "docs/reviews/documentation-migration/prose-dispositions.json"
 INPUT_PATHS = (
     "docs/public",
@@ -411,32 +413,10 @@ def assess_associations(root: Path, manifest: object, native: object) -> tuple[O
                 "Accepted bindings must cover every authored and projected route exactly once",
             ),
         )
-    git = shutil.which("git")
-    if git is None:
-        return (
-            Obligation("associations", State.FAILED, "Git is unavailable for review provenance"),
-        )
     revisions = tuple(sorted({item.reviewedSourceRevision for item in associations}))
-    try:
-        reviewed = subprocess.run(
-            [git, "-C", str(root), "cat-file", "--batch-check=%(objecttype)"],
-            input="\n".join(revisions) + "\n",
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.splitlines()
-    except (OSError, subprocess.CalledProcessError):
-        return (
-            Obligation("associations", State.FAILED, "Cannot read the reviewed source objects"),
-        )
-    if len(reviewed) != len(revisions) or any(kind != "commit" for kind in reviewed):
-        return (
-            Obligation(
-                "associations",
-                State.UNRESOLVED,
-                "A reviewed source revision does not identify an existing commit",
-            ),
-        )
+    provenance = assess_review_revisions(root, revisions)
+    if provenance:
+        return provenance
     claim_index: dict[tuple[str, str], tuple[str, str]] = {}
     if _record(native) and native.get("status") == "completed" and _objects(native.get("claims")):
         native_claims = native["claims"]
@@ -527,6 +507,73 @@ def assess_associations(root: Path, manifest: object, native: object) -> tuple[O
             ]
         )
     return tuple(obligations)
+
+
+def assess_review_revisions(root: Path, revisions: tuple[str, ...]) -> tuple[Obligation, ...]:
+    git = shutil.which("git")
+    if git is None:
+        return (
+            Obligation("associations", State.FAILED, "Git is unavailable for review provenance"),
+        )
+    command = [git, "--no-replace-objects", "-C", str(root)]
+    try:
+        main = subprocess.run(
+            [*command, "rev-parse", "--verify", MAIN_REF + "^{commit}"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if main.returncode != 0:
+            return (Obligation("associations", State.UNRESOLVED, f"Cannot resolve {MAIN_REF}"),)
+        main_revision = main.stdout.strip()
+        reviewed = subprocess.run(
+            [*command, "cat-file", "--batch-check=%(objecttype)"],
+            input="\n".join(revisions) + "\n",
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.splitlines()
+        if len(reviewed) != len(revisions):
+            return (
+                Obligation("associations", State.FAILED, "Cannot read the reviewed source objects"),
+            )
+        issues: list[Obligation] = []
+        for revision, kind in zip(revisions, reviewed, strict=True):
+            if kind != "commit":
+                issues.append(
+                    Obligation(
+                        "associations",
+                        State.UNRESOLVED,
+                        f"Reviewed source {revision} is not an available commit",
+                    )
+                )
+                continue
+            ancestry = subprocess.run(
+                [*command, "merge-base", "--is-ancestor", revision, main_revision],
+                capture_output=True,
+                check=False,
+            )
+            if ancestry.returncode == 1:
+                issues.append(
+                    Obligation(
+                        "associations",
+                        State.UNRESOLVED,
+                        f"Reviewed source {revision} is outside {MAIN_REF} history",
+                    )
+                )
+            elif ancestry.returncode != 0:
+                issues.append(
+                    Obligation(
+                        "associations",
+                        State.FAILED,
+                        f"Cannot examine {MAIN_REF} history for {revision}",
+                    )
+                )
+        return tuple(issues)
+    except (OSError, subprocess.CalledProcessError):
+        return (
+            Obligation("associations", State.FAILED, "Cannot read the reviewed source objects"),
+        )
 
 
 def parse_receipt(value: object) -> Receipt | Failure:
@@ -854,6 +901,13 @@ def main() -> int:
     else:
         arguments.report.parent.mkdir(parents=True, exist_ok=True)
         arguments.report.write_text(encoded)
+        if isinstance(result, Failure):
+            print(f"{result.stage}: {result.detail[:240]}", file=sys.stderr)
+        elif not isinstance(result, Snapshot) and result.decision == "rejected":
+            failed = [item for item in result.obligations if item.status != State.PASSED]
+            for item in failed[:8]:
+                print(f"{item.name[:160]} [{item.status}]: {item.detail[:240]}", file=sys.stderr)
+            print(f"Documentation qualification rejected. See {arguments.report}.", file=sys.stderr)
     return (
         2
         if isinstance(result, Failure)
