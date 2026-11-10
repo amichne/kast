@@ -101,7 +101,8 @@ An identical skill returns `ALREADY_INSTALLED` without writes. A different or in
 
 ## Refresh guidance after a core change
 
-A Kast update does not refresh copied skills or cached provider resources.
+Kast refreshes the skill for each harness that it identifies as a Kast installation.
+The skill front matter records the installed Control version.
 If Kast reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command:
 
 ```shell

@@ -47,18 +47,24 @@ sources:
     resource: repo://cli/src/test/js/native-onboarding.test.mjs
   - id: openwiki-source-ffafcc2936c3877f4b78db93
     resource: repo://copilot/extension.mjs
+  - id: openwiki-source-4ea7092ecf62f475b11026f1
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt
   - id: openwiki-source-552a7d3faff1f8e990a51c96
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt
+  - id: openwiki-source-03ffc32a0ca502ab67c54b25
+    resource: repo://install.sh
   - id: openwiki-source-c3a707e4531bdd548867dd23
     resource: repo://packaging/generate-public-query.py
+  - id: openwiki-source-1380068036b00bec817a6579
+    resource: repo://packaging/managed_installation.py
   - id: openwiki-source-32e1c94e6e0a0ff71b06b0e3
     resource: repo://pi/extension.ts
   - id: openwiki-source-6b18658d32b10e2368e7dc20
     resource: repo://pi/mcp-extension.ts
-generated: { by: "codex", at: "2026-11-04T23:27:44.986Z" }
+generated: { by: "codex", at: "2026-11-10T17:49:52.067Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-04T23:27:44.986Z
+    at: 2026-11-10T18:25:20.058Z
 ---
 
 # Agent context and harness delivery
@@ -74,6 +80,8 @@ The default generated composition includes preparation hooks without automatic M
 `--mcp` selects the complete optional composition and prepares its Python dependency environment explicitly.
 CLI and MCP use the same persistent IDEA Host and semantic contracts.
 A provider cache must match selected resource bytes. Equal versions alone do not establish that match.
+Control assembly stamps the skill front matter with the Control version.
+The installer refreshes owned harness guidance after Control replacement commits.
 A standalone export copies the complete canonical skill directory without provider configuration.
 After setup or a core update, start a fresh agent session and obey the result's harness-refresh notice.
 

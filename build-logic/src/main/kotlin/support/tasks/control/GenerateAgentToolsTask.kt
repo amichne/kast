@@ -83,12 +83,21 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
         check(source.resolve("references/query-examples.json").readBytes()
             .contentEquals(canonicalQueryExamplesFile.get().asFile.readBytes())) { "examples must match the canonical query projection" }
 
+        val skillPath = "skills/kast/SKILL.md"
+        val skill = source.resolve(skillPath).readText()
+        val frontMatterEnd = skill.indexOf("\n---\n", startIndex = 4)
+        check(skill.startsWith("---\n") && frontMatterEnd >= 0) { "Kast skill front matter is required" }
+        val frontMatter = skill.substring(0, frontMatterEnd)
+        check(frontMatter.lineSequence().none { it.startsWith("metadata:") }) { "Kast skill metadata is generated" }
+        val versionedSkill = frontMatter + "\nmetadata:\n  version: \"$version\"" + skill.substring(frontMatterEnd)
+
         val output = outputDirectory.get().asFile
         output.deleteRecursively()
         for (withMcp in listOf(false, true)) {
             val composition = if (withMcp) output.resolve("compositions/mcp") else output
             val plugin = composition.resolve("plugins/kast")
             source.copyRecursively(plugin, overwrite = false)
+            plugin.resolve(skillPath).writeText(versionedSkill)
             plugin.resolve("hooks/session_start.py").delete()
             plugin.resolve("hooks/session_start.py.lock").delete()
             plugin.resolve("mcp.json").delete()

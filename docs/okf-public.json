@@ -867,7 +867,7 @@
         "outcome": "Read the source, display-name adaptations, and evidence limits of the customer and welcome-email illustration.",
         "scope": [
           "Explain fixture provenance and adaptations.",
-          "State the illustration\u2019s limits."
+          "State the illustration’s limits."
         ],
         "exclusions": "A second general value-flow introduction.",
         "sourceOwner": "docs/public/explanation/value-journey-evidence.mdx",
@@ -1626,7 +1626,7 @@
       "content": [
         {
           "path": "docs/public/agent-harnesses.mdx",
-          "sha256": "4d8177380d5126cf1a47533955a619bc7235d2a503e95cbfc961d4224d62a5b1"
+          "sha256": "94184ae3e6a115ba67fc9d6c10b651f3af1d9af43b44c86c74be0109bf7446d7"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -1728,6 +1728,16 @@
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5ab459a5b80641d087b05a25d3c52ee6",
           "statementSha256": "22ac3d0c0a6991b8f4b9ffe04a9ba544c5bf4e2f075e25cadf55cf52981c4fb0"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_681636d6d0ec4662a819005740e5ab4d",
+          "statementSha256": "6d07bce48e4869f569f0615a7f124677a10367741aa95e4a9a5351552c72bacb"
+        },
+        {
+          "page": "openwiki/transport/harness-delivery.md",
+          "claimId": "claim_710dd47d8f9143f5a683c556faa191de",
+          "statementSha256": "e1db9014ff059242caf9f44c29b9a2404d96bbf7662f1e2c0a88711da123abcc"
         }
       ],
       "generatedOwners": [
@@ -1752,7 +1762,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "e49bf8c2cc0dcea6fec2645cc924b03e0efa6d9e"
     },
     {
       "route": "architecture/change-lifecycle",
@@ -6773,7 +6783,7 @@
       "content": [
         {
           "path": "docs/public/reference/integrations.mdx",
-          "sha256": "abeac0d98f21430f3c545336f1be24f2ef1dbfe497b6ae2b70186093617f81d2"
+          "sha256": "dfd818109256b677dceb64580193645a4124f56837eabd380ef1f0405e7d8298"
         }
       ],
       "claims": [
@@ -6871,6 +6881,16 @@
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5ab459a5b80641d087b05a25d3c52ee6",
           "statementSha256": "22ac3d0c0a6991b8f4b9ffe04a9ba544c5bf4e2f075e25cadf55cf52981c4fb0"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_681636d6d0ec4662a819005740e5ab4d",
+          "statementSha256": "6d07bce48e4869f569f0615a7f124677a10367741aa95e4a9a5351552c72bacb"
+        },
+        {
+          "page": "openwiki/transport/harness-delivery.md",
+          "claimId": "claim_710dd47d8f9143f5a683c556faa191de",
+          "statementSha256": "e1db9014ff059242caf9f44c29b9a2404d96bbf7662f1e2c0a88711da123abcc"
         }
       ],
       "generatedOwners": [
@@ -6883,7 +6903,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "e49bf8c2cc0dcea6fec2645cc924b03e0efa6d9e"
     },
     {
       "route": "reference/internals/architecture",

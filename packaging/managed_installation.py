@@ -2446,6 +2446,43 @@ def recover_recorded(
         return contract.RecoveryRequired(transaction, failure, reason)
 
 
+# One refresh can prepare optional MCP dependencies for three providers.
+GUIDANCE_REFRESH_TIMEOUT_SECONDS = 300.0
+
+
+def refresh_installed_guidance(
+    root: Path,
+    home: Path,
+    outcome: contract.Activated | contract.InstalledNotRunning,
+    runner: ChildRunner,
+) -> contract.Activated | contract.InstalledNotRunning:
+    installation = root / "installation"
+    marker = installation / "share/kast/guidance-refresh-v1"
+    if not os.path.lexists(marker):
+        return outcome
+    pending = journal_types.ManagedNotice.HARNESS_REFRESH_REQUIRED
+    notices = tuple(notice for notice in outcome.notices if notice != pending)
+    try:
+        if read_record(marker, 2) != b"1\n":
+            return replace(outcome, notices=notices + (pending,))
+        executable = installation / "share/kast/libexec/kast-management"
+        result = runner(
+            [str(executable), "--internal-install", "refresh-guidance"],
+            dict(os.environ)
+            | {
+                "HOME": str(home),
+                "KAST_INSTALL_ROOT": str(root),
+            },
+            GUIDANCE_REFRESH_TIMEOUT_SECONDS,
+        )
+    except (OSError, ValueError, StageRejected, subprocess.TimeoutExpired):
+        return replace(outcome, notices=notices + (pending,))
+    if result.returncode != 0:
+        print("kast: installed guidance refresh did not complete", file=sys.stderr)
+        return replace(outcome, notices=notices + (pending,))
+    return replace(outcome, notices=notices)
+
+
 def main(
     arguments: list[str],
     source: release.ReleaseSource | None = None,
@@ -2555,6 +2592,15 @@ def main(
                     contract.Stage.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN
                 )
             )
+    if isinstance(outcome, (contract.Activated, contract.InstalledNotRunning)):
+        try:
+            outcome = refresh_installed_guidance(root, home, outcome, runner)
+        except KeyboardInterrupt:
+            if state.exit_code is None:
+                state.exit_code = 130
+            pending = journal_types.ManagedNotice.HARNESS_REFRESH_REQUIRED
+            if pending not in outcome.notices:
+                outcome = replace(outcome, notices=outcome.notices + (pending,))
     if args.json:
         print(encoded(outcome).decode().rstrip())
     else:

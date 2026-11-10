@@ -36,7 +36,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+    at: 2026-11-10T17:49:52.067Z
 ---
 
 # Public query admission and capabilities

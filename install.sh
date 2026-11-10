@@ -1069,7 +1069,12 @@ else
   if [[ "$management_preflight" == preflight-reset && "$reset_management" != "$management_executable" ]]; then
     run_installer_step "Recorded connection recovery" "" "$management_executable" --internal-install restore-connections
   fi
-  if [[ "$codex_plugin_choice" == register ]]; then
+  if [[ "$stage_only" == 0 && -f "$control_root/share/kast/guidance-refresh-v1" ]]; then
+    guidance_action=refresh-guidance
+    if [[ "$codex_plugin_choice" == register ]]; then guidance_action=refresh-guidance-with-codex; fi
+    run_installer_step "Installed guidance refresh" "" "$management_executable" --internal-install "$guidance_action" ||
+      fail "Kast is installed, but guidance refresh is incomplete; run kast install <harness> to repair it"
+  elif [[ "$codex_plugin_choice" == register ]]; then
     "$management_executable" install codex
   fi
 fi

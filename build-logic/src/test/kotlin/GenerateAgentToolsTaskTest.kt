@@ -44,13 +44,16 @@ class GenerateAgentToolsTaskTest {
         assertEquals("1.2.3", manifest.getValue("version").jsonPrimitive.content)
         assertEquals("./hooks/hooks.json", manifest.getValue("hooks").jsonPrimitive.content)
         assertEquals("./skills/", manifest.getValue("skills").jsonPrimitive.content)
-        assertTrue(Files.exists(plugin.resolve("skills/kast/SKILL.md")))
+        for (root in listOf(output.parent.parent, output)) {
+            val skill = Files.readString(root.resolve("plugins/kast/skills/kast/SKILL.md"))
+            assertTrue(skill.substringAfter("---\n").substringBefore("\n---").contains("\nmetadata:\n  version: \"1.2.3\""))
+        }
         assertEquals("./.mcp.json", manifest.getValue("mcpServers").jsonPrimitive.content)
         val marketplace = Json.parseToJsonElement(Files.readString(output.resolve(".agents/plugins/marketplace.json"))).jsonObject
         val entry = marketplace.getValue("plugins").jsonArray.single().jsonObject
         assertEquals("kast", marketplace.getValue("name").jsonPrimitive.content)
         assertEquals("./plugins/kast", entry.getValue("source").jsonObject.getValue("path").jsonPrimitive.content)
-        for (name in listOf("references/query-examples.json", "references/onboarding.md", "skills/kast/SKILL.md", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock")) {
+        for (name in listOf("references/query-examples.json", "references/onboarding.md", "skills/kast/scripts/server.py", "skills/kast/scripts/server.py.lock")) {
             assertArrayEquals(Files.readAllBytes(task.sourceDirectory.get().asFile.toPath().resolve(name)),
                 Files.readAllBytes(plugin.resolve(name)))
         }

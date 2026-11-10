@@ -49,6 +49,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerWorkspace.kt
   - id: openwiki-source-b6ffac113b6a09198425b019
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/GuidanceInstallation.kt
+  - id: openwiki-source-4ea7092ecf62f475b11026f1
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt
   - id: openwiki-source-2141db5e92ccbb5de75a1544
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - id: openwiki-source-b30c7b16cf2f49971ca55950
@@ -61,12 +63,16 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementReceiptAdmission.kt
   - id: openwiki-source-552a7d3faff1f8e990a51c96
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt
+  - id: openwiki-source-2353a5c8f9b33ce9b982a841
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiSkillReplacement.kt
   - id: openwiki-source-927dce901b5dbac4a4d84f48
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
   - id: openwiki-source-656a2bd4859ff8a64d431829
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt
   - id: openwiki-source-d95d75ec0e14dda7faf63dbf
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt
+  - id: openwiki-source-03ffc32a0ca502ab67c54b25
+    resource: repo://install.sh
   - id: openwiki-source-d53edde1666c585216ff3c8d
     resource: repo://packaging/composed_bundle.py
   - id: openwiki-source-ef7a40843a617c29102e725f
@@ -81,10 +87,10 @@ sources:
     resource: repo://packaging/managed_installation.py
   - id: openwiki-source-438eaae27874148a8609a1fb
     resource: repo://packaging/oci_task.py
-generated: { by: "codex", at: "2026-11-10T06:03:12.348Z" }
+generated: { by: "codex", at: "2026-11-10T17:49:52.067Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-10T06:08:39.586Z
+    at: 2026-11-10T18:25:20.058Z
 ---
 
 # Native management and harness connections
@@ -156,7 +162,10 @@ Foreign registrations and conflicting plugin sources reject before replacement.
 
 Pi receives the canonical skill through native skill discovery.
 CLI-only composition installs its preparation extension. Explicit MCP composition selects the complete MCP extension.
-Its receipt records exact owned paths and digests. Changed owned files and reserved foreign paths reject replacement.
+The Pi receipt selects the owned skill directory.
+Kast replaces that directory as a unit and rejects symbolic links.
+Foreign paths outside that directory remain protected.
+After the binary replacement commits, the installer refreshes admitted provider plugins and recorded Pi guidance.
 `kast install skill --output <parent>` exports the complete canonical skill directory without provider configuration.
 An identical directory succeeds without replacement. Extra, changed, or symbolic-link entries reject.
 A fresh agent session is necessary after setup.

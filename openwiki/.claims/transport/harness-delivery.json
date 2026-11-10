@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:0867ca90f3f8f46cbd9c61ad1ffe89138450368b9c6dca748a4059a4aa50c303",
+  "pageVersion": "sha256:e1d7d4c7a74267ef26e0fb1fb387f90b0d47a25415ee3081578a39b5cc657c83",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -56,11 +56,11 @@
       "evidence": [
         {
           "resource": "repo://agent-tools/skills/kast/SKILL.md",
-          "version": "repo-file-v1:sha256:ad33a4640db824db4c43228fc7b549d543e665e87e28e06e3070b7966a95d162"
+          "version": "repo-file-v1:sha256:23948b25c058d4ad3dc61a233cb819a77312598b0b83b6dcaae76f80fb242b3e"
         },
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:a1bc58727a1a8ec61b1a39890cfbeafe68f9051f2740f4e156d9262b1e6f202d"
+          "version": "repo-file-v1:sha256:bbe1bac2be06839c755904326d5c592a71c767a342a484095f01aec15917b26b"
         }
       ]
     },
@@ -74,7 +74,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt",
-          "version": "repo-file-v1:sha256:569cbb3f9408be606a3f2180d129ba00ee4b40ec15e16e09303d4d57a4547a25"
+          "version": "repo-file-v1:sha256:4090781d8b8f98c8a58bc118fee45bde27390f6923524c35a8b249db66c58a50"
         },
         {
           "resource": "repo://pi/mcp-extension.ts",
@@ -113,10 +113,32 @@
           "version": "repo-file-v1:sha256:9424848e876a1ad4128943a09c7e62185a3cc918fa74fd32a9814e1703b26c07"
         }
       ]
+    },
+    {
+      "id": "claim_710dd47d8f9143f5a683c556faa191de",
+      "statement": "Control assembly stamps both skill compositions with the Control version in front matter. The installer refreshes admitted harness guidance after Control replacement commits.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
+          "version": "repo-file-v1:sha256:bbe1bac2be06839c755904326d5c592a71c767a342a484095f01aec15917b26b"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt",
+          "version": "repo-file-v1:sha256:52adf19f328b05a64f715b756b6d0e62c48d110cd197407529142befb2e0f7fb"
+        },
+        {
+          "resource": "repo://install.sh",
+          "version": "repo-file-v1:sha256:783f4a44f6540af7b7dd969f56c820eb362c4b0d644f8a457a4b0ad74763e9a7"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py",
+          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T15:20:01.732Z"
+    "at": "2026-11-10T18:25:20.058Z"
   }
 }

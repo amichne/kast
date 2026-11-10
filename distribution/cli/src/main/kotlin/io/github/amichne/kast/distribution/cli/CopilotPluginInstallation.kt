@@ -147,7 +147,7 @@ private fun registerCopilotMarketplace(
     }
 }
 
-private fun observeCopilotMarketplace(
+internal fun observeCopilotMarketplace(
     bundle: AdmittedPluginBundle,
     execute: (List<String>) -> ProcessObservation,
 ): PluginObservation<MarketplacePresence> =
@@ -164,7 +164,7 @@ private fun observeCopilotMarketplace(
             }
     }
 
-private fun observeCopilotPlugin(
+internal fun observeCopilotPlugin(
     bundle: AdmittedPluginBundle,
     execute: (List<String>) -> ProcessObservation,
 ): PluginObservation<PluginPresence> =

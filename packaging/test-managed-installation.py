@@ -15,7 +15,7 @@ import unittest
 import zipfile
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Literal, Never
+from typing import Literal, Never, override
 from unittest.mock import patch
 
 import host_directory_exchange as host_exchange
@@ -137,7 +137,8 @@ class ManagementRegistrationTest(unittest.TestCase):
 
 
 class CoordinatorTest(unittest.TestCase):
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory(prefix="kast-coordinator-")
         self.addCleanup(self.temporary.cleanup)
         self.home = Path(self.temporary.name).resolve()
@@ -1156,6 +1157,7 @@ class OwnedDirectoryExchange:
 
 
 class FilesystemCoordinatorTest(unittest.TestCase):
+    @override
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory(prefix="kast-composed-recovery-")
         self.addCleanup(self.temporary.cleanup)
@@ -2477,6 +2479,51 @@ class FilesystemCoordinatorTest(unittest.TestCase):
         self.assertTrue((self.root / "shutdown.json").is_file())
         self.assertTrue((self.slot / "payload").is_dir())
 
+    def test_committed_upgrade_refreshes_installed_guidance_and_reports_failure(self) -> None:
+        notice = journal.ManagedNotice.HARNESS_REFRESH_REQUIRED
+        outcome = contract.InstalledNotRunning(
+            contract.InstalledFiles(
+                self.identity, "a" * 64, "b" * 64, self.compatibility, self.idea.target
+            ),
+            contract.Stopped(self.idea.target),
+            (notice,),
+        )
+        marker = self.installation / "share/kast/guidance-refresh-v1"
+        calls: list[list[str]] = []
+
+        def run(
+            arguments: list[str], environment: dict[str, str], timeout: float
+        ) -> subprocess.CompletedProcess[bytes]:
+            self.assertLessEqual(
+                {"HOME": str(self.home), "KAST_INSTALL_ROOT": str(self.root)}.items(),
+                environment.items(),
+            )
+            self.assertGreater(timeout, 0)
+            calls.append(arguments)
+            return subprocess.CompletedProcess(arguments, exit_code, b"", b"")
+
+        exit_code = 0
+        self.assertEqual(
+            install.refresh_installed_guidance(self.root, self.home, outcome, run), outcome
+        )
+        self.assertEqual(calls, [])
+        _ = marker.write_bytes(b"1\n")
+        refreshed = install.refresh_installed_guidance(self.root, self.home, outcome, run)
+        self.assertEqual(refreshed.notices, ())
+        self.assertEqual(
+            calls,
+            [
+                [
+                    str(self.installation / "share/kast/libexec/kast-management"),
+                    "--internal-install",
+                    "refresh-guidance",
+                ]
+            ],
+        )
+        exit_code = 1
+        failed = install.refresh_installed_guidance(self.root, self.home, refreshed, run)
+        self.assertEqual(failed.notices, (notice,))
+
     def test_already_current_proves_real_files_and_live_state_without_host_exchange(self) -> None:
         composition = install.release.AdmittedComposition(
             self.identity,
@@ -2788,6 +2835,7 @@ class FilesystemCoordinatorTest(unittest.TestCase):
 
 
 class IdeaMetadataTest(unittest.TestCase):
+    @override
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory(prefix="kast-idea-metadata-")
         self.addCleanup(temporary.cleanup)

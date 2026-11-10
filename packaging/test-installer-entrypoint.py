@@ -379,7 +379,8 @@ else:
                 self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
     def upgrade_fixture(self, directory, *, cold_staging=False, version='1.2.4', completion_capability=True,
-                        service_failure_report: str | None = None, retained_replacement=False, host_force_capability=True):
+                        service_failure_report: str | None = None, retained_replacement=False, host_force_capability=True,
+                        guidance_refresh=False):
         idea, assets, environment = self.installer_fixture(
             directory, version=version, completion_capability=b'1\n' if completion_capability else None,
         )
@@ -399,6 +400,11 @@ if [ "$1" = --internal-install ]; then
   case "$2" in
     preflight|preflight-reset) ;;
     restore-connections) printf 'restore-connections\\n' >> "$TEST_LOG" ;;
+    refresh-guidance|refresh-guidance-with-codex)
+      [ ! -d "$KAST_INSTALL_ROOT/recovery/replacement" ] || exit 94
+      printf 'guidance:%s\\n' "$2" >> "$TEST_LOG"
+      [ "${FAIL_GUIDANCE:-0}" = 0 ] || exit "$FAIL_GUIDANCE"
+      ;;
     reset)
       printf 'reset\\n' >> "$TEST_LOG"
       [ "${FAIL_RESET:-0}" = 0 ] || exit "$FAIL_RESET"
@@ -527,6 +533,8 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
         scripts['share/kast/libexec/kast-service'] = scripts['share/kast/libexec/kast-service'].replace(
             b'__SERVICE_FAILURE_REPORT__', ("printf '%s\\n' " + shlex.quote(service_failure_report) + ' >&2').encode(),
         )
+        if guidance_refresh:
+            scripts['share/kast/guidance-refresh-v1'] = b'1\n'
         scripts['share/kast/public-reset-v1'] = b'1\n'
         if completion_capability:
             scripts['share/kast/install-completion-v1'] = b'1\n'
@@ -665,6 +673,30 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertIn('install:codex', log.read_text().splitlines())
             self.assertNotIn('connect:codex:mcp', log.read_text().splitlines())
+
+    def test_guidance_refresh_runs_after_seal_for_existing_harnesses(self):
+        for option, action, refresh_exit in (
+            ('--skip-codex-plugin', 'refresh-guidance', 0),
+            ('--skip-codex-plugin', 'refresh-guidance', 17),
+            ('--install-codex-plugin', 'refresh-guidance-with-codex', 0),
+        ):
+            with self.subTest(option=option, refresh_exit=refresh_exit), tempfile.TemporaryDirectory() as directory:
+                idea, environment, _, log = self.upgrade_fixture(
+                    directory, retained_replacement=True, guidance_refresh=True,
+                )
+                codex = Path(directory) / 'bin/codex'
+                codex.write_text('#!/bin/sh\nexit 92\n')
+                codex.chmod(0o755)
+                environment['FAIL_GUIDANCE'] = str(refresh_exit)
+                result = subprocess.run(
+                    [str(BASH), str(INSTALLER), '--idea-home', str(idea), option],
+                    cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
+                )
+                self.assertEqual(result.returncode == 0, refresh_exit == 0, result.stderr)
+                self.assertEqual(log.read_text().splitlines(), ['service', 'plugin', 'review', f'guidance:{action}'])
+                self.assertTrue((Path(environment['HOME']) / '.local/bin/kast').is_file())
+                if refresh_exit:
+                    self.assertIn('Kast is installed, but guidance refresh is incomplete', result.stderr)
 
     def test_upgrade_finalizes_only_after_plugin_activation(self):
         with tempfile.TemporaryDirectory(prefix='kast-upgrade-trap-') as directory:

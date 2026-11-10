@@ -155,6 +155,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from("distribution/cli/public-reset-v1") { into("share/kast") }
     from("distribution/cli/reset-fence-v1") { into("share/kast") }
     from("packaging/install-completion-v1") { into("share/kast") }
+    from("distribution/cli/guidance-refresh-v1") { into("share/kast") }
     from("packaging/managed-install-v1") { into("share/kast") }
     from(listOf("packaging/install-candidate.sh", "packaging/managed_installation.py", "packaging/managed_installation.py.lock", "packaging/managed_release.py", "packaging/managed_update_contract.py", "packaging/managed_update_journal.py", "packaging/reload_hosted.py", "packaging/host_directory_exchange.py")) { into("share/kast") }
     from("distribution/contract/src/main/resources/management/reset-inventory-observation.schema.json") { into("share/kast/schema") }
