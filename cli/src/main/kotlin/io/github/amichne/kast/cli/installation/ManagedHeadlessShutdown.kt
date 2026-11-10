@@ -84,9 +84,10 @@ internal fun stopManagedHeadlessHost(
         val host =
             inspected.result as? IdeLifecycleResult.Inspected
                 ?: return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.HOST_REJECTED)
-        if (host.runtimeIdentity?.mode != IdeHostMode.MANAGED_HEADLESS)
+        val identity = host.runtimeIdentity
+        if (identity?.mode != IdeHostMode.MANAGED_HEADLESS)
             return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.ADMISSION_REJECTED)
-        val transaction = managedShutdownTransaction(host.runtimeIdentity)
+        val transaction = managedShutdownTransaction(identity)
         val settled =
             settleManagedHeadlessHost(idea, profile, host.host, transaction, execute, pauseSettlement, nanoTime)
         if (settled !is ManagedHostResponse.Inspected || settled.result !is IdeLifecycleResult.HostSettled)
