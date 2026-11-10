@@ -4,12 +4,14 @@ import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeHostMode
+import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Serializable
@@ -69,6 +71,7 @@ internal fun stopManagedHeadlessHost(
     execute: (ManagedHostRequest) -> ManagedHostResponse,
     awaitExit: (ManagedIdeProcess) -> Boolean,
     pauseSettlement: () -> Unit = { Thread.sleep(SETTLEMENT_POLL_MILLIS) },
+    nanoTime: () -> Long = System::nanoTime,
 ): ManagedHeadlessShutdownOutcome {
     try {
         val inspected = execute(ManagedHostRequest.Inspect(idea, profile))
@@ -83,8 +86,9 @@ internal fun stopManagedHeadlessHost(
                 ?: return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.HOST_REJECTED)
         if (host.runtimeIdentity?.mode != IdeHostMode.MANAGED_HEADLESS)
             return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.ADMISSION_REJECTED)
-        val transaction = UUID.randomUUID().toString()
-        val settled = settleManagedHeadlessHost(idea, profile, host.host, transaction, execute, pauseSettlement)
+        val transaction = managedShutdownTransaction(host.runtimeIdentity)
+        val settled =
+            settleManagedHeadlessHost(idea, profile, host.host, transaction, execute, pauseSettlement, nanoTime)
         if (settled !is ManagedHostResponse.Inspected || settled.result !is IdeLifecycleResult.HostSettled)
             return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.HOST_NOT_SETTLED)
         val stopped = execute(ManagedHostRequest.Stop(idea, profile, host.host, transaction))
@@ -123,16 +127,40 @@ private fun settleManagedHeadlessHost(
     transaction: String,
     execute: (ManagedHostRequest) -> ManagedHostResponse,
     pauseSettlement: () -> Unit,
+    nanoTime: () -> Long,
 ): ManagedHostResponse {
     var settled = execute(ManagedHostRequest.Settle(idea, profile, host, transaction))
-    val settlementDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)
+    val settlementDeadline = nanoTime() + TimeUnit.SECONDS.toNanos(20)
     while (
         settled is ManagedHostResponse.Inspected &&
             settled.result is IdeLifecycleResult.HostSettling &&
-            System.nanoTime() < settlementDeadline
+            nanoTime() < settlementDeadline
     ) {
         pauseSettlement()
         settled = execute(ManagedHostRequest.Settle(idea, profile, host, transaction))
     }
     return settled
 }
+
+/** Retries in separate Control processes reclaim only this exact Host's shutdown fence. */
+internal fun managedShutdownTransaction(identity: IdeHostRuntimeIdentity): String {
+    val owner =
+        ManagedShutdownOwner(
+            identity.ideaHome,
+            identity.profile,
+            identity.pid,
+            identity.processStartEpochMillis,
+            identity.hostLifetime,
+        )
+    return "shutdown-v1:" + UUID.nameUUIDFromBytes(Json.encodeToString(owner).encodeToByteArray())
+}
+
+/** Keep this versioned key stable across Control upgrades while the same Host is running. */
+@Serializable
+private data class ManagedShutdownOwner(
+    val ideaHome: String,
+    val profile: String,
+    val pid: Long,
+    val processStartEpochMillis: Long,
+    val hostLifetime: String,
+)
