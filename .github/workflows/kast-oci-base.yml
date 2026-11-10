@@ -121,6 +121,30 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Export the qualified image without publication
+        if: inputs.publish == false
+        run: |
+          candidate="$RUNNER_TEMP/kast-oci-candidate"
+          mkdir "$candidate"
+          expected="$(docker image inspect --format '{{.Id}}' "$IMAGE")"
+          docker image save --output "$candidate/kast-base.tar" "$IMAGE"
+          docker image rm "$IMAGE"
+          docker image load --input "$candidate/kast-base.tar"
+          [[ "$(docker image inspect --format '{{.Id}}' "$IMAGE")" == "$expected" ]]
+          printf '%s\n' "$expected" > "$candidate/image-id.txt"
+          printf '%s\n' "$IMAGE" > "$candidate/image-tag.txt"
+          cd "$candidate"
+          sha256sum kast-base.tar > SHA256SUMS
+
+      - name: Preserve the qualified image for a cloud trial
+        if: inputs.publish == false
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-oci-candidate-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/kast-oci-candidate
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Push and pull the qualified image by digest
         if: inputs.publish
         env:
