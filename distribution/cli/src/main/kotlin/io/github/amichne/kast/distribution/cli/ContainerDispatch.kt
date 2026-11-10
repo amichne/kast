@@ -14,9 +14,15 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 internal class ContainerNamespace : ManagementNode("container") {
-    override fun help(context: Context) = "Open a mounted worktree with a self-contained IDEA runtime."
+    override fun help(context: Context) = "Open the current Git worktree with a self-contained IDEA runtime."
 
     override fun selection(): ManagementCommand? = null
+}
+
+internal class ContainerStatusEntry(name: String = "container") : ManagementNode(name) {
+    override fun help(context: Context) = "List Kast workspace containers without starting Colima."
+
+    override fun selection() = ManagementCommand.Container(ContainerCommand.Status)
 }
 
 internal sealed interface ContainerCommand {
@@ -74,12 +80,12 @@ internal fun parseContainerCommand(arguments: List<String>): ManagementParsing {
     val action = arguments.firstOrNull()?.takeUnless { it.startsWith("-") } ?: "shell"
     if (action !in setOf("shell", "run", "status"))
         return ManagementParsing.Print("kast container: select shell, run, or status", true)
-    val command = ContainerEntry(action)
+    val command = if (action == "status") ContainerStatusEntry("kast container status") else ContainerEntry(action)
     val tail = if (arguments.firstOrNull() == action) arguments.drop(1) else arguments
     return try {
         val parsed = CommandLineParser.parse(command, tail)
         CommandLineParser.run(parsed.invocation) {}
-        ManagementParsing.Selected(command.selection())
+        ManagementParsing.Selected(requireNotNull(command.selection()))
     } catch (help: PrintHelpMessage) {
         ManagementParsing.Print(command.getFormattedHelp(help).orEmpty(), help.error)
     } catch (failure: CliktError) {
@@ -90,25 +96,21 @@ internal fun parseContainerCommand(arguments: List<String>): ManagementParsing {
 }
 
 private class ContainerEntry(private val action: String) : ManagementNode("kast container $action") {
-    private val workspace by option("--workspace", help = "Select a Git worktree. Default: current directory.")
-    private val name by option("--name", help = "Select private runtime state for this worktree.").default("default")
+    private val workspace by
+        option("--workspace", help = "Select a Git worktree. The default uses the current directory.")
+    private val name by
+        option("--name", help = "Select separate container state and a Gradle cache for this worktree.")
+            .default("default")
     private val image by option("--image", help = "Select a local sha256 ID or registry reference with @sha256 digest.")
     private val offline by option("--offline", help = "Disable the workspace network.").flag()
     private val arguments by argument("COMMAND").multiple()
 
     override fun help(context: Context) =
-        "Run in the mounted Git worktree with persistent Gradle and IDEA state. " +
-            "Needs Colima on macOS and a prepared Kast v3 image. " +
-            "Commands: shell (default), run -- COMMAND [ARGS], status. Host edits are immediate."
-
-    private fun workspaceOptions(): Boolean = workspace != null || name != "default" || image != null
+        "Open a shell in the current Git worktree, or use run -- COMMAND [ARGS] for one task. " +
+            "The worktree mounts read-write. " +
+            "Needs Colima on macOS and a prepared Kast v3 image. Use kast status container for passive status."
 
     override fun selection(): ManagementCommand.Container {
-        if (action == "status") {
-            if (workspaceOptions() || offline || arguments.isNotEmpty())
-                throw CliktError("status accepts no workspace options or command")
-            return ManagementCommand.Container(ContainerCommand.Status)
-        }
         val task =
             if (action == "run") ContainerTask.Run.parse(arguments).orUsageError()
             else {

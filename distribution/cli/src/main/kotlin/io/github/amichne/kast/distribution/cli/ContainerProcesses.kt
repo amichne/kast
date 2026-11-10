@@ -25,13 +25,16 @@ internal class NativeContainerProcess(
         return when {
             status == PublicQuerySignal.INTERRUPT.exit -> Refinement.Rejected(ContainerFailure.INTERRUPTED)
             status == PublicQuerySignal.TERMINATE.exit -> Refinement.Rejected(ContainerFailure.TERMINATED)
-            output.result == CapturedChildOutput.Rejected -> Refinement.Rejected(ContainerFailure.OUTPUT_REJECTED)
-            status != 0 -> Refinement.Rejected(ContainerFailure.PROCESS_FAILED)
             else ->
                 when (val result = output.result) {
-                    is CapturedChildOutput.Read -> Refinement.Refined(result.text)
+                    is CapturedChildOutput.Read ->
+                        if (status == 0) Refinement.Refined(result.text)
+                        else Refinement.Rejected(ContainerFailure.PROCESS_FAILED)
+                    CapturedChildOutput.Rejected.LIMIT -> Refinement.Rejected(ContainerFailure.OUTPUT_LIMIT_EXCEEDED)
+                    CapturedChildOutput.Rejected.ENCODING ->
+                        Refinement.Rejected(ContainerFailure.OUTPUT_ENCODING_REJECTED)
                     CapturedChildOutput.Pending,
-                    CapturedChildOutput.Rejected -> Refinement.Rejected(ContainerFailure.OUTPUT_REJECTED)
+                    CapturedChildOutput.Rejected.IO -> Refinement.Rejected(ContainerFailure.OUTPUT_CAPTURE_FAILED)
                 }
         }
     }

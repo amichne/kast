@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4ad287f8bf8e84f536f7817bd10785049e5015a35008db14c35b91c73002be5a",
+  "pageVersion": "sha256:95e3979b2730f591726521a0360e665f52523bd38e570fd6581d8b2c492befe4",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -636,11 +636,11 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt",
-          "version": "repo-file-v1:sha256:c150e3f46147a403d712fcda919ecb48dd74dc6e1ded577ddcbc421b52788543"
+          "version": "repo-file-v1:sha256:99ba5b82eed3cdeecc81b7752011165b7b20af9409ac09b1665431e1a7f67e68"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "version": "repo-file-v1:sha256:6a31b85a835cb98a8b37d4813b127d1857168b0d2cf51031e91a059dc0f6e766"
+          "version": "repo-file-v1:sha256:8299820d38db1d0a1bd01d0846917d372539a69128ba158bcf49b7a6d4aafad9"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt",
@@ -709,6 +709,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T18:25:20.058Z"
+    "at": "2026-11-10T18:30:11.951Z"
   }
 }

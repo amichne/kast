@@ -21,11 +21,15 @@ Normal use needs macOS, Colima, and a prepared native Kast image.
 The host needs no Docker CLI, uv, Python, Java, or desktop IDEA for this command.
 
 ```shell
+kast container
 kast container --help
 kast container run -- ./gradlew --build-cache test
-kast container shell
-kast container status
+kast status container
 ```
+
+Bare `kast container` starts or reuses the container for the current Git worktree and opens a shell.
+Help describes `--workspace`, `--name`, `--image`, and `--offline`.
+Both `kast status container` and `kast container status` list retained Kast containers without starting Colima.
 
 Edits and build outputs appear directly in the local directory.
 The retained container keeps its IDEA state and a private Gradle cache.

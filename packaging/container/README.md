@@ -90,11 +90,13 @@ The transfer uses Docker only because the source builder owns a Docker image sto
 
 ## Run worktree commands
 
-From a Git worktree, open a shell:
+From a Git worktree, open a shell. Kast starts the workspace container when necessary.
 
 ```shell
 kast container
 ```
+
+Use `kast container --help` to see the available flags and their defaults.
 
 Run a command with literal arguments:
 
@@ -147,11 +149,12 @@ Network access stays on by default. Select offline mode for a new named runtime:
 
 ```shell
 kast container run --name offline --offline -- kast --version
-kast container status
+kast status container
 ```
 
 Repeat `--offline` for that runtime. A different network selection rejects.
-`status` starts no VM or container. It reports a stopped or absent profile as unavailable.
+Use `kast status container` or `kast container status` to list Kast workspace containers in the running profile.
+Both forms start no VM or container. A stopped or absent profile is unavailable.
 
 Stop the VM while preserving its containers and caches:
 

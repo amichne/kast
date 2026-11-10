@@ -19,6 +19,40 @@ class ContainerCommandTest {
         val help = parsed as ManagementParsing.Print
         assertEquals(false, help.error)
         assertTrue(help.text.contains("Colima"))
+        for (flag in listOf("--workspace", "--name", "--image", "--offline")) {
+            assertTrue(help.text.contains(flag), flag)
+        }
+    }
+
+    @Test
+    fun `bare container opens the current worktree with defaults`() {
+        val parsed = parseManagementCommand(listOf("container")) as ManagementParsing.Selected
+        val command = (parsed.command as ManagementCommand.Container).command as ContainerCommand.Open
+        assertEquals(Path.of("."), command.directory)
+        assertEquals("default", command.name.value)
+        assertEquals(ContainerImageSelection.Local, command.image)
+        assertEquals(ContainerNetwork.ONLINE, command.network)
+        assertEquals(ContainerTask.Shell, command.task)
+    }
+
+    @Test
+    fun `both container status forms select the same passive operation`() {
+        val expected = ManagementParsing.Selected(ManagementCommand.Container(ContainerCommand.Status))
+        assertEquals(expected, parseManagementCommand(listOf("status", "container")))
+        assertEquals(expected, parseManagementCommand(listOf("container", "status")))
+        assertEquals(
+            ManagementParsing.Selected(ManagementCommand.Status(true)),
+            parseManagementCommand(listOf("status", "--json")),
+        )
+        for (args in listOf(listOf("status", "container"), listOf("container", "status"))) {
+            val help = parseManagementCommand(args + "--help") as ManagementParsing.Print
+            assertEquals(false, help.error)
+            assertTrue(help.text.contains("without starting Colima"))
+            val invalid = parseManagementCommand(args + listOf("--workspace", "/fixture")) as ManagementParsing.Print
+            assertTrue(invalid.error)
+        }
+        val ignoredFlag = parseManagementCommand(listOf("status", "--json", "container")) as ManagementParsing.Print
+        assertTrue(ignoredFlag.error)
     }
 
     @Test

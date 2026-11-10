@@ -153,7 +153,10 @@ internal class OwnedChildSession {
                 .inheritIO()
                 .apply {
                     if (output != OwnedChildOutput.Inherited) redirectOutput(ProcessBuilder.Redirect.PIPE)
-                    if (output is OwnedChildOutput.Capture) redirectInput(ProcessBuilder.Redirect.PIPE)
+                    if (output is OwnedChildOutput.Capture) {
+                        redirectInput(ProcessBuilder.Redirect.PIPE)
+                        redirectError(ProcessBuilder.Redirect.DISCARD)
+                    }
                 }
                 .start()
         }

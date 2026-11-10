@@ -33,18 +33,11 @@ class ContainerRuntimeTest {
         val calls = ArrayDeque(commonCalls(fixture))
         calls.add(runner + listOf("inspect", fixture.container.name) to read(fixture.container))
         calls.add(runner + listOf("images", "--quiet", "--no-trunc") to Refinement.Refined("$digest\n"))
-        val document =
-            ContainerImageDocument(
-                ContainerImageTarget("registry.example/kast:arm64", ContainerImageDescriptor(digest)),
-                ContainerImageConfiguration(
-                    "arm64",
-                    "linux",
-                    ContainerConfig("developer", mapOf("io.kast.dev-container" to "3")),
-                ),
-            )
         calls.add(
-            runner + listOf("image", "inspect", "--mode", "native", image) to
-                Refinement.Refined(managementJson.encodeToString(listOf(document)))
+            inspectImage(image) to
+                Refinement.Refined(
+                    nativeImage + "\n" + nativeImage.replace("registry.example/kast:arm64", image) + "\n"
+                )
         )
         val result = runtime(calls).prepare(fixture.command, fixture.workspace)
         assertTrue(result is Refinement.Refined)
@@ -55,29 +48,14 @@ class ContainerRuntimeTest {
     @Test
     fun `local image pin rejects a changed target before container creation`() {
         val fixture = fixture()
-        val document =
-            ContainerImageDocument(
-                ContainerImageTarget("registry.example/kast:arm64", ContainerImageDescriptor(digest)),
-                ContainerImageConfiguration(
-                    "arm64",
-                    "linux",
-                    ContainerConfig("developer", mapOf("io.kast.dev-container" to "3")),
-                ),
-            )
         val changed =
-            document.copy(image = ContainerImageTarget(image, ContainerImageDescriptor("sha256:" + "c".repeat(64))))
+            nativeImage.replace("registry.example/kast:arm64", image).replace(digest, "sha256:" + "c".repeat(64))
         val calls = ArrayDeque<Pair<List<String>, Refinement<String, ContainerFailure>>>()
         calls.add(profileCall())
         calls.add(runner + listOf("ps", "--all", "--format", "{{.Names}}") to Refinement.Refined(""))
-        calls.add(
-            runner + listOf("image", "inspect", "--mode", "native", "kast-dev:arm64") to
-                Refinement.Refined(managementJson.encodeToString(listOf(document)))
-        )
+        calls.add(inspectImage("kast-dev:arm64") to Refinement.Refined(nativeImage))
         calls.add(runner + listOf("tag", "registry.example/kast:arm64", image) to Refinement.Refined(""))
-        calls.add(
-            runner + listOf("image", "inspect", "--mode", "native", image) to
-                Refinement.Refined(managementJson.encodeToString(listOf(changed)))
-        )
+        calls.add(inspectImage(image) to Refinement.Refined(changed))
         assertEquals(
             Refinement.Rejected(ContainerFailure.IMAGE_REJECTED),
             runtime(calls).prepare(fixture.command, fixture.workspace),
@@ -91,19 +69,61 @@ class ContainerRuntimeTest {
         for (failure in
             listOf(
                 ContainerFailure.PROCESS_START_FAILED,
-                ContainerFailure.OUTPUT_REJECTED,
+                ContainerFailure.OUTPUT_LIMIT_EXCEEDED,
+                ContainerFailure.OUTPUT_ENCODING_REJECTED,
+                ContainerFailure.PROCESS_FAILED,
                 ContainerFailure.TERMINATED,
             )) {
             val calls = ArrayDeque<Pair<List<String>, Refinement<String, ContainerFailure>>>()
             calls.add(profileCall())
             calls.add(runner + listOf("ps", "--all", "--format", "{{.Names}}") to Refinement.Refined(""))
-            calls.add(
-                runner + listOf("image", "inspect", "--mode", "native", "kast-dev:arm64") to
-                    Refinement.Rejected(failure)
-            )
+            calls.add(inspectImage("kast-dev:arm64") to Refinement.Rejected(failure))
             assertEquals(Refinement.Rejected(failure), runtime(calls).prepare(fixture.command, fixture.workspace))
             assertTrue(calls.isEmpty())
         }
+    }
+
+    @Test
+    fun `a successful image inspection without output reports an empty document`() {
+        val result = prepareWithImageOutput("\n")
+        assertEquals("IMAGE_INSPECT_EMPTY", result.failure.name)
+    }
+
+    @Test
+    fun `invalid image inspection output rejects before image effects`() {
+        val wrongShapes = providerFixture("container-image-inspect-wrong-shapes.ndjson").trimEnd().lines()
+        for (output in
+            wrongShapes +
+                listOf("{", "banner\n$nativeImage", "\u001b[32m$nativeImage\u001b[0m", "$nativeImage $nativeImage")) {
+            val result = prepareWithImageOutput(output)
+            assertEquals("IMAGE_INSPECT_DOCUMENT_REJECTED", result.failure.name)
+        }
+    }
+
+    @Test
+    fun `image inspection rejects conflicting aliases before image effects`() {
+        val foreign = nativeImage.replace(digest, "sha256:" + "b".repeat(64))
+        assertEquals(ContainerFailure.IMAGE_REJECTED, prepareWithImageOutput("$nativeImage\n$foreign\n").failure)
+    }
+
+    // Native nerdctl fields with a synthetic image name, digest, and metadata.
+    private val nativeImage = providerFixture("container-image-inspect.ndjson").trimEnd()
+
+    private fun providerFixture(name: String): String =
+        requireNotNull(javaClass.getResource("/management/$name")).readText()
+
+    private fun inspectImage(reference: String): List<String> =
+        runner + listOf("image", "inspect", "--mode", "native", "--format=json", reference)
+
+    private fun prepareWithImageOutput(output: String): Refinement.Rejected<ContainerFailure> {
+        val fixture = fixture()
+        val calls = ArrayDeque<Pair<List<String>, Refinement<String, ContainerFailure>>>()
+        calls.add(profileCall())
+        calls.add(runner + listOf("ps", "--all", "--format", "{{.Names}}") to Refinement.Refined(""))
+        calls.add(inspectImage("kast-dev:arm64") to Refinement.Refined(output))
+        val result = runtime(calls).prepare(fixture.command, fixture.workspace)
+        assertTrue(calls.isEmpty())
+        return result as Refinement.Rejected
     }
 
     private fun runtime(

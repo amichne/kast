@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fd51febb41694a13664705e9043054e26226c62a3324a3e4f63ed4466bb98096",
+  "pageVersion": "sha256:cd0bf9fc92305dda740647abba8e2a5fc0cc65dc167294ec4a6b930bc1112302",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "version": "repo-file-v1:sha256:6a31b85a835cb98a8b37d4813b127d1857168b0d2cf51031e91a059dc0f6e766"
+          "version": "repo-file-v1:sha256:8299820d38db1d0a1bd01d0846917d372539a69128ba158bcf49b7a6d4aafad9"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
@@ -120,7 +120,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt",
-          "version": "repo-file-v1:sha256:c150e3f46147a403d712fcda919ecb48dd74dc6e1ded577ddcbc421b52788543"
+          "version": "repo-file-v1:sha256:99ba5b82eed3cdeecc81b7752011165b7b20af9409ac09b1665431e1a7f67e68"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt",
@@ -138,11 +138,11 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt",
-          "version": "repo-file-v1:sha256:9821737eae7c1338ed54dff80b510b4b90cb3440e5140fd2398af424cea18f1b"
+          "version": "repo-file-v1:sha256:72400c39db22606e8c786a1e9f9434471ae97ca7bf8cfdcffbcade6539669a60"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerWorkspace.kt",
-          "version": "repo-file-v1:sha256:2c2d21eef4547baafe84d7735001fce554580b5dce109cb2b69611421f8f29e8"
+          "version": "repo-file-v1:sha256:9a458b9fd8185108651f06cd8e4184d876c2c153fcce19a78fe53c7187b3c612"
         }
       ]
     },
@@ -156,7 +156,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerWorkspace.kt",
-          "version": "repo-file-v1:sha256:2c2d21eef4547baafe84d7735001fce554580b5dce109cb2b69611421f8f29e8"
+          "version": "repo-file-v1:sha256:9a458b9fd8185108651f06cd8e4184d876c2c153fcce19a78fe53c7187b3c612"
         }
       ]
     },
@@ -188,7 +188,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt",
-          "version": "repo-file-v1:sha256:c150e3f46147a403d712fcda919ecb48dd74dc6e1ded577ddcbc421b52788543"
+          "version": "repo-file-v1:sha256:99ba5b82eed3cdeecc81b7752011165b7b20af9409ac09b1665431e1a7f67e68"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerPlan.kt",
@@ -196,7 +196,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt",
-          "version": "repo-file-v1:sha256:9821737eae7c1338ed54dff80b510b4b90cb3440e5140fd2398af424cea18f1b"
+          "version": "repo-file-v1:sha256:72400c39db22606e8c786a1e9f9434471ae97ca7bf8cfdcffbcade6539669a60"
         },
         {
           "resource": "repo://packaging/dev_container.py",
@@ -218,7 +218,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt",
-          "version": "repo-file-v1:sha256:9821737eae7c1338ed54dff80b510b4b90cb3440e5140fd2398af424cea18f1b"
+          "version": "repo-file-v1:sha256:72400c39db22606e8c786a1e9f9434471ae97ca7bf8cfdcffbcade6539669a60"
         },
         {
           "resource": "repo://packaging/composed_bundle.py",
@@ -261,10 +261,50 @@
           "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
         }
       ]
+    },
+    {
+      "id": "claim_13fe98c080a54e01854a92e7fb9b9ca7",
+      "statement": "Kast requests one compact native JSON record per alias. The records must agree on the image digest and configuration. Image inspection rejects empty, malformed, or oversized output with a fixed stage and reason.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerPlan.kt",
+          "version": "repo-file-v1:sha256:732681d91907f3ac539dddc157d98355f49db7e58f7869745d7610a4e994cdbc"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerProcesses.kt",
+          "version": "repo-file-v1:sha256:dbe19685690867622537941cccd50544aae1b8e61768691c04839e9b44ea9ba1"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt",
+          "version": "repo-file-v1:sha256:72400c39db22606e8c786a1e9f9434471ae97ca7bf8cfdcffbcade6539669a60"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/OwnedChildOutput.kt",
+          "version": "repo-file-v1:sha256:a82c1741c2440af3225a55bb5c207c6c4f68e76e3e975af7c1c09c63726eec3a"
+        }
+      ]
+    },
+    {
+      "id": "claim_5649b533e5144d9394279b73a2e2ca50",
+      "statement": "kast status container and kast container status list retained Kast containers without starting Colima.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt",
+          "version": "repo-file-v1:sha256:99ba5b82eed3cdeecc81b7752011165b7b20af9409ac09b1665431e1a7f67e68"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerExecution.kt",
+          "version": "repo-file-v1:sha256:ff636c66e225301187b465559acefecf2c3654f883e0e369c3eac0e0f9d92e93"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
+          "version": "repo-file-v1:sha256:8299820d38db1d0a1bd01d0846917d372539a69128ba158bcf49b7a6d4aafad9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T18:25:20.058Z"
+    "at": "2026-11-10T18:30:11.951Z"
   }
 }

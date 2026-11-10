@@ -43,6 +43,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerExecution.kt
   - id: openwiki-source-7054083325bc329560cbbed1
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerPlan.kt
+  - id: openwiki-source-fed6d540a7cf7d8668fa8dbb
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerProcesses.kt
   - id: openwiki-source-0e50d1b18d1925b709ede5d3
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt
   - id: openwiki-source-53bfd9d570ccfafcba1fca7b
@@ -61,6 +63,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt
   - id: openwiki-source-1d4cdf342ee112e0d9d87924
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementReceiptAdmission.kt
+  - id: openwiki-source-8ff10a4ad1981ccd3b476d05
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/OwnedChildOutput.kt
   - id: openwiki-source-552a7d3faff1f8e990a51c96
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt
   - id: openwiki-source-2353a5c8f9b33ce9b982a841
@@ -87,10 +91,10 @@ sources:
     resource: repo://packaging/managed_installation.py
   - id: openwiki-source-438eaae27874148a8609a1fb
     resource: repo://packaging/oci_task.py
-generated: { by: "codex", at: "2026-11-10T17:49:52.067Z" }
+generated: { by: "codex", at: "2026-11-10T18:30:11.951Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-10T18:25:20.058Z
+    at: 2026-11-10T18:30:11.951Z
 ---
 
 # Native management and harness connections
@@ -137,12 +141,15 @@ Image admission needs Linux, the native architecture, the `developer` user, and 
 The first unqualified call selects local `kast-dev:arm64` or `kast-dev:amd64`.
 Later unqualified calls keep the retained container's image.
 Normal use never builds an image. Source builds use the separate checkout builder.
+Kast requests one compact native JSON record per alias.
+The records must agree on the image digest and configuration.
+Image inspection rejects empty, malformed, or oversized output with a fixed stage and reason.
 
 Each invocation admits the retained identity, image, mounts, user, and network before task dispatch.
 The guest helper uses `--reuse` to admit only the exact selected workspace trust grant.
 Conflicting trust or retained inputs reject before the task starts.
 `--offline` selects a container without network access. A retained container needs the same network selection.
-`kast container status` reads existing state without a VM or container start.
+`kast status container` and `kast container status` list retained Kast containers without starting Colima.
 
 ## Guidance installation and ownership
 

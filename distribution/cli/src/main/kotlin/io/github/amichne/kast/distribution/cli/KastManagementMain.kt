@@ -72,7 +72,7 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
     val root =
         ManagementRoot()
             .subcommands(
-                StatusCommand(),
+                StatusCommand().subcommands(ContainerStatusEntry()),
                 StopCommand(),
                 ReinstallCommand(),
                 DisconnectCommand(),
@@ -121,11 +121,17 @@ internal class ManagementRoot : ManagementNode("kast") {
 }
 
 private class StatusCommand : ManagementNode("status") {
+    override val invokeWithoutSubcommand = true
     private val json by option("--json", help = "Print a typed JSON status document").flag()
 
     override fun help(context: Context) = "Show installation and runtime status without startup."
 
-    override fun selection() = ManagementCommand.Status(json)
+    override fun selection(): ManagementCommand.Status? =
+        when {
+            currentContext.invokedSubcommand == null -> ManagementCommand.Status(json)
+            json -> throw CliktError("--json applies to installation status only")
+            else -> null
+        }
 }
 
 private class StopCommand : ManagementNode("stop") {

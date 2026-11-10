@@ -21,17 +21,17 @@ internal sealed interface OwnedChildOutput {
                 child.outputStream.close()
                 val bytes = child.inputStream.readNBytes(MAXIMUM_CAPTURE_BYTES + 1)
                 if (bytes.size > MAXIMUM_CAPTURE_BYTES) {
-                    result = CapturedChildOutput.Rejected
+                    result = CapturedChildOutput.Rejected.LIMIT
                     ChildOutputDelivery.Rejected.IO
                 } else {
                     result = CapturedChildOutput.Read(bytes.decodeToString(throwOnInvalidSequence = true))
                     ChildOutputDelivery.Delivered
                 }
             } catch (_: CharacterCodingException) {
-                result = CapturedChildOutput.Rejected
+                result = CapturedChildOutput.Rejected.ENCODING
                 ChildOutputDelivery.Rejected.ENCODING
             } catch (_: IOException) {
-                result = CapturedChildOutput.Rejected
+                result = CapturedChildOutput.Rejected.IO
                 ChildOutputDelivery.Rejected.IO
             }
     }
@@ -40,7 +40,11 @@ internal sealed interface OwnedChildOutput {
 internal sealed interface CapturedChildOutput {
     data object Pending : CapturedChildOutput
 
-    data object Rejected : CapturedChildOutput
+    enum class Rejected : CapturedChildOutput {
+        LIMIT,
+        ENCODING,
+        IO,
+    }
 
     data class Read(val text: String) : CapturedChildOutput
 }

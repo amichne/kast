@@ -103,8 +103,13 @@ internal enum class ContainerFailure(val guidance: String, val exit: Int = 1) {
     RUNTIME_REJECTED("Profile kast-native must use containerd on the native architecture."),
     RUNTIME_STOPPED("Profile kast-native is stopped or absent. Start a workspace first."),
     PROCESS_START_FAILED("Cannot start the selected runtime command."),
-    PROCESS_FAILED("The runtime command failed. Examine its preceding diagnostic."),
-    OUTPUT_REJECTED("The runtime returned an invalid or oversized document."),
+    PROCESS_FAILED("The runtime command exited with an error."),
+    OUTPUT_REJECTED("The runtime returned an invalid document."),
+    OUTPUT_LIMIT_EXCEEDED("The runtime output exceeded the capture limit."),
+    OUTPUT_ENCODING_REJECTED("The runtime output was invalid UTF-8."),
+    OUTPUT_CAPTURE_FAILED("Cannot read the runtime output."),
+    IMAGE_INSPECT_EMPTY("Image inspection returned no document. Make sure that a native Kast v3 image is available."),
+    IMAGE_INSPECT_DOCUMENT_REJECTED("Image inspection returned an invalid native image document."),
     IMAGE_REJECTED("Select a native Kast v3 image with --image. Source builds use mise exec -- kast-container build."),
     WORKSPACE_CONFLICT(
         "The retained workspace differs from these inputs. Select another --name or restore its inputs."
