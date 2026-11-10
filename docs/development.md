@@ -294,7 +294,7 @@ The candidate retains its original commit and version.
 Missing or expired candidates, changed trees, and fork producers require a fresh main build.
 Malformed records, damaged payloads, and incomplete observations reject reuse.
 
-Successful main CI triggers the developer publication workflow automatically.
+Successful main CI from a push triggers the developer publication workflow automatically.
 A `DOCS_VALIDATED` result leaves the developer product pointer unchanged and publishes no candidate.
 Product publication needs the exact run's `PRODUCT_VALIDATED` record.
 It downloads the retained candidate and runs no Gradle or native-image build.
@@ -304,7 +304,16 @@ If main advances before publication, the publisher retains the existing latest p
 `kast versions` lists qualified main builds from the published catalog.
 `kast upgrade --channel main` selects the latest qualified development build.
 
-To retry publication for current main, supply its successful CI run ID:
+If current main has no qualified product candidate, start full CI manually:
+
+```shell
+gh workflow run ci.yml --ref main -f rollout=none -f rollout_case=all
+```
+
+Wait for that exact run to succeed with `PRODUCT_VALIDATED`.
+Manual CI does not trigger developer publication automatically.
+
+To publish that candidate or retry publication for current main, supply its successful CI run ID:
 
 ```shell
 gh workflow run developer-release.yml --ref main -f run_id=<successful-main-CI-run-ID>

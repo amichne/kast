@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:51b2bc5778a6d023dfeacb3768c960c986b2b8f7b8f44a39e708d896edfd4418",
+  "pageVersion": "sha256:38a96688e08d467eaa383636595fa69739598dd5d9cd41be83561180a07b1f51",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -310,7 +310,7 @@
         },
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
+          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
@@ -320,11 +320,15 @@
     },
     {
       "id": "claim_d407483e65e045288fecd3b152e7e6a3",
-      "statement": "Successful main product validation promotes retained candidate bytes to the developer channel without another build. The publisher examines producer and digest provenance, admits exact retries, and preserves latest when main advances. Documentation-only validation completes without product publication.",
+      "statement": "Successful main product validation from push or manual CI permits promotion of unchanged candidate bytes to the developer channel. The publisher admits matching producer events and identities, digest provenance, and exact retries. It preserves latest when main advances. Documentation-only validation completes without product publication.",
       "evidence": [
         {
+          "resource": "repo://.github/scripts/ci/validation_outcome.py",
+          "version": "repo-file-v1:sha256:24a30aefa486182b37f74dd54a2e2345536e283163e046ac60bdc2fa3804760b"
+        },
+        {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
+          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
         },
         {
           "resource": "repo://.github/scripts/release/publish-developer.sh",
@@ -364,7 +368,7 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:c8b9e42df35e0cdbc3b63c85ff4afe00fa5c33f905ec9e1d57a8573ab03d2bdc"
+          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
@@ -683,6 +687,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T06:03:12.348Z"
+    "at": "2026-11-10T13:00:52.429Z"
   }
 }

@@ -265,6 +265,8 @@ sources:
     resource: repo://.github/scripts/ci/test_push_policy.py
   - id: openwiki-source-d7f5bb97a65625ecdf33ddcf
     resource: repo://.github/scripts/ci/test_routine_gate.py
+  - id: openwiki-source-43d206677342592403ab5f63
+    resource: repo://.github/scripts/ci/validation_outcome.py
   - id: openwiki-source-8c864abdf1b09fa67b48adbc
     resource: repo://.github/scripts/release/build_candidate.py
   - id: openwiki-source-939501634c56c6ffea2fec6b
@@ -377,10 +379,10 @@ sources:
     resource: repo://runtime/hosted/native/README.md
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-10T06:03:12.348Z" }
+generated: { by: "codex", at: "2026-11-10T13:00:52.429Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-10T06:03:12.348Z
+    at: 2026-11-10T13:00:52.429Z
 ---
 
 # Distribution and packaging
@@ -509,7 +511,7 @@ Existing releases must match exactly for retries.
 A delayed publisher can keep its immutable release but cannot update latest after main advances.
 The public `developer-latest` branch contains a pointer to the exact prerelease and original build revision.
 The installer accepts `--developer-latest`; stable version resolution ignores developer tags.
-Manual publication retries supply the successful current-main push CI run ID.
+Manual publication accepts a successful current-main push or manual CI run ID with matching event and producer evidence.
 
 When setup runs, the product job configures cache transport for eligible Gradle User Home state, task outputs, and native build tools.
 Only main push and main workflow-dispatch runs save cache entries.

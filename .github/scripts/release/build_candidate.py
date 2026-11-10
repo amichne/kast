@@ -411,7 +411,7 @@ def promote(repository: str, revision: str, main_run_id: int, bundle: Path, reco
     if not positive(main_run_id):
         raise Rejected(Failure.INVALID_IDENTITY)
     run = observe(f"repos/{repository}/actions/runs/{main_run_id}", ObservationStage.WORKFLOW_RUN)
-    if not reusable_run(run, repository, revision) or run.get("event") != "push" or run.get("head_branch") != "main":
+    if not reusable_run(run, repository, revision) or run.get("event") not in validation.MAIN_PUBLICATION_EVENTS or run.get("head_branch") != "main":
         raise Rejected(Failure.PRODUCER_NOT_SUCCESSFUL)
     expected_tree = tree(repository, revision)
     outcome = admit_validation(repository, revision, run, expected_tree)
@@ -461,7 +461,7 @@ def verify_publication(repository: str, revision: str, version: str, bundle: Pat
     identity(repository, promotion.mergedRevision)
     main_run = observe(f"repos/{repository}/actions/runs/{promotion.mainRunId}", ObservationStage.WORKFLOW_RUN)
     if (not reusable_run(main_run, repository, promotion.mergedRevision)
-            or main_run.get("event") != "push" or main_run.get("head_branch") != "main"
+            or main_run.get("event") not in validation.MAIN_PUBLICATION_EVENTS or main_run.get("head_branch") != "main"
             or main_run.get("run_attempt") != promotion.mainRunAttempt):
         raise Rejected(Failure.PRODUCER_NOT_SUCCESSFUL)
     expected_tree = tree(repository, promotion.mergedRevision)

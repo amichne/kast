@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass, replace
 import io
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import sys
@@ -39,6 +40,29 @@ class Run:
     status: str = "completed"
     conclusion: str = "success"
     repository: Repository = Repository()
+
+
+@dataclass(frozen=True)
+class Tree:
+    sha: str = TREE
+
+
+@dataclass(frozen=True)
+class Commit:
+    sha: str = BUILD
+    tree: Tree = Tree()
+
+
+@dataclass(frozen=True)
+class Artifact:
+    name: str
+    expired: bool = False
+
+
+@dataclass(frozen=True)
+class Artifacts:
+    total_count: int
+    artifacts: tuple[Artifact, ...]
 
 
 @dataclass(frozen=True)
@@ -146,6 +170,71 @@ class PayloadAdmissionTest(unittest.TestCase):
 
     def test_all_payload_bytes_match_the_retained_manifest(self):
         self.assertEqual(self.value, candidate.read(self.bundle))
+
+    def test_manual_main_candidate_promotes_and_rechecks_exact_bytes(self):
+        value = replace(self.value, event="workflow_dispatch")
+        (self.bundle / "candidate.json").write_text(json.dumps(asdict(value)))
+        run = replace(Run(), event="workflow_dispatch", head_branch="main")
+        outcome = replace(validation_record(), sourceRevision=BUILD, baseRevision="",
+                          runId=123, event="workflow_dispatch")
+        validation_name = f"ci-validation-outcome-{BUILD}-1"
+        candidate_name = f"ci-build-candidate-{BUILD}-1"
+        artifacts = Artifacts(2, (Artifact(validation_name), Artifact(candidate_name)))
+        destination = Path(self.temporary.name) / "download"
+        promotion = Path(self.temporary.name) / "promotion.json"
+        downloads = []
+
+        def observe(endpoint, stage):
+            if endpoint == f"repos/{REPOSITORY}/actions/runs/123":
+                self.assertEqual(candidate.ObservationStage.WORKFLOW_RUN, stage)
+                return asdict(run)
+            if endpoint == f"repos/{REPOSITORY}/git/commits/{BUILD}":
+                self.assertEqual(candidate.ObservationStage.SOURCE_TREE, stage)
+                return asdict(Commit())
+            self.assertEqual(f"repos/{REPOSITORY}/actions/runs/123/artifacts?per_page=100", endpoint)
+            self.assertEqual(candidate.ObservationStage.RUN_ARTIFACTS, stage)
+            return json.loads(json.dumps(asdict(artifacts)))
+
+        def download(command, failure):
+            self.assertEqual(candidate.Failure.DOWNLOAD_FAILED, failure)
+            self.assertEqual(["gh", "run", "download", "123", "--repo", REPOSITORY, "--name"], command[:7])
+            self.assertEqual("--dir", command[8])
+            name, target = command[7], Path(command[9])
+            downloads.append(name)
+            if name == validation_name:
+                (target / "validation.json").write_text(json.dumps(asdict(outcome)))
+            else:
+                self.assertEqual(candidate_name, name)
+                shutil.copytree(self.bundle, target, dirs_exist_ok=True)
+
+        with patch.object(candidate, "observe", side_effect=observe), \
+                patch.object(candidate, "execute", side_effect=download):
+            admitted = candidate.promote(REPOSITORY, BUILD, 123, destination, promotion)
+            self.assertEqual(value, admitted)
+            sealed = candidate.verify_publication(REPOSITORY, BUILD, VERSION, destination, promotion)
+        self.assertEqual([validation_name, candidate_name, validation_name], downloads)
+        self.assertEqual(candidate.Promotion(1, REPOSITORY, BUILD, BUILD, TREE, VERSION, 123, 1, 123, 1,
+                                            candidate.legacy.digest(destination / "candidate.json")), sealed)
+        self.assertEqual(self.value.assets, candidate.read(destination).assets)
+
+        outcome = replace(outcome, scope=Scope.SOURCE_FULL, outcome=Outcome.SOURCE_VALIDATED)
+        downloads.clear()
+        source_destination = Path(self.temporary.name) / "source-download"
+        source_promotion = Path(self.temporary.name) / "source-promotion.json"
+        with patch.object(candidate, "observe", side_effect=observe), \
+                patch.object(candidate, "execute", side_effect=download), \
+                self.assertRaises(candidate.Rejected) as rejected:
+            candidate.promote(REPOSITORY, BUILD, 123, source_destination, source_promotion)
+        self.assertEqual(candidate.Failure.SOURCE_NOT_QUALIFIED, rejected.exception.failure)
+        self.assertEqual([validation_name], downloads)
+        self.assertFalse(source_destination.exists())
+        self.assertFalse(source_promotion.exists())
+
+        (destination / "payload" / "host-installation.py").write_bytes(b"changed")
+        with patch.object(candidate, "observe") as remote, self.assertRaises(candidate.Rejected) as rejected:
+            candidate.verify_publication(REPOSITORY, BUILD, VERSION, destination, promotion)
+        self.assertEqual(candidate.Failure.PAYLOAD_MISMATCH, rejected.exception.failure)
+        remote.assert_not_called()
 
     def test_changed_extra_and_symlink_payloads_reject(self):
         payload = self.bundle / "payload"
