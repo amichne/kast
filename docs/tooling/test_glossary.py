@@ -56,7 +56,7 @@ def test_report_serializes_the_independently_expected_shape() -> None:
         "type": "GLOSSARY_REPORT",
         "schemaVersion": 1,
         "sourceSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-        "entries": 23,
+        "entries": 27,
         "documents": [],
     }
 
