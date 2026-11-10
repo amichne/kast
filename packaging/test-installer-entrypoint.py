@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass
 """Public installer invocation contract; no network or machine state changes."""
 
 from pathlib import Path
+import base64
 import hashlib
 import errno
 import io
@@ -107,6 +108,16 @@ class RegistryRejectedFixture:
 @dataclass(frozen=True)
 class ControlRecoveryFixture:
     type: str = 'ROLLED_BACK'
+
+
+@dataclass(frozen=True)
+class ContentsResponseFixture:
+    content: str
+    size: int
+    encoding: str = 'base64'
+    path: str = 'latest.txt'
+    type: str = 'file'
+    url: str = 'https://api.github.com/repos/amichne/kast/contents/latest.txt?ref=developer-latest'
 
 
 class InstallerEntrypointTest(unittest.TestCase):
@@ -290,6 +301,8 @@ esac
 
     def developer_curl(self, directory: str, assets: Path, pointer: str | None, *, version: str = '0.0.123',
                        stable_url: str | None = None, release_status: int = 0):
+        payload = (pointer + '\n').encode() if pointer is not None else b''
+        response = json.dumps(asdict(ContentsResponseFixture(base64.encodebytes(payload).decode(), len(payload))))
         binary = Path(directory) / "bin/curl"
         binary.write_text(f"""#!/usr/bin/env python3
 from pathlib import Path
@@ -304,11 +317,15 @@ url = arguments[-1]
 if url == 'https://raw.githubusercontent.com/amichne/kast/main/install.sh':
     sys.stdout.write(Path({str(INSTALLER)!r}).read_text())
 elif url == 'https://api.github.com/repos/amichne/kast/contents/latest.txt?ref=developer-latest':
-    if 'Accept: application/vnd.github.raw+json' not in arguments or 'Cache-Control: no-cache' not in arguments:
-        raise SystemExit('pointer request must select raw content and revalidate caches')
+    if 'Cache-Control: no-cache' not in arguments:
+        raise SystemExit('pointer request must revalidate caches')
     if {pointer is None!r}:
         raise SystemExit(22)
-    print({pointer!r})
+    response = {response!r}
+    if '--max-filesize' in arguments and len(response.encode()) > int(arguments[arguments.index('--max-filesize') + 1]):
+        print('curl: (56) Maximum file size exceeded', file=sys.stderr)
+        raise SystemExit(56)
+    print(response)
 elif url == 'https://github.com/amichne/kast/releases/latest' and {stable_url is not None!r}:
     assert '--head' in arguments and '--write-out' in arguments
     sys.stdout.write({stable_url!r})
@@ -1413,7 +1430,7 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             transfers = [shlex.split(line) for line in (Path(directory) / 'curl.calls').read_text().splitlines()][1:]
-            self.assertEqual(6, len(transfers))
+            self.assertEqual(6, len(transfers), result.stderr)
             for arguments in transfers:
                 self.assertIn('--silent', arguments)
                 self.assertNotIn('--progress-bar', arguments)
@@ -1477,7 +1494,7 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             self.assertEqual(8, len(calls))
             self.assertEqual('https://raw.githubusercontent.com/amichne/kast/main/install.sh', calls[0][-1])
             self.assertEqual('https://api.github.com/repos/amichne/kast/contents/latest.txt?ref=developer-latest', calls[1][-1])
-            self.assertIn('Accept: application/vnd.github.raw+json', calls[1])
+            self.assertIn('Accept: application/vnd.github+json', calls[1])
             self.assertIn('Cache-Control: no-cache', calls[1])
             for arguments in calls[2:]:
                 self.assertIn('/developer-v0.0.3336/', arguments[-1])

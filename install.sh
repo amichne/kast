@@ -364,12 +364,29 @@ run_host_installer() {
 }
 
 resolve_developer_latest() {
-  local pointer tag selected_version source_revision extra
-  pointer="$(curl --fail --location --silent --show-error --max-filesize 256 \
+  local response pointer tag selected_version source_revision extra
+  response="$(curl --fail --location --silent --show-error \
     --retry "$INSTALL_DOWNLOAD_RETRIES" --retry-delay "$((INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS / 1000))" \
-    --header 'Accept: application/vnd.github.raw+json' --header 'Cache-Control: no-cache' \
+    --header 'Accept: application/vnd.github+json' --header 'Cache-Control: no-cache' \
     "https://api.github.com/repos/$REPOSITORY/contents/latest.txt?ref=developer-latest")" ||
     fail "developer-latest pointer is unavailable"
+  pointer="$(python3 -c '
+import base64, json, sys
+
+try:
+    document = json.load(sys.stdin)
+    if not isinstance(document, dict) or document.get("type") != "file" or document.get("path") != "latest.txt":
+        raise ValueError
+    content, size = document.get("content"), document.get("size")
+    if document.get("encoding") != "base64" or not isinstance(content, str) or type(size) is not int:
+        raise ValueError
+    payload = base64.b64decode(content.replace("\n", ""), validate=True)
+    if len(payload) != size or b"\0" in payload:
+        raise ValueError
+    sys.stdout.write(payload.decode("ascii"))
+except (ValueError, RecursionError):
+    sys.exit(1)
+' <<< "$response")" || fail "developer-latest pointer is invalid"
   [[ "$pointer" != *$'\n'* ]] || fail "developer-latest pointer has multiple records"
   IFS=' ' read -r tag selected_version source_revision extra <<< "$pointer"
   [[ -z "${extra:-}" && "$selected_version" =~ ^0\.0\.[0-9]+$ &&

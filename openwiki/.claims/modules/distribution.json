@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:95e3979b2730f591726521a0360e665f52523bd38e570fd6581d8b2c492befe4",
+  "pageVersion": "sha256:cfa78f90235a9ec98caca43be372b2b14cff299bdcd2fa0a6dbf881b0f3876cf",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:783f4a44f6540af7b7dd969f56c820eb362c4b0d644f8a457a4b0ad74763e9a7"
+          "version": "repo-file-v1:sha256:006547c08328cc16ce60fa81286237e7e707e33c420c5162947d62376b6e61ed"
         },
         {
           "resource": "repo://packaging/test-installer-removal.py",
@@ -252,11 +252,11 @@
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:783f4a44f6540af7b7dd969f56c820eb362c4b0d644f8a457a4b0ad74763e9a7"
+          "version": "repo-file-v1:sha256:006547c08328cc16ce60fa81286237e7e707e33c420c5162947d62376b6e61ed"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:c7b0a97e760bc09fbd0968b67f6c7ac3880d8b3122119e3ab1ee6d1b00767a07"
+          "version": "repo-file-v1:sha256:5712e1ccfdb941c5a8b80b2bef6ea5756d5d52539270dde79226105a10a9ca8c"
         }
       ]
     },
@@ -399,7 +399,7 @@
           "version": "repo-lines-v1:sha256:a2abdcf6f95bfacb4d7bdec3087b6747dd0c1629a376c46de164697829aa9513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTg1ZjgxMzFkNTg5MGJiMGUzMTNmZDM0YzhlMzViNmU0OWJkMDYzYWNlNmFhMjE5ZGMwYjliM2QzZjI5MmVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MjJjYjVkYjA2NTY4OWFkOGJlNmVlYWY4ZDVjYmY0MjRiN2VlZGMzODY1YTUyYTIwMDVlYTg4YWM4MmViZDFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmMjQ4MDUxODRmODZkNGVlZDExOWVkZjNiMTBlZDc0YTNhOGRhMWVhOTg4MzUwMzUwNGFhODk0Zjk2M2I4Y2RhIn0"
         },
         {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L805-L862",
+          "resource": "repo://packaging/test-installer-entrypoint.py#L822-L879",
           "version": "repo-lines-v1:sha256:72ed803b67a7c29c67caad1d8974e873e2c70a76e549ffb5072c33f616d412a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOWUzNzA5ZTg1MTg4MTE5MDBkODEzNWI4MTY1ZjI1MmU4NDUwMGQ2ZmQyYTcxZDRhNGI2ODU4ZGQ3ZDA3OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjM2YzVhNTg1ZGM4YWUwNTlmM2JmNDlkM2JlY2YxNzliYmI4MTU0MDI5ZjQwNWNiMGZiM2FhZDkzYjEzZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhMWI3NGViNzI0ZjA2YzlhNDRjMTFkZTJiYmUzODYyMzdiMzIxZWJjYmNlMjFlMGJiOGYyMDZhMzk1MDEzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMjgwNDc1ODQzYTA3MTc2NDlkNDdhMzVlNDM1Yzk0OTFiNDI5YzE0ZGQ0N2ExMTQ1ODE1MWNlOTVlMWQ2MTUifQ"
         }
       ]
@@ -698,7 +698,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:783f4a44f6540af7b7dd969f56c820eb362c4b0d644f8a457a4b0ad74763e9a7"
+          "version": "repo-file-v1:sha256:006547c08328cc16ce60fa81286237e7e707e33c420c5162947d62376b6e61ed"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
@@ -709,6 +709,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T18:30:11.951Z"
+    "at": "2026-11-10T21:00:03.650Z"
   }
 }

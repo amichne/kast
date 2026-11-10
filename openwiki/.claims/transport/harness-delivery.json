@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:12bf1d76d4b30bc2a728fa1b452e79e105097305678a32b065548188bf514661",
+  "pageVersion": "sha256:56bf544eafd62948b43e81aae2bfe106efbfaa42a2c2b5c1c10079dafc5942da",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -128,7 +128,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:783f4a44f6540af7b7dd969f56c820eb362c4b0d644f8a457a4b0ad74763e9a7"
+          "version": "repo-file-v1:sha256:006547c08328cc16ce60fa81286237e7e707e33c420c5162947d62376b6e61ed"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
@@ -139,6 +139,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T18:27:13.243Z"
+    "at": "2026-11-10T21:00:03.650Z"
   }
 }
