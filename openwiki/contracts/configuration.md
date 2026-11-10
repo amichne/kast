@@ -112,7 +112,7 @@ sources:
 generated: { by: "codex", at: "2026-11-10T06:03:12.348Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-10T06:08:39.586Z
+    at: 2026-11-10T18:30:11.951Z
 ---
 
 # Installation configuration

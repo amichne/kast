@@ -5559,7 +5559,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "410d77289ecbc861bcf2c13bb1408aed1d4002a6a1c5418987d7c22b3218db37"
+          "sha256": "69b32996a9744d59536b643372cc0534253298184476b4a64d5bda05f1ae0033"
         }
       ],
       "claims": [
@@ -5952,6 +5952,11 @@
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_e50c0fd7d2234ffd8bf23a5f6ca95780",
           "statementSha256": "4a088801b68c92f272270940feb04910259aed26d917a840798580e1b20c3c15"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_5649b533e5144d9394279b73a2e2ca50",
+          "statementSha256": "762a67eae5a6a23fe3c7e05bdd889e606ccee418c7f6cf87a9d02f1e76d341d6"
         }
       ],
       "generatedOwners": [
@@ -6077,11 +6082,11 @@
         },
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt",
-          "sha256": "c150e3f46147a403d712fcda919ecb48dd74dc6e1ded577ddcbc421b52788543"
+          "sha256": "99ba5b82eed3cdeecc81b7752011165b7b20af9409ac09b1665431e1a7f67e68"
         },
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "sha256": "6a31b85a835cb98a8b37d4813b127d1857168b0d2cf51031e91a059dc0f6e766"
+          "sha256": "8299820d38db1d0a1bd01d0846917d372539a69128ba158bcf49b7a6d4aafad9"
         },
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
