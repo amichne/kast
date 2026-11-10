@@ -33,23 +33,24 @@ Discovery scope selects seeds; expansion scope restricts destinations.
 Keep the original output kind for retained reads, including canonical detail reads.
 Use a retained cursor with `result read`; use `result resume` only with an issued output continuation.
 
-For unfamiliar syntax, inspect only the needed installed contract section:
+## Discover only what you need
+
+For a request document, list example summaries if you need to find a match.
+Select one example by its summary and adapt its illustrative values.
+For a `RUN` request, set `request.executionBudget.maxResults` to bound the presentation.
 
 ```sh
-kast describe query --section input
-kast describe query --section examples
+kast describe query --section examples --jq '.content | map(.summary)'
+kast describe query --section examples \
+  --jq '.content[] | select(.summary | startswith("Trace callers for two hops")) | .value'
 ```
 
-Use exact-name discovery with known scope:
+If the example leaves a schema question, start at the root page or use a known JSON Pointer.
+Use a returned pointer to examine a child.
 
 ```sh
-kast query --name OrderService --in services/orders --source-set main \
-  --fields name,signature,location --retain
+kast describe query --section input --pointer ''
 ```
-
-Examine overloads before you select an exact reference.
-Copy issued tokens unchanged.
-Do not infer an exact reference from a name or path.
 
 Use `kast query --request FILE` for the complete public argument document.
 Use `kast query --request -` only when stdin contains that document.
