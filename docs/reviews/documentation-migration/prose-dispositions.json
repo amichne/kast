@@ -4,18 +4,6 @@
     {
       "finding": {
         "stage": "reader-prose-3.25.1",
-        "path": "docs/public/reference/callables/query-symbols.mdx",
-        "sourceSha256": "56839b153c4e1c06e598d3f8769a9e464bd13c3b2868edf001cb5989763a0ca4",
-        "rule": "Prose.ParagraphLength",
-        "line": 15,
-        "message": "This paragraph has 280.00 words. Look for a change of topic or a useful list.",
-        "severity": "suggestion"
-      },
-      "reason": "Keep the complete canonical query invocation description, including exact selectors, output continuations, source scope, completion, budgets, and recovery. It is available in an optional Invocation contract section on the schema reference page. The paragraph advisory remains unmet; projection parity and exact source text do not establish reader comprehension. The download link now uses the public GitHub source; canonical invocation prose is unchanged."
-    },
-    {
-      "finding": {
-        "stage": "reader-prose-3.25.1",
         "path": "docs/public/snippets/okf/semantics/symbol/discovery-and-identity.mdx",
         "sourceSha256": "0f829498a8ed46d132afcbe6dc87b4e503a8f341de41e9ef2e59bd611a571fba",
         "rule": "Prose.Complexity",
@@ -120,18 +108,6 @@
         "severity": "warning"
       },
       "reason": "Keep the canonical diagnostics instruction to retain aggregate coverage when filtering by path or severity. This is generated callable guidance, bound to the unchanged contract; its coverage obligation must remain explicit. The download link now uses the public GitHub source; canonical invocation prose is unchanged."
-    },
-    {
-      "finding": {
-        "stage": "root-vale-3.24.0",
-        "path": "docs/public/reference/callables/query-symbols.mdx",
-        "sourceSha256": "56839b153c4e1c06e598d3f8769a9e464bd13c3b2868edf001cb5989763a0ca4",
-        "rule": "Slopsentral.Grade",
-        "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 8.59 exceeds the shared advisory target of 8.",
-        "severity": "warning"
-      },
-      "reason": "Keep the source-owned callable instructions and their exact field identities, approval rules, cancellation boundaries, and recovery conditions. This technical reference remains above the grade-8 advisory. The overview and setup keep their separate reader roles, and comprehension remains unmeasured. The download link now uses the public GitHub source; canonical invocation prose is unchanged."
     },
     {
       "finding": {
@@ -6816,6 +6792,18 @@
         "severity": "warning"
       },
       "reason": "Keep exact SQLite schemas and bounded typed records under read-only inspection. The adapter does not initialize, checkpoint, or manufacture recovery. The flagged passage matches merged main 6e55f1c2. Native source metadata shifts its line by two. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/callables/query-symbols.mdx",
+        "sourceSha256": "c2e4f3a1ba8e2f1be244733b05f3dd7ade7261536a2de9e7ff4fa5b9554d9264",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.61 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "The canonical invocation description now separates selection, relation traversal, fixed TRACE, forward value IMPACT, output delivery, and completion into short paragraphs. Keep the exact discriminator names and proof limits so agents can choose before execution. The generated page preserves the authored tool description. The grade-8 advisory remains unmet; readability metrics and contract parity do not establish reader comprehension."
     }
   ]
 }

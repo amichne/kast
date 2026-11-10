@@ -27,24 +27,24 @@ enum class PublicToolIdentity(
 ) {
     QUERY_SYMBOLS("query_symbols", CanonicalOperation.QUERY_RUN,
         "Choose the operation before execution. QUERY is the pipeline envelope, not a separate analysis alg" +
-            "orithm. SELECT: use SEARCH_DECLARATIONS, ALL_DECLARATIONS, AT_LOCATION or issued SYMBOL_REFS to re" +
-            "turn declarations; no relationship expansion is implicit. RELATION/TRAVERSAL: EXPAND_RELATION foll" +
-            "ows one compiler-confirmed relationship hop; WALK repeats one selected relation to an explicit max" +
-            "imumDepth and returns depth-bearing TRAVERSAL_RECORDS. CALLERS follows incoming calls; CALLEES fol" +
-            "lows outgoing calls, including constructors. TRACE: a fixed affected-use recipe over exact declara" +
-            "tions: references, implementations or overrides, direct callers, and one further caller layer. It " +
-            "returns grouped SYMBOLS with proven connections and occurrences; it has no arbitrary depth control" +
-            " and does not follow runtime values. IMPACT: a forward Kotlin value investigation from an exact pr" +
-            "oducer invocation, requiring enclosing and callable refs plus the whole invocation range. It retur" +
-            "ns VALUE_PATHS or IMPACT_WITNESS; model-assisted transfers and unresolved boundaries retain their " +
-            "qualifications. It is not a general declaration dependency walk. Expansion scope restricts destina" +
-            "tions independently of discovery scope. None of these proves runtime behavior or unrestricted tran" +
-            "sitive reachability. READ_RESULT and RESUME only deliver produced evidence; READ_SOURCE reads sour" +
-            "ce under an issued selector. Use simple exact-name flags for discovery; use one JSON RUN request f" +
-            "or WALK or IMPACT. Inspect only the needed syntax after choosing the operation. Every RUN uses COM" +
-            "PLETE_ONLY under COMPILER_RESOLVED_STATIC_V1. Preserve incomplete verdicts and recovery evidence. " +
-            "Presentation limits do not reduce the semantic question. Copy issued references unchanged; inspect" +
-            " overload signatures before exact selection.",
+            "orithm.\n\nSELECT: use SEARCH_DECLARATIONS, ALL_DECLARATIONS, AT_LOCATION or issued SYMBOL_REFS to" +
+            " return declarations; no relationship expansion is implicit.\n\nRELATION/TRAVERSAL: EXPAND_RELATIO" +
+            "N follows one compiler-confirmed relationship hop; WALK repeats one selected relation to an explic" +
+            "it maximumDepth and returns depth-bearing TRAVERSAL_RECORDS. CALLERS follows incoming calls; CALLE" +
+            "ES follows outgoing calls, including constructors.\n\nTRACE: a fixed affected-use recipe over exac" +
+            "t declarations: references, implementations or overrides, direct callers, and one further caller l" +
+            "ayer. It returns grouped SYMBOLS with proven connections and occurrences; it has no arbitrary dept" +
+            "h control and does not follow runtime values.\n\nIMPACT: a forward Kotlin value investigation from" +
+            " an exact producer invocation, requiring enclosing and callable refs plus the whole invocation ran" +
+            "ge. It returns VALUE_PATHS or IMPACT_WITNESS; model-assisted transfers and unresolved boundaries k" +
+            "eep their qualifications. It is not a general declaration dependency walk.\n\nExpansion scope rest" +
+            "ricts destinations independently of discovery scope. None of these proves runtime behavior or unre" +
+            "stricted transitive reachability.\n\nREAD_RESULT and RESUME only deliver produced evidence; READ_S" +
+            "OURCE reads source under an issued selector. Use simple exact-name flags for discovery; use one JS" +
+            "ON RUN request for WALK or IMPACT. Inspect only the needed syntax after choosing the operation.\n" +
+            "\nEvery RUN uses COMPLETE_ONLY under COMPILER_RESOLVED_STATIC_V1. Preserve incomplete verdicts and" +
+            " recovery evidence. Presentation limits do not reduce the semantic question. Copy issued reference" +
+            "s unchanged; inspect overload signatures before exact selection.",
         HostedToolLoading.DEFERRED,
     ),
     CHECK_DIAGNOSTICS("check_diagnostics", CanonicalOperation.DIAGNOSTIC_CHECK,
