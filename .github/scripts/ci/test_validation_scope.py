@@ -540,22 +540,45 @@ class SourceInventoryTest(unittest.TestCase):
                     self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", condition[1])
                 guarded.add((path.name, job))
         self.assertEqual({("ci.yml", "native"), ("ci.yml", "kotlin"),
-                          ("gradle-cache.yml", "native"), ("release.yml", "release"),
+                          ("release.yml", "release"),
                           ("release-component.yml", "release")}, guarded)
 
     def test_isolated_candidate_matrix_gates_only_the_mac_runner(self):
         path = Path(__file__).resolve().parents[2] / "workflows/composed-linux.yml"
-        for job in ("assemble", "qualify"):
-            with self.subTest(job=job):
-                body = path.read_text().split(f"\n  {job}:\n", 1)[1]
-                body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
-                self.assertIn("runs-on: ${{ matrix.runner }}", body)
-                self.assertRegex(
-                    body,
-                    r"'\{\"target\":\"linux-x86_64\",\"runner\":\"ubuntu-24\.04\"[^\n]*',\n"
-                    r"\s*\(!inputs\.linux_only && vars\.KAST_MACOS_CHECKS == 'true'\)"
-                    r" && ',\{\"target\":\"macos-aarch64\",\"runner\":\"macos-15\"[^\n]*' \|\| ''",
-                )
+        body = path.read_text().split("\n  candidate:\n", 1)[1]
+        self.assertIn("runs-on: ${{ matrix.runner }}", body)
+        self.assertRegex(
+            body,
+            r"'\{\"target\":\"linux-x86_64\",\"runner\":\"ubuntu-24\.04\"[^\n]*',\n"
+            r"\s*\(!inputs\.linux_only && vars\.KAST_MACOS_CHECKS == 'true'\)"
+            r" && ',\{\"target\":\"macos-aarch64\",\"runner\":\"macos-15\"[^\n]*' \|\| ''",
+        )
+
+    def test_isolated_candidates_keep_one_job_per_target(self):
+        workflow = (
+            Path(__file__).resolve().parents[2] / "workflows/composed-linux.yml"
+        ).read_text()
+        jobs = workflow.split("\njobs:\n", 1)[1]
+        self.assertEqual(["candidate"], re.findall(r"^  ([\w-]+):$", jobs, re.M))
+        self.assertEqual(1, jobs.count("matrix:"))
+        self.assertEqual(1, jobs.count("ref: ${{ github.sha }}"))
+        self.assertNotIn("actions/download-artifact@", jobs)
+        self.assertLess(
+            jobs.index("Retain the assembled candidate"),
+            jobs.index("Install and qualify the exact candidate"),
+        )
+
+    def test_validation_jobs_own_shared_cache_population(self):
+        workflows = Path(__file__).resolve().parents[2] / "workflows"
+        self.assertFalse((workflows / "gradle-cache.yml").exists())
+        workflow = (workflows / "ci.yml").read_text()
+        for job in ("source-work", "native"):
+            body = workflow.split(f"\n  {job}:\n", 1)[1]
+            body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
+            self.assertIn("uses: gradle/actions/setup-gradle@", body)
+            self.assertIn("cache-read-only: ${{ !(github.ref == 'refs/heads/main'", body)
+        for case in ("NativeResetListenerTest", "NativeResetPeerAcceptanceTest", "ResetLaunchObservationTest"):
+            self.assertIn(f"--tests '*{case}'", workflow)
 
     def test_mac_disable_defaults_off_without_disabling_linux_or_allowing_promotion(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
@@ -565,41 +588,10 @@ class SourceInventoryTest(unittest.TestCase):
             body = workflow.split(f"\n  {job}:\n", 1)[1]
             body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
             self.assertNotIn("vars.KAST_MACOS_CHECKS", body)
-        cache = (workflows / "gradle-cache.yml").read_text().split("\n  native:\n", 1)[0]
-        self.assertNotIn("vars.KAST_MACOS_CHECKS", cache)
         promotion = (workflows / "developer-release.yml").read_text()
         self.assertIn("vars.KAST_MACOS_CHECKS == 'true' &&", promotion)
-        for filename in ("gradle-cache.yml", "release.yml", "release-component.yml", "developer-release.yml"):
+        for filename in ("release.yml", "release-component.yml", "developer-release.yml"):
             self.assertIn("vars.KAST_NATIVE_COMPILATION != 'false'", (workflows / filename).read_text())
-
-    def test_cache_producers_provision_validation_tools_before_gradle(self):
-        workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()
-        for job in ("source-work", "native"):
-            body = workflow.split(f"\n  {job}:\n", 1)[1].split("\n  native:\n", 1)[0]
-            with self.subTest(job=job):
-                self.assertIn("uses: actions/setup-python@", body)
-                self.assertIn("uv==0.12.9", body)
-                self.assertLess(body.index("uses: actions/setup-python@"),
-                                body.index("uses: gradle/actions/setup-gradle@"))
-                self.assertLess(body.index("uv==0.12.9"),
-                                body.index("uses: gradle/actions/setup-gradle@"))
-
-    def test_cache_producers_are_independent_main_jobs_without_product_publication(self):
-        workflow = (Path(__file__).resolve().parents[2] / "workflows/gradle-cache.yml").read_text()
-        self.assertIn("branches: [main]", workflow)
-        self.assertIn("schedule:", workflow)
-        self.assertIn("workflow_dispatch:", workflow)
-        for job in ("source-work", "native"):
-            body = workflow.split(f"\n  {job}:\n", 1)[1].split("\n  native:\n", 1)[0]
-            self.assertIn("if: github.ref == 'refs/heads/main'", body)
-            self.assertIn("cache-read-only: false", body)
-            self.assertIn("cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}", body)
-            self.assertNotIn("needs:", body)
-        for forbidden in ("nativeCompile", "native_handoff.py", "build_candidate.py", "contents: write"):
-            self.assertNotIn(forbidden, workflow)
-        self.assertIn("run: python3 .github/scripts/ci/source_validation.py", workflow)
-        for case in ("NativeResetListenerTest", "NativeResetPeerAcceptanceTest", "ResetLaunchObservationTest"):
-            self.assertIn(f"--tests '*{case}'", workflow)
 
     def test_frozen_pr1130_diff_keeps_full_checks_after_canonical_dependencies_expand(self):
         # Exact changed-path inventory for a96e7a07...d02373e8 (PR #1130).

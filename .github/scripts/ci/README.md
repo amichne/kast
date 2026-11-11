@@ -67,16 +67,10 @@ Pull requests, forks, merge groups and other refs remain read-only.
 This prevents PR-scoped writes from consuming space that shared main entries need.
 Cleanup runs after successful builds, and existing encrypted configuration-cache handling stays in place.
 
-A successful main candidate reuse skips Gradle setup and retains the existing fast path.
-The separate `Populate Gradle caches` workflow supplies cache entries after main pushes and daily at 08:00 UTC.
-Its Linux job runs the complete source gate with the fixed validation version `0.0.0`.
-Its macOS job runs the three reset-adapter suites when Mac checks and native compilation are enabled.
-Both jobs use the same platform, toolchain, cache owner and job identifiers as their CI consumers.
-The workflow also accepts a manual dispatch on main.
-Other refs skip both cache producers.
-The workflow does not compile native executables, create product candidates or publish releases.
-It runs independently of required CI checks and developer promotion.
-The cache producer adds runner work to populate shared entries even when main reuses a candidate.
+The CI jobs that run Gradle populate their shared caches on main.
+The Linux source job stores source task outputs.
+The macOS native job stores outputs from the reset-adapter suites.
+If main reuses a qualified candidate, CI skips Gradle and keeps the candidate's payload.
 
 Keep setup restore/save reports, build task outcomes, native metrics and job timestamps from necessary runs.
 A transport hit does not prove task-output reuse or a speedup.
@@ -100,10 +94,9 @@ No build scan evidence is available for this change.
 Mac checks are off by default while the self-hosted Mac is unavailable.
 Set the GitHub repository variable `KAST_MACOS_CHECKS` to `true` to enable them.
 An absent variable or `false` leaves them off.
-The switch covers native compilation, fresh Mac product qualification, the Mac cache job,
-both manual release workflows, and automatic developer promotion.
-Linux source, portable packaging, documentation, and Linux cache jobs keep their selected checks.
-The separate Linux composed-bundle workflow also keeps its existing manual trigger.
+The switch covers native compilation, fresh Mac product qualification, both manual release workflows, and automatic developer promotion.
+Linux source, portable packaging, and documentation keep their selected checks.
+The **Isolated runtime candidates** workflow uses the switch to include macOS targets in its matrix.
 
 Set the variable in [Actions variables](https://github.com/amichne/kast/settings/variables/actions),
 or use an account with repository-variable write access:
@@ -136,7 +129,7 @@ Source, portable packaging and documentation keep their selected checks.
 A full selection becomes `SOURCE_FULL` and runs the complete source gate.
 Its validation record says `SOURCE_VALIDATED` and grants no product publication authority.
 The source gate cannot reuse a product candidate while native compilation is disabled.
-Mac cache jobs, both manual release workflows, and developer promotion also skip while the variable is `false`.
+Both manual release workflows and developer promotion also skip while the variable is `false`.
 An earlier source-only record still rejects product promotion after the variable returns to `true`.
 
 Set the variable to `true` to restore CI native compilation while Mac checks are enabled:
@@ -170,6 +163,12 @@ Gradle logs the disabled state, and source execution reports list `skippedTasks`
 The switch does not remove fixture sources or their case manifest.
 
 ## Candidate runner routing
+
+Routine pull-request CI checks source without producing a product candidate.
+On a main push that needs a product, CI first searches for a qualified candidate from the merged pull request.
+Reuse needs the same source tree and an admitted payload.
+If CI finds no eligible candidate, the main run builds and qualifies one.
+The **Isolated runtime candidates** workflow produces platform archives with its own qualification receipts.
 
 A reused candidate runs the final `Kotlin product` job on `ubuntu-latest`.
 That job downloads and retains the qualified payload without executing its macOS binaries.
