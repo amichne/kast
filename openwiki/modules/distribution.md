@@ -392,10 +392,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-11T15:43:58.217Z" }
+generated: { by: "codex", at: "2026-11-11T16:02:19.527Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T15:43:58.217Z
+    at: 2026-11-11T16:02:19.527Z
 ---
 
 # Distribution and packaging
@@ -501,6 +501,7 @@ Before/after admission detects observed drift, not transient edits later restore
 Local qualification grants no publication or installation authority.
 
 Full and affected source validation and the local product gate request single-use Gradle daemons.
+Source validation uses sequential Isolated Projects configuration for graph inspection and task execution.
 Disk caches remain enabled; client retirement does not prove synchronous daemon retirement.
 On graph timeout or cancellation, optional diagnostics attempt a bounded daemon thread dump.
 Invocation association and process start identity are checked before and after attachment.

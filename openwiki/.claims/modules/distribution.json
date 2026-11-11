@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3d7fc92b946c03763d870cf8697435a2b3a94caa24df9a5ca74b896beb2147e2",
+  "pageVersion": "sha256:e2cc05a149237ae40f814ddd5729661ca9f0ccbc4cc8da0c9ef6d5f56eb811fc",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -516,15 +516,15 @@
     },
     {
       "id": "claim_196f8c4502634a779997d94b29a480fd",
-      "statement": "Full and affected source validation and local product qualification request single-use Gradle daemons while retaining disk caches; client cleanup does not prove synchronous daemon retirement.",
+      "statement": "Full and affected source validation and local product qualification request single-use Gradle daemons and keep disk caches. Source validation uses sequential Isolated Projects configuration for graph inspection and task execution. Client cleanup does not establish synchronous daemon retirement.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/gradle_graph.py#L127-L150",
           "version": "repo-lines-v1:sha256:701ce4258831dca764eea5fbb9cced14252b0c291b12e3e71e3f5881f119981b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzNDkyY2Q1ODcwM2NkNGYwNjA1ZmZkNDdiYWU4NWEzYTZkZTM4YzQ3YTI3YmJiZDVmZjk1MmQ3ZWQ3YjE4YjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTVjNjZlMTdiMTQ1Mzk3ODM0YjhjODU0ZGM0MTkzZTIxMjUxODBhODk5NmExNGMzMTg4MzMyNmIyZWZiY2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmYzQzNGYwMjc1NWMzMTc4ZmIxY2JhYTY5NDkxODhlMjAyYjBmMTVjMTVhMmY5MGRjYjQzNTVlM2FjODAxZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0MWY5NTA4ZjFlM2E2ZjE0YzEwNjgwYjJmMmVjYmY3ZjU1NTU4MmY1MjAwMWZlNTc4YWQ0MzBmMTUwZjM5ZTEifQ"
         },
         {
-          "resource": "repo://.github/scripts/ci/source_validation.py#L20-L35",
-          "version": "repo-lines-v1:sha256:6a2e9231780b99c28316b0dd637cb95a7b2125a1ad4237e63e30cddfcb305139:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmN2NmMDIxNzAwYjdlMDAxMTJiOWI4ODZmYjNkZmZlNmY0MTg0ODQ4ZWRjNDFkYzM3ZWNmZDFhMTE3YjMxY2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJiZTU4YTY5MDZhYjQ0ZTVmNDAwYmU1YTJkMTdiMmQ1Y2M5ZTc2NWYyZmEyNzViYmZkNGJkZDBkZGY0NTI2MGYifQ"
+          "resource": "repo://.github/scripts/ci/source_validation.py#L20-L37",
+          "version": "repo-lines-v1:sha256:c262910ae7765ab7f006c00afae868775eace5b9677a20fb4940c8f83f98c729:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmN2NmMDIxNzAwYjdlMDAxMTJiOWI4ODZmYjNkZmZlNmY0MTg0ODQ4ZWRjNDFkYzM3ZWNmZDFhMTE3YjMxY2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJiZTU4YTY5MDZhYjQ0ZTVmNDAwYmU1YTJkMTdiMmQ1Y2M5ZTc2NWYyZmEyNzViYmZkNGJkZDBkZGY0NTI2MGYifQ"
         },
         {
           "resource": "repo://distribution/release/run_product_gate.py#L98-L134",
@@ -763,6 +763,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T15:43:58.217Z"
+    "at": "2026-11-11T16:02:19.527Z"
   }
 }
