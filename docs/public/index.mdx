@@ -24,9 +24,18 @@ Your agent uses installed guidance to ask Kast about your code as it works.
 <span id="try-it-on-your-project" />
 <span id="choose-your-reader-track" />
 
-<Columns cols={1}>
-  <Card title="Add Kast to your agent" icon="arrow-right" href="/start">
-    Install Kast and connect Codex, Copilot, or Pi to your Kotlin Gradle project.
+<Columns cols={2}>
+  <Card title="Set up with IntelliJ IDEA" icon="monitor" href="/start">
+    Install Kast and connect Codex, Copilot, or Pi.
+  </Card>
+  <Card title="Run a private Host" icon="container" href="/reference/installation#manage-isolated-workspaces">
+    Use a workspace container on macOS or Linux.
+  </Card>
+  <Card title="Capabilities" icon="search" href="/search">
+    Explore declarations, relationships, value paths, and diagnostics.
+  </Card>
+  <Card title="Help" icon="life-buoy" href="/troubleshooting">
+    Resolve installation and agent problems.
   </Card>
 </Columns>
 
@@ -34,7 +43,7 @@ Your agent uses installed guidance to ask Kast about your code as it works.
 
 The desktop setup supports Apple silicon Macs and IntelliJ IDEA `262.*` or `263.*` for Kotlin Gradle projects. See [setup requirements](/start#before-you-start).
 
-For a private Host on macOS or Linux, use [workspace containers](/reference/installation#manage-isolated-workspaces). If the release lacks matching runtime assets, use a qualified candidate.
+If the release lacks a runtime for your private Host, use a qualified candidate.
 
 <span id="a-name-match-does-not-explain-a-value-path" />
 
@@ -43,16 +52,11 @@ For a private Host on macOS or Linux, use [workspace containers](/reference/inst
 ## Code has meaning beyond its text
 
 Kast gives your agent compiler-resolved declarations, types, and source relationships with locations it can inspect.
-See [Capabilities](/search).
 
 <span id="use-the-evidence-for-your-next-decision" />
 
 ## Evidence you can act on
 
-Kast reports what its source evidence establishes and where that evidence stops.
-Completion applies to the declared scope and semantic model. Incomplete evidence cannot establish that a result is absent.
-[How Kast establishes a fact](/explanation) explains the contract and the product standard: never silently wrong.
-
-For installation or agent problems, use [Help](/troubleshooting).
+A complete result applies to the declared scope and semantic model. Incomplete evidence cannot establish that a result is absent. See [what a Kast answer proves](/explanation).
 
 <DeeperReading />

@@ -27,9 +27,14 @@ Identical names can refer to different declarations. Kast's issued references pr
 
 Caller and reference locations show where code uses the selected declaration.
 Your agent can read that source as it plans a change.
-For example, ask: “Which functions call `submitOrder`, and where are they?”
+For example, ask:
+
+```text
+Which functions call submitOrder, and where are they?
+```
+
 Select the intended declaration if the name matches more than one.
-Expect caller locations, the queried scope, and completion evidence.
+The result identifies caller locations within the queried scope and reports completion evidence.
 A complete result can contain zero callers.
 The relationships describe the queried source state and scope. They do not establish runtime execution.
 
