@@ -210,6 +210,7 @@ private fun publishRuntime(
         is Refinement.Refined -> Unit
     }
     containerProgress(ContainerStage.RUNTIME_PUBLICATION, ContainerStageOutcome.STARTED)
+    containerProgress(ContainerStage.RUNTIME_METADATA, ContainerStageOutcome.STARTED)
     zip.getInputStream(zip.getEntry("manifest.json")).use { Files.copy(it, staging.resolve("manifest.json")) }
     writeContainerRecord(
         staging.resolve(manifest.platform.host).resolve("kast-headless.json"),
@@ -226,8 +227,13 @@ private fun publishRuntime(
         staging.resolve("runtime.json"),
         ContainerRuntimeReceipt(expected, sha256(staging.resolve("manifest.json"))),
     )
+    containerProgress(ContainerStage.RUNTIME_METADATA, ContainerStageOutcome.COMPLETED)
+    containerProgress(ContainerStage.RUNTIME_SEALING, ContainerStageOutcome.STARTED)
     sealRuntime(staging)
+    containerProgress(ContainerStage.RUNTIME_SEALING, ContainerStageOutcome.COMPLETED)
+    containerProgress(ContainerStage.RUNTIME_RENAME, ContainerStageOutcome.STARTED)
     Files.move(staging, destination, StandardCopyOption.ATOMIC_MOVE)
+    containerProgress(ContainerStage.RUNTIME_RENAME, ContainerStageOutcome.COMPLETED)
     containerProgress(ContainerStage.RUNTIME_PUBLICATION, ContainerStageOutcome.COMPLETED)
     return AdmittedContainerRuntime.read(destination, manifest.version, manifest.platform)
 }

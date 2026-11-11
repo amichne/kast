@@ -20,10 +20,16 @@ internal val containerDirectoryMode = PosixFilePermissions.fromString("rwx------
 internal const val CONTAINER_RECORD_BYTES = 65_536
 
 /** Expected adapter failures cross this boundary once; defects and interruption are not converted to success. */
-internal inline fun <T> containerFiles(action: () -> Refinement<T, ContainerFailure>): Refinement<T, ContainerFailure> =
+internal inline fun <T> containerFiles(
+    observe: (ContainerFilesystemObservation) -> Unit = ::recordContainerFilesystemObservation,
+    action: () -> Refinement<T, ContainerFailure>,
+): Refinement<T, ContainerFailure> =
     try {
         action()
-    } catch (_: IOException) {
+    } catch (_: java.util.zip.ZipException) {
+        Refinement.Rejected(ContainerFailure.INVALID_ARCHIVE)
+    } catch (failure: IOException) {
+        observe(containerFilesystemObservation(failure))
         Refinement.Rejected(ContainerFailure.FILESYSTEM_UNAVAILABLE)
     } catch (_: SecurityException) {
         Refinement.Rejected(ContainerFailure.FOREIGN_STATE)
