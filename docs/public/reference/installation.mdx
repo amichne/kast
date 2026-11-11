@@ -151,7 +151,8 @@ Recovery: [Help](/troubleshooting).
 
 ## Manage isolated workspaces
 
-Candidate builds provide `kast container` for private Hosts. These are native processes, not Docker containers.
+Candidate builds provide `kast container` for named workspace containers with private Hosts.
+This is process and profile separation, not an OS sandbox or Docker container.
 Each record binds one trusted workspace to private settings, indexes, logs, and a Gradle home.
 Records share a verified runtime for their version and native platform. Your desktop IDEA stays independent.
 The private store is `~/.local/share/kast-workspaces`, outside the Control installation.
@@ -180,7 +181,8 @@ Desktop-only installations keep their current route until you create a managed w
 Use `kast container --json` for records and their enabled or stopped policy. These labels do not prove a live process.
 Use `kast container rm <id>` to stop and remove the exact record and its private state.
 Removal preserves the repository, shared runtime, and any explicit external Gradle home.
-Concurrent management or preparation can reject with `BUSY`; repeat the command after the active operation ends.
+Concurrent management, preparation, or an active query can reject stop and removal with `BUSY`.
+Repeat the command after the active operation ends.
 
 The payload format covers macOS and Linux, each on AArch64 and x86-64. Each archive keeps its own native binaries and bundled Java runtime.
 The same native reader verifies its manifest, file digests, paths, and links before publication.

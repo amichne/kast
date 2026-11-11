@@ -23,6 +23,35 @@
   },
   "entries": [
     {
+      "id": "workspace-container",
+      "term": "workspace container",
+      "definition": "A named workspace record with its own trust grant and private Host profile. It selects a Gradle home and can share verified runtime bytes.",
+      "scope": "Current Kast documentation and agent instructions.",
+      "example": "`kast container create --name backend` creates a workspace container for the current directory.",
+      "distinction": "This is process and profile separation, not an OS sandbox or a Kotlin declaration container.",
+      "justification": "The record and admission owners bind one workspace to private state without duplicating runtime bytes.",
+      "usage": [
+        {
+          "url": "https://github.com/amichne/kast/blob/7d23a60dcba1afb5f8556fae0f7c0be8d6715d63/distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerModel.kt",
+          "locator": "AdmittedContainer",
+          "examined": "2026-11-11",
+          "meaning": "A workspace identity bound to a private profile and selected shared runtime."
+        }
+      ],
+      "localSources": [
+        {
+          "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerModel.kt",
+          "locator": "AdmittedContainer"
+        },
+        {
+          "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt",
+          "locator": "ContainerStore"
+        }
+      ],
+      "related": ["host", "control"],
+      "rejectedForms": []
+    },
+    {
       "id": "declaration",
       "term": "declaration",
       "definition": "A named Kotlin code element, such as a class, function, property, or type alias.",

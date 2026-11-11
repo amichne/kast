@@ -9,6 +9,19 @@ The JSON source also records each term's scope, reason, and source meaning.
 
 ## Terms
 
+### workspace container
+
+A named workspace record with its own trust grant and private Host profile. It selects a Gradle home and can share verified runtime bytes.
+
+Example: `kast container create --name backend` creates a workspace container for the current directory.
+Keep distinct: This is process and profile separation, not an OS sandbox or a Kotlin declaration container.
+
+Source evidence:
+
+- [`AdmittedContainer`](https://github.com/amichne/kast/blob/7d23a60dcba1afb5f8556fae0f7c0be8d6715d63/distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerModel.kt), checked 2026-11-11.
+- `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerModel.kt`: `AdmittedContainer`.
+- `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt`: `ContainerStore`.
+
 ### declaration
 
 A named Kotlin code element, such as a class, function, property, or type alias.
