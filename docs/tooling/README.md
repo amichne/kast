@@ -96,6 +96,9 @@ Keep historical reports under `docs/reviews` unchanged at their recorded revisio
 It distinguishes completed current, stale, and unresolved Claims from failed assessment.
 Missing Claims, empty Claims, orphaned sidecars, and page-digest disagreement cannot establish currentness.
 The command neither finalizes nor advances semantic verification.
+The locked native runtime is OpenWiki `0.9.0`.
+`verifyKnowledgeClaims` checks the complete canonical corpus on source-only changes and in documentation CI.
+A source change cannot defer its stale Claims to the next documentation change.
 
 ```shell
 mise exec -- node docs/tooling/markdown/evidence-assess.ts --root "$PWD" --scope public
@@ -115,6 +118,10 @@ Reviewed associations bind imported authored bytes, canonical Claim statements, 
 A change to either side needs a new review.
 Use a commit in `origin/main` as the source baseline for `reviewedSourceRevision`.
 Record the exact accepted inputs for the candidate in the association.
+A reviewed source revision can be at most five days older than the candidate HEAD commit timestamp.
+This rule uses commit timestamps, not the wall clock, so the same candidate retains the same result.
+Each published Claim also needs a source declaration citation or an executable test citation.
+Declaration presence proves syntax, not semantic support or a passing test.
 Fetch `origin/main` with full history before source qualification if the local checkout lacks that history.
 The report preserves `failed`, `stale`, `unresolved`, `not-assessed`, and `mismatched` obligations separately.
 
@@ -140,6 +147,31 @@ The prose runner uses root Vale `3.24.0`.
 The reader audit uses Vale `3.25.1`.
 Its source-bound advisory dispositions preserve each rule, location, and review reason.
 Neither successful admission nor prose metrics prove reader comprehension or native task completion.
+
+## Host background refresh
+
+`kast-knowledge-refresh` plans an isolated refresh without changing the checkout.
+Use the command through the repository's `mise` environment:
+
+```shell
+mise exec -- kast-knowledge-refresh --repo "$PWD" --state-dir "$HOME/.local/state/kast-knowledge" --host pi --plan
+```
+
+`--run --bootstrap` explicitly creates an owned clone and worktree from fetched `origin/main`.
+The runner installs locked documentation dependencies there, then invokes the selected host.
+Pi defaults to `openai-codex/gpt-6.1-terra`; `--host codex` uses the installed Codex CLI.
+Both hosts use the locked OpenWiki MCP runtime, not a global package.
+The agent reviews evidence through the native page lifecycle.
+It must not commit, push, or publish.
+The runner checks final Git scope and retains the worktree and a structured outcome for review.
+This check is not a sandbox and cannot prove that no transient effects occurred.
+
+`--launchd-plan` prints a daily 09:00 user-agent recipe without installing it.
+After this command is available on the host's checkout, review that recipe before loading it with the host scheduler.
+Do not start the job from a checkout that lacks this command.
+On an ephemeral cloud host, invoke `--run --bootstrap` from the environment's authorized startup hook.
+A cloud session does not establish a persistent schedule.
+A completed agent process is an unverified candidate, not publication admission.
 
 ## Shared OKF projection
 

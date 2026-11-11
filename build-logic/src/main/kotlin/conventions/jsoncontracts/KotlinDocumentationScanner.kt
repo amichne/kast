@@ -83,15 +83,25 @@ class KotlinDocumentationScanner : AutoCloseable {
             return KotlinSymbolScan.Rejected(KnowledgeDocsFailureCode.INVALID_KOTLIN)
         }
         val names = mutableSetOf<String>()
+        val declarations = mutableListOf<KotlinSymbolDeclaration>()
         file.accept(
             object : KtTreeVisitorVoid() {
                 override fun visitNamedDeclaration(declaration: KtNamedDeclaration) {
-                    declaration.name?.let(names::add)
+                    val name = declaration.name
+                    name?.let(names::add)
+                    val identifier = declaration.nameIdentifier
+                    if (name != null && identifier != null) {
+                        val line = content.substring(0, identifier.textRange.startOffset).count { it == '\n' } + 1
+                        val endLine = line + identifier.text.count { it == '\n' }
+                        val test = declaration is KtNamedFunction && declaration.hasBody() &&
+                            declaration.annotationEntries.any { it.shortName?.asString() == "Test" }
+                        declarations += KotlinSymbolDeclaration(name, line, endLine, test)
+                    }
                     super.visitNamedDeclaration(declaration)
                 }
             },
         )
-        return KotlinSymbolScan.Accepted(names.sorted())
+        return KotlinSymbolScan.Accepted(names.sorted(), declarations)
     }
 
     override fun close() = Disposer.dispose(disposable)

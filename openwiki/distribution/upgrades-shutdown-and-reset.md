@@ -56,8 +56,8 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
 generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-10T18:25:20.058Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Upgrade, shutdown, and guarded reset

@@ -1,0 +1,22 @@
+#!/usr/bin/env -S uv run --locked --script
+# /// script
+# requires-python = ">=3.12,<3.14"
+# dependencies = []
+# [[tool.uv.index]]
+# name = "pypi"
+# url = "https://pypi.org/simple"
+# default = true
+# [tool.uv]
+# no-build = true
+# ///
+"""Run the repository-owned knowledge refresh command from any directory."""
+
+from pathlib import Path
+import runpy
+
+
+if __name__ == "__main__":
+    runpy.run_path(
+        str(Path(__file__).resolve().parents[1] / "docs/tooling/knowledge_refresh.py"),
+        run_name="__main__",
+    )

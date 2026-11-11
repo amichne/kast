@@ -213,6 +213,8 @@ sources:
     resource: repo://build.gradle.kts
   - id: openwiki-source-96405b955de825b77efc48dd
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeReadConfiguration.kt
+  - id: openwiki-source-81d5f1627e19148569f46f81
+    resource: repo://gradle/libs.versions.toml
   - id: openwiki-source-a2a046e51938d2a300c9b5b4
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/compatibility/IdeHostCompatibility.kt
   - id: openwiki-source-1320464fca8af68fbc8ba11a
@@ -291,8 +293,8 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
 generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T10:38:11.930Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T14:25:07.841Z
 ---
 
 # Existing-IDE semantic query

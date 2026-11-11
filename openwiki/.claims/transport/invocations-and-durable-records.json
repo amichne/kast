@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:308c5843622cd6b1b3588a894d76fe26de71ead6a639cf249711aaf4fac43370",
+  "pageVersion": "sha256:4d6241b9008571e28a2a2b8402180d111d135594ff1d148453f359fa9983716d",
   "claims": [
     {
       "id": "claim_c66596f4eaa14e3089be4959d60c6a0d",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationRecords.kt",
           "version": "repo-file-v1:sha256:bf23cd7e1ab2581b233ef4d6577b7906286d57689d23466771f7bed13682786e"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationRecords.kt#L118-L118",
+          "version": "repo-lines-v1:sha256:da36e0ed39ca75f33f346a9e66a62701e1b4a8a1ae447d65d7b5bbeadba99b17:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGEzNmUwZWQzOWNhNzVmMzNmMzQ2YTllNjZhNjI3MDFlMWI0YThhMWFlNDQ3ZDY1ZDdiNWJiZWFkYmE5OWIxNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGEzNmUwZWQzOWNhNzVmMzNmMzQ2YTllNjZhNjI3MDFlMWI0YThhMWFlNDQ3ZDY1ZDdiNWJiZWFkYmE5OWIxNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWRmMDRkOGY5MmRkOWJhZjg0Njg1YTQwNmNlNmIwNzdiYmZmM2E3Y2UwZDU2ZjViZTZjYjNlYjgyNjk4NDQ2MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWY2NGJkMTRiZGM0OTEzZDliZDY4ODEzYjNlNjlkZTI0NzdlNmVlMTI4Njc4YzdjNTI3MGM1ZTA2NWE2MjY0OSJ9"
         }
       ]
     },
@@ -19,6 +23,10 @@
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt",
           "version": "repo-file-v1:sha256:a00af59dd71f1f0943ad989532a0ebcdd62471b66d2935b85d962e0988e02850"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt#L30-L30",
+          "version": "repo-lines-v1:sha256:b31ff540e829808cbebd704d9fedaaea5feeaba5aad6b206641c363daabe53a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjMxZmY1NDBlODI5ODA4Y2JlYmQ3MDRkOWZlZGFhZWE1ZmVlYWJhNWFhZDZiMjA2NjQxYzM2M2RhYWJlNTNhOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjMxZmY1NDBlODI5ODA4Y2JlYmQ3MDRkOWZlZGFhZWE1ZmVlYWJhNWFhZDZiMjA2NjQxYzM2M2RhYWJlNTNhOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTBiOTIxZTcyODYxMzQzZGZmM2Y2NmNjZTUwNzNmNWE3NDE2NDlhOTljMjBmZWEzZDk4NjMyOGJlNjRhZGFjNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGY2ZWQzZTZiMzRiODllNWVmZmNjMmE4NTkwZmI4NjAyZjkyZjI0NDY1ZGFmMDM5ZTk3NzA1YjQ0NDk3MzJmYyJ9"
         }
       ]
     },
@@ -33,6 +41,10 @@
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt",
           "version": "repo-file-v1:sha256:391a1aed173cc57e130251855726c244d199f653054d143d4d1072e938e904f5"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt#L22-L22",
+          "version": "repo-lines-v1:sha256:b86aec7515a73134813aaab6bff0449a26e5b733e04b874bcb505f45d17ac201:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjg2YWVjNzUxNWE3MzEzNDgxM2FhYWI2YmZmMDQ0OWEyNmU1YjczM2UwNGI4NzRiY2I1MDVmNDVkMTdhYzIwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjg2YWVjNzUxNWE3MzEzNDgxM2FhYWI2YmZmMDQ0OWEyNmU1YjczM2UwNGI4NzRiY2I1MDVmNDVkMTdhYzIwMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjhlMTFlNmFlZmMxNTk1YjljOWQyOWMzYWQzMzFmMjA1ZTQxYTJiODM3NzVmZDU5MTQyMDNjNzhmODcyMzRlMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE1ZTM5MzBhZGM2YTE2Zjg5YjMwMTQzYmVkZWI2YWRmOTVkYzY5ZTVlODUzNmM0ZTlkMGU4YTNiNjQ3ZDQ0MiJ9"
         }
       ]
     },
@@ -45,6 +57,10 @@
           "version": "repo-file-v1:sha256:2c379f3776804c3f095a6378f82371813fb6c814d835ed3df730b1d9d527ffbc"
         },
         {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt#L16-L16",
+          "version": "repo-lines-v1:sha256:c0395487adb0c949439212c3ff1c1fe04a13ab25fbde49cfd89a725b161bb58a:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzAzOTU0ODdhZGIwYzk0OTQzOTIxMmMzZmYxYzFmZTA0YTEzYWIyNWZiZGU0OWNmZDg5YTcyNWIxNjFiYjU4YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzAzOTU0ODdhZGIwYzk0OTQzOTIxMmMzZmYxYzFmZTA0YTEzYWIyNWZiZGU0OWNmZDg5YTcyNWIxNjFiYjU4YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmRiYzg1NjM3YWJkYzkxNmY2M2U1ZDE3NWM1MWU1NDM1ZDY1ZjQ1NWZiNTBjNzE1MjZlZDBlNzc2ZjM2YjZkZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGZiOGRjYzhhOGM2ZDgxYmIzZTY1ZTliMjRkZmY1MmI5MzBmMzBmOTM3ODBkYTBmODRlYTQ2NmZiYWI3MjRiOSJ9"
+        },
+        {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadBindingDocuments.kt",
           "version": "repo-file-v1:sha256:9453b88a6a3a8aef4ece9dde14b472c4016ea2156bc35d5c6ac8ab703734519c"
         }
@@ -52,7 +68,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T05:45:59.282Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

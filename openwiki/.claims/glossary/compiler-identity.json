@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:975d0c9f1dbd4d8881402a96fb113ca05c3bee7a480322db0f15da897567d96f",
+  "pageVersion": "sha256:4bcee3e73ea3d2e02a984cf4c880094f6c6f9644b24ea6c2167ef557fddeaad0",
   "claims": [
     {
       "id": "claim_ed14f8768fe44ece9daec12e43601ae9",
@@ -19,6 +19,10 @@
         {
           "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt",
           "version": "repo-file-v1:sha256:6b61fe9f812d24676bde4bb28867a6333de19f4b739013071617bf0f7ca35bab"
+        },
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/exact/SymbolSelector.kt#L216-L216",
+          "version": "repo-lines-v1:sha256:b6ee6fce8b667ed01f435dbb66739ca2f1c38f0fedad015b5c4417ebd34e93e3:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjZlZTZmY2U4YjY2N2VkMDFmNDM1ZGJiNjY3MzljYTJmMWMzOGYwZmVkYWQwMTViNWM0NDE3ZWJkMzRlOTNlMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjZlZTZmY2U4YjY2N2VkMDFmNDM1ZGJiNjY3MzljYTJmMWMzOGYwZmVkYWQwMTViNWM0NDE3ZWJkMzRlOTNlMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTRmMjk2Y2U1NmU3MDExZWFmNTgyODJiZjBiNjUxM2Q1MjcyYjhmNGQ1ZGRjMWM4NjVmNjQ2MTYxYzQxOGU0OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjk5OTJkOWY2MTFmMzYyNzVmYWM4NzQ0NzI3NzQ0MGU2YWZiNGE5MTUwMzE2MWE2M2RiY2EzYmVjMzI2YzE3MCJ9"
         }
       ]
     },
@@ -47,6 +51,18 @@
         {
           "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt",
           "version": "repo-file-v1:sha256:4dc797b8e08692e4892d9ab74bc8b0d61fce53a82ff1edaf28c11cc3f67a53af"
+        },
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt#L46-L46",
+          "version": "repo-lines-v1:sha256:26079eef7a991e53590af08bf09d620889160dfd3b33a795e693cc1eb120bbf4:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjYwNzllZWY3YTk5MWU1MzU5MGFmMDhiZjA5ZDYyMDg4OTE2MGRmZDNiMzNhNzk1ZTY5M2NjMWViMTIwYmJmNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjYwNzllZWY3YTk5MWU1MzU5MGFmMDhiZjA5ZDYyMDg4OTE2MGRmZDNiMzNhNzk1ZTY5M2NjMWViMTIwYmJmNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGQyZDIwNDJmMDE0MjU4ODRhZDI5ZDYxYzJmYTM0MDhlOGYzY2NjNTA3NDliN2ZiZDM1MDUzY2M2N2I4YzgxZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGE2MzgwYWJjNDdiZWFlNjRiZjY3Yzg1NDBmYzdjODhlNWMyNGI2ODU5NjZmMzRlODllZDQ2NGUxNDEyZWU4YyJ9"
+        },
+        {
+          "resource": "repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt#L66-L66",
+          "version": "repo-lines-v1:sha256:c5fe3f05661f7e93879e3d3c979b71e7f5494f1a10113ac91a9d2d1291245b64:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzVmZTNmMDU2NjFmN2U5Mzg3OWUzZDNjOTc5YjcxZTdmNTQ5NGYxYTEwMTEzYWM5MWE5ZDJkMTI5MTI0NWI2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzVmZTNmMDU2NjFmN2U5Mzg3OWUzZDNjOTc5YjcxZTdmNTQ5NGYxYTEwMTEzYWM5MWE5ZDJkMTI5MTI0NWI2NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTlmYmZmOGRhZGY5ZTdkYWZkMTUwOGRlMWFkNmE5YjAzZDc1YWFmZTRkOTZlYjBmYTAzODUxNjUyNWZjNDU3MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmIzNWMxYjIzZTMwYzliNzBjZWE0ZGY1NjQ3ZjU3NzY2MzZiNjkwMmZkY2UxNDVjMjRjY2E0NTE3N2NjYTliZSJ9"
+        },
+        {
+          "resource": "repo://change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/PlannedAddDeclaration.kt#L19-L30",
+          "version": "repo-lines-v1:sha256:1475acf7b9568e022d303a243a7d98069a1b215cfed4c913d0b55fd705257e6e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOGJhZDZmM2M2MjM1ZWUwYWU1NjAyZDg3ODgyMDhlNzhlYjAyZDNjODI3YmQ2NDQxMDk1ZTI0YzE4MTQwMTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMTYzZjc3ODZjNDJjYTg4OTI3MGY3NTNhNzgwNjI2NDI2YzAzZjk3M2EwNWFkZWFlZGQ0ZmE0ZDI3MGYwZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1YjU5MDU2ZGRhNmRmNzZlNDBhYWE0ODVlYmZkMDViYzU2OWVlNTM2NTY3ODgyODM2MGViODY2MGNiN2EzZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzZTc4NGVmZjRkNzY0Zjk3OGRlZWQ0OGUyZTYzYzZhZTcyYzQ1ZWEzNzc1ZmI5MjYyYTZiODRhODNiZjc5MDkifQ"
         }
       ]
     },
@@ -57,6 +73,10 @@
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationLocalOwnerCallableIdentity.kt",
           "version": "repo-file-v1:sha256:8851b99d387c9ad1118b9b204816ed61085e868f2f896142bf38a4ff5fcce823"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationLocalOwnerCallableIdentity.kt#L17-L17",
+          "version": "repo-lines-v1:sha256:c64a6487b20473f711b440c37b0f338310cf536db4396267c923aa019ac4e201:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY0YTY0ODdiMjA0NzNmNzExYjQ0MGMzN2IwZjMzODMxMGNmNTM2ZGI0Mzk2MjY3YzkyM2FhMDE5YWM0ZTIwMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzY0YTY0ODdiMjA0NzNmNzExYjQ0MGMzN2IwZjMzODMxMGNmNTM2ZGI0Mzk2MjY3YzkyM2FhMDE5YWM0ZTIwMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGYyYzRmMjgxOWZjZmI3OTg3NTAwYTM4M2YwM2FlMDIzZmYwYjlkMjI5YWVhY2U2MGNiYzFmYTM1ZjdhY2VjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTJjYTFjMzdlNzhmYzZmMTkzNjUxZjdlMTIyOWZlZjBjNGMyMWM0MGM4YWFiNzcyODdhOGFmNDNiOTlkOGJjZiJ9"
         },
         {
           "resource": "repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/SourceLocalOwnerCallableIdentity.kt",
@@ -83,12 +103,16 @@
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt",
           "version": "repo-file-v1:sha256:ac533bd25a6475753377fb0ef88e18ab1b26b02c1101ff2152bae46e4c6a1536"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt#L67-L67",
+          "version": "repo-lines-v1:sha256:86ade4d999cd2dd2a4d86d3945bfa565509590b23decc0ac39e03582639fb9d3:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODZhZGU0ZDk5OWNkMmRkMmE0ZDg2ZDM5NDViZmE1NjU1MDk1OTBiMjNkZWNjMGFjMzllMDM1ODI2MzlmYjlkMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODZhZGU0ZDk5OWNkMmRkMmE0ZDg2ZDM5NDViZmE1NjU1MDk1OTBiMjNkZWNjMGFjMzllMDM1ODI2MzlmYjlkMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjk0ZDYwMGQ4YjUxNmJmMzZkYjU5YmVjOTdmODQxYzQzYTVlMWVlMjAyOTEzMTNkMWM2NzI4OGZmYTllMjliOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmVjZjBjOWRiMzYyYjYzOTg5ODViNWY1YThkYzllOWRlZmZjNGVhN2Q0ZjM2ODgyYTNhZTU5ZTE1MmI0MmM3ZiJ9"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T06:09:31.584Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

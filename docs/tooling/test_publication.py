@@ -10,8 +10,9 @@ from collections.abc import Iterator
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
-import okf_public
 import pytest
+
+import okf_public
 import reader_contracts
 from publication import (
     Failure,
@@ -223,6 +224,70 @@ def test_review_revision_on_pr_head_does_not_survive_a_squash_merge(root: Path) 
     assert [item.status for item in obligations] == [State.UNRESOLVED]
     assert association.reviewedSourceRevision in obligations[0].detail
     assert "origin/main" in obligations[0].detail
+
+
+def _dated_commit(root: Path, timestamp: str) -> None:
+    git = shutil.which("git")
+    assert git is not None
+    _ = subprocess.run(
+        [
+            git,
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "later work",
+        ],
+        cwd=root,
+        check=True,
+        env={
+            "GIT_COMMITTER_DATE": timestamp,
+            "GIT_AUTHOR_DATE": timestamp,
+            "PATH": "/usr/bin:/bin",
+        },
+    )
+    _ = subprocess.run(
+        [git, "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=root, check=True
+    )
+
+
+def _reviewed_at(root: Path, timestamp: str) -> BindingFixture:
+    _dated_commit(root, timestamp)
+    return binding(root)
+
+
+@pytest.mark.parametrize("head_time", ["2030-01-05T23:59:59Z", "2030-01-06T00:00:00Z"])
+def test_review_within_five_days_of_head_remains_accepted(root: Path, head_time: str) -> None:
+    association = _reviewed_at(root, "2030-01-01T00:00:00Z")
+    _dated_commit(root, head_time)
+    obligations = assess_associations(
+        root, wire(ManifestFixture((association,))), wire(NativeFixture())
+    )
+    assert [item.status for item in obligations] == [State.PASSED]
+
+
+def test_review_older_than_five_days_before_head_is_stale(root: Path) -> None:
+    association = _reviewed_at(root, "2030-01-01T00:00:00Z")
+    _dated_commit(root, "2030-01-06T00:00:01Z")
+    obligations = assess_associations(
+        root, wire(ManifestFixture((association,))), wire(NativeFixture())
+    )
+    assert [item.status for item in obligations] == [State.STALE]
+    assert association.reviewedSourceRevision in obligations[0].detail
+    assert "5 days" in obligations[0].detail
+
+
+def test_review_age_uses_head_commit_time_not_wall_clock(root: Path) -> None:
+    # Both commits are decades old; only their distance from HEAD decides.
+    association = _reviewed_at(root, "2001-01-01T00:00:00Z")
+    _dated_commit(root, "2001-01-02T00:00:00Z")
+    obligations = assess_associations(
+        root, wire(ManifestFixture((association,))), wire(NativeFixture())
+    )
+    assert [item.status for item in obligations] == [State.PASSED]
 
 
 def test_review_revision_requires_the_main_ref(root: Path) -> None:

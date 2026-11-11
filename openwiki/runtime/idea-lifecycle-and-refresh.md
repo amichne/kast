@@ -34,6 +34,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementShutdown.kt
   - id: openwiki-source-681368e4942d2fb35f298a68
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
+  - id: openwiki-source-0a4449d30536714453de301f
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/WorkspacePreparationDeadline.kt
   - id: openwiki-source-beadba0f0b5f11f102a7ab98
     resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationExecutionBudget.kt
   - id: openwiki-source-b711ac75af08966d13a95b22
@@ -56,8 +58,8 @@ sources:
     resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleProjectReadinessObservationTest.kt
 generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-06T05:26:56.646Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # IDEA lifecycle and explicit refresh

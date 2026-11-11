@@ -35,8 +35,8 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt
 generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Retained results and output delivery

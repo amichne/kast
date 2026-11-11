@@ -141,7 +141,7 @@ class VerificationPlanTest(unittest.TestCase):
         self.assertIsInstance(plan, selection.Plan)
         self.assertLessEqual(
             {":verifyKastArchitecture", ":verifyJsonContracts", ":verifyConfigurationIngress",
-             ":verifyKnowledgeBase", ":verifyVerificationGraph"},
+             ":verifyKnowledgeBase", ":verifyKnowledgeClaims", ":verifyVerificationGraph"},
             set(plan.tasks),
         )
         self.assertTrue(

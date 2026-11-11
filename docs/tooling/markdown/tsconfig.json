@@ -10,5 +10,5 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["parse.ts", "project-okf.ts", "evidence-*.ts"]
+  "include": ["parse.ts", "project-okf.ts", "evidence-*.ts", "source-declarations*.ts"]
 }

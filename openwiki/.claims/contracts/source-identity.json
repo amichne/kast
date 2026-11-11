@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5656f59cb97ff664ed7da5a95d4a428b8c998b444ab003439a8e92417b24a889",
+  "pageVersion": "sha256:b9073f1ab79adfe2ff89ff4f5f640535726ae99cfa8089a886db45d8dd6f2b99",
   "claims": [
     {
       "id": "claim_f7d072d0792940888833dd8e689c0570",
@@ -53,6 +53,10 @@
           "version": "repo-file-v1:sha256:c146c8b996a5713d3375d0f98c0e850d111b21bb6b88c0683f6bf4de9a4190e7"
         },
         {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactRevalidationCapture.kt#L28-L28",
+          "version": "repo-lines-v1:sha256:9b967d47ffc05eb9fc9ff509c7a0366f7d137b522ab38c613c98d5466064a95d:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWI5NjdkNDdmZmMwNWViOWZjOWZmNTA5YzdhMDM2NmY3ZDEzN2I1MjJhYjM4YzYxM2M5OGQ1NDY2MDY0YTk1ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWI5NjdkNDdmZmMwNWViOWZjOWZmNTA5YzdhMDM2NmY3ZDEzN2I1MjJhYjM4YzYxM2M5OGQ1NDY2MDY0YTk1ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjVmNzFmNmQ0OTNiZjVkOGZiYTRhYzFkOWM4ZWExNjAxOTc3MjUwM2YyNGE4OTQxYmJlYmVkNjllMTEwZjUyYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzg4YWY3NmUzNWFmNjI1N2FmYzBiNWZiNTJlMjc4ZWU2NzhjYzk0MjE2NWU4MzZkZjQ5ZjQyNjU2MTg5YTQzMyJ9"
+        },
+        {
           "resource": "repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt",
           "version": "repo-file-v1:sha256:1dacbb29b54269cf7de0a13088a2ad2513a3b63125b67d242b0840f0754a81ed"
         }
@@ -73,12 +77,16 @@
         {
           "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt",
           "version": "repo-file-v1:sha256:6e8417369106fd7d75c6c8af34650cc8ec9c07971137b8bebe8bcb0b21e46aed"
+        },
+        {
+          "resource": "repo://symbol/contract/src/main/kotlin/io/github/amichne/kast/symbol/contract/CanonicalCompilerSignature.kt#L54-L54",
+          "version": "repo-lines-v1:sha256:5c16947a304b5f58fd44b59014ccb462614106164bb2689c1d70c92a055946a7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWMxNjk0N2EzMDRiNWY1OGZkNDRiNTkwMTRjY2I0NjI2MTQxMDYxNjRiYjI2ODljMWQ3MGM5MmEwNTU5NDZhNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWMxNjk0N2EzMDRiNWY1OGZkNDRiNTkwMTRjY2I0NjI2MTQxMDYxNjRiYjI2ODljMWQ3MGM5MmEwNTU5NDZhNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTI0MTMyMDczNjEwNGI5NGE5ZWQ3Y2MxNGMwMmU0MzZiNjI5MWQ5MjNmMGM3ZjVjMWE2OWQyNTNiZmM1ZWZhMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTQ3MmM5YjE0N2MxNTFhM2VmNzk4MzA1YmUyNDUyY2Y4NzZjNDYxOWNkOGQwODJhMjgxMmUxY2I3OGFiZjk3MyJ9"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T06:25:30.717Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

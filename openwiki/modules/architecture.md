@@ -69,8 +69,8 @@ sources:
     resource: repo://topology/service/build.gradle.kts
 generated: { by: "pi", at: "2026-11-11T10:38:11.930Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T10:38:11.930Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T14:25:07.841Z
 ---
 
 # Verified module architecture

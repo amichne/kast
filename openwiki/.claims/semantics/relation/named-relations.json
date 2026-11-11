@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2eeb731704c4859bf4fb182b2aeaa85a45129ce1fb2a22260864f1cde2b126f1",
+  "pageVersion": "sha256:7db2b591834d24130ff86ed507bd91a6a6bf02dfa7a84649d8ac097e03bd06c0",
   "claims": [
     {
       "id": "claim_fe33fe126b7646c38ff54533310b15dd",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt",
           "version": "repo-file-v1:sha256:7825affd760ee3b199e1f1a01414a0e0b858b5c7c8071d2a95cdde42250c3c28"
+        },
+        {
+          "resource": "repo://relation/service/src/main/kotlin/io/github/amichne/kast/relation/service/RelationService.kt#L27-L27",
+          "version": "repo-lines-v1:sha256:bbf22eab76c4cea9a946812aa6cfbc60e3663637695a8f1b067b5e3ec994c015:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmJmMjJlYWI3NmM0Y2VhOWE5NDY4MTJhYTZjZmJjNjBlMzY2MzYzNzY5NWE4ZjFiMDY3YjVlM2VjOTk0YzAxNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmJmMjJlYWI3NmM0Y2VhOWE5NDY4MTJhYTZjZmJjNjBlMzY2MzYzNzY5NWE4ZjFiMDY3YjVlM2VjOTk0YzAxNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGYyMTQxYTc4NGU4Njk2M2YwMTg1MWZlMjFjYjIyZGQwMzIzZDI0ODhkMTUxOTQxYWRiZDc0OTMwYjZmMzk2MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWVjNzAyMjEyZjlhNTM2NjAyYjE1ZTc0Y2Y1NzI5MzIyMWM2MzVhMTQ1MzczYTIzNjliZTRkYWI3MGI0YWU5ZiJ9"
         }
       ]
     },
@@ -23,6 +27,10 @@
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationFileEnumerationPlan.kt",
           "version": "repo-file-v1:sha256:84c5d26be39e0c4bb1f4351382b8e12f8b1d47b271e23554116072f4eadbde77"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/RelationFileEnumerationPlan.kt#L11-L11",
+          "version": "repo-lines-v1:sha256:6d2e8a521cd06b4ea86629068569ca490adc20d6c7b4f53f18062213cc98708e:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQyZThhNTIxY2QwNmI0ZWE4NjYyOTA2ODU2OWNhNDkwYWRjMjBkNmM3YjRmNTNmMTgwNjIyMTNjYzk4NzA4ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmQyZThhNTIxY2QwNmI0ZWE4NjYyOTA2ODU2OWNhNDkwYWRjMjBkNmM3YjRmNTNmMTgwNjIyMTNjYzk4NzA4ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjYwMzkzYjViOTUyYTlmZTIyZmI0MjdhNjNjOWQxMjlmOTM3MzRjZmMxYzhhZDg0OWQwYjYxMjBkMGNmMWU4NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGFiM2Y3OTUwZDZkZjdmZmYwZWJjOWI2Nzg5YTI4NGIwZDI4YTJlMGNjNDY1ZjQ2MGIxODcxYzE3NmQ3YjQ1MSJ9"
         }
       ]
     },
@@ -39,6 +47,10 @@
           "version": "repo-file-v1:sha256:9f3253aca17addf83c5964d0f82c59b5875864dd4bce4272ea6bcdf5824df4fe"
         },
         {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationReferenceOccurrence.kt#L78-L78",
+          "version": "repo-lines-v1:sha256:eb360cd8e5e469363410ba5d2e2fa3d37fa6b9e836a58273781977ec5ca1b37b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWIzNjBjZDhlNWU0NjkzNjM0MTBiYTVkMmUyZmEzZDM3ZmE2YjllODM2YTU4MjczNzgxOTc3ZWM1Y2ExYjM3YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWIzNjBjZDhlNWU0NjkzNjM0MTBiYTVkMmUyZmEzZDM3ZmE2YjllODM2YTU4MjczNzgxOTc3ZWM1Y2ExYjM3YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmU0MjRkZjc2YjA4ZTc5Zjg5ODg1NjdhMTRjZWQ5MjE4MWQzYTAwMjQ4MTRjYmE0NDUxOGFmNjZjYzc0MmUyYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjA5NTc2NzNkZjUzOWU0ODMxNzdlZmY0ZGFmY2ZmMTkzZDcxMGI0MDQ0YzE5MDBhMWY2NzAzNTQ3Y2E0NDkxOCJ9"
+        },
+        {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RelationScopeExclusion.kt",
           "version": "repo-file-v1:sha256:e258a1ab5fcdf5d9b25d51a99eca51af0295b2ed726c1ab7850a02fac5e0855a"
         }
@@ -46,7 +58,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

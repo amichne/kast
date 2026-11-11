@@ -30,8 +30,8 @@ sources:
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexWorkspaceBindingTest.kt
 generated: { by: "codex", at: "2026-10-15T03:22:02.735Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-15T04:27:04.727Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Codex hosts and protocol framing
