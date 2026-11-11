@@ -1,5 +1,5 @@
 ---
-title: "What your agent gains"
+title: "Capabilities"
 sidebarTitle: "Capabilities"
 description: "See how compiler-grounded declarations, source relationships, value paths, and diagnostics support your agent during Kotlin development."
 keywords:
@@ -8,7 +8,6 @@ keywords:
   - "value flow"
   - "diagnostics"
 icon: "search"
-hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
@@ -28,7 +27,16 @@ Identical names can refer to different declarations. Kast's issued references pr
 
 Caller and reference locations show where code uses the selected declaration.
 Your agent can read that source as it plans a change.
-The relationships describe the queried source state and scope; they do not establish runtime execution.
+For example, ask:
+
+```text
+Which functions call submitOrder, and where are they?
+```
+
+Select the intended declaration if the name matches more than one.
+The result identifies caller locations within the queried scope and reports completion evidence.
+A complete result can contain zero callers.
+The relationships describe the queried source state and scope. They do not establish runtime execution.
 
 <span id="where-does-this-value-go" />
 
@@ -43,13 +51,13 @@ The optional [value illustration](/explanation/value-journey) makes those distin
 
 ## Inspect problems and make supported edits
 
-Kast also exposes IDEA diagnostics and controlled source changes through its [optional MCP composition](/reference/integrations#optional-mcp) and Tool RPC interfaces.
-The default native CLI guidance supports declaration and relationship queries and source reads.
+The native CLI supports declaration and relationship queries, source reads, and IDEA file diagnostics. See [Check file diagnostics](/reference/cli#check-file-diagnostics).
+Controlled source changes are available through the [optional MCP composition](/reference/integrations#optional-mcp) and Tool RPC interfaces.
 
 - [IDEA diagnostics](/how-to/inspect-diagnostics) carry source locations and reported coverage.
 - [Source changes](/reference/change) support adding a declaration to an existing file or replacing a supported function body, with a change receipt.
 
-These operations support your project's build and tests. A change receipt records a scoped source effect; it does not establish application behavior.
+These operations support your project's build and tests. A change receipt records a scoped source effect. It does not establish application behavior.
 
 <span id="which-implementation-matters" />
 <span id="can-we-change-this-body" />

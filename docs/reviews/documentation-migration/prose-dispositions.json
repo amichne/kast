@@ -11256,6 +11256,102 @@
         "severity": "warning"
       },
       "reason": "Keep asynchronous exact-workspace preparation, model-visible wait guidance, stale-session rejection, bounded context, and optional MCP availability distinct. Exact CLI, MCP, Node, and resource identifiers preserve these contracts. The grade target remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/cli.mdx",
+        "sourceSha256": "455bc50e1bb1a3709a8718eca670a9a956af862e2fd5714f9740c5005b488c0c",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 9.00 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "The command examples keep exact flags, output limits, and result fields. The routing note tells readers which workspace supplies compiler analysis."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/composition.mdx",
+        "sourceSha256": "b6743f2b59f1181b15e2775061e60bc4db4d0a957e1d2c10be8f93b0f74ffa76",
+        "rule": "Reference.Examples",
+        "line": 1,
+        "message": "Reference provides examples. There is no code block on this page.",
+        "severity": "suggestion"
+      },
+      "reason": "This view explains internal row transitions. Query pipelines owns runnable requests and keeps examples beside the public command forms."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/start.mdx",
+        "sourceSha256": "bdb0bf438454c7e7338fa3e45daad302d7a567d5b16ebf40954bc3988119ece4",
+        "rule": "HowTo.Steps",
+        "line": 1,
+        "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "severity": "warning"
+      },
+      "reason": "Three numbered headings order installation, agent guidance, and a first query. Agent tabs keep alternatives within the second step."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/search.mdx",
+        "sourceSha256": "7e5fa89f30853a7dec0df73bbb421c54e071110e7e899cf15443d78d477fa0d5",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 10.20 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "The capability names, exact caller example, interface choices, and evidence limits keep their technical meaning. The grade target remains unmet."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/start.mdx",
+        "sourceSha256": "c95a231c42c627c4d85c4bda77a24fb56760cfe138aff72bcca40e72221c1585",
+        "rule": "HowTo.Steps",
+        "line": 1,
+        "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "severity": "warning"
+      },
+      "reason": "Three numbered headings order desktop installation, agent guidance, and the first query. The second step keeps alternatives in agent tabs."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/troubleshooting.mdx",
+        "sourceSha256": "4cd50bee8e1e6f1150e0ef2f1ff95292dcff0708777af74ffa417941b8c64b2c",
+        "rule": "HowTo.Steps",
+        "line": 1,
+        "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "severity": "warning"
+      },
+      "reason": "Readers enter at their symptom. Each section gives its own action, so one numbered sequence would imply unrelated recovery steps."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/search.mdx",
+        "sourceSha256": "5f8944d7c038449d11f5dc9b10c7e0a35660f9c04cbb85b50cedd7e2384b8170",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 10.39 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact capabilities, interface distinctions, the caller question, and result limits. The grade target remains unmet."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/start.mdx",
+        "sourceSha256": "8a69b575a790197880655cb930b9e4fb49f1a63705320f86ded701de49ff8740",
+        "rule": "HowTo.Steps",
+        "line": 1,
+        "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "severity": "warning"
+      },
+      "reason": "Mintlify Steps renders the three actions in order. The rule detects numbered Markdown lists and does not count native Steps."
     }
   ]
 }

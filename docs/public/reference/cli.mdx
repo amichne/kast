@@ -8,13 +8,13 @@ keywords:
   - "query"
   - "callers"
   - "source"
-hideFooterPagination: true
 ---
 
 Use the native `kast` command for Kotlin queries in one exact repository or worktree.
-The persistent IntelliJ IDEA Host supplies compiler analysis. CLI queries need no MCP registration.
+An IntelliJ IDEA Host supplies compiler analysis. CLI queries need no MCP registration.
 
-For a private Host, see [isolated runtime installation](/reference/installation#isolated-runtime).
+For a private Host, see [workspace containers](/reference/installation#manage-isolated-workspaces).
+Run queries from the container's workspace or a subdirectory to prepare its private Host.
 
 ## Discover the installed contract
 
@@ -107,7 +107,6 @@ A caller result describes source relationships. It does not prove that those cal
 Keep the result's scope and qualifications with your conclusion.
 Source reads and queries from issued references use the existing workspace authority.
 The direct session does not start another preparation for these reads.
-Workspace container routing first prepares its private Host, before the query child starts.
 A model change can still make a reference stale.
 
 ## Check file diagnostics
