@@ -750,6 +750,27 @@ val knowledgeParserClasspath = files(
     jsonContractParser,
 )
 
+val prepareKnowledgeParser = tasks.register("prepareKnowledgeParser") {
+    group = "verification"
+    description = "Publishes the isolated Kotlin PSI parser classpath for documentation checks."
+    inputs.files(knowledgeParserClasspath)
+    val output = layout.buildDirectory.file("reports/documentation/knowledge-parser-classpath.txt")
+    val parserPath = knowledgeParserClasspath.asPath
+    outputs.file(output)
+    doLast {
+        output.get().asFile.apply { parentFile.mkdirs(); writeText(parserPath) }
+    }
+}
+
+verifyKnowledgeClaims.configure {
+    dependsOn(prepareKnowledgeParser, documentationPythonDependencies)
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", "docs/tooling", "python", "docs/tooling/knowledge_check.py"))
+    environmentVariables.put("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
+    runtimeFiles.from(documentationPython, documentationEnvironment, validationExecutable("java"))
+    environmentVariables.put("UV_PROJECT_ENVIRONMENT", documentationEnvironment.get().asFile.absolutePath)
+}
+
 val knowledgeBaseTest = tasks.register<Exec>("knowledgeBaseTest") {
     group = "verification"
     dependsOn(preparePythonTestEnvironment)

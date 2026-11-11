@@ -58,11 +58,11 @@
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt",
-            "sha256": "fa8ea4073c5bd62ca7fb172c45c18a6c94c5cce9444b43b9579ca06cfaa0e4a9"
+            "sha256": "01b195cf898d6adf50cf39b3d84ea738d5da8c5d61115fbb80bff736e26c04e0"
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinDocumentationScanner.kt",
-            "sha256": "312a2c8df4f956c244a866d38d1dca894807c109f62948aaee4bc00ce1ad6b47"
+            "sha256": "8982f8636b61093dfdd4148a556a60ad35e656a5debddcaad1967f190a40777b"
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinJsonContractScanner.kt",
@@ -362,7 +362,7 @@
         },
         {
             "path": "build.gradle.kts",
-            "sha256": "0db5b4608235127fba5522abc2c87b2201489942fb1a0f1c9232036dfdad5bcc"
+            "sha256": "e1de7eefbd54eaa3694596da28beab11dbb4db054296c29f3bd9b5e6a6f0ad41"
         },
         {
             "path": "change/apply/build.gradle.kts",

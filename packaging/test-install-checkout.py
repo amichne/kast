@@ -174,6 +174,22 @@ fi
             text=True,
         )
 
+    def test_component_selection_replaces_inherited_host_selector(self):
+        # Run the real checkout selector with an inert public-installer boundary.
+        self.write_script(self.installer, '''#!/usr/bin/env bash
+set -eu
+printf '%s\\n' "$KAST_VERSION" "$KAST_HOST_VERSION" > "$TEST_LOG"
+''')
+        self.env['KAST_HOST_VERSION'] = 'foreign-inherited-host'
+        for option in ('--control-only', '--host-only', None):
+            with self.subTest(component=option):
+                arguments = ('persistent',) if option is None else ('persistent', option)
+                result = self.run_install(*arguments)
+                self.assertEqual(0, result.returncode, result.stderr)
+                control, host = (self.root / 'calls').read_text().splitlines()
+                self.assertTrue(control.startswith('0.'))
+                self.assertEqual('' if option == '--control-only' else control, host)
+
     def test_selected_jbr_precedes_ambient_java_and_paths_with_spaces(self):
         self.env.update(JAVA="/usr/bin/java", JAVA_HOME="/wrong/ambient-java")
         result = self.run_install("persistent", "--idea-home", str(self.idea.parent))

@@ -14,6 +14,7 @@ from enum import StrEnum
 from pathlib import Path, PurePosixPath
 from typing import Literal, TypeGuard
 
+import claim_evidence
 import okf_public
 import reader_contracts
 
@@ -710,7 +711,7 @@ def assess_receipt(
     return tuple(obligations), receipt.limits
 
 
-def native_assessment(root: Path) -> object:
+def native_assessment(root: Path, scope: Literal["public", "canonical"] = "public") -> object:
     node = shutil.which("node")
     if node is None:
         return Failure("native", "Node is unavailable")
@@ -722,7 +723,7 @@ def native_assessment(root: Path) -> object:
                 "--root",
                 str(root),
                 "--scope",
-                "public",
+                scope,
             ],
             capture_output=True,
             timeout=120,
@@ -826,6 +827,11 @@ def assess(
                 obligations.append(Obligation("native-orphan", State.UNRESOLVED, orphan))
     manifest = _load(root, MANIFEST)
     obligations.extend(assess_associations(root, manifest, native))
+    qualifications = claim_evidence.assess(root, native, manifest)
+    obligations.extend(
+        Obligation("claim-evidence:" + item.claim_id, State.UNRESOLVED, item.reason.value)
+        for item in qualifications.failures
+    )
     projection = okf_public.run(root, False)
     obligations.append(
         Obligation(

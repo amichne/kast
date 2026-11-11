@@ -13,12 +13,15 @@ import kotlinx.serialization.json.Json
 sealed interface KotlinSymbolScan {
     @Serializable
     @SerialName("accepted")
-    data class Accepted(val names: List<String>) : KotlinSymbolScan
+    data class Accepted(val names: List<String>, val declarations: List<KotlinSymbolDeclaration>) : KotlinSymbolScan
 
     @Serializable
     @SerialName("rejected")
     data class Rejected(val reason: KnowledgeDocsFailureCode) : KotlinSymbolScan
 }
+
+@Serializable
+data class KotlinSymbolDeclaration(val name: String, val startLine: Int, val endLine: Int, val executableTest: Boolean)
 
 @Serializable
 data class KnowledgeSourceSymbols(val path: String, val result: KotlinSymbolScan)

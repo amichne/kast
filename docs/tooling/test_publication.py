@@ -10,8 +10,9 @@ from collections.abc import Iterator
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
-import okf_public
 import pytest
+
+import okf_public
 import reader_contracts
 from publication import (
     Failure,
@@ -258,9 +259,10 @@ def _reviewed_at(root: Path, timestamp: str) -> BindingFixture:
     return binding(root)
 
 
-def test_review_within_five_days_of_head_remains_accepted(root: Path) -> None:
+@pytest.mark.parametrize("head_time", ["2030-01-05T23:59:59Z", "2030-01-06T00:00:00Z"])
+def test_review_within_five_days_of_head_remains_accepted(root: Path, head_time: str) -> None:
     association = _reviewed_at(root, "2030-01-01T00:00:00Z")
-    _dated_commit(root, "2030-01-05T23:59:59Z")
+    _dated_commit(root, head_time)
     obligations = assess_associations(
         root, wire(ManifestFixture((association,))), wire(NativeFixture())
     )

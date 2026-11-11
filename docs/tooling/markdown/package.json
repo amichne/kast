@@ -7,7 +7,7 @@
     "node": "24.21.0"
   },
   "scripts": {
-    "check": "tsc --noEmit && npm run test:evidence",
+    "check": "tsc --noEmit && npm run test:evidence && node --test source-declarations.test.ts",
     "test:evidence": "node --test evidence-native.test.ts"
   },
   "dependencies": {

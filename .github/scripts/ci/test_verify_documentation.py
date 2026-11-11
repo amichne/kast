@@ -7,13 +7,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from verify_documentation import ROOT, commands
+from verify_documentation import commands
 
 
 class DocumentationProofTest(unittest.TestCase):
-    def test_installer_examples_keep_their_offline_consumer_without_gradle(self):
+    def test_installer_examples_keep_their_offline_consumer_without_product_assembly(self):
         self.assertIn(("python3", "packaging/test-installer-entrypoint.py"), commands(()))
-        self.assertFalse(any("gradlew" in part for command in commands(()) for part in command))
+        # Only declaration qualification needs the isolated PSI parser, not product assembly.
+        self.assertEqual(
+            [("./gradlew", "verifyKnowledgeClaims")],
+            [command for command in commands(()) if "gradlew" in command[0]],
+        )
 
     def test_readability_tooling_keeps_its_tests_when_present(self):
         from verify_documentation import readability_commands
@@ -47,8 +51,7 @@ class DocumentationProofTest(unittest.TestCase):
 
     def test_documentation_lane_rejects_stale_canonical_claims(self):
         self.assertIn(
-            ("node", "docs/tooling/markdown/evidence-assess.ts", "--root", str(ROOT),
-             "--scope", "canonical"),
+            ("./gradlew", "verifyKnowledgeClaims"),
             commands(()),
         )
 
