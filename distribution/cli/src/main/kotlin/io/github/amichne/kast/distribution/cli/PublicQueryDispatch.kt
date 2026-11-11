@@ -34,18 +34,19 @@ internal fun runInstalledPublicQuery(
     environment: Map<String, String>,
     output: ManagementOutput = ManagementOutput(),
 ): Int =
-    when (val launcher = selectPublicQueryLauncher(environment)) {
-        is PublicQueryLauncher.Admitted ->
-            try {
-                runOwnedPublicQueryChild(listOf(launcher.path.toString()) + arguments, directory, environment)
-            } catch (_: IOException) {
+    routedContainerQuery(arguments, directory, environment, output)
+        ?: when (val launcher = selectPublicQueryLauncher(environment)) {
+            is PublicQueryLauncher.Admitted ->
+                try {
+                    runOwnedPublicQueryChild(listOf(launcher.path.toString()) + arguments, directory, environment)
+                } catch (_: IOException) {
+                    publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE, output)
+                } catch (_: RuntimeException) {
+                    publishPublicQueryStartupFailure(PublicQueryStartupFailure.INVOCATION_FAILED, output)
+                }
+            PublicQueryLauncher.Unavailable ->
                 publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE, output)
-            } catch (_: RuntimeException) {
-                publishPublicQueryStartupFailure(PublicQueryStartupFailure.INVOCATION_FAILED, output)
-            }
-        PublicQueryLauncher.Unavailable ->
-            publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE, output)
-    }
+        }
 
 internal sealed interface PublicQueryLauncher {
     class Admitted private constructor(val path: Path) : PublicQueryLauncher {
@@ -68,7 +69,7 @@ internal sealed interface PublicQueryLauncher {
     data object Unavailable : PublicQueryLauncher
 }
 
-private fun selectPublicQueryLauncher(environment: Map<String, String>): PublicQueryLauncher =
+internal fun selectPublicQueryLauncher(environment: Map<String, String>): PublicQueryLauncher =
     try {
         when (val root = resolveManagementRoot(environment)) {
             is ManagementRootResolution.Rejected -> PublicQueryLauncher.Unavailable
@@ -153,6 +154,7 @@ internal class OwnedChildSession {
                 .inheritIO()
                 .apply {
                     if (output != OwnedChildOutput.Inherited) redirectOutput(ProcessBuilder.Redirect.PIPE)
+                    if (output == OwnedChildOutput.Diagnostics) redirectInput(ProcessBuilder.Redirect.PIPE)
                     if (output is OwnedChildOutput.Capture) {
                         redirectInput(ProcessBuilder.Redirect.PIPE)
                         redirectError(ProcessBuilder.Redirect.DISCARD)

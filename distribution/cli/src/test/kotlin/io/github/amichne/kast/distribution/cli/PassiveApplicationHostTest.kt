@@ -149,7 +149,14 @@ class PassiveApplicationHostTest {
             MessageDigest.getInstance("SHA-256").digest(idea.toString().toByteArray()).take(16).joinToString("") {
                 "%02x".format(it)
             }
-        val directory = Files.createDirectories(fixture.home.resolve(".kast/ide-lifecycle/$hash"))
+        val directory =
+            Files.createDirectories(
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                        fixture.home,
+                        io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
+                    )
+                    .resolve(hash)
+            )
         val descriptor = directory.resolve("endpoint.json")
         Files.writeString(
             descriptor,

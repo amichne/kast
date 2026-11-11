@@ -73,7 +73,7 @@ class PrivateRuntime:
 
     @property
     def java(self) -> Path:
-        relative = "jbr/Contents/Home" if self.target == HostPlatform.MACOS_ARM64 else "jbr"
+        relative = "jbr" if self.target.is_linux else "jbr/Contents/Home"
         return self.root / self.target.layout.home / relative
 
 

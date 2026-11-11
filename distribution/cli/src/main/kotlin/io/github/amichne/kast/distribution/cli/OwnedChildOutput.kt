@@ -10,6 +10,8 @@ import java.io.IOException
 internal sealed interface OwnedChildOutput {
     data object Inherited : OwnedChildOutput
 
+    data object Diagnostics : OwnedChildOutput
+
     data class Document(val format: CliOutputFormat) : OwnedChildOutput
 
     class Capture : OwnedChildOutput {
@@ -65,6 +67,14 @@ internal sealed interface ChildOutputDelivery {
 internal fun deliverOwnedChildOutput(child: Process, output: OwnedChildOutput): ChildOutputDelivery =
     when (output) {
         OwnedChildOutput.Inherited -> ChildOutputDelivery.Delivered
+        OwnedChildOutput.Diagnostics ->
+            try {
+                child.outputStream.close()
+                child.inputStream.transferTo(System.err)
+                ChildOutputDelivery.Delivered
+            } catch (_: IOException) {
+                ChildOutputDelivery.Rejected.IO
+            }
         is OwnedChildOutput.Document -> deliverChildDocument(child, output.format)
         is OwnedChildOutput.Capture -> output.read(child)
     }

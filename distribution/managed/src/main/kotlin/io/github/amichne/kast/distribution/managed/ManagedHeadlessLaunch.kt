@@ -27,7 +27,7 @@ private constructor(
                 "JAVA_HOME" to java.toString(),
                 "IDEA_JDK" to java.toString(),
                 "IDEA_VM_OPTIONS" to runtime.options.toString(),
-                "GRADLE_USER_HOME" to runtime.userHome.resolve(".gradle").toString(),
+                "GRADLE_USER_HOME" to runtime.gradleHome.toString(),
                 "XDG_RUNTIME_DIR" to state.resolve("tmp").toString(),
                 "TMPDIR" to state.resolve("tmp").toString(),
             ) + linuxSupport(runtime)

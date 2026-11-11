@@ -106,7 +106,12 @@ class InstallationLifecycleCapabilityTest {
                 MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
                     "%02x".format(it)
                 }
-            val socket = root.resolve(".kast/ide-lifecycle/$digest/host.sock")
+            val socket =
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                        root,
+                        io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
+                    )
+                    .resolve("$digest/host.sock")
             Files.createDirectories(socket.parent)
             server.bind(UnixDomainSocketAddress.of(socket))
             val serving = executor.submit {
@@ -157,7 +162,12 @@ class InstallationLifecycleCapabilityTest {
                 MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
                     "%02x".format(it)
                 }
-            val socket = root.resolve(".kast/ide-lifecycle/$digest/host.sock")
+            val socket =
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                        root,
+                        io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
+                    )
+                    .resolve("$digest/host.sock")
             Files.createDirectories(socket.parent)
             server.bind(UnixDomainSocketAddress.of(socket))
             val json = Json { encodeDefaults = true }

@@ -17,27 +17,37 @@ class PlatformLayout:
 
 class HostPlatform(StrEnum):
     MACOS_ARM64 = "macos-aarch64"
+    MACOS_X86_64 = "macos-x86_64"
+    LINUX_ARM64 = "linux-aarch64"
     LINUX_X86_64 = "linux-x86_64"
+
+    @property
+    def is_linux(self) -> bool:
+        return self in (HostPlatform.LINUX_ARM64, HostPlatform.LINUX_X86_64)
 
     @property
     def layout(self) -> PlatformLayout:
         match self:
-            case HostPlatform.MACOS_ARM64:
+            case HostPlatform.MACOS_ARM64 | HostPlatform.MACOS_X86_64:
                 return PlatformLayout(
-                    "f4a45f451008c86ce4e9342d5931fd89c8553f9d3ab6e8012da7533e9fe5c249",
+                    "f4a45f451008c86ce4e9342d5931fd89c8553f9d3ab6e8012da7533e9fe5c249"
+                    if self == HostPlatform.MACOS_ARM64
+                    else "d2849855effe178f22d58025165d968179f76bb745a5a71ebf3c29e40510cd3a",
                     "Resources/product-info.json",
                     "runtime/Kast Analysis Host.app/Contents",
                     "macOS",
-                    "aarch64",
+                    "aarch64" if self == HostPlatform.MACOS_ARM64 else "x86_64",
                     ("Info.plist", "Resources/build.txt"),
                 )
-            case HostPlatform.LINUX_X86_64:
+            case HostPlatform.LINUX_ARM64 | HostPlatform.LINUX_X86_64:
                 return PlatformLayout(
-                    "f1cc5329a7adf3ab3bd8886744103f7d3bcf1ca12e699762ecd9bffe57335f8b",
+                    "f1cc5329a7adf3ab3bd8886744103f7d3bcf1ca12e699762ecd9bffe57335f8b"
+                    if self == HostPlatform.LINUX_X86_64
+                    else "04baba6fb1034aebfbf86e8b55186c818b93dbbbe131012975718ff7f70740f5",
                     "product-info.json",
                     "runtime/kast-analysis-host",
                     "Linux",
-                    "amd64",
+                    "amd64" if self == HostPlatform.LINUX_X86_64 else "aarch64",
                     ("build.txt",),
                 )
             case _:
@@ -52,8 +62,12 @@ class UnsupportedHost:
 
 def host_platform(system: str, machine: str) -> HostPlatform | UnsupportedHost:
     match system, machine:
-        case "Darwin", "arm64":
+        case "Darwin", "arm64" | "aarch64":
             return HostPlatform.MACOS_ARM64
+        case "Darwin", "x86_64" | "amd64":
+            return HostPlatform.MACOS_X86_64
+        case "Linux", "arm64" | "aarch64":
+            return HostPlatform.LINUX_ARM64
         case "Linux", "x86_64" | "amd64":
             return HostPlatform.LINUX_X86_64
         case _:

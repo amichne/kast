@@ -24,7 +24,12 @@ object KastNativeMain {
                 val args = invocation.arguments.toTypedArray()
                 when (invocation.entry) {
                     NativeControlEntry.MANAGEMENT -> runManagement(args)
-                    NativeControlEntry.QUERY -> KastPublicCliMain.main(args)
+                    NativeControlEntry.QUERY ->
+                        io.github.amichne.kast.distribution.cli.withPrivateContainerQuery(
+                            System.getenv("KAST_MANAGED_HEADLESS_STATE")
+                        ) {
+                            KastPublicCliMain.main(args)
+                        }
                     NativeControlEntry.JQ -> PublicJqWorker.main(args)
                     NativeControlEntry.MCP -> KastMcpMain.main(args)
                     NativeControlEntry.RPC -> KastToolRpcMain.main(args)

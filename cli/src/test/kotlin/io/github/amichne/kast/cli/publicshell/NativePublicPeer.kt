@@ -179,7 +179,16 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
             MessageDigest.getInstance("SHA-256").digest(selected.toString().toByteArray()).take(16).joinToString("") {
                 "%02x".format(it)
             }
-        val directory = Files.createDirectories(fixture.home.resolve(".kast/$family/$digest"))
+        val directory =
+            Files.createDirectories(
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                        fixture.home,
+                        if (family == "ide-lifecycle")
+                            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE
+                        else io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.SEMANTIC,
+                    )
+                    .resolve(digest)
+            )
         Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
         val socket = directory.resolve("host.sock")
         check(socket.toString().toByteArray().size <= 100) { "Fixture socket exceeds production path bound" }

@@ -17,7 +17,6 @@ import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
-import java.security.MessageDigest
 
 /** Read-only descriptor admission and one exact-socket exchange. No runtime startup dependency. */
 class ExistingIdeSocketClient
@@ -128,17 +127,17 @@ internal constructor(
         val answer =
             try {
                 val root = target.root
-                val digest =
-                    MessageDigest.getInstance("SHA-256")
-                        .digest(root.path.toString().toByteArray(Charsets.UTF_8))
-                        .take(16)
-                        .joinToString("") { "%02x".format(it) }
                 val endpointHome =
                     when (selected) {
                         SelectedLifecycleDeployment.Desktop -> home
                         is SelectedLifecycleDeployment.Headless -> selected.installation.userHome
                     }
-                val directory = endpointHome.resolve(".kast/ide-hosted/$digest")
+                val directory =
+                    io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
+                        endpointHome,
+                        io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.SEMANTIC,
+                        root.path.toString(),
+                    )
                 val socket = directory.resolve("host.sock")
                 when (
                     val descriptor =
