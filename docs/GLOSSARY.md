@@ -11,7 +11,7 @@ The JSON source also records each term's scope, reason, and source meaning.
 
 ### workspace container
 
-A named workspace record with its own trust grant and private Host profile. It selects a Gradle home and can share verified runtime bytes.
+A named workspace record with its own trust grant and private Host profile. Gradle state stays private by default. Containers can share verified runtime bytes.
 
 Example: `kast container create --name backend` creates a workspace container for the current directory.
 Keep distinct: This is process and profile separation, not an OS sandbox or a Kotlin declaration container.

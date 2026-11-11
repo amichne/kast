@@ -9,12 +9,12 @@ keywords:
   - "Pi"
   - "IntelliJ IDEA"
 icon: "terminal"
-hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Install Kast and connect it to the agent you already use for your Kotlin Gradle project. After setup, continue your work naturally.
+This guide sets up Kast with desktop IntelliJ IDEA for your Kotlin Gradle project.
+For a private Host on macOS or Linux, see [workspace containers](/reference/installation#manage-isolated-workspaces).
 
 ## Before you start
 
@@ -44,7 +44,8 @@ For an initial installation, run:
 
 This command needs no checkout or existing `kast` installation.
 It selects the latest qualified development build and resets stale Kast state.
-Step 2 adds the agent guidance.
+The flag `--skip-codex-plugin` skips optional MCP setup.
+Step 2 adds CLI guidance for your agent.
 
 Restart IDEA after installation to load the Kast Host.
 If the shell cannot find `kast`, add the command directory from the installer output to `PATH`.
@@ -100,7 +101,15 @@ If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installati
 <span id="4-establish-readiness" />
 <span id="what-your-first-result-establishes" />
 
-Work on your project as usual. The installed guidance tells your agent how to use Kast for supported Kotlin work.
+To try a first query, choose the exact name of a Kotlin declaration in your project.
+Replace `DECLARATION_NAME` with that name, then run this command from the project root.
+
+```shell
+kast query --name DECLARATION_NAME --fields name,location --json
+```
+
+Look for `"type": "complete"` and the expected file location in the returned rows.
+You can also ask your agent to find that declaration and show its source location.
 
 Kast can wait for Gradle import and indexing before supplying compiler evidence.
 If it cannot finish, the result carries the cause and recovery evidence. Use [Help](/troubleshooting) to resolve the reported problem.

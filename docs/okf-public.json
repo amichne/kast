@@ -100,7 +100,7 @@
     },
     {
       "route": "reference/composition",
-      "frontmatter": "title: \"Composition contracts\"\ndescription: \"Compare canonical identities, keep row kinds and qualifications, and reject unproven absence.\"\nicon: \"git-merge\"\nhideFooterPagination: true",
+      "frontmatter": "title: \"Composition contracts\"\ndescription: \"Compare canonical identities, keep row kinds and qualifications, and reject unproven absence.\"\nicon: \"git-merge\"",
       "concepts": [
         "openwiki/queries/execution-and-composition.md"
       ],
@@ -114,7 +114,7 @@
         "row-compatibility",
         "set-operations"
       ],
-      "introduction": "Use this page to understand internal row transitions and why some set operations need complete inputs. [Combine query results](/reference/query-pipelines) gives executable request forms.\n\nPublic contract 18 selects `TRACE` through `terminalStep`, never through `steps`. The internal TRACE stage described here does not change that public request grammar."
+      "introduction": "Use this page to understand why some set operations need complete inputs. See [Combine query results](/reference/query-pipelines) for runnable requests.\n\nIn [query contract 18](/reference/api), set `terminalStep.type` to `TRACE` to trace results after the optional transformation steps."
     },
     {
       "route": "reference/evidence-boundaries",
@@ -236,18 +236,18 @@
     },
     {
       "route": "architecture/query-admission",
-      "frontmatter": "title: \"Query admission and capabilities\"\ndescription: \"Understand public query admission, scope, and issued capabilities.\"\nicon: \"list-checks\"\nhideFooterPagination: true",
+      "frontmatter": "title: \"Query admission and capabilities\"\ndescription: \"Understand public query admission, scope, and issued capabilities.\"\nicon: \"list-checks\"",
       "concepts": [
         "openwiki/queries/public-admission.md"
       ],
       "imports": [],
       "diagrams": [],
       "anchors": [],
-      "introduction": "For current request forms, use [Query forms](/reference/api). For result fields and recovery, use [Results](/reference/responses)."
+      "introduction": "Use `kast query` for a new `RUN`. Use `kast result resume`, `kast result read`, or `kast source read` for the other public actions. See [Query forms](/reference/api#actions)."
     },
     {
       "route": "architecture/source-reads",
-      "frontmatter": "title: \"Source reads and failures\"\ndescription: \"Understand source anchors, structural pages, and source-read rejection.\"\nicon: \"file-code\"\nhideFooterPagination: true",
+      "frontmatter": "title: \"Source reads and failures\"\ndescription: \"Understand source anchors, structural pages, and source-read rejection.\"\nicon: \"file-code\"",
       "concepts": [
         "openwiki/semantics/source/anchors-and-paging.md",
         "openwiki/contracts/source-failures.md"
@@ -255,11 +255,11 @@
       "imports": [],
       "diagrams": [],
       "anchors": [],
-      "introduction": "For public request forms, use [Query forms](/reference/api). For reference reuse, see [Staleness](/reference/staleness)."
+      "introduction": "After a query issues a source reference, you can read the exact occurrence. See [Inspect callers and source](/reference/cli#inspect-callers-and-source) and [Staleness](/reference/staleness)."
     },
     {
       "route": "architecture/relations-and-traversal",
-      "frontmatter": "title: \"Relationships and traversal\"\ndescription: \"Understand relationship evidence, bounded traversal, and their limits.\"\nicon: \"git-branch\"\nhideFooterPagination: true",
+      "frontmatter": "title: \"Relationships and traversal\"\ndescription: \"Understand relationship evidence, bounded traversal, and their limits.\"\nicon: \"git-branch\"",
       "concepts": [
         "openwiki/semantics/relation/named-relations.md",
         "openwiki/semantics/traversal/frontiers-and-continuations.md"
@@ -267,18 +267,18 @@
       "imports": [],
       "diagrams": [],
       "anchors": [],
-      "introduction": "For executable request forms, use [Query forms](/reference/api). For callback-specific evidence, see [Callback evidence](/reference/callbacks)."
+      "introduction": "Use [Inspect callers and source](/reference/cli#inspect-callers-and-source) to try a relationship query. This page explains what its relationship evidence can establish."
     },
     {
       "route": "architecture/codex-transport",
-      "frontmatter": "title: \"Codex hosts and framing\"\ndescription: \"Understand protocol qualification and the Codex host transport boundaries.\"\nicon: \"cable\"\nhideFooterPagination: true",
+      "frontmatter": "title: \"Codex hosts and framing\"\ndescription: \"Understand protocol qualification and the Codex host transport boundaries.\"\nicon: \"cable\"",
       "concepts": [
         "openwiki/transport/codex-hosts-and-framing.md"
       ],
       "imports": [],
       "diagrams": [],
       "anchors": [],
-      "introduction": "For setup, use [Agent harnesses](/agent-harnesses). For compatibility limits, see [Compatibility](/reference/compatibility)."
+      "introduction": "This page explains the Codex App Server transport. For the default CLI setup, see [Install agent guidance](/start#2-install-agent-guidance)."
     }
   ],
   "authored": [
@@ -913,7 +913,7 @@
         "outcome": "Read the source, display-name adaptations, and evidence limits of the customer and welcome-email illustration.",
         "scope": [
           "Explain fixture provenance and adaptations.",
-          "State the illustration\u2019s limits."
+          "State the illustration’s limits."
         ],
         "exclusions": "A second general value-flow introduction.",
         "sourceOwner": "docs/public/explanation/value-journey-evidence.mdx",
@@ -1951,7 +1951,7 @@
       "content": [
         {
           "path": "docs/public/architecture/codex-transport.mdx",
-          "sha256": "ef167521491c15d3ccc6b88157abe9237e0beefd83e15cc5a8dd3c11bbf8846d"
+          "sha256": "fb2aeffabcb3eca61b6ed9d14482b2f23d7cdf7eaeafa19e8877ed9c4ca9f0be"
         },
         {
           "path": "docs/public/snippets/okf/transport/codex-hosts-and-framing.mdx",
@@ -1981,14 +1981,14 @@
         }
       ],
       "generatedOwners": [],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "architecture/query-admission",
       "content": [
         {
           "path": "docs/public/architecture/query-admission.mdx",
-          "sha256": "2ec32614ef0a7217de8b2f9359ba02ca0333d495f88219b661ec1685a9f6b2f8"
+          "sha256": "033115653b0d2b1fdeb91fc4e9a2fb50de50b47d98fa7c8eb043d5f744084ea8"
         },
         {
           "path": "docs/public/snippets/okf/queries/public-admission.mdx",
@@ -2013,7 +2013,7 @@
         }
       ],
       "generatedOwners": [],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "architecture/query-reuse",
@@ -2323,7 +2323,7 @@
       "content": [
         {
           "path": "docs/public/architecture/relations-and-traversal.mdx",
-          "sha256": "bdd5602aeec2c8f26d73f44fd8b330aaa91e9c662b699d5a0e776e36d8582c83"
+          "sha256": "16c97268c3b8ad11a8e89a45102e8212d1b37747afe6d5c8745fbb3c0dff68bc"
         },
         {
           "path": "docs/public/snippets/okf/semantics/relation/named-relations.mdx",
@@ -2367,14 +2367,14 @@
         }
       ],
       "generatedOwners": [],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "architecture/source-reads",
       "content": [
         {
           "path": "docs/public/architecture/source-reads.mdx",
-          "sha256": "3bff0fce78c75b31554ab6703a18f47c27b53d14da61e3deca559ff0c9569e41"
+          "sha256": "ef69d547089645e26cc4471731752e19070c3b46e41c11b4e52993cded7e8e0a"
         },
         {
           "path": "docs/public/snippets/okf/contracts/source-failures.mdx",
@@ -2418,7 +2418,7 @@
         }
       ],
       "generatedOwners": [],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "architecture/topology",
@@ -3131,7 +3131,7 @@
       "content": [
         {
           "path": "docs/public/glossary.mdx",
-          "sha256": "f33d23357de78750087396ad211e408cc7a005f88255f3902d9d12dbb1b7d322"
+          "sha256": "528b53d1d65f587a2be6a9c0b63922d17da565b1a4c24dd59423aa9a9f4aebf2"
         }
       ],
       "claims": [
@@ -3202,7 +3202,7 @@
           "sha256": "2e99249970018c5775311fd0c98b903fb3669ad3afb77adba98b29cfe8145571"
         }
       ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "how-to",
@@ -5857,7 +5857,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "98ab95d862930a416172a9c81b2a4bfa93d1ec176b4bedd17482e9ab146809c3"
+          "sha256": "455bc50e1bb1a3709a8718eca670a9a956af862e2fd5714f9740c5005b488c0c"
         }
       ],
       "claims": [
@@ -6404,7 +6404,7 @@
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "reference/compatibility",
@@ -6668,7 +6668,7 @@
       "content": [
         {
           "path": "docs/public/reference/composition.mdx",
-          "sha256": "7c0810125a05e963ab68406c088e7a71150c7c39e913b401b5d0c5f69c40911e"
+          "sha256": "b6743f2b59f1181b15e2775061e60bc4db4d0a957e1d2c10be8f93b0f74ffa76"
         },
         {
           "path": "docs/public/snippets/okf/queries/execution-and-composition.mdx",
@@ -6718,7 +6718,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "reference/evidence-boundaries",
@@ -6841,7 +6841,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "4c40ad27b30523c5366474e725dee4bfdbfd9f21d9c49af8ad38551c9b69caf0"
+          "sha256": "74cdeb203070339768675a7c6e3d08f75ae00bea687aed08c69afbc4653c5e37"
         }
       ],
       "claims": [
@@ -7081,7 +7081,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "reference/integrations",
@@ -15358,7 +15358,7 @@
         },
         {
           "path": "docs/public/start.mdx",
-          "sha256": "9de1b264dfd868a95852cb8d7fdb760a82b1bfcec480087e294c8e903611e012"
+          "sha256": "bdb0bf438454c7e7338fa3e45daad302d7a567d5b16ebf40954bc3988119ece4"
         }
       ],
       "claims": [
@@ -15878,7 +15878,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "troubleshooting",

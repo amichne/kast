@@ -11256,6 +11256,42 @@
         "severity": "warning"
       },
       "reason": "Keep asynchronous exact-workspace preparation, model-visible wait guidance, stale-session rejection, bounded context, and optional MCP availability distinct. Exact CLI, MCP, Node, and resource identifiers preserve these contracts. The grade target remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/cli.mdx",
+        "sourceSha256": "455bc50e1bb1a3709a8718eca670a9a956af862e2fd5714f9740c5005b488c0c",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 9.00 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "The command examples keep exact flags, output limits, and result fields. The routing note tells readers which workspace supplies compiler analysis."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/composition.mdx",
+        "sourceSha256": "b6743f2b59f1181b15e2775061e60bc4db4d0a957e1d2c10be8f93b0f74ffa76",
+        "rule": "Reference.Examples",
+        "line": 1,
+        "message": "Reference provides examples. There is no code block on this page.",
+        "severity": "suggestion"
+      },
+      "reason": "This view explains internal row transitions. Query pipelines owns runnable requests and keeps examples beside the public command forms."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/start.mdx",
+        "sourceSha256": "bdb0bf438454c7e7338fa3e45daad302d7a567d5b16ebf40954bc3988119ece4",
+        "rule": "HowTo.Steps",
+        "line": 1,
+        "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "severity": "warning"
+      },
+      "reason": "Three numbered headings order installation, agent guidance, and a first query. Agent tabs keep alternatives within the second step."
     }
   ]
 }
