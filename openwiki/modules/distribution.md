@@ -276,8 +276,6 @@ sources:
     resource: repo://.github/workflows/ci.yml
   - id: openwiki-source-804f227d6f0416062f3436fe
     resource: repo://.github/workflows/developer-release.yml
-  - id: openwiki-source-2da8eafaca7cee8408b937d2
-    resource: repo://.github/workflows/gradle-cache.yml
   - id: openwiki-source-4193ecac4b6f2b80dfd3f975
     resource: repo://.github/workflows/release-component.yml
   - id: openwiki-source-4d1d392666be6dfdd7a91a2e
@@ -394,10 +392,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "pi", at: "2026-11-11T11:08:36.331Z" }
+generated: { by: "codex", at: "2026-11-11T16:02:19.527Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T14:27:59.275Z
+    at: 2026-11-11T16:02:19.527Z
 ---
 
 # Distribution and packaging
@@ -503,6 +501,7 @@ Before/after admission detects observed drift, not transient edits later restore
 Local qualification grants no publication or installation authority.
 
 Full and affected source validation and the local product gate request single-use Gradle daemons.
+Source validation uses sequential Isolated Projects configuration for graph inspection and task execution.
 Disk caches remain enabled; client retirement does not prove synchronous daemon retirement.
 On graph timeout or cancellation, optional diagnostics attempt a bounded daemon thread dump.
 Invocation association and process start identity are checked before and after attachment.
@@ -534,8 +533,8 @@ The public `developer-latest` branch contains a pointer to the exact prerelease 
 The installer accepts `--developer-latest`; stable version resolution ignores developer tags.
 Manual publication accepts a successful current-main push or manual CI run ID with matching event and producer evidence.
 
-When setup runs, the product job configures cache transport for eligible Gradle User Home state, task outputs, and native build tools.
-Only main push and main workflow-dispatch runs save cache entries.
+The Linux source job and macOS native job configure cache transport for Gradle User Home state and task outputs.
+Only main push and main workflow-dispatch runs can save shared cache entries from these jobs.
 Pull requests, forks, merge groups, and other refs are read-only.
 A repository secret supplies the cache encryption key and is unavailable to fork PRs.
 A supplied key alone does not establish that configuration-cache state was captured.

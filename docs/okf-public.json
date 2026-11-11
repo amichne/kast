@@ -1944,7 +1944,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "architecture/codex-transport",
@@ -2316,7 +2316,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "architecture/relations-and-traversal",
@@ -2840,7 +2840,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "explanation/query-lifecycle",
@@ -2924,7 +2924,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "explanation/value-journey",
@@ -3028,7 +3028,7 @@
           "sha256": "6e948fb730e4b47985f1d7397f7020a5c4dc68dd78d6d8a922761d4b53f04c48"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "explanation/value-journey-evidence",
@@ -3124,7 +3124,7 @@
           "sha256": "6e948fb730e4b47985f1d7397f7020a5c4dc68dd78d6d8a922761d4b53f04c48"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "glossary",
@@ -3519,7 +3519,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "how-to/complete-engineering-task",
@@ -3891,7 +3891,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "how-to/inspect-diagnostics",
@@ -3928,7 +3928,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "how-to/read-retained-evidence",
@@ -4215,7 +4215,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "index",
@@ -5028,7 +5028,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/api",
@@ -5385,7 +5385,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/callables/add-declaration",
@@ -5426,7 +5426,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/callables/check-diagnostics",
@@ -5467,7 +5467,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/callables/query-symbols",
@@ -5508,7 +5508,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/callables/replace-body",
@@ -5549,7 +5549,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/callables/workspace-lifecycle",
@@ -5590,7 +5590,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/callback-observations",
@@ -5712,7 +5712,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/callbacks",
@@ -5798,7 +5798,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/change",
@@ -5850,7 +5850,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/cli",
@@ -6834,7 +6834,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/installation",
@@ -7249,7 +7249,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/internals/background-startup",
@@ -7334,7 +7334,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/lifecycles",
@@ -7495,7 +7495,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/limits",
@@ -8888,7 +8888,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/models/live-evidence",
@@ -9230,7 +9230,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/models/mcp-change-result",
@@ -9572,7 +9572,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/models/mcp-investigation-result",
@@ -9914,7 +9914,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/models/mcp-read-result",
@@ -10256,7 +10256,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/models/mcp-tool-call-result",
@@ -10598,7 +10598,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/models/query-item",
@@ -10940,7 +10940,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/models/relation-fact",
@@ -11282,7 +11282,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/models/tool-rpc-reply",
@@ -11624,7 +11624,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/program-tracing",
@@ -11780,7 +11780,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/query-pipelines",
@@ -12067,7 +12067,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/responses",
@@ -12424,7 +12424,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/rpc-catalog",
@@ -13093,7 +13093,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/search",
@@ -13435,7 +13435,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/source-map",
@@ -14331,7 +14331,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/symbols",
@@ -14397,7 +14397,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "reference/troubleshooting",
@@ -14941,7 +14941,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "search",
@@ -16426,7 +16426,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     },
     {
       "route": "tutorials/first-query",
@@ -16772,7 +16772,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
     }
   ]
 }

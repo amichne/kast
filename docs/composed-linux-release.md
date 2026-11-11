@@ -1,7 +1,7 @@
 ---
 type: How To
 title: "Build isolated runtime candidates"
-description: "Build and qualify source-bound native archives for macOS ARM64 and Linux x86-64. Prepare Devin snapshot initialization with the Linux candidate."
+description: "Build and qualify isolated runtime archives for macOS and Linux on AArch64 and x86-64. Prepare Devin snapshot initialization with the Linux candidate."
 resource: "repo://docs/composed-linux-release"
 tags: [kast, distribution, linux, devin]
 timestamp: "2026-11-08T00:00:00Z"
@@ -17,28 +17,30 @@ code_sources:
 
 # Build isolated runtime candidates
 
-Use **Isolated runtime candidates** to produce complete archives for macOS ARM64 and Linux x86-64.
+Use **Isolated runtime candidates** to produce archives for macOS and Linux on AArch64 and x86-64.
 The workflow retains candidate archives and qualification evidence.
-The Linux archive also supplies the `kast-action` input.
+The Linux x86-64 setup archive also supplies the `kast-action` input.
 
 ## Build and inspect the artifact
 
 1. Select a reviewed source revision in the workflow's **Run workflow** form.
    Enter an exact numeric version, such as `0.0.0` for a qualification build.
    For Linux action evidence, enter the full `amichne/kast-action` commit in `action_revision`.
-2. Wait for both assembly and qualification jobs.
-   Each assembly job builds matching Control, Host, and bootstrap components from the checked-out source.
+2. Wait for **Build and qualify** on your target.
+   Each job builds matching Control, Host, and bootstrap components from the checked-out source.
    It checks the pinned donor archive digest before extraction.
+   It uploads the archives and qualifies the same local files by digest.
 3. Download `kast-composed-TARGET-SHA-RUN_ID-ATTEMPT` for the chosen target.
    It contains these files:
    - `kast-composed-setup-vVERSION-TARGET.tar.gz`
-   - Its `.sha256` companion
+   - `kast-runtime-vVERSION-TARGET.zip`
+   - The `.sha256` companion for each archive
    - `assembly.json`, with the source revision and archive digest
 4. Inspect `kast-composed-evidence-TARGET-SHA-RUN_ID-ATTEMPT` for the same run.
    It keeps the installer logs, probe output, and `qualification.json` when qualification completes.
    Match the source revision and archive digest across the two artifacts.
 
-The qualification job installs the produced archive into a fresh private root on its target system.
+The qualification step installs the produced archive into a fresh private root on its target system.
 The probe uses a disposable fixture for compiler results and Host lifecycle evidence.
 Assembly records `NOT_RUN`. The native probe records `COMPLETE` when its checks pass.
 The optional Linux action step installs those same archive bytes in another private root.
@@ -46,6 +48,7 @@ Its result covers Node action setup. Devin snapshot and session readiness need s
 
 The workflow uses read-only repository permissions.
 Source admission runs before assembly and before archive upload.
+The workflow runs source guards on Linux x86-64 and composition tests on each target.
 The jobs use short canonical temporary paths to fit the native socket path limit.
 Use new installation roots for local qualification.
 

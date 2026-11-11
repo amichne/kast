@@ -8,6 +8,7 @@ import os
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -158,6 +159,18 @@ class LinuxSupportPrepared:
     packages: tuple[LinuxPackage, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class ScratchSpace:
+    path: str
+    freeBefore: int
+    freeAfter: int
+
+
+@dataclass(frozen=True, slots=True)
+class AssemblyInputsDiscarded:
+    space: tuple[ScratchSpace, ...]
+
+
 type AssemblyResult = (
     ReleasePacked
     | ReleaseRejected
@@ -291,6 +304,29 @@ def assemble_release(
     _ = (output / "assembly.json").write_text(json.dumps(asdict(result), indent=2) + "\n")
     observe(ReleaseStage.BUNDLE, StageOutcome.COMPLETE)
     return result
+
+
+def discard_assembly_inputs(root: Path, inputs: Path) -> AssemblyInputsDiscarded:
+    paths = (root, inputs)
+    if any(path.resolve() != path or not path.is_dir() for path in paths):
+        raise ValueError("assembly inputs must be canonical directories")
+    if root.is_relative_to(inputs) or inputs.is_relative_to(root):
+        raise ValueError("assembly inputs must be disjoint")
+    before = tuple(shutil.disk_usage(path.parent).free for path in paths)
+    for path in paths:
+        # The assembled Host is sealed. Unlinking its files needs writable parents.
+        for directory, _, _ in os.walk(path, followlinks=False):
+            parent = Path(directory)
+            mode = stat.S_IMODE(parent.stat().st_mode)
+            if not mode & stat.S_IWUSR:
+                parent.chmod(mode | stat.S_IWUSR)
+        shutil.rmtree(path)
+    return AssemblyInputsDiscarded(
+        tuple(
+            ScratchSpace(str(path.parent), free, shutil.disk_usage(path.parent).free)
+            for path, free in zip(paths, before, strict=True)
+        )
+    )
 
 
 def qualify_release(
@@ -626,7 +662,10 @@ def main() -> int:
     assemble = commands.add_parser("assemble")
     qualify = commands.add_parser("qualify")
     support = commands.add_parser("linux-support")
+    discard = commands.add_parser("discard-assembly-inputs")
     _ = support.add_argument("--output", type=Path, required=True)
+    _ = discard.add_argument("--root", type=Path, required=True)
+    _ = discard.add_argument("--inputs", type=Path, required=True)
     for command in (assemble, qualify):
         for name in ("archive", "root"):
             _ = command.add_argument("--" + name, type=Path, required=True)
@@ -645,6 +684,8 @@ def main() -> int:
     try:
         if args.command == "linux-support":
             result = prepare_linux_support(args.output)
+        elif args.command == "discard-assembly-inputs":
+            result = discard_assembly_inputs(args.root, args.inputs)
         elif args.command == "assemble":
             result = assemble_release(
                 archive=args.archive,
@@ -678,7 +719,12 @@ def main() -> int:
         result = ReleaseRejected(ReleaseFailure.EFFECT_FAILED, type(error).__name__)
     print(json.dumps(asdict(result), indent=2))
     return (
-        0 if isinstance(result, (ReleasePacked, QualificationReceipt, LinuxSupportPrepared)) else 1
+        0
+        if isinstance(
+            result,
+            (ReleasePacked, QualificationReceipt, LinuxSupportPrepared, AssemblyInputsDiscarded),
+        )
+        else 1
     )
 
 

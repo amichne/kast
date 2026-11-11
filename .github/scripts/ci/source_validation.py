@@ -32,6 +32,8 @@ COMMAND = (
     "--info",
     # Client cancellation must not leave a reusable daemon writing to this checkout.
     "--no-daemon",
+    # The hosted source graph can stall in Gradle's parallel project configuration.
+    "-Dorg.gradle.isolated-projects.diagnostics=true",
 )
 PREFLIGHT = (
     "python3",

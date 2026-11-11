@@ -16,6 +16,34 @@ from composed_release import ReleaseFailure, ReleaseRejected, assemble_release, 
 from managed_headless import Failure, Rejected
 
 
+def test_assembly_cleanup_discards_read_only_directories_without_following_links(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path.resolve()
+    assembly = root / "assembly"
+    inputs = root / "inputs"
+    archive = root / "candidate.zip"
+    outside = root / "outside"
+    host = assembly / "Host.app"
+    host.mkdir(parents=True)
+    inputs.mkdir()
+    outside.mkdir(mode=0o500)
+    _ = archive.write_bytes(b"candidate bytes")
+    (host / "Contents").symlink_to(outside, target_is_directory=True)
+    host.chmod(0o555)
+    try:
+        result = composed_release.discard_assembly_inputs(assembly, inputs)
+        assert not assembly.exists()
+        assert not inputs.exists()
+        assert archive.read_bytes() == b"candidate bytes"
+        assert outside.stat().st_mode & 0o777 == 0o500
+        assert [space.path for space in result.space] == [str(root), str(root)]
+    finally:
+        if host.exists():
+            host.chmod(0o755)
+        outside.chmod(0o700)
+
+
 def test_linux_support_includes_the_cpp_soname_required_by_the_arm_host() -> None:
     assert composed_release.LINUX_PACKAGES.get("libstdc++6") == ("libstdc++.so.6",)
     assert composed_release.LINUX_PACKAGES.get("gcc-12-base") == ()

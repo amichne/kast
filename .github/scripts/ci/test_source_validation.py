@@ -159,6 +159,7 @@ class SourceValidationTest(unittest.TestCase):
         self.assertIn(":verifySelectedKotlinSemanticCoverage", command)
         self.assertNotIn("sourceValidationGate", command)
         self.assertIn("--no-daemon", command)
+        self.assertIn("-Dorg.gradle.isolated-projects.diagnostics=true", command)
         required = source.obligations(plan)
         self.assertIn(":cli:queryDeliveryContractTest", required)
         self.assertNotIn(":symbol:intellij:semanticCoverageFixtureTest", required)
@@ -387,6 +388,7 @@ class SourceValidationTest(unittest.TestCase):
                 self.assertIn("--info", COMMAND)
                 self.assertNotIn("--profile", COMMAND)
                 self.assertIn("--no-daemon", COMMAND)
+                self.assertIn("-Dorg.gradle.isolated-projects.diagnostics=true", COMMAND)
 
 
 if __name__ == "__main__":

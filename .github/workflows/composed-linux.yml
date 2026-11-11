@@ -36,10 +36,10 @@ env:
   ACTION_REVISION: ${{ inputs.action_revision }}
 
 jobs:
-  assemble:
-    name: Assemble ${{ matrix.target }}
+  candidate:
+    name: Build and qualify ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -57,7 +57,8 @@ jobs:
           bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
           python3 -c 'import os,re; assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", os.environ["BUNDLE_VERSION"]), "numeric version required"'
 
-      - name: Set up the producer Python
+      - name: Set up Python
+        id: candidate-python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
@@ -71,19 +72,22 @@ jobs:
           validate-wrappers: true
           cache-read-only: true
 
-      - name: Check composition contracts and source guards
+      - name: Check shared composition Python source
+        if: matrix.target == 'linux-x86_64'
         run: |
           mise exec -- uv run --locked --project packaging ruff check packaging/composed_release.py packaging/composed_host_probe.py packaging/test_composition_release.py
           mise exec -- uv run --locked --project packaging ruff format --check packaging/composed_release.py packaging/composed_host_probe.py packaging/test_composition_release.py
           mise exec -- uv run --locked --project packaging pyright --project packaging
-          mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test_runtime_archive.py packaging/test-managed-headless.py -q
-          mise exec -- ./gradlew --no-daemon verifyJsonContracts verifyKastArchitecture
+
+      - name: Run composition tests on the target platform
+        run: mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test_runtime_archive.py packaging/test-managed-headless.py -q
 
       - name: Assemble matching Control, Host, and bootstrap
         run: >-
           mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
           -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
           assembleRelease :runtime:hosted:headlessBootstrapPlugin
+          ${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}
 
       - name: Download pinned donor and assemble the archive
         shell: bash
@@ -110,6 +114,7 @@ jobs:
         run: bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
 
       - name: Retain the assembled candidate
+        id: candidate-artifact
         uses: actions/upload-artifact@v7.0.2
         with:
           name: kast-composed-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -132,42 +137,22 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  qualify:
-    name: Qualify ${{ matrix.target }}
-    needs: assemble
-    if: ${{ !cancelled() }}
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(format('[{0}{1}]',
-          '{"target":"linux-x86_64","runner":"ubuntu-24.04"},{"target":"linux-aarch64","runner":"ubuntu-24.04-arm"}',
-          (!inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true') && ',{"target":"macos-aarch64","runner":"macos-15"},{"target":"macos-x86_64","runner":"macos-15-intel"}' || '')) }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: kast-composed-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/composed-release/
-
-      - name: Select the macOS qualifier Python
-        if: runner.os == 'macOS'
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: '3.12'
+      - name: Free assembly scratch space before qualification
+        run: |
+          scratch=$(cd /tmp && pwd -P)
+          workspace=$(pwd -P)
+          mise exec -- uv run --locked --project packaging python packaging/composed_release.py \
+            discard-assembly-inputs --root "$scratch/kp" --inputs "$workspace/build/cloud-input"
 
       - name: Install and qualify the exact candidate
+        timeout-minutes: 60
         shell: bash
         env:
+          CANDIDATE_PYTHON: ${{ steps.candidate-python.outputs.python-path }}
           TARGET: ${{ matrix.target }}
         run: |
           scratch=$(cd /tmp && pwd -P)
-          python=$(command -v python3)
+          python=$CANDIDATE_PYTHON
           if [[ "$TARGET" == linux-* ]]; then
             python=/usr/bin/python3
           fi
@@ -183,7 +168,7 @@ jobs:
             --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
 
       - name: Admit the optional action revision
-        if: ${{ !cancelled() && matrix.target == 'linux-x86_64' && inputs.action_revision != '' }}
+        if: ${{ !cancelled() && steps.candidate-artifact.outcome == 'success' && matrix.target == 'linux-x86_64' && inputs.action_revision != '' }}
         id: action-revision
         shell: bash
         run: |
