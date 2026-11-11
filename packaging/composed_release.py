@@ -48,6 +48,7 @@ LINUX_PACKAGES = {
     "libfontconfig1": ("libfontconfig.so.1",),
     "libfreetype6": ("libfreetype.so.6",),
     "libexpat1": ("libexpat.so.1",),
+    "libext2fs2": ("libe2p.so.2",),
     "libpng16-16": ("libpng16.so.16",),
     "libbrotli1": ("libbrotlicommon.so.1", "libbrotlidec.so.1"),
     "libuuid1": ("libuuid.so.1",),
@@ -450,7 +451,9 @@ def prepare_linux_package(deb: Path, files: Path) -> LinuxPackage:
         source = candidates[0].resolve()
         if not source.is_relative_to(package_root) or not source.is_file():
             raise ValueError("Linux support file location")
-        location = ("fonts/" if member.endswith(".ttf") else "lib/") + member
+        # IntelliJ's JNA filesystem probe opens the unversioned name first.
+        filename = "libe2p.so" if member == "libe2p.so.2" else member
+        location = ("fonts/" if filename.endswith(".ttf") else "lib/") + filename
         _ = shutil.copyfile(source, files / location)
         installed.append(location)
     notice = (package_root / "usr/share/doc" / name / "copyright").resolve()
