@@ -62,8 +62,9 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         check(entries.none { entry ->
             entry == "lib" || entry.startsWith("lib/") || entry.endsWith(".jar") || entry.endsWith(".class")
         }) { "control product contains JVM libraries or bytecode" }
-        check(entries.none { entry -> entry == "share/kast/container" || entry.startsWith("share/kast/container/") }) {
-            "control product contains a retired Python container payload"
+        val retiredTaskRoots = setOf("share/kast/container", "share/kast/task-vm")
+        check(entries.none { entry -> retiredTaskRoots.any { entry == it || entry.startsWith("$it/") } }) {
+            "control product contains a retired task payload"
         }
         val nativeExecutables = paths.filter(Files::isRegularFile).filter { path ->
             Files.newInputStream(path).use { input ->
@@ -100,15 +101,6 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/ide-host.json",
             "share/kast/knowledge/manifest.json",
             "share/kast/licenses/LICENSE",
-            "share/kast/task-vm/bin/kast-task-vm",
-            "share/kast/task-vm/bin/kast-task-vm.lock",
-            "share/kast/task-vm/bin/setup-kast",
-            "share/kast/task-vm/bin/setup-kast.lock",
-            "share/kast/task-vm/packaging/task_vm.py",
-            "share/kast/task-vm/packaging/task_vm_guest.py",
-            "share/kast/task-vm/packaging/composed_bundle.py",
-            "share/kast/task-vm/packaging/composition_platform.py",
-            "share/kast/task-vm/packaging/managed_headless.py",
         )
         check((required + guidanceDistributionEntries()).all(entries::contains)) { "control product is missing required entries" }
         check(Files.readString(root.resolve("share/kast/native-control-v1")) == "1\n") {
@@ -135,9 +127,6 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         check(listOf("bin/kast", "bin/kast-codex", "bin/kast-mcp", "bin/kast-tool-rpc", "bin/kast-query", "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management").all { Files.isExecutable(root.resolve(it)) }) {
             "control product kast launcher is not executable"
         }
-        check(listOf("kast-task-vm", "setup-kast").all {
-            Files.isExecutable(root.resolve("share/kast/task-vm/bin/$it"))
-        }) { "task launcher is not executable" }
         check(paths.none(Files::isSymbolicLink)) { "control product contains a symbolic link" }
         val forbidden = listOf("kast-indexer", "idea-home", "plugins/Kotlin", "plugins/gradle")
         check(entries.none { entry -> forbidden.any(entry::contains) }) {
@@ -169,8 +158,6 @@ internal fun nativeQueryHeaderMatches(header: ByteArray, platform: String): Bool
             listOf(207, 250, 237, 254, 12, 0, 0, 1) && header[12].toInt() == 2
         "linux-x86_64" -> header.take(6).map { it.toInt() and 255 } ==
             listOf(127, 69, 76, 70, 2, 1) && header[18].toInt() == 62 && header[19].toInt() == 0
-        "linux-aarch64" -> header.take(6).map { it.toInt() and 255 } ==
-            listOf(127, 69, 76, 70, 2, 1) && (header[18].toInt() and 255) == 183 && header[19].toInt() == 0
         else -> false
     }
 

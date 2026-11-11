@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import subprocess
 import sys
 import tarfile
 from dataclasses import asdict, dataclass
@@ -15,14 +16,11 @@ from composed_bundle import (
     BundleManifest,
     BundleRejected,
     ConfiguredTrust,
-    TrustMode,
     admit_trust_workspace,
     configure_trusted_workspace,
     extract_bundle,
-    main,
     read_manifest,
     sha256,
-    trust_installed_workspace,
 )
 from composition_platform import HostPlatform
 from managed_headless import AssemblyEntryKind, AssemblyFile, Failure, Rejected
@@ -34,10 +32,7 @@ FILES = (
     "runtime/product-info.json",
     "runtime/lib/kast-product.jar",
     "runtime/plugins/plugin-classpath.txt",
-    "bin/setup-kast",
-    "bin/setup-kast.lock",
-    "packaging/managed_headless.py",
-    "packaging/composed_bundle.py",
+    "bin/setup-kast.pyz",
 )
 
 
@@ -63,14 +58,14 @@ def test_manifest_encodes_fixed_bundle_identity_and_all_required_files() -> None
     raw = manifest_bytes()
     result = read_manifest(raw)
     assert isinstance(result, BundleManifest)
-    assert b'"kind": "KAST_COMPOSED_SETUP_V1"' in raw
-    assert b'"schemaVersion": 1' in raw
+    assert b'"kind": "KAST_COMPOSED_SETUP_V2"' in raw
+    assert b'"schemaVersion": 2' in raw
     assert b'"platform": "linux-x86_64"' in raw
     assert {record.path for record in result.files} == set(FILES)
 
 
 def test_boolean_schema_version_does_not_become_integer_one() -> None:
-    raw = manifest_bytes().replace(b'"schemaVersion": 1', b'"schemaVersion": true')
+    raw = manifest_bytes().replace(b'"schemaVersion": 2', b'"schemaVersion": true')
     assert read_manifest(raw) == BundleRejected(BundleFailure.INVALID_MANIFEST, "identity")
 
 
@@ -125,7 +120,7 @@ class Selection:
 
 
 def test_explicit_trust_uses_only_the_private_profile_and_preserves_existing_settings(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
 ) -> None:
     state = tmp_path / "install/state"
     plugins = state / "home/profile/plugins"
@@ -138,7 +133,7 @@ def test_explicit_trust_uses_only_the_private_profile_and_preserves_existing_set
     admitted = admit_trust_workspace(workspace, tmp_path / "install")
     assert not isinstance(admitted, BundleRejected)
     _ = (state.parent / ".kast-headless-owned").write_text("kast-managed-headless-v1\n")
-    result = trust_installed_workspace(state.parent, workspace)
+    result = configure_trusted_workspace(state, admitted)
     assert isinstance(result, ConfiguredTrust)
     assert (
         result.workspace == workspace
@@ -151,27 +146,21 @@ def test_explicit_trust_uses_only_the_private_profile_and_preserves_existing_set
     ).encode()
     assert result.settings.read_bytes() == expected
     assert result.sha256 == hashlib.sha256(expected).hexdigest()
-    assert configure_trusted_workspace(state, admitted) == Rejected(Failure.INVALID_COMPONENT)
+    assert configure_trusted_workspace(state, admitted) == result
     assert result.settings.read_bytes() == expected
     formatted = b'<?xml version="1.0" encoding="UTF-8"?>\n' + expected.replace(b"><", b">\n<")
     _ = result.settings.write_bytes(formatted)
-    reused = trust_installed_workspace(state.parent, workspace, TrustMode.REUSE_EXACT)
+    reused = configure_trusted_workspace(state, admitted)
     assert reused == ConfiguredTrust(
         workspace, result.settings, hashlib.sha256(formatted).hexdigest()
     )
     assert result.settings.read_bytes() == formatted
-    result.settings.unlink()
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["composed_bundle.py", "trust", "--root", str(state.parent), "--workspace", str(workspace)],
-    )
-    assert main() == 0
-    assert json.loads(capsys.readouterr().out) == {
-        "workspace": str(workspace),
-        "settings": str(result.settings),
-        "sha256": hashlib.sha256(expected).hexdigest(),
-    }
+    other = tmp_path / "another"
+    other.mkdir()
+    other_admitted = admit_trust_workspace(other, state.parent)
+    assert not isinstance(other_admitted, BundleRejected)
+    assert configure_trusted_workspace(state, other_admitted) == Rejected(Failure.INVALID_COMPONENT)
+    assert result.settings.read_bytes() == formatted
 
 
 def test_trust_cannot_include_the_installation_state(tmp_path: Path) -> None:
@@ -272,8 +261,40 @@ def test_bundle_round_trip_keeps_each_native_layout_before_installer_effects(
             )
         )
         archive = owned / "bundle.tar.gz"
-        packed = pack_bundle(producer, assets, bootstrap, sha256(receipt), archive, "0.0.0")
+        support: Path | None = None
+        if target == HostPlatform.LINUX_X86_64:
+            support = owned / "support"
+            for name in (
+                "lib/libfontconfig.so.1",
+                "fonts/font.ttf",
+                "licenses/copyright",
+                "fonts.conf",
+            ):
+                item = support / name
+                item.parent.mkdir(exist_ok=True, parents=True)
+                _ = item.write_bytes(b"fixture support")
+        packed = pack_bundle(
+            producer, assets, bootstrap, sha256(receipt), archive, "0.0.0", linux_support=support
+        )
         assert isinstance(packed, PackedBundle)
+        entry = owned / "entry.pyz"
+        with tarfile.open(archive) as source:
+            names = source.getnames()
+            assert [name for name in names if "/bin/setup-kast" in name] == [
+                "setup-kast/bin/setup-kast.pyz"
+            ]
+            installer_entry = source.extractfile("setup-kast/bin/setup-kast.pyz")
+            assert installer_entry is not None
+            _ = entry.write_bytes(installer_entry.read())
+        help_result = subprocess.run(
+            [sys.executable, "-I", str(entry), "--help"],
+            cwd=owned,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert help_result.returncode == 0, help_result.stderr
+        assert "--archive-sha256" in help_result.stdout
         destination = owned / "r"
         visited: list[Path] = []
 
@@ -315,14 +336,3 @@ def test_bundle_round_trip_keeps_each_native_layout_before_installer_effects(
 @dataclass(frozen=True)
 class BundleProduct:
     buildNumber: str
-
-
-def test_runtime_trust_rejects_an_unowned_installation(tmp_path: Path) -> None:
-    root = tmp_path / "install"
-    workspace = tmp_path / "repository"
-    root.mkdir()
-    workspace.mkdir()
-    assert trust_installed_workspace(root, workspace) == BundleRejected(
-        BundleFailure.UNSAFE_PATH,
-        "installed root",
-    )

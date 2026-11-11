@@ -31,6 +31,7 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
             return InternalInstallExit.COMPLETED
         }
         "managed-retire" -> return retireManagedInstallation(root, environment)
+        "resume-isolated" -> return resumeIsolatedInstallation(root, environment)
         "managed-publish" -> return publishManagedInstallation(root, environment)
         "refresh-guidance",
         "refresh-guidance-with-codex" ->
@@ -108,6 +109,18 @@ private fun retireManagedInstallation(root: Path, environment: Map<String, Strin
     return when (val result = admitted.lifecycle.fenceAndRetire(LifecycleOperation.STOP_FORCE)) {
         LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
         is LifecycleEffect.Rejected -> throw ManagementRejected("managed-retirement", result.failure.name)
+    }
+}
+
+private fun resumeIsolatedInstallation(root: Path, environment: Map<String, String>): InternalInstallExit {
+    val home = managedRetirementHome(environment)
+    return withRegistrationLock(root) {
+        val admitted = InstallationLifecycle.admit(root, home, environment, LifecycleExecution())
+        if (admitted !is LifecycleAdmission.Admitted) throw ManagementRejected("resume-isolated", "ownership unproven")
+        when (val result = admitted.lifecycle.resumePrivateHost()) {
+            LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
+            is LifecycleEffect.Rejected -> throw ManagementRejected("resume-isolated", result.failure.name)
+        }
     }
 }
 

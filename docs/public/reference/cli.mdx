@@ -14,30 +14,7 @@ hideFooterPagination: true
 Use the native `kast` command for Kotlin queries in one exact repository or worktree.
 The persistent IntelliJ IDEA Host supplies compiler analysis. CLI queries need no MCP registration.
 
-## Delegate a container task
-
-`kast container` runs commands in a mounted Git worktree with a self-contained IDEA runtime.
-Normal use needs macOS, Colima, and a prepared native Kast image.
-The host needs no Docker CLI, uv, Python, Java, or desktop IDEA for this command.
-
-```shell
-kast container
-kast container --help
-kast container run -- ./gradlew --build-cache test
-kast status container
-```
-
-Bare `kast container` starts or reuses the container for the current Git worktree and opens a shell.
-Help describes `--workspace`, `--name`, `--image`, and `--offline`.
-Both `kast status container` and `kast container status` list retained Kast containers without starting Colima.
-
-Edits and build outputs appear directly in the local directory.
-The retained container keeps its IDEA state and a private Gradle cache.
-Linked worktrees keep their external Git metadata at the same absolute paths.
-The launcher preserves literal arguments and the command exit code.
-
-The first image still needs a source build or an explicit digest. A default public image remains a release prerequisite.
-See the [container guide](https://github.com/amichne/kast/blob/main/packaging/container/README.md) for image setup and cache behavior.
+For a private Host, see [isolated runtime installation](/reference/installation#isolated-runtime).
 
 ## Discover the installed contract
 

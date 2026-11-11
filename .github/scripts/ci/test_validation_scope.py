@@ -543,6 +543,20 @@ class SourceInventoryTest(unittest.TestCase):
                           ("gradle-cache.yml", "native"), ("release.yml", "release"),
                           ("release-component.yml", "release")}, guarded)
 
+    def test_isolated_candidate_matrix_gates_only_the_mac_runner(self):
+        path = Path(__file__).resolve().parents[2] / "workflows/composed-linux.yml"
+        for job in ("assemble", "qualify"):
+            with self.subTest(job=job):
+                body = path.read_text().split(f"\n  {job}:\n", 1)[1]
+                body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
+                self.assertIn("runs-on: ${{ matrix.runner }}", body)
+                self.assertRegex(
+                    body,
+                    r"'\{\"target\":\"linux-x86_64\",\"runner\":\"ubuntu-24\.04\"[^\n]*',\n"
+                    r"\s*\(!inputs\.linux_only && vars\.KAST_MACOS_CHECKS == 'true'\)"
+                    r" && ',\{\"target\":\"macos-aarch64\",\"runner\":\"macos-15\"[^\n]*' \|\| ''",
+                )
+
     def test_mac_disable_defaults_off_without_disabling_linux_or_allowing_promotion(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
         workflow = (workflows / "ci.yml").read_text()

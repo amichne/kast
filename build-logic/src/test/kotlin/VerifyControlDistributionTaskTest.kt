@@ -12,11 +12,11 @@ import support.tasks.VerifyControlDistributionTask
 
 class VerifyControlDistributionTaskTest {
     @Test
-    fun `Linux ARM64 requires a native AArch64 ELF rather than an x86 or Mach-O payload`() {
+    fun `Linux Control requires an x86-64 ELF payload`() {
         val arm = java.util.HexFormat.of().parseHex("7f454c460201010000000000000000000200b700")
         val x86 = java.util.HexFormat.of().parseHex("7f454c4602010100000000000000000002003e00")
-        assertTrue(nativeQueryHeaderMatches(arm, "linux-aarch64"))
-        assertFalse(nativeQueryHeaderMatches(x86, "linux-aarch64"))
+        assertTrue(nativeQueryHeaderMatches(x86, "linux-x86_64"))
+        assertFalse(nativeQueryHeaderMatches(arm, "linux-aarch64"))
         assertFalse(nativeQueryHeaderMatches(arm, "linux-x86_64"))
         assertFalse(nativeQueryHeaderMatches(arm, "macos-aarch64"))
     }
@@ -51,31 +51,15 @@ class VerifyControlDistributionTaskTest {
     }
 
     @Test
-    fun `native container command rejects the retired Python payload`(@TempDir directory: Path) {
+    fun `control rejects retired task payloads`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)
-        val helper = task.controlDirectory.get().asFile.toPath().resolve("share/kast/container/bin/kast-container")
-        Files.createDirectories(helper.parent)
-        Files.write(helper, byteArrayOf())
-        assertEquals("control product contains a retired Python container payload",
-            assertThrows(IllegalStateException::class.java, task::verify).message)
-    }
-
-    @Test
-    fun `task tools need their guest receiver module`(@TempDir directory: Path) {
-        val task = guidanceFixture(directory)
-        Files.delete(task.controlDirectory.get().asFile.toPath().resolve(
-            "share/kast/task-vm/packaging/task_vm_guest.py"))
-        assertEquals("control product is missing required entries",
-            assertThrows(IllegalStateException::class.java, task::verify).message)
-    }
-
-    @Test
-    fun `task launcher needs execute permission`(@TempDir directory: Path) {
-        val task = guidanceFixture(directory)
-        val launcher = task.controlDirectory.get().asFile.toPath().resolve("share/kast/task-vm/bin/kast-task-vm")
-        check(launcher.toFile().setExecutable(false, false))
-        assertEquals("task launcher is not executable",
-            assertThrows(IllegalStateException::class.java, task::verify).message)
+        val root = task.controlDirectory.get().asFile.toPath()
+        for (name in listOf("container", "task-vm")) {
+            val directory = Files.createDirectory(root.resolve("share/kast/$name"))
+            assertEquals("control product contains a retired task payload",
+                assertThrows(IllegalStateException::class.java, task::verify).message)
+            Files.delete(directory)
+        }
     }
 
     @Test
@@ -122,11 +106,6 @@ class VerifyControlDistributionTaskTest {
             "share/kast/install.sh", "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json", "share/kast/wire-schema.json", "share/kast/ide-host.json",
             "share/kast/knowledge/manifest.json", "share/kast/licenses/LICENSE",
-            "share/kast/task-vm/bin/kast-task-vm", "share/kast/task-vm/bin/kast-task-vm.lock",
-            "share/kast/task-vm/bin/setup-kast", "share/kast/task-vm/bin/setup-kast.lock",
-            "share/kast/task-vm/packaging/task_vm.py", "share/kast/task-vm/packaging/task_vm_guest.py",
-            "share/kast/task-vm/packaging/composed_bundle.py", "share/kast/task-vm/packaging/composition_platform.py",
-            "share/kast/task-vm/packaging/managed_headless.py",
         ) + listOf("", "compositions/mcp/").flatMap { composition ->
             val prefix = "share/kast/agent-tools/$composition"
             listOf(".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",

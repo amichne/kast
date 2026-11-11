@@ -26,16 +26,6 @@ code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginBundle.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicQueryDispatch.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerExecution.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerCancellation.kt
-  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ContainerCoordinator.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerWorkspace.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerPlan.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerProcesses.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt
-  - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ContainerCommandTest.kt
-  - path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ContainerPlanTest.kt
 ---
 
 # Native management CLI
@@ -119,36 +109,6 @@ The candidate path does not establish stable publication or public bootstrap act
 Read the [candidate evidence guide](../../docs/reviews/managed-installation-cli.md) for the release limits and source owners.
 
 Run `./gradlew :distribution:cli:test :cli:nativeCompile` for changes here, then the affected release, architecture, JSON, and knowledge guards.
-
-## Container workspaces
-
-`ContainerDispatch` owns native syntax for `kast container shell`, `run`, and `status`.
-The native command needs no installed Python launcher, host uv, or Docker CLI.
-`kast container --help` needs no installation payload or container runtime.
-`ContainerRuntime` coordinates Colima/containerd through `colima nerdctl` in the `kast-native` profile.
-`ContainerExecution` uses Lima and containerd's `ctr` client for task transport because this path preserves guest exit codes.
-Keep the selected runner explicit. OCI image compatibility does not prove support for another runner.
-
-`ContainerWorkspace` admits the canonical Git worktree and its external Git metadata.
-Mount these paths at their original absolute locations so linked worktrees preserve their Git references.
-Edits in the container and on the host share the mounted files.
-`--name` selects private runtime state and a Gradle cache for the same worktree.
-Separate names still share that worktree's files.
-
-`ContainerPlan` owns the expected mounts, network mode, workspace identity, and immutable image selection.
-Admit the scope of an existing workspace before image effects.
-Preserve the admitted scope through image admission and task startup.
-Keep the Gradle cache at `/opt/kast/state/home/.gradle` for both shell commands and IDEA imports.
-The retained container keeps IDEA profile and index state.
-
-`ContainerProcesses` owns process capture. `ContainerCoordinator` in `distribution/managed` owns the filesystem lock.
-Use the shared child owner for runtime commands and preserve finite failures and literal task arguments.
-Release the coordinator lock before the task starts.
-Reject concurrent preparation when the coordinator lock is busy.
-`ContainerCancellation` signals only the invocation's `ctr` exec ID.
-Its bounded result separates transport exit from unproved guest completion. It does not prove detached-descendant retirement.
-Container `status` reads existing runtime state without workspace startup or image downloads.
-Container admission, cache reuse, and `--help` output do not prove compiler readiness or faster task completion.
 
 ## Native compilation inputs
 

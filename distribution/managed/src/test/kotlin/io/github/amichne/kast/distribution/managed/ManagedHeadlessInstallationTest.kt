@@ -90,6 +90,7 @@ class ManagedHeadlessInstallationTest {
                 .value
         assertEquals(listOf(fixture.launch.executable, "kast-headless"), specification.arguments)
         org.junit.jupiter.api.Assertions.assertTrue("-Dvendor.required=true\n" in specification.options)
+        org.junit.jupiter.api.Assertions.assertTrue("-Djbr.dbus.enabled=false\n" in specification.options)
         org.junit.jupiter.api.Assertions.assertFalse("-Xmx2048m" in specification.options)
         assertEquals(installation.userHome.toString(), specification.environment["HOME"])
         assertEquals(installation.launch.bundledJavaHome.toString(), specification.environment["IDEA_JDK"])

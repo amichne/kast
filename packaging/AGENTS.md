@@ -1,32 +1,16 @@
 ---
 type: Module Guide
 title: "Kast packaging"
-description: "Owns installer adapters, container images, guest task setup, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts."
+description: "Owns installer adapters, isolated runtime archives, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts."
 resource: "repo://packaging"
 tags: [kast, navigation]
 timestamp: "2026-11-10T05:30:08Z"
 source_revision: 85d30d515a1d777c5a83781f40813e32e69fa2e6
 code_sources:
-  - path: bin/kast-container
-  - path: packaging/dev_container.py
-  - path: packaging/container_compile.py
-  - path: packaging/container_install.py
-  - path: packaging/container/Dockerfile
-  - path: packaging/container/compiler.Dockerfile
-  - path: packaging/container/kastbox
-  - path: packaging/test_dev_container.py
   - path: packaging/test_composition_platform.py
-  - path: bin/setup-kast
-  - path: bin/kast-task-vm
-  - path: packaging/task_vm.py
-  - path: packaging/task_vm_guest.py
-  - path: packaging/test_composition_task_vm.py
   - path: packaging/composed_bundle.py
-  - path: packaging/oci_task.py
+  - path: packaging/isolated_runtime.py
   - path: packaging/test_composition_bundle.py
-  - path: packaging/test_composition_oci_task.py
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt
   - path: packaging/composition_platform.py
   - path: packaging/composed_host.py
   - path: packaging/composed_host_probe.py
@@ -60,7 +44,7 @@ code_sources:
 
 ## Purpose
 
-Owns installer adapters, container images, guest task setup, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts.
+Owns installer adapters, isolated runtime archives, offline lifecycle helpers, contract generation, and assembled-product acceptance scripts.
 
 ## Key Files
 
@@ -70,13 +54,8 @@ Owns installer adapters, container images, guest task setup, offline lifecycle h
 - [managed_headless.py](managed_headless.py) - archive assembly and the shared private installer.
 - [composed_host.py](composed_host.py) - module-based assembly from a pinned donor inventory.
 - [composed_bundle.py](composed_bundle.py) - authenticated portable setup bundles and installer dispatch.
-- [task_vm.py](task_vm.py) - offline macOS ARM task coordination through Tart.
-- [task_vm_guest.py](task_vm_guest.py) - the shared installer and literal task process inside the guest.
-- [composition_platform.py](composition_platform.py) - pinned donor and layout selection for macOS ARM, Linux ARM64, and Linux x86_64.
-- [dev_container.py](dev_container.py) - native image builds from a source checkout in the dedicated `kast-dev` Colima profile.
-- [oci_task.py](oci_task.py) - exact workspace trust and literal task arguments inside the guest.
-- [container_compile.py](container_compile.py) - native Control compilation with digest-pinned Liberica NIK.
-- [container_install.py](container_install.py) - native donor admission and composition through the shared installer.
+- [isolated_runtime.py](isolated_runtime.py) - fixed root admission and the private task environment.
+- [composition_platform.py](composition_platform.py) - pinned macOS ARM64 and Linux x86-64 donors.
 - [composition_recipe.py](composition_recipe.py) - pinned roots and plugin provider candidates.
 - [composed_host_probe.py](composed_host_probe.py) - native callers, Java references, and result rejection.
 - [installation-lifecycle.py](installation-lifecycle.py) - selected-installation retirement and removal.
@@ -87,7 +66,6 @@ Owns installer adapters, container images, guest task setup, offline lifecycle h
 
 ## Subdirectories
 
-- [container/](container/README.md) - development image definitions, the `kastbox` shell adapter, and usage instructions.
 - [topology/](topology/) - explicit Git byte attribution for supplied historical paths.
 
 ## Entry Points
@@ -97,12 +75,8 @@ Owns installer adapters, container images, guest task setup, offline lifecycle h
 - Candidate admission reads `managed-install-v1`, component manifests, and immutable selected assets before active installation effects.
 - For offline packaging tests, run `python3 packaging/run-portable-tests.py` from the repository root.
 - For managed and composition cases, run `mise exec -- uv run --locked --project packaging pytest packaging -q`.
-- The portable runner selects `test-*.py`. The project command also selects `test_composition_*.py`. Run the development-container tests explicitly.
-- For image builder and shell adapter cases, run `mise exec -- uv run --locked --project packaging pytest packaging/test_dev_container.py packaging/test_composition_platform.py -q`.
-- For guest trust cases, run `mise exec -- uv run --locked --project packaging pytest packaging/test_composition_bundle.py packaging/test_composition_oci_task.py -q`.
-- These cases do not prove native compiler behavior.
-- `mise exec -- kast-container build [--checkout PATH]` builds a native image from source. This developer command uses Python, uv, and Docker.
-- `kast container` opens a mounted worktree through the native CLI and Colima/containerd. The [container guide](container/README.md) describes runtime setup and source builds.
+- The portable runner selects `test-*.py`. The project command also selects `test_composition_*.py`.
+- Use the [isolated runtime instructions](../docs/public/reference/installation.mdx#isolated-runtime) for archive installation.
 - Read the [composition review](../docs/reviews/composed-analysis-host.md) for donor inputs, assembly commands, and native evidence limits.
 - The Gradle task `installedProductTest` exercises the assembled product.
 - Native reset scripts need the disposable installation setup stated in their own arguments and documentation.
@@ -113,27 +87,15 @@ Owns installer adapters, container images, guest task setup, offline lifecycle h
 
 ## Navigation Hints
 
-- `install_prepared_runtime` owns the installer, bootstrap, private state, and wrapper for both assembly strategies.
-- The composed recipe supports pinned macOS ARM, Linux ARM64, and Linux x86_64 donors. Keep vendor bytes unchanged and reject an existing destination.
-- `bin/setup-kast` installs a digest-pinned Linux or macOS ARM bundle through `install_prepared_runtime`.
-- `mise exec -- kast-task-vm --help` describes disposable macOS ARM tasks. Read the [VM report](../docs/reviews/macos-task-vm.md) for the image contract and native gaps.
-- Bundle creation uses `python3 packaging/composed_bundle.py pack`. Read the [Linux install report](../docs/reviews/linux-composed-install.md) for its inputs.
-- Start an OCI task with `kast-task`. The [image guide](oci/README.md) describes how the command selects one workspace.
-- Explicit workspace trust applies only to the private profile and the named existing repository.
-- `kast-task --reuse` admits an existing grant only for that exact workspace. The default command still rejects an existing grant.
-- `composed_bundle.py` owns trust creation and exact reuse admission. Foreign, malformed, multiple, or linked grants reject before the task starts.
-- The native probe consumes a disposable fixture with explicit trust and a fresh evidence directory.
-- Add `composed-host-fixture-overlay` to the fixture copy. Keep the original callback fixture unchanged because its oracle admits exact source paths.
-- Assembly receipts carry no readiness proof. Native probe results cover only their stated corpus.
-- `bin/kast-container` delegates source image builds to `dev_container.py`. Keep its script lock beside the launcher.
+- `install_prepared_runtime` owns the private installation, Host bootstrap, and launcher.
+- `composed_bundle.py` packs `setup-kast.pyz` with the native runtime and matching Kast components.
+- The installer leaves the Host stopped and the private profile without a workspace grant.
+- `kast-task WORKSPACE -- COMMAND [ARGS...]` creates or reuses trust for that exact workspace.
+- Foreign, malformed, multiple, or linked grants reject before the task starts.
+- The native probe uses a disposable fixture and a fresh evidence directory.
+- Add `composed-host-fixture-overlay` to the fixture copy. Keep the original callback fixture because the probe uses exact source paths.
+- Assembly receipts report artifact identity. Native probe results cover their stated cases.
 - `packaging/uv.lock` owns the project test and tool dependencies.
-- The container builder selects explicit assembly modules from this directory. It reuses `install_prepared_runtime` through the existing donor and composition owners.
-- Source image builds use the `kast-dev` Docker profile. Native workspace execution uses the separate `kast-native` containerd profile.
-- [The native CLI](../distribution/cli/AGENTS.md) owns command parsing, mounted worktrees, persistent caches, and runtime coordination.
-- `container/kastbox` forwards literal arguments to `kast container`.
-- The development image supplies `kast-task` and its guest Python runtime. Normal host execution needs no Python launcher, uv, or Docker CLI.
-- The shared Gradle cache path inside the image is `/opt/kast/state/home/.gradle`. Shell commands and IDEA imports use that path.
-- Keep workspace trust out of reusable images. Keep compiler readiness evidence separate from image assembly and task startup.
 
 - Managed Host replacement uses `prepare_managed`, `commit_managed`, `rollback_managed`, and `seal_managed` from `host-installation.py`.
 - `prepare_managed` stages and validates complete bytes before publishing its Host record paths.

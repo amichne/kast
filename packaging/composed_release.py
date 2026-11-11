@@ -1,44 +1,66 @@
-"""Build a portable Linux bundle with the existing composition and installer owners."""
+"""Assemble and qualify the complete archive on its native target."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
+import tempfile
 import zipfile
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from composed_bundle import (
-    BundleInstalled,
+    BundleFailure,
     BundleRejected,
     PackedBundle,
-    install_bundle,
     pack_bundle,
     sha256,
 )
-from composed_host import CompositionRejected, compose
 from composed_host_probe import ProbeReceipt, probe
-from composition_descriptors import DescriptorRejected
-from composition_graph import GraphRejected
-from composition_index import IndexRejected
 from composition_platform import HostPlatform, host_platform
-from composition_recipe import BUILD
+from isolated_runtime import ZIPAPP
 from managed_headless import (
     Input,
     Rejected,
     admit,
+    object_fields,
     select_assembly_components,
     unpack_archive,
 )
 
+if TYPE_CHECKING:
+    from composed_host import CompositionRejected
+    from composition_descriptors import DescriptorRejected
+    from composition_graph import GraphRejected
+    from composition_index import IndexRejected
+
 REPOSITORY = Path(__file__).resolve().parent.parent
+LINUX_PACKAGES = {
+    "libfontconfig1": ("libfontconfig.so.1",),
+    "libfreetype6": ("libfreetype.so.6",),
+    "libexpat1": ("libexpat.so.1",),
+    "libext2fs2": ("libe2p.so.2",),
+    "libpng16-16": ("libpng16.so.16",),
+    "libbrotli1": ("libbrotlicommon.so.1", "libbrotlidec.so.1"),
+    "libuuid1": ("libuuid.so.1",),
+    "fonts-dejavu-core": (
+        "DejaVuSans.ttf",
+        "DejaVuSans-Bold.ttf",
+        "DejaVuSansMono.ttf",
+        "DejaVuSansMono-Bold.ttf",
+        "DejaVuSerif.ttf",
+        "DejaVuSerif-Bold.ttf",
+    ),
+}
 
 
 class ReleaseFailure(StrEnum):
@@ -46,6 +68,7 @@ class ReleaseFailure(StrEnum):
     EXISTING_OUTPUT = "EXISTING_OUTPUT"
     UNSAFE_PATH = "UNSAFE_PATH"
     WRONG_PLATFORM = "WRONG_PLATFORM"
+    INSTALLER_FAILED = "INSTALLER_FAILED"
     EFFECT_FAILED = "EFFECT_FAILED"
 
 
@@ -84,6 +107,7 @@ class ReleaseRejected:
 class ReleasePacked:
     sourceRevision: str
     version: str
+    platform: HostPlatform
     bundle: PackedBundle
     # Assembly and native qualification are separate evidence boundaries.
     qualification: Literal["NOT_RUN"] = "NOT_RUN"
@@ -95,6 +119,23 @@ class QualificationReceipt:
     bundleSha256: str
     probe: ProbeReceipt
     qualification: Literal["COMPLETE"] = "COMPLETE"
+
+
+@dataclass(frozen=True, slots=True)
+class LinuxPackage:
+    package: str
+    source: str
+    version: str
+    architecture: str
+    archiveSha256: str
+    files: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class LinuxSupportPrepared:
+    output: str
+    sourceSuite: Literal["ubuntu-jammy"]
+    packages: tuple[LinuxPackage, ...]
 
 
 type AssemblyResult = (
@@ -118,8 +159,15 @@ def assemble_release(
     output: Path,
     version: str,
     revision: str,
+    linux_support: Path | None = None,
 ) -> AssemblyResult:
     """The workflow admits the exact clean source before building these inputs."""
+    from composed_host import CompositionRejected, compose
+    from composition_descriptors import DescriptorRejected
+    from composition_graph import GraphRejected
+    from composition_index import IndexRejected
+    from composition_recipe import BUILD
+
     observe(ReleaseStage.ADMISSION, StageOutcome.STARTED)
     if (
         not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version)
@@ -139,10 +187,12 @@ def assemble_release(
     ):
         observe(ReleaseStage.ADMISSION, StageOutcome.REJECTED)
         return ReleaseRejected(ReleaseFailure.UNSAFE_PATH, "root or output")
-    target = host_platform(platform.system(), platform.machine())
-    if not isinstance(target, HostPlatform) or target != HostPlatform.LINUX_X86_64:
+    system = platform.system()
+    target = host_platform(system, platform.machine())
+    if target not in (HostPlatform.LINUX_X86_64, HostPlatform.MACOS_ARM64):
         observe(ReleaseStage.ADMISSION, StageOutcome.REJECTED)
-        return ReleaseRejected(ReleaseFailure.WRONG_PLATFORM, "Linux x86_64 required")
+        return ReleaseRejected(ReleaseFailure.WRONG_PLATFORM, "native target")
+    assert isinstance(target, HostPlatform)
     inputs = Input(
         root / "p",
         archive,
@@ -157,12 +207,15 @@ def assemble_release(
     if isinstance(admitted, Rejected):
         observe(ReleaseStage.ADMISSION, StageOutcome.REJECTED)
         return admitted
+    if (target == HostPlatform.LINUX_X86_64) != (linux_support is not None):
+        observe(ReleaseStage.ADMISSION, StageOutcome.REJECTED)
+        return ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "Linux support input")
     observe(ReleaseStage.ADMISSION, StageOutcome.COMPLETE)
     root.mkdir(mode=0o700)
     donor = root / "donor"
     donor.mkdir()
     observe(ReleaseStage.DONOR, StageOutcome.STARTED)
-    source = unpack_archive(archive, donor, "Linux")
+    source = unpack_archive(archive, donor, system)
     if isinstance(source, Rejected):
         observe(ReleaseStage.DONOR, StageOutcome.REJECTED)
         return source
@@ -193,15 +246,16 @@ def assemble_release(
         assets,
         bootstrap,
         sha256(inputs.root / "composition-manifest.json"),
-        output / f"kast-composed-setup-v{version}-linux-x86_64.tar.gz",
+        output / f"kast-composed-setup-v{version}-{target.value}.tar.gz",
         version,
+        linux_support=linux_support,
     )
     if isinstance(packed, BundleRejected):
         observe(ReleaseStage.BUNDLE, StageOutcome.REJECTED)
         return packed
     path = Path(packed.archive)
     _ = path.with_name(path.name + ".sha256").write_text(f"{packed.sha256}  {path.name}\n")
-    result = ReleasePacked(revision, version, packed)
+    result = ReleasePacked(revision, version, target, packed)
     _ = (output / "assembly.json").write_text(json.dumps(asdict(result), indent=2) + "\n")
     observe(ReleaseStage.BUNDLE, StageOutcome.COMPLETE)
     return result
@@ -216,12 +270,57 @@ def qualify_release(
     root: Path,
     fixture: Path,
     evidence: Path,
-) -> QualificationReceipt | ReleaseRejected | BundleRejected | Rejected:
-    """Install the produced archive; never qualify the producer's installation."""
+    sandbox: Path | None = None,
+) -> QualificationReceipt | ReleaseRejected | BundleRejected:
+    """Run the exact archive installer before native fixture effects."""
     observe(ReleaseStage.QUALIFICATION, StageOutcome.STARTED)
+    if (
+        not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version)
+        or not re.fullmatch(r"[a-f0-9]{40}", revision)
+        or revision == "0" * 40
+    ):
+        observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
+        return ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "identity")
     if any(path.exists() or path.is_symlink() for path in (root, fixture, evidence)):
         observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
         return ReleaseRejected(ReleaseFailure.EXISTING_OUTPUT, "qualification paths")
+    if not re.fullmatch("[a-f0-9]{64}", expected) or sha256(archive) != expected:
+        observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
+        return BundleRejected(BundleFailure.DIGEST_MISMATCH, "bundle archive")
+    entry = installer_zipapp(archive, version, revision)
+    if isinstance(entry, BundleRejected):
+        observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
+        return entry
+    evidence.mkdir(parents=True)
+    with tempfile.TemporaryDirectory(prefix="kast-qualify-") as temporary:
+        work = Path(temporary).resolve()
+        bootstrap = work / "setup-kast.pyz"
+        _ = bootstrap.write_bytes(entry)
+        installed = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                str(bootstrap),
+                "--archive",
+                str(archive),
+                "--archive-sha256",
+                expected,
+                "--version",
+                version,
+                "--root",
+                str(root),
+            ],
+            cwd=work,
+            env={"PATH": os.defpath, "HOME": str(work), "TMPDIR": str(work)},
+            capture_output=True,
+            timeout=1800,
+            check=False,
+        )
+    _ = (evidence / "installation.json").write_bytes(installed.stdout)
+    _ = (evidence / "installation.stderr").write_bytes(installed.stderr)
+    if installed.returncode != 0:
+        observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
+        return ReleaseRejected(ReleaseFailure.INSTALLER_FAILED, str(installed.returncode))
     _ = shutil.copytree(
         REPOSITORY / "experiments/host-observation/static-callback-fixture", fixture
     )
@@ -232,15 +331,138 @@ def qualify_release(
     )
     _ = shutil.copytree(REPOSITORY / "gradle/wrapper", fixture / "gradle/wrapper")
     _ = shutil.copy2(REPOSITORY / "gradlew", fixture / "gradlew")
-    installed = install_bundle(archive, expected, root, version, fixture)
-    if not isinstance(installed, BundleInstalled):
-        observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
-        return installed
-    native = probe(root, fixture, evidence, None)
+    native = probe(root, fixture, evidence / "native", sandbox)
     result = QualificationReceipt(revision, expected, native)
     _ = (evidence / "qualification.json").write_text(json.dumps(asdict(result), indent=2) + "\n")
     observe(ReleaseStage.QUALIFICATION, StageOutcome.COMPLETE)
     return result
+
+
+def installer_zipapp(archive: Path, version: str, revision: str) -> bytes | BundleRejected:
+    name = f"setup-kast/{ZIPAPP}"
+    releases = {
+        f"setup-kast/assets/kast-control-release-v{version}.json": (
+            "CONTROL_RELEASE",
+            "controlVersion",
+        ),
+        f"setup-kast/assets/kast-host-release-v{version}.json": (
+            "HOST_RELEASE",
+            "hostedPluginVersion",
+        ),
+    }
+    entries: dict[str, bytes] = {}
+    with tarfile.open(archive, "r|gz") as contents:
+        for member in contents:
+            if member.name != name and member.name not in releases:
+                continue
+            if member.name in entries or not member.isfile() or not 0 < member.size <= 1_048_576:
+                return BundleRejected(BundleFailure.UNSAFE_PATH, member.name)
+            source = contents.extractfile(member)
+            assert source is not None
+            with source:
+                entries[member.name] = source.read()
+    if name not in entries:
+        return BundleRejected(BundleFailure.INVALID_MANIFEST, name)
+    for component, (kind, version_key) in releases.items():
+        data = entries.get(component)
+        record: object = json.loads(data) if data is not None else None
+        if (
+            not object_fields(record)
+            or record.get("type") != kind
+            or record.get("sourceRevision") != revision
+            or record.get(version_key) != version
+        ):
+            return BundleRejected(BundleFailure.INVALID_MANIFEST, component)
+    return entries[name]
+
+
+def prepare_linux_support(output: Path) -> LinuxSupportPrepared | ReleaseRejected:
+    """Copy named runtime files and notices from APT-authenticated producer inputs."""
+    if host_platform(platform.system(), platform.machine()) != HostPlatform.LINUX_X86_64:
+        return ReleaseRejected(ReleaseFailure.WRONG_PLATFORM, "Linux support producer")
+    if output.exists() or output.resolve() != output:
+        return ReleaseRejected(ReleaseFailure.EXISTING_OUTPUT, "Linux support output")
+    with tempfile.TemporaryDirectory(prefix="kast-support-", dir=output.parent) as temporary:
+        work = Path(temporary).resolve()
+        files = work / "support"
+        for directory in ("lib", "fonts", "licenses"):
+            (files / directory).mkdir(parents=True)
+        sources = work / "sources.list"
+        keyring = "/usr/share/keyrings/ubuntu-archive-keyring.gpg"
+        signed = f"deb [arch=amd64 signed-by={keyring}]"
+        _ = sources.write_text(
+            f"{signed} https://archive.ubuntu.com/ubuntu jammy main\n"
+            f"{signed} https://archive.ubuntu.com/ubuntu jammy-updates main\n"
+            f"{signed} https://security.ubuntu.com/ubuntu jammy-security main\n"
+        )
+        lists = work / "lists"
+        lists.mkdir()
+        status = work / "status"
+        status.touch()
+        # APT verifies the archive signature and package hashes in a producer-owned index.
+        apt = [
+            "apt-get",
+            "-o",
+            f"Dir::Etc::sourcelist={sources}",
+            "-o",
+            "Dir::Etc::sourceparts=-",
+            "-o",
+            f"Dir::State::lists={lists}",
+            "-o",
+            f"Dir::State::status={status}",
+            "-o",
+            "APT::Get::List-Cleanup=false",
+            "-o",
+            "Acquire::Languages=none",
+            "-o",
+            "APT::Update::Error-Mode=any",
+        ]
+        for command in (["update"], ["download", *LINUX_PACKAGES]):
+            _ = subprocess.run([*apt, *command], cwd=work, stdout=sys.stderr, check=True)
+        packages = tuple(prepare_linux_package(deb, files) for deb in sorted(work.glob("*.deb")))
+        if sorted(record.package for record in packages) != sorted(LINUX_PACKAGES):
+            return ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "Linux support packages")
+        _ = (files / "fonts.conf").write_text(
+            '<fontconfig><dir prefix="relative">fonts</dir>'
+            '<cachedir prefix="xdg">fontconfig</cachedir></fontconfig>\n'
+        )
+        result = LinuxSupportPrepared(str(output), "ubuntu-jammy", packages)
+        _ = (files / "licenses/packages.json").write_text(
+            json.dumps(asdict(result), indent=2) + "\n"
+        )
+        _ = files.rename(output)
+    return result
+
+
+def prepare_linux_package(deb: Path, files: Path) -> LinuxPackage:
+    def field(name: str) -> str:
+        return subprocess.check_output(["dpkg-deb", "-f", str(deb), name], text=True).strip()
+
+    name, version, architecture = field("Package"), field("Version"), field("Architecture")
+    if name not in LINUX_PACKAGES or not version or architecture not in {"amd64", "all"}:
+        raise ValueError("Linux support package identity")
+    package_root = deb.with_suffix("")
+    _ = subprocess.run(["dpkg-deb", "-x", str(deb), str(package_root)], check=True)
+    installed: list[str] = []
+    for member in LINUX_PACKAGES[name]:
+        candidates = tuple(package_root.rglob(member))
+        if len(candidates) != 1:
+            raise ValueError("Linux support file inventory")
+        source = candidates[0].resolve()
+        if not source.is_relative_to(package_root) or not source.is_file():
+            raise ValueError("Linux support file location")
+        # IntelliJ's JNA filesystem probe opens the unversioned name first.
+        filename = "libe2p.so" if member == "libe2p.so.2" else member
+        location = ("fonts/" if filename.endswith(".ttf") else "lib/") + filename
+        _ = shutil.copyfile(source, files / location)
+        installed.append(location)
+    notice = (package_root / "usr/share/doc" / name / "copyright").resolve()
+    if not notice.is_relative_to(package_root) or not notice.is_file():
+        raise ValueError("Linux support package notice")
+    _ = shutil.copyfile(notice, files / "licenses" / (name + ".copyright"))
+    return LinuxPackage(
+        name, field("Source") or name, version, architecture, sha256(deb), tuple(installed)
+    )
 
 
 def main() -> int:
@@ -248,6 +470,8 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     assemble = commands.add_parser("assemble")
     qualify = commands.add_parser("qualify")
+    support = commands.add_parser("linux-support")
+    _ = support.add_argument("--output", type=Path, required=True)
     for command in (assemble, qualify):
         for name in ("archive", "root"):
             _ = command.add_argument("--" + name, type=Path, required=True)
@@ -258,10 +482,14 @@ def main() -> int:
     for name in ("fixture", "evidence"):
         _ = qualify.add_argument("--" + name, type=Path, required=True)
     _ = qualify.add_argument("--archive-sha256", required=True)
+    _ = qualify.add_argument("--sandbox", type=Path)
+    _ = assemble.add_argument("--linux-support", type=Path)
     args = parser.parse_args()
     try:
-        result = (
-            assemble_release(
+        if args.command == "linux-support":
+            result = prepare_linux_support(args.output)
+        elif args.command == "assemble":
+            result = assemble_release(
                 archive=args.archive,
                 bootstrap=args.bootstrap,
                 assets=args.assets,
@@ -269,9 +497,10 @@ def main() -> int:
                 output=args.output,
                 version=args.version,
                 revision=args.source_revision,
+                linux_support=args.linux_support,
             )
-            if args.command == "assemble"
-            else qualify_release(
+        else:
+            result = qualify_release(
                 archive=args.archive,
                 expected=args.archive_sha256,
                 version=args.version,
@@ -279,12 +508,20 @@ def main() -> int:
                 root=args.root,
                 fixture=args.fixture,
                 evidence=args.evidence,
+                sandbox=args.sandbox,
             )
-        )
-    except (OSError, ValueError, tarfile.TarError, zipfile.BadZipFile) as error:
+    except (
+        OSError,
+        ValueError,
+        tarfile.TarError,
+        zipfile.BadZipFile,
+        subprocess.SubprocessError,
+    ) as error:
         result = ReleaseRejected(ReleaseFailure.EFFECT_FAILED, type(error).__name__)
     print(json.dumps(asdict(result), indent=2))
-    return 0 if isinstance(result, (ReleasePacked, QualificationReceipt)) else 1
+    return (
+        0 if isinstance(result, (ReleasePacked, QualificationReceipt, LinuxSupportPrepared)) else 1
+    )
 
 
 if __name__ == "__main__":

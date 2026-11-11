@@ -387,8 +387,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "13d576abf494b76527e76e9fee52584c52c359b678a1b5169b5be70f3c44cfc3",
-      "claimsSha256": "08fef7ed5d96fbe25cb29c8fb4bc3347311dc24caf8a1bcada09a6d9bfac406d",
+      "sha256": "f7bc2dd834010633b95ee40c3b5e46038b1bce140f3e97e48dee5c3be9072ac3",
+      "claimsSha256": "284c5e60195a6f264b24f64f51a986443fa6e5b1d09ae605cdc531267a298a85",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -422,14 +422,14 @@
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
           "resource": "repo://build.gradle.kts#L104-L123",
           "recordedVersion": "repo-lines-v1:sha256:1f809cbe56fb43c60678bb4eae7c28529eb3d35c334884cafdf85acb755f73c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNGU0NWUyOWRhNjc2ZGM0MDVkODNiN2Q2MDVjMjE0MmRjYTZhZjU0N2NmNDVhMzZkM2JlY2NlNDE2NDQ0MTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOTgwZTUxYjM3MTQzYjdmMjhlN2M1ZmVkMzIxYzcxYjhiNjIyYzdiZjc4ZmFiMWUzMzg3NWNmMWVkZjU2OTUifQ",
-          "currentVersion": "repo-file-v1:sha256:d751028bad6845672b6b115114e067f96074bdd52d6f7d08f5768c296a0a4fcf",
+          "currentVersion": "repo-file-v1:sha256:c90a28c3643b1bbb19e6cc58a5950444dca5ce4ab4a4958d6ab4d2bd9f37d2c5",
           "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
-          "resource": "repo://build.gradle.kts#L139-L174",
-          "recordedVersion": "repo-lines-v1:sha256:47f603c1112d000f5027b3a2f2158abe029cc3c4273131e06555c0dad56ea8f8:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3ZGUwNDMzOTM4NGU5YzI4MTg4MTM4NTQ3YzY5MGJiZGU3Yzc3ZjQ5OGI3NmU3YWExNDhmODcxOGQyNDI1ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjMWE2Y2EyZjBjY2NmMWM4MmRhODFkZDZmOTE4ZDE3Y2NhNDdjNWY1MWQ2ZTMzNTY0OTY2ZDYxMGM2YTQ5MzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNjg1YzA0MmI4YzY2OGM1NDZhZGIwY2Y5MzFhZTY2NTAxNTkxMjI5MmFiY2UzYWNiMTgwYjA2OWNhMmVlY2MifQ",
-          "currentVersion": "repo-file-v1:sha256:d751028bad6845672b6b115114e067f96074bdd52d6f7d08f5768c296a0a4fcf",
+          "resource": "repo://build.gradle.kts#L139-L166",
+          "recordedVersion": "repo-lines-v1:sha256:3de5f81a1415b830b7f4f3ddfed820e760d5e41b7da0e4af7a794a5d503b7b7d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3ZGUwNDMzOTM4NGU5YzI4MTg4MTM4NTQ3YzY5MGJiZGU3Yzc3ZjQ5OGI3NmU3YWExNDhmODcxOGQyNDI1ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZjkzNDZlODI1NTY4ZmFmNjc2YjA4NWFjOGFhNGQxOWQxYWQ5ZThlMjgyNTgwYjdmODM5ODM5MWUwZTY5OWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjMWE2Y2EyZjBjY2NmMWM4MmRhODFkZDZmOTE4ZDE3Y2NhNDdjNWY1MWQ2ZTMzNTY0OTY2ZDYxMGM2YTQ5MzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNjg1YzA0MmI4YzY2OGM1NDZhZGIwY2Y5MzFhZTY2NTAxNTkxMjI5MmFiY2UzYWNiMTgwYjA2OWNhMmVlY2MifQ",
+          "currentVersion": "repo-file-v1:sha256:c90a28c3643b1bbb19e6cc58a5950444dca5ce4ab4a4958d6ab4d2bd9f37d2c5",
           "status": "NOT_ASSESSED"
         },
         {
@@ -441,9 +441,9 @@
         },
         {
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
-          "resource": "repo://build.gradle.kts#L826-L863",
+          "resource": "repo://build.gradle.kts#L814-L851",
           "recordedVersion": "repo-lines-v1:sha256:a8eae36b4a254b4a99e0ff299b1ada839533417a38d3ce1c79dd5117b566d38a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjYzAyOWJkYWJiMWEwM2RkNzUyMjQ0MGM4MGU3YTlkMzlmNjhiZTA1OTUzZDA4Y2NjZTA0MjI0OGM0YmQ2YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzMmRlYzFiZDA1NTEyYTEzNDBkZjkyNTI3YWQ0NWQzNWI1NmQ1MjA0ZjU3YmQ3MjA4NDI2M2UzYWQ1OGRkZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkxOTIwNTE1MzMzN2JjMzEwNGE4ZDBiNmMwYWM0NTg1YzliNzcxOTRjZGU5NDk3ZDBlZjgwMDhhNjI4NzNhMTIifQ",
-          "currentVersion": "repo-file-v1:sha256:d751028bad6845672b6b115114e067f96074bdd52d6f7d08f5768c296a0a4fcf",
+          "currentVersion": "repo-file-v1:sha256:c90a28c3643b1bbb19e6cc58a5950444dca5ce4ab4a4958d6ab4d2bd9f37d2c5",
           "status": "NOT_ASSESSED"
         },
         {
@@ -469,9 +469,9 @@
         },
         {
           "claim": "claim_80ac4fa29f9f455b8b4ac1ee06966cfa",
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt#L3-L53",
-          "recordedVersion": "repo-lines-v1:sha256:02df0127f97614c99b6c6de75ed0777fa22682151d67489df5ef3a0081214070:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNTBhMDQwMjYyM2EzNWUzYmUyN2UzM2RmYTQ0NjY1YjlhY2Y0OTFlOThlNTI3NGE4Y2VkNzFmZjM4ZTExMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ",
-          "currentVersion": "repo-file-v1:sha256:29e8633c75b95538b60bf20691ae5a29eb0a9b0222ddd3496631658448d64d57",
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/HostedWorkspaceRefreshAuthority.kt#L3-L61",
+          "recordedVersion": "repo-lines-v1:sha256:cc152c49c6e28262e0fb6a2e758749fffd8d67588db22f4667c2bb3c1d652ff6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNTBhMDQwMjYyM2EzNWUzYmUyN2UzM2RmYTQ0NjY1YjlhY2Y0OTFlOThlNTI3NGE4Y2VkNzFmZjM4ZTExMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ",
+          "currentVersion": "repo-file-v1:sha256:fe985036c9cff517f71f725f4d8b12d7856f35bce6c2e09c883f35477a62a472",
           "status": "NOT_ASSESSED"
         },
         {
@@ -828,7 +828,7 @@
           "claim": "claim_7734d5f14fe74d3bb4546106a864e74b",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L248-L277",
           "recordedVersion": "repo-lines-v1:sha256:a44e673ffab7dcfe171ec0a2f7f21bd88e6ac50b4731d4fc74ef8466c66b6394:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhYjIyMTUyMDZjNjcyODIxZjE5ZjEzZmQ2YzQ0NmVjNjY2YmY1MjI1MDZiNWY4NjRmMWNmNTJiOTQxZDZkZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFmODFhMWUxNWE1MzgxODZiNzJmMDFkYjQ3YjFiM2Y3OTdjMWNmZjEwMDY3NGQ5YWQ4N2I0NTU5NDc4NTRiMmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0NmY0YjdhNDJjN2RlOTFlYjg2ZDAyOWY2ZGQzNjdjZTc0MjljMjBlNGQ0MjExMzdlZmI5YTcyZjAwZjdkMTQifQ",
-          "currentVersion": "repo-file-v1:sha256:641416eb674ebcd695c2eb8a0a013ea99c255a606507dc453791560c31e548ff",
+          "currentVersion": "repo-file-v1:sha256:f8ff85e1a4410fc184f4c6b666cf80b22ace073f3732f5e3452b70746dfb5f6b",
           "status": "NOT_ASSESSED"
         },
         {

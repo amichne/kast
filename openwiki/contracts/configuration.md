@@ -75,14 +75,6 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdapter.kt
   - id: openwiki-source-fb61cc58d2fa4809ff4d73bb
     resource: repo://cli/src/main/native-launchers/bin/kast-mcp
-  - id: openwiki-source-81b23626299785d4b6b3cdfc
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerExecution.kt
-  - id: openwiki-source-0e50d1b18d1925b709ede5d3
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt
-  - id: openwiki-source-53bfd9d570ccfafcba1fca7b
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerWorkspace.kt
-  - id: openwiki-source-e1eccbe769b8e78a5354c5ca
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt
   - id: openwiki-source-7cd4eb997a7878eca6390142
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - id: openwiki-source-ae4b8d5875d797e7d0c59ae5
@@ -109,10 +101,10 @@ sources:
     resource: repo://packaging/install-local.sh
   - id: openwiki-source-621afc296584eb4217553339
     resource: repo://packaging/managed_headless.py
-generated: { by: "codex", at: "2026-11-10T06:03:12.348Z" }
+generated: { by: "codex", at: "2026-11-11T01:55:34.136Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-10T21:00:03.650Z
+    at: 2026-11-11T02:08:52.690Z
 ---
 
 # Installation configuration
@@ -214,10 +206,6 @@ Control and Host have independent artifact and effect ownership within that
 installation. Installation and installed management operations reject alternate root bindings.
 `XDG_DATA_HOME` does not select another installation. The root and installer bin
 paths keep their HOME-derived proofs in typed request values.
-
-`kast container` dispatches before installed-root admission and needs no selected Kast installation.
-Its macOS runtime admits HOME, Colima, Lima, the prepared image, and the selected Git worktree through its own native owners.
-These inputs do not select another managed installation.
 
 The derived `KAST_INSTALL_PROFILE` accepts only persistent. Session installation
 is retired, and checkout session requests reject before Gradle or installation

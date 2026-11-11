@@ -130,6 +130,7 @@ class InstallerEntrypointTest(unittest.TestCase):
         bin_directory = root / "bin"
         for path in (home, assets, bin_directory, idea / "plugins/Kotlin", idea / "jbr/Contents/Home/bin"):
             path.mkdir(parents=True, exist_ok=True)
+        (bin_directory / "python3").symlink_to(Path(sys.executable).resolve())
         # The public installer owns the OS policy; this fixture supplies its one OS observation.
         uname = bin_directory / 'uname'
         uname.write_text('#!/bin/sh\ncase "$1" in -s) echo Darwin ;; -m) echo arm64 ;; *) exit 1 ;; esac\n')
@@ -1317,18 +1318,15 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             self.assertIn('plugin-root=' + str(expected), result.stderr)
             self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
-    def test_linux_arm64_fresh_plan_selects_native_archive_and_rejects_x86_jbr(self):
+    def test_linux_arm64_rejects_before_asset_reads(self):
         with tempfile.TemporaryDirectory(prefix='kast-installer-arm64-') as directory:
             idea, _, environment = self.linux_installer_fixture(directory, 'aarch64')
             command = [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run']
             result = subprocess.run(command, cwd=ROOT, env=environment,
                 text=True, capture_output=True, timeout=10)
-            self.assertEqual(0, result.returncode, result.stderr)
-            (idea / 'jbr/release').write_text('JAVA_VERSION="25.0.1"\nOS_ARCH="amd64"\n')
-            rejected = subprocess.run(command, cwd=ROOT, env=environment,
-                text=True, capture_output=True, timeout=10)
-            self.assertNotEqual(0, rejected.returncode)
-            self.assertIn('IDEA home is incompatible', rejected.stderr)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn('supported platforms are macOS Apple silicon and Linux x86_64 local builds', result.stderr)
+            self.assertNotIn('downloading', result.stderr)
             self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
     def test_linux_replacement_control_upgrade_and_nondefault_profile_reject_before_assets(self):
@@ -1357,7 +1355,7 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertNotEqual(0, result.returncode)
-            self.assertIn('supported platforms are macOS Apple silicon and Linux x86_64 or ARM64 local builds', result.stderr)
+            self.assertIn('supported platforms are macOS Apple silicon and Linux x86_64 local builds', result.stderr)
             self.assertFalse((Path(directory) / 'install').exists())
 
     def test_install_prepares_the_managed_payload_without_prompting(self):

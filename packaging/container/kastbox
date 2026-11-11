@@ -1,2 +1,0 @@
-emulate -L zsh
-command kast container "$@"

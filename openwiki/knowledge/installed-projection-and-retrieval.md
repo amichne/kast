@@ -44,7 +44,7 @@ sources:
 generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-10T06:03:12.348Z
+    at: 2026-11-11T01:55:34.136Z
 ---
 
 # Installed knowledge projection and retrieval

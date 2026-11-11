@@ -201,7 +201,7 @@ internal constructor(
         val inspected = execute(IdeLifecycleCommand.Inspect)
         val host =
             if (inspected is IdeLifecycleResult.Blocked && inspected.reason == IdeLifecycleFailure.HOST_UNAVAILABLE)
-                coldHost()
+                coldHost(requireWorkspaceTrust = true)
             else inspected
         return when (host) {
             is IdeLifecycleResult.Inspected ->
@@ -223,7 +223,7 @@ internal constructor(
         }
     }
 
-    private fun coldHost(): IdeLifecycleResult {
+    private fun coldHost(requireWorkspaceTrust: Boolean = false): IdeLifecycleResult {
         val launch =
             when (val selected = SelectedIdeInstallation.resolve(selectedHome)) {
                 is SelectedIdeLaunch.Resolved -> selected
@@ -244,7 +244,7 @@ internal constructor(
             }
         }
         val lifetime =
-            when (val started = launch(launch, selectedDeployment)) {
+            when (val started = launch(launch, selectedDeployment, requireWorkspaceTrust)) {
                 is Refinement.Rejected -> return blocked(started.failure)
                 is Refinement.Refined -> started.value
             }
@@ -262,9 +262,14 @@ internal constructor(
     private fun launch(
         target: SelectedIdeLaunch.Resolved,
         selectedDeployment: SelectedLifecycleDeployment,
+        requireWorkspaceTrust: Boolean,
     ): Refinement<IdeLaunchLifetime, IdeLifecycleFailure> {
-        if (selectedDeployment is SelectedLifecycleDeployment.Headless)
+        if (selectedDeployment is SelectedLifecycleDeployment.Headless) {
+            val trust = selectedDeployment.installation.config.resolve("options/trusted-paths.xml")
+            if (requireWorkspaceTrust && !Files.isRegularFile(trust, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                return Refinement.Rejected(IdeLifecycleFailure.TRUST_REQUIRED)
             return launchManagedHeadless(selectedDeployment.installation, platform)
+        }
         if (target.layout == SelectedIdeLayout.LINUX_DIRECTORY && platform.display().isNullOrBlank())
             return Refinement.Rejected(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
         val arguments = ideLaunchArguments(target)

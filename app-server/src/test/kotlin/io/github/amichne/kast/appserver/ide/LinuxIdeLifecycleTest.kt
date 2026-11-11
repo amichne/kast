@@ -69,6 +69,11 @@ class LinuxIdeLifecycleTest {
                 platform,
                 IdeLifecycleDeployment.Headless(state),
             )
+        assertEquals(
+            IdeLifecycleResult.Blocked(IdeLifecycleFailure.TRUST_REQUIRED),
+            client.open(root.toString(), "request", "test"),
+        )
+        assertEquals(0, launches)
         assertEquals(IdeLifecycleResult.Blocked(IdeLifecycleFailure.LAUNCH_FAILED), client.startInstallation())
         assertEquals(1, launches)
     }

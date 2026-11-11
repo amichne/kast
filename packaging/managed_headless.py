@@ -12,6 +12,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import xml.etree.ElementTree as ET
@@ -150,15 +151,25 @@ class _AdmittedInput:
     release_line: SupportedIdeReleaseLine
 
 
-def admit(inputs: Input) -> _AdmittedInput | Rejected:
-    root = inputs.root
-    if not root.is_absolute() or root != root.resolve() or root.parent.resolve() != root.parent:
+def admit_install_root(root: Path) -> Rejected | None:
+    if (
+        not root.is_absolute()
+        or root != root.resolve()
+        or any(character in str(root) for character in "\r\n:")
+    ):
         return Rejected(Failure.INVALID_INPUT)
-    if root.exists():
+    if root.exists() or root.is_symlink():
         return Rejected(Failure.EXISTING_TARGET)
     socket = root / "state/home/.kast/ide-lifecycle" / ("0" * 32) / "host.sock"
     if len(os.fsencode(socket)) > 100:
         return Rejected(Failure.INVALID_INPUT)
+    return None
+
+
+def admit(inputs: Input) -> _AdmittedInput | Rejected:
+    rejected = admit_install_root(inputs.root)
+    if rejected is not None:
+        return rejected
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", inputs.version):
         return Rejected(Failure.INVALID_INPUT)
     release_line = SupportedIdeReleaseLine.from_build(inputs.build)
@@ -607,8 +618,12 @@ def install_prepared_runtime(
     state = root / "state"
     for name in ("home", "system", "log", "tmp"):
         (state / name).mkdir(parents=True, mode=0o700)
+    (state / "home/.gradle").mkdir(mode=0o700)
+    tools = root / "libexec"
+    tools.mkdir(mode=0o700)
+    (tools / "python3").symlink_to(Path(sys.executable).resolve(strict=True))
     environment = {
-        "PATH": os.defpath,
+        "PATH": str(tools) + os.pathsep + os.defpath,
         "HOME": str(state / "home"),
         "TMPDIR": str(state / "tmp"),
         "KAST_VERSION": inputs.version,
@@ -618,7 +633,7 @@ def install_prepared_runtime(
     }
     with (root / "installer.log").open("w") as log:
         result = subprocess.run(
-            ["bash", str(installer), "--skip-codex-plugin", "--idea-home", str(home)],
+            ["/bin/bash", str(installer), "--skip-codex-plugin", "--idea-home", str(home)],
             env=environment,
             stdout=log,
             stderr=subprocess.STDOUT,

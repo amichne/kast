@@ -81,6 +81,14 @@ class ManagementCliTest {
     }
 
     @Test
+    fun `retired container routes reject before runtime effects`() {
+        for (arguments in listOf(listOf("container", "status"), listOf("status", "container"))) {
+            val parsed = parseManagementCommand(arguments)
+            assertTrue(parsed is ManagementParsing.Print && parsed.error, arguments.toString())
+        }
+    }
+
+    @Test
     fun `destination policy retains every specified branch without requiring PATH`() {
         val home = temporary.resolve("home").toString()
         val default = selectDestination(home, null, null) as DestinationSelection.Selected

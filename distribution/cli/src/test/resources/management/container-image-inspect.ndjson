@@ -1,1 +1,0 @@
-{"Image":{"Name":"registry.example/kast:arm64","Target":{"digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},"ImageConfig":{"architecture":"arm64","os":"linux","config":{"User":"developer","Labels":{"io.kast.dev-container":"3"}},"history":[{"created_by":"synthetic build"}]}}

@@ -1,43 +1,66 @@
-name: Composed Linux bundle
+name: Isolated runtime candidates
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Exact numeric version for this source-bound bundle (not a release tag)
+        description: Exact numeric version for the candidates
         required: true
         default: 0.0.0
         type: string
+      action_revision:
+        description: Exact kast-action commit for Linux adapter evidence
+        required: false
+        type: string
+      linux_only:
+        description: Assemble and qualify only Linux x86-64
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       version:
-        description: Exact numeric version for this source-bound bundle
+        description: Exact numeric version for the candidates
         required: true
         type: string
+      action_revision:
+        description: Exact kast-action commit for Linux adapter evidence
+        required: false
+        type: string
 
-# This producer retains tested bytes. It cannot publish a release or move tags.
 permissions:
   contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   BUNDLE_VERSION: ${{ inputs.version }}
+  ACTION_REVISION: ${{ inputs.action_revision }}
 
 jobs:
-  bundle:
-    name: Assemble and qualify the portable Linux archive
-    runs-on: ubuntu-24.04
+  assemble:
+    name: Assemble ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(format('[{0}{1}]',
+          '{"target":"linux-x86_64","runner":"ubuntu-24.04","donor":"idea-2026.2.2.tar.gz"}',
+          (!inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true') && ',{"target":"macos-aarch64","runner":"macos-15","donor":"idea-2026.2.2-aarch64.dmg"}' || '')) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Admit source and version before provisioning
+      - name: Admit source and version
         run: |
           bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
           python3 -c 'import os,re; assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", os.environ["BUNDLE_VERSION"]), "numeric version required"'
+
+      - name: Set up the producer Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
 
       - name: Set up pinned tools
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
@@ -48,69 +71,170 @@ jobs:
           validate-wrappers: true
           cache-read-only: true
 
-      - name: Install Linux runtime and native compilation prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential zlib1g-dev libxi6 libxrender1 libxtst6 libfontconfig1 libgtk-3-0 libnss3 libasound2t64 libgbm1
-
       - name: Check composition contracts and source guards
         run: |
-          mise exec -- uv run --locked --project packaging ruff check packaging/composed_release.py packaging/test_composition_release.py
-          mise exec -- uv run --locked --project packaging ruff format --check packaging/composed_release.py packaging/test_composition_release.py
+          mise exec -- uv run --locked --project packaging ruff check packaging/composed_release.py packaging/composed_host_probe.py packaging/test_composition_release.py
+          mise exec -- uv run --locked --project packaging ruff format --check packaging/composed_release.py packaging/composed_host_probe.py packaging/test_composition_release.py
           mise exec -- uv run --locked --project packaging pyright --project packaging
           mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test-managed-headless.py -q
           mise exec -- ./gradlew --no-daemon verifyJsonContracts verifyKastArchitecture
 
-      - name: Assemble matching Linux Control, Host, and bootstrap from this source
+      - name: Assemble matching Control, Host, and bootstrap
         run: >-
           mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
-          -Dorg.gradle.jvmargs=-Xmx4g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
+          -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
           assembleRelease :runtime:hosted:headlessBootstrapPlugin
 
-      - name: Download the pinned donor and compose the portable archive
+      - name: Download pinned donor and assemble the archive
+        shell: bash
+        env:
+          DONOR: ${{ matrix.donor }}
+          TARGET: ${{ matrix.target }}
         run: |
+          scratch=$(cd /tmp && pwd -P)
+          support=()
           mkdir -p build/cloud-input
-          curl --fail --location --retry 3 https://download.jetbrains.com/idea/idea-2026.2.2.tar.gz --output build/cloud-input/idea.tar.gz
+          if [[ "$TARGET" == linux-x86_64 ]]; then
+            python3 packaging/composed_release.py linux-support --output "$PWD/build/cloud-input/linux-support"
+            support=(--linux-support "$PWD/build/cloud-input/linux-support")
+          fi
+          curl --fail --location --retry 3 "https://download.jetbrains.com/idea/$DONOR" --output "build/cloud-input/$DONOR"
           mise exec -- uv run --locked --project packaging python packaging/composed_release.py assemble \
-            --archive "$PWD/build/cloud-input/idea.tar.gz" \
+            --archive "$PWD/build/cloud-input/$DONOR" \
             --bootstrap "$PWD/runtime/hosted/build/distributions/kast-managed-headless-v${BUNDLE_VERSION}-idea-262.zip" \
             --assets "$PWD/build/release/v${BUNDLE_VERSION}" \
-            --root /tmp/kp --output "$PWD/build/composed-release" \
-            --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
+            --root "$scratch/kp" --output "$PWD/build/composed-release" \
+            --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA" "${support[@]}"
 
-      - name: Install the actual archive and prove compiler queries in an independent fixture
-        run: |
-          archive="$PWD/build/composed-release/kast-composed-setup-v${BUNDLE_VERSION}-linux-x86_64.tar.gz"
-          mise exec -- uv run --locked --project packaging python packaging/composed_release.py qualify \
-            --archive "$archive" --archive-sha256 "$(cut -d ' ' -f1 "${archive}.sha256")" \
-            --root /tmp/kc --fixture /tmp/kw --evidence "$PWD/build/composed-evidence" \
-            --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
-          cp build/composed-evidence/qualification.json build/composed-release/qualification.json
-
-      - name: Re-admit unchanged source after qualification
+      - name: Re-admit unchanged source
         run: bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
 
-      - name: Retain the qualified bundle without publishing
+      - name: Retain the assembled candidate
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: kast-composed-linux-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: kast-composed-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/composed-release/
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
 
-      - name: Retain stage and native evidence, including failures
+      - name: Retain assembly evidence
         if: always()
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: kast-composed-evidence-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: kast-composed-assembly-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            build/composed-evidence/
-            build/composed-release/assembly.json
+            build/cloud-input/linux-support/licenses/
             build/reports/
             /tmp/kp/donor-manifest.json
             /tmp/kp/p/composition-manifest.json
             /tmp/kp/p/installer.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  qualify:
+    name: Qualify ${{ matrix.target }}
+    needs: assemble
+    if: ${{ !cancelled() }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(format('[{0}{1}]',
+          '{"target":"linux-x86_64","runner":"ubuntu-24.04"}',
+          (!inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true') && ',{"target":"macos-aarch64","runner":"macos-15"}' || '')) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-composed-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/composed-release/
+
+      - name: Select the macOS qualifier Python
+        if: runner.os == 'macOS'
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+
+      - name: Install and qualify the exact candidate
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          scratch=$(cd /tmp && pwd -P)
+          python=$(command -v python3)
+          if [[ "$TARGET" == linux-x86_64 ]]; then
+            python=/usr/bin/python3
+          fi
+          "$python" --version
+          archive="$PWD/build/composed-release/kast-composed-setup-v${BUNDLE_VERSION}-$TARGET.tar.gz"
+          digest=$(cut -d ' ' -f1 "${archive}.sha256")
+          "$python" -E -s -B packaging/composed_release.py qualify \
+            --archive "$archive" --archive-sha256 "$digest" \
+            --root "$scratch/kc" --fixture "$scratch/kw" --evidence "$PWD/build/composed-evidence" \
+            --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
+
+      - name: Admit the optional action revision
+        if: ${{ !cancelled() && runner.os == 'Linux' && inputs.action_revision != '' }}
+        id: action-revision
+        shell: bash
+        run: |
+          [[ "$ACTION_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          printf 'sha=%s\n' "$ACTION_REVISION" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ !cancelled() && steps.action-revision.outcome == 'success' }}
+        id: action-source
+        with:
+          repository: amichne/kast-action
+          ref: ${{ steps.action-revision.outputs.sha }}
+          path: build/kast-action
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: ${{ !cancelled() && steps.action-source.outcome == 'success' }}
+        id: action-node
+        with:
+          node-version: '24.21.0'
+
+      - name: Install the exact Linux archive through the Node action
+        if: ${{ !cancelled() && steps.action-node.outcome == 'success' }}
+        shell: bash
+        run: |
+          actual_action_revision=$(git -C build/kast-action rev-parse HEAD)
+          [[ "$actual_action_revision" == "$ACTION_REVISION" ]]
+          archive="$PWD/build/composed-release/kast-composed-setup-v${BUNDLE_VERSION}-linux-x86_64.tar.gz"
+          digest=$(cut -d ' ' -f1 "${archive}.sha256")
+          url=$(/usr/bin/python3 -I -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).as_uri())' "$archive")
+          evidence="$PWD/build/action-evidence"
+          mkdir "$evidence"
+          printf '%s\n' "$actual_action_revision" > "$evidence/action-revision"
+          printf '%s\n' "$digest" > "$evidence/archive-sha256"
+          env -i PATH=/usr/bin:/bin HOME="$evidence" \
+            "INPUT_VERSION=$BUNDLE_VERSION" "INPUT_ARTIFACT_URL=$url" \
+            "INPUT_ARTIFACT_SHA256=$digest" INPUT_INSTALL_DIR=/tmp/ka \
+            "GITHUB_PATH=$evidence/path" "GITHUB_ENV=$evidence/environment" \
+            "GITHUB_OUTPUT=$evidence/outputs" "$(command -v node)" \
+            build/kast-action/dist/index.js > "$evidence/installation.json" 2> "$evidence/installation.stderr"
+          grep -Fx '/tmp/ka/bin' "$evidence/path"
+          grep -Fx 'kast-task-command=/tmp/ka/bin/kast-task' "$evidence/outputs"
+          test -z "$(find /tmp/ka/state \( -name trusted-paths.xml -o -name endpoint.json \) -print)"
+
+      - name: Retain qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-composed-evidence-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/composed-evidence/
+            build/action-evidence/
             /tmp/kc/installer.log
+            /tmp/kc/state/log/
+            /tmp/ka/installer.log
           if-no-files-found: warn
           retention-days: 14
