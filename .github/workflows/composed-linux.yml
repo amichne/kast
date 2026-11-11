@@ -12,6 +12,10 @@ on:
         description: Exact kast-action commit for Linux adapter evidence
         required: false
         type: string
+      linux_only:
+        description: Assemble and qualify only Linux x86-64
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       version:
@@ -34,18 +38,12 @@ env:
 jobs:
   assemble:
     name: Assemble ${{ matrix.target }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.target == 'linux-x86_64' && 'ubuntu-24.04' || 'macos-15' }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: ubuntu-24.04
-            target: linux-x86_64
-            donor: idea-2026.2.2.tar.gz
-          - runner: macos-15
-            target: macos-aarch64
-            donor: idea-2026.2.2-aarch64.dmg
+        target: ${{ fromJSON(inputs.linux_only && '["linux-x86_64"]' || '["linux-x86_64","macos-aarch64"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -88,7 +86,7 @@ jobs:
       - name: Download pinned donor and assemble the archive
         shell: bash
         env:
-          DONOR: ${{ matrix.donor }}
+          DONOR: ${{ matrix.target == 'linux-x86_64' && 'idea-2026.2.2.tar.gz' || 'idea-2026.2.2-aarch64.dmg' }}
           TARGET: ${{ matrix.target }}
         run: |
           scratch=$(cd /tmp && pwd -P)
@@ -136,16 +134,12 @@ jobs:
     name: Qualify ${{ matrix.target }}
     needs: assemble
     if: ${{ !cancelled() }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.target == 'linux-x86_64' && 'ubuntu-24.04' || 'macos-15' }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: ubuntu-24.04
-            target: linux-x86_64
-          - runner: macos-15
-            target: macos-aarch64
+        target: ${{ fromJSON(inputs.linux_only && '["linux-x86_64"]' || '["linux-x86_64","macos-aarch64"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

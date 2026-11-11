@@ -14,6 +14,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from composition_platform import HostPlatform, host_platform
+from isolated_runtime import PrivateRuntime
 from managed_headless import object_fields, object_items
 
 CALLERS = frozenset({"forwardOnce", "mutualSecond", "aliasWrapper", "mutableAliasWrapper"})
@@ -48,6 +49,9 @@ LINUX_CORE_LIBRARIES = frozenset(
         "libz.so.1",
     }
 )
+LINUX_CORE_LIBRARY_DIRECTORIES = frozenset(
+    {Path("/lib/x86_64-linux-gnu"), Path("/usr/lib/x86_64-linux-gnu")}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +83,13 @@ class GradleInputs:
 
 
 @dataclass(frozen=True, slots=True)
+class CompilerResult:
+    javaHome: str
+    kotlinClassSha256: str
+    javaClassSha256: str
+
+
+@dataclass(frozen=True, slots=True)
 class ProbeReceipt:
     runtime: str
     fixture: str
@@ -91,6 +102,7 @@ class ProbeReceipt:
     host: HostIdentity
     restartedHost: HostIdentity
     gradle: GradleInputs
+    compiler: CompilerResult
     desktopProcessesBefore: tuple[str, ...]
     desktopProcessesAfter: tuple[str, ...]
 
@@ -179,6 +191,13 @@ def endpoint(root: Path, kind: str, identity: Path) -> Path:
     return root / "state/home/.kast" / kind / digest / "endpoint.json"
 
 
+def linux_core_library(path: Path) -> bool:
+    return path.parent in LINUX_CORE_LIBRARY_DIRECTORIES and (
+        path.name in LINUX_CORE_LIBRARIES
+        or re.fullmatch(r"libz\.so\.1(?:\.[0-9]+)+", path.name) is not None
+    )
+
+
 def live_host(
     root: Path, fixture: Path, target: HostPlatform, evidence: Path, case: str
 ) -> HostIdentity:
@@ -249,7 +268,7 @@ def live_host(
         external = tuple(
             value
             for value in libraries
-            if not Path(value).is_relative_to(root) and Path(value).name not in LINUX_CORE_LIBRARIES
+            if not Path(value).is_relative_to(root) and not linux_core_library(Path(value))
         )
         assert not external, external
     return result
@@ -308,7 +327,9 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
         "TMPDIR": str(root / "state/tmp"),
     }
 
-    def run(case: str, arguments: tuple[str, ...]) -> subprocess.CompletedProcess[bytes]:
+    def run(
+        case: str, arguments: tuple[str, ...], *, output_suffix: str = ".json"
+    ) -> subprocess.CompletedProcess[bytes]:
         command = (*prefix, *arguments)
         result = subprocess.run(
             command,
@@ -319,7 +340,7 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
             start_new_session=True,
             check=False,
         )
-        _ = (evidence / (case + ".json")).write_bytes(result.stdout)
+        _ = (evidence / (case + output_suffix)).write_bytes(result.stdout)
         _ = (evidence / (case + ".stderr")).write_bytes(result.stderr)
         _ = (evidence / (case + ".command.json")).write_text(
             json.dumps(asdict(Invocation(command, result.returncode)), indent=2) + "\n"
@@ -336,6 +357,46 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
         result = run(case, (kast, "stop", "--json"))
         assert result.returncode == 0, result.stderr
         assert fields(json.loads(result.stdout)).get("type") == "STOPPED", result.stdout
+
+    def compile_edited_fixture(fresh: str) -> CompilerResult:
+        kotlin_class = fixture / (
+            "forwarding/build/classes/kotlin/main/fixture/staticcallbacks/forwarding/ForwardingKt.class"
+        )
+        java_class = fixture / (
+            "invocation/build/classes/java/main/fixture/reference/usage/ReadJavaReferences.class"
+        )
+        assert not kotlin_class.exists() and not java_class.exists()
+        result = run(
+            "compiler-build",
+            (
+                task,
+                str(fixture),
+                "--",
+                "./gradlew",
+                "--no-daemon",
+                "--max-workers=2",
+                "--console=plain",
+                "--info",
+                "-Pkotlin.compiler.execution.strategy=in-process",
+                ":forwarding:compileKotlin",
+                ":invocation:compileJava",
+            ),
+            output_suffix=".stdout",
+        )
+        assert result.returncode == 0, "See compiler-build output and error logs"
+        java_home = str(PrivateRuntime(root, target).java)
+        output = result.stdout.decode()
+        assert f"[KOTLIN] Kotlin compilation 'jdkHome' argument: {java_home}\n" in output
+        assert f"Compiling with toolchain '{java_home}'." in output
+        kotlin_bytes = kotlin_class.read_bytes()
+        java_bytes = java_class.read_bytes()
+        assert kotlin_bytes.startswith(b"\xca\xfe\xba\xbe") and fresh.encode() in kotlin_bytes
+        assert java_bytes.startswith(b"\xca\xfe\xba\xbe")
+        return CompilerResult(
+            java_home,
+            hashlib.sha256(kotlin_bytes).hexdigest(),
+            hashlib.sha256(java_bytes).hexdigest(),
+        )
 
     assert not tuple((root / "state/home").rglob("trusted-paths.xml"))
     assert not tuple((root / "state/home/.kast").glob("*/**/endpoint.json"))
@@ -420,6 +481,7 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
             )
         changed = caller_names(complete(call("external-edit", CALLERS_QUERY)), fixture)
         assert len(changed) == 5 and set(changed) == CALLERS | {fresh}, changed
+        compiler = compile_edited_fixture(fresh)
         reused = live_host(root, fixture, target, evidence, "reused-host")
         assert (reused.pid, reused.started, reused.lifetime) == (
             original.pid,
@@ -463,6 +525,7 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
         original,
         restarted,
         gradle,
+        compiler,
         desktop_before,
         desktop_after,
     )

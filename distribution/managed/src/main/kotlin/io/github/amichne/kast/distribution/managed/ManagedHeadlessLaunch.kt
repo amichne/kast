@@ -111,7 +111,15 @@ private constructor(
                 "-Didea.system.path=${runtime.state}/system",
                 "-Didea.log.path=${runtime.state}/log",
                 "-Didea.plugins.path=${runtime.plugins}",
-            )
+            ) + linuxHeadlessOptions(runtime.launch.layout)
+
+        private fun linuxHeadlessOptions(layout: SelectedIdeLayout): List<String> =
+            if (layout == SelectedIdeLayout.LINUX_DIRECTORY) {
+                // The private headless Host does not observe the desktop theme or use its D-Bus session.
+                listOf("-Djbr.dbus.enabled=false")
+            } else {
+                emptyList()
+            }
     }
 
     @Serializable private data class Product(val launch: List<Launch>)
