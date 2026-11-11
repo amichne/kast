@@ -401,8 +401,8 @@
           "claim": "claim_8fbe8cf0364241bd9c44e5851da8c409",
           "resource": "repo://runtime/hosted/build.gradle.kts",
           "recordedVersion": "repo-file-v1:sha256:89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce",
-          "currentVersion": "repo-file-v1:sha256:89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:21da7d8f620af86f6005805d14c71af5db03416d8018761940d20164117ec4de",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_8fbe8cf0364241bd9c44e5851da8c409",
@@ -436,8 +436,8 @@
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
           "resource": "repo://runtime/hosted/build.gradle.kts",
           "recordedVersion": "repo-file-v1:sha256:89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce",
-          "currentVersion": "repo-file-v1:sha256:89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:21da7d8f620af86f6005805d14c71af5db03416d8018761940d20164117ec4de",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
@@ -450,15 +450,15 @@
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
           "resource": "repo://runtime/hosted/build.gradle.kts",
           "recordedVersion": "repo-file-v1:sha256:89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce",
-          "currentVersion": "repo-file-v1:sha256:89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:21da7d8f620af86f6005805d14c71af5db03416d8018761940d20164117ec4de",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_54f2a2e4c8df43fdae34c80ce389e8c6",
           "resource": "repo://runtime/hosted/build.gradle.kts",
           "recordedVersion": "repo-file-v1:sha256:89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce",
-          "currentVersion": "repo-file-v1:sha256:89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:21da7d8f620af86f6005805d14c71af5db03416d8018761940d20164117ec4de",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_54f2a2e4c8df43fdae34c80ce389e8c6",
@@ -478,7 +478,7 @@
           "claim": "claim_80ac4fa29f9f455b8b4ac1ee06966cfa",
           "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L465-L476",
           "recordedVersion": "repo-lines-v1:sha256:9672c50fc74cc1b6c84a3de8ad95c6c7c4140044f613ce063dc76b50d2d75db3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZDlmNzM0YmU1YWEwMzkzNWM0OTliNzE0MTEzNTVjZWZhYzJhMmJmNTc5ODllMTI0NmQzNWE3MzUyYzdlOWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMjNlZDEwMjlmYTE4YTc1Zjg5M2ZiNDFmZTYxOWE0MmZkNjI3ODk2M2QxMjM4NTUxYThiMGMzZTEwOTNiOGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzOGVhYzMzZmQzODU2YWUwN2UzZGUwZmUzNjQ2ZGY0YzQ5M2RmMTI0MGEwNDc5Mzg5ODJiMTI4MjM5MGE1YTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2YzRmNWI2ZDcyM2I4ODkyMmM1ZmFmZjUzNGU1NWY1Y2Y1YjkwZTc0MzMyZmZhM2VkZjBlOTZkZWFiNTgwOGYifQ",
-          "currentVersion": "repo-file-v1:sha256:5523485566421f84eb25ff86a1b8ccb28520d1eebdbeac252668f223d61ac7e1",
+          "currentVersion": "repo-file-v1:sha256:0364767aba5dda9da9425147e51121554ec32c3e4610e2baae4696e5e71c7fe0",
           "status": "NOT_ASSESSED"
         },
         {
@@ -492,8 +492,8 @@
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
           "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
           "recordedVersion": "repo-file-v1:sha256:5523485566421f84eb25ff86a1b8ccb28520d1eebdbeac252668f223d61ac7e1",
-          "currentVersion": "repo-file-v1:sha256:5523485566421f84eb25ff86a1b8ccb28520d1eebdbeac252668f223d61ac7e1",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:0364767aba5dda9da9425147e51121554ec32c3e4610e2baae4696e5e71c7fe0",
+          "status": "CHANGED"
         },
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
@@ -520,7 +520,7 @@
           "claim": "claim_9d5bbef224bb433b82205fb924c4dee4",
           "resource": "repo://runtime/hosted/build.gradle.kts#L242-L263",
           "recordedVersion": "repo-lines-v1:sha256:be87f4f1c05f9b5d7fc5cbd3b4ffc879d4affd9e302495db86734ca4b8096105:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2NDQ3YTlkNWU1YTBhOGE4OThiM2NlYTk0ZWRiNTY2ZWY0YzU5NGI4YzlmMTVmNGIxZGFjZWExZjk0ZTE0ZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZmYzk1MmNlNDI1NzM4YjNhNDgzMjM0NTI3ZWUyNWIwZjM1YWFiMzFkNDk4ZTQ0NjgyZWU1OGI0ZTZiNDM4ZjkifQ",
-          "currentVersion": "repo-file-v1:sha256:89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce",
+          "currentVersion": "repo-file-v1:sha256:21da7d8f620af86f6005805d14c71af5db03416d8018761940d20164117ec4de",
           "status": "NOT_ASSESSED"
         },
         {
@@ -723,8 +723,8 @@
           "claim": "claim_32d5f580987f4c30a6b4f8e4041f60f3",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt",
           "recordedVersion": "repo-file-v1:sha256:bf7e02000cdd33801f4b01529efaa544d5885d3b45a1b7fd4c9b30ecad7b7ede",
-          "currentVersion": "repo-file-v1:sha256:bf7e02000cdd33801f4b01529efaa544d5885d3b45a1b7fd4c9b30ecad7b7ede",
-          "status": "MATCHED"
+          "currentVersion": "repo-file-v1:sha256:b90d591d4e865d8bfbea8ba2b2db4334b6734ca072536a44075efffbcfcacb77",
+          "status": "CHANGED"
         }
       ]
     },

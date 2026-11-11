@@ -58,21 +58,25 @@ object KastPublicCliMain {
                         exitProcess(runPublicCliInvocation({ failure }, output).code)
                     }
                 }
-        exitProcess(
-            runPublicCliInvocation(
-                    {
-                        preparePublicCli(
-                            args.toList(),
-                            Channels.newInputStream(FileInputStream(FileDescriptor.`in`).channel),
-                            Path.of("").toAbsolutePath(),
-                            diagnostic = System.err::println,
-                        )
-                    },
-                    output,
-                    format,
-                )
-                .code
-        )
+        io.github.amichne.kast.distribution.cli.withPrivateContainerQuery(
+            System.getenv("KAST_MANAGED_HEADLESS_STATE")
+        ) {
+            exitProcess(
+                runPublicCliInvocation(
+                        {
+                            preparePublicCli(
+                                args.toList(),
+                                Channels.newInputStream(FileInputStream(FileDescriptor.`in`).channel),
+                                Path.of("").toAbsolutePath(),
+                                diagnostic = System.err::println,
+                            )
+                        },
+                        output,
+                        format,
+                    )
+                    .code
+            )
+        }
     }
 }
 

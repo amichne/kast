@@ -174,7 +174,7 @@ That option permits the Host to read that directory's Gradle properties, credent
 
 Queries from the workspace or its subdirectories prepare the private Host on demand.
 This covers a fresh start after a reboot or process exit. No login service is required.
-An explicit `stop` disables that restart until `resume` succeeds.
+An explicit `stop` disables that restart. `resume` enables it and attempts preparation.
 A missing or ambiguous workspace selection rejects; queries never grant trust or create records.
 Desktop-only installations keep their current route until you create a managed workspace.
 

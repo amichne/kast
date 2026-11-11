@@ -31,6 +31,7 @@ internal fun containerEnvironment(container: AdmittedContainer, inherited: Map<S
                 )
     }
     return retained +
+        inherited.filterKeys { it == "KAST_OUTPUT_TOON" } +
         mapOf(
             "HOME" to home.toString(),
             "JAVA_HOME" to java.toString(),

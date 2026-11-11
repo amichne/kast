@@ -118,12 +118,14 @@ class ContainerStoreTest {
                 mapOf(
                     "HOME" to "/foreign",
                     "KAST_INSTALL_IDEA_HOME" to "/desktop",
+                    "KAST_OUTPUT_TOON" to "0",
                     "JAVA_TOOL_OPTIONS" to "-Duser.home=/foreign",
                     "GRADLE_OPTS" to "unsafe",
                     "PATH" to "/usr/bin",
                 ),
             )
         assertEquals(gradle.toString(), env["GRADLE_USER_HOME"])
+        assertEquals("0", env["KAST_OUTPUT_TOON"])
         assertEquals(container.home.toString(), env["HOME"])
         assertEquals(container.configuration.toString(), env["KAST_CONFIGURATION_FILE"])
         assertFalse(env.containsKey("JAVA_TOOL_OPTIONS"))
