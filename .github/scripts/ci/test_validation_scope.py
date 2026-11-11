@@ -581,6 +581,30 @@ class SourceInventoryTest(unittest.TestCase):
             assembly,
         )
 
+    def test_stable_release_consumes_qualified_runtime_artifacts_from_its_own_run(self):
+        workflows = Path(__file__).resolve().parents[2] / "workflows"
+        release = (workflows / "release.yml").read_text()
+        self.assertIn("uses: ./.github/workflows/composed-linux.yml", release)
+        self.assertIn("needs: [version, runtimes]", release)
+        self.assertIn("version: ${{ needs.version.outputs.version }}", release)
+        self.assertIn("release_assets: true", release)
+        candidate = (workflows / "composed-linux.yml").read_text()
+        artifact = candidate.split("- name: Retain qualified runtime for stable release\n", 1)[1]
+        artifact = artifact.split("\n      - name:", 1)[0]
+        self.assertIn("if: inputs.release_assets", artifact)
+        self.assertNotIn("always()", artifact)
+        self.assertIn("build/composed-evidence/qualification.json", artifact)
+        self.assertNotIn("github.run_attempt", artifact)
+        self.assertLess(
+            candidate.index("Install and qualify the exact candidate"),
+            candidate.index("Retain qualified runtime for stable release"),
+        )
+        download = release.split("- name: Download qualified runtimes\n", 1)[1]
+        download = download.split("\n      - name:", 1)[0]
+        self.assertNotIn("run-id:", download)
+        self.assertIn("merge-multiple: false", download)
+        self.assertIn("--runtimes-directory", release)
+
     def test_validation_jobs_own_shared_cache_population(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
         self.assertFalse((workflows / "gradle-cache.yml").exists())

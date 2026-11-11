@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
+import zipfile
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
@@ -27,6 +30,53 @@ BUILD = "a" * 40
 MAIN = "b" * 40
 TREE = "c" * 40
 VERSION = "0.0.123"
+RUNTIME_TARGETS = ("linux-x86_64", "linux-aarch64", "macos-aarch64", "macos-x86_64")
+
+
+def runtime_fixture(
+    root: Path, target: str, fault: str = "", *, version: str, revision: str
+) -> None:
+    artifact = root / f"kast-release-runtime-v{version}-{target}-{revision}"
+    release = artifact / "composed-release"
+    evidence = artifact / "composed-evidence"
+    release.mkdir(parents=True)
+    evidence.mkdir()
+    name = f"kast-runtime-v{version}-{target}.zip"
+    archive = release / name
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr(
+            "manifest.json",
+            json.dumps(
+                {
+                    "kind": "KAST_RUNTIME_V1",
+                    "schemaVersion": 1,
+                    "version": "0.51.2" if fault == "version" else version,
+                    "platform": "linux-aarch64" if fault == "platform" else target,
+                }
+            ),
+        )
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    _ = (release / f"{name}.sha256").write_text(
+        f"{'0' * 64 if fault == 'checksum' else digest}  {name}\n"
+    )
+    _ = (evidence / "qualification.json").write_text(
+        json.dumps(
+            {
+                "sourceRevision": "0" * 40 if fault == "source" else revision,
+                "qualification": "NOT_RUN" if fault == "incomplete" else "COMPLETE",
+                "containers": (
+                    None
+                    if fault == "containers"
+                    else {
+                        "runtimeSha256": "0" * 64 if fault == "digest" else digest,
+                    }
+                ),
+            }
+        )
+    )
+    if fault == "bytes":
+        with archive.open("ab") as stream:
+            _ = stream.write(b"changed after qualification")
 
 
 @dataclass(frozen=True)
@@ -319,12 +369,14 @@ class CandidateFixture(unittest.TestCase):
                 )
                 script.consumed()
 
-    def run_stable_publisher(self) -> tuple[subprocess.CompletedProcess[str], Path]:
-        owned = Path(self.temporary.name)
+    def run_stable_publisher(
+        self, runtime_fault: str = ""
+    ) -> tuple[subprocess.CompletedProcess[str], Path]:
+        owned = Path(self.temporary.name) / (runtime_fault or "qualified")
         repository = owned / "repository"
         scripts = repository / ".github/scripts/release"
         scripts.mkdir(parents=True)
-        for name in ("publish-release.sh", "admit-source.sh"):
+        for name in ("publish-release.sh", "admit-source.sh", "qualified_runtime_assets.py"):
             shutil.copy2(Path(__file__).with_name(name), scripts / name)
         home, commands = owned / "home", owned / "bin"
         home.mkdir()
@@ -338,6 +390,15 @@ class CandidateFixture(unittest.TestCase):
             "*) exit 90 ;;\nesac\n"
         )
         gh.chmod(0o700)
+        mise = commands / "mise"
+        _ = mise.write_text(
+            f"#!{sys.executable}\n"
+            "import os, sys\n"
+            "assert sys.argv[1:8] == ['exec', '--', 'uv', 'run', '--locked', '--script', "
+            "'.github/scripts/release/qualified_runtime_assets.py']\n"
+            "os.execv(sys.executable, [sys.executable, *sys.argv[7:]])\n"
+        )
+        mise.chmod(0o700)
         environment = {
             "PATH": str(commands) + os.pathsep + os.defpath,
             "HOME": str(home),
@@ -370,6 +431,17 @@ class CandidateFixture(unittest.TestCase):
         remote = owned / "remote.git"
         _ = git("clone", "--bare", str(repository), str(remote))
         _ = git("remote", "add", "origin", str(remote))
+        runtimes = owned / "qualified runtimes"
+        for target in RUNTIME_TARGETS:
+            if target == "macos-aarch64" and runtime_fault == "missing":
+                continue
+            runtime_fixture(
+                runtimes,
+                target,
+                runtime_fault if target == "macos-aarch64" else "",
+                version=VERSION,
+                revision=revision,
+            )
         result = subprocess.run(
             (
                 "bash",
@@ -380,6 +452,8 @@ class CandidateFixture(unittest.TestCase):
                 revision,
                 "--assets-directory",
                 str(self.payload),
+                "--runtimes-directory",
+                str(runtimes),
             ),
             cwd=repository,
             env=environment,
@@ -397,7 +471,31 @@ class CandidateFixture(unittest.TestCase):
         observed = {
             Path(value.split("#", 1)[0]).name for value in arguments[3 : arguments.index("--repo")]
         }
-        self.assertEqual({asset.name for asset in self.value.assets}, observed)
+        archives = {f"kast-runtime-v{VERSION}-{target}.zip" for target in RUNTIME_TARGETS}
+        self.assertEqual(
+            {asset.name for asset in self.value.assets}
+            | archives
+            | {name + ".sha256" for name in archives},
+            observed,
+        )
+
+    def test_unqualified_runtime_rejects_before_release_creation(self) -> None:
+        for fault, reason in (
+            ("missing", "missing regular file"),
+            ("source", "qualification receipt lacks COMPLETE for the release source"),
+            ("incomplete", "qualification receipt lacks COMPLETE for the release source"),
+            ("containers", "qualification receipt lacks container evidence"),
+            ("digest", "published checksum differs from qualification digest"),
+            ("checksum", "published checksum differs from qualification digest"),
+            ("bytes", "runtime ZIP differs from qualification digest"),
+            ("version", "runtime manifest differs from release version or target"),
+            ("platform", "runtime manifest differs from release version or target"),
+        ):
+            with self.subTest(fault=fault):
+                result, uploaded = self.run_stable_publisher(fault)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(f"macos-aarch64: {reason}", result.stderr)
+                self.assertFalse(uploaded.exists())
 
     def test_missing_control_record_rejects_before_release_creation(self) -> None:
         name = f"kast-control-release-v{VERSION}.json"

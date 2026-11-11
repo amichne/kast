@@ -76,8 +76,12 @@ The [Devin blueprint reference](https://docs.devin.ai/onboard-devin/environment/
 
 ## Qualification and publication limits
 
+The stable **Release** workflow calls the candidate workflow with the resolved version and release commit.
+It publishes the qualified runtime ZIP and its SHA-256 file for each target.
+If a target lacks a matching qualification receipt or digest, the workflow stops before it publishes the release.
+
 Examine the retained evidence for each target and candidate digest.
-Publishing the archive and applying a Devin blueprint need separate authorization.
+Publication of a standalone setup archive and use of a Devin blueprint need separate authorization.
 
 Qualify the snapshot build in a separate disposable installation. Keep the reusable installation stopped and without workspace trust.
 An environment owner still needs to qualify a full Devin build and an inherited differential build.

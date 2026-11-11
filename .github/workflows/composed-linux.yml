@@ -18,6 +18,10 @@ on:
         default: false
   workflow_call:
     inputs:
+      release_assets:
+        description: Keep qualified runtime ZIPs for the calling stable release
+        type: boolean
+        default: false
       version:
         description: Exact numeric version for the candidates
         required: true
@@ -114,6 +118,7 @@ jobs:
         run: bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
 
       - name: Retain the assembled candidate
+        if: '!inputs.release_assets'
         id: candidate-artifact
         uses: actions/upload-artifact@v7.0.2
         with:
@@ -166,6 +171,20 @@ jobs:
             --runtime-archive "$runtime" --runtime-sha256 "$runtime_digest" \
             --root "$scratch/kc" --fixture "$scratch/kw" --evidence "$PWD/build/composed-evidence" \
             --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
+
+      - name: Retain qualified runtime for stable release
+        if: inputs.release_assets
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-release-runtime-v${{ inputs.version }}-${{ matrix.target }}-${{ github.sha }}
+          path: |
+            build/composed-release/kast-runtime-v${{ inputs.version }}-${{ matrix.target }}.zip
+            build/composed-release/kast-runtime-v${{ inputs.version }}-${{ matrix.target }}.zip.sha256
+            build/composed-evidence/qualification.json
+          if-no-files-found: error
+          overwrite: true
+          compression-level: 0
+          retention-days: 30
 
       - name: Admit the optional action revision
         if: ${{ !cancelled() && steps.candidate-artifact.outcome == 'success' && matrix.target == 'linux-x86_64' && inputs.action_revision != '' }}
