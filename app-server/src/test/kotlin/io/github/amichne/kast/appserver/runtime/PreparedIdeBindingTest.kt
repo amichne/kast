@@ -68,7 +68,14 @@ class PreparedIdeBindingTest {
             MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
                 "%02x".format(java.util.Locale.ROOT, it)
             }
-        val directory = Files.createDirectories(home.resolve(".kast/ide-hosted/$digest"))
+        val directory =
+            Files.createDirectories(
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                        home,
+                        io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.SEMANTIC,
+                    )
+                    .resolve(digest)
+            )
         Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
         val document =
             PreparedEndpointDocument(root = home.toString(), socket = directory.resolve("host.sock").toString())

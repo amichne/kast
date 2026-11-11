@@ -262,7 +262,7 @@ def test_bundle_round_trip_keeps_each_native_layout_before_installer_effects(
         )
         archive = owned / "bundle.tar.gz"
         support: Path | None = None
-        if target == HostPlatform.LINUX_X86_64:
+        if target.is_linux:
             support = owned / "support"
             for name in (
                 "lib/libfontconfig.so.1",
@@ -313,21 +313,17 @@ def test_bundle_round_trip_keeps_each_native_layout_before_installer_effects(
         monkeypatch.setattr(
             composed_bundle.platform,
             "system",
-            lambda: "Darwin" if target.value == "macos-aarch64" else "Linux",
+            lambda: "Linux" if target.is_linux else "Darwin",
         )
         monkeypatch.setattr(
             composed_bundle.platform,
             "machine",
-            lambda: "x86_64" if target == HostPlatform.LINUX_X86_64 else "arm64",
+            lambda: "arm64" if target.value.endswith("aarch64") else "x86_64",
         )
         assert install_bundle(archive, packed.sha256, destination, "0.0.0") == Rejected(
             Failure.INSTALLER_FAILED
         )
-        expected = destination / (
-            "runtime/Kast Analysis Host.app/Contents"
-            if target.value == "macos-aarch64"
-            else "runtime/kast-analysis-host"
-        )
+        expected = destination / target.layout.home
         assert visited == [expected]
         assert (expected / target.layout.product).read_bytes() == product.read_bytes()
         assert (expected / "lib/kast-product.jar").read_bytes() == b"fixture vendor bytes"

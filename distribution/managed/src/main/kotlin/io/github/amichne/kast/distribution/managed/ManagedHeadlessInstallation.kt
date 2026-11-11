@@ -32,6 +32,7 @@ private constructor(
     val userHome: Path,
     val plugins: Path,
     val assembly: ManagedHeadlessAssemblyRecord,
+    val gradleHome: Path,
 ) {
     val config: Path
         get() = plugins.parent
@@ -84,7 +85,28 @@ private constructor(
                 }
             if (plugins.toRealPath() != plugins || !plugins.startsWith(userHome))
                 return Refinement.Rejected(ManagedHeadlessInstallationFailure.INVALID_PATH)
-            return Refinement.Refined(ManagedHeadlessInstallation(launch, state, userHome, plugins, record))
+            val gradleHome =
+                when (val selected = readGradleHome(state, userHome)) {
+                    is Refinement.Rejected -> return selected
+                    is Refinement.Refined -> selected.value
+                }
+            return Refinement.Refined(ManagedHeadlessInstallation(launch, state, userHome, plugins, record, gradleHome))
+        }
+
+        private fun readGradleHome(state: Path, userHome: Path): Refinement<Path, ManagedHeadlessInstallationFailure> {
+            val path = state.resolve("gradle-home.json")
+            if (Files.notExists(path, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                return Refinement.Refined(userHome.resolve(".gradle"))
+            if (path.toRealPath() != path || !Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                return Refinement.Rejected(ManagedHeadlessInstallationFailure.INVALID_PATH)
+            val bytes = Files.newInputStream(path).use { it.readNBytes(MAXIMUM_RECORD_BYTES + 1) }
+            if (bytes.size > MAXIMUM_RECORD_BYTES)
+                return Refinement.Rejected(ManagedHeadlessInstallationFailure.INVALID_ASSEMBLY)
+            val gradle = Path.of(Json.decodeFromString<ManagedHeadlessGradleHome>(bytes.decodeToString()).path)
+            if (!gradle.isAbsolute || gradle.normalize() != gradle)
+                return Refinement.Rejected(ManagedHeadlessInstallationFailure.INVALID_PATH)
+            return if (gradle.toRealPath() == gradle && Files.isDirectory(gradle)) Refinement.Refined(gradle)
+            else Refinement.Rejected(ManagedHeadlessInstallationFailure.INVALID_PATH)
         }
 
         private fun admitPaths(

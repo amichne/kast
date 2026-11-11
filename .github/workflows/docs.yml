@@ -41,7 +41,7 @@ jobs:
           install_args: java node vale@3.24.0 vale@3.25.1
 
       - name: Verify parser and glossary contracts
-        run: python3 .github/scripts/ci/verify_documentation.py
+        run: mise exec -- python3 .github/scripts/ci/verify_documentation.py
 
       - name: Install locked Mintlify CLI
         env:

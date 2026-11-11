@@ -31,6 +31,18 @@ sources:
     resource: repo://cli/src/main/native-launchers/bin/kast-mcp
   - id: openwiki-source-75e91bf709db8b5e164b1b31
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
+  - id: openwiki-source-395b154f68f83030a7178a3d
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerCommands.kt
+  - id: openwiki-source-f05f898b365cdf39b2dad20e
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerManagement.kt
+  - id: openwiki-source-fb0010731e53bb0391a312a7
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryEntry.kt
+  - id: openwiki-source-a3d400e2149c937d7b2dafff
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryLease.kt
+  - id: openwiki-source-167d1a669da1a6f9cf901888
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryRouting.kt
+  - id: openwiki-source-dc8df2b070b8c6ba7da7a8f9
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt
   - id: openwiki-source-b6ffac113b6a09198425b019
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/GuidanceInstallation.kt
   - id: openwiki-source-4ea7092ecf62f475b11026f1
@@ -61,10 +73,10 @@ sources:
     resource: repo://packaging/isolated_runtime.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
-generated: { by: "codex", at: "2026-11-11T01:55:34.136Z" }
+generated: { by: "pi", at: "2026-11-11T11:08:36.331Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-11T14:25:07.841Z
 ---
 
 # Native management and harness connections
@@ -72,7 +84,7 @@ verified:
 ## The public command owner
 
 `KastManagementMain` parses the public native `kast` command.
-Its finite command model selects query dispatch, status, versions, guidance installation, lifecycle operations, upgrades, disconnect, or uninstall.
+Its finite command model selects query dispatch, workspace containers, status, versions, guidance installation, lifecycle operations, upgrades, disconnect, or uninstall.
 The `cli` module composes management and the private transport entry points in one native executable.
 Thin private launchers select their existing command and lifecycle owners without a JVM.
 Their internal command families do not add public semantic commands.
@@ -84,7 +96,26 @@ Status does not start Java, prepare a workspace, or contact a release server to 
 
 ## Private workspace commands
 
-`R/bin/kast-task WORKSPACE -- COMMAND [ARGS...]` grants or reuses trust for one exact workspace in a private installation.
+`kast container` lists workspace containers. `create`, `resume`, `stop`, and `rm` manage their private Hosts.
+Creation selects `--root` or the current directory and grants trust to that exact workspace.
+Overlapping workspace roots reject before runtime acquisition.
+Each record has private settings, indexes, logs, and a Gradle home; only runtime bytes are shared.
+An explicit `--gradle-home` selects an existing external directory instead.
+The store is the `kast-workspaces` sibling of the Control management root, outside its replaceable installation.
+
+Queries select a record from their current directory and prepare its Host on demand.
+They never create records or grant trust.
+Request-only `query plan` bypasses that routing and preparation.
+Stop writes a sticky fence before shutdown admission; an active query returns `BUSY` without lifting that fence.
+Resume removes the fence and attempts preparation.
+Parent and query-child reader leases protect private state until query completion, without holding the registry lock through semantic execution.
+
+`rm` requires the record's ID, stops the Host, and requires idle reader admission.
+It atomically detaches the record before removing private state without following links.
+The repository, shared runtime, and explicit external Gradle home remain outside that removal scope.
+These are process and profile boundaries, not an OS sandbox.
+
+The older archive entry `R/bin/kast-task WORKSPACE -- COMMAND [ARGS...]` grants or reuses trust for one exact workspace in a private installation.
 A conflicting grant rejects before command execution.
 The launcher starts the command in that workspace with the private environment and preserves its arguments and exit status.
 Ordinary queries do not grant workspace trust.

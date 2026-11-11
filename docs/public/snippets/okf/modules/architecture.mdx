@@ -31,7 +31,7 @@ Every module role requires its matching Gradle convention. Validated module poli
   Architecture policy names the exact distribution-to-SQLite edge and rejects general CLI-to-SQLite dependencies.
   The module keeps no IntelliJ, semantic, MCP implementation, or App Server implementation dependency.
   The `cli` module composes this management implementation through one named policy edge and produces the shared native Control executable.
-  Shutdown fence writes stay within the exact lifecycle effect owner.
+  Installation and container fence writes stay within their exact lifecycle effect owners.
 - The MCP launcher retains the hosted catalog and uses Kotlin MCP SDK tool annotations at its adapter boundary. Its one-call change tool submits the exact canonical plan identity to current native mutation admission.
 
 The App Server's direct login-agent publisher and the installation service lock are explicit scoped filesystem-write owners. The publisher writes or removes only the qualified per-user launchd entry; the lock serializes launchd start, retirement, and direct login resumption.
@@ -114,6 +114,10 @@ requires the hosted contract, without a host archive producer. Independent host
 assembly produces no control package, and independent control assembly produces
 no host package. Fresh-pair assembly composes both artifacts as an installation
 convenience; exact hosted contract equality governs communication.
+
+Host packaging takes local runtime JARs from Gradle's resolved project-artifact closure.
+It does not maintain a second filename list for project dependencies.
+The packaged SQLite and serialization libraries remain explicitly selected external artifacts.
 
 <a id="okf-modules-architecture-kotlin-semantic-coverage-gates" />
 

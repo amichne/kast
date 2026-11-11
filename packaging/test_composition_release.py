@@ -1,6 +1,9 @@
 """Release orchestration rejects unqualified inputs before creating output."""
 
+import hashlib
 import io
+import json
+import subprocess
 import tarfile
 import tempfile
 from pathlib import Path
@@ -11,6 +14,183 @@ import composed_release
 from composed_bundle import BundleFailure, BundleRejected, sha256
 from composed_release import ReleaseFailure, ReleaseRejected, assemble_release, qualify_release
 from managed_headless import Failure, Rejected
+
+
+def test_linux_support_includes_the_cpp_soname_required_by_the_arm_host() -> None:
+    assert composed_release.LINUX_PACKAGES.get("libstdc++6") == ("libstdc++.so.6",)
+    assert composed_release.LINUX_PACKAGES.get("gcc-12-base") == ()
+
+
+@pytest.mark.parametrize(
+    ("case", "failure"),
+    [
+        ("complete", None),
+        ("missing", ReleaseFailure.LINUX_PACKAGE_NOTICE),
+        ("escape", ReleaseFailure.LINUX_PACKAGE_LOCATION),
+        ("file-escape", ReleaseFailure.LINUX_PACKAGE_LOCATION),
+        ("version", ReleaseFailure.LINUX_PACKAGE_NOTICE),
+        ("duplicate", ReleaseFailure.LINUX_PACKAGE_INVENTORY),
+    ],
+)
+def test_package_local_payloads_and_shared_notices_keep_their_admitted_supplier(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    case: str,
+    failure: ReleaseFailure | None,
+) -> None:
+    root = tmp_path.resolve()
+    cpp, base = root / "cpp.deb", root / "base.deb"
+    for archive in (cpp, base):
+        _ = archive.write_bytes(archive.name.encode())
+    files = root / "support"
+    for name in ("lib", "licenses"):
+        (files / name).mkdir(parents=True)
+    sentinel = root / "foreign-notice"
+    _ = sentinel.write_bytes(b"preserve")
+    observations: dict[tuple[str, ...], str] = {("dpkg", "--print-architecture"): "arm64"}
+    for archive, name in ((cpp, "libstdc++6"), (base, "gcc-12-base")):
+        for field, value in (
+            ("Package", name),
+            ("Version", "different" if case == "version" and archive == base else "12.3.0"),
+            ("Architecture", "arm64"),
+            ("Source", "gcc-12"),
+        ):
+            observations[("dpkg-deb", "-f", str(archive), field)] = value
+    extractions = [cpp, base]
+
+    def output(arguments: list[str], *, text: bool) -> str:
+        assert text
+        return observations.pop(tuple(arguments))
+
+    def extract(arguments: list[str], *, check: bool) -> subprocess.CompletedProcess[str]:
+        assert check and not observations, "all metadata must be admitted before extraction"
+        archive = extractions.pop(0)
+        directory = archive.with_suffix("")
+        assert arguments == ["dpkg-deb", "-x", str(archive), str(directory)]
+        documentation = directory / "usr/share/doc"
+        documentation.mkdir(parents=True)
+        if archive == cpp:
+            library = directory / "usr/lib/aarch64-linux-gnu/libstdc++.so.6"
+            library.parent.mkdir(parents=True)
+            if case == "file-escape":
+                library.symlink_to(sentinel)
+            else:
+                _ = library.write_bytes(b"selected C++ runtime")
+            (documentation / "libstdc++6").symlink_to(
+                sentinel.parent if case == "escape" else Path("gcc-12-base")
+            )
+            if case == "duplicate":
+                duplicate = directory / "other/libstdc++.so.6"
+                duplicate.parent.mkdir()
+                _ = duplicate.write_bytes(b"ambiguous")
+        elif case != "missing":
+            notice = documentation / "gcc-12-base/copyright"
+            notice.parent.mkdir()
+            _ = notice.write_bytes(b"selected GCC notice")
+        return subprocess.CompletedProcess(arguments, 0)
+
+    monkeypatch.setattr(composed_release.subprocess, "check_output", output)
+    monkeypatch.setattr(composed_release.subprocess, "run", extract)
+    result = composed_release.prepare_linux_packages((cpp, base), files)
+    assert not observations and not extractions
+    assert sentinel.read_bytes() == b"preserve"
+    if failure is None:
+        assert isinstance(result, tuple)
+        assert tuple(item.package for item in result) == ("libstdc++6", "gcc-12-base")
+        assert result[0].files == ("lib/libstdc++.so.6",)
+        assert result[1].files == ()
+        assert result[0].archiveSha256 == hashlib.sha256(b"cpp.deb").hexdigest()
+        assert (files / "lib/libstdc++.so.6").read_bytes() == b"selected C++ runtime"
+        for name in ("libstdc++6", "gcc-12-base"):
+            assert (
+                files / "licenses" / (name + ".copyright")
+            ).read_bytes() == b"selected GCC notice"
+    else:
+        assert isinstance(result, ReleaseRejected)
+        assert result.reason == failure
+        assert list((files / "lib").iterdir()) == []
+    events = [json.loads(line) for line in capsys.readouterr().err.splitlines()]
+    assert [(event["stage"], event["outcome"]) for event in events] == [
+        ("LINUX_PACKAGE_ADMISSION", "STARTED"),
+        ("LINUX_PACKAGE_ADMISSION", "COMPLETE"),
+        ("LINUX_PACKAGE_EXTRACTION", "STARTED"),
+        ("LINUX_PACKAGE_EXTRACTION", "COMPLETE"),
+        ("LINUX_PACKAGE_PAYLOAD", "STARTED"),
+        ("LINUX_PACKAGE_PAYLOAD", "COMPLETE" if failure is None else "REJECTED"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("name", "version", "architecture"),
+    [
+        ("unreviewed", "12.3.0", "arm64"),
+        ("libstdc++6", "", "arm64"),
+        ("libstdc++6", "12.3.0", "amd64"),
+    ],
+)
+def test_package_identity_rejects_before_extraction_or_copy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    version: str,
+    architecture: str,
+) -> None:
+    archive = tmp_path / "unread.deb"
+    observations: dict[tuple[str, ...], str] = {
+        ("dpkg", "--print-architecture"): "arm64",
+        ("dpkg-deb", "-f", str(archive), "Package"): name,
+        ("dpkg-deb", "-f", str(archive), "Version"): version,
+        ("dpkg-deb", "-f", str(archive), "Architecture"): architecture,
+    }
+
+    def output(arguments: list[str], *, text: bool) -> str:
+        assert text
+        return observations.pop(tuple(arguments))
+
+    def forbidden(arguments: list[str], *, check: bool) -> subprocess.CompletedProcess[str]:
+        pytest.fail("rejected metadata cannot acquire an extraction capability")
+
+    monkeypatch.setattr(composed_release.subprocess, "check_output", output)
+    monkeypatch.setattr(composed_release.subprocess, "run", forbidden)
+    result = composed_release.prepare_linux_packages((archive,), tmp_path / "support")
+    assert result == ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_IDENTITY, "Linux support")
+    assert not observations and list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("error", "failure"),
+    [
+        (FileNotFoundError(), ReleaseFailure.LINUX_PACKAGE_IO),
+        (subprocess.CalledProcessError(2, "dpkg"), ReleaseFailure.LINUX_PACKAGE_PROCESS),
+    ],
+)
+def test_package_observation_failure_keeps_its_typed_stage(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    error: OSError | subprocess.SubprocessError,
+    failure: ReleaseFailure,
+) -> None:
+    calls = 0
+
+    def unavailable(arguments: list[str], *, text: bool) -> str:
+        nonlocal calls
+        calls += 1
+        assert calls == 1 and arguments == ["dpkg", "--print-architecture"] and text
+        raise error
+
+    monkeypatch.setattr(composed_release.subprocess, "check_output", unavailable)
+    result = composed_release.prepare_linux_packages(
+        (tmp_path / "input.deb",), tmp_path / "support"
+    )
+    assert result == ReleaseRejected(failure, "Linux support")
+    assert calls == 1 and list(tmp_path.iterdir()) == []
+    events = [json.loads(line) for line in capsys.readouterr().err.splitlines()]
+    assert [(event["stage"], event["outcome"]) for event in events] == [
+        ("LINUX_PACKAGE_ADMISSION", "STARTED"),
+        ("LINUX_PACKAGE_ADMISSION", "REJECTED"),
+    ]
 
 
 @pytest.mark.parametrize(

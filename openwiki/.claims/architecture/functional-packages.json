@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:aab90de75639bf75a55c3d2d6d99cef7da6e11c6d7dad90f40cd893149d4625d",
+  "pageVersion": "sha256:8b390af92aedbc05ad5ef90759943f73b6bc0b661fb695a2892b46845e589c97",
   "claims": [
     {
       "id": "claim_449573d278134379993a9d52760e0573",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-          "version": "repo-file-v1:sha256:5523485566421f84eb25ff86a1b8ccb28520d1eebdbeac252668f223d61ac7e1"
+          "version": "repo-file-v1:sha256:0364767aba5dda9da9425147e51121554ec32c3e4610e2baae4696e5e71c7fe0"
         },
         {
           "resource": "repo://settings.gradle.kts",
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
-          "version": "repo-file-v1:sha256:89105f2a50de92b31a727bbe7fbda6f0facea9ef7743edd944113d9c42f090ce"
+          "version": "repo-file-v1:sha256:21da7d8f620af86f6005805d14c71af5db03416d8018761940d20164117ec4de"
         },
         {
           "resource": "repo://topology/service/build.gradle.kts",
@@ -33,6 +33,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-09T12:12:21.037Z"
+    "at": "2026-11-11T10:38:11.930Z"
   }
 }

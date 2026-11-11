@@ -50,10 +50,12 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
   - id: openwiki-source-210e5a1fdf9d35bc022594a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
-generated: { by: "codex", at: "2026-11-04T23:27:44.986Z" }
+  - id: openwiki-source-167d1a669da1a6f9cf901888
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryRouting.kt
+generated: { by: "pi", at: "2026-11-11T10:52:58.442Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-11T14:25:07.841Z
 ---
 
 # Direct MCP and tool RPC
@@ -68,9 +70,10 @@ A stopped or unproved installation returns a typed rejection.
 
 The session routes public changes to the shared change owner.
 Read operations use the existing-IDE client and admitted public request.
-CLI and one-shot RPC invocation leave preparation to the typed operation demand.
+Within this session, CLI and one-shot RPC invocation leave preparation to the typed operation demand.
 Fresh discovery and diagnostics prepare the workspace.
-Issued source and retained-reference reads use existing authority without an eager preparation step.
+Issued source and retained-reference reads use existing authority without an eager session preparation step.
+Container management prepares the selected private Host before a cwd-routed query child starts.
 MCP and harness-neutral RPC choose different client protocols around that same session.
 Neither transport creates another semantic implementation.
 

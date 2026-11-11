@@ -12,13 +12,18 @@ import support.tasks.VerifyControlDistributionTask
 
 class VerifyControlDistributionTaskTest {
     @Test
-    fun `Linux Control requires an x86-64 ELF payload`() {
-        val arm = java.util.HexFormat.of().parseHex("7f454c460201010000000000000000000200b700")
-        val x86 = java.util.HexFormat.of().parseHex("7f454c4602010100000000000000000002003e00")
-        assertTrue(nativeQueryHeaderMatches(x86, "linux-x86_64"))
-        assertFalse(nativeQueryHeaderMatches(arm, "linux-aarch64"))
-        assertFalse(nativeQueryHeaderMatches(arm, "linux-x86_64"))
-        assertFalse(nativeQueryHeaderMatches(arm, "macos-aarch64"))
+    fun `each native Control target requires its own operating system and CPU header`() {
+        val headers = mapOf(
+            "linux-aarch64" to "7f454c460201010000000000000000000200b700",
+            "linux-x86_64" to "7f454c4602010100000000000000000002003e00",
+            "macos-aarch64" to "cffaedfe0c000001000000000200000000000000",
+            "macos-x86_64" to "cffaedfe07000001030000000200000000000000",
+        ).mapValues { java.util.HexFormat.of().parseHex(it.value) }
+        for ((platform, header) in headers) {
+            for (target in headers.keys) assertEquals(platform == target, nativeQueryHeaderMatches(header, target), "$platform -> $target")
+            assertFalse(nativeQueryHeaderMatches(header.copyOf(19), platform))
+            assertFalse(nativeQueryHeaderMatches(header, "unknown"))
+        }
     }
 
     @Test

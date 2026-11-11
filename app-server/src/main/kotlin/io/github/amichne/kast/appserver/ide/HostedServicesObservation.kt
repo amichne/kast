@@ -96,7 +96,11 @@ internal fun observeRunningHostedServices(
 ): HostedServicesObservation {
     val evidence = BoundedHostedAdmissionObserver(observer)
     return try {
-        val directory = home.resolve(".kast/ide-hosted")
+        val directory =
+            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                home,
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.SEMANTIC,
+            )
         if (!Files.isDirectory(directory, NOFOLLOW_LINKS))
             rejectedHostedAdmission(evidence, HostedAdmissionStage.ENTRY_FAMILY, ExistingIdeFailure.HOST_UNAVAILABLE)
         else

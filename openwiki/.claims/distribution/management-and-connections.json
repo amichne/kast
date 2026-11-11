@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:12403d5779287f5d011abaafce3e7b248d680d9fa0ba8f7d29a1b7f0f84d3db3",
+  "pageVersion": "sha256:350f03d32fb197a8e812b044253715b5af4958516d9fbca8cc315eb9206f185d",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "version": "repo-file-v1:sha256:1b7a305a0f7424a17b8ec65f194c7cf770fdce7e5663164a81e7abc73f4d97c1"
+          "version": "repo-file-v1:sha256:0494672526ca28d49c9ea17f28f7feae7f6632a559f037096cdb138712101a10"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
-          "version": "repo-file-v1:sha256:ec3dce108b7ef0c2a04fb552cff263ba39387d80b2744038f1dcc4738b089714"
+          "version": "repo-file-v1:sha256:695021b6d21c6319ced70b9829cb7bde0da97e2f708de7140d6516468470ccc5"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt#L36-L36",
@@ -170,7 +170,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:442ff968b0edf1ff1a74b9766393732e237258c382435e6850b362e3c3068398"
+          "version": "repo-file-v1:sha256:969ce00154f200601d7136f1d6f0f17c56c49383fedee99f5c1e5679a16bf995"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
@@ -184,7 +184,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/composed_bundle.py",
-          "version": "repo-file-v1:sha256:cf4736fb80ab39c3ddf676348c52c000f3ce3ddcb7bc1205c3b00124f53abf21"
+          "version": "repo-file-v1:sha256:5a7b10707e97c4d3321fa76088d824be49da2def27386fc6e9379d884dfa2ded"
         },
         {
           "resource": "repo://packaging/composed_bundle.py#L387-L387",
@@ -192,13 +192,71 @@
         },
         {
           "resource": "repo://packaging/isolated_runtime.py",
-          "version": "repo-file-v1:sha256:2a83aed75ab189ffe2342bb0874aa8f9d34dfdc56ff7ba4900e254b44ca5d60e"
+          "version": "repo-file-v1:sha256:a358c71b2d66a23f86400a154ad21e0b17dfb54e49640afb51c7ebbb8652e248"
+        }
+      ]
+    },
+    {
+      "id": "claim_43506772821b4853b86632cdf022aadf",
+      "statement": "Container creation binds one trusted canonical workspace to private profile and default Gradle state, rejects overlapping roots before runtime acquisition, and stores records outside the replaceable Control installation.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerManagement.kt#L10-L34",
+          "version": "repo-lines-v1:sha256:d1a74b23cb6d7823d2a6b6092f51f31b25ca11d0366885e778dc457f43814097:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1YmU3ZTRiNWY4MzQwODM1MTU4MzY2NDU3ODhiYzg1MTc3ZTFmZDYxMjA4MWYwMjkzYThhYmU3M2JhNWQ1YTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY5ZmNmODUwMDA4NTNhNzRiMjE2YzQzM2IyNzRmOWM4ODg3MmRmNDQwMWFlZjFkM2Q1ZjczM2E3MWM5OWU5YTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5Mjc1YzkxNGYzMGU4NTdlYTYzNTBjZTA4Yjk3YTQzODdiZjIwNjM5ODdkZGQzNjljOTlkMTVhNmI2MmIwZjIifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerManagement.kt#L124-L150",
+          "version": "repo-lines-v1:sha256:50140676b8ff9ce765d969958884a9affb2d7596386130525d989404f6128fc3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4ZjU3ZDYzZWE0YzJhZTRlOGI4N2M1ODVjYTMxZGExZDljMDg2YjJkMjgwZmUzYzhhMGVlYjdhOTAwYmE2MTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEyNDE2MTI0N2NmZDMzZjY4YjZmOTdjMDI2NjhjMWZhNTg5YjVkNDZlY2I1MTVhOTkxOGViYzI4ZjE2ZjdjM2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5YTExMTA3YTNjZmQ4NTM2YTI1NWUyOWM2OTI4ZWFhZWJjNGVhZDZmNWQyOGVhZDVkNWZiYjEzYjFkZGNiMjgifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt#L86-L236",
+          "version": "repo-lines-v1:sha256:f417d302f82ba6ad4c4f3e583b689426d651fa3ab4955c3abdd79e80e83cdc2b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjMzJkMTIyYmRmMTQ1ZjQ0NWE0MWUyMzVkNDNmYzk1MTU2NWJmNWNkNDVjMDU4MmRlMWNlZWQwMWZmYzczMTA1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJiYjQ4ZmZmYjhhY2RkOWIyMGZlZmI1YjBhMTNiNzU1YWU5YzI4YjBlMzk5ZjU3ZDg1NGNmYTc1NTBlYzI4ZjVjIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlMmNhOGJkNWExM2Q2ODMyNjhjMGE2YmNiZWVhMDg2YjljZjc2ODYwM2UxZTNlNGVlMGQxYWZkNThkMzFjNDAwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5MzZjNWEzOTU4ZjYxZGU1NzdjNWIwNzg2NDZkNDlkMjUyNjhiYTFiMjlhOTg3YjkwODQ3ODk4M2I0ODc1OTJlIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_40e0c4ac357543868187b7ce024f7005",
+      "statement": "Cwd-routed queries prepare an existing container on demand without granting trust. Parent and child reader leases protect query state; stop persists its fence before idle shutdown admission, and resume clears that fence before preparation. Request-only query plan bypasses container registry admission and Host preparation.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerManagement.kt#L185-L195",
+          "version": "repo-lines-v1:sha256:74f2539fea9c87a0b09b8e9bcd29f7d4a2e769597a06de34a1518f0601955808:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1YjMyZjZhMjE2M2EzNTA5Yjg1NDk3ZTkzMjhmOWYxMjRhMmY4ODc1MjY0ZTUwNjQ3NzJjOWU1Mzk5N2QxZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNhNzgzNmRiMmQxZDg2NzM0ZTk4ODhiNDZhZTBkNzBjZjQxZWI2ZjYyMmUxOGUwYTNmMmY5ZmQ1OTEyNWExNDYifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerManagement.kt#L258-L270",
+          "version": "repo-lines-v1:sha256:4880d1c9d9929c984e22f2d6354794a4d4ceeba13870660079aecfc461c54377:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1OTQwMDE2NmYzMDcxZTMzYmY5ZDdkZTM3Mjc4MTM0NWFlNGZlY2Q3NDI0YjZmODc5MjgzMWE2MjI0Mzk0ZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY3ODkzMzNjM2NjNmZlYmY4ZGFiYTg3OTNmMjZjYTE1YTQ0YmNmMjg2ZWM4NmMwMWViYmQzMGI5MDljOWRhZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwYmViNGJhOWY5ODUzNWY1NzBhYTJjNDY1NmJiZmM0NmU5N2QyZjUwMTg4MjBlNzdmZmNkNmZiMTY3OGJmYzMifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryEntry.kt",
+          "version": "repo-file-v1:sha256:6f35e1254ee9ce1c2efde0cdf51131495b5e66243b804f8afa8e19db39b06c2f"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryLease.kt",
+          "version": "repo-file-v1:sha256:d97e94d7ac80e1d456666d630f56fc4a39ddd0e6eff4d3f897472b058c9a204e"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryRouting.kt",
+          "version": "repo-file-v1:sha256:65406bf95afc9c6d22f948d60c4e58ab6cf7329847e48376bf406798cd5507b1"
+        }
+      ]
+    },
+    {
+      "id": "claim_a63ac14a36e8406099330069afa66d51",
+      "statement": "Container removal requires an ID, Host shutdown and idle reader admission, then atomically detaches the private record before no-follow deletion; repository, shared runtime and explicit external Gradle state are preserved.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerCommands.kt",
+          "version": "repo-file-v1:sha256:8add90c951b34da9f4a7b723d0849263beb25e1d5183c25c61a21bc793326fa9"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerManagement.kt#L197-L217",
+          "version": "repo-lines-v1:sha256:f39f7017f269637712cac5e8524b373188baaae066abc61b5326cebb763b02fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwNDk5ZjMxYWNlNGFmZjEyZmE1NTI2MDdiMThjNzY3ZDlhZjRjMzg5ZmI4NjYzZjM5MDllYTYyNWQyODA3ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlYjkyYTE5NTQzMDI5ZDNhZDdiODgyZDRjOTMxNjhjMGNjZDI0MjFjNGYxNTBlNDllMGMzY2Q5NWI1OGQ1YTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlMzM1MmFjNDA2MGMyN2JjZjg5MWRjNWM5N2RkMDk5M2UwNTdhYWE0ZTE0NDEzOTY0ODU5YzVmZjUzNmExYTgifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-11T14:25:07.841Z"
   }
 }

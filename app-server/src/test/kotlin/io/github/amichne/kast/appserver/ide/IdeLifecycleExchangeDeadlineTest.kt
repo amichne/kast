@@ -49,7 +49,12 @@ class IdeLifecycleExchangeDeadlineTest {
             ) {
                 "%02x".format(it)
             }
-        val socket = realRoot.resolve(".kast/ide-lifecycle/$digest/host.sock")
+        val socket =
+            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                    realRoot,
+                    io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
+                )
+                .resolve("$digest/host.sock")
         Files.createDirectories(socket.parent)
         Files.createFile(socket)
         var now = 0L

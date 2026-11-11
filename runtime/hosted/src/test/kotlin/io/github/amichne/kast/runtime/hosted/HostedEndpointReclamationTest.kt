@@ -20,6 +20,15 @@ import org.junit.jupiter.api.condition.OS
 
 class HostedEndpointReclamationTest {
     @Test
+    fun `long private homes do not consume the Unix socket path budget`() {
+        val home = Path.of("/Users/" + "workspace".repeat(40) + "/state/home")
+        val root = CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")) as Refinement.Refined
+        val directory = OwnedHostedEndpoint.directory(home, root.value)
+        assertTrue(directory.resolve("host.sock").toString().toByteArray().size <= 100)
+        assertTrue(directory.startsWith(Path.of("/tmp").toRealPath()))
+    }
+
+    @Test
     @EnabledOnOs(OS.LINUX)
     fun `unreaped zombie endpoint is reclaimed without signalling its parent`() = fixture { directory, root, host ->
         val parent =

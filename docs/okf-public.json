@@ -1794,7 +1794,7 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "c329581a5a3166a9588101f20da33f735baa25c097bd98c752e27df6bc5eafbb"
+          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -1884,7 +1884,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "72fef3119c818354086fc6e6f04e5dfffb2d4f13"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "architecture/change-lifecycle",
@@ -2433,7 +2433,7 @@
         },
         {
           "path": "docs/public/snippets/okf/modules/architecture.mdx",
-          "sha256": "376f09bd068854a0acb618066cf2a92a43765258831400ed9142a2539132ca8d"
+          "sha256": "6f030d3b82dbfa19f047c313c8ae881c96326cf8893a6599a128332882d86be7"
         },
         {
           "path": "docs/public/snippets/okf/runtime/hosted-composition-and-publication.mdx",
@@ -2498,7 +2498,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "explanation",
@@ -3131,7 +3131,7 @@
       "content": [
         {
           "path": "docs/public/glossary.mdx",
-          "sha256": "52d79faed75b4fd80c876558647a424d0167156b181e4fe668979aa97e37bd6d"
+          "sha256": "f33d23357de78750087396ad211e408cc7a005f88255f3902d9d12dbb1b7d322"
         }
       ],
       "claims": [
@@ -3189,15 +3189,20 @@
           "page": "openwiki/glossary/refinement.md",
           "claimId": "claim_27d857d1f82243f48c7cd8703f8c84fa",
           "statementSha256": "c21bccf371c837df7e89c46fcaa1c341babfe7442f0e5c605b2af9e5fbcd2b23"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_43506772821b4853b86632cdf022aadf",
+          "statementSha256": "c587ac215416e134a190c666b7a107f73a58962d864f89effc858c2e4382da27"
         }
       ],
       "generatedOwners": [
         {
           "path": "docs/glossary.json",
-          "sha256": "5e85a62d08f75c022c04e4bf4621c2c076e223e325b5e9aa2a918a024d752c58"
+          "sha256": "2e99249970018c5775311fd0c98b903fb3669ad3afb77adba98b29cfe8145571"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "how-to",
@@ -5852,7 +5857,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "24967e8c1723b0c621c4c9d5cc9b5e5f3542a1a8a28600f3790c6eb6ce22fa27"
+          "sha256": "98ab95d862930a416172a9c81b2a4bfa93d1ec176b4bedd17482e9ab146809c3"
         }
       ],
       "claims": [
@@ -6159,7 +6164,7 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "c329581a5a3166a9588101f20da33f735baa25c097bd98c752e27df6bc5eafbb"
+          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -6240,7 +6245,7 @@
         },
         {
           "path": "cli/native-image.args",
-          "sha256": "f18c5706a1e604f38b1c30cc7ecc7e01f81535cb0a27c868dfce929c0b03fb5f"
+          "sha256": "a93337d71148df6e05544487d9797baae67b72a764e4930f6c8c6ae988e17f1d"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt",
@@ -6248,7 +6253,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt",
-          "sha256": "9b98cee4aaf49e5374d16a105678fcfb6c38e4d6b95c4e70fcd1b8badd21898c"
+          "sha256": "d4a7015ce96f002f6887fc0d694360f6737d5f8464df60bf41c43fa7e9fea295"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt",
@@ -6340,11 +6345,11 @@
         },
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "sha256": "1b7a305a0f7424a17b8ec65f194c7cf770fdce7e5663164a81e7abc73f4d97c1"
+          "sha256": "0494672526ca28d49c9ea17f28f7feae7f6632a559f037096cdb138712101a10"
         },
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
-          "sha256": "ec3dce108b7ef0c2a04fb552cff263ba39387d80b2744038f1dcc4738b089714"
+          "sha256": "695021b6d21c6319ced70b9829cb7bde0da97e2f708de7140d6516468470ccc5"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt",
@@ -6399,7 +6404,7 @@
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "aa550bd1b0dff38eb492d20df0658bb62cf44512"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "reference/compatibility",
@@ -6836,7 +6841,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "91e0d4e6faa47f911fa4ad7812a78a32af2b0b73648841be7f83ec96e8f8e544"
+          "sha256": "4c40ad27b30523c5366474e725dee4bfdbfd9f21d9c49af8ad38551c9b69caf0"
         }
       ],
       "claims": [
@@ -7028,12 +7033,12 @@
         {
           "page": "openwiki/modules/distribution.md",
           "claimId": "claim_62b31492f84b4a84a50c056fff0156c3",
-          "statementSha256": "5079a997419768a4119308361073c9ed5cc8a58b6f813159846b670104c987b0"
+          "statementSha256": "c463ee4f3826b731b9005c0bb96a9458b97bff885917abff2b8dfdbc974ccf01"
         },
         {
           "page": "openwiki/modules/distribution.md",
           "claimId": "claim_a65551bb99e948b0912765c1a8eb46a7",
-          "statementSha256": "09b56cc670ff766af2979239af4cc6a9df0ace90633e04a620083274ed1ea29d"
+          "statementSha256": "682ac3c20bd561e18d895d5bd1274bfe92f33ef18d90922249f72e8575fb767d"
         },
         {
           "page": "openwiki/modules/distribution.md",
@@ -7044,6 +7049,26 @@
           "page": "openwiki/modules/runtime-hosts.md",
           "claimId": "claim_4355a3dd210f486089d2cc63cd760a4b",
           "statementSha256": "c3ad3b69dc0902cb0da7077ea5b6d50f748c0a1db21373164e18938c260eca66"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_43506772821b4853b86632cdf022aadf",
+          "statementSha256": "c587ac215416e134a190c666b7a107f73a58962d864f89effc858c2e4382da27"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_40e0c4ac357543868187b7ce024f7005",
+          "statementSha256": "6829184042e2ff2fea5ee79fdd122589a85accfc1b965dc9b91c3ccdc848a6b8"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_a63ac14a36e8406099330069afa66d51",
+          "statementSha256": "e1c064c1c048cbf34bd52ab4f5295df4728ba6b5a98202258cdc514ba165a3eb"
+        },
+        {
+          "page": "openwiki/modules/distribution.md",
+          "claimId": "claim_ad749fc7207f474da8f752c4f6b90d19",
+          "statementSha256": "49285c34b39df65a3141a5a3c0e0c8b8f42c0f64ff0eceeedacc6ccf7b9d008b"
         }
       ],
       "generatedOwners": [
@@ -7056,7 +7081,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "aa550bd1b0dff38eb492d20df0658bb62cf44512"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "reference/integrations",
@@ -7105,7 +7130,7 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "c329581a5a3166a9588101f20da33f735baa25c097bd98c752e27df6bc5eafbb"
+          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -7183,7 +7208,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "72fef3119c818354086fc6e6f04e5dfffb2d4f13"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "reference/internals/architecture",
@@ -8453,7 +8478,7 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "c329581a5a3166a9588101f20da33f735baa25c097bd98c752e27df6bc5eafbb"
+          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -8521,7 +8546,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "reference/models/diagnostic",
@@ -12713,7 +12738,7 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "c329581a5a3166a9588101f20da33f735baa25c097bd98c752e27df6bc5eafbb"
+          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -12781,7 +12806,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "reference/schemas",
@@ -14149,7 +14174,7 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "c329581a5a3166a9588101f20da33f735baa25c097bd98c752e27df6bc5eafbb"
+          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -14242,7 +14267,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "aa550bd1b0dff38eb492d20df0658bb62cf44512"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "reference/staleness",
@@ -15249,7 +15274,7 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "c329581a5a3166a9588101f20da33f735baa25c097bd98c752e27df6bc5eafbb"
+          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -15322,7 +15347,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "start",
@@ -15785,7 +15810,7 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "c329581a5a3166a9588101f20da33f735baa25c097bd98c752e27df6bc5eafbb"
+          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -15853,7 +15878,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "aa550bd1b0dff38eb492d20df0658bb62cf44512"
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "troubleshooting",

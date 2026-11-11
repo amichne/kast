@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+  "pageVersion": "sha256:717824e1b0bac111e2a0bdf296fa09852eca19d537c9ed4c6f565025e238b6d9",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -79,7 +79,7 @@
           "version": "repo-lines-v1:sha256:1f809cbe56fb43c60678bb4eae7c28529eb3d35c334884cafdf85acb755f73c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNGU0NWUyOWRhNjc2ZGM0MDVkODNiN2Q2MDVjMjE0MmRjYTZhZjU0N2NmNDVhMzZkM2JlY2NlNDE2NDQ0MTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOTgwZTUxYjM3MTQzYjdmMjhlN2M1ZmVkMzIxYzcxYjhiNjIyYzdiZjc4ZmFiMWUzMzg3NWNmMWVkZjU2OTUifQ"
         },
         {
-          "resource": "repo://build.gradle.kts#L225-L263",
+          "resource": "repo://build.gradle.kts#L227-L265",
           "version": "repo-lines-v1:sha256:64d31b63bafcae0d3882982679ca4a806d4b79df6159b4913d0e93046927a286:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZThlNDk0NDUxZmQ4OTQ2YWZhNDU2NWVmNmYwYjJkYjQ4MzU1MjYyNjA2N2Y3NDdhYjlkMDJhMTA3ZmQ3MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxOWQyZTA0ZGIwYzViYWUyMjVlYzllOGY0MDgzN2U3OGQwZmIxYmQ2YzViMmQ0ZGQxOTkxNDAzN2I1Mzk3OGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhZjU1Y2ExMjEzYzlmNzQxYzc4ODNiNTJmMDhhNmExYTZkYjFhM2Y3YWNlMGY2MmZkOThlZjU3Y2RlODQzMTMifQ"
         },
         {
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:442ff968b0edf1ff1a74b9766393732e237258c382435e6850b362e3c3068398"
+          "version": "repo-file-v1:sha256:969ce00154f200601d7136f1d6f0f17c56c49383fedee99f5c1e5679a16bf995"
         },
         {
           "resource": "repo://packaging/test-installer-removal.py",
@@ -161,7 +161,7 @@
       "statement": "Assembled-product acceptance stages production Control in an owned HOME, verifies canonical cold staging and publication, then stages the receipted Host, creates an empty canonical mutation database and invokes the real published native uninstall, requiring owned Host, Control, public executable and user-state removal while preserving an unrelated sentinel; it does not establish live IDE or Codex behavior.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L320-L342",
+          "resource": "repo://build.gradle.kts#L322-L344",
           "version": "repo-lines-v1:sha256:6366f949b15984bbe3fba1eb501f9309ba9eff04aa84b54b15edc1e14251b190:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2ZDI0M2MyODA1ZDU3ZTJlNjEwMGQzMmJkMmU0MmQwYjNkMWJiYTMwMzdlMWU3MWZiZjI5OGNlZDZkN2M3MTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMmM1MTE5MzI3MjZkMjc5MTVmMDlhZGUxNTlmMThlZjE3NjkzYzY2ODk3NGZjZjg0MDQ0YmE3YzRmMTU5N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliNmI4NWNjZjViMGE2NWUyZmUyMWUzZjMwNDA4MDE2YjVlZGZmZTAxYjhmMTc2YjBmMzk0MmNhODcyZGQ3ZmUifQ"
         },
         {
@@ -252,11 +252,11 @@
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:442ff968b0edf1ff1a74b9766393732e237258c382435e6850b362e3c3068398"
+          "version": "repo-file-v1:sha256:969ce00154f200601d7136f1d6f0f17c56c49383fedee99f5c1e5679a16bf995"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:460d1a1a06dd7976149ce1d427dd3ccb11d7798a3bb034664abd8a20fead6656"
+          "version": "repo-file-v1:sha256:c242bf055f357b10e2db2dde89b9e64e84dccb8fae1ccf11d4dd526f39f0aa73"
         }
       ]
     },
@@ -374,7 +374,7 @@
         },
         {
           "resource": "repo://cli/native-image.args",
-          "version": "repo-file-v1:sha256:f18c5706a1e604f38b1c30cc7ecc7e01f81535cb0a27c868dfce929c0b03fb5f"
+          "version": "repo-file-v1:sha256:a93337d71148df6e05544487d9797baae67b72a764e4930f6c8c6ae988e17f1d"
         }
       ]
     },
@@ -573,11 +573,11 @@
       "statement": "Managed headless assembly admits pinned inputs and a new owned root, then uses the existing installer with private state. Assembly alone grants no Host readiness.",
       "evidence": [
         {
-          "resource": "repo://packaging/managed_headless.py#L187-L233",
+          "resource": "repo://packaging/managed_headless.py#L184-L230",
           "version": "repo-lines-v1:sha256:ce158195f144a3e5b2b31bcb9424af6e4779113f44d1d936cdca670e5750635b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhMGFjMjIzMjM4NjQ5Mjg2MGZkOGE5ZmNjODk3YzIyYTBiYjdlMzMxMzc2YzI0YWFmYWYwNjY1MzE4YjUzNDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4MjFlNzQ5OWI2YzliMzgwNDRkOWZlYzgwMjQyMTQzODUwMDU1MmFhMWQ0ZGJjNmUyMDk4ZTdkZTA5ZGRjYzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlMjE5ZWJlNzE4OTkwNGMwODU3MDkyYmEzMzMwMDQyNDU0N2U0MjkzZmUwNTdkMjk4MDBjMzQ5OGVlOGY5YzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlMjE3ZjAxMzYxMTcyODQ4OTc5OGViMzk5MjFkOGJmZDYyY2I4NzcwMDc4MWM2ODQ4ZTUwYzM5NjlmYmVhOGIifQ"
         },
         {
-          "resource": "repo://packaging/managed_headless.py#L573-L657",
+          "resource": "repo://packaging/managed_headless.py#L570-L654",
           "version": "repo-lines-v1:sha256:011e7b6df2d45463b89fde31843200e68d6f315dcc90c3b5a7e9d2e43b9ffe5b:eyJzZWxlY3RlZExpbmVDb3VudCI6ODUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjOGY4OTcyZGQzOGI2OGYwMzY1ZTRiNjFlNzhlMzIzYjZiNmMzNDkxMWI2M2YyOGRhNzM1ZjRhMDJiM2I2NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4Y2ZjMDRkZTg5NzRlZTRmYmNkZjY2MzQxNWIwZWE5NWE5YTc1NDc3NzJiMmUxZDMyNGExM2ViZjI0OThjYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1Mzg0YTlhMDVmZmJmNzc3NmQwMTNlNWFkNDFlODA4ZTE0YWQ5YTUzN2VmNjdjNzdhYWNmOGE3MWM4NTRhZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0OGQxYWZjZDFiMjQ1N2EyZjQ3NjZkNDg2YmY5MTZiYmEzN2UyM2ZiMzZiNTczNjA0YWIxMjhkNmQ4OGQxZWQifQ"
         }
       ]
@@ -587,11 +587,11 @@
       "statement": "Whole-plugin exclusions reject unknown IDs, Host roots, and dependencies of kept plugins. The manifest records input digests, component decisions, and exact kept or removed files.",
       "evidence": [
         {
-          "resource": "repo://packaging/managed_headless.py#L417-L440",
+          "resource": "repo://packaging/managed_headless.py#L414-L437",
           "version": "repo-lines-v1:sha256:1f889d7210f3676246bc3151c86867b0d393dc0d4904c5c657e70cd5ec0d3830:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNWZmYTI0NTVmMWFiNzI5MzM1MDRiYjIxY2Y2MjViMjMxZjQ4MGRkMzVmMDVjMmUxYTE4NzRlZmJkYzZmNTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhOGI5Y2MwZmJmZGU2Y2ZlMGRiNjFlMTBjOGFmYTkzNzg4NDkxZTY5ZWViZGRhMjJkNWZjOWUzODkxODNlMzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmNTc5MTkwMmUzZjM2MGVjNjUxNzBiZjNlYzFjMzBjZDVhZjhkZmYzMjBjY2NmYzhjNDQ3NzdiOGY3Y2Y2ODgifQ"
         },
         {
-          "resource": "repo://packaging/managed_headless.py#L458-L522",
+          "resource": "repo://packaging/managed_headless.py#L455-L519",
           "version": "repo-lines-v1:sha256:82e3bc9fa0a82be018d1d9654130293e9bf4a7a7d88b4506c95e8d706dc68260:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkNDMyNzI4NmIyOWE1MTMzY2MxNWFmOTBlYWM1YTU1MjQzZDM3MDVhMWQzMDllNzY3YTNjNmMwZjllNGFhNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzYTRmMmNjYzBmYzIxNTJlMjYzZmIzNGVlMzc5NWQyZjIwOWFjYjIzOWQxNDM4OTZkMmZkZDc2OTE3ODY2MjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhOGI5Y2MwZmJmZGU2Y2ZlMGRiNjFlMTBjOGFmYTkzNzg4NDkxZTY5ZWViZGRhMjJkNWZjOWUzODkxODNlMzYifQ"
         },
         {
@@ -605,8 +605,8 @@
       "statement": "Selected IDEA metadata admission accepts reviewed 262 and 263 release lines while preserving canonical home and executable selection.",
       "evidence": [
         {
-          "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt#L199-L264",
-          "version": "repo-lines-v1:sha256:93385aa7426e801a00518b968daf887825e98f0d802d1642224b84858b4e0a3e:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0YTk1YzI5OGYxNzA2NDI3Y2QzOTlkODFmZTE3MWEyMWRlZjQ5M2I5MDFkNjliMjNjZDgwNGNhYjc1NWUyZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3YTZkOGY1OTM5ZjYxMjY3M2I3MGU4Mjk0YWE3NWQyYTg1MjRmNDE0MDgwMmExY2E1ZjdmNTc4ZTgxYzU5OWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0ZTNlODBlZDNmOTY2YzA1ODE2ODAyNmVjZTY5ZDRkODBiY2E4MmQ4N2RlMjM2NDkyZDA4ZjIxNDIyZWEzZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQxZTZlYTFjNmM5MDliNzNhYWNhMDUwMDVhMWQ1ZGNiYjRmZTBhODUzNTFlMDdkOTQ2OTY1NmUyNjhmYWI0MDkifQ"
+          "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt#L199-L260",
+          "version": "repo-lines-v1:sha256:d31558b8181303cd25cf43f743baff74216e107bc7c67db7d7e78aee5472da9c:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg0YTk1YzI5OGYxNzA2NDI3Y2QzOTlkODFmZTE3MWEyMWRlZjQ5M2I5MDFkNjliMjNjZDgwNGNhYjc1NWUyZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3YTZkOGY1OTM5ZjYxMjY3M2I3MGU4Mjk0YWE3NWQyYTg1MjRmNDE0MDgwMmExY2E1ZjdmNTc4ZTgxYzU5OWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0ZTNlODBlZDNmOTY2YzA1ODE2ODAyNmVjZTY5ZDRkODBiY2E4MmQ4N2RlMjM2NDkyZDA4ZjIxNDIyZWEzZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQxZTZlYTFjNmM5MDliNzNhYWNhMDUwMDVhMWQ1ZGNiYjRmZTBhODUzNTFlMDdkOTQ2OTY1NmUyNjhmYWI0MDkifQ"
         }
       ]
     },
@@ -623,11 +623,11 @@
           "version": "repo-lines-v1:sha256:a180f5d8bfc8458d8fa8d7a4c7620dd0ed11a64a54c57db75928121ed8f28e69:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmYzMTI3NzAxYmNiY2E1OTlhZmQzOGM4MTM5MjQ0MTliOWU0MmIyYWNlNGE3ZmRlOWNmN2ZhODhlMGRjZjZlYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzhiMTYwMjE3ZTcwYTVhZmVhYWRlODk1ODg5YWFkMGQzODVkZTFjMjg0MmJiYTExM2I3MThmM2I0NGYyMWE3NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTFhOWYzYzQxZWEwODJkNmRhM2FjMTE0OGQzNDZhYWRlZDQwZjgwZGFlMWIyZTllNThhMzIzODQ3ODNlZDEzZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDNjNzkwZjM5MDg5YTkzNGIxNzI2N2I1ZDIzZDk4YmYxYjQ2NWIyZjc1ZTA1YmI5NGFlOWQxY2Y2MTEyODFjYSJ9"
         },
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L141-L147",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L142-L148",
           "version": "repo-lines-v1:sha256:0cc2ab74db17804167c7a6d0b53da6e128c898371abd3522f26f638069f18f18:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDkyMGY4NzJjNGFlNThlMWZiMTUyN2YzYjA5NzRlYWMxMWY0M2NhYzZkMjkxMDA5MjZhNGM1YmNjYTY5MGMzNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWEwMzVjZjYxOTdlOGU2MTkwNDUyMzBlY2U0YWM5ODE0MmFlYzI0ZDVmN2YxMTA4MmYyNzYwMDVlZTg3M2E0YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDdlNTE3MzE3YTgwYzQ1NmQwYzY3MTZkZmUzOWI1MzgzZGE2ZTQ4NDdkMzFiOGVhMWZhNTk3ZGNlZjhlOTUwZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmJhN2Y2MGNkZDkzYTM4YjQ1ZDYyYThlZmU1YTI1MTE4Y2ExOGYyZDNlNWFjNDQwMzQxNmIyMTlkNWE1NjhjOSJ9"
         },
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L204-L238",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L177-L211",
           "version": "repo-lines-v1:sha256:f7b953a6ea3ff19a23bc9edab436e771ae302989c7514823569f5f5820ee881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MWVhZWZmMDczZGYwYTFiYjI1ZTYzODllMGEyN2QxYTQxNWRjZDhkOGJjOGYxY2E5MDQ3NjJiNWQ3NzM3OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDJmZWE4MjFlNjZiYjIzODFhZTc4MzMyNTllYmU0NTcyZWFlYmViNjNiNmI5M2NkZWQzYWVkY2FkNzRlYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEifQ"
         }
       ]
@@ -664,7 +664,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:442ff968b0edf1ff1a74b9766393732e237258c382435e6850b362e3c3068398"
+          "version": "repo-file-v1:sha256:969ce00154f200601d7136f1d6f0f17c56c49383fedee99f5c1e5679a16bf995"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
@@ -674,41 +674,49 @@
     },
     {
       "id": "claim_62b31492f84b4a84a50c056fff0156c3",
-      "statement": "The complete native archive includes the composed Host, bundled JBR, and matching Kast components. The same setup-kast.pyz installer admits macOS ARM64 and Linux x86-64 archives by digest before the shared private installer runs.",
+      "statement": "Complete setup archives contain the composed Host, bundled JBR and matching Kast components. Assembly and digest admission cover macOS and Linux on AArch64 and x86-64 before the shared private installer runs; those contracts do not establish native execution on each platform.",
       "evidence": [
         {
           "resource": "repo://packaging/composed_bundle.py",
-          "version": "repo-file-v1:sha256:cf4736fb80ab39c3ddf676348c52c000f3ce3ddcb7bc1205c3b00124f53abf21"
+          "version": "repo-file-v1:sha256:5a7b10707e97c4d3321fa76088d824be49da2def27386fc6e9379d884dfa2ded"
         },
         {
           "resource": "repo://packaging/composition_platform.py",
-          "version": "repo-file-v1:sha256:ee8c42379f51c0305bccbeacd6b36e0b20c9ad8ef3ce6973ddfecffb35a271bc"
+          "version": "repo-file-v1:sha256:99365f0de14523ec7bc7a71ca567fd26b91cd35efee17dc339f01ea337b5ee10"
         },
         {
           "resource": "repo://packaging/managed_headless.py",
-          "version": "repo-file-v1:sha256:e67ac17030f3e450e58a89b5a941843053f8a39ba971037628c1fec4e72b6e43"
+          "version": "repo-file-v1:sha256:03301f67fab0b880ee0d3190004adec420c3c4d7db52ce8f48a53d6403c5c430"
         },
         {
-          "resource": "repo://packaging/managed_headless.py#L566-L566",
+          "resource": "repo://packaging/managed_headless.py#L563-L563",
           "version": "repo-lines-v1:sha256:e21a0be654cef76854077b51fa5b910454fe1186cd20954999b115682a073379:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTIxYTBiZTY1NGNlZjc2ODU0MDc3YjUxZmE1YjkxMDQ1NGZlMTE4NmNkMjA5NTQ5OTliMTE1NjgyYTA3MzM3OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTIxYTBiZTY1NGNlZjc2ODU0MDc3YjUxZmE1YjkxMDQ1NGZlMTE4NmNkMjA5NTQ5OTliMTE1NjgyYTA3MzM3OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDcwMTQ5ZTA2OWFkNjdlY2NmNDczNjQ2ZmYxYzc1MDA1MGQzMjlkMTEwMDE4ZGM1NzY2ODc4ZWFmYTFkNjA3ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWJhYzZmOTI1MDA1M2Q4MTczYWRmZGIzNzFlY2ZlMGZhZmYzZjFlMTk3YTNlNGRhMGMyNGYxYjRlNDEwY2FmOSJ9"
         }
       ]
     },
     {
       "id": "claim_a65551bb99e948b0912765c1a8eb46a7",
-      "statement": "The private installation has a fixed root identity. Its socket path uses the existing byte limit.",
+      "statement": "The private setup installation keeps a fixed root identity. Host and lifecycle sockets instead use short HOME-and-target digest paths under canonical /tmp, with owner-private namespace admission independent of installation and workspace path lengths.",
       "evidence": [
         {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedEndpointPaths.kt",
+          "version": "repo-file-v1:sha256:3c4c65ae3a4aaed53fed4690ecef39de12f1e61ca921f846afd1634feb175f2b"
+        },
+        {
           "resource": "repo://packaging/isolated_runtime.py",
-          "version": "repo-file-v1:sha256:2a83aed75ab189ffe2342bb0874aa8f9d34dfdc56ff7ba4900e254b44ca5d60e"
+          "version": "repo-file-v1:sha256:a358c71b2d66a23f86400a154ad21e0b17dfb54e49640afb51c7ebbb8652e248"
         },
         {
-          "resource": "repo://packaging/managed_headless.py",
-          "version": "repo-file-v1:sha256:e67ac17030f3e450e58a89b5a941843053f8a39ba971037628c1fec4e72b6e43"
-        },
-        {
-          "resource": "repo://packaging/managed_headless.py#L566-L566",
+          "resource": "repo://packaging/managed_headless.py#L563-L563",
           "version": "repo-lines-v1:sha256:e21a0be654cef76854077b51fa5b910454fe1186cd20954999b115682a073379:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTIxYTBiZTY1NGNlZjc2ODU0MDc3YjUxZmE1YjkxMDQ1NGZlMTE4NmNkMjA5NTQ5OTliMTE1NjgyYTA3MzM3OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTIxYTBiZTY1NGNlZjc2ODU0MDc3YjUxZmE1YjkxMDQ1NGZlMTE4NmNkMjA5NTQ5OTliMTE1NjgyYTA3MzM3OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDcwMTQ5ZTA2OWFkNjdlY2NmNDczNjQ2ZmYxYzc1MDA1MGQzMjlkMTEwMDE4ZGM1NzY2ODc4ZWFmYTFkNjA3ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWJhYzZmOTI1MDA1M2Q4MTczYWRmZGIzNzFlY2ZlMGZhZmYzZjFlMTk3YTNlNGRhMGMyNGYxYjRlNDEwY2FmOSJ9"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt#L86-L114",
+          "version": "repo-lines-v1:sha256:2e5a46e0522dbb959bd1fcb3b3ff35b2546536afea37c7518817de55b44a74e5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2NDYyZjdmNTdmODI2NTg0ZDZhZDM3ZmViMThjZjBlZjk4MjdhZTMzNWJmMmI1NzY2ZTUxODFkODUwN2U5NWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdlMWQwYTY2ODdlYWM4NWM2NDFkM2E5ZTZlNTJkMTY0MTc2OTQyNWU2NDJjNmRiMGIzNjAxYmVlODg0M2UwYjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4MzRmMTI1NmY4YTJhOTEyNzg1NzZlYzgxZjk5M2M2ZTAzMDQ4NmY0ZDBmM2VlNmUxYTc5NDAyZGZhZWM3ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM5ZWQzZjFmZTY4MmVlMmM1NGFiNDQ2NTA5ODhjOTc1ZTVlODhmZGFjMDEzZDY5YTc1NzJiMTQ3OTdjYzM3ODIifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
+          "version": "repo-file-v1:sha256:5942c52cd2859021532fe181475fa19d8ee9f87bfdf47c833fe6ddfdb84fa755"
         }
       ]
     },
@@ -726,13 +734,35 @@
         },
         {
           "resource": "repo://packaging/isolated_runtime.py",
-          "version": "repo-file-v1:sha256:2a83aed75ab189ffe2342bb0874aa8f9d34dfdc56ff7ba4900e254b44ca5d60e"
+          "version": "repo-file-v1:sha256:a358c71b2d66a23f86400a154ad21e0b17dfb54e49640afb51c7ebbb8652e248"
+        }
+      ]
+    },
+    {
+      "id": "claim_ad749fc7207f474da8f752c4f6b90d19",
+      "statement": "Containers share version-and-platform runtime ZIPs admitted natively using archive and file digests, typed manifest limits and safe paths and links. Payload files and descendant directories are sealed, while the owner-private top-level directory remains writable for atomic rename. Import invokes neither Python nor an archive executable.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt",
+          "version": "repo-file-v1:sha256:c6114965a4ca1938d4b633453b9db665c571179d7cc879030fc3dab98d62f364"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt#L137-L137",
+          "version": "repo-lines-v1:sha256:7c4a18e878d4f17b1e0f47361764c4381a100bc60ba35cf3aef2b8c08ecdd1c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2M0YTE4ZTg3OGQ0ZjE3YjFlMGY0NzM2MTc2NGM0MzgxYTEwMGJjNjBiYTM1Y2YzYWVmMmI4YzA4ZWNkZDFjMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2M0YTE4ZTg3OGQ0ZjE3YjFlMGY0NzM2MTc2NGM0MzgxYTEwMGJjNjBiYTM1Y2YzYWVmMmI4YzA4ZWNkZDFjMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDA0OWQ5N2ExYWNkMmM4ODE0YTRhZDk5NTBkYTZjYmEyMzAxYTY3YzczNDExM2NhMzA4YjBkZjliY2EwMzkzZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzk0MGQxMzlmNzQ0NjdmZDgwMTA1ZDZjNDI5ZGQ3YmMwNTQ0YmI4NGNiNThmOTJiZjcxNDA0M2NjMzYwNDIzYiJ9"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt#L322-L322",
+          "version": "repo-lines-v1:sha256:ccc6e86c22621efee861754ef67b127a5640cb660b0ab8e90513b042375917e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2NjNmU4NmMyMjYyMWVmZWU4NjE3NTRlZjY3YjEyN2E1NjQwY2I2NjBiMGFiOGU5MDUxM2IwNDIzNzU5MTdlNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2NjNmU4NmMyMjYyMWVmZWU4NjE3NTRlZjY3YjEyN2E1NjQwY2I2NjBiMGFiOGU5MDUxM2IwNDIzNzU5MTdlNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTAyYTI1ODYyZDA3MmM3OWJiYjk4N2FmZTg0MzU5MTgxZWYyMjljMDFlNjA3YjBjOGViNDFiNzY2NWY0NWE5MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2JjOTUxMjg0NmYxMGU4MjQ5MzExMDYzNzI4NDlhNTU1OGRjNzZhNTZlNGMwNDE2NzBlOTRjM2IzNjc5M2Q2OSJ9"
+        },
+        {
+          "resource": "repo://packaging/runtime_archive.py",
+          "version": "repo-file-v1:sha256:6051b8889f1dd417123f457c54b3a8c6021478b314e6d49f77ac4d086402b097"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-11T14:27:59.275Z"
   }
 }

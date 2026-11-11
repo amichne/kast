@@ -113,9 +113,16 @@ class HostedEndpointOwnerAdmissionTest {
     }
 
     private fun entry(home: Path): Path =
-        Files.createDirectories(home.resolve(".kast/ide-hosted/" + "0".repeat(32))).also {
-            Files.setPosixFilePermissions(it, PosixFilePermissions.fromString("rwx------"))
-        }
+        Files.createDirectories(
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                        home,
+                        io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.SEMANTIC,
+                    )
+                    .resolve("0".repeat(32))
+            )
+            .also {
+                Files.setPosixFilePermissions(it, PosixFilePermissions.fromString("rwx------"))
+            }
 
     private fun bytes(): ByteArray =
         json.encodeToString(serializer<RecordedEndpoint>(), RecordedEndpoint()).toByteArray()

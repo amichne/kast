@@ -37,6 +37,7 @@ CALLERS_QUERY = (
 LINUX_CORE_LIBRARIES = frozenset(
     {
         "ld-linux-x86-64.so.2",
+        "ld-linux-aarch64.so.1",
         "libc.so.6",
         "libdl.so.2",
         "libgcc_s.so.1",
@@ -50,7 +51,12 @@ LINUX_CORE_LIBRARIES = frozenset(
     }
 )
 LINUX_CORE_LIBRARY_DIRECTORIES = frozenset(
-    {Path("/lib/x86_64-linux-gnu"), Path("/usr/lib/x86_64-linux-gnu")}
+    {
+        Path("/lib/x86_64-linux-gnu"),
+        Path("/usr/lib/x86_64-linux-gnu"),
+        Path("/lib/aarch64-linux-gnu"),
+        Path("/usr/lib/aarch64-linux-gnu"),
+    }
 )
 
 
@@ -188,7 +194,9 @@ def java_reference_contexts(references: dict[object, object], fixture: Path) -> 
 
 def endpoint(root: Path, kind: str, identity: Path) -> Path:
     digest = hashlib.sha256(os.fsencode(identity)).hexdigest()[:32]
-    return root / "state/home/.kast" / kind / digest / "endpoint.json"
+    owner = hashlib.sha256(os.fsencode(root / "state/home")).hexdigest()[:32]
+    family = {"ide-lifecycle": "l", "ide-hosted": "h"}[kind]
+    return Path("/tmp").resolve() / ("kast-" + owner) / family / digest / "endpoint.json"
 
 
 def linux_core_library(path: Path) -> bool:
@@ -199,10 +207,16 @@ def linux_core_library(path: Path) -> bool:
 
 
 def live_host(
-    root: Path, fixture: Path, target: HostPlatform, evidence: Path, case: str
+    root: Path,
+    fixture: Path,
+    target: HostPlatform,
+    evidence: Path,
+    case: str,
+    *,
+    runtime_home: Path | None = None,
 ) -> HostIdentity:
-    home = root / target.layout.home
-    launcher = home / ("MacOS/idea" if target == HostPlatform.MACOS_ARM64 else "bin/idea")
+    home = root / target.layout.home if runtime_home is None else runtime_home
+    launcher = home / ("bin/idea" if target.is_linux else "MacOS/idea")
     paths = (endpoint(root, "ide-lifecycle", home), endpoint(root, "ide-hosted", fixture))
     documents: list[dict[object, object]] = []
     for path, expected_root in zip(paths, (home, fixture), strict=True):
@@ -232,7 +246,7 @@ def live_host(
     workspace_lifetime = workspace.get("host")
     assert isinstance(workspace_lifetime, str) and workspace_lifetime
     libraries: tuple[str, ...] = ()
-    if target == HostPlatform.LINUX_X86_64:
+    if target.is_linux:
         proc = Path(f"/proc/{pid}")
         assert (proc / "exe").readlink() == launcher
         mappings = (proc / "maps").read_text()
@@ -263,19 +277,21 @@ def live_host(
         libraries,
     )
     _ = (evidence / (case + ".json")).write_text(json.dumps(asdict(result), indent=2) + "\n")
-    if target == HostPlatform.LINUX_X86_64:
+    if target.is_linux:
         assert str(home / "jbr/lib/server/libjvm.so") in libraries
         external = tuple(
             value
             for value in libraries
-            if not Path(value).is_relative_to(root) and not linux_core_library(Path(value))
+            if not Path(value).is_relative_to(root)
+            and not Path(value).is_relative_to(home)
+            and not linux_core_library(Path(value))
         )
         assert not external, external
     return result
 
 
 def desktop_processes(root: Path, target: HostPlatform) -> tuple[str, ...]:
-    if target != HostPlatform.MACOS_ARM64:
+    if target.is_linux:
         return ()
     listing = subprocess.check_output(["/bin/ps", "-axo", "pid=,lstart=,comm="], text=True)
     return tuple(
@@ -314,7 +330,7 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
     assert isinstance(target, HostPlatform)
     desktop_before = desktop_processes(root, target)
     if sandbox is not None:
-        assert target == HostPlatform.MACOS_ARM64 and sandbox.is_file()
+        assert not target.is_linux and sandbox.is_file()
         prefix = ("/usr/bin/sandbox-exec", "-f", str(sandbox))
     else:
         assert not desktop_before, "Supply a macOS sandbox when desktop IDEA runs"

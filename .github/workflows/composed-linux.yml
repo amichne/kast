@@ -13,7 +13,7 @@ on:
         required: false
         type: string
       linux_only:
-        description: Assemble and qualify only Linux x86-64
+        description: Assemble and qualify only the two Linux CPU targets
         type: boolean
         default: false
   workflow_call:
@@ -44,8 +44,8 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(format('[{0}{1}]',
-          '{"target":"linux-x86_64","runner":"ubuntu-24.04","donor":"idea-2026.2.2.tar.gz"}',
-          (!inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true') && ',{"target":"macos-aarch64","runner":"macos-15","donor":"idea-2026.2.2-aarch64.dmg"}' || '')) }}
+          '{"target":"linux-x86_64","runner":"ubuntu-24.04","donor":"idea-2026.2.2.tar.gz"},{"target":"linux-aarch64","runner":"ubuntu-24.04-arm","donor":"idea-2026.2.2-aarch64.tar.gz"}',
+          (!inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true') && ',{"target":"macos-aarch64","runner":"macos-15","donor":"idea-2026.2.2-aarch64.dmg"},{"target":"macos-x86_64","runner":"macos-15-intel","donor":"idea-2026.2.2.dmg"}' || '')) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -76,7 +76,7 @@ jobs:
           mise exec -- uv run --locked --project packaging ruff check packaging/composed_release.py packaging/composed_host_probe.py packaging/test_composition_release.py
           mise exec -- uv run --locked --project packaging ruff format --check packaging/composed_release.py packaging/composed_host_probe.py packaging/test_composition_release.py
           mise exec -- uv run --locked --project packaging pyright --project packaging
-          mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test-managed-headless.py -q
+          mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test_runtime_archive.py packaging/test-managed-headless.py -q
           mise exec -- ./gradlew --no-daemon verifyJsonContracts verifyKastArchitecture
 
       - name: Assemble matching Control, Host, and bootstrap
@@ -94,7 +94,7 @@ jobs:
           scratch=$(cd /tmp && pwd -P)
           support=()
           mkdir -p build/cloud-input
-          if [[ "$TARGET" == linux-x86_64 ]]; then
+          if [[ "$TARGET" == linux-* ]]; then
             python3 packaging/composed_release.py linux-support --output "$PWD/build/cloud-input/linux-support"
             support=(--linux-support "$PWD/build/cloud-input/linux-support")
           fi
@@ -142,8 +142,8 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(format('[{0}{1}]',
-          '{"target":"linux-x86_64","runner":"ubuntu-24.04"}',
-          (!inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true') && ',{"target":"macos-aarch64","runner":"macos-15"}' || '')) }}
+          '{"target":"linux-x86_64","runner":"ubuntu-24.04"},{"target":"linux-aarch64","runner":"ubuntu-24.04-arm"}',
+          (!inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true') && ',{"target":"macos-aarch64","runner":"macos-15"},{"target":"macos-x86_64","runner":"macos-15-intel"}' || '')) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -168,19 +168,22 @@ jobs:
         run: |
           scratch=$(cd /tmp && pwd -P)
           python=$(command -v python3)
-          if [[ "$TARGET" == linux-x86_64 ]]; then
+          if [[ "$TARGET" == linux-* ]]; then
             python=/usr/bin/python3
           fi
           "$python" --version
           archive="$PWD/build/composed-release/kast-composed-setup-v${BUNDLE_VERSION}-$TARGET.tar.gz"
           digest=$(cut -d ' ' -f1 "${archive}.sha256")
+          runtime="$PWD/build/composed-release/kast-runtime-v${BUNDLE_VERSION}-$TARGET.zip"
+          runtime_digest=$(cut -d ' ' -f1 "${runtime}.sha256")
           "$python" -E -s -B packaging/composed_release.py qualify \
             --archive "$archive" --archive-sha256 "$digest" \
+            --runtime-archive "$runtime" --runtime-sha256 "$runtime_digest" \
             --root "$scratch/kc" --fixture "$scratch/kw" --evidence "$PWD/build/composed-evidence" \
             --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
 
       - name: Admit the optional action revision
-        if: ${{ !cancelled() && runner.os == 'Linux' && inputs.action_revision != '' }}
+        if: ${{ !cancelled() && matrix.target == 'linux-x86_64' && inputs.action_revision != '' }}
         id: action-revision
         shell: bash
         run: |

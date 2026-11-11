@@ -220,7 +220,8 @@ private fun tryManagedHeadlessShutdown(arguments: List<String>): Boolean {
     val outcome =
         if (installed is Refinement.Refined)
             io.github.amichne.kast.cli.installation.shutdownManagedHeadless(
-                installed.value.parent.parent,
+                System.getenv("KAST_CONFIGURATION_FILE")?.let { Path.of(it).parent.parent }
+                    ?: installed.value.parent.parent,
                 Path.of(System.getProperty("user.home")),
                 Path.of(System.getenv("KAST_MANAGED_HEADLESS_STATE")),
             )

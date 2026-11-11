@@ -38,7 +38,14 @@ class HostedCompatibilityExchangeTest {
             assertEquals(0, retired.waitFor())
             assertEquals(false, ProcessHandle.of(retired.pid()).map { it.isAlive }.orElse(false))
             val missing = root.path.resolve("removed")
-            val directory = Files.createDirectory(root.path.resolve(".kast/ide-hosted/" + "0".repeat(32)))
+            val directory =
+                Files.createDirectory(
+                    io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                            root.path,
+                            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.SEMANTIC,
+                        )
+                        .resolve("0".repeat(32))
+                )
             Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
             Files.writeString(
                 directory.resolve("endpoint.json"),
@@ -59,7 +66,11 @@ class HostedCompatibilityExchangeTest {
     @Test
     fun `unrelated endpoint family cannot consume eligible project capacity or reach parsing`() {
         fixture.exchange(listOf("DESCRIBE"), compatibility) { _, root ->
-            val base = root.path.resolve(".kast/ide-hosted")
+            val base =
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                    root.path,
+                    io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.SEMANTIC,
+                )
             val application = Files.createDirectory(base.resolve("application"))
             // Deliberately malformed bytes prove that the unrelated family never reaches project decoding.
             Files.writeString(application.resolve("endpoint.json"), "not a project descriptor")

@@ -71,6 +71,7 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
     val root =
         ManagementRoot()
             .subcommands(
+                containerCommands(),
                 StatusCommand(),
                 StopCommand(),
                 ReinstallCommand(),

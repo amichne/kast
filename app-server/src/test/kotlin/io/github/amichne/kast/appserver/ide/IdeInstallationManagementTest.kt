@@ -66,7 +66,14 @@ class IdeInstallationManagementTest {
                 MessageDigest.getInstance("SHA-256").digest(idea.toString().toByteArray()).take(16).joinToString("") {
                     "%02x".format(it)
                 }
-            val directory = Files.createDirectories(root.resolve(".kast/ide-lifecycle/$hash"))
+            val directory =
+                Files.createDirectories(
+                    io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                            root,
+                            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
+                        )
+                        .resolve(hash)
+                )
             listener.bind(UnixDomainSocketAddress.of(directory.resolve("host.sock")))
             val inspected = inspected(idea)
             val json = Json { encodeDefaults = true }

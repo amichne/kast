@@ -9,7 +9,6 @@ import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
-import java.security.MessageDigest
 import java.util.UUID
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -163,14 +162,14 @@ private fun readApplicationSelection(root: Path, home: Path): ApplicationSelecti
             is Refinement.Refined -> rootSelection.value.value.parent
             is Refinement.Rejected -> return ApplicationSelection.Rejected(ApplicationHostFailure.PROFILE_UNAVAILABLE)
         }
-    val hash =
-        MessageDigest.getInstance("SHA-256").digest(selected.home.toByteArray()).take(16).joinToString("") {
-            "%02x".format(it)
-        }
     return ApplicationSelection.Admitted(
         selected,
         profile,
-        home.resolve(".kast/ide-lifecycle/$hash"),
+        io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
+            home,
+            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
+            selected.home,
+        ),
         record,
         attributes,
     )

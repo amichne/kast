@@ -20,8 +20,6 @@ import java.nio.channels.Channels
 import java.nio.channels.SocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
-import java.security.MessageDigest
-import java.util.HexFormat
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -293,9 +291,12 @@ internal constructor(
 
     private fun exchange(home: Path, command: IdeLifecycleCommand): IdeLifecycleResult {
         val attempt = LifecycleExchangeAttempt(command, nanoTime)
-        val digest =
-            HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()), 0, 16)
-        val directory = userHome.resolve(".kast/ide-lifecycle/$digest")
+        val directory =
+            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
+                userHome,
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
+                home.toString(),
+            )
         val socket = directory.resolve("host.sock")
         if (!Files.exists(socket)) return attempt.reject(IdeLifecycleExchangeCause.SOCKET_MISSING)
         var ancestor: Path? = directory

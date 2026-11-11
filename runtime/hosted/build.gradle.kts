@@ -94,6 +94,7 @@ tasks.processResources {
 
 dependencies {
     implementation(project(":kernel"))
+    implementation(project(":distribution:contract"))
     implementation(project(":protocol:contract"))
     implementation(project(":protocol:wire"))
     implementation(project(":change:contract"))
@@ -148,47 +149,19 @@ val hostedPlugin =
         isReproducibleFileOrder = true
         into("kast-ide-hosted/lib") {
             from(tasks.jar)
+            // The compiler's resolved project closure owns local runtime bytes, not a parallel filename list.
+            from(
+                configurations.runtimeClasspath
+                    .get()
+                    .incoming
+                    .artifactView {
+                        componentFilter { it is org.gradle.api.artifacts.component.ProjectComponentIdentifier }
+                    }
+                    .files
+            )
             from(configurations.runtimeClasspath) {
                 include(
-                    "workspace-intellij-read-*.jar",
-                    "kernel-*.jar",
-                    "workspace-contract-*.jar",
-                    "symbol-contract-*.jar",
-                    "contract-*.jar",
-                    "protocol-wire-*.jar",
-                    "protocol-registry-*.jar",
-                    "wire-*.jar",
-                    "registry-*.jar",
-                    "change-contract-*.jar",
-                    "change-plan-*.jar",
-                    "change-protocol-*.jar",
-                    "change-apply-*.jar",
-                    "change-recovery-*.jar",
-                    "change-verify-*.jar",
-                    "change-intellij-*.jar",
-                    "evidence-contract-*.jar",
-                    "evidence-sqlite-*.jar",
                     "sqlite-jdbc-*.jar",
-                    "query-contract-*.jar",
-                    "query-protocol-*.jar",
-                    "query-service-*.jar",
-                    "symbol-service-*.jar",
-                    "symbol-intellij-*.jar",
-                    "source-contract-*.jar",
-                    "source-service-*.jar",
-                    "source-intellij-*.jar",
-                    "relation-contract-*.jar",
-                    "relation-service-*.jar",
-                    "relation-intellij-*.jar",
-                    "topology-contract-*.jar",
-                    "topology-build-*.jar",
-                    "topology-intellij-*.jar",
-                    "traversal-contract-*.jar",
-                    "traversal-service-*.jar",
-                    "diagnostic-contract-*.jar",
-                    "diagnostic-service-*.jar",
-                    "diagnostic-intellij-*.jar",
-                    "change-contract-*.jar",
                     "kotlinx-serialization-core-jvm-*.jar",
                     "kotlinx-serialization-json-jvm-*.jar",
                 )

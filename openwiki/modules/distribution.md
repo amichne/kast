@@ -302,6 +302,8 @@ sources:
     resource: repo://cli/src/main/native-launchers/bin/kast
   - id: openwiki-source-6e0cb99be2f37815eed2066a
     resource: repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativeForceResetCompositionTest.kt
+  - id: openwiki-source-0e50d1b18d1925b709ede5d3
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt
   - id: openwiki-source-ea2b24fdd206a91568317996
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt
   - id: openwiki-source-bae14a3ed4bc7ba21f443356
@@ -336,6 +338,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UserStateInventory.kt
   - id: openwiki-source-c6a7f896f4d5f15e0d036721
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/NativeControlResetSelectionTest.kt
+  - id: openwiki-source-09db336d3e004f256dbf17f7
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedEndpointPaths.kt
   - id: openwiki-source-879895757e79a8add3de70b0
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
@@ -372,6 +376,8 @@ sources:
     resource: repo://packaging/managed_installation.py
   - id: openwiki-source-8faf23d69764b95242de5e09
     resource: repo://packaging/run-installed-product.py
+  - id: openwiki-source-5f93c137a1afcd8823606c72
+    resource: repo://packaging/runtime_archive.py
   - id: openwiki-source-671eb4bdcdbb3b2f0659d4c7
     resource: repo://packaging/test-installer-entrypoint.py
   - id: openwiki-source-27c69d628b97ee3d2536e2d1
@@ -382,12 +388,16 @@ sources:
     resource: repo://runtime/hosted/native/mixed_version_acceptance.py
   - id: openwiki-source-af72e3368d1f0c22109e4ecf
     resource: repo://runtime/hosted/native/README.md
+  - id: openwiki-source-7f5d36c76505fdd995af1f49
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
+  - id: openwiki-source-57ba3a687a2a322141093d5f
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "codex", at: "2026-11-11T02:08:52.690Z" }
+generated: { by: "pi", at: "2026-11-11T11:08:36.331Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-11T14:27:59.275Z
 ---
 
 # Distribution and packaging
@@ -414,11 +424,21 @@ Root and packaging scripts orchestrate checkout installation, persistent lifecyc
 
 ## Isolated runtime archive
 
-One complete native archive contains the composed Host, bundled JBR, and matching Kast components.
-The same `setup-kast.pyz` installer admits the archive on macOS ARM64 and Linux x86-64.
-It checks the archive digest and delegates installation to the shared private installer.
-The installed root has a fixed identity and the existing Unix socket path limit.
-See [private workspace commands](../distribution/management-and-connections.md#private-workspace-commands) for workspace selection.
+Complete setup archives contain the composed Host, bundled JBR, and matching Kast components.
+Assembly and admission cover macOS and Linux on AArch64 and x86-64.
+The same `setup-kast.pyz` checks the setup archive digest before invoking the shared private installer.
+Its installed root has a fixed identity.
+
+Workspace containers instead share an installer-free runtime ZIP for their version and platform.
+The native reader checks the archive digest, typed manifest, file digests, paths, and links before sealing payload bytes and atomic publication.
+The top-level directory stays owner-private and writable so publication can rename it.
+It invokes neither Python nor an archive executable.
+Assembly and admission contracts do not establish native qualification on each platform.
+
+Host and lifecycle sockets use the shared HOME-and-target digest scheme under canonical `/tmp`.
+Private namespace admission checks ownership and mode `0700` without repairing foreign state.
+Installation and workspace path lengths no longer determine socket path lengths.
+See [private workspace commands](../distribution/management-and-connections.md#private-workspace-commands) for trust, routing, and stop policy.
 
 ## Managed headless assembly
 

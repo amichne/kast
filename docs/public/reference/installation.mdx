@@ -149,6 +149,56 @@ Exact reference: [Compatibility](/reference/compatibility).
 
 Recovery: [Help](/troubleshooting).
 
+## Manage isolated workspaces
+
+Candidate builds provide `kast container` for named workspace containers with private Hosts.
+This is process and profile separation, not an OS sandbox or Docker container.
+Each record binds one trusted workspace to private settings, indexes, logs, and a Gradle home.
+Records share a verified runtime for their version and native platform. Your desktop IDEA stays independent.
+The private store is `~/.local/share/kast-workspaces`, outside the Control installation.
+Control replacement or removal does not erase it. Stop and remove these records before uninstalling Control.
+
+```shell
+cd /path/to/trusted/workspace
+kast container create --name backend
+kast query --name example --fields name,location --json
+kast container stop backend
+kast container resume backend
+kast container
+```
+
+`create` grants trust to build code in the selected workspace. It does not start the Host.
+`--root` selects the workspace and defaults to the current directory.
+Gradle state stays private unless you pass an existing `--gradle-home` explicitly.
+That option permits the Host to read that directory's Gradle properties, credentials, and init scripts.
+
+Queries from the workspace or its subdirectories prepare the private Host on demand.
+This covers a fresh start after a reboot or process exit. No login service is required.
+An explicit `stop` disables that restart. `resume` enables it and attempts preparation.
+A missing or ambiguous workspace selection rejects; queries never grant trust or create records.
+Desktop-only installations keep their current route until you create a managed workspace.
+
+Use `kast container --json` for records and their enabled or stopped policy. These labels do not prove a live process.
+Use `kast container rm <id>` to stop and remove the exact record and its private state.
+Removal preserves the repository, shared runtime, and any explicit external Gradle home.
+Concurrent management, preparation, or an active query can reject stop and removal with `BUSY`.
+Repeat the command after the active operation ends.
+
+The payload format covers macOS and Linux, each on AArch64 and x86-64. Each archive keeps its own native binaries and bundled Java runtime.
+The same native reader verifies its manifest, file digests, paths, and links before publication.
+Host sockets use one short, owner-only namespace under `/tmp`; workspace paths need not fit the Unix socket limit.
+
+`create` looks for the matching installed runtime, then requests its versioned release asset.
+Until a release publishes that asset, import the candidate ZIP and its independently obtained digest:
+
+```shell
+kast container import-runtime --archive /path/to/kast-runtime-vVERSION-PLATFORM.zip --sha256 DIGEST
+kast container create --name backend
+```
+
+Candidate archive assembly and contract tests are separate from native qualification on each platform.
+The older setup archive below remains available for compatibility.
+
 ## Isolated runtime
 
 The complete native archive includes its own Host and Java runtime. The archive supports macOS ARM64 and Linux x86-64.
@@ -156,9 +206,8 @@ It keeps its Host, configuration, and Gradle state in one private installation. 
 Use system Python 3.12 or 3.13 and the core OS facilities.
 The Host uses its bundled Java runtime. Your project supplies its own build dependencies and Gradle JVM settings.
 
-Choose a new, short absolute root with an existing parent. Use its canonical path, with no symbolic link components.
+Choose a new absolute root with an existing parent. Use its canonical path, with no symbolic link components.
 For example, use `/private/tmp/ki` on macOS or `/tmp/ki` on Linux for a disposable installation.
-The encoded path to `R/state/home/.kast/ide-lifecycle/<32-character-id>/host.sock` must fit within 100 bytes.
 The installed root is fixed. Install the archive again if you need a different root.
 
 1. Set `archive` to the downloaded archive path.
