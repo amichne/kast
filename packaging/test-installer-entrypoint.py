@@ -1,6 +1,6 @@
 from dataclasses import asdict, dataclass
 #!/usr/bin/env python3
-"""Public installer invocation contract; no network or machine state changes."""
+"""Public installer invocation contract with owned fixtures and loopback HTTP."""
 
 from pathlib import Path
 import base64
@@ -223,6 +223,38 @@ esac
             self.assertEqual(0, result.returncode, result.stderr)
             expected = Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins'
             self.assertIn('plugin-root=' + str(expected), result.stderr)
+
+    def test_public_http_path_admits_exact_checksum_and_rejects_corruption(self):
+        spec = importlib.util.spec_from_file_location(
+            'candidate_installed_product', ROOT / 'packaging/run-installed-product.py'
+        )
+        product = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = product
+        spec.loader.exec_module(product)
+        with tempfile.TemporaryDirectory(prefix='kast-http-candidate-') as directory:
+            idea, assets, environment = self.installer_fixture(directory)
+            served = Path(directory) / 'releases'
+            served.mkdir()
+            versioned = served / 'v1.2.3'
+            assets.rename(versioned)
+            del environment['KAST_INSTALL_ASSETS_DIRECTORY']
+            environment['NO_PROXY'] = '127.0.0.1'
+            command = [str(BASH), '-c', INSTALLER.read_text(), '--',
+                       '--idea-home', str(idea), '--dry-run']
+            with product.candidate_asset_server(served) as origin:
+                environment['KAST_RELEASE_BASE_URL'] = origin
+                result = subprocess.run(command, cwd=ROOT, env=environment,
+                                        text=True, capture_output=True, timeout=15)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn('profile=', result.stderr)
+                control = versioned / 'kast-control-v1.2.3-macos-aarch64.tar.gz'
+                control.write_bytes(control.read_bytes() + b'changed')
+                result = subprocess.run(command, cwd=ROOT, env=environment,
+                                        text=True, capture_output=True, timeout=15)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn('SHA-256 mismatch', result.stderr)
+                self.assertNotIn('profile=', result.stderr)
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
     def test_263_install_selects_matching_payload_and_its_metadata_profile(self):
         for explicit in (True, False):
