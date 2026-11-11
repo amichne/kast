@@ -63,6 +63,15 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Check workspace and scratch free space
+        run: python3 .github/scripts/ci/build_storage.py check --minimum-bytes 8589934592 "$GITHUB_WORKSPACE" /tmp
+
+      - name: Prepare signed Linux support before compilation
+        if: startsWith(matrix.target, 'linux-')
+        run: |
+          mkdir -p build/cloud-input
+          python3 packaging/composed_release.py linux-support --output "$PWD/build/cloud-input/linux-support"
+
       - name: Set up pinned tools
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
 
@@ -99,7 +108,6 @@ jobs:
           support=()
           mkdir -p build/cloud-input
           if [[ "$TARGET" == linux-* ]]; then
-            python3 packaging/composed_release.py linux-support --output "$PWD/build/cloud-input/linux-support"
             support=(--linux-support "$PWD/build/cloud-input/linux-support")
           fi
           curl --fail --location --retry 3 "https://download.jetbrains.com/idea/$DONOR" --output "build/cloud-input/$DONOR"

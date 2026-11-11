@@ -235,6 +235,8 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Check workspace and scratch free space
+        run: python3 .github/scripts/ci/build_storage.py check --minimum-bytes 12884901888 "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: liberica-nik
@@ -299,6 +301,8 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Check workspace and scratch free space
+        run: python3 .github/scripts/ci/build_storage.py check --minimum-bytes 8589934592 "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: liberica-nik

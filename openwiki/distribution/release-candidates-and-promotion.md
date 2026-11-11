@@ -46,8 +46,8 @@ sources:
     resource: repo://packaging/managed_release.py
 generated: { by: "codex", at: "2026-11-10T13:00:52.429Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-10T13:00:52.429Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T20:53:27.058Z
 ---
 
 # Release candidates and promotion

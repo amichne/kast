@@ -8,6 +8,7 @@
     "gradle_graph.py",
     "gradle_diagnostics.py",
     "native_handoff.py",
+    "build_storage.py",
     "../release/finalize_assets.py",
     "validation_scope.py",
     "validation_outcome.py",
