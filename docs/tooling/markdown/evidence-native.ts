@@ -32,7 +32,7 @@ export type ClaimAssessment = Readonly<{
 }>;
 export type CompletedAssessment = Readonly<{
   status: 'completed'; scope: Scope; sourceRevision: string;
-  producer: Readonly<{adapter: 'kast-native-claims-v1'; openwiki: '0.6.1'; lockDigest: string}>;
+  producer: Readonly<{adapter: 'kast-native-claims-v1'; openwiki: '0.9.0'; lockDigest: string}>;
   inputsDigest: string;
   inputs: readonly Readonly<{resource: string; digest: string}>[];
   pages: readonly PageAssessment[]; claims: readonly ClaimAssessment[];
@@ -154,8 +154,8 @@ export async function assessEvidence(options: Options): Promise<Assessment> {
     const revision = sourceRevision(options.root);
     const lockDigest = digest(await readFile(new URL('./package-lock.json', import.meta.url)));
     const packageIdentity: unknown = JSON.parse(await readFile(new URL('./node_modules/openwiki/package.json', import.meta.url), 'utf8'));
-    if (typeof packageIdentity !== 'object' || packageIdentity === null || !('version' in packageIdentity) || packageIdentity.version !== '0.6.1') {
-      throw new Error('The native OpenWiki producer differs from the qualified 0.6.1 package.');
+    if (typeof packageIdentity !== 'object' || packageIdentity === null || !('version' in packageIdentity) || packageIdentity.version !== '0.9.0') {
+      throw new Error('The native OpenWiki producer differs from the qualified 0.9.0 package.');
     }
     stage = 'inventory';
     const result = await inventory(options.root, options.scope);
@@ -211,7 +211,7 @@ export async function assessEvidence(options: Options): Promise<Assessment> {
     }
     inputs.sort((a, b) => a.resource.localeCompare(b.resource) || a.digest.localeCompare(b.digest));
     return {status: 'completed', scope: options.scope, sourceRevision: revision,
-      producer: {adapter: 'kast-native-claims-v1', openwiki: '0.6.1', lockDigest},
+      producer: {adapter: 'kast-native-claims-v1', openwiki: '0.9.0', lockDigest},
       inputsDigest: digest(JSON.stringify(inputs)), inputs, pages: result.pages, claims,
       orphanSidecars: result.orphanSidecars,
       notAssessed: result.all.filter(page => !result.selected.includes(page)).map(page => ({page, reason: 'outside-public-scope'})),
