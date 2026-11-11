@@ -14,7 +14,6 @@ icon: "terminal"
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
 This guide sets up Kast with desktop IntelliJ IDEA for your Kotlin Gradle project.
-For a private Host on macOS or Linux, see [workspace containers](/reference/installation#manage-isolated-workspaces).
 
 ## Before you start
 
@@ -30,13 +29,27 @@ You need:
 
 For upgrades or [optional MCP](/reference/integrations#optional-mcp), install uv 0.12.9 or later.
 
+<Note>
+  **Want a private Host?** A workspace container provides one on macOS or Linux, including Apple silicon Macs, separate from desktop IDEA. See [workspace containers](/reference/installation#manage-isolated-workspaces) for matching release assets and qualified candidate limits.
+</Note>
+
 ## 1. Install or update Kast
 
 <span id="1-install-kast" />
 <span id="1-select-the-development-build" />
 
-Save your project work. Installation can end active Kast sessions.
-For an initial installation, run:
+Save your project work. Installation or an update can end active Kast sessions.
+
+If Kast is already installed, update to the latest qualified development build:
+
+```shell
+kast upgrade --channel main --restart-ide
+```
+
+`--restart-ide` permits a normal IDEA restart when necessary. See [installation and updates](/reference/installation) for pins and recovery outcomes.
+After a successful upgrade, continue to [step 2](#2-install-agent-guidance).
+
+For a fresh installation, run:
 
 ```shell
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
@@ -47,18 +60,8 @@ It selects the latest qualified development build and resets stale Kast state.
 The flag `--skip-codex-plugin` skips optional MCP setup.
 Step 2 adds CLI guidance for your agent.
 
-Restart IDEA after installation to load the Kast Host.
+After a fresh installation, restart IDEA to load the Kast Host.
 If the shell cannot find `kast`, add the command directory from the installer output to `PATH`.
-
-<Accordion title="If Kast is already installed">
-  Update to the latest qualified development build:
-
-  ```shell
-  kast upgrade --channel main --restart-ide
-  ```
-
-  `--restart-ide` permits a normal IDEA restart when necessary. See [installation and updates](/reference/installation) for pins and recovery outcomes.
-</Accordion>
 
 ## 2. Install agent guidance
 
@@ -94,14 +97,16 @@ The default setup needs no MCP registration.
 Start a fresh agent session in the same Kotlin repository or worktree.
 If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before the fresh session.
 
-## 3. Continue your work
+## 3. Run your first query
+
+<span id="3-continue-your-work" />
 
 <span id="3-ask-about-your-code" />
 <span id="3-ask-your-agent" />
 <span id="4-establish-readiness" />
 <span id="what-your-first-result-establishes" />
 
-To try a first query, choose the exact name of a Kotlin declaration in your project.
+Open the intended Kotlin Gradle project in IDEA. Choose the exact name of a Kotlin declaration in that project.
 Replace `DECLARATION_NAME` with that name, then run this command from the project root.
 
 ```shell
@@ -116,7 +121,7 @@ If it cannot finish, the result carries the cause and recovery evidence. Use [He
 
 <span id="inspect-your-first-answer" />
 
-[Agent capabilities](/search) describes the evidence available during your work.
+[Capabilities](/search) describes the evidence available during your work.
 [Understand the evidence](/explanation) explains completion and evidence limits.
 
 Exact reference: [Compatibility](/reference/compatibility).

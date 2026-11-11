@@ -4222,7 +4222,7 @@
       "content": [
         {
           "path": "docs/public/index.mdx",
-          "sha256": "8781c3ad8ed7f539ac00059804dee8b4088679b241ba38b0e8f0a8df7de73fae"
+          "sha256": "753f96d866ca2d104b708038d996409c76246ee8f9bec962ee30376fd814ad9e"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -4686,7 +4686,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "aa550bd1b0dff38eb492d20df0658bb62cf44512"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "reference",
@@ -14948,7 +14948,7 @@
       "content": [
         {
           "path": "docs/public/search.mdx",
-          "sha256": "b681dbafdc1089a7e96a050da261603c35ead4d64e646fcd0ec172ea13217446"
+          "sha256": "7e5fa89f30853a7dec0df73bbb421c54e071110e7e899cf15443d78d477fa0d5"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -15347,7 +15347,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "start",
@@ -15358,7 +15358,7 @@
         },
         {
           "path": "docs/public/start.mdx",
-          "sha256": "bdb0bf438454c7e7338fa3e45daad302d7a567d5b16ebf40954bc3988119ece4"
+          "sha256": "c95a231c42c627c4d85c4bda77a24fb56760cfe138aff72bcca40e72221c1585"
         }
       ],
       "claims": [
@@ -15889,7 +15889,7 @@
         },
         {
           "path": "docs/public/troubleshooting.mdx",
-          "sha256": "01b35a76da7c67a66065ee710e899008fb6622cf811926c67d678ceb9fdabc3c"
+          "sha256": "4cd50bee8e1e6f1150e0ef2f1ff95292dcff0708777af74ffa417941b8c64b2c"
         }
       ],
       "claims": [
@@ -16139,7 +16139,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "aa550bd1b0dff38eb492d20df0658bb62cf44512"
+      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
       "route": "tutorials",

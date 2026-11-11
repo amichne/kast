@@ -8,7 +8,6 @@ keywords:
   - "callers"
   - "value flow"
 icon: "scan-search"
-hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
@@ -16,13 +15,11 @@ import DeeperReading from "/snippets/deeper-reading.mdx"
 <span id="what-kast-adds" />
 
 Kast connects your coding agent to IntelliJ IDEA's understanding of your Kotlin project.
-Declarations, types, and source relationships become facts the agent can work with.
 
 <span id="use-the-agent-you-already-use" />
 <span id="ask-about-your-code" />
 
-Keep working naturally. Ask about your code. Build a feature. Fix a bug. Refactor.
-Your agent uses Kast through its installed guidance.
+Your agent uses installed guidance to ask Kast about your code as it works.
 
 <span id="try-it-on-your-project" />
 <span id="choose-your-reader-track" />
@@ -35,7 +32,9 @@ Your agent uses Kast through its installed guidance.
 
 <span id="is-kast-for-you" />
 
-The published setup supports Apple silicon Macs and IntelliJ IDEA 262. [Setup requirements](/start#before-you-install).
+The desktop setup supports Apple silicon Macs and IntelliJ IDEA `262.*` or `263.*` for Kotlin Gradle projects. See [setup requirements](/start#before-you-start).
+
+For a private Host on macOS or Linux, use [workspace containers](/reference/installation#manage-isolated-workspaces). If the release lacks matching runtime assets, use a qualified candidate.
 
 <span id="a-name-match-does-not-explain-a-value-path" />
 
@@ -43,9 +42,8 @@ The published setup supports Apple silicon Macs and IntelliJ IDEA 262. [Setup re
 
 ## Code has meaning beyond its text
 
-A name alone cannot identify a declaration. Matching words cannot establish which function a call resolves to.
-Kast gives your agent compiler-resolved identity and source relationships, with locations it can inspect as it works.
-See [what your agent gains](/search).
+Kast gives your agent compiler-resolved declarations, types, and source relationships with locations it can inspect.
+See [Capabilities](/search).
 
 <span id="use-the-evidence-for-your-next-decision" />
 
