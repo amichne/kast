@@ -2,18 +2,17 @@
 
 **Compiler understanding for your coding agent.**
 
-Kast extends coding agents working on Kotlin Gradle projects with IntelliJ IDEA's compiler analysis.
-Your agent can resolve declarations, types, and source relationships instead of inferring them from text alone.
-
-Keep working naturally. Ask about your code. Build a feature. Fix a bug. Refactor.
-Kast brings compiler-grounded evidence into that work.
+Kast gives coding agents access to IntelliJ IDEA's compiler analysis for Kotlin Gradle projects.
+Your agent can resolve declarations, types, and source relationships as it works on your code.
 
 ## Get started
 
-Use an Apple silicon Mac and a Kotlin Gradle project.
+For desktop setup, use an Apple silicon Mac and a Kotlin Gradle project.
 Use IntelliJ IDEA `262.*` or `263.*` with its bundled Kotlin plugin and Java 25 JBR.
 Use Python 3.12 or 3.13.
 For upgrades or optional MCP, install uv 0.12.9 or later.
+
+For a private Host, see [workspace containers](https://kast.michne.com/reference/installation/#manage-isolated-workspaces).
 
 Install the latest qualified development build from a terminal:
 
@@ -24,6 +23,8 @@ Install the latest qualified development build from a terminal:
 You need no checkout or existing `kast` command.
 The installer replaces Kast-owned assets and can end active Kast sessions.
 Restart IntelliJ IDEA to load the installed Host.
+Run `kast status --json` to inspect the loaded Host in `applicationHost`.
+The installer flag `--skip-codex-plugin` skips optional MCP setup.
 
 Install CLI guidance for your agent:
 
@@ -43,8 +44,6 @@ Kast results keep their source scope, completion status, and evidence limits.
 [Set up Kast](https://kast.michne.com/start/) ·
 [CLI reference](https://kast.michne.com/reference/cli/) ·
 [Help](https://kast.michne.com/troubleshooting/)
-
-For a private Host on macOS ARM64 or Linux x86-64, use the [isolated runtime archive](https://kast.michne.com/reference/installation/#isolated-runtime).
 
 ## More
 

@@ -3,7 +3,6 @@ title: "Troubleshoot Kast"
 description: "Resolve build selection, Host activation, agent guidance, and query problems with the native Kast CLI."
 icon: "life-buoy"
 sidebarTitle: "Help"
-hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
@@ -16,14 +15,16 @@ Start with the symptom. Use the reported outcome to select the next action.
 
 ## Your agent does not use Kast
 
-Install [CLI guidance](/agent-harnesses) for your agent.
+Follow [step 2 in Set up](/start#2-install-agent-guidance) to install CLI guidance for your agent.
 Start a fresh session in the intended Kotlin repository or worktree.
 
 If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat `kast install` with your agent's name before the fresh session.
 MCP registration is necessary only for the optional MCP composition.
 Then repeat your question in the fresh session.
 
-## Inspect installation and activation
+<span id="inspect-installation-and-activation" />
+
+## Installed build or Host does not match
 
 <span id="2-inspect-the-installation-before-recovery" />
 
@@ -31,18 +32,25 @@ Then repeat your question in the fresh session.
 kast status --json
 ```
 
-Compare the installed build with the loaded Host identity.
-Read the update policy and unresolved transaction.
-Installed files alone do not establish workspace readiness.
+Compare `installedBuild` with `applicationHost`, which identifies the loaded Host.
+Read `updatePolicy` and `unresolvedTransaction`.
+If a transaction remains unresolved, follow the [recovery procedure](/reference/management#4-resolve-unfinished-recovery).
+If the Host is missing or still uses the prior build, see [Load the plugin and inspect state](/reference/installation#2-load-the-plugin-and-inspect-state).
+Run a query in the project to establish workspace readiness.
 
-## Select the development head
+<span id="select-the-development-head" />
+
+## The selected build is not the development head
+
+If you want to track the latest development build, run:
 
 ```shell
 kast versions
 kast upgrade --channel main
 ```
 
-If activation needs an IDEA restart, repeat the upgrade with `--restart-ide`. To replace a pinned build, supply `--channel`, `--version`, or `--commit`.
+This upgrade replaces a pin with the development channel. See [Pin a published build](/reference/installation#pin-a-published-build) to select a specific version or revision.
+If activation needs an IDEA restart, repeat the upgrade with `--restart-ide`.
 
 If the result reports `RECOVERY_REQUIRED`, keep its recovery evidence.
 Use [installation outcomes](/reference/management#lifecycle-result-contract) before another lifecycle action.
@@ -57,6 +65,7 @@ Then repeat your question in the same worktree.
 ## Kast cannot finish a query
 
 Read the reported cause and recovery action.
+If a workspace container reports `STOPPED`, see [Manage the container](/reference/installation#3-manage-the-container).
 If the cause concerns search scope, narrow the question to a known function, package, or directory.
 An unfinished query with no matches does not prove absence.
 
@@ -66,10 +75,8 @@ Do not repeat a query only to recover that page.
 
 ## An edit has an uncertain outcome
 
-Inspect the source and change record before another write.
-Review the diff.
-Run your project's tests.
-For an uncertain edit, return to [the change receipt](/reference/change#read-the-receipt) before another write.
+Inspect the source and [change receipt](/reference/change#read-the-receipt) before another write.
+Review the diff and run your project's tests.
 
 <span id="3-repeat-the-original-operation" />
 
@@ -78,5 +85,5 @@ For an uncertain edit, return to [the change receipt](/reference/change#read-the
 Use the [CLI reference](/reference/cli) for command discovery and retained reads.
 The [detailed troubleshooting guide](/reference/troubleshooting) describes contract and saved-state failures.
 
-Return to [Set up](/start#3-ask-about-your-code), [Examples](/search), or the interrupted [task guide](/how-to).
+Return to [Run your first query](/start#3-run-your-first-query), [Capabilities](/search), or the interrupted [task guide](/how-to).
 <DeeperReading />

@@ -8,7 +8,6 @@ keywords:
   - "callers"
   - "value flow"
 icon: "scan-search"
-hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
@@ -16,26 +15,35 @@ import DeeperReading from "/snippets/deeper-reading.mdx"
 <span id="what-kast-adds" />
 
 Kast connects your coding agent to IntelliJ IDEA's understanding of your Kotlin project.
-Declarations, types, and source relationships become facts the agent can work with.
 
 <span id="use-the-agent-you-already-use" />
 <span id="ask-about-your-code" />
 
-Keep working naturally. Ask about your code. Build a feature. Fix a bug. Refactor.
-Your agent uses Kast through its installed guidance.
+Your agent uses installed guidance to ask Kast about your code as it works.
 
 <span id="try-it-on-your-project" />
 <span id="choose-your-reader-track" />
 
-<Columns cols={1}>
-  <Card title="Add Kast to your agent" icon="arrow-right" href="/start">
-    Install Kast and connect Codex, Copilot, or Pi to your Kotlin Gradle project.
+<Columns cols={2}>
+  <Card title="Set up with IntelliJ IDEA" icon="monitor" href="/start">
+    Install Kast and connect Codex, Copilot, or Pi.
+  </Card>
+  <Card title="Run a private Host" icon="container" href="/reference/installation#manage-isolated-workspaces">
+    Use a workspace container on macOS or Linux.
+  </Card>
+  <Card title="Capabilities" icon="search" href="/search">
+    Explore declarations, relationships, value paths, and diagnostics.
+  </Card>
+  <Card title="Help" icon="life-buoy" href="/troubleshooting">
+    Resolve installation and agent problems.
   </Card>
 </Columns>
 
 <span id="is-kast-for-you" />
 
-The published setup supports Apple silicon Macs and IntelliJ IDEA 262. [Setup requirements](/start#before-you-install).
+The desktop setup supports Apple silicon Macs and IntelliJ IDEA `262.*` or `263.*` for Kotlin Gradle projects. See [setup requirements](/start#before-you-start).
+
+If the release lacks a runtime for your private Host, use a qualified candidate.
 
 <span id="a-name-match-does-not-explain-a-value-path" />
 
@@ -43,18 +51,12 @@ The published setup supports Apple silicon Macs and IntelliJ IDEA 262. [Setup re
 
 ## Code has meaning beyond its text
 
-A name alone cannot identify a declaration. Matching words cannot establish which function a call resolves to.
-Kast gives your agent compiler-resolved identity and source relationships, with locations it can inspect as it works.
-See [what your agent gains](/search).
+Kast gives your agent compiler-resolved declarations, types, and source relationships with locations it can inspect.
 
 <span id="use-the-evidence-for-your-next-decision" />
 
 ## Evidence you can act on
 
-Kast reports what its source evidence establishes and where that evidence stops.
-Completion applies to the declared scope and semantic model. Incomplete evidence cannot establish that a result is absent.
-[How Kast establishes a fact](/explanation) explains the contract and the product standard: never silently wrong.
-
-For installation or agent problems, use [Help](/troubleshooting).
+A complete result applies to the declared scope and semantic model. Incomplete evidence cannot establish that a result is absent. See [what a Kast answer proves](/explanation).
 
 <DeeperReading />

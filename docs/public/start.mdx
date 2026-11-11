@@ -9,12 +9,11 @@ keywords:
   - "Pi"
   - "IntelliJ IDEA"
 icon: "terminal"
-hideFooterPagination: true
 ---
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Install Kast and connect it to the agent you already use for your Kotlin Gradle project. After setup, continue your work naturally.
+Set up Kast with desktop IntelliJ IDEA so your agent can use compiler analysis in your Kotlin Gradle project.
 
 ## Before you start
 
@@ -30,84 +29,106 @@ You need:
 
 For upgrades or [optional MCP](/reference/integrations#optional-mcp), install uv 0.12.9 or later.
 
-## 1. Install or update Kast
+<Note>
+  **Want a private Host?** A workspace container provides one on macOS or Linux, including Apple silicon Macs, separate from desktop IDEA. See [workspace containers](/reference/installation#manage-isolated-workspaces) for matching release assets and qualified candidate limits.
+</Note>
 
-<span id="1-install-kast" />
-<span id="1-select-the-development-build" />
+<Steps titleSize="h2">
+  <Step title="Install or update Kast" id="1-install-or-update-kast">
+    <span id="1-install-kast" />
+    <span id="1-select-the-development-build" />
 
-Save your project work. Installation can end active Kast sessions.
-For an initial installation, run:
+    Save your project work. Installation or an update can end active Kast sessions.
 
-```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
-```
+    If Kast is already installed, update to the latest qualified development build:
 
-This command needs no checkout or existing `kast` installation.
-It selects the latest qualified development build and resets stale Kast state.
-Step 2 adds the agent guidance.
-
-Restart IDEA after installation to load the Kast Host.
-If the shell cannot find `kast`, add the command directory from the installer output to `PATH`.
-
-<Accordion title="If Kast is already installed">
-  Update to the latest qualified development build:
-
-  ```shell
-  kast upgrade --channel main --restart-ide
-  ```
-
-  `--restart-ide` permits a normal IDEA restart when necessary. See [installation and updates](/reference/installation) for pins and recovery outcomes.
-</Accordion>
-
-## 2. Install agent guidance
-
-<span id="choose-your-agent" />
-<span id="1-connect-your-agent" />
-<span id="2-restart-intellij-idea" />
-<span id="2-restart-your-tools" />
-<span id="3-connect-your-agent" />
-
-Choose the tab for your existing agent.
-
-<Tabs sync={false}>
-  <Tab title="Codex">
     ```shell
-    kast install codex
+    kast upgrade --channel main --restart-ide
     ```
-  </Tab>
-  <Tab title="Copilot">
+
+    `--restart-ide` permits a normal IDEA restart when necessary. See [installation and updates](/reference/installation) for pins and recovery outcomes.
+    After a successful upgrade, continue to [step 2](#2-install-agent-guidance).
+
+    For a fresh installation, run:
+
     ```shell
-    kast install copilot
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
     ```
-  </Tab>
-  <Tab title="Pi">
+
+    This command needs no checkout or existing `kast` installation.
+    It selects the latest qualified development build and resets stale Kast state.
+    The flag `--skip-codex-plugin` skips optional MCP setup.
+
+    After a fresh installation, restart IDEA to load the Kast Host.
+    If the shell cannot find `kast`, add the command directory from the installer output to `PATH`.
+  </Step>
+
+  <Step title="Install agent guidance" id="2-install-agent-guidance">
+    <span id="choose-your-agent" />
+    <span id="1-connect-your-agent" />
+    <span id="2-restart-intellij-idea" />
+    <span id="2-restart-your-tools" />
+    <span id="3-connect-your-agent" />
+
+    Choose the tab for your existing agent.
+
+    <Tabs sync={false}>
+      <Tab title="Codex">
+
+        ```shell
+        kast install codex
+        ```
+
+      </Tab>
+      <Tab title="Copilot">
+
+        ```shell
+        kast install copilot
+        ```
+
+      </Tab>
+      <Tab title="Pi">
+
+        ```shell
+        kast install pi
+        ```
+
+      </Tab>
+    </Tabs>
+
+    These commands install guidance for the native CLI.
+    The default setup needs no MCP registration.
+
+    Start a fresh agent session in the same Kotlin repository or worktree.
+    If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before the fresh session.
+  </Step>
+
+  <Step title="Run your first query" id="3-run-your-first-query">
+    <span id="3-continue-your-work" />
+
+    <span id="3-ask-about-your-code" />
+    <span id="3-ask-your-agent" />
+    <span id="4-establish-readiness" />
+    <span id="what-your-first-result-establishes" />
+
+    Open the intended Kotlin Gradle project in IDEA. Choose the exact name of a Kotlin declaration in that project.
+    Replace `DECLARATION_NAME` with that name, then run this command from the project root.
+
     ```shell
-    kast install pi
+    kast query --name DECLARATION_NAME --fields name,location --json
     ```
-  </Tab>
-</Tabs>
 
-These commands install guidance for the native CLI.
-The default setup needs no MCP registration.
+    Look for `"type": "complete"` and the expected file location in the returned rows.
+    You can also ask your agent to find that declaration and show its source location.
 
-Start a fresh agent session in the same Kotlin repository or worktree.
-If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before the fresh session.
+    Kast can wait for Gradle import and indexing before supplying compiler evidence.
+    If it cannot finish, the result carries the cause and recovery evidence. Use [Help](/troubleshooting) to resolve the reported problem.
 
-## 3. Continue your work
+    <span id="inspect-your-first-answer" />
+  </Step>
+</Steps>
 
-<span id="3-ask-about-your-code" />
-<span id="3-ask-your-agent" />
-<span id="4-establish-readiness" />
-<span id="what-your-first-result-establishes" />
-
-Work on your project as usual. The installed guidance tells your agent how to use Kast for supported Kotlin work.
-
-Kast can wait for Gradle import and indexing before supplying compiler evidence.
-If it cannot finish, the result carries the cause and recovery evidence. Use [Help](/troubleshooting) to resolve the reported problem.
-
-<span id="inspect-your-first-answer" />
-
-[Agent capabilities](/search) describes the evidence available during your work.
+[Capabilities](/search) describes the evidence available during your work.
 [Understand the evidence](/explanation) explains completion and evidence limits.
 
 Exact reference: [Compatibility](/reference/compatibility).
