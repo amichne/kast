@@ -20,6 +20,9 @@ import reader_contracts
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = "docs/okf-public.json"
 MAIN_REF = "refs/remotes/origin/main"
+# A reviewed association expires this long after its reviewed commit, measured
+# against the candidate HEAD commit time so one tree always yields one decision.
+MAX_REVIEW_AGE_SECONDS = 5 * 24 * 60 * 60
 PROSE_DISPOSITIONS = "docs/reviews/documentation-migration/prose-dispositions.json"
 INPUT_PATHS = (
     "docs/public",
@@ -537,6 +540,14 @@ def assess_review_revisions(root: Path, revisions: tuple[str, ...]) -> tuple[Obl
             return (
                 Obligation("associations", State.FAILED, "Cannot read the reviewed source objects"),
             )
+        head_time = int(
+            subprocess.run(
+                [*command, "log", "-1", "--format=%ct", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+        )
         issues: list[Obligation] = []
         for revision, kind in zip(revisions, reviewed, strict=True):
             if kind != "commit":
@@ -569,8 +580,25 @@ def assess_review_revisions(root: Path, revisions: tuple[str, ...]) -> tuple[Obl
                         f"Cannot examine {MAIN_REF} history for {revision}",
                     )
                 )
+            else:
+                reviewed_time = int(
+                    subprocess.run(
+                        [*command, "log", "-1", "--format=%ct", revision],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    ).stdout.strip()
+                )
+                if head_time - reviewed_time > MAX_REVIEW_AGE_SECONDS:
+                    issues.append(
+                        Obligation(
+                            "associations",
+                            State.STALE,
+                            f"Reviewed source {revision} is more than 5 days older than HEAD",
+                        )
+                    )
         return tuple(issues)
-    except (OSError, subprocess.CalledProcessError):
+    except (OSError, ValueError, subprocess.CalledProcessError):
         return (
             Obligation("associations", State.FAILED, "Cannot read the reviewed source objects"),
         )
