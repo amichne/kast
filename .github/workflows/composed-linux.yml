@@ -139,19 +139,10 @@ jobs:
 
       - name: Free assembly scratch space before qualification
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          from shutil import disk_usage, rmtree
-
-          scratch = Path("/tmp").resolve()
-          workspace = Path.cwd()
-          for path in (scratch, workspace):
-              print(f"Free bytes before cleanup at {path}: {disk_usage(path).free}", flush=True)
-          rmtree(scratch / "kp")
-          rmtree(workspace / "build/cloud-input")
-          for path in (scratch, workspace):
-              print(f"Free bytes after cleanup at {path}: {disk_usage(path).free}", flush=True)
-          PY
+          scratch=$(cd /tmp && pwd -P)
+          workspace=$(pwd -P)
+          mise exec -- uv run --locked --project packaging python packaging/composed_release.py \
+            discard-assembly-inputs --root "$scratch/kp" --inputs "$workspace/build/cloud-input"
 
       - name: Install and qualify the exact candidate
         timeout-minutes: 60
