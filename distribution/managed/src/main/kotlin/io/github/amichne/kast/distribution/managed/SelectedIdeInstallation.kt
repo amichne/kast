@@ -227,11 +227,7 @@ object SelectedIdeInstallation {
     private fun resolve(home: Path, product: Product, layout: SelectedIdeLayout): SelectedIdeLaunch {
         if (!product.buildNumber.matches(Regex("(?:262|263)\\.[0-9]+(?:\\.[0-9]+)*")))
             return unavailable(IdeLaunchFailure.UNSUPPORTED_PLATFORM_LINE)
-        val architectures =
-            when (layout) {
-                SelectedIdeLayout.MACOS_BUNDLE -> setOf("aarch64", "arm64")
-                SelectedIdeLayout.LINUX_DIRECTORY -> setOf("amd64", "x86_64", "aarch64", "arm64")
-            }
+        val architectures = setOf("aarch64", "arm64", "amd64", "x86_64")
         val candidates = product.launch.filter { it.os == layout.operatingSystem && it.arch in architectures }
         if (candidates.isEmpty()) return unavailable(IdeLaunchFailure.MISSING_LAUNCHER)
         if (candidates.size != 1) return unavailable(IdeLaunchFailure.AMBIGUOUS_LAUNCHER)

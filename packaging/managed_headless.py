@@ -160,9 +160,6 @@ def admit_install_root(root: Path) -> Rejected | None:
         return Rejected(Failure.INVALID_INPUT)
     if root.exists() or root.is_symlink():
         return Rejected(Failure.EXISTING_TARGET)
-    socket = root / "state/home/.kast/ide-lifecycle" / ("0" * 32) / "host.sock"
-    if len(os.fsencode(socket)) > 100:
-        return Rejected(Failure.INVALID_INPUT)
     return None
 
 

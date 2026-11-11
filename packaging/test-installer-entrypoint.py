@@ -1318,15 +1318,40 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
             self.assertIn('plugin-root=' + str(expected), result.stderr)
             self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
-    def test_linux_arm64_rejects_before_asset_reads(self):
+    def test_linux_arm64_fresh_local_plan_selects_its_native_archive(self):
         with tempfile.TemporaryDirectory(prefix='kast-installer-arm64-') as directory:
             idea, _, environment = self.linux_installer_fixture(directory, 'aarch64')
-            command = [str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run']
-            result = subprocess.run(command, cwd=ROOT, env=environment,
-                text=True, capture_output=True, timeout=10)
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            expected = Path(environment['HOME']) / '.local/share/JetBrains/IntelliJIdea2026.2/plugins'
+            self.assertIn('plugin-root=' + str(expected), result.stderr)
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_linux_arm64_rejects_an_x86_jbr_before_asset_reads(self):
+        with tempfile.TemporaryDirectory(prefix='kast-installer-arm64-jbr-') as directory:
+            idea, _, environment = self.linux_installer_fixture(directory, 'aarch64')
+            (idea / 'jbr/release').write_text('JAVA_VERSION="25.0.1"\nOS_ARCH="amd64"\n')
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
             self.assertNotEqual(0, result.returncode)
-            self.assertIn('supported platforms are macOS Apple silicon and Linux x86_64 local builds', result.stderr)
+            self.assertIn('IDEA home is incompatible', result.stderr)
             self.assertNotIn('downloading', result.stderr)
+            self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
+
+    def test_macos_x86_fresh_local_plan_selects_its_native_archive(self):
+        with tempfile.TemporaryDirectory(prefix='kast-installer-macos-x86-') as directory:
+            idea, assets, environment = self.installer_fixture(directory)
+            (Path(directory) / 'bin/uname').write_text('#!/bin/sh\ncase "$1" in -s) echo Darwin ;; -m) echo x86_64 ;; *) exit 1 ;; esac\n')
+            (idea / 'jbr/Contents/Home/release').write_text('JAVA_VERSION="25.0.1"\nOS_ARCH="amd64"\n')
+            for archive in assets.glob('*-macos-aarch64.tar.gz'):
+                selected = archive.with_name(archive.name.replace('macos-aarch64', 'macos-x86_64'))
+                archive.rename(selected)
+                selected.with_name(selected.name + '.sha256').write_text(hashlib.sha256(selected.read_bytes()).hexdigest() + '  ' + selected.name + '\n')
+            result = subprocess.run([str(BASH), str(INSTALLER), '--idea-home', str(idea), '--dry-run'],
+                cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn('found IntelliJ IDEA', result.stderr)
             self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
 
     def test_linux_replacement_control_upgrade_and_nondefault_profile_reject_before_assets(self):
@@ -1355,7 +1380,7 @@ exec {shlex.quote(str(BASH))} {shlex.quote(str(INSTALLER))} "$@"
                 cwd=ROOT, env=environment, text=True, capture_output=True, timeout=10,
             )
             self.assertNotEqual(0, result.returncode)
-            self.assertIn('supported platforms are macOS Apple silicon and Linux x86_64 local builds', result.stderr)
+            self.assertIn('supported platforms are macOS and Linux on AArch64 or x86-64', result.stderr)
             self.assertFalse((Path(directory) / 'install').exists())
 
     def test_install_prepares_the_managed_payload_without_prompting(self):

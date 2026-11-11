@@ -524,23 +524,10 @@ def pack_bundle(
     )
     if any(path.is_symlink() for name, path in files if not name.startswith("runtime/")):
         return BundleRejected(BundleFailure.UNSAFE_PATH, "bundle support")
-    if target == HostPlatform.LINUX_X86_64:
-        if linux_support is None or linux_support.resolve() != linux_support:
-            return BundleRejected(BundleFailure.INVALID_MANIFEST, "Linux support")
-        paths = sorted(linux_support.rglob("*"))
-        if (
-            any(path.is_symlink() for path in paths)
-            or not all((linux_support / name).is_dir() for name in ("lib", "fonts", "licenses"))
-            or not (linux_support / "fonts.conf").is_file()
-        ):
-            return BundleRejected(BundleFailure.INVALID_MANIFEST, "Linux support")
-        files.extend(
-            ("runtime/" + LINUX_SUPPORT + "/" + path.relative_to(linux_support).as_posix(), path)
-            for path in paths
-            if path.is_file()
-        )
-    elif linux_support is not None:
-        return BundleRejected(BundleFailure.INVALID_MANIFEST, "Linux support on macOS")
+    support = native_support_files(target, linux_support)
+    if isinstance(support, BundleRejected):
+        return support
+    files.extend(("runtime/" + name, path) for name, path in support)
     zipapp = zipapp_bytes(repository / "packaging")
     manifest = BundleManifest(
         version,
@@ -590,6 +577,31 @@ def pack_bundle(
         for name, path in sorted(files):
             archive.add(path, "setup-kast/" + name, recursive=False, filter=normalized)
     return PackedBundle(str(output), sha256(output), output.stat().st_size)
+
+
+def native_support_files(
+    target: HostPlatform, linux_support: Path | None
+) -> tuple[tuple[str, Path], ...] | BundleRejected:
+    if not target.is_linux:
+        return (
+            ()
+            if linux_support is None
+            else BundleRejected(BundleFailure.INVALID_MANIFEST, "Linux support on macOS")
+        )
+    if linux_support is None or linux_support.resolve() != linux_support:
+        return BundleRejected(BundleFailure.INVALID_MANIFEST, "Linux support")
+    paths = sorted(linux_support.rglob("*"))
+    if (
+        any(path.is_symlink() for path in paths)
+        or not all((linux_support / name).is_dir() for name in ("lib", "fonts", "licenses"))
+        or not (linux_support / "fonts.conf").is_file()
+    ):
+        return BundleRejected(BundleFailure.INVALID_MANIFEST, "Linux support")
+    return tuple(
+        (LINUX_SUPPORT + "/" + path.relative_to(linux_support).as_posix(), path)
+        for path in paths
+        if path.is_file()
+    )
 
 
 def main() -> int:

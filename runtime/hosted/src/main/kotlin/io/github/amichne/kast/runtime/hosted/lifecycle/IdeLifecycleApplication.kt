@@ -90,9 +90,11 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                     is Refinement.Rejected -> return@launch
                 }
             val directory =
-                OwnedHostedEndpoint.directory(Path.of(System.getProperty("user.home")), root).let {
-                    it.parent.parent.resolve("ide-lifecycle").resolve(it.fileName)
-                }
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
+                    Path.of(System.getProperty("user.home")),
+                    io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
+                    root.value,
+                )
             when (
                 val endpoint =
                     OwnedHostedEndpoint.open(

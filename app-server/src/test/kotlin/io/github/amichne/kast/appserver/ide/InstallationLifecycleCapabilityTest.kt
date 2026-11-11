@@ -16,7 +16,6 @@ import java.nio.channels.Channels
 import java.nio.channels.ServerSocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
-import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.encodeToString
@@ -102,11 +101,13 @@ class InstallationLifecycleCapabilityTest {
                             ),
                         capabilities = IdeLifecycleCapabilityName.entries.toSet() - IdeLifecycleCapabilityName.PRESENT,
                     )
-            val digest =
-                MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
-                    "%02x".format(it)
-                }
-            val socket = root.resolve(".kast/ide-lifecycle/$digest/host.sock")
+            val socket =
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
+                        root,
+                        io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
+                        home.toString(),
+                    )
+                    .resolve("host.sock")
             Files.createDirectories(socket.parent)
             server.bind(UnixDomainSocketAddress.of(socket))
             val serving = executor.submit {
@@ -153,11 +154,13 @@ class InstallationLifecycleCapabilityTest {
                         IdeLifecycleResult.HostSettled("host", "update", identity)
                     else -> IdeLifecycleResult.HostRefreshRequested("host", "update", identity)
                 }
-            val digest =
-                MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
-                    "%02x".format(it)
-                }
-            val socket = root.resolve(".kast/ide-lifecycle/$digest/host.sock")
+            val socket =
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
+                        root,
+                        io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
+                        home.toString(),
+                    )
+                    .resolve("host.sock")
             Files.createDirectories(socket.parent)
             server.bind(UnixDomainSocketAddress.of(socket))
             val json = Json { encodeDefaults = true }

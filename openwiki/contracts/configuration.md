@@ -101,10 +101,10 @@ sources:
     resource: repo://packaging/install-local.sh
   - id: openwiki-source-621afc296584eb4217553339
     resource: repo://packaging/managed_headless.py
-generated: { by: "codex", at: "2026-11-11T01:55:34.136Z" }
+generated: { by: "pi", at: "2026-11-11T10:38:11.930Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-11T02:08:52.690Z
+    at: 2026-11-11T10:38:11.930Z
 ---
 
 # Installation configuration
@@ -245,6 +245,10 @@ The selected IDEA distribution, its bundled JBR, and its assembly record must pa
 An invalid explicit selection rejects without desktop fallback.
 The assembler creates a wrapper that supplies this setting and the private HOME.
 It does not grant project trust or workspace readiness.
+
+Gradle uses the private HOME's `.gradle` directory by default.
+A saved `state/gradle-home.json` can select an existing canonical directory instead.
+Malformed, aliased, or unavailable selections reject; admission does not replace them with a default.
 
 ## Imported model inputs
 

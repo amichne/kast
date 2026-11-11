@@ -34,6 +34,12 @@ internal object KastCleanSlateModules {
             ModuleId.EVIDENCE_SQLITE,
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
+                // Container publication and private-state adapters; semantic query execution has no write authority.
+                JvmClassName("io/github/amichne/kast/distribution/cli/ContainerFilesKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/ContainerStore"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/ContainerRuntimeKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/ContainerRuntimeDownloadKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/ContainerManagementKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementInstallationKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/AdmittedCliSkill"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/GuidanceProviderExecutionKt"),
@@ -418,6 +424,7 @@ internal object KastCleanSlateModules {
         target(
             ModuleId.RUNTIME_HOSTED,
             ModuleRole.IDE_HOST,
+            ModuleId.DISTRIBUTION_CONTRACT,
             ModuleId.CHANGE_CONTRACT,
             ModuleId.CHANGE_PLAN,
             ModuleId.CHANGE_PROTOCOL,

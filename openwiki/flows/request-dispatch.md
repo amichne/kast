@@ -95,7 +95,7 @@ sources:
 generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-06T20:52:34.571Z
+    at: 2026-11-11T10:38:11.930Z
 ---
 
 # Request dispatch

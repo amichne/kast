@@ -16,7 +16,6 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
-import java.security.MessageDigest
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
@@ -56,12 +55,11 @@ private constructor(
 
     companion object {
         fun directory(home: Path, root: CanonicalWorkspaceRoot): Path {
-            val digest =
-                MessageDigest.getInstance("SHA-256")
-                    .digest(root.value.toByteArray(Charsets.UTF_8))
-                    .take(16)
-                    .joinToString("") { "%02x".format(it) }
-            return home.resolve(".kast/ide-hosted/$digest")
+            return io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
+                home,
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.SEMANTIC,
+                root.value,
+            )
         }
 
         fun open(
@@ -89,7 +87,27 @@ private constructor(
                         return Refinement.Rejected(HostedEndpointFailure.DIRECTORY_REJECTED)
                     ancestor = ancestor.parent
                 }
-                Files.createDirectories(directory)
+                val namespace = directory.parent.parent
+                if (
+                    namespace.parent == Path.of("/tmp").toRealPath() &&
+                        namespace.fileName.toString().matches(Regex("kast-[a-f0-9]{32}"))
+                ) {
+                    val mode = PosixFilePermissions.fromString("rwx------")
+                    val owner = Files.getOwner(Path.of(System.getProperty("user.home")))
+                    for (path in listOf(namespace, directory.parent, directory)) {
+                        try {
+                            Files.createDirectory(path, PosixFilePermissions.asFileAttribute(mode))
+                        } catch (_: java.nio.file.FileAlreadyExistsException) {
+                            // Existing state must already have this exact private owner; never chmod foreign state.
+                        }
+                        if (
+                            path.toRealPath() != path ||
+                                Files.getOwner(path) != owner ||
+                                Files.getPosixFilePermissions(path) != mode
+                        )
+                            return Refinement.Rejected(HostedEndpointFailure.DIRECTORY_REJECTED)
+                    }
+                } else Files.createDirectories(directory)
                 if (directory.toRealPath() != directory)
                     return Refinement.Rejected(HostedEndpointFailure.DIRECTORY_REJECTED)
                 Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))

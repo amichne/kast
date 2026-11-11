@@ -33,7 +33,12 @@ class ExistingIdeSocketTest {
                 MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
                     "%02x".format(it)
                 }
-            val directory = home.resolve(".kast/ide-hosted/$digest")
+            val directory =
+                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
+                        home,
+                        io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.SEMANTIC,
+                    )
+                    .resolve(digest)
             Files.createDirectories(directory)
             Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
             val socket = directory.resolve("host.sock")
