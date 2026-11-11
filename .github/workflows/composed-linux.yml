@@ -38,12 +38,14 @@ env:
 jobs:
   assemble:
     name: Assemble ${{ matrix.target }}
-    runs-on: ${{ matrix.target == 'linux-x86_64' && 'ubuntu-24.04' || 'macos-15' }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJSON(inputs.linux_only && '["linux-x86_64"]' || '["linux-x86_64","macos-aarch64"]') }}
+        include: ${{ fromJSON(format('[{0}{1}]',
+          '{"target":"linux-x86_64","runner":"ubuntu-24.04","donor":"idea-2026.2.2.tar.gz"}',
+          (!inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true') && ',{"target":"macos-aarch64","runner":"macos-15","donor":"idea-2026.2.2-aarch64.dmg"}' || '')) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -86,7 +88,7 @@ jobs:
       - name: Download pinned donor and assemble the archive
         shell: bash
         env:
-          DONOR: ${{ matrix.target == 'linux-x86_64' && 'idea-2026.2.2.tar.gz' || 'idea-2026.2.2-aarch64.dmg' }}
+          DONOR: ${{ matrix.donor }}
           TARGET: ${{ matrix.target }}
         run: |
           scratch=$(cd /tmp && pwd -P)
@@ -134,12 +136,14 @@ jobs:
     name: Qualify ${{ matrix.target }}
     needs: assemble
     if: ${{ !cancelled() }}
-    runs-on: ${{ matrix.target == 'linux-x86_64' && 'ubuntu-24.04' || 'macos-15' }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJSON(inputs.linux_only && '["linux-x86_64"]' || '["linux-x86_64","macos-aarch64"]') }}
+        include: ${{ fromJSON(format('[{0}{1}]',
+          '{"target":"linux-x86_64","runner":"ubuntu-24.04"}',
+          (!inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true') && ',{"target":"macos-aarch64","runner":"macos-15"}' || '')) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
