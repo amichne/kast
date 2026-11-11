@@ -15,7 +15,7 @@ on:
 
 permissions:
   actions: read
-  contents: write
+  contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -25,13 +25,52 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  version:
+    name: Resolve stable version
+    if: github.ref == 'refs/heads/main' && vars.KAST_MACOS_CHECKS == 'true' && vars.KAST_NATIVE_COMPILATION != 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.release_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Admit exact main release source
+        run: |
+          git fetch --no-tags origin main
+          test "$GITHUB_SHA" = "$(git rev-parse FETCH_HEAD)"
+          bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
+
+      - name: Resolve release version
+        id: release_version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BUMP: ${{ inputs.bump }}
+        run: >-
+          python3 distribution/release/resolve_version.py
+          --repository "$GITHUB_REPOSITORY"
+          --bump "$RELEASE_BUMP"
+
+  linux-runtime:
+    name: Qualify Linux x86-64 runtime
+    needs: version
+    uses: ./.github/workflows/composed-linux.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      release_target: linux-x86_64
+
   release:
-    name: Build and publish release
+    name: Prepare stable release candidate
+    needs: version
     if: github.ref == 'refs/heads/main' && vars.KAST_MACOS_CHECKS == 'true' && vars.KAST_NATIVE_COMPILATION != 'false'
     runs-on: [self-hosted, macOS, ARM64, kast-main]
     timeout-minutes: 60
     env:
       GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,17 +96,8 @@ jobs:
           echo "$RUNNER_TOOL_CACHE/kast-ci-python/bin" >> "$GITHUB_PATH"
           "$RUNNER_TOOL_CACHE/kast-ci-python/bin/python3" -m pip install uv==0.12.9
 
-      - name: Resolve release version
-        id: release_version
-        run: >-
-          python3 distribution/release/resolve_version.py
-          --repository "$GITHUB_REPOSITORY"
-          --bump "${{ inputs.bump }}"
-
       - name: Reuse exact successful main CI candidate
         id: ci_candidate
-        env:
-          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: >-
           python3 .github/scripts/release/ci-candidate.py reuse
           --repository "$GITHUB_REPOSITORY"
@@ -113,12 +143,9 @@ jobs:
         if: steps.ci_candidate.outputs.candidate == 'MISSING'
         env:
           KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: bash .github/scripts/ci/verify.sh --version "$RELEASE_VERSION"
 
       - name: Admit exact release candidate
-        env:
-          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: >-
           python3 .github/scripts/release/ci-candidate.py validate
           --repository "$GITHUB_REPOSITORY"
@@ -129,17 +156,55 @@ jobs:
       - name: Retain exact release candidate
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: release-candidate-v${{ steps.release_version.outputs.version }}-${{ github.sha }}
-          path: build/release/v${{ steps.release_version.outputs.version }}/
+          name: release-candidate-v${{ env.RELEASE_VERSION }}-${{ github.sha }}
+          path: build/release/v${{ env.RELEASE_VERSION }}/
           if-no-files-found: error
+          overwrite: true
           compression-level: 0
           retention-days: 7
 
+  mac-runtime:
+    name: Qualify Apple silicon runtime
+    needs: [version, release]
+    uses: ./.github/workflows/composed-linux.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      release_target: macos-aarch64
+
+  publish:
+    name: Publish immutable release
+    needs: [version, release, linux-runtime, mac-runtime]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+      - name: Download exact release candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: release-candidate-v${{ env.RELEASE_VERSION }}-${{ github.sha }}
+          path: build/release/v${{ env.RELEASE_VERSION }}
+
+      - name: Download qualified runtimes
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: kast-release-runtime-v${{ env.RELEASE_VERSION }}-*-${{ github.sha }}
+          path: ${{ runner.temp }}/kast-release-runtimes
+          merge-multiple: false
+
       - name: Publish immutable GitHub release
-        env:
-          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
         run: >-
           bash .github/scripts/release/publish-release.sh
           --release "v${RELEASE_VERSION}"
           --commit "$GITHUB_SHA"
           --assets-directory "build/release/v${RELEASE_VERSION}"
+          --runtimes-directory "$RUNNER_TEMP/kast-release-runtimes"

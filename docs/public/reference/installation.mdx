@@ -171,10 +171,11 @@ kast container --help
 
 The developer channel selects the latest qualified build. That build can lag changes on `main`.
 If `kast container --help` succeeds, use a runtime ZIP for that exact version and platform.
-The runtime format covers macOS and Linux on AArch64 and x86-64.
+Kast publishes runtime archives for Apple silicon and Linux x86-64.
 
-If a matching ZIP and its `.sha256` file are on the [versioned release](https://github.com/amichne/kast/releases), `create` can fetch them.
-If the release lacks these assets, import a matching candidate before you create the container.
+The stable release workflow qualifies each runtime archive and publishes it with its `.sha256` file.
+On a [stable release](https://github.com/amichne/kast/releases) with these files, `create` fetches the matching runtime on first use.
+If your release lacks these files, import a matching candidate before you create the container.
 
 For a candidate, open a successful [Isolated runtime candidates run](https://github.com/amichne/kast/actions/workflows/composed-linux.yml).
 Download the `kast-composed-TARGET-SHA-RUN_ID-ATTEMPT` artifact for your platform.

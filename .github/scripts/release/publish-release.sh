@@ -9,6 +9,7 @@ fail() {
 release=""
 commit=""
 assets_directory=""
+runtimes_directory=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --release)
@@ -26,6 +27,11 @@ while [[ $# -gt 0 ]]; do
       assets_directory="$2"
       shift 2
       ;;
+    --runtimes-directory)
+      [[ $# -ge 2 ]] || fail "--runtimes-directory requires a value"
+      runtimes_directory="$2"
+      shift 2
+      ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
@@ -33,6 +39,8 @@ done
 [[ "${release}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "release must be v<major>.<minor>.<patch>"
 [[ "${commit}" =~ ^[0-9a-f]{40}$ ]] || fail "commit must be one full Git identity"
 [[ -d "${assets_directory}" ]] || fail "assets directory does not exist"
+[[ -d "${runtimes_directory}" ]] || fail "qualified runtimes directory does not exist"
+runtimes_directory="$(cd "${runtimes_directory}" && pwd -P)"
 [[ -n "${GH_TOKEN:-}" ]] || fail "GH_TOKEN is required"
 repository="${GITHUB_REPOSITORY:-amichne/kast}"
 version="${release#v}"
@@ -129,12 +137,21 @@ upload_assets=(
 if [[ "${#plugins[@]}" == 2 ]]; then
   upload_assets+=("${plugins[1]}" "${plugins[1]}.sha256" "$variant_record" "$variant_record.sha256")
 fi
+runtime_assets="$(
+  mise exec -- uv run --locked --script .github/scripts/release/qualified_runtime_assets.py \
+    --directory "${runtimes_directory}" --version "${version}" --source-revision "${commit}"
+)" || fail "qualified runtime assets rejected"
+while IFS= read -r asset; do
+  upload_assets+=("${runtimes_directory}/${asset}")
+done <<< "${runtime_assets}"
+
 release_notes="$(
   printf '%s\n' \
     "Kast installs a persistent agent broker and a matched IntelliJ IDEA plugin:" \
     '' \
     '- **Control:** native `kast` management command, private service lifecycle, hosted tool schemas, broker, and typed wire transport.' \
     '- **Existing-IDE plugin:** the release-line plugin installed programmatically by the verified shell installer.' \
+    '- **Workspace containers:** runtime archives and SHA-256 files for Apple silicon and Linux x86-64.' \
     '- **Agent tools:** MCP plugins, shared session context, and an installable marketplace. Run `kast plugin codex` after installing Kast.' \
     '- **Installation:** one physical installation directory, with no current selector or selectable historical versions. Existing selector-based installs migrate through the published installer.'
 )"

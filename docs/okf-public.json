@@ -6841,7 +6841,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "74cdeb203070339768675a7c6e3d08f75ae00bea687aed08c69afbc4653c5e37"
+          "sha256": "3a99c28715d981d697bdab1b8db27af964151903d3b241259ff63fe68f5013bf"
         }
       ],
       "claims": [
@@ -7081,7 +7081,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
+      "reviewedSourceRevision": "0e432b67cd9a0f5dafc81667ef409027f21c1ad7"
     },
     {
       "route": "reference/integrations",

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c4b563fbfd8678009db203947f06ce1c82ea22c21f67fca67b921d34fbdc84d5",
+  "pageVersion": "sha256:fd7faf5ec386c777fb7778d8a10c739bcde4160c3add2eafc4927f544467c882",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -370,7 +370,7 @@
         },
         {
           "resource": "repo://.github/workflows/release.yml",
-          "version": "repo-file-v1:sha256:a1fdea38b25d3b9fb3a2880f61a26679553f82b68bbb0e168763e23b43e516a3"
+          "version": "repo-file-v1:sha256:c9243275ee2f2490a027dba48a974e1f5bf9841e223deeb6844d49b5fc22f3e5"
         },
         {
           "resource": "repo://cli/native-image.args",
@@ -763,6 +763,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T20:53:27.058Z"
+    "at": "2026-11-11T22:06:17.381Z"
   }
 }

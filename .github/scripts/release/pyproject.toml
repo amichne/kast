@@ -20,7 +20,7 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["developer_catalog.py", "publish_developer.py", "test_developer_catalog.py", "test_developer_publication.py"]
+include = ["developer_catalog.py", "publish_developer.py", "qualified_runtime_assets.py", "test_developer_catalog.py", "test_developer_publication.py"]
 extraPaths = ["../ci"]
 reportMatchNotExhaustive = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
@@ -28,7 +28,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["**/developer_catalog.py", "**/publish_developer.py", "**/test_developer_catalog.py", "**/test_developer_publication.py"]
+include = ["**/developer_catalog.py", "**/publish_developer.py", "**/qualified_runtime_assets.py", "**/test_developer_catalog.py", "**/test_developer_publication.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

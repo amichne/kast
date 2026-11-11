@@ -1,7 +1,7 @@
 ---
 type: How To
 title: "Build isolated runtime candidates"
-description: "Build and qualify isolated runtime archives for macOS and Linux on AArch64 and x86-64. Prepare Devin snapshot initialization with the Linux candidate."
+description: "Build and qualify isolated runtime archives for Apple silicon and Linux x86-64. Prepare Devin snapshot initialization with the Linux candidate."
 resource: "repo://docs/composed-linux-release"
 tags: [kast, distribution, linux, devin]
 timestamp: "2026-11-08T00:00:00Z"
@@ -17,7 +17,7 @@ code_sources:
 
 # Build isolated runtime candidates
 
-Use **Isolated runtime candidates** to produce archives for macOS and Linux on AArch64 and x86-64.
+Use **Isolated runtime candidates** to produce archives for Apple silicon and Linux x86-64.
 The workflow retains candidate archives and qualification evidence.
 The Linux x86-64 setup archive also supplies the `kast-action` input.
 
@@ -49,6 +49,7 @@ Its result covers Node action setup. Devin snapshot and session readiness need s
 The workflow uses read-only repository permissions.
 Source admission runs before assembly and before archive upload.
 The workflow runs source guards on Linux x86-64 and composition tests on each target.
+Jobs that compile Control keep the Native Image build report with the assembly evidence.
 The jobs use short canonical temporary paths to fit the native socket path limit.
 Use new installation roots for local qualification.
 
@@ -76,8 +77,15 @@ The [Devin blueprint reference](https://docs.devin.ai/onboard-devin/environment/
 
 ## Qualification and publication limits
 
+The stable **Release** workflow calls the candidate workflow with the resolved version and release commit.
+The Apple silicon job uses the same Control and Host archives as the stable release.
+It assembles only the bootstrap in Gradle before runtime assembly.
+The Linux x86-64 job assembles its own native Control in parallel with stable candidate preparation.
+The stable release publishes the qualified runtime archive and its SHA-256 file for each target.
+If a target lacks a matching qualification receipt or digest, the workflow stops before it publishes the release.
+
 Examine the retained evidence for each target and candidate digest.
-Publishing the archive and applying a Devin blueprint need separate authorization.
+Publication of a standalone setup archive and use of a Devin blueprint need separate authorization.
 
 Qualify the snapshot build in a separate disposable installation. Keep the reusable installation stopped and without workspace trust.
 An environment owner still needs to qualify a full Devin build and an inherited differential build.
