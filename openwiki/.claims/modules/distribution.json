@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:717824e1b0bac111e2a0bdf296fa09852eca19d537c9ed4c6f565025e238b6d9",
+  "pageVersion": "sha256:3d7fc92b946c03763d870cf8697435a2b3a94caa24df9a5ca74b896beb2147e2",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -342,7 +342,7 @@
     },
     {
       "id": "claim_5f7d796cedca49cca3847f961bb82235",
-      "statement": "CI pins BellSoft Liberica NIK 25.0.2+13 and configures Gradle cache transport with routine PR reads and main push/dispatch writes. Native handoff retains native metrics and finite build outcomes, produces one unified executable with -Os, and transfers its exact bytes; configured cache transport does not prove an observed cache hit.",
+      "statement": "CI pins BellSoft Liberica NIK 25.0.2+13. The Linux source job and macOS native job configure Gradle cache transport. Pull requests have read-only access, and main push and dispatch runs can write shared entries. Native handoff keeps metrics and finite build outcomes. It produces one unified executable with -Os and transfers its exact bytes. Cache transport alone does not establish a cache hit.",
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/build_execution.py",
@@ -361,8 +361,8 @@
           "version": "repo-lines-v1:sha256:4ccf1abe162c654186993f465da5b84b4c181e88b37f12b98ce4265b4895f800:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiNDQyZWM0MTc0ZWQ0ZDg4OTNlNTIzMTlmM2U5ZDcxZTdhOTJmMTNmY2M0ZTlkODU1NWU3M2QxZjkyMGViMzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMmNmNDFjMmUyMGM4MmJkYTRkZTY2ZGIzNjA2YjdmZGEwMTk0OWVlNjQ5MWExODFhYTA0Y2M4NzA2YjVmMzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNkNjFiMzYxNDQzMTg2ODMyZGVmMWIyMjhiZGYyMjEwMjBkZmFmZDAzNmJhNzI2ODg4OWU4NTFmYmZlYzczMjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjYmQwMzg4ZWY5MjJlMDhmZDAzNmYyNjA0ZGEyN2VjNWNlYzFmODZmZTVjMTMxY2IyYTQzZTVhZTE2MjliYmUifQ"
         },
         {
-          "resource": "repo://.github/workflows/gradle-cache.yml",
-          "version": "repo-file-v1:sha256:bfc28ecc79f7578dce278cd955227dc3bcf0161e5c1be2de36de41fe6a4b9f1c"
+          "resource": "repo://.github/workflows/ci.yml#L230-L265",
+          "version": "repo-lines-v1:sha256:ca3599e38dfb0d0507017ebef1f1c42adfc5eb5eb9986966e79396c883d85f43:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0NDk0OTExNzYwMmEyOWY4ZTJmOTM3N2ZmZmViMGQ5NjZmYzBhODg3ZGYwNzI0ODJiYjcyZThiMmRhNDRjYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5ZDRiOGE2OTUyYzFiMzEyOGFhZWYyZTQ0NWQwY2YxZDEyMDIyYmYzOGMxN2RmZThlZDUyZTljMWYzMGQ0MjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5ODRjMTg0OGI4M2ZhODU2ZjM5N2FmM2UzN2Q0YTcwN2YzMDRiNmE5M2QzYzZlZDcyMTNlOWY5OWY1MGY5OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliMjY0ZjkwMWZmNjZmMWJmNGZiMDBmMGI2MjUyYTRiYWU5ZTBkNzQ2ZjA1NmJiYzA4MTA4MTAyOGU3OTlhZDcifQ"
         },
         {
           "resource": "repo://.github/workflows/release-component.yml",
@@ -763,6 +763,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T14:27:59.275Z"
+    "at": "2026-11-11T15:43:58.217Z"
   }
 }
