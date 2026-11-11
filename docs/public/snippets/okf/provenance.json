@@ -828,7 +828,7 @@
           "claim": "claim_7734d5f14fe74d3bb4546106a864e74b",
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L248-L277",
           "recordedVersion": "repo-lines-v1:sha256:a44e673ffab7dcfe171ec0a2f7f21bd88e6ac50b4731d4fc74ef8466c66b6394:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhYjIyMTUyMDZjNjcyODIxZjE5ZjEzZmQ2YzQ0NmVjNjY2YmY1MjI1MDZiNWY4NjRmMWNmNTJiOTQxZDZkZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFmODFhMWUxNWE1MzgxODZiNzJmMDFkYjQ3YjFiM2Y3OTdjMWNmZjEwMDY3NGQ5YWQ4N2I0NTU5NDc4NTRiMmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0NmY0YjdhNDJjN2RlOTFlYjg2ZDAyOWY2ZGQzNjdjZTc0MjljMjBlNGQ0MjExMzdlZmI5YTcyZjAwZjdkMTQifQ",
-          "currentVersion": "repo-file-v1:sha256:a377bda69920c274b8542e4b667de96c33ff9888de9eced5da76c15d87e1a0fd",
+          "currentVersion": "repo-file-v1:sha256:f8ff85e1a4410fc184f4c6b666cf80b22ace073f3732f5e3452b70746dfb5f6b",
           "status": "NOT_ASSESSED"
         },
         {

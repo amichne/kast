@@ -116,8 +116,7 @@ private fun resumeIsolatedInstallation(root: Path, environment: Map<String, Stri
     val home = managedRetirementHome(environment)
     return withRegistrationLock(root) {
         val admitted = InstallationLifecycle.admit(root, home, environment, LifecycleExecution())
-        if (admitted !is LifecycleAdmission.Admitted)
-            throw ManagementRejected("resume-isolated", "ownership unproven")
+        if (admitted !is LifecycleAdmission.Admitted) throw ManagementRejected("resume-isolated", "ownership unproven")
         when (val result = admitted.lifecycle.resumePrivateHost()) {
             LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
             is LifecycleEffect.Rejected -> throw ManagementRejected("resume-isolated", result.failure.name)

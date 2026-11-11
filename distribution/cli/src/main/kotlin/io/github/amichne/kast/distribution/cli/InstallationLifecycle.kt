@@ -188,7 +188,8 @@ private constructor(
 
     private fun retireHost(): LifecycleEffect {
         return when (val selected = readSelectedLaunch()) {
-            null, is SelectedIdeLaunch.Unavailable -> LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
+            null,
+            is SelectedIdeLaunch.Unavailable -> LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
             is SelectedIdeLaunch.Resolved -> {
                 if (!SelectedIdeInstallation.matchesCurrentLaunch(selected))
                     LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
@@ -197,8 +198,7 @@ private constructor(
                     if (runtime != null && Files.notExists(runtime.config.resolve(".lock"), NOFOLLOW_LINKS))
                         LifecycleEffect.Completed
                     else LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
-                }
-                else execution.processes.selectedHost(Path.of(selected.executable))
+                } else execution.processes.selectedHost(Path.of(selected.executable))
             }
         }
     }
@@ -210,7 +210,8 @@ private constructor(
             home != privateRoot.resolve("state/home") ||
                 environment[ConfigurationParameter.MANAGED_HEADLESS_STATE.key] != state.toString() ||
                 !Path.of(launch.home).startsWith(privateRoot.resolve("runtime"))
-        ) return null
+        )
+            return null
         return when (val admitted = ManagedHeadlessInstallation.resolve(launch, state, home)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> null
@@ -218,9 +219,7 @@ private constructor(
     }
 
     private fun readSelectedLaunch(): SelectedIdeLaunch? {
-        val raw =
-            readBoundedFile(installation.resolve("config/selected-ide.json"), RECORD_BYTES)
-                ?: return null
+        val raw = readBoundedFile(installation.resolve("config/selected-ide.json"), RECORD_BYTES) ?: return null
         return try {
             lifecycleIngressJson.decodeFromString<SelectedIdeLaunch>(raw)
         } catch (_: SerializationException) {

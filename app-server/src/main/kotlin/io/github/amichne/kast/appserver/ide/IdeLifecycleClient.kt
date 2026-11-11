@@ -234,11 +234,6 @@ internal constructor(
                 is Refinement.Rejected -> return blocked(selected.failure)
                 is Refinement.Refined -> selected.value
             }
-        if (requireWorkspaceTrust && selectedDeployment is SelectedLifecycleDeployment.Headless) {
-            val trust = selectedDeployment.installation.config.resolve("options/trusted-paths.xml")
-            if (!java.nio.file.Files.isRegularFile(trust, java.nio.file.LinkOption.NOFOLLOW_LINKS))
-                return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
-        }
         // Native directory locking owns exclusivity for the admitted private profile.
         // Managed launch never enumerates unrelated processes. Only a live handshake grants admission.
         if (selectedDeployment == SelectedLifecycleDeployment.Desktop) {
@@ -249,7 +244,7 @@ internal constructor(
             }
         }
         val lifetime =
-            when (val started = launch(launch, selectedDeployment)) {
+            when (val started = launch(launch, selectedDeployment, requireWorkspaceTrust)) {
                 is Refinement.Rejected -> return blocked(started.failure)
                 is Refinement.Refined -> started.value
             }
@@ -267,9 +262,14 @@ internal constructor(
     private fun launch(
         target: SelectedIdeLaunch.Resolved,
         selectedDeployment: SelectedLifecycleDeployment,
+        requireWorkspaceTrust: Boolean,
     ): Refinement<IdeLaunchLifetime, IdeLifecycleFailure> {
-        if (selectedDeployment is SelectedLifecycleDeployment.Headless)
+        if (selectedDeployment is SelectedLifecycleDeployment.Headless) {
+            val trust = selectedDeployment.installation.config.resolve("options/trusted-paths.xml")
+            if (requireWorkspaceTrust && !Files.isRegularFile(trust, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                return Refinement.Rejected(IdeLifecycleFailure.TRUST_REQUIRED)
             return launchManagedHeadless(selectedDeployment.installation, platform)
+        }
         if (target.layout == SelectedIdeLayout.LINUX_DIRECTORY && platform.display().isNullOrBlank())
             return Refinement.Rejected(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
         val arguments = ideLaunchArguments(target)

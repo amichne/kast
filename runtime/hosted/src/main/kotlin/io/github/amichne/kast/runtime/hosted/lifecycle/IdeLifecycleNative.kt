@@ -158,7 +158,8 @@ internal class IdeLifecycleNative(
         if (
             ManagedHeadlessHost.current() != null &&
                 TrustedPaths.getInstance().state.trustedPaths != mapOf(root.value to true)
-        ) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
+        )
+            return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
         val existing = existingProjects(root)
         if (existing.size > 1) return blocked(IdeLifecycleFailure.PROJECT_BUSY)
         if (existing.size == 1) return openExisting(existing.single(), root, operation)

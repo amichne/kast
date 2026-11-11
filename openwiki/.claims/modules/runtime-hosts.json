@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b3c4f4751a907f2edfcb21eb1f023911d30262f9de09a90e1cfa7a415eb220db",
+  "pageVersion": "sha256:999a5f06e731346c5a97636572a6c381e73ca58a8b2a611c1ee94b80ad152775",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -371,8 +371,8 @@
       "statement": "Managed cold launch skips desktop process discovery. Native profile locking owns exclusivity, and an exited child grants no live Host admission.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L242-L264",
-          "version": "repo-lines-v1:sha256:6b90712fa4bc73c7feaf7417830ed95667ccb4612e5e638d216c3bea2c5b7f87:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2ZDQxOTAwNjdhZDRkYjQ2ZTlmZTAxODhjNTgxYWM0YTgwMmU3MDA1ZWZkZWNiNWQwYjNjNDM2MjBkNDc0MzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NWUwNmQ5OGY1MzZkYTE0YTMzY2JiNWI3Mjg5NWZkZjBmMjAyOTViNWViMzFkOTkzZGJhZjEyNTVlZjUxNTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwZDk4Zjg1ZTg2ODczNzRlMDgzM2I2NmI1Mzg5OWRjZTM4MzQ2NGQ3NDhiYzA0ZDM5MTg2YTFmNTUxMjkxY2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyYmZhZDZkOTljYWM4YzhiZGUyZDdiMzg3NTdjMmExYTMyN2MyN2VjMWUxMzQ2NTMxMzU3ZjdhM2YwNDZiY2MifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L226-L260",
+          "version": "repo-lines-v1:sha256:e5ffebbbc7cdee5f57e24e15fccb01f1be443b4e3065dbc1cb9bb09b871bc7b1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3YzM4NDA2ZTRhNWFlZmYyZDU1Zjk4Y2Y5NDIzOGE5NDBkMWY0NmI4MTUyMzM0ZTdlNGJjYjgwNWEwNmEwZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkMmIzZjg3MzkxMDBhY2M0NDRmODE4ZjQzMWZjZWQ4MjQ0YzhkOTg3MzE2ODRjMDZmZDg0Y2RhNzE3YmE4ZmQifQ"
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/LinuxIdeLifecycleTest.kt#L29-L68",
@@ -385,18 +385,18 @@
       "statement": "Private workspace preparation needs a trust record before a cold Host starts. The running private Host rejects workspace open unless its sole trust grant names that exact workspace.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L201-L241",
-          "version": "repo-lines-v1:sha256:6211793a85bb4def8788a27d43466e6e8a21401a2a48adc25f08a07ada536e44:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkMzk3MGYxZTIzYjZlMjdmOGVlN2YxMjMxMmZmMjgwM2M1ZjVkMTc4ZDQ0ZDk2MTBjMDE0ZWI4MGU5Y2EzMTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5N2IzY2QyODExNjM0M2VlMDAxMGI2NjAwY2E2NmNkYjk2Mjk3ZGEzMzA1NGUyYmZhZmVmNTIwZjg0ODFjYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmODczYjk4ZWQxMzA3MGM3MmVmYmQ5MmNiNGM5MjI0Zjk3NzBiNjJmNjI1ZWY1NDVjNWVmYzM1OWI5YWNmNTEifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L201-L271",
+          "version": "repo-lines-v1:sha256:89f7082d93a03b99a5ef34910e1149690d357d9bca7c04d965ae4ee9342501f9:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkMzk3MGYxZTIzYjZlMjdmOGVlN2YxMjMxMmZmMjgwM2M1ZjVkMTc4ZDQ0ZDk2MTBjMDE0ZWI4MGU5Y2EzMTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4MGVjM2IwOTMyOTkyYmUzNGY4NmRjNjJhOGRmNmIzMTcyNDA0NzkyOTY1NzM2NzJhZTRhMDg4MjZlOTZkYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5N2IzY2QyODExNjM0M2VlMDAxMGI2NjAwY2E2NmNkYjk2Mjk3ZGEzMzA1NGUyYmZhZmVmNTIwZjg0ODFjYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmYWY1YzU2ODg1MTg3MjZiNzdiYTFiYTdlMjRlZWUwN2Y2YWI2YmJhNWE4MjhmYzA2NTFiZmIwNzg0NzUwMDQifQ"
         },
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L149-L165",
-          "version": "repo-lines-v1:sha256:fe34093969d6efe9141900120d962d06aae2683e8379619a29041e0ac7279376:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4NjNhNTkzNWUzNWUxOWI4MWJjNThhZmI3NWVlMmI1MGE5MmMxZWQ1ZTI0MjVjMmVlYjQzZjg0MTkzOTMxNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlZWM4N2MyOTU2MTlhMjc2NTgxMTdiMTI0MDRhZjYzYzQyNzZlZWVhMTg5MTVjZDBkN2I1MGE1YWUwYTY0NmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzMTFhNjY3ODRiMDg1MzA3ODE5YjA1YjQ4MmU0ZGJjZGUzNjc5NDQ1Y2QwNDRmOTdhNDIxYmFkMTkxODIxOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmMjBjYzIzOGE3NmZhMTU5NzJkNjVkOWMwZWU5YmEzMDFkNGE0ZDg2OGVjMmVkZmIwZjFkOTdlMTQxYzU2ZjQifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L149-L167",
+          "version": "repo-lines-v1:sha256:c60756a270829a47c866c045914928b45f73276304a453cc3aa3d21d97124e0c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4NjNhNTkzNWUzNWUxOWI4MWJjNThhZmI3NWVlMmI1MGE5MmMxZWQ1ZTI0MjVjMmVlYjQzZjg0MTkzOTMxNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzMTFhNjY3ODRiMDg1MzA3ODE5YjA1YjQ4MmU0ZGJjZGUzNjc5NDQ1Y2QwNDRmOTdhNDIxYmFkMTkxODIxOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5ZjhhYzAzMmJhN2RkOWQyZTA4YTM5OWNkZjZhMjEzYWNhMjg1ZTQwODUyODViN2Y4ZTk0MWE5MDlkMGEwMTMifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-11T02:08:52.690Z"
+    "at": "2026-11-11T02:37:07.098Z"
   }
 }

@@ -81,21 +81,17 @@ private fun observeOwnedHeadlessProcess(
             ManagedProcessInventory.Captured(emptyList())
         else ManagedProcessInventory.Unavailable
     }
-    val identity = (inspected as? IdeLifecycleResult.Inspected)?.runtimeIdentity
-    if (
-        identity == null ||
-            identity.mode != IdeHostMode.MANAGED_HEADLESS ||
-            identity.ideaHome != runtime.launch.home ||
-            identity.profile != runtime.config.toString()
-    ) return ManagedProcessInventory.Unavailable
+    val identity =
+        (inspected as? IdeLifecycleResult.Inspected)?.runtimeIdentity ?: return ManagedProcessInventory.Unavailable
     val handle = ProcessHandle.of(identity.pid).orElse(null) ?: return ManagedProcessInventory.Unavailable
+    if (!handle.isAlive) return ManagedProcessInventory.Unavailable
     val info = handle.info()
     if (
-        !handle.isAlive ||
-            info.user().orElse(null) != System.getProperty("user.name") ||
+        info.user().orElse(null) != System.getProperty("user.name") ||
             info.command().orElse(null) != runtime.launch.executable ||
             info.startInstant().orElse(null)?.toEpochMilli() != identity.processStartEpochMillis
-    ) return ManagedProcessInventory.Unavailable
+    )
+        return ManagedProcessInventory.Unavailable
     val process = ManagedIdeProcess(identity.pid, identity.processStartEpochMillis, runtime.launch.executable)
     return ManagedProcessInventory.Captured(listOf(process))
 }

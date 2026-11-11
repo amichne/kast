@@ -89,8 +89,9 @@ internal class IntellijWorkspaceRefreshPort(
     ): Refinement<GradleProjectSettings, PublicFailure> {
         GradleSettings.getInstance(project).setupGradleSettings()
         val settings = GradleDefaultProjectSettings.createProjectSettings(root.toString())
-        val version = GradleInstallationManager.guessGradleVersion(settings)
-            ?: return Refinement.Rejected(PublicFailure.EFFECT_FAILED)
+        val version =
+            GradleInstallationManager.guessGradleVersion(settings)
+                ?: return Refinement.Rejected(PublicFailure.EFFECT_FAILED)
         if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(root, version)) return Refinement.Refined(settings)
 
         val declared = GradlePropertiesFile.getProperties(project, root).javaHomeProperty
@@ -325,8 +326,7 @@ internal class IntellijWorkspaceRefreshPort(
                 quietWorkspaceImport(
                     project,
                     preparedCallback.nativeCompletion,
-                    managedHeadless =
-                        ManagedHeadlessHost.current() != null,
+                    managedHeadless = ManagedHeadlessHost.current() != null,
                 )
             importTicket.set(modelInputs.beginOwnedImport())
             boundary.mayHaveStarted()
