@@ -72,13 +72,12 @@ jobs:
           validate-wrappers: true
           cache-read-only: true
 
-      - name: Check shared composition source
+      - name: Check shared composition Python source
         if: matrix.target == 'linux-x86_64'
         run: |
           mise exec -- uv run --locked --project packaging ruff check packaging/composed_release.py packaging/composed_host_probe.py packaging/test_composition_release.py
           mise exec -- uv run --locked --project packaging ruff format --check packaging/composed_release.py packaging/composed_host_probe.py packaging/test_composition_release.py
           mise exec -- uv run --locked --project packaging pyright --project packaging
-          mise exec -- ./gradlew --no-daemon verifyJsonContracts verifyKastArchitecture
 
       - name: Run composition tests on the target platform
         run: mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test_runtime_archive.py packaging/test-managed-headless.py -q
@@ -88,6 +87,7 @@ jobs:
           mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
           -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
           assembleRelease :runtime:hosted:headlessBootstrapPlugin
+          ${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}
 
       - name: Download pinned donor and assemble the archive
         shell: bash
@@ -141,10 +141,16 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          from shutil import rmtree
+          from shutil import disk_usage, rmtree
 
-          rmtree(Path("/tmp").resolve() / "kp")
-          rmtree(Path("build/cloud-input"))
+          scratch = Path("/tmp").resolve()
+          workspace = Path.cwd()
+          for path in (scratch, workspace):
+              print(f"Free bytes before cleanup at {path}: {disk_usage(path).free}", flush=True)
+          rmtree(scratch / "kp")
+          rmtree(workspace / "build/cloud-input")
+          for path in (scratch, workspace):
+              print(f"Free bytes after cleanup at {path}: {disk_usage(path).free}", flush=True)
           PY
 
       - name: Install and qualify the exact candidate

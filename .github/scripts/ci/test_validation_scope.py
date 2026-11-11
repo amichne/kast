@@ -568,6 +568,19 @@ class SourceInventoryTest(unittest.TestCase):
             jobs.index("Install and qualify the exact candidate"),
         )
 
+    def test_isolated_candidate_source_guards_share_the_assembly_invocation(self):
+        workflow = (
+            Path(__file__).resolve().parents[2] / "workflows/composed-linux.yml"
+        ).read_text()
+        self.assertEqual(1, workflow.count("./gradlew"))
+        assembly = workflow.split("- name: Assemble matching Control, Host, and bootstrap\n", 1)[1]
+        assembly = assembly.split("\n      - name:", 1)[0]
+        self.assertIn("assembleRelease :runtime:hosted:headlessBootstrapPlugin", assembly)
+        self.assertIn(
+            "${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}",
+            assembly,
+        )
+
     def test_validation_jobs_own_shared_cache_population(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
         self.assertFalse((workflows / "gradle-cache.yml").exists())
