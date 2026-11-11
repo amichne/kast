@@ -376,3 +376,17 @@ def test_schema_scope_receipts_reject_stale_missing_or_duplicate_evidence() -> N
     assert original is not None
     states[0] = replace(states[0], schemaScope=replace(original, sourceSha256="0" * 64))
     assert not schema_scopes_complete(snapshot, states)
+
+
+def test_reader_link_rejects_wrong_route_before_click() -> None:
+    from run import follow_reader_link
+
+    class BrowserProbe:
+        def evaluate(self, _source: str) -> object:
+            return "http://localhost:3339/wrong"
+
+        def call(self, *arguments: str) -> dict[str, object]:
+            raise AssertionError(f"must reject before browser action: {arguments}")
+
+    with pytest.raises(BrowserFailure, match="READER_LINK_TARGET"):
+        follow_reader_link(BrowserProbe(), "http://localhost:3339", "next", "/start")

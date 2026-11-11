@@ -84,3 +84,20 @@ mise exec -- uv run --locked --project docs/tooling ruff format --check --config
 
 The fixtures establish counts, malformed-input rejection, explicit effect failure, and rejection of partial evidence.
 They do not establish browser behavior.
+
+## Check the Get started reader path
+
+Use a focused Pi writer for setup or navigation changes.
+Give a separate Pi reviewer the draft and the target reader task.
+Use the review to find missing prerequisites, conflicting steps, and recovery gaps.
+
+Run the rendered check on the same source revision:
+
+```shell
+mise exec -- uv run --locked --project docs/tooling python docs/tooling/rendered/run.py --preview --reader-journey --output build/reports/documentation/reader-journey
+```
+
+The browser follows Next from Overview through Help.
+It follows Previous back to Overview on desktop and mobile.
+The report records each target and rejects missing, hidden, or wrong links.
+This check covers navigation. The Pi review covers the reader task.

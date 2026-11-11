@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2231f478fd17cfa9000213bcf56fe882536ee59ab8b66b0623a5153d154ddf11",
+  "pageVersion": "sha256:fd7faf5ec386c777fb7778d8a10c739bcde4160c3add2eafc4927f544467c882",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -170,7 +170,7 @@
         },
         {
           "resource": "repo://packaging/run-installed-product.py",
-          "version": "repo-file-v1:sha256:32a6a9d2ecb26c6a4337cdae8a89fdbfcffd98a34639a39392d0474fb68ad4a7"
+          "version": "repo-file-v1:sha256:3b2c9cec747fd33a09bebcba1267edc85b41bcbe18375bd38604360fcb0801fd"
         }
       ]
     },
@@ -256,7 +256,7 @@
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:c242bf055f357b10e2db2dde89b9e64e84dccb8fae1ccf11d4dd526f39f0aa73"
+          "version": "repo-file-v1:sha256:f70a26bd106df3779975501b0d04038bac854dc3ddca25f215574c39c36189e0"
         }
       ]
     },
@@ -314,7 +314,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:f0f709513fb5835e6ca0fafc6126f60119bbd797bdfb9bef1bf672f2cce4ba6e"
+          "version": "repo-file-v1:sha256:9421bd57ad0afbc8075a61a150900f8a1920e0b26d282486b95f88c206beca0b"
         }
       ]
     },
@@ -361,8 +361,8 @@
           "version": "repo-lines-v1:sha256:4ccf1abe162c654186993f465da5b84b4c181e88b37f12b98ce4265b4895f800:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiNDQyZWM0MTc0ZWQ0ZDg4OTNlNTIzMTlmM2U5ZDcxZTdhOTJmMTNmY2M0ZTlkODU1NWU3M2QxZjkyMGViMzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMmNmNDFjMmUyMGM4MmJkYTRkZTY2ZGIzNjA2YjdmZGEwMTk0OWVlNjQ5MWExODFhYTA0Y2M4NzA2YjVmMzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNkNjFiMzYxNDQzMTg2ODMyZGVmMWIyMjhiZGYyMjEwMjBkZmFmZDAzNmJhNzI2ODg4OWU4NTFmYmZlYzczMjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjYmQwMzg4ZWY5MjJlMDhmZDAzNmYyNjA0ZGEyN2VjNWNlYzFmODZmZTVjMTMxY2IyYTQzZTVhZTE2MjliYmUifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L230-L265",
-          "version": "repo-lines-v1:sha256:ca3599e38dfb0d0507017ebef1f1c42adfc5eb5eb9986966e79396c883d85f43:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0NDk0OTExNzYwMmEyOWY4ZTJmOTM3N2ZmZmViMGQ5NjZmYzBhODg3ZGYwNzI0ODJiYjcyZThiMmRhNDRjYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5ZDRiOGE2OTUyYzFiMzEyOGFhZWYyZTQ0NWQwY2YxZDEyMDIyYmYzOGMxN2RmZThlZDUyZTljMWYzMGQ0MjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5ODRjMTg0OGI4M2ZhODU2ZjM5N2FmM2UzN2Q0YTcwN2YzMDRiNmE5M2QzYzZlZDcyMTNlOWY5OWY1MGY5OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliMjY0ZjkwMWZmNjZmMWJmNGZiMDBmMGI2MjUyYTRiYWU5ZTBkNzQ2ZjA1NmJiYzA4MTA4MTAyOGU3OTlhZDcifQ"
+          "resource": "repo://.github/workflows/ci.yml#L230-L267",
+          "version": "repo-lines-v1:sha256:5c5550e13037b249db23f8e765df38a87bc0778ae33d127f28ec74ead21d216c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0NDk0OTExNzYwMmEyOWY4ZTJmOTM3N2ZmZmViMGQ5NjZmYzBhODg3ZGYwNzI0ODJiYjcyZThiMmRhNDRjYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5ZDRiOGE2OTUyYzFiMzEyOGFhZWYyZTQ0NWQwY2YxZDEyMDIyYmYzOGMxN2RmZThlZDUyZTljMWYzMGQ0MjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5ODRjMTg0OGI4M2ZhODU2ZjM5N2FmM2UzN2Q0YTcwN2YzMDRiNmE5M2QzYzZlZDcyMTNlOWY5OWY1MGY5OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliMjY0ZjkwMWZmNjZmMWJmNGZiMDBmMGI2MjUyYTRiYWU5ZTBkNzQ2ZjA1NmJiYzA4MTA4MTAyOGU3OTlhZDcifQ"
         },
         {
           "resource": "repo://.github/workflows/release-component.yml",
@@ -388,7 +388,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:f0f709513fb5835e6ca0fafc6126f60119bbd797bdfb9bef1bf672f2cce4ba6e"
+          "version": "repo-file-v1:sha256:9421bd57ad0afbc8075a61a150900f8a1920e0b26d282486b95f88c206beca0b"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
@@ -415,7 +415,7 @@
           "version": "repo-lines-v1:sha256:a2abdcf6f95bfacb4d7bdec3087b6747dd0c1629a376c46de164697829aa9513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTg1ZjgxMzFkNTg5MGJiMGUzMTNmZDM0YzhlMzViNmU0OWJkMDYzYWNlNmFhMjE5ZGMwYjliM2QzZjI5MmVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MjJjYjVkYjA2NTY4OWFkOGJlNmVlYWY4ZDVjYmY0MjRiN2VlZGMzODY1YTUyYTIwMDVlYTg4YWM4MmViZDFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmMjQ4MDUxODRmODZkNGVlZDExOWVkZjNiMTBlZDc0YTNhOGRhMWVhOTg4MzUwMzUwNGFhODk0Zjk2M2I4Y2RhIn0"
         },
         {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L823-L880",
+          "resource": "repo://packaging/test-installer-entrypoint.py#L855-L912",
           "version": "repo-lines-v1:sha256:72ed803b67a7c29c67caad1d8974e873e2c70a76e549ffb5072c33f616d412a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOWUzNzA5ZTg1MTg4MTE5MDBkODEzNWI4MTY1ZjI1MmU4NDUwMGQ2ZmQyYTcxZDRhNGI2ODU4ZGQ3ZDA3OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjM2YzVhNTg1ZGM4YWUwNTlmM2JmNDlkM2JlY2YxNzliYmI4MTU0MDI5ZjQwNWNiMGZiM2FhZDkzYjEzZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhMWI3NGViNzI0ZjA2YzlhNDRjMTFkZTJiYmUzODYyMzdiMzIxZWJjYmNlMjFlMGJiOGYyMDZhMzk1MDEzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMjgwNDc1ODQzYTA3MTc2NDlkNDdhMzVlNDM1Yzk0OTFiNDI5YzE0ZGQ0N2ExMTQ1ODE1MWNlOTVlMWQ2MTUifQ"
         }
       ]
@@ -492,7 +492,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:f0f709513fb5835e6ca0fafc6126f60119bbd797bdfb9bef1bf672f2cce4ba6e"
+          "version": "repo-file-v1:sha256:9421bd57ad0afbc8075a61a150900f8a1920e0b26d282486b95f88c206beca0b"
         },
         {
           "resource": "repo://build.gradle.kts#L67-L88",
@@ -763,6 +763,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T20:38:30.208Z"
+    "at": "2026-11-11T22:06:17.381Z"
   }
 }

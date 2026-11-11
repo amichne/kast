@@ -32,7 +32,7 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum
 from http.client import HTTPConnection, HTTPException
 from pathlib import Path
-from typing import Literal, NotRequired, TypedDict, TypeGuard
+from typing import Literal, NotRequired, Protocol, TypedDict, TypeGuard
 from urllib.parse import urlsplit
 
 from jsonschema import ValidationError, validate
@@ -675,6 +675,66 @@ def schema_state(browser: Browser, route: str, output: Path) -> State:
     return collect(browser, route, "schema-depth-2-all-variants", output, schema_scope=scope)
 
 
+READER_ROUTES = ("/", "/start", "/search", "/troubleshooting")
+
+
+class ReaderBrowser(Protocol):
+    def call(self, *arguments: str) -> dict[str, object]: ...
+    def evaluate(self, source: str, /) -> object: ...
+
+
+def follow_reader_link(
+    browser: ReaderBrowser, origin: str, direction: Literal["next", "prev"], route: str
+) -> None:
+    selector = f'#pagination a[rel="{direction}"]'
+    expected = origin.rstrip("/") + route
+    href = browser.evaluate(
+        f"""(() => {{
+          const links = document.querySelectorAll({json.dumps(selector)});
+          if (links.length !== 1) return null;
+          const link = links[0];
+          return link.checkVisibility({{visibilityProperty: true}}) ? link.href : null;
+        }})()"""
+    )
+    if href != expected:
+        raise BrowserFailure(f"READER_LINK_TARGET: {direction} must open {route}")
+    _ = browser.call("click", selector)
+    _ = browser.call(
+        "wait",
+        "--fn",
+        f"location.href === {json.dumps(expected)} && document.querySelector('#page-title') !== null",
+    )
+
+
+@dataclass(frozen=True)
+class ReaderStep:
+    route: str
+    viewport: str
+    direction: Literal["next", "prev"]
+    failure: str | None = None
+
+
+def run_reader_journey(browser: ReaderBrowser, origin: str) -> list[ReaderStep]:
+    steps: list[ReaderStep] = []
+    legs: tuple[tuple[Literal["next", "prev"], tuple[str, ...]], ...] = (
+        ("next", READER_ROUTES[1:]),
+        ("prev", READER_ROUTES[-2::-1]),
+    )
+    for label, width, height in (("desktop", "1440", "1000"), ("mobile", "390", "844")):
+        _ = browser.call("set", "viewport", width, height, "1")
+        _ = browser.call("open", origin.rstrip("/") + "/")
+        _ = browser.call("wait", "--fn", "document.querySelector('#page-title') !== null")
+        for direction, routes in legs:
+            for route in routes:
+                try:
+                    follow_reader_link(browser, origin, direction, route)
+                except BrowserFailure as error:
+                    steps.append(ReaderStep(route, label, direction, str(error)))
+                    return steps
+                steps.append(ReaderStep(route, label, direction))
+    return steps
+
+
 def run_routes(browser: Browser, origin: str, routes: list[str], output: Path) -> list[State]:
     states: list[State] = []
     _ = browser.call("open", "about:blank")
@@ -877,9 +937,12 @@ def main() -> int:
     _ = parser.add_argument("--session", default="kast-documentation-rendered")
     _ = parser.add_argument("--route", action="append", dest="routes")
     _ = parser.add_argument("--preview", action="store_true")
+    _ = parser.add_argument("--reader-journey", action="store_true")
     _ = parser.add_argument("--port", type=int, default=3339)
     _ = parser.add_argument("--browser-executable", type=Path)
     arguments = parser.parse_args()
+    if arguments.reader_journey and (not arguments.preview or arguments.routes):
+        parser.error("--reader-journey needs --preview and uses its own route sequence.")
     output: Path = arguments.output.resolve()
     if not output.is_relative_to(ROOT):
         parser.error("The evidence output must reside in the repository.")
@@ -887,6 +950,7 @@ def main() -> int:
     before = input_snapshot()
     browser = Browser(arguments.session, arguments.browser_executable)
     states: list[State] = []
+    reader_steps: list[ReaderStep] = []
     runtime: dict[str, str] = {}
     admitted_preview: Preview | None = None
     diagnostics: deque[str] = deque(maxlen=80)
@@ -901,7 +965,10 @@ def main() -> int:
                     "previewOwnerProcessId": str(preview.ownerProcessId),
                     "previewListenerPids": ",".join(str(pid) for pid in preview.listenerPids),
                 }
-                states = run_routes(browser, preview.origin, routes, output)
+                if arguments.reader_journey:
+                    reader_steps = run_reader_journey(browser, preview.origin)
+                else:
+                    states = run_routes(browser, preview.origin, routes, output)
             admitted_preview = preview
         else:
             states = run_routes(browser, arguments.origin, routes, output)
@@ -920,9 +987,19 @@ def main() -> int:
                 "The owned browser did not answer close. Its isolated session remains named in the command."
             )
     after = input_snapshot()
+    reader_complete = (
+        admitted_preview is not None
+        and len(reader_steps) == 4 * (len(READER_ROUTES) - 1)
+        and all(step.failure is None for step in reader_steps)
+    )
+    status = "completed"
+    if before != after:
+        status = "input-mismatch"
+    elif arguments.reader_journey and not reader_complete:
+        status = "reader-journey-failed"
     report = {
         "schemaVersion": 1,
-        "status": "completed" if before == after else "input-mismatch",
+        "status": status,
         "sourceRevision": before["sourceRevision"],
         "inputs": before["inputs"],
         "finalInputs": after["inputs"],
@@ -941,7 +1018,11 @@ def main() -> int:
             "A failed route keeps its measurements unknown.",
         ],
     }
+    if arguments.reader_journey:
+        report["readerJourney"] = [asdict(step) for step in reader_steps]
     _ = (output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
+    if arguments.reader_journey:
+        return 0 if status == "completed" else 1
     publication_receipt = receipt(
         before, states, output, input_match=before == after, preview=admitted_preview
     )

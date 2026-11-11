@@ -114,11 +114,11 @@
       "completedRunId": "f014c944-46d3-4991-9ed0-ae04b2b05a8f"
     },
     "/openwiki/distribution/release-candidates-and-promotion.md": {
-      "gitHead": "6e55f1c2c40b6ebeb679d8390ca0f095207e3509",
-      "sourceFingerprint": "sha256:d6c4ce1d103e9a911540a6c700c76fe139809a24b73bc7140ce0d6d1277fde2f",
-      "pageVersion": "sha256:e71c366548cbd8ab0e2e8e2b9abc2813852afe345e745646af1a48e99c532d03",
+      "gitHead": "c4dc1f1dc492173ddafe9fcf9b7a116d88070558",
+      "sourceFingerprint": "sha256:67ecde1090d798b40c99cc0d23c32299ccee282715cb7739c673c587ee272ce2",
+      "pageVersion": "sha256:94f9ed5074eeb1e55eff59ddbf599730c4fce488246de5411d20f3cc90071bfe",
       "completedBy": "codex",
-      "completedRunId": "45ba8c8f-a0e4-45ac-9b7b-86a39eae8b8a"
+      "completedRunId": "b3a25ba5-093f-49c3-945e-af6d2d222fad"
     },
     "/openwiki/distribution/upgrades-shutdown-and-reset.md": {
       "gitHead": "e49bf8c2cc0dcea6fec2645cc924b03e0efa6d9e",
@@ -219,11 +219,11 @@
       "completedRunId": "bb7d762b-e640-426b-bae8-f8fa41505944"
     },
     "/openwiki/modules/distribution.md": {
-      "pageVersion": "sha256:2231f478fd17cfa9000213bcf56fe882536ee59ab8b66b0623a5153d154ddf11",
+      "pageVersion": "sha256:fd7faf5ec386c777fb7778d8a10c739bcde4160c3add2eafc4927f544467c882",
       "completedBy": "codex",
-      "completedRunId": "666049c0-a1f6-4b43-b369-ec40524464ef",
-      "gitHead": "eb62723f95243fe92615bbadff36b4644aa872f7",
-      "sourceFingerprint": "sha256:78fb3fe6aa1ed314a13eb66e3724c24dbaec242f23a399435035f17a45fb17a8"
+      "completedRunId": "2af24ab5-542d-42a6-94a6-a51f199d9035",
+      "gitHead": "7511983010e110d4314707f2c5eca451a4605b53",
+      "sourceFingerprint": "sha256:c3e621cfdc15ceaf5ad0a5fc20882a12b8f5b25bed235513b1e335eaea01862c"
     },
     "/openwiki/modules/kernel.md": {
       "gitHead": "c00f3bfa71dd40e9897d714e378b21eacf673073",

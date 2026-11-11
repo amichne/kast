@@ -1,5 +1,9 @@
 """Check assembled artifacts and stage the sole installation in an owned HOME."""
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import hashlib
 import io
 import json
@@ -11,6 +15,7 @@ import shutil
 import sqlite3
 import subprocess
 import tarfile
+from threading import Thread
 import zipfile
 import xml.etree.ElementTree as ET
 
@@ -123,16 +128,39 @@ def verify_launcher(fixture: InstallerFixture, product: Path, pair: AdmittedArti
     }, "unsupported command result")
 
 
+@contextmanager
+def candidate_asset_server(root: Path) -> Iterator[str]:
+    handler = partial(SimpleHTTPRequestHandler, directory=str(root))
+    with ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
+        worker = Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            yield f"http://127.0.0.1:{server.server_port}"
+        finally:
+            server.shutdown()
+            worker.join()
+
+
 def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifactPair, product: Path) -> None:
     if "java" not in fixture.tools:
         raise FixtureRejected(FixtureFailure.INVALID_INPUT)
-    assets = fixture.root / "release-assets"
-    assets.mkdir()
-    for source in (pair.control, pair.host, pair.host_release_record, pair.host_installer):
-        destination = assets / source.name
-        shutil.copyfile(source, destination)
-        digest = hashlib.sha256(destination.read_bytes()).hexdigest()
-        (assets / (source.name + ".sha256")).write_text(f"{digest}  {source.name}\n")
+    asset_root = fixture.root / "release-assets"
+    for version, sources in (
+        (pair.control_version, (pair.control,)),
+        (pair.host_version, (pair.host, pair.host_release_record, pair.host_installer)),
+    ):
+        assets = asset_root / f"v{version}"
+        assets.mkdir(parents=True, exist_ok=True)
+        for source in sources:
+            destination = assets / source.name
+            shutil.copyfile(source, destination)
+            checksum = source.with_name(source.name + ".sha256")
+            sidecar = destination.with_name(destination.name + ".sha256")
+            if checksum.is_file():
+                shutil.copyfile(checksum, sidecar)
+            else:
+                digest = hashlib.sha256(destination.read_bytes()).hexdigest()
+                sidecar.write_text(f"{digest}  {source.name}\n")
 
     product_info = (
         IdeaProductInfo("263.1234.99", "IntelliJIdea2026.3", "2026.3")
@@ -156,15 +184,17 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
     environment.update({
         "KAST_VERSION": pair.control_version,
         "KAST_HOST_VERSION": pair.host_version,
-        "KAST_INSTALL_ASSETS_DIRECTORY": str(assets),
         "KAST_INSTALL_PROFILE": "persistent",
         "NO_COLOR": "1",
     })
-    result = subprocess.run(
-        [str(fixture.tools["bash"]), str(Path(__file__).resolve().parent.parent / "install.sh"),
-         "--idea-home", str(idea), "--stage-only", "--skip-codex-mcp", "--verbose"],
-        env=environment, cwd=fixture.root / "workspace", capture_output=True, text=True, timeout=120,
-    )
+    with candidate_asset_server(asset_root) as origin:
+        result = subprocess.run(
+            [str(fixture.tools["bash"]), "-c",
+             (Path(__file__).resolve().parent.parent / "install.sh").read_text(), "--",
+             "--idea-home", str(idea), "--stage-only", "--skip-codex-mcp", "--verbose"],
+            env=environment | {"KAST_RELEASE_BASE_URL": origin},
+            cwd=fixture.root / "workspace", capture_output=True, text=True, timeout=120,
+        )
     reports = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
     receipt_file = installation / "management.json"
     require(receipt_file.is_file() and not receipt_file.is_symlink(), "management receipt absent:\n" + result.stderr[-4096:])

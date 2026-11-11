@@ -432,3 +432,26 @@ Workflow and job timestamps supply setup, artifact, aggregate, queue, and total 
 The process timer alone cannot establish the six-minute feedback criterion.
 
 The criterion remains open until all four changed-output runs pass within 360 seconds through their required aggregate.
+
+### Build storage and early prerequisites
+
+Native jobs check free space before setup or compilation.
+The Mac compiler checks a 12 GiB floor. Assembly jobs check an 8 GiB floor.
+These floors detect low space at job start. They do not reserve disk space.
+The isolated Linux job prepares signed support packages before it compiles.
+The same prepared files enter assembly.
+
+To examine known generated outputs across linked worktrees, run:
+
+```sh
+python3 .github/scripts/ci/build_storage.py inventory --repo . --minimum-bytes 1073741824
+```
+
+The report gives each output's worktree, allocated size, and activity status.
+Activity comes from process working directories that the current user can see.
+Treat `not-observed` as a limited snapshot. The command does not remove files.
+
+The native qualification job stages the exact candidate with the public Bash installer.
+A local HTTP server supplies the candidate payload and checksums.
+The installer runs in a private home. This stage tests the HTTP download and installation path before promotion.
+The developer-channel pointer has its own contract tests.
