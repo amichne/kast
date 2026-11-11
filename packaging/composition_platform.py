@@ -18,7 +18,6 @@ class PlatformLayout:
 class HostPlatform(StrEnum):
     MACOS_ARM64 = "macos-aarch64"
     LINUX_X86_64 = "linux-x86_64"
-    LINUX_ARM64 = "linux-aarch64"
 
     @property
     def layout(self) -> PlatformLayout:
@@ -41,15 +40,6 @@ class HostPlatform(StrEnum):
                     "amd64",
                     ("build.txt",),
                 )
-            case HostPlatform.LINUX_ARM64:
-                return PlatformLayout(
-                    "04baba6fb1034aebfbf86e8b55186c818b93dbbbe131012975718ff7f70740f5",
-                    "product-info.json",
-                    "runtime/kast-analysis-host",
-                    "Linux",
-                    "aarch64",
-                    ("build.txt",),
-                )
             case _:
                 assert_never(self)
 
@@ -66,7 +56,5 @@ def host_platform(system: str, machine: str) -> HostPlatform | UnsupportedHost:
             return HostPlatform.MACOS_ARM64
         case "Linux", "x86_64" | "amd64":
             return HostPlatform.LINUX_X86_64
-        case "Linux", "aarch64" | "arm64":
-            return HostPlatform.LINUX_ARM64
         case _:
             return UnsupportedHost(system, machine)

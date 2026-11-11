@@ -30,12 +30,24 @@ private constructor(
                 "GRADLE_USER_HOME" to runtime.userHome.resolve(".gradle").toString(),
                 "XDG_RUNTIME_DIR" to state.resolve("tmp").toString(),
                 "TMPDIR" to state.resolve("tmp").toString(),
-            )
+            ) + linuxSupport(runtime)
         }
 
     companion object {
         private const val MAXIMUM_OPTIONS_BYTES = 65_536L
         private const val MAXIMUM_PRODUCT_BYTES = 1_048_576
+
+        private fun linuxSupport(runtime: ManagedHeadlessInstallation): Map<String, String> {
+            if (runtime.launch.layout != SelectedIdeLayout.LINUX_DIRECTORY) return emptyMap()
+            val support = Path.of(runtime.launch.home).resolve("lib/kast-linux-support")
+            if (!Files.isDirectory(support)) return emptyMap()
+            return mapOf(
+                "LD_LIBRARY_PATH" to support.resolve("lib").toString(),
+                "FONTCONFIG_FILE" to support.resolve("fonts.conf").toString(),
+                "FONTCONFIG_PATH" to support.toString(),
+                "XDG_CACHE_HOME" to runtime.userHome.resolve(".cache").toString(),
+            )
+        }
 
         fun prepare(
             runtime: ManagedHeadlessInstallation,

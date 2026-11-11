@@ -164,18 +164,10 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
         into("share/kast")
     }
     from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py", "packaging/host-installation.py")) { into("share/kast") }
-    from(listOf("bin/kast-task-vm", "bin/setup-kast")) {
-        into("share/kast/task-vm/bin")
-        filePermissions { unix("755") }
-    }
-    from(listOf("bin/kast-task-vm.lock", "bin/setup-kast.lock")) { into("share/kast/task-vm/bin") }
-    from(listOf("packaging/task_vm.py", "packaging/task_vm_guest.py", "packaging/composed_bundle.py", "packaging/composition_platform.py", "packaging/managed_headless.py")) {
-        into("share/kast/task-vm/packaging")
-    }
 }
 
 val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip(providers.gradleProperty("kastNativeExecutable").orElse("")) { platform, executable ->
-    require(platform in setOf("macos-aarch64", "linux-x86_64", "linux-aarch64")) {
+    require(platform in setOf("macos-aarch64", "linux-x86_64")) {
         "Imported native archives require a supported native platform"
     }
     require(executable.isNotBlank()) { "An imported platform needs a native executable" }
@@ -184,8 +176,7 @@ val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip
     when {
         os.startsWith("Mac") && arch in setOf("aarch64", "arm64") -> "macos-aarch64"
         os == "Linux" && arch in setOf("amd64", "x86_64") -> "linux-x86_64"
-        os == "Linux" && arch in setOf("aarch64", "arm64") -> "linux-aarch64"
-        else -> throw GradleException("Control archive requires macOS Apple silicon or Linux x86_64/ARM64")
+        else -> throw GradleException("Control archive requires macOS Apple silicon or Linux x86_64")
     }
 })
 
@@ -211,8 +202,6 @@ val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
                 "share/kast/libexec/kast-daemon",
                 "share/kast/libexec/kast-service",
                 "share/kast/libexec/kast-management",
-                "share/kast/task-vm/bin/kast-task-vm",
-                "share/kast/task-vm/bin/setup-kast",
             )
         ) permissions { unix("755") }
     }
@@ -406,7 +395,6 @@ val localPluginReloadTest = tasks.register<VerificationReportTask>("localPluginR
 tasks.named("check") { dependsOn(localPluginReloadTest) }
 
 val managedInstallationTest = tasks.register<VerificationReportTask>("managedInstallationTest") {
-    sourceFiles.from("bin/setup-kast", "bin/setup-kast.lock", "bin/kast-task-vm", "bin/kast-task-vm.lock")
     group = "verification"
     description = "Proves immutable selection, managed replacement, and recorded recovery."
     sourceFiles.from(fileTree("packaging") { include("*.py", "*.sh", "pyproject.toml", "uv.lock") })
@@ -417,7 +405,7 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
         "packaging/test_composition_graph.py", "packaging/test_composition_index.py",
         "packaging/test_composition_descriptors.py", "packaging/test_composition_host.py",
         "packaging/test_composition_bundle.py", "packaging/test_composition_release.py",
-        "packaging/test_composition_task_vm.py", "-q"))
+        "packaging/test_composition_isolated_runtime.py", "packaging/test_composition_platform.py", "-q"))
 }
 
 val developerPublicationTest = tasks.register<VerificationReportTask>("developerPublicationTest") {

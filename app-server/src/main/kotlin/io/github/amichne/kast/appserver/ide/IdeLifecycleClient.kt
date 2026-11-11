@@ -201,7 +201,7 @@ internal constructor(
         val inspected = execute(IdeLifecycleCommand.Inspect)
         val host =
             if (inspected is IdeLifecycleResult.Blocked && inspected.reason == IdeLifecycleFailure.HOST_UNAVAILABLE)
-                coldHost()
+                coldHost(requireWorkspaceTrust = true)
             else inspected
         return when (host) {
             is IdeLifecycleResult.Inspected ->
@@ -223,7 +223,7 @@ internal constructor(
         }
     }
 
-    private fun coldHost(): IdeLifecycleResult {
+    private fun coldHost(requireWorkspaceTrust: Boolean = false): IdeLifecycleResult {
         val launch =
             when (val selected = SelectedIdeInstallation.resolve(selectedHome)) {
                 is SelectedIdeLaunch.Resolved -> selected
@@ -234,6 +234,11 @@ internal constructor(
                 is Refinement.Rejected -> return blocked(selected.failure)
                 is Refinement.Refined -> selected.value
             }
+        if (requireWorkspaceTrust && selectedDeployment is SelectedLifecycleDeployment.Headless) {
+            val trust = selectedDeployment.installation.config.resolve("options/trusted-paths.xml")
+            if (!java.nio.file.Files.isRegularFile(trust, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
+        }
         // Native directory locking owns exclusivity for the admitted private profile.
         // Managed launch never enumerates unrelated processes. Only a live handshake grants admission.
         if (selectedDeployment == SelectedLifecycleDeployment.Desktop) {

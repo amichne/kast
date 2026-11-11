@@ -1,12 +1,15 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeHostMode
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
+import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import java.nio.file.Files
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -55,13 +58,46 @@ internal fun shutdownManagedHeadless(installation: Path, home: Path, state: Path
     if (configuration !is Refinement.Refined)
         return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.ADMISSION_REJECTED)
     val selection = configuration.value.managedHeadlessState
-    val execute: (ManagedHostRequest) -> ManagedHostResponse = { executeManagedHost(it, home, selection) }
+    val client = IdeLifecycleClient(home, Path.of(runtime.launch.home), state)
+    val execute: (ManagedHostRequest) -> ManagedHostResponse = {
+        executeManagedHost(it, home, selection, processes = { observeOwnedHeadlessProcess(runtime, client) })
+    }
     return stopManagedHeadlessHost(
         runtime.launch.home,
         runtime.config.toString(),
         execute,
         awaitExit = ::awaitManagedProcessExit,
     )
+}
+
+/** The private endpoint nominates one process. Unrelated same-user processes are outside its scope. */
+private fun observeOwnedHeadlessProcess(
+    runtime: ManagedHeadlessInstallation,
+    client: IdeLifecycleClient,
+): ManagedProcessInventory {
+    val inspected = client.inspectForInstallation()
+    if (inspected is IdeLifecycleResult.Blocked && inspected.reason == IdeLifecycleFailure.HOST_UNAVAILABLE) {
+        return if (Files.notExists(runtime.config.resolve(".lock"), NOFOLLOW_LINKS))
+            ManagedProcessInventory.Captured(emptyList())
+        else ManagedProcessInventory.Unavailable
+    }
+    val identity = (inspected as? IdeLifecycleResult.Inspected)?.runtimeIdentity
+    if (
+        identity == null ||
+            identity.mode != IdeHostMode.MANAGED_HEADLESS ||
+            identity.ideaHome != runtime.launch.home ||
+            identity.profile != runtime.config.toString()
+    ) return ManagedProcessInventory.Unavailable
+    val handle = ProcessHandle.of(identity.pid).orElse(null) ?: return ManagedProcessInventory.Unavailable
+    val info = handle.info()
+    if (
+        !handle.isAlive ||
+            info.user().orElse(null) != System.getProperty("user.name") ||
+            info.command().orElse(null) != runtime.launch.executable ||
+            info.startInstant().orElse(null)?.toEpochMilli() != identity.processStartEpochMillis
+    ) return ManagedProcessInventory.Unavailable
+    val process = ManagedIdeProcess(identity.pid, identity.processStartEpochMillis, runtime.launch.executable)
+    return ManagedProcessInventory.Captured(listOf(process))
 }
 
 /** The adapter proves profile/process identity on every exchange; no signal targets an unadmitted process. */

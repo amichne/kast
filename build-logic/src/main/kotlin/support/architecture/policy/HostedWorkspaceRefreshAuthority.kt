@@ -11,6 +11,12 @@ internal object HostedWorkspaceRefreshAuthority {
     private val managedArguments = JvmMember.of(BUILDER, "withArguments", "(Ljava/lang/String;)L$BUILDER;")
     private val quietImport = JvmMember.of(specOwner.internalName, "quietWorkspaceImport",
         "(Lcom/intellij/openapi/project/Project;Ljava/util/concurrent/CompletableFuture;Z)L$BUILDER;")
+    private val privateGradleSettings = JvmMember.of(owner.internalName, "privateGradleSettings",
+        "(Lio/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost;Ljava/nio/file/Path;)Lio/github/amichne/kast/kernel/Refinement;")
+    private val privateGradleTargets = setOf(
+        JvmMember.of("org/jetbrains/plugins/gradle/service/project/open/GradleProjectImportUtil", "setupGradleSettings", "(Lorg/jetbrains/plugins/gradle/settings/GradleSettings;)V"),
+        JvmMember.of("org/jetbrains/plugins/gradle/settings/GradleProjectSettings", "setGradleJvm", "(Ljava/lang/String;)V"),
+    )
     private val importTargets = setOf(
         JvmMember.of(BUILDER, "<type>", ""),
         JvmMember.of(BUILDER, "<init>", "(Lcom/intellij/openapi/project/Project;Lcom/intellij/openapi/externalSystem/model/ProjectSystemId;)V"),
@@ -40,6 +46,7 @@ internal object HostedWorkspaceRefreshAuthority {
             ForbiddenEffect.GRADLE_IMPORT ->
                 effect.module == ModuleId.RUNTIME_HOSTED &&
                     ((effect.caller.owner in setOf(owner, specOwner) && effect.target in importTargets) ||
+                        (effect.caller == privateGradleSettings && effect.target in privateGradleTargets) ||
                         (effect.caller == quietImport && effect.target == managedArguments))
             ForbiddenEffect.RECURSIVE_VFS_REFRESH ->
                 effect.module == ModuleId.RUNTIME_HOSTED &&

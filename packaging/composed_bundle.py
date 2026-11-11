@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import hashlib
+import io
 import json
 import os
 import platform
@@ -13,12 +14,14 @@ import shutil
 import tarfile
 import tempfile
 import xml.etree.ElementTree as XML
+import zipfile
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Literal, TypeGuard
 
 from composition_platform import HostPlatform, UnsupportedHost, host_platform
+from isolated_runtime import LINUX_SUPPORT, ZIPAPP, write_launchers
 from managed_headless import (
     AssemblyEntryKind,
     AssemblyFile,
@@ -27,6 +30,7 @@ from managed_headless import (
     Installed,
     Rejected,
     admit,
+    admit_install_root,
     file_record,
     install_prepared_runtime,
     object_fields,
@@ -57,8 +61,8 @@ class BundleManifest:
     bootstrapArchiveSha256: str
     compositionManifestSha256: str
     files: tuple[AssemblyFile, ...]
-    schemaVersion: Literal[1] = field(default=1, init=False)
-    kind: Literal["KAST_COMPOSED_SETUP_V1"] = field(default="KAST_COMPOSED_SETUP_V1", init=False)
+    schemaVersion: Literal[2] = field(default=2, init=False)
+    kind: Literal["KAST_COMPOSED_SETUP_V2"] = field(default="KAST_COMPOSED_SETUP_V2", init=False)
     platform: HostPlatform = HostPlatform.LINUX_X86_64
 
 
@@ -67,7 +71,6 @@ class BundleInstallationReceipt:
     bundleSha256: str
     sourceDistributionSha256: str
     compositionManifestSha256: str
-    configuredTrust: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,11 +97,6 @@ class ConfiguredTrust:
     workspace: Path
     settings: Path
     sha256: str
-
-
-class TrustMode(StrEnum):
-    CREATE = "CREATE"
-    REUSE_EXACT = "REUSE_EXACT"
 
 
 def admit_trust_workspace(workspace: Path, root: Path) -> _TrustedWorkspace | BundleRejected:
@@ -165,9 +163,9 @@ def read_manifest(data: bytes) -> BundleManifest | BundleRejected:
         return BundleRejected(BundleFailure.INVALID_MANIFEST, "JSON")
     if (
         not object_fields(raw)
-        or raw.get("kind") != "KAST_COMPOSED_SETUP_V1"
+        or raw.get("kind") != "KAST_COMPOSED_SETUP_V2"
         or type(raw.get("schemaVersion")) is not int
-        or raw.get("schemaVersion") != 1
+        or raw.get("schemaVersion") != 2
         or not isinstance(raw.get("platform"), str)
         or raw.get("platform") not in {item.value for item in HostPlatform}
     ):
@@ -197,13 +195,12 @@ def read_manifest(data: bytes) -> BundleManifest | BundleRejected:
         "runtime/" + selected_platform.layout.product,
         "runtime/lib/kast-product.jar",
         "runtime/plugins/plugin-classpath.txt",
-        "bin/setup-kast",
-        "bin/setup-kast.lock",
-        "packaging/managed_headless.py",
-        "packaging/composed_bundle.py",
+        ZIPAPP,
     }
     if not required <= {item.path for item in records}:
         return BundleRejected(BundleFailure.INVALID_MANIFEST, "missing required files")
+    if not any(item.path == ZIPAPP and item.kind == AssemblyEntryKind.FILE for item in records):
+        return BundleRejected(BundleFailure.INVALID_MANIFEST, ZIPAPP)
     return BundleManifest(
         version, build, digests[0], digests[1], digests[2], records, selected_platform
     )
@@ -269,32 +266,25 @@ def install_bundle(
     expected: str,
     root: Path,
     version: str,
-    trust_workspace: Path | None = None,
 ) -> BundleInstalled | BundleRejected | Rejected:
     target = host_platform(platform.system(), platform.machine())
     if isinstance(target, UnsupportedHost):
         return BundleRejected(BundleFailure.UNSUPPORTED_PLATFORM, platform.platform())
-    if root.exists():
-        return Rejected(Failure.EXISTING_TARGET)
-    trust: _TrustedWorkspace | None = None
-    if trust_workspace is not None:
-        admitted_trust = admit_trust_workspace(trust_workspace, root)
-        if isinstance(admitted_trust, BundleRejected):
-            return admitted_trust
-        trust = admitted_trust
+    rejected = admit_install_root(root)
+    if rejected is not None:
+        return rejected
     with tempfile.TemporaryDirectory(prefix="kast-composed-install-") as temporary:
         staging = Path(temporary).resolve()
         extracted = extract_bundle(archive, staging, expected)
         if isinstance(extracted, BundleRejected):
             return extracted
-        return _install_extracted(extracted, root, version, trust)
+        return _install_extracted(extracted, root, version)
 
 
 def _install_extracted(
     bundle: _ExtractedBundle,
     root: Path,
     version: str,
-    trust_workspace: _TrustedWorkspace | None,
 ) -> BundleInstalled | BundleRejected | Rejected:
     source, archive, expected = bundle.source, bundle.archive, bundle.sha256
     if source.resolve() != source:
@@ -352,17 +342,13 @@ def _install_extracted(
     installed = install_prepared_runtime(admitted, home, source / "install.sh")
     if isinstance(installed, Rejected):
         return installed
-    configured: ConfiguredTrust | None = None
-    if trust_workspace is not None:
-        trust = configure_trusted_workspace(root / "state", trust_workspace)
-        if isinstance(trust, Rejected):
-            return trust
-        configured = trust
+    command = Path(installed.command)
+    command.unlink()
+    write_launchers(root, manifest.platform, version, source / ZIPAPP)
     provenance = BundleInstallationReceipt(
         expected,
         manifest.sourceDistributionSha256,
         manifest.compositionManifestSha256,
-        str(configured.workspace) if configured is not None else None,
     )
     _ = (root / "bundle-installation.json").write_text(
         json.dumps(asdict(provenance), indent=2) + "\n"
@@ -373,7 +359,6 @@ def _install_extracted(
 def configure_trusted_workspace(
     state: Path,
     workspace: _TrustedWorkspace,
-    mode: TrustMode = TrustMode.CREATE,
 ) -> ConfiguredTrust | Rejected:
     """Only an explicit caller request writes trust into the new private profile."""
     profile = selected_private_profile(state)
@@ -389,15 +374,13 @@ def configure_trusted_workspace(
     _ = XML.SubElement(entries, "entry", {"key": str(workspace.path), "value": "true"})
     path.parent.mkdir(parents=True, exist_ok=True)
     data = XML.tostring(root, encoding="utf-8")
-    try:
-        with path.open("xb") as output:
-            _ = output.write(data)
-    except FileExistsError:
-        return (
-            _read_exact_workspace_trust(path, workspace)
-            if mode == TrustMode.REUSE_EXACT
-            else Rejected(Failure.INVALID_COMPONENT)
-        )
+    with tempfile.TemporaryDirectory(prefix=".kast-trust-", dir=path.parent) as temporary:
+        staged = Path(temporary) / "trust.xml"
+        _ = staged.write_bytes(data)
+        try:
+            os.link(staged, path)
+        except FileExistsError:
+            return _read_exact_workspace_trust(path, workspace)
     return ConfiguredTrust(workspace.path, path, hashlib.sha256(data).hexdigest())
 
 
@@ -450,23 +433,34 @@ def _read_exact_workspace_trust(
     return ConfiguredTrust(workspace.path, path, hashlib.sha256(data).hexdigest())
 
 
-def trust_installed_workspace(
-    root: Path, workspace: Path, mode: TrustMode = TrustMode.CREATE
-) -> ConfiguredTrust | BundleRejected | Rejected:
-    marker = root / ".kast-headless-owned"
-    state = root / "state"
-    if (
-        root.resolve() != root
-        or state.resolve() != state
-        or marker.is_symlink()
-        or not marker.is_file()
-        or marker.read_text() != "kast-managed-headless-v1\n"
-    ):
-        return BundleRejected(BundleFailure.UNSAFE_PATH, "installed root")
-    admitted = admit_trust_workspace(workspace, root)
-    if isinstance(admitted, BundleRejected):
-        return admitted
-    return configure_trusted_workspace(state, admitted, mode)
+def zipapp_bytes(source: Path) -> bytes:
+    entry = b"""import sys
+
+if not (3, 12) <= sys.version_info[:2] < (3, 14):
+    print("Setup Kast needs Python 3.12 or 3.13.", file=sys.stderr)
+    raise SystemExit(2)
+
+if len(sys.argv) >= 4 and sys.argv[1] == "--installed-launcher":
+    from isolated_runtime import launch
+
+    raise SystemExit(launch(sys.argv[2], sys.argv[3], sys.argv[4:]))
+
+from composed_bundle import main
+
+sys.argv.insert(1, "install")
+raise SystemExit(main())
+"""
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(zipfile.ZipInfo("__main__.py"), entry)
+        for name in (
+            "composed_bundle.py",
+            "composition_platform.py",
+            "isolated_runtime.py",
+            "managed_headless.py",
+        ):
+            archive.writestr(zipfile.ZipInfo(name), (source / name).read_bytes())
+    return output.getvalue()
 
 
 def pack_bundle(
@@ -476,6 +470,8 @@ def pack_bundle(
     composition_sha256: str,
     output: Path,
     version: str,
+    *,
+    linux_support: Path | None = None,
 ) -> PackedBundle | BundleRejected:
     if output.exists():
         return BundleRejected(BundleFailure.EXISTING_OUTPUT, str(output))
@@ -521,11 +517,6 @@ def pack_bundle(
             ("composition-manifest.json", receipt),
             ("bootstrap.zip", bootstrap),
             ("install.sh", repository / "install.sh"),
-            ("packaging/managed_headless.py", repository / "packaging/managed_headless.py"),
-            ("packaging/composed_bundle.py", repository / "packaging/composed_bundle.py"),
-            ("packaging/composition_platform.py", repository / "packaging/composition_platform.py"),
-            ("bin/setup-kast", repository / "bin/setup-kast"),
-            ("bin/setup-kast.lock", repository / "bin/setup-kast.lock"),
         )
     )
     files.extend(
@@ -533,6 +524,24 @@ def pack_bundle(
     )
     if any(path.is_symlink() for name, path in files if not name.startswith("runtime/")):
         return BundleRejected(BundleFailure.UNSAFE_PATH, "bundle support")
+    if target == HostPlatform.LINUX_X86_64:
+        if linux_support is None or linux_support.resolve() != linux_support:
+            return BundleRejected(BundleFailure.INVALID_MANIFEST, "Linux support")
+        paths = sorted(linux_support.rglob("*"))
+        if (
+            any(path.is_symlink() for path in paths)
+            or not all((linux_support / name).is_dir() for name in ("lib", "fonts", "licenses"))
+            or not (linux_support / "fonts.conf").is_file()
+        ):
+            return BundleRejected(BundleFailure.INVALID_MANIFEST, "Linux support")
+        files.extend(
+            ("runtime/" + LINUX_SUPPORT + "/" + path.relative_to(linux_support).as_posix(), path)
+            for path in paths
+            if path.is_file()
+        )
+    elif linux_support is not None:
+        return BundleRejected(BundleFailure.INVALID_MANIFEST, "Linux support on macOS")
+    zipapp = zipapp_bytes(repository / "packaging")
     manifest = BundleManifest(
         version,
         build,
@@ -543,6 +552,11 @@ def pack_bundle(
             AssemblyFile(name, entry.kind, entry.bytes, entry.sha256)
             for name, path in files
             for entry in (file_record(path, path.parent),)
+        )
+        + (
+            AssemblyFile(
+                ZIPAPP, AssemblyEntryKind.FILE, len(zipapp), hashlib.sha256(zipapp).hexdigest()
+            ),
         ),
         target,
     )
@@ -557,8 +571,6 @@ def pack_bundle(
         info.mtime = 0
         return info
 
-    import io
-
     with (
         output.open("xb") as stream,
         gzip.GzipFile(
@@ -570,12 +582,13 @@ def pack_bundle(
         ) as compressed,
         tarfile.open(fileobj=compressed, mode="w") as archive,
     ):
+        for name, data in ((ZIPAPP, zipapp), ("manifest.json", encoded)):
+            metadata = tarfile.TarInfo("setup-kast/" + name)
+            metadata.size = len(data)
+            metadata.mode = 0o444
+            archive.addfile(metadata, io.BytesIO(data))
         for name, path in sorted(files):
             archive.add(path, "setup-kast/" + name, recursive=False, filter=normalized)
-        metadata = tarfile.TarInfo("setup-kast/manifest.json")
-        metadata.size = len(encoded)
-        metadata.mode = 0o444
-        archive.addfile(metadata, io.BytesIO(encoded))
     return PackedBundle(str(output), sha256(output), output.stat().st_size)
 
 
@@ -592,15 +605,10 @@ def main() -> int:
         _ = install.add_argument("--" + name, type=Path, required=True)
     _ = install.add_argument("--archive-sha256", required=True)
     _ = install.add_argument("--version", required=True)
-    _ = install.add_argument("--trust-workspace", type=Path)
-    trust = sub.add_parser("trust")
-    for name in ("root", "workspace"):
-        _ = trust.add_argument("--" + name, type=Path, required=True)
+    _ = pack.add_argument("--linux-support", type=Path)
     args = parser.parse_args()
     try:
-        if args.command == "trust":
-            result = trust_installed_workspace(args.root, args.workspace)
-        elif args.command == "pack":
+        if args.command == "pack":
             result = pack_bundle(
                 args.root,
                 args.assets,
@@ -608,15 +616,14 @@ def main() -> int:
                 args.composition_sha256,
                 args.output,
                 args.version,
+                linux_support=args.linux_support,
             )
         else:
-            result = install_bundle(
-                args.archive, args.archive_sha256, args.root, args.version, args.trust_workspace
-            )
+            result = install_bundle(args.archive, args.archive_sha256, args.root, args.version)
     except (OSError, ValueError, tarfile.TarError) as error:
         result = BundleRejected(BundleFailure.EFFECT_FAILED, type(error).__name__)
     print(json.dumps(asdict(result), default=os.fspath, indent=2))
-    return 0 if isinstance(result, (PackedBundle, BundleInstalled, ConfiguredTrust)) else 1
+    return 0 if isinstance(result, (PackedBundle, BundleInstalled)) else 1
 
 
 if __name__ == "__main__":

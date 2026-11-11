@@ -1,12 +1,14 @@
 """Release orchestration rejects unqualified inputs before creating output."""
 
+import io
+import tarfile
 import tempfile
 from pathlib import Path
 
 import pytest
 
 import composed_release
-from composed_bundle import BundleFailure, BundleRejected
+from composed_bundle import BundleFailure, BundleRejected, sha256
 from composed_release import ReleaseFailure, ReleaseRejected, assemble_release, qualify_release
 from managed_headless import Failure, Rejected
 
@@ -54,13 +56,16 @@ def test_existing_work_is_preserved_before_reading_inputs(tmp_path: Path) -> Non
     assert not (tmp_path / "output").exists()
 
 
+@pytest.mark.parametrize(("system", "machine"), [("Linux", "x86_64"), ("Darwin", "arm64")])
 def test_wrong_donor_digest_rejects_before_unpacking(
     monkeypatch: pytest.MonkeyPatch,
+    system: str,
+    machine: str,
 ) -> None:
     # The only virtualized input is the external machine observation. Admission
     # hashes actual files and must not create a donor or invoke an installer.
-    monkeypatch.setattr(composed_release.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(composed_release.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(composed_release.platform, "system", lambda: system)
+    monkeypatch.setattr(composed_release.platform, "machine", lambda: machine)
     # macOS resolves /tmp to /private/tmp; leave room for the native socket suffix.
     with tempfile.TemporaryDirectory(prefix="", dir="/tmp") as temporary:
         owned = Path(temporary).resolve()
@@ -101,5 +106,29 @@ def test_wrong_bundle_digest_never_creates_native_qualification(tmp_path: Path) 
     assert result == BundleRejected(BundleFailure.DIGEST_MISMATCH, "bundle archive")
     assert not (tmp_path / "r").exists()
     assert not (tmp_path / "evidence").exists()
-    # Fixture preparation is an allowed local effect, not native evidence.
-    assert (tmp_path / "workspace/gradlew").is_file()
+    assert not (tmp_path / "workspace").exists()
+
+
+@pytest.mark.parametrize("entry_count", [0, 2])
+def test_authenticated_archive_rejects_missing_or_duplicate_zipapp(
+    tmp_path: Path, entry_count: int
+) -> None:
+    archive = tmp_path / "candidate.tar.gz"
+    entry = "setup-kast/bin/setup-kast.pyz"
+    with tarfile.open(archive, "w:gz") as bundle:
+        for _ in range(entry_count):
+            info = tarfile.TarInfo(entry)
+            info.size = 1
+            bundle.addfile(info, io.BytesIO(b"x"))
+    result = qualify_release(
+        archive=archive,
+        expected=sha256(archive),
+        version="0.1.2",
+        revision="a" * 40,
+        root=tmp_path / "r",
+        fixture=tmp_path / "workspace",
+        evidence=tmp_path / "evidence",
+    )
+    reason = BundleFailure.INVALID_MANIFEST if entry_count == 0 else BundleFailure.UNSAFE_PATH
+    assert result == BundleRejected(reason, entry)
+    assert list(tmp_path.iterdir()) == [archive]

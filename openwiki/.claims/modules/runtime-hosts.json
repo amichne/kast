@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:17bafabedc1d246d7011c8fb52784222d38e51517a05b16c1be5ddc4a462be5b",
+  "pageVersion": "sha256:b3c4f4751a907f2edfcb21eb1f023911d30262f9de09a90e1cfa7a415eb220db",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -371,18 +371,32 @@
       "statement": "Managed cold launch skips desktop process discovery. Native profile locking owns exclusivity, and an exited child grants no live Host admission.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L226-L261",
-          "version": "repo-lines-v1:sha256:83f063f4c6e9066e02d3dabd3d4c8be4e7eeb3ddb1057a5397998c36bd8df26b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5ZGQ3ZTU0ZmU4ZTE3ZGU4NmE5YWIwZjY0OWQzN2Q0MjQ2NTg1ZmNhNTQxZDhmOGM3MmFjOWZkYzM5YjJmN2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMzZWMzYWI5NTVlZjc3NGJjMDM5Y2IyNDk4MzU5ZWY3YjliZTJjY2Y3MGJiZGI4YWQxM2NkZGJlMTA2ZWI0ODEifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L242-L264",
+          "version": "repo-lines-v1:sha256:6b90712fa4bc73c7feaf7417830ed95667ccb4612e5e638d216c3bea2c5b7f87:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI2ZDQxOTAwNjdhZDRkYjQ2ZTlmZTAxODhjNTgxYWM0YTgwMmU3MDA1ZWZkZWNiNWQwYjNjNDM2MjBkNDc0MzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NWUwNmQ5OGY1MzZkYTE0YTMzY2JiNWI3Mjg5NWZkZjBmMjAyOTViNWViMzFkOTkzZGJhZjEyNTVlZjUxNTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEwZDk4Zjg1ZTg2ODczNzRlMDgzM2I2NmI1Mzg5OWRjZTM4MzQ2NGQ3NDhiYzA0ZDM5MTg2YTFmNTUxMjkxY2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyYmZhZDZkOTljYWM4YzhiZGUyZDdiMzg3NTdjMmExYTMyN2MyN2VjMWUxMzQ2NTMxMzU3ZjdhM2YwNDZiY2MifQ"
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/LinuxIdeLifecycleTest.kt#L29-L68",
           "version": "repo-lines-v1:sha256:eedf989538de4c3b6307d3db0b63cde56f9c6c335b7f7e841dac96eb440585e7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1YTk5MWYwMGMwYTdlOTNmMmQ0NmJlZTMyMzVkNmM1MDRmMjlmOWFmYjQ2MjI1MDBlOTVhNWRlNzg4NDFiNmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxMTAyMTEyNzI1Y2MyNmFlMTY2YWU2M2Y0MWUzYjUwMzcwNGNhMTYxZDYyYTE0NDc3YTM1ZmFkNDU4YzhlMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlNzQxMTJiMzIwNmQ3OGE1OGE0YzYxNWU2OTc1MWRjOWE1M2NjOThkZmZjMzE2ZTZiMDU0NmY0ZmY3ZjIzN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2NDk0YmU1ZWJiYTZlZWViODc2Yjg2YmVhYWM4ODI3OGI1ZDZhOGNkMTA3MjIzMWE1NDAxMjI4M2ViMTYwMzQifQ"
         }
       ]
+    },
+    {
+      "id": "claim_4355a3dd210f486089d2cc63cd760a4b",
+      "statement": "Private workspace preparation needs a trust record before a cold Host starts. The running private Host rejects workspace open unless its sole trust grant names that exact workspace.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L201-L241",
+          "version": "repo-lines-v1:sha256:6211793a85bb4def8788a27d43466e6e8a21401a2a48adc25f08a07ada536e44:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkMzk3MGYxZTIzYjZlMjdmOGVlN2YxMjMxMmZmMjgwM2M1ZjVkMTc4ZDQ0ZDk2MTBjMDE0ZWI4MGU5Y2EzMTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5N2IzY2QyODExNjM0M2VlMDAxMGI2NjAwY2E2NmNkYjk2Mjk3ZGEzMzA1NGUyYmZhZmVmNTIwZjg0ODFjYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmODczYjk4ZWQxMzA3MGM3MmVmYmQ5MmNiNGM5MjI0Zjk3NzBiNjJmNjI1ZWY1NDVjNWVmYzM1OWI5YWNmNTEifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L149-L165",
+          "version": "repo-lines-v1:sha256:fe34093969d6efe9141900120d962d06aae2683e8379619a29041e0ac7279376:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4NjNhNTkzNWUzNWUxOWI4MWJjNThhZmI3NWVlMmI1MGE5MmMxZWQ1ZTI0MjVjMmVlYjQzZjg0MTkzOTMxNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlZWM4N2MyOTU2MTlhMjc2NTgxMTdiMTI0MDRhZjYzYzQyNzZlZWVhMTg5MTVjZDBkN2I1MGE1YWUwYTY0NmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzMTFhNjY3ODRiMDg1MzA3ODE5YjA1YjQ4MmU0ZGJjZGUzNjc5NDQ1Y2QwNDRmOTdhNDIxYmFkMTkxODIxOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmMjBjYzIzOGE3NmZhMTU5NzJkNjVkOWMwZWU5YmEzMDFkNGE0ZDg2OGVjMmVkZmIwZjFkOTdlMTQxYzU2ZjQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T20:52:34.571Z"
+    "at": "2026-11-11T02:08:52.690Z"
   }
 }

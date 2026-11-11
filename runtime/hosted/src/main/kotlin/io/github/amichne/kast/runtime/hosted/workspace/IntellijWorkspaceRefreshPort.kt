@@ -5,6 +5,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
+import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil
 import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMode
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
@@ -17,14 +18,28 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure as PublicFailure
 import io.github.amichne.kast.runtime.hosted.ProjectDocumentPreparation
+import io.github.amichne.kast.runtime.hosted.lifecycle.ManagedHeadlessHost
 import io.github.amichne.kast.runtime.hosted.lifecycle.prepareProjectJbr
 import io.github.amichne.kast.runtime.hosted.prepareProjectDocuments
 import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
+import java.nio.file.Path
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.jetbrains.plugins.gradle.properties.GradleLocalPropertiesFile
+import org.jetbrains.plugins.gradle.properties.GradlePropertiesFile
+import org.jetbrains.plugins.gradle.service.GradleInstallationManager
+import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmHelper
+import org.jetbrains.plugins.gradle.service.project.open.setupGradleSettings
+import org.jetbrains.plugins.gradle.settings.GradleDefaultProjectSettings
+import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
+import org.jetbrains.plugins.gradle.settings.GradleSettings
+import org.jetbrains.plugins.gradle.util.JavaHomeValidationStatus
+import org.jetbrains.plugins.gradle.util.USE_GRADLE_JAVA_HOME
+import org.jetbrains.plugins.gradle.util.USE_GRADLE_LOCAL_JAVA_HOME
+import org.jetbrains.plugins.gradle.util.validateGradleJavaHome
 
 /** Effect boundary for exactly the existing project's linked root; never opens or links a project. */
 internal class IntellijWorkspaceRefreshPort(
@@ -49,21 +64,47 @@ internal class IntellijWorkspaceRefreshPort(
         if (!saveProjectDocuments(root)) return Refinement.Rejected(PublicFailure.UNSAVED_DOCUMENTS)
         if (ExternalSystemApiUtil.getSettings(project, GRADLE).linkedProjectsSettings.isNotEmpty())
             return Refinement.Rejected(PublicFailure.UNLINKED_BUILD)
-        val headless = io.github.amichne.kast.runtime.hosted.lifecycle.ManagedHeadlessHost.current()
+        val headless = ManagedHeadlessHost.current()
         if (headless != null) {
             when (val jbr = headless.prepareProjectJbr(project)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return jbr
             }
         }
-        linkState =
-            LinkState.Initial(
-                org.jetbrains.plugins.gradle.service.project.open.createLinkSettings(
-                    java.nio.file.Path.of(root.value),
-                    project,
-                )
-            )
+        val path = java.nio.file.Path.of(root.value)
+        val settings =
+            if (headless == null) org.jetbrains.plugins.gradle.service.project.open.createLinkSettings(path, project)
+            else
+                when (val selected = privateGradleSettings(headless, path)) {
+                    is Refinement.Refined -> selected.value
+                    is Refinement.Rejected -> return selected
+                }
+        linkState = LinkState.Initial(settings)
         return Refinement.Refined(Unit)
+    }
+
+    private fun privateGradleSettings(
+        headless: ManagedHeadlessHost,
+        root: Path,
+    ): Refinement<GradleProjectSettings, PublicFailure> {
+        GradleSettings.getInstance(project).setupGradleSettings()
+        val settings = GradleDefaultProjectSettings.createProjectSettings(root.toString())
+        val version = GradleInstallationManager.guessGradleVersion(settings)
+            ?: return Refinement.Rejected(PublicFailure.EFFECT_FAILED)
+        if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(root, version)) return Refinement.Refined(settings)
+
+        val declared = GradlePropertiesFile.getProperties(project, root).javaHomeProperty
+        val local = GradleLocalPropertiesFile.getProperties(root).javaHomeProperty
+        val javaHome = declared?.value ?: local?.value ?: headless.environment.javaHome.toString()
+        if (validateGradleJavaHome(project, version, javaHome) !is JavaHomeValidationStatus.Success)
+            return Refinement.Rejected(PublicFailure.EFFECT_FAILED)
+        settings.gradleJvm =
+            when {
+                declared != null -> USE_GRADLE_JAVA_HOME
+                local != null -> USE_GRADLE_LOCAL_JAVA_HOME
+                else -> ExternalSystemJdkUtil.USE_PROJECT_JDK
+            }
+        return Refinement.Refined(settings)
     }
 
     fun admission(): Refinement<Unit, PublicFailure> {
@@ -285,7 +326,7 @@ internal class IntellijWorkspaceRefreshPort(
                     project,
                     preparedCallback.nativeCompletion,
                     managedHeadless =
-                        io.github.amichne.kast.runtime.hosted.lifecycle.ManagedHeadlessHost.current() != null,
+                        ManagedHeadlessHost.current() != null,
                 )
             importTicket.set(modelInputs.beginOwnedImport())
             boundary.mayHaveStarted()

@@ -148,3 +148,65 @@ Task procedures: [Agent guidance](/agent-harnesses).
 Exact reference: [Compatibility](/reference/compatibility).
 
 Recovery: [Help](/troubleshooting).
+
+## Isolated runtime
+
+The complete native archive includes its own Host and Java runtime. The archive supports macOS ARM64 and Linux x86-64.
+It keeps its Host, configuration, and Gradle state in one private installation. Your desktop IDEA stays independent.
+Use system Python 3.12 or 3.13 and the core OS facilities.
+The Host uses its bundled Java runtime. Your project supplies its own build dependencies and Gradle JVM settings.
+
+Choose a new, short absolute root with an existing parent. Use its canonical path, with no symbolic link components.
+For example, use `/private/tmp/ki` on macOS or `/tmp/ki` on Linux for a disposable installation.
+The encoded path to `R/state/home/.kast/ide-lifecycle/<32-character-id>/host.sock` must fit within 100 bytes.
+The installed root is fixed. Install the archive again if you need a different root.
+
+1. Set `archive` to the downloaded archive path.
+2. Set `sha256` and `version` from the artifact's source.
+3. Set `root` to the chosen installation path.
+4. Run the following command to authenticate the archive and start its installer.
+
+```shell
+python3 -I - "$archive" "$sha256" "$version" "$root" <<'PY'
+import hashlib
+from pathlib import Path
+import subprocess
+import sys
+import tarfile
+import tempfile
+
+archive, expected, version, root = sys.argv[1:]
+with open(archive, "rb") as source, tempfile.TemporaryDirectory() as scratch:
+    if hashlib.file_digest(source, "sha256").hexdigest() != expected:
+        raise SystemExit("Archive digest mismatch")
+    source.seek(0)
+    name = "setup-kast/bin/setup-kast.pyz"
+    installer = Path(scratch) / "setup-kast.pyz"
+    with tarfile.open(fileobj=source, mode="r:gz") as bundle:
+        matches = [member for member in bundle if member.name == name]
+        if len(matches) != 1 or not matches[0].isfile() or matches[0].size > 1_048_576:
+            raise SystemExit("Invalid archive installer")
+        with bundle.extractfile(matches[0]) as entry:
+            installer.write_bytes(entry.read())
+    result = subprocess.run(
+        [sys.executable, "-I", str(installer), "--archive", archive, "--archive-sha256", expected,
+         "--version", version, "--root", root],
+        check=False,
+    )
+    raise SystemExit(result.returncode)
+PY
+```
+
+After installation, the private Host is stopped and no workspace has trust. Select a workspace only if you trust its build code.
+Pass the canonical path to the workspace to `kast-task`. The separator `--` marks the start of the command and its arguments.
+
+```shell
+"$root/bin/kast-task" "$workspace" -- kast query --name example --fields name,location --json
+```
+
+Repeat the same workspace path to reuse its trust and private state. A different workspace needs its own installation root.
+The command runs in the selected workspace and keeps its arguments and exit status.
+Use the [CLI reference](/reference/cli) to choose a query for your project and examine its completion evidence.
+
+To stop the private Host, run `"$root/bin/kast" stop --json`.
+To resume the private runtime, repeat `kast-task` for the same workspace.

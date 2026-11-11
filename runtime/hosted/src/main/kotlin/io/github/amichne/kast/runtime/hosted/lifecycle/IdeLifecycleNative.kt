@@ -1,5 +1,6 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
+import com.intellij.ide.impl.TrustedPaths
 import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
@@ -154,6 +155,10 @@ internal class IdeLifecycleNative(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return blocked(admitted.failure)
             }
+        if (
+            ManagedHeadlessHost.current() != null &&
+                TrustedPaths.getInstance().state.trustedPaths != mapOf(root.value to true)
+        ) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
         val existing = existingProjects(root)
         if (existing.size > 1) return blocked(IdeLifecycleFailure.PROJECT_BUSY)
         if (existing.size == 1) return openExisting(existing.single(), root, operation)

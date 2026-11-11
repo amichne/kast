@@ -43,14 +43,6 @@ class AdmittedArtifactPair:
     idea_release_line: str
 
 
-@dataclass(frozen=True)
-class TaskVmRejection:
-    stage: str = "ADMISSION"
-    reason: str = "WRONG_BUNDLE"
-    exitCode: int = 1
-    type: str = "rejected"
-
-
 def require(condition: bool, detail: str) -> None:
     if not condition:
         raise AssertionError("installed-product: " + detail)
@@ -93,75 +85,6 @@ def verify_artifacts(product: Path, control: Path, plugin: Path, host_record: Pa
     require(helper.is_file() and not helper.is_symlink(), "host installer")
     return AdmittedArtifactPair(control_match.group(1), host_match.group(1), control, plugin, host_record, helper,
                                 host_match.group(2))
-
-
-def verify_task_tools(fixture: InstallerFixture, control: Path) -> None:
-    """Examine the extracted tools without checkout imports or native VM effects."""
-    prefix = "share/kast/task-vm/"
-    extracted = fixture.root / "extracted-task-tools"
-    with tarfile.open(control) as archive:
-        require(not any(member.name == "share/kast/container" or member.name.startswith("share/kast/container/")
-                        for member in archive.getmembers()), "retired Python container payload")
-        members = [member for member in archive.getmembers() if member.name.startswith(prefix)]
-        required = {
-            "bin/kast-task-vm", "bin/kast-task-vm.lock", "bin/setup-kast", "bin/setup-kast.lock",
-            "packaging/task_vm.py", "packaging/task_vm_guest.py", "packaging/composed_bundle.py",
-            "packaging/composition_platform.py", "packaging/managed_headless.py",
-        }
-        require({prefix + name for name in required} <= {member.name for member in members},
-                "published task tools are incomplete")
-        archive.extractall(extracted, members=members, filter="data")
-    tools = extracted / prefix
-    cwd = fixture.root / "workspace"
-    for name, option in (("kast-task-vm", "--image"), ("setup-kast", "--archive")):
-        launcher = tools / "bin" / name
-        require(os.access(launcher, os.X_OK), "task launcher is not executable: " + name)
-        result = subprocess.run([str(fixture.tools["python3"]), "-I", str(launcher), "--help"],
-                                cwd=cwd, env=fixture.environment, capture_output=True, text=True, timeout=30)
-        require(result.returncode == 0 and option in result.stdout,
-                "extracted task launcher failed: " + name + "\n" + result.stderr[-4096:])
-    repository = fixture.root / "task-source"
-    repository.mkdir()
-    for arguments in (("init", str(repository)),
-                      ("-C", str(repository), "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
-                       "commit", "--allow-empty", "-m", "Task input")):
-        subprocess.run([str(fixture.tools["git"]), *arguments], cwd=cwd, env=fixture.environment,
-                       capture_output=True, text=True, timeout=30, check=True)
-    marker = fixture.root / "unexpected-tart-call"
-    tart = fixture.root / "rejected-tart"
-    tart.write_text("#!" + str(fixture.tools["python3"]) + "\nfrom pathlib import Path\n"
-                    + "Path(" + repr(str(marker)) + ").touch()\nraise SystemExit(91)\n")
-    tart.chmod(0o700)
-    bundle = fixture.root / "untrusted-bundle.tar.gz"
-    bundle.write_bytes(b"untrusted bundle")
-    output, store = fixture.root / "rejected-task-output", fixture.root / "rejected-task-store"
-    result = subprocess.run([
-        str(fixture.tools["python3"]), "-I", str(tools / "bin/kast-task-vm"),
-        "--tart", str(tart), "--image", "ghcr.io/example/macos@sha256:" + "a" * 64,
-        "--bundle", str(bundle), "--bundle-sha256", "0" * 64, "--version", "0.0.0",
-        "--repository", str(repository), "--store", str(store), "--output", str(output),
-        "--", "kast", "--version",
-    ], cwd=cwd, env=fixture.environment, capture_output=True, text=True, timeout=30)
-    require(result.returncode == 1 and json.loads(result.stdout) == asdict(TaskVmRejection())
-            and not marker.exists() and not output.exists() and not store.exists(),
-            "extracted task runner did not reject the untrusted bundle before effects:\n" + result.stderr[-4096:])
-
-
-def verify_native_container_help(fixture: InstallerFixture, product: Path) -> None:
-    """Use the actual native executable without installed resources, HOME, or host tools."""
-    isolated = fixture.root / "native-container-help"
-    isolated.mkdir()
-    empty_path = isolated / "empty-path"
-    empty_path.mkdir()
-    launcher = isolated / "kast"
-    shutil.copy2(product / "share/kast/libexec/kast-management", launcher)
-    for arguments in (("container", "--help"), ("container", "run", "--help")):
-        result = subprocess.run([str(launcher), *arguments], cwd=isolated,
-                                env={"PATH": str(empty_path), "LANG": "C", "NO_COLOR": "1"},
-                                capture_output=True, text=True, timeout=30)
-        require(result.returncode == 0 and "Colima" in result.stdout and "--image" in result.stdout
-                and "--workspace" in result.stdout,
-                "native container help failed without host tools:\n" + result.stderr[-4096:])
 
 
 def verify_plugin_archive(plugin: Path, host_version: str, provided_contract: dict, idea_release_line: str = "262") -> None:
@@ -371,8 +294,6 @@ def main() -> None:
         product = fixture.stage_product(paths["KAST_INSTALLED_PRODUCT"])
         pair = verify_artifacts(product, paths["KAST_CONTROL_ARCHIVE"], paths["KAST_HOSTED_PLUGIN_ARCHIVE"],
                                 paths["KAST_HOST_RELEASE_RECORD"])
-        verify_task_tools(fixture, pair.control)
-        verify_native_container_help(fixture, product)
         verify_launcher(fixture, product, pair)
         verify_assembled_installer(fixture, pair, product)
         fixture.mark_passed()

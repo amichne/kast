@@ -4,8 +4,10 @@ import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_CAPABILITY
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
+import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
@@ -84,6 +86,18 @@ private constructor(
             LifecycleEffect.Completed
         } catch (_: Exception) {
             LifecycleEffect.Rejected(LifecycleFailure.FILESYSTEM_REJECTED)
+        }
+    }
+
+    fun resumePrivateHost(): LifecycleEffect {
+        val launch = readSelectedLaunch() as? SelectedIdeLaunch.Resolved
+        if (launch == null || privateRuntime(launch) == null)
+            return LifecycleEffect.Rejected(LifecycleFailure.OWNERSHIP_UNPROVEN)
+        if (!Files.exists(root.resolve(SHUTDOWN_FENCE), NOFOLLOW_LINKS)) return LifecycleEffect.Completed
+        return when (val stopped = shutdown(LifecycleOperation.STOP)) {
+            is LifecycleOutcome.Stopped -> resume()
+            is LifecycleOutcome.Rejected -> LifecycleEffect.Rejected(stopped.failure)
+            else -> LifecycleEffect.Rejected(LifecycleFailure.FENCE_REJECTED)
         }
     }
 
@@ -172,22 +186,44 @@ private constructor(
         InstallationRequestRetirement(installation, manifest, execution.processes).retire(operation)
 
     private fun retireHost(): LifecycleEffect {
-        val raw =
-            readBoundedFile(installation.resolve("config/selected-ide.json"), RECORD_BYTES)
-                ?: return LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
-        val selected =
-            try {
-                lifecycleIngressJson.decodeFromString<SelectedIdeLaunch>(raw)
-            } catch (_: SerializationException) {
-                return LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
-            }
-        return when (selected) {
-            is SelectedIdeLaunch.Unavailable -> LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
+        return when (val selected = readSelectedLaunch()) {
+            null, is SelectedIdeLaunch.Unavailable -> LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
             is SelectedIdeLaunch.Resolved -> {
                 if (!SelectedIdeInstallation.matchesCurrentLaunch(selected))
                     LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
+                else if ("KAST_MANAGED_HEADLESS_STATE" in environment) {
+                    val runtime = privateRuntime(selected)
+                    if (runtime != null && Files.notExists(runtime.config.resolve(".lock"), NOFOLLOW_LINKS))
+                        LifecycleEffect.Completed
+                    else LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
+                }
                 else execution.processes.selectedHost(Path.of(selected.executable))
             }
+        }
+    }
+
+    private fun privateRuntime(launch: SelectedIdeLaunch.Resolved): ManagedHeadlessInstallation? {
+        val state = home.parent ?: return null
+        val privateRoot = state.parent ?: return null
+        if (
+            home != privateRoot.resolve("state/home") ||
+                environment["KAST_MANAGED_HEADLESS_STATE"] != state.toString() ||
+                !Path.of(launch.home).startsWith(privateRoot.resolve("runtime"))
+        ) return null
+        return when (val admitted = ManagedHeadlessInstallation.resolve(launch, state, home)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> null
+        }
+    }
+
+    private fun readSelectedLaunch(): SelectedIdeLaunch? {
+        val raw =
+            readBoundedFile(installation.resolve("config/selected-ide.json"), RECORD_BYTES)
+                ?: return null
+        return try {
+            lifecycleIngressJson.decodeFromString<SelectedIdeLaunch>(raw)
+        } catch (_: SerializationException) {
+            null
         }
     }
 

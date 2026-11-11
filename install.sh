@@ -287,7 +287,7 @@ canonical_idea_home() {
   physical="$(CDPATH='' cd -- "$candidate" && pwd -P)" || return 1
   case "$control_platform" in
     macos-aarch64) build_file="$physical/Resources/build.txt"; bundled_java="$physical/jbr/Contents/Home" ;;
-    linux-x86_64|linux-aarch64) build_file="$physical/build.txt"; bundled_java="$physical/jbr" ;;
+    linux-x86_64) build_file="$physical/build.txt"; bundled_java="$physical/jbr" ;;
     *) return 1 ;;
   esac
   [[ -f "$build_file" ]] || return 1
@@ -300,7 +300,7 @@ canonical_idea_home() {
   architecture="$(sed -nE 's/^OS_ARCH="([^"]+)".*/\1/p' "$release" | awk 'NR == 1 { print; exit }')"
   [[ "$major" =~ ^[0-9]+$ ]] && (( major >= 25 )) || return 1
   case "$control_platform:$architecture" in
-    macos-aarch64:arm64|macos-aarch64:aarch64|linux-x86_64:amd64|linux-x86_64:x86_64|linux-aarch64:arm64|linux-aarch64:aarch64) ;;
+    macos-aarch64:arm64|macos-aarch64:aarch64|linux-x86_64:amd64|linux-x86_64:x86_64) ;;
     *) return 1 ;;
   esac
   printf '%s\n' "$physical"
@@ -428,7 +428,17 @@ verify_checksum() {
   IFS=' ' read -r expected observed extra < "$checksum" || fail "checksum is unreadable: $name"
   [[ -z "${extra:-}" && "$expected" =~ ^[0-9a-f]{64}$ && "$observed" == "$name" ]] ||
     fail "checksum record is invalid: $name"
-  actual="$(shasum -a 256 "$payload" | awk '{ print $1 }')"
+  actual="$(python3 - "$payload" <<'PYTHON'
+import hashlib
+import sys
+
+digest = hashlib.sha256()
+with open(sys.argv[1], "rb") as payload:
+    for block in iter(lambda: payload.read(1024 * 1024), b""):
+        digest.update(block)
+print(digest.hexdigest())
+PYTHON
+)"
   [[ "$actual" == "$expected" ]] || fail "SHA-256 mismatch: $name"
   printf '%s\n' "$actual"
 }
@@ -490,7 +500,7 @@ read_idea_identity() {
   local metadata
   case "$control_platform" in
     macos-aarch64) metadata="$1/Resources/product-info.json" ;;
-    linux-x86_64|linux-aarch64) metadata="$1/product-info.json" ;;
+    linux-x86_64) metadata="$1/product-info.json" ;;
   esac
   [[ -f "$metadata" && ! -L "$metadata" ]] || fail "IDEA product metadata is unavailable"
   python3 - "$metadata" <<'PYTHON'
@@ -734,7 +744,7 @@ PYTHON
     )" || management_admission=$?
     if [[ "$management_admission" == 20 ]]; then
       # Reuse the installer's admitted release archive when the old executable is already gone.
-      for command in curl shasum awk cp mktemp; do require_command "$command"; done
+      for command in curl python3 awk cp mktemp; do require_command "$command"; done
       if [[ -z "$version" || "$version" == latest ]]; then
         [[ -z "${KAST_RELEASE_BASE_URL:-}" && -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] ||
           fail "recovery assets require an exact KAST_VERSION"
@@ -785,14 +795,12 @@ PYTHON
   fi
 fi
 
-for command in curl shasum awk sed find python3 cp mktemp uname; do require_command "$command"; done
+for command in awk sed find python3 cp mktemp uname; do require_command "$command"; done
+if [[ -z "${KAST_INSTALL_ASSETS_DIRECTORY:-}" || "$force" == 1 ]]; then require_command curl; fi
 case "$(uname -s):$(uname -m)" in
   Darwin:arm64|Darwin:aarch64) control_platform=macos-aarch64 ;;
-  Linux:x86_64|Linux:amd64|Linux:aarch64|Linux:arm64)
-    case "$(uname -m)" in
-      x86_64|amd64) control_platform=linux-x86_64 ;;
-      aarch64|arm64) control_platform=linux-aarch64 ;;
-    esac
+  Linux:x86_64|Linux:amd64)
+    control_platform=linux-x86_64
     [[ -n "$idea_home" ]] || fail "Linux installation requires --idea-home"
     [[ -n "${KAST_INSTALL_ASSETS_DIRECTORY:-}" ]] || fail "Linux Control releases are not published; provide verified local assets"
     [[ "$force" == 0 && "$stage_only" == 0 && "$developer_latest" == 0 ]] ||
@@ -801,7 +809,7 @@ case "$(uname -s):$(uname -m)" in
     [[ "$component" != control ]] || fail "--control-only upgrades require a prior running Host; use a fresh paired local installation on Linux"
     [[ -z "${XDG_DATA_HOME:-}" || "$XDG_DATA_HOME" == "$HOME/.local/share" ]] ||
       fail "Linux installation requires the default per-user XDG data directory" ;;
-  *) fail "supported platforms are macOS Apple silicon and Linux x86_64 or ARM64 local builds" ;;
+  *) fail "supported platforms are macOS Apple silicon and Linux x86_64 local builds" ;;
 esac
 
 print_banner
@@ -830,7 +838,7 @@ PYTHON
 fi
 case "$control_platform" in
   macos-aarch64) java_home="$idea_home/jbr/Contents/Home"; idea_profile_base="$HOME/Library/Application Support/JetBrains" ;;
-  linux-x86_64|linux-aarch64) java_home="$idea_home/jbr"; idea_profile_base="$HOME/.local/share/JetBrains" ;;
+  linux-x86_64) java_home="$idea_home/jbr"; idea_profile_base="$HOME/.local/share/JetBrains" ;;
 esac
 IFS=$'\t' read -r idea_version idea_build idea_data_directory < <(read_idea_identity "$idea_home")
 [[ -n "$idea_version" && -n "$idea_build" && -n "$idea_data_directory" ]] || fail "IDEA product identity is unavailable"

@@ -283,6 +283,8 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt
   - id: openwiki-source-7f5d36c76505fdd995af1f49
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt
+  - id: openwiki-source-9713af85ff6a629a6ce68bf3
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
   - id: openwiki-source-b063b188a00b030d97a5f66b
@@ -297,10 +299,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-11-06T06:35:36.884Z" }
+generated: { by: "codex", at: "2026-11-11T02:08:52.690Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-06T20:52:34.571Z
+    at: 2026-11-11T02:08:52.690Z
 ---
 
 # Runtime and process hosts
@@ -622,6 +624,8 @@ The process advertises `MANAGED_HEADLESS` with disabled auto reload and no graph
 Managed cold launch skips desktop process discovery.
 Native private-profile locking owns exclusivity, and a live lifecycle handshake owns admission.
 An exited child cannot grant readiness.
+Private workspace preparation needs a trust record before a cold Host starts.
+The running private Host rejects workspace open unless its sole trust grant names that exact workspace.
 
 ## Focused runtime and transport explanations
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:cfa78f90235a9ec98caca43be372b2b14cff299bdcd2fa0a6dbf881b0f3876cf",
+  "pageVersion": "sha256:b53c198c9c6408fa1c3951701bd21c06e1d2b08c1ea6f253e594bd1098b2dd8a",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -32,7 +32,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:23aea8e7c3abb686b2e8d187e349153a99214b038a0acd1bd628c7479000561e"
+          "version": "repo-file-v1:sha256:ffaa7a125d197237124e4135a9657d4876b918291fc0f7d55d483b62cce0a1bf"
         }
       ]
     },
@@ -79,7 +79,7 @@
           "version": "repo-lines-v1:sha256:1f809cbe56fb43c60678bb4eae7c28529eb3d35c334884cafdf85acb755f73c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNGU0NWUyOWRhNjc2ZGM0MDVkODNiN2Q2MDVjMjE0MmRjYTZhZjU0N2NmNDVhMzZkM2JlY2NlNDE2NDQ0MTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOTgwZTUxYjM3MTQzYjdmMjhlN2M1ZmVkMzIxYzcxYjhiNjIyYzdiZjc4ZmFiMWUzMzg3NWNmMWVkZjU2OTUifQ"
         },
         {
-          "resource": "repo://build.gradle.kts#L236-L274",
+          "resource": "repo://build.gradle.kts#L225-L263",
           "version": "repo-lines-v1:sha256:64d31b63bafcae0d3882982679ca4a806d4b79df6159b4913d0e93046927a286:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZThlNDk0NDUxZmQ4OTQ2YWZhNDU2NWVmNmYwYjJkYjQ4MzU1MjYyNjA2N2Y3NDdhYjlkMDJhMTA3ZmQ3MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxOWQyZTA0ZGIwYzViYWUyMjVlYzllOGY0MDgzN2U3OGQwZmIxYmQ2YzViMmQ0ZGQxOTkxNDAzN2I1Mzk3OGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhZjU1Y2ExMjEzYzlmNzQxYzc4ODNiNTJmMDhhNmExYTZkYjFhM2Y3YWNlMGY2MmZkOThlZjU3Y2RlODQzMTMifQ"
         },
         {
@@ -112,7 +112,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:23aea8e7c3abb686b2e8d187e349153a99214b038a0acd1bd628c7479000561e"
+          "version": "repo-file-v1:sha256:ffaa7a125d197237124e4135a9657d4876b918291fc0f7d55d483b62cce0a1bf"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:006547c08328cc16ce60fa81286237e7e707e33c420c5162947d62376b6e61ed"
+          "version": "repo-file-v1:sha256:442ff968b0edf1ff1a74b9766393732e237258c382435e6850b362e3c3068398"
         },
         {
           "resource": "repo://packaging/test-installer-removal.py",
@@ -161,7 +161,7 @@
       "statement": "Assembled-product acceptance stages production Control in an owned HOME, verifies canonical cold staging and publication, then stages the receipted Host, creates an empty canonical mutation database and invokes the real published native uninstall, requiring owned Host, Control, public executable and user-state removal while preserving an unrelated sentinel; it does not establish live IDE or Codex behavior.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L331-L353",
+          "resource": "repo://build.gradle.kts#L320-L342",
           "version": "repo-lines-v1:sha256:6366f949b15984bbe3fba1eb501f9309ba9eff04aa84b54b15edc1e14251b190:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2ZDI0M2MyODA1ZDU3ZTJlNjEwMGQzMmJkMmU0MmQwYjNkMWJiYTMwMzdlMWU3MWZiZjI5OGNlZDZkN2M3MTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMmM1MTE5MzI3MjZkMjc5MTVmMDlhZGUxNTlmMThlZjE3NjkzYzY2ODk3NGZjZjg0MDQ0YmE3YzRmMTU5N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliNmI4NWNjZjViMGE2NWUyZmUyMWUzZjMwNDA4MDE2YjVlZGZmZTAxYjhmMTc2YjBmMzk0MmNhODcyZGQ3ZmUifQ"
         },
         {
@@ -170,7 +170,7 @@
         },
         {
           "resource": "repo://packaging/run-installed-product.py",
-          "version": "repo-file-v1:sha256:5e8ee5897c6273928058db85a2f81726bbb16be4f8e895d75fd619dc7c001a2c"
+          "version": "repo-file-v1:sha256:32a6a9d2ecb26c6a4337cdae8a89fdbfcffd98a34639a39392d0474fb68ad4a7"
         }
       ]
     },
@@ -252,11 +252,11 @@
       "evidence": [
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:006547c08328cc16ce60fa81286237e7e707e33c420c5162947d62376b6e61ed"
+          "version": "repo-file-v1:sha256:442ff968b0edf1ff1a74b9766393732e237258c382435e6850b362e3c3068398"
         },
         {
           "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:5712e1ccfdb941c5a8b80b2bef6ea5756d5d52539270dde79226105a10a9ca8c"
+          "version": "repo-file-v1:sha256:460d1a1a06dd7976149ce1d427dd3ccb11d7798a3bb034664abd8a20fead6656"
         }
       ]
     },
@@ -399,7 +399,7 @@
           "version": "repo-lines-v1:sha256:a2abdcf6f95bfacb4d7bdec3087b6747dd0c1629a376c46de164697829aa9513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTg1ZjgxMzFkNTg5MGJiMGUzMTNmZDM0YzhlMzViNmU0OWJkMDYzYWNlNmFhMjE5ZGMwYjliM2QzZjI5MmVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MjJjYjVkYjA2NTY4OWFkOGJlNmVlYWY4ZDVjYmY0MjRiN2VlZGMzODY1YTUyYTIwMDVlYTg4YWM4MmViZDFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmMjQ4MDUxODRmODZkNGVlZDExOWVkZjNiMTBlZDc0YTNhOGRhMWVhOTg4MzUwMzUwNGFhODk0Zjk2M2I4Y2RhIn0"
         },
         {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L822-L879",
+          "resource": "repo://packaging/test-installer-entrypoint.py#L823-L880",
           "version": "repo-lines-v1:sha256:72ed803b67a7c29c67caad1d8974e873e2c70a76e549ffb5072c33f616d412a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOWUzNzA5ZTg1MTg4MTE5MDBkODEzNWI4MTY1ZjI1MmU4NDUwMGQ2ZmQyYTcxZDRhNGI2ODU4ZGQ3ZDA3OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjM2YzVhNTg1ZGM4YWUwNTlmM2JmNDlkM2JlY2YxNzliYmI4MTU0MDI5ZjQwNWNiMGZiM2FhZDkzYjEzZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhMWI3NGViNzI0ZjA2YzlhNDRjMTFkZTJiYmUzODYyMzdiMzIxZWJjYmNlMjFlMGJiOGYyMDZhMzk1MDEzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMjgwNDc1ODQzYTA3MTc2NDlkNDdhMzVlNDM1Yzk0OTFiNDI5YzE0ZGQ0N2ExMTQ1ODE1MWNlOTVlMWQ2MTUifQ"
         }
       ]
@@ -557,12 +557,12 @@
       "statement": "Managed headless assembly admits pinned inputs and a new owned root, then uses the existing installer with private state. Assembly alone grants no Host readiness.",
       "evidence": [
         {
-          "resource": "repo://packaging/managed_headless.py#L176-L222",
+          "resource": "repo://packaging/managed_headless.py#L187-L233",
           "version": "repo-lines-v1:sha256:ce158195f144a3e5b2b31bcb9424af6e4779113f44d1d936cdca670e5750635b:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhMGFjMjIzMjM4NjQ5Mjg2MGZkOGE5ZmNjODk3YzIyYTBiYjdlMzMxMzc2YzI0YWFmYWYwNjY1MzE4YjUzNDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4MjFlNzQ5OWI2YzliMzgwNDRkOWZlYzgwMjQyMTQzODUwMDU1MmFhMWQ0ZGJjNmUyMDk4ZTdkZTA5ZGRjYzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlMjE5ZWJlNzE4OTkwNGMwODU3MDkyYmEzMzMwMDQyNDU0N2U0MjkzZmUwNTdkMjk4MDBjMzQ5OGVlOGY5YzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlMjE3ZjAxMzYxMTcyODQ4OTc5OGViMzk5MjFkOGJmZDYyY2I4NzcwMDc4MWM2ODQ4ZTUwYzM5NjlmYmVhOGIifQ"
         },
         {
-          "resource": "repo://packaging/managed_headless.py#L562-L642",
-          "version": "repo-lines-v1:sha256:96a5ac077004f6d1b7499df1152778ac84945a5360c24a9f69cb1d5fa7dbc742:eyJzZWxlY3RlZExpbmVDb3VudCI6ODEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjOGY4OTcyZGQzOGI2OGYwMzY1ZTRiNjFlNzhlMzIzYjZiNmMzNDkxMWI2M2YyOGRhNzM1ZjRhMDJiM2I2NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4Y2ZjMDRkZTg5NzRlZTRmYmNkZjY2MzQxNWIwZWE5NWE5YTc1NDc3NzJiMmUxZDMyNGExM2ViZjI0OThjYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1Mzg0YTlhMDVmZmJmNzc3NmQwMTNlNWFkNDFlODA4ZTE0YWQ5YTUzN2VmNjdjNzdhYWNmOGE3MWM4NTRhZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0OGQxYWZjZDFiMjQ1N2EyZjQ3NjZkNDg2YmY5MTZiYmEzN2UyM2ZiMzZiNTczNjA0YWIxMjhkNmQ4OGQxZWQifQ"
+          "resource": "repo://packaging/managed_headless.py#L573-L657",
+          "version": "repo-lines-v1:sha256:011e7b6df2d45463b89fde31843200e68d6f315dcc90c3b5a7e9d2e43b9ffe5b:eyJzZWxlY3RlZExpbmVDb3VudCI6ODUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjOGY4OTcyZGQzOGI2OGYwMzY1ZTRiNjFlNzhlMzIzYjZiNmMzNDkxMWI2M2YyOGRhNzM1ZjRhMDJiM2I2NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4Y2ZjMDRkZTg5NzRlZTRmYmNkZjY2MzQxNWIwZWE5NWE5YTc1NDc3NzJiMmUxZDMyNGExM2ViZjI0OThjYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1Mzg0YTlhMDVmZmJmNzc3NmQwMTNlNWFkNDFlODA4ZTE0YWQ5YTUzN2VmNjdjNzdhYWNmOGE3MWM4NTRhZTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0OGQxYWZjZDFiMjQ1N2EyZjQ3NjZkNDg2YmY5MTZiYmEzN2UyM2ZiMzZiNTczNjA0YWIxMjhkNmQ4OGQxZWQifQ"
         }
       ]
     },
@@ -571,15 +571,15 @@
       "statement": "Whole-plugin exclusions reject unknown IDs, Host roots, and dependencies of kept plugins. The manifest records input digests, component decisions, and exact kept or removed files.",
       "evidence": [
         {
-          "resource": "repo://packaging/managed_headless.py#L406-L429",
+          "resource": "repo://packaging/managed_headless.py#L417-L440",
           "version": "repo-lines-v1:sha256:1f889d7210f3676246bc3151c86867b0d393dc0d4904c5c657e70cd5ec0d3830:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNWZmYTI0NTVmMWFiNzI5MzM1MDRiYjIxY2Y2MjViMjMxZjQ4MGRkMzVmMDVjMmUxYTE4NzRlZmJkYzZmNTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhOGI5Y2MwZmJmZGU2Y2ZlMGRiNjFlMTBjOGFmYTkzNzg4NDkxZTY5ZWViZGRhMjJkNWZjOWUzODkxODNlMzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmNTc5MTkwMmUzZjM2MGVjNjUxNzBiZjNlYzFjMzBjZDVhZjhkZmYzMjBjY2NmYzhjNDQ3NzdiOGY3Y2Y2ODgifQ"
         },
         {
-          "resource": "repo://packaging/managed_headless.py#L447-L511",
+          "resource": "repo://packaging/managed_headless.py#L458-L522",
           "version": "repo-lines-v1:sha256:82e3bc9fa0a82be018d1d9654130293e9bf4a7a7d88b4506c95e8d706dc68260:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkNDMyNzI4NmIyOWE1MTMzY2MxNWFmOTBlYWM1YTU1MjQzZDM3MDVhMWQzMDllNzY3YTNjNmMwZjllNGFhNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzYTRmMmNjYzBmYzIxNTJlMjYzZmIzNGVlMzc5NWQyZjIwOWFjYjIzOWQxNDM4OTZkMmZkZDc2OTE3ODY2MjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhOGI5Y2MwZmJmZGU2Y2ZlMGRiNjFlMTBjOGFmYTkzNzg4NDkxZTY5ZWViZGRhMjJkNWZjOWUzODkxODNlMzYifQ"
         },
         {
-          "resource": "repo://packaging/managed_headless.py#L79-L109",
+          "resource": "repo://packaging/managed_headless.py#L80-L110",
           "version": "repo-lines-v1:sha256:a0e7b679a3f591fd9a4b5b268d8d18bb69af0cbf8d0eb58c9c6f9fd865c37b82:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5MjQ3YWE1OGRjNmI0N2Q0YWFmMjA2ZDQwOTIzYzlkMzRiNGUyNWJhOGZlMTJjMGVmN2M5YWZiMzJkMmI4YTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMmJmMDdlZjI3YmM5YmUwZmJiODk5ODUwOThlZDQ5MWY0MzRmZjI1YTAwZWJjY2VhNmI4YzA4MTUyNDNmOGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5Y2VhZDU5M2M3NDlhMzBmMDdlMmQyMTVjN2UxYmM1NzcyZWI0OGFkNjVmYmVmNzkyZGU4YjM5YmQwODI2NzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhOGI5Y2MwZmJmZGU2Y2ZlMGRiNjFlMTBjOGFmYTkzNzg4NDkxZTY5ZWViZGRhMjJkNWZjOWUzODkxODNlMzYifQ"
         }
       ]
@@ -631,60 +631,6 @@
       ]
     },
     {
-      "id": "claim_2ffe4fec2ab940839a1e68844243cf4b",
-      "statement": "Native container tasks belong to the management command and dispatch before installed-root admission. The checkout builder prepares source images separately from ordinary installed use.",
-      "evidence": [
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerDispatch.kt",
-          "version": "repo-file-v1:sha256:99ba5b82eed3cdeecc81b7752011165b7b20af9409ac09b1665431e1a7f67e68"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "version": "repo-file-v1:sha256:8299820d38db1d0a1bd01d0846917d372539a69128ba158bcf49b7a6d4aafad9"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt",
-          "version": "repo-file-v1:sha256:7c722aafcdecc006de56d21980143a6e18027221b452f374f2284f03c96a9307"
-        },
-        {
-          "resource": "repo://packaging/dev_container.py",
-          "version": "repo-file-v1:sha256:23f67e1254e4bae728b9089f69f25cdd57a7edb2961acac79ad7f953de4bbe45"
-        }
-      ]
-    },
-    {
-      "id": "claim_ddf52f5dde574ec893500e0b1901bde9",
-      "statement": "Control staging excludes share/kast/container. The producer guard and installed-product runner reject that directory and its descendants. Separate task-VM and installation helpers remain in the Control payload.",
-      "evidence": [
-        {
-          "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-          "version": "repo-file-v1:sha256:792507ce0897daa1f34bc475fbf4541b864061c5afed14293247e5d3ae7a1aea"
-        },
-        {
-          "resource": "repo://build.gradle.kts#L135-L175",
-          "version": "repo-lines-v1:sha256:1627f7540562b5004372a823b5ee354edfb54a7e9646ae73c786be909ea38ba7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmMjg3ZmYyYmE3MjFjMTU3NzNkMTAwZWVjM2QzYzMwM2YzZWFhNmE1YjAyZWU3NzRhMTg0N2Y4Yjc5N2ZmZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyNWNkYjlhMjNlYTQxNWU0NmVmNjZiYzE2YWI1NGRhMzg0MjE2MDFlOWU3OWQwMTVhMjJiM2UxMzZjYzg3ZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI2MTJkZTlkNmU5ODg0OTdmZjg1NWQ4MjM1ZDZmNjU3YjA2OTcwZDM5MmEzZDMzYTg1NGQ4NGY1YjhjZmNlZmEifQ"
-        },
-        {
-          "resource": "repo://packaging/run-installed-product.py#L98-L110",
-          "version": "repo-lines-v1:sha256:d1df9b25a989bf76a895cd49084af63c33680fd34f3b717509f329068b85172c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmZGI2Y2JhMDI1NjU0Njc1ZjU1NzJiNjg3NDQ4ZDQyNzQzZDRjYTY0NTgwMzg2NTJkNTIxZmY1YzZmZGEzNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyNDZkOTEzNmJlMzFjZDkxMjQzMDU1ZWJlMzQzNjRiMzY4ODg1Mjk5Y2FkNmFiYTc1MWY0NmQ5MmZkMTYyMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0NDY2Y2YyMDBkNTUwZGRhMDk2OTlkNjZjZTBhN2M3YTY3N2RiMzEyMTY3N2IwMWVhNjkxMDExZjJkZGVmNTYifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_af14ce6ee7e945bbaa2d9b74de341079",
-      "statement": "The installed-product runner copies the actual native executable into an isolated directory and invokes container --help and container run --help without HOME, host tools on PATH, or installed resources. Both invocations must succeed and describe Colima, image selection, and workspace selection. This admission covers standalone help, not task completion or live semantic behavior.",
-      "evidence": [
-        {
-          "resource": "repo://packaging/run-installed-product.py#L150-L164",
-          "version": "repo-lines-v1:sha256:984705fb505d65ef7ed86a5406c77af4b6e1ec9c8ed226e7b75d270133c1a85c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNmIwYjZhMzcwMzFhNWFhN2QxMTA2YTg3Yzc2ZGNhMTRmMzM1MjdlYzA5OTI2ZDczZjg2Zjc4MDJmYThiMGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmZjQzZTcwZTZkNWZhYWIxODBhMTQyYmQ2MzBmOGY0YzM3ZjA5MDlhYzVmZWU0MzVlNGVjZWM0ZjJlN2RlZTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxNzA4MWNjNmRiYWY2ZWY0ZDU1NTRhMTVlNjEzZTAzOGZkOWRhYWU5Nzk1MWNiZDEzMDA5NmEwMzRhMGEyMzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4NzFlNGZlN2RkNDE3MjcwYzZhZGU2ZjUyMzE1N2VlMDIwY2Q5ZjA0YzYxYmFiODQ1YzQ3MDM0MDE3NDhlYmUifQ"
-        },
-        {
-          "resource": "repo://packaging/run-installed-product.py#L360-L378",
-          "version": "repo-lines-v1:sha256:09403559a931e72775c18b0cf658e97a9a0757a0a6453234708dfb6afafcecfa:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwYmM1MTI2NWRhM2M0OTRiZGQyOTQwOGMwZTE3NzY2NWJmZWFkNmZkMjc5MzZmMDU5ZDJjNTU3YjE5YTNjZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1ZjBlZThlOTJhMjdlOWNmMjE1NTAzZTkyZGQ1ZDMxMzdkMjY0Mzc0MzRiZTlhNDA4YzA3YWI4YWJhN2U1MWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczODc1ZTQzNzU5ZjdlNWU5YzcyZmViMDc3ODE1ZjI0Mzc4YzA5ZGE4OTMwZDJkNzIxOTRkOTNlZmIzNzUyNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFiOGRlYzQxZjA0OTA5YjQ3OTNkYzZlNmNmZThiNjAwNWFjZmRiZjlkYmYwNjBjYjI3NjNlMjQ5N2Y2YWU5ZTEifQ"
-        }
-      ]
-    },
-    {
       "id": "claim_c9e23d197818486c811c3d0a9a900cad",
       "statement": "Control assembly stamps the skill front matter with the Control version. After Control replacement commits, the installer refreshes admitted harness guidance.",
       "evidence": [
@@ -698,17 +644,63 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:006547c08328cc16ce60fa81286237e7e707e33c420c5162947d62376b6e61ed"
+          "version": "repo-file-v1:sha256:442ff968b0edf1ff1a74b9766393732e237258c382435e6850b362e3c3068398"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
           "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
         }
       ]
+    },
+    {
+      "id": "claim_62b31492f84b4a84a50c056fff0156c3",
+      "statement": "The complete native archive includes the composed Host, bundled JBR, and matching Kast components. The same setup-kast.pyz installer admits macOS ARM64 and Linux x86-64 archives by digest before the shared private installer runs.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/composed_bundle.py",
+          "version": "repo-file-v1:sha256:cf4736fb80ab39c3ddf676348c52c000f3ce3ddcb7bc1205c3b00124f53abf21"
+        },
+        {
+          "resource": "repo://packaging/composition_platform.py",
+          "version": "repo-file-v1:sha256:ee8c42379f51c0305bccbeacd6b36e0b20c9ad8ef3ce6973ddfecffb35a271bc"
+        },
+        {
+          "resource": "repo://packaging/managed_headless.py",
+          "version": "repo-file-v1:sha256:e67ac17030f3e450e58a89b5a941843053f8a39ba971037628c1fec4e72b6e43"
+        }
+      ]
+    },
+    {
+      "id": "claim_a65551bb99e948b0912765c1a8eb46a7",
+      "statement": "The private installation has a fixed root identity. Its socket path uses the existing byte limit.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/isolated_runtime.py",
+          "version": "repo-file-v1:sha256:2a83aed75ab189ffe2342bb0874aa8f9d34dfdc56ff7ba4900e254b44ca5d60e"
+        },
+        {
+          "resource": "repo://packaging/managed_headless.py",
+          "version": "repo-file-v1:sha256:e67ac17030f3e450e58a89b5a941843053f8a39ba971037628c1fec4e72b6e43"
+        }
+      ]
+    },
+    {
+      "id": "claim_9eaa2539bec849d78a5a206e77c0cb63",
+      "statement": "After a private stop, kast-task asks the lifecycle owner to examine retirement before it removes the exact shutdown fence.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
+          "version": "repo-file-v1:sha256:ffaa7a125d197237124e4135a9657d4876b918291fc0f7d55d483b62cce0a1bf"
+        },
+        {
+          "resource": "repo://packaging/isolated_runtime.py",
+          "version": "repo-file-v1:sha256:2a83aed75ab189ffe2342bb0874aa8f9d34dfdc56ff7ba4900e254b44ca5d60e"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-10T21:00:03.650Z"
+    "at": "2026-11-11T02:11:49.035Z"
   }
 }

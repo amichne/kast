@@ -79,8 +79,7 @@ This guide owns repository rules and routes source investigation.
 - Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
 - Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
-- Composed setup: `mise exec -- uv run --locked --script bin/setup-kast --help`. The packaging owner supplies bundle admission and installation.
-- Disposable macOS ARM task: `mise exec -- kast-task-vm --help`. Read [the VM report](docs/reviews/macos-task-vm.md) for the offline image contract and evidence limits.
+- Isolated setup: use the [archive installer](docs/public/reference/installation.mdx#isolated-runtime) for a private native Host.
 - Unified native entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt`.
 - Management commands: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
 - Public semantic entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.
