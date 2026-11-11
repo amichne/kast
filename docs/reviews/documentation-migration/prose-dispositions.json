@@ -7296,6 +7296,198 @@
         "severity": "warning"
       },
       "reason": "Keep exact workspace preparation, bounded context, and optional MCP availability distinct. The grade target remains unmet."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/architecture.md",
+        "sourceSha256": "f7bc2dd834010633b95ee40c3b5e46038b1bce140f3e97e48dee5c3be9072ac3",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.91 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep module ownership and independent Control and Host assembly distinct. The grade target remains unmet."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/architecture.md",
+        "sourceSha256": "f7bc2dd834010633b95ee40c3b5e46038b1bce140f3e97e48dee5c3be9072ac3",
+        "rule": "Slopsentral.LongSentence",
+        "line": 126,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.72 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep independent artifact owners, fixed-root installation, and native evidence distinct. The grade target remains unmet."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 403,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the retired isolated-runtime adapters together. IDEA owns import and trust configuration after those adapters leave the active graph."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 405,
+        "message": "Long sentence: 36 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep checksum, release version, plugin identity, descriptor line, and exact Kast-only atomic replacement together before installation."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 405,
+        "message": "Long sentence: 41 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the staged Host receipt, canonical six-table database, native uninstall, owned removal targets, and unrelated sentinel in the same acceptance sequence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 584,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the bounded launchctl retirement deadline and finite failures beside OBSERVE_BEFORE, BOOTOUT, and OBSERVE_AFTER outcomes. Command arguments and child output stay excluded."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 586,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the shell bootstrap, installed lifecycle, build verifier, and Kotlin owner under one product-entry limit before publication."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 600,
+        "message": "Long sentence: 37 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep historical paired-receipt maintenance distinct from Control-only detachment. The new recovery receipt removes Host ownership without changes to plugin files."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 603,
+        "message": "Long sentence: 39 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep service retirement, exact transport cleanup, and payload/recovery quarantine under the activation lock before the next staging step."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 680,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep runtime command-line evidence and exact launchd-label retirement before removal of the reviewed login item. Changed entries remain preserved."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 694,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the launchd service owner and exact daemon and installer command paths together."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 724,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all three compiler-query witnesses and both unchanged-identity obligations across independent Control and Host upgrades. Routine tests do not establish native behavior."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 739,
+        "message": "Long sentence: 32 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep unavailable legacy loaded-version evidence qualified. The restored coordinator, new epoch, fresh generation, and ready-service evidence must agree."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 761,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the closed cleanup inventory, immutable Host receipt, and persistent exterior journal together. Journal removal waits for all owned effects."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "5a2919b55232df7b7ba444db882b00e551b25c234b93553556267077f216c0bc",
+        "rule": "Slopsentral.LongSentence",
+        "line": 763,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact SQLite schemas and bounded typed records under read-only inspection. The adapter does not initialize, checkpoint, or manufacture recovery."
     }
   ]
 }

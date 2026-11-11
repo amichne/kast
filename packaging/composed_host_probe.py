@@ -56,6 +56,7 @@ class HostIdentity:
     started: int
     lifetime: str
     workspace: str
+    workspaceLifetime: str
     runtimeHome: str
     profile: str
     launcher: str
@@ -195,7 +196,7 @@ def live_host(
         assert document.get("socket") == str(socket)
         assert stat.S_ISSOCK(attributes.st_mode) and attributes.st_uid == os.getuid()
         documents.append(document)
-    application = documents[0]
+    application, workspace = documents
     identity = fields(fields(application.get("application")).get("runtimeIdentity"))
     pid, started, lifetime, profile = (
         identity.get("pid"),
@@ -207,7 +208,10 @@ def live_host(
     assert isinstance(lifetime, str) and lifetime and isinstance(profile, str)
     assert identity.get("mode") == "MANAGED_HEADLESS" and identity.get("ideaHome") == str(home)
     assert Path(profile).is_relative_to(root / "state/home")
-    assert all(d.get("hostPid") == pid and d.get("host") == lifetime for d in documents)
+    assert application.get("host") == lifetime
+    assert all(document.get("hostPid") == pid for document in documents)
+    workspace_lifetime = workspace.get("host")
+    assert isinstance(workspace_lifetime, str) and workspace_lifetime
     libraries: tuple[str, ...] = ()
     if target == HostPlatform.LINUX_X86_64:
         proc = Path(f"/proc/{pid}")
@@ -229,7 +233,15 @@ def live_host(
         ).strip()
         assert running == str(launcher), running
     result = HostIdentity(
-        pid, started, lifetime, str(fixture), str(home), profile, str(launcher), libraries
+        pid,
+        started,
+        lifetime,
+        str(fixture),
+        workspace_lifetime,
+        str(home),
+        profile,
+        str(launcher),
+        libraries,
     )
     _ = (evidence / (case + ".json")).write_text(json.dumps(asdict(result), indent=2) + "\n")
     if target == HostPlatform.LINUX_X86_64:
@@ -414,6 +426,7 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
             original.started,
             original.lifetime,
         )
+        assert reused.workspaceLifetime == original.workspaceLifetime
         stop("stop")
         for path in (
             endpoint(root, "ide-hosted", fixture),
@@ -426,6 +439,7 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
         assert caller_names(complete(call("after-restart", CALLERS_QUERY)), fixture) == changed
         restarted = live_host(root, fixture, target, evidence, "restarted-host")
         assert restarted.lifetime != original.lifetime and restarted.started > original.started
+        assert restarted.workspaceLifetime != original.workspaceLifetime
         gradle = project_gradle_inputs(root, fixture)
     except BaseException as failure:
         try:

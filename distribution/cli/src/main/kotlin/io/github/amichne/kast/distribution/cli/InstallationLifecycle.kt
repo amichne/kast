@@ -4,6 +4,7 @@ import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_CAPABILITY
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
@@ -191,7 +192,7 @@ private constructor(
             is SelectedIdeLaunch.Resolved -> {
                 if (!SelectedIdeInstallation.matchesCurrentLaunch(selected))
                     LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
-                else if ("KAST_MANAGED_HEADLESS_STATE" in environment) {
+                else if (ConfigurationParameter.MANAGED_HEADLESS_STATE.key in environment) {
                     val runtime = privateRuntime(selected)
                     if (runtime != null && Files.notExists(runtime.config.resolve(".lock"), NOFOLLOW_LINKS))
                         LifecycleEffect.Completed
@@ -207,7 +208,7 @@ private constructor(
         val privateRoot = state.parent ?: return null
         if (
             home != privateRoot.resolve("state/home") ||
-                environment["KAST_MANAGED_HEADLESS_STATE"] != state.toString() ||
+                environment[ConfigurationParameter.MANAGED_HEADLESS_STATE.key] != state.toString() ||
                 !Path.of(launch.home).startsWith(privateRoot.resolve("runtime"))
         ) return null
         return when (val admitted = ManagedHeadlessInstallation.resolve(launch, state, home)) {
