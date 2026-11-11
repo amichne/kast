@@ -1,4 +1,3 @@
 -H:+UnlockExperimentalVMOptions
--H:CPUFeatures=SHA2
 -H:NativeLinkerOption=-mmacosx-version-min=15.0
 -H:-UnlockExperimentalVMOptions

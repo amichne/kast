@@ -207,9 +207,15 @@ def linux_core_library(path: Path) -> bool:
 
 
 def live_host(
-    root: Path, fixture: Path, target: HostPlatform, evidence: Path, case: str
+    root: Path,
+    fixture: Path,
+    target: HostPlatform,
+    evidence: Path,
+    case: str,
+    *,
+    runtime_home: Path | None = None,
 ) -> HostIdentity:
-    home = root / target.layout.home
+    home = root / target.layout.home if runtime_home is None else runtime_home
     launcher = home / ("bin/idea" if target.is_linux else "MacOS/idea")
     paths = (endpoint(root, "ide-lifecycle", home), endpoint(root, "ide-hosted", fixture))
     documents: list[dict[object, object]] = []
@@ -276,7 +282,9 @@ def live_host(
         external = tuple(
             value
             for value in libraries
-            if not Path(value).is_relative_to(root) and not linux_core_library(Path(value))
+            if not Path(value).is_relative_to(root)
+            and not Path(value).is_relative_to(home)
+            and not linux_core_library(Path(value))
         )
         assert not external, external
     return result

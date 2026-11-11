@@ -12,6 +12,9 @@ import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from composed_host_probe import HostIdentity, live_host
+from composition_platform import host_platform
+
 type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
 
 
@@ -20,6 +23,7 @@ class ContainerProbeReceipt:
     controlSha256: str
     runtimeSha256: str
     cases: tuple[str, ...]
+    hosts: tuple[HostIdentity, HostIdentity]
 
 
 def contains_name(value: JsonValue, name: str) -> bool:
@@ -30,6 +34,15 @@ def contains_name(value: JsonValue, name: str) -> bool:
     if isinstance(value, list):
         return any(contains_name(item, name) for item in value)
     return False
+
+
+def compiler_workspace_lifetime(value: dict[str, JsonValue]) -> str:
+    body = value.get("document")
+    live = body.get("live") if isinstance(body, dict) else None
+    lifetime = live.get("host") if isinstance(live, dict) else None
+    if not isinstance(lifetime, str):
+        raise RuntimeError("compiler result: live workspace lifetime required")
+    return lifetime
 
 
 def probe(
@@ -91,6 +104,19 @@ def probe(
     identity = record.get("id")
     if not isinstance(identity, str) or not re.fullmatch("[a-f0-9]{32}", identity):
         raise RuntimeError("create: exact container id required")
+    target = host_platform()
+    runtime_key = record.get("runtime")
+    if not isinstance(runtime_key, str) or not re.fullmatch(
+        r"[0-9]+\.[0-9]+\.[0-9]+-" + re.escape(target.value), runtime_key
+    ):
+        raise RuntimeError("create: native runtime identity required")
+    store = home / ".local/share/kast-workspaces"
+    scope = store / "containers" / identity
+    if record.get("gradleHome") != str(scope / "state/home/.gradle"):
+        raise RuntimeError("create: Gradle state must be private by default")
+    runtime_home = (
+        store / "runtimes" / runtime_key / ("host" if target.is_linux else "host/Kast.app/Contents")
+    )
     query = (
         "query",
         "--name",
@@ -107,6 +133,11 @@ def probe(
         cold = call("cold-query", *query)
         if cold.get("type") != "complete" or not contains_name(cold, "invokeCallback"):
             raise RuntimeError("cold-query: independent compiler result missing")
+        cold_host = live_host(
+            scope, fixture, target, evidence, "cold-host", runtime_home=runtime_home
+        )
+        if compiler_workspace_lifetime(cold) != cold_host.workspaceLifetime:
+            raise RuntimeError("cold-query: result is not bound to the observed private Host")
         _ = call("stop", "container", "stop", identity, "--json")
         stopped = call("sticky-stop", *query, expected_exit=1)
         if stopped.get("type") != "rejected" or stopped.get("failure") != "STOPPED":
@@ -115,6 +146,14 @@ def probe(
         resumed = call("resumed-query", *query)
         if resumed.get("type") != "complete" or not contains_name(resumed, "invokeCallback"):
             raise RuntimeError("resumed-query: independent compiler result missing")
+        resumed_host = live_host(
+            scope, fixture, target, evidence, "resumed-host", runtime_home=runtime_home
+        )
+        if (
+            compiler_workspace_lifetime(resumed) != resumed_host.workspaceLifetime
+            or cold_host.lifetime == resumed_host.lifetime
+        ):
+            raise RuntimeError("resumed-query: a fresh private Host must own the result")
     finally:
         _ = call("cleanup-stop", "container", "stop", identity, "--json")
     _ = call("remove", "container", "rm", identity, "--json")
@@ -127,7 +166,7 @@ def probe(
         raise RuntimeError("remove: workspace was not preserved")
     with command.open("rb") as content:
         control_digest = hashlib.file_digest(content, "sha256").hexdigest()
-    result = ContainerProbeReceipt(control_digest, digest, tuple(cases))
+    result = ContainerProbeReceipt(control_digest, digest, tuple(cases), (cold_host, resumed_host))
     _ = (evidence / "receipt.json").write_text(json.dumps(asdict(result), indent=2) + "\n")
     return result
 

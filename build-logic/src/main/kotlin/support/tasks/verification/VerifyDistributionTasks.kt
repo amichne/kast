@@ -156,6 +156,10 @@ internal fun nativeQueryHeaderMatches(header: ByteArray, platform: String): Bool
     header.size == 20 && when (platform) {
         "macos-aarch64" -> header.take(8).map { it.toInt() and 255 } ==
             listOf(207, 250, 237, 254, 12, 0, 0, 1) && header[12].toInt() == 2
+        "macos-x86_64" -> header.take(8).map { it.toInt() and 255 } ==
+            listOf(207, 250, 237, 254, 7, 0, 0, 1) && header[12].toInt() == 2
+        "linux-aarch64" -> header.take(6).map { it.toInt() and 255 } ==
+            listOf(127, 69, 76, 70, 2, 1) && (header[18].toInt() and 255) == 183 && header[19].toInt() == 0
         "linux-x86_64" -> header.take(6).map { it.toInt() and 255 } ==
             listOf(127, 69, 76, 70, 2, 1) && header[18].toInt() == 62 && header[19].toInt() == 0
         else -> false
