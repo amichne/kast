@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ef3518e198f5ee35707c6695a283c5172097f391f4751bd7c2a8100b64589d90",
+  "pageVersion": "sha256:962096d393fedc8a3c295f5dcea83737af8f4b1259e63900b9d1b7666b2afd87",
   "claims": [
     {
       "id": "claim_cef6aa14cee14d75b0fedd02c53e9033",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt",
           "version": "repo-file-v1:sha256:96b790802da4eb83a8d35d4cd4dc09b03ffac12b7f1adca61c0495428bb9a8bc"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt#L78-L78",
+          "version": "repo-lines-v1:sha256:935524399913b909c28acedf3db3db7af7fe3a594ef7d688943e941e57e0c33b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTM1NTI0Mzk5OTEzYjkwOWMyOGFjZWRmM2RiM2RiN2FmN2ZlM2E1OTRlZjdkNjg4OTQzZTk0MWU1N2UwYzMzYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTM1NTI0Mzk5OTEzYjkwOWMyOGFjZWRmM2RiM2RiN2FmN2ZlM2E1OTRlZjdkNjg4OTQzZTk0MWU1N2UwYzMzYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjE4NmY3ZGY3YjcwMWYyY2UwOWMyN2FkNGU1YjQ2NDM0NjE3MmFlMGQ2MWNkN2YwMjcyOTgyNGU0OTNlNjFlYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjBlYjVjZTQxZmRlOWQ1OGNkZmE5NzZlYTY0Y2UwNDQ1MGQ4Y2QyZTU1NTQyN2NmZjRiYzZlMWVjZWMyYWRlMCJ9"
         },
         {
           "resource": "repo://runtime/hosted/src/main/resources/META-INF/plugin.xml",
@@ -23,6 +27,10 @@
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt",
           "version": "repo-file-v1:sha256:7980ac96d67f35a82d84fef7f33e3d9b25383958ea574d36308c1ffd1ae1ad1f"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedConnectionAdmission.kt#L22-L22",
+          "version": "repo-lines-v1:sha256:465d8110074ecf0b77ac270821dbbd3a83d26bf10a4a95fa74e64070bae6ec09:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDY1ZDgxMTAwNzRlY2YwYjc3YWMyNzA4MjFkYmJkM2E4M2QyNmJmMTBhNGE5NWZhNzRlNjQwNzBiYWU2ZWMwOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDY1ZDgxMTAwNzRlY2YwYjc3YWMyNzA4MjFkYmJkM2E4M2QyNmJmMTBhNGE5NWZhNzRlNjQwNzBiYWU2ZWMwOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmQyMmZlYzQ4ZDI3ODY1OTI0ODBkYjUwZjVkNjcyOGZkMTQ4ODI2NWQxNzE5MmI3NmYwOTY4MmE2M2E2NzljNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjMwN2MxNDUzZDM3MmFhZDhmZGQwYTMxOGZjODk5YWU4YWJjMGM5ZTdkMjk5YjVmODNjMmFhMjQwZDAwYzVhNCJ9"
         }
       ]
     },
@@ -33,6 +41,10 @@
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt",
           "version": "repo-file-v1:sha256:5e4d434f12b0575cc088a766af2981a35170a0e27f36a458a08fa76d7a0ee4a5"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt#L32-L32",
+          "version": "repo-lines-v1:sha256:98e907e672c4a731dec94aa4e54bbacf25fdd520f40f69f8b5befbac08f8f245:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOThlOTA3ZTY3MmM0YTczMWRlYzk0YWE0ZTU0YmJhY2YyNWZkZDUyMGY0MGY2OWY4YjViZWZiYWMwOGY4ZjI0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOThlOTA3ZTY3MmM0YTczMWRlYzk0YWE0ZTU0YmJhY2YyNWZkZDUyMGY0MGY2OWY4YjViZWZiYWMwOGY4ZjI0NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjQ3NTY5N2U0MzA3YjI1NDhjMjc4Y2MxZTUzZWMxZmY5ZWQyMzcyNjcxZDk4ZWE2ZDYzYzVlYjhmYTkxYjM2NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDRjNjJjZTRlNzJlMjZkM2M5NjZmNjZmN2ZlZjNlNWU5Y2I4NWYxZDlhYzJmYTEyZmQ0YWU4MGVhZTU1MDIzNCJ9"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt",
@@ -60,7 +72,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-11T10:38:11.930Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T14:25:07.841Z"
   }
 }

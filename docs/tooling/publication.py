@@ -14,12 +14,16 @@ from enum import StrEnum
 from pathlib import Path, PurePosixPath
 from typing import Literal, TypeGuard
 
+import claim_evidence
 import okf_public
 import reader_contracts
 
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = "docs/okf-public.json"
 MAIN_REF = "refs/remotes/origin/main"
+# A reviewed association expires this long after its reviewed commit, measured
+# against the candidate HEAD commit time so one tree always yields one decision.
+MAX_REVIEW_AGE_SECONDS = 5 * 24 * 60 * 60
 PROSE_DISPOSITIONS = "docs/reviews/documentation-migration/prose-dispositions.json"
 INPUT_PATHS = (
     "docs/public",
@@ -537,6 +541,14 @@ def assess_review_revisions(root: Path, revisions: tuple[str, ...]) -> tuple[Obl
             return (
                 Obligation("associations", State.FAILED, "Cannot read the reviewed source objects"),
             )
+        head_time = int(
+            subprocess.run(
+                [*command, "log", "-1", "--format=%ct", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+        )
         issues: list[Obligation] = []
         for revision, kind in zip(revisions, reviewed, strict=True):
             if kind != "commit":
@@ -569,8 +581,25 @@ def assess_review_revisions(root: Path, revisions: tuple[str, ...]) -> tuple[Obl
                         f"Cannot examine {MAIN_REF} history for {revision}",
                     )
                 )
+            else:
+                reviewed_time = int(
+                    subprocess.run(
+                        [*command, "log", "-1", "--format=%ct", revision],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    ).stdout.strip()
+                )
+                if head_time - reviewed_time > MAX_REVIEW_AGE_SECONDS:
+                    issues.append(
+                        Obligation(
+                            "associations",
+                            State.STALE,
+                            f"Reviewed source {revision} is more than 5 days older than HEAD",
+                        )
+                    )
         return tuple(issues)
-    except (OSError, subprocess.CalledProcessError):
+    except (OSError, ValueError, subprocess.CalledProcessError):
         return (
             Obligation("associations", State.FAILED, "Cannot read the reviewed source objects"),
         )
@@ -682,7 +711,7 @@ def assess_receipt(
     return tuple(obligations), receipt.limits
 
 
-def native_assessment(root: Path) -> object:
+def native_assessment(root: Path, scope: Literal["public", "canonical"] = "public") -> object:
     node = shutil.which("node")
     if node is None:
         return Failure("native", "Node is unavailable")
@@ -694,7 +723,7 @@ def native_assessment(root: Path) -> object:
                 "--root",
                 str(root),
                 "--scope",
-                "public",
+                scope,
             ],
             capture_output=True,
             timeout=120,
@@ -798,6 +827,11 @@ def assess(
                 obligations.append(Obligation("native-orphan", State.UNRESOLVED, orphan))
     manifest = _load(root, MANIFEST)
     obligations.extend(assess_associations(root, manifest, native))
+    qualifications = claim_evidence.assess(root, native, manifest)
+    obligations.extend(
+        Obligation("claim-evidence:" + item.claim_id, State.UNRESOLVED, item.reason.value)
+        for item in qualifications.failures
+    )
     projection = okf_public.run(root, False)
     obligations.append(
         Obligation(

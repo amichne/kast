@@ -26,14 +26,14 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["glossary_json.py", "check_glossary.py", "markdown_parser.py", "okf_public.py", "reader_contracts.py", "test_reader_contracts.py", "prose_assessment.py", "test_prose_assessment.py", "publication.py", "test_publication.py", "test_okf_public.py", "test_glossary.py", "test_markdown_parser.py", "rendered/run.py", "rendered/test_run.py", "rendered/schema_scope.py", "rendered/test_schema_scope.py", "callables/build.py", "callables/test_build.py"]
+include = ["claim_evidence.py", "test_claim_evidence.py", "knowledge_check.py", "test_knowledge_check.py", "knowledge_refresh.py", "test_knowledge_refresh.py", "glossary_json.py", "check_glossary.py", "markdown_parser.py", "okf_public.py", "reader_contracts.py", "test_reader_contracts.py", "prose_assessment.py", "test_prose_assessment.py", "publication.py", "test_publication.py", "test_okf_public.py", "test_glossary.py", "test_markdown_parser.py", "rendered/run.py", "rendered/test_run.py", "rendered/schema_scope.py", "rendered/test_schema_scope.py", "callables/build.py", "callables/test_build.py"]
 reportMatchNotExhaustive = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["glossary_json.py", "check_glossary.py", "markdown_parser.py", "okf_public.py", "reader_contracts.py", "test_reader_contracts.py", "prose_assessment.py", "test_prose_assessment.py", "publication.py", "test_publication.py", "test_okf_public.py", "test_glossary.py", "test_markdown_parser.py", "rendered/run.py", "rendered/test_run.py", "rendered/schema_scope.py", "rendered/test_schema_scope.py", "callables/build.py", "callables/test_build.py"]
+include = ["claim_evidence.py", "test_claim_evidence.py", "knowledge_check.py", "test_knowledge_check.py", "knowledge_refresh.py", "test_knowledge_refresh.py", "glossary_json.py", "check_glossary.py", "markdown_parser.py", "okf_public.py", "reader_contracts.py", "test_reader_contracts.py", "prose_assessment.py", "test_prose_assessment.py", "publication.py", "test_publication.py", "test_okf_public.py", "test_glossary.py", "test_markdown_parser.py", "rendered/run.py", "rendered/test_run.py", "rendered/schema_scope.py", "rendered/test_schema_scope.py", "callables/build.py", "callables/test_build.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "S"]

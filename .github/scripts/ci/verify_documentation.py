@@ -41,6 +41,7 @@ def commands(guides: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
          "check-documentation-inputs", "--repo", ".", "--docs", "openwiki", "--strict", "--format", "json"),
         ("uv", "run", "--locked", "--project", "docs/tooling", "python",
          "docs/tooling/okf_public.py", "--check"),
+        ("./gradlew", "verifyKnowledgeClaims"),
         ("uv", "run", "--locked", "--project", "docs/tooling", "python",
          "docs/tooling/reader_contracts.py", "--report",
          "build/reports/documentation/reader-contracts.json"),

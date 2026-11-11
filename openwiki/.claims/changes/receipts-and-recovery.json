@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f3d52cede33f45070d7675345c77fcb3fa31861c6a12e136cf3d339f36568b79",
+  "pageVersion": "sha256:0972ea651387b93b0862c2b2b6da7fc06eb9e45ef8520abb5e0c2dd70444a816",
   "claims": [
     {
       "id": "claim_dc2d49cf58b747fc88ba662decc24659",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteHostedChangeStores.kt",
           "version": "repo-file-v1:sha256:f94ba165c8309c8ad8d07ea78611e8685fc0189c7b257840232f49c172da6c86"
+        },
+        {
+          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteHostedChangeStores.kt#L17-L17",
+          "version": "repo-lines-v1:sha256:075e18d6a030aa9b44e826d14b779f77ecc8c2a082f82de9cc628d23a5c4f2f2:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDc1ZTE4ZDZhMDMwYWE5YjQ0ZTgyNmQxNGI3NzlmNzdlY2M4YzJhMDgyZjgyZGU5Y2M2MjhkMjNhNWM0ZjJmMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDc1ZTE4ZDZhMDMwYWE5YjQ0ZTgyNmQxNGI3NzlmNzdlY2M4YzJhMDgyZjgyZGU5Y2M2MjhkMjNhNWM0ZjJmMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODYzNjgxYTM2OWE0NGJiNzI0NjBlNGQ1ZjFjYjI1N2VhNTEyYzI4NGY4NDlkODNiNTk4YzMyOGE4MjM3MTAyMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTEwYzRmODE1MmYyMDBlNjZmMTZkOGY1MWUxY2FjNGQ1MGU4ZDRmNDFlNzY4M2Y0ZDBlZTdjOWEyMDUxMDQ1ZSJ9"
         }
       ]
     },
@@ -19,6 +23,10 @@
         {
           "resource": "repo://change/recovery/src/main/kotlin/io/github/amichne/kast/change/recovery/AddDeclarationRecoveryService.kt",
           "version": "repo-file-v1:sha256:c4720c305aed0b7e12c0808fde3ad726ca062ec7195a6bdf5e3981f071045680"
+        },
+        {
+          "resource": "repo://change/recovery/src/main/kotlin/io/github/amichne/kast/change/recovery/AddDeclarationRecoveryService.kt#L100-L100",
+          "version": "repo-lines-v1:sha256:3f6313ece41b6036d3c270b2f98de674979aa22180974ea5ed7305cb0265c82e:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2Y2MzEzZWNlNDFiNjAzNmQzYzI3MGIyZjk4ZGU2NzQ5NzlhYTIyMTgwOTc0ZWE1ZWQ3MzA1Y2IwMjY1YzgyZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2Y2MzEzZWNlNDFiNjAzNmQzYzI3MGIyZjk4ZGU2NzQ5NzlhYTIyMTgwOTc0ZWE1ZWQ3MzA1Y2IwMjY1YzgyZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2Y4YmU4ZTU4YjE4NjRhMTQ3ZTM1NDNmYTNhYWEyMmQxZmM1ZGNiYWNhYWNiNTY3MmU1OWExOWZiZGUxNWZjNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjQ1MzA1NWM4Zjc5OTVmMDcxYjgzODU1MWQ1NTVlMjkwMDFhMGRiZjdhMGU1ZDBkN2Q5Nzg4NjU0NWI3M2M0OSJ9"
         },
         {
           "resource": "repo://evidence/contract/src/main/kotlin/io/github/amichne/kast/evidence/contract/MutationRecoveryRecord.kt",
@@ -33,12 +41,16 @@
         {
           "resource": "repo://change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveAddDeclarationVerification.kt",
           "version": "repo-file-v1:sha256:0c87e14d5adde7f58c1d9000cab9c9024523ffdb6477a202b8d16b2595266840"
+        },
+        {
+          "resource": "repo://change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveAddDeclarationVerification.kt#L35-L35",
+          "version": "repo-lines-v1:sha256:f68b00d0b4c67086ec62acaf8ebdd58a51f171226db26a67b1d80aea6b7d5457:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjY4YjAwZDBiNGM2NzA4NmVjNjJhY2FmOGViZGQ1OGE1MWYxNzEyMjZkYjI2YTY3YjFkODBhZWE2YjdkNTQ1NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjY4YjAwZDBiNGM2NzA4NmVjNjJhY2FmOGViZGQ1OGE1MWYxNzEyMjZkYjI2YTY3YjFkODBhZWE2YjdkNTQ1NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjNiMjcwOWQ5YWIwM2E1NjI3NzViMjljOTQ2YTZmYTg3ZDQyYTRhYWM2ZjliMmZhMjBjYTZhMGIwOWM2YzNiMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2M1OWU0OWJiYjQ3NjkwOGEwODRlYmIxZTVkYjE1ZmRiZDdjZGI4NWY3NjFiYTlmMWM3ODhhZjIxZDc3NGYyMiJ9"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T05:45:59.282Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

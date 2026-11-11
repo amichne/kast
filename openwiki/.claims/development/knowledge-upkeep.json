@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4f3c834690946521cbeff93ca151e4c546b3fc1b3c69c05ccb1870765e509a28",
+  "pageVersion": "sha256:376204da3601c7e26fb704b603ae2a8a892784d255bb5544783a9d722ba77d59",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -11,7 +11,7 @@
           "version": "repo-file-v1:sha256:b664763ec093af466ba893058ec2d7f7e72beee86c6eea9a9269cb772f0368ff"
         },
         {
-          "resource": "repo://build.gradle.kts#L766-L785",
+          "resource": "repo://build.gradle.kts#L787-L806",
           "version": "repo-lines-v1:sha256:49750b9bcf0a0e582bd76e22d0016b992efa169cd730b00d50f9384f6bc438d1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMjUzOGFhM2MyZWJkMDU4NzM3MTJiYjAwODRmYWFiNjVmYmNmNjUwNzhhZTQ4NzgxOWY2MTA4MDNjMmI3NTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhYmQ0ZjAwYjM2ZGVmNDAyZjMzNDY3ZDdlOGQ0MDJhZDZlYjI1NmJjYWI0YTI4OWU0M2FlYTU2YWQ4NDQzMDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRkN2I4YzBjMTk4NDgwNTRkMDNjMGYwNGM3ZThkOTRjMTE5ODI5MDJlMzc0NDFhMDRmOWVkZDU2OTI4NzYyNjgifQ"
         }
       ]
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://.github/workflows/openwiki-update.yml",
-          "version": "repo-file-v1:sha256:43b706f081841771af02a46c46277c8c0004a542ed7d2f1991453020969630e4"
+          "version": "repo-file-v1:sha256:a8644d120d09e2199554e201c6e23c96089d7df061c264655e93769d8e727522"
         }
       ]
     },
@@ -31,18 +31,18 @@
       "statement": "Repository policy keeps authored engineering rules distinct from generated navigation and OpenWiki Claims, indexes, and provenance.",
       "evidence": [
         {
-          "resource": "repo://AGENTS.md#L120-L144",
+          "resource": "repo://AGENTS.md#L119-L143",
           "version": "repo-lines-v1:sha256:99649d8370ddfd034ca9b59ba695413e7090cf87b09dc1028578e4c1c245465a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ZTI3ZDQ2MGI0NTc3N2E3YTU1ZTRmMTFhM2UwM2ZlMGQ2NmM5ZDI4M2Q4NjJmMTBlN2RiNTIxMzAyNTBmYmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNGFlMTFkNzVlZmE5OWUyMTcyMWZlOGVlNjZmMWM5OTZhMzczODZlMmQ3NjMwMjMyYjEyMTcxZjczYjM1Y2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyNjg0NzhjODc2ZGNhMjFmMTUwYjQyYzliZjQxZWVkMmQ1NmJiYjg5NzA3MmEyMTNhMjY4Y2NkNGQwZTQ3YWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjYjhmNTA5NjZmMDU4MTEyNDEwNjJjZjhhOTFhNWJmMGJlNTY4MDBlZTQzOGZmOTAyMjc4NTc0MzRkYTJkN2QifQ"
         },
         {
-          "resource": "repo://AGENTS.md#L204-L211",
+          "resource": "repo://AGENTS.md#L203-L210",
           "version": "repo-lines-v1:sha256:831e864e2d2b37a3d042820d3da091b9f1fe5ef753dabef82f0be70227b01b3f:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM5YmFhZTczYWVkMzJiNGRhNTc3YTM5ZGRhNTJhYTMyMmFjOWQ4Mjc4NTE2NjM3NzM2Y2I3YTkyMGFhZTY0MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTVkM2M3MDg2ODBmZDBiYTIzZDJhOTk1YmNjY2E3YWExMmViMTU2MzQxZDNiNDc1YzM4NDJlMjcwNjEyYjRlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTNjYzRhNzEwYmYzMWEyN2Q3MTk2MDRmYTdkYTEyZWJhNGY5MTY4ZTZjYzRkOWY4NmQ4YjJjOTE5NTYzYzRjZCJ9"
         }
       ]
     },
     {
       "id": "claim_40d5b9ef94c14157953df48b56baa7bc",
-      "statement": "The read-only native evidence adapter reuses OpenWiki 0.6.1 store, ignore policy, repository resolver and preflight, distinguishes completed current/stale/unresolved assessment from operational failure, and preserves page agreement and snapshot identity without finalization.",
+      "statement": "The read-only native evidence adapter reuses OpenWiki 0.9.0 store, ignore policy, repository resolver and preflight, distinguishes completed current/stale/unresolved assessment from operational failure, and preserves page agreement and snapshot identity without finalization.",
       "evidence": [
         {
           "resource": "repo://docs/tooling/markdown/evidence-assess.ts",
@@ -50,7 +50,7 @@
         },
         {
           "resource": "repo://docs/tooling/markdown/evidence-native.ts",
-          "version": "repo-file-v1:sha256:8dd883249d81458121c391b4387ac237c9ee65bade0dcd0d013daf5afaf12ab2"
+          "version": "repo-file-v1:sha256:7dd01272f8838013bfc3a1836f8350e5bf9ef00e4b735a5d31258c677a00e65d"
         }
       ]
     },
@@ -60,7 +60,7 @@
       "evidence": [
         {
           "resource": "repo://.github/workflows/openwiki-update.yml",
-          "version": "repo-file-v1:sha256:43b706f081841771af02a46c46277c8c0004a542ed7d2f1991453020969630e4"
+          "version": "repo-file-v1:sha256:a8644d120d09e2199554e201c6e23c96089d7df061c264655e93769d8e727522"
         },
         {
           "resource": "repo://docs/tooling/okf_public.py",
@@ -84,13 +84,67 @@
       "evidence": [
         {
           "resource": "repo://docs/tooling/publication.py",
-          "version": "repo-file-v1:sha256:8af80802dcdcf3e532894e24f603fe9ad9c06d47d1fa925f90cfe32473309988"
+          "version": "repo-file-v1:sha256:662a7075691cf8344c08d118efeab4adf7aa5fe9d25c30c6f8869a10c41f8ddb"
+        }
+      ]
+    },
+    {
+      "id": "claim_085b59215b1c4c628d89dc0ce3c83c02",
+      "statement": "Every source qualification checks the complete canonical Claim corpus, and published Claims need parser-confirmed declaration or executable-test citations without a claim of semantic truth.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/verification_plan.py",
+          "version": "repo-file-v1:sha256:3280a2f2ce0e427d2576a6707d4c1a9e1406efd1d5d0de1714966e265d6deba3"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/verify_documentation.py",
+          "version": "repo-file-v1:sha256:ef6053578281de71098a4a7da8c99b37f6f6c3436957e0dae4d38c8b4e3ce2a7"
+        },
+        {
+          "resource": "repo://docs/tooling/claim_evidence.py",
+          "version": "repo-file-v1:sha256:7bdf272ca66d26d2914db5da79c5b4152467be52b919c32b4d35ea5b18f43ad3"
+        },
+        {
+          "resource": "repo://docs/tooling/knowledge_check.py",
+          "version": "repo-file-v1:sha256:164771899e998b4803ff3477ce0cf325868368939dbc6d459a40469a26f21ce3"
+        }
+      ]
+    },
+    {
+      "id": "claim_d7e960f6c25c48a4899c050b6a352c05",
+      "statement": "Reviewed public associations expire when their source commit is more than five days older than candidate HEAD, using commit timestamps rather than wall clock time.",
+      "evidence": [
+        {
+          "resource": "repo://docs/tooling/publication.py",
+          "version": "repo-file-v1:sha256:662a7075691cf8344c08d118efeab4adf7aa5fe9d25c30c6f8869a10c41f8ddb"
+        },
+        {
+          "resource": "repo://docs/tooling/test_publication.py",
+          "version": "repo-file-v1:sha256:1595633aec3aab447033a9d10000e5187a80e13703f53c713565db66a577c116"
+        }
+      ]
+    },
+    {
+      "id": "claim_01e64c631daa434bac29be5593a117fe",
+      "statement": "Host refresh runs explicitly in an isolated owned checkout, preserves final scope and failure-stage evidence, and retains an unverified candidate without automatically committing or publishing.",
+      "evidence": [
+        {
+          "resource": "repo://bin/kast-knowledge-refresh",
+          "version": "repo-file-v1:sha256:20367b314bcd8cd6a52b5f9f7c9544bba50246fa51dd6a0b64232deade477bb6"
+        },
+        {
+          "resource": "repo://docs/tooling/knowledge_refresh.py",
+          "version": "repo-file-v1:sha256:3a0efc651d4d2d5efbb2cffbf07e03c62ef8bf4b502aa63cb1074985dd066c3d"
+        },
+        {
+          "resource": "repo://docs/tooling/test_knowledge_refresh.py",
+          "version": "repo-file-v1:sha256:813ef32cad1f30455dafc2b72474dee1d469bc9bab148e2c21af4922017c537b"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-10T20:10:16.546Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

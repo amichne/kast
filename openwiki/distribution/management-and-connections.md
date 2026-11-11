@@ -75,8 +75,8 @@ sources:
     resource: repo://packaging/managed_installation.py
 generated: { by: "pi", at: "2026-11-11T11:08:36.331Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T11:08:36.331Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T14:25:07.841Z
 ---
 
 # Native management and harness connections

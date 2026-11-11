@@ -101,10 +101,12 @@ sources:
     resource: repo://packaging/install-local.sh
   - id: openwiki-source-621afc296584eb4217553339
     resource: repo://packaging/managed_headless.py
+  - id: openwiki-source-25977fc13c4ddf2c0840d6fd
+    resource: repo://packaging/test-install-checkout.py
 generated: { by: "pi", at: "2026-11-11T10:38:11.930Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T10:38:11.930Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T14:25:07.841Z
 ---
 
 # Installation configuration

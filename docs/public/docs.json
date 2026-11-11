@@ -98,6 +98,7 @@
                 "pages": [
                   "reference/evidence-boundaries",
                   "reference/callbacks",
+                  "architecture/relations-and-traversal",
                   "explanation/value-journey-evidence"
                 ],
                 "expanded": false
@@ -106,6 +107,8 @@
                 "group": "Query execution",
                 "pages": [
                   "explanation/query-lifecycle",
+                  "architecture/query-admission",
+                  "architecture/source-reads",
                   "architecture/query-reuse",
                   "reference/staleness"
                 ],
@@ -118,6 +121,7 @@
                   "architecture/topology",
                   "reference/lifecycles",
                   "reference/internals/background-startup",
+                  "architecture/codex-transport",
                   "architecture/change-lifecycle"
                 ],
                 "expanded": false

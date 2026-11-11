@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:34c1dafe056c517e9883f082595a5d89f618aff0f9d45db5a4d25fdd90553dd1",
+  "pageVersion": "sha256:23121f588d2b7040038cf81a1117e16c9fd5ea0e7e2844e56e3ad98c4cb83515",
   "claims": [
     {
       "id": "claim_1c2e0b7673bd4f38bdb1b7ebfc49034b",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackArgumentBinding.kt",
           "version": "repo-file-v1:sha256:477b2a0eac61b6638ecc9d70673af182833de958e690b496538733937693470f"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackArgumentBinding.kt#L9-L9",
+          "version": "repo-lines-v1:sha256:86c9d2decf347738d1f512ca8e1ccaac439f81a6c32173b090632fbfeebb0037:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODZjOWQyZGVjZjM0NzczOGQxZjUxMmNhOGUxY2NhYWM0MzlmODFhNmMzMjE3M2IwOTA2MzJmYmZlZWJiMDAzNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODZjOWQyZGVjZjM0NzczOGQxZjUxMmNhOGUxY2NhYWM0MzlmODFhNmMzMjE3M2IwOTA2MzJmYmZlZWJiMDAzNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGYwZDAyMjMyMGM3MzI3NmM2OGE0YmQxZTE5YWVmZTUwYmVmOGZlNTk3MTdmMTYyNjFhMDkzMWM3NzgyNDBjOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTkzMmZkZDVhMWI2MzI0Mzc1NmUyZDRhMGI4ZTk1YjQxODllMTgxMTI3YmViY2ZkMjFmNzZjMjE0ZGRhM2UyNSJ9"
         }
       ]
     },
@@ -19,6 +23,10 @@
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackBindingReader.kt",
           "version": "repo-file-v1:sha256:3956d2fd2a4f5423d0cab98e005a995814e7a07e12abb04b536741c799c916da"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackBindingReader.kt#L90-L90",
+          "version": "repo-lines-v1:sha256:4dca277c7d48867cdf791ab4a5846215dbc97b7da0994ae5b6e6e318722f0476:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGRjYTI3N2M3ZDQ4ODY3Y2RmNzkxYWI0YTU4NDYyMTVkYmM5N2I3ZGEwOTk0YWU1YjZlNmUzMTg3MjJmMDQ3NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGRjYTI3N2M3ZDQ4ODY3Y2RmNzkxYWI0YTU4NDYyMTVkYmM5N2I3ZGEwOTk0YWU1YjZlNmUzMTg3MjJmMDQ3NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjM0MmI3OWM4MmM0YjRhMTRiZTViYzI5MzFkMDc4N2IzOWI0Njk3OWI5MzFkOTAyZTczZWVlYTdhZDJjNmJkMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWJkZDZiM2YyMjA5MDAwMDQ5Yjk4NzRjYmIwZTMyNTc3YTlmMzk5NGI0NTg1NGExY2JjNjZmZTAzNmQ1ZjczMyJ9"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackInvocationFlow.kt",
@@ -33,6 +41,10 @@
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
           "version": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt#L32-L32",
+          "version": "repo-lines-v1:sha256:82bf603c0ee23772e924a79185b54ed2cea11e7d67da84c3d371e9b56fbf4ae5:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODJiZjYwM2MwZWUyMzc3MmU5MjRhNzkxODViNTRlZDJjZWExMWU3ZDY3ZGE4NGMzZDM3MWU5YjU2ZmJmNGFlNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODJiZjYwM2MwZWUyMzc3MmU5MjRhNzkxODViNTRlZDJjZWExMWU3ZDY3ZGE4NGMzZDM3MWU5YjU2ZmJmNGFlNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmIwNjZjNmUzMzA5ODc2NzBiYTJhMGY3YzlmM2NlNWNiZWFkMGNkNjllZjZmZjU3ZWQwZWRmNTkwNzAyYjYwZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjc0ZDcwZDNjOGI4OWUxYWZjZWM3YWY4MTg1MDFlZDUxMmI0MGIxZGFiMDQ0YmQyOWRmNmE1NmNlYWQxNjgwOCJ9"
         }
       ]
     },
@@ -43,6 +55,10 @@
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt",
           "version": "repo-file-v1:sha256:28b0e080216b0ec1110d2d36d98f3371b1fe5f8abce255ee76b8a38c86d54672"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L70-L70",
+          "version": "repo-lines-v1:sha256:b274d0c9e73b6b8cc3d7c253b453415af8173dacc4031394887c2d6525c179fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjI3NGQwYzllNzNiNmI4Y2MzZDdjMjUzYjQ1MzQxNWFmODE3M2RhY2M0MDMxMzk0ODg3YzJkNjUyNWMxNzlmZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjI3NGQwYzllNzNiNmI4Y2MzZDdjMjUzYjQ1MzQxNWFmODE3M2RhY2M0MDMxMzk0ODg3YzJkNjUyNWMxNzlmZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWEwYzUyNmY0ODk4ODA2ZWQzNjdiMjRkOWY2MGU4YWJiMDg3Y2Q1NGVlN2VkOTM0NGMwM2I0MjBiNDY0YmY2MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTk5NDc1ZWM0NTE5YjcyMDNkMDUxYTgzNzQzZDY0YzFhNDg0NjYxYTFkMWEyYzE0ZTI5MThkMWEwM2ZiNzc5YyJ9"
         }
       ]
     },
@@ -53,6 +69,10 @@
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackNavigationProjection.kt",
           "version": "repo-file-v1:sha256:e2d8ec0a9545439d26810872a3ab430612eea097b186116ffe4d98eeaa3800ef"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackNavigationProjection.kt#L159-L159",
+          "version": "repo-lines-v1:sha256:dac1c1f2d29879fbd19908fef6acc8054dad258810b61463d4d3044a0da18f07:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGFjMWMxZjJkMjk4NzlmYmQxOTkwOGZlZjZhY2M4MDU0ZGFkMjU4ODEwYjYxNDYzZDRkMzA0NGEwZGExOGYwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGFjMWMxZjJkMjk4NzlmYmQxOTkwOGZlZjZhY2M4MDU0ZGFkMjU4ODEwYjYxNDYzZDRkMzA0NGEwZGExOGYwNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWY4YTlmOGRlYjE3MTlmZjJmYzI2M2NkZmQ2MmVjYzRkNjY4Y2NiNzIxYzY2NWM4OTRiZTYwNGE4OWFkNzRjMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTk1MjM1MGVhN2M1MWRiMzg0NWVmOTRiNzc0ZWFlOTY0Mjc3ZjlhYzZmNGQyMzcwZmM2NzA1NjA1YzkzZGIyMSJ9"
         }
       ]
     },
@@ -67,12 +87,16 @@
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt",
           "version": "repo-file-v1:sha256:28b0e080216b0ec1110d2d36d98f3371b1fe5f8abce255ee76b8a38c86d54672"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCallbackObservationDocument.kt#L70-L70",
+          "version": "repo-lines-v1:sha256:b274d0c9e73b6b8cc3d7c253b453415af8173dacc4031394887c2d6525c179fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjI3NGQwYzllNzNiNmI4Y2MzZDdjMjUzYjQ1MzQxNWFmODE3M2RhY2M0MDMxMzk0ODg3YzJkNjUyNWMxNzlmZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjI3NGQwYzllNzNiNmI4Y2MzZDdjMjUzYjQ1MzQxNWFmODE3M2RhY2M0MDMxMzk0ODg3YzJkNjUyNWMxNzlmZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWEwYzUyNmY0ODk4ODA2ZWQzNjdiMjRkOWY2MGU4YWJiMDg3Y2Q1NGVlN2VkOTM0NGMwM2I0MjBiNDY0YmY2MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTk5NDc1ZWM0NTE5YjcyMDNkMDUxYTgzNzQzZDY0YzFhNDg0NjYxYTFkMWEyYzE0ZTI5MThkMWEwM2ZiNzc5YyJ9"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T06:09:31.584Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

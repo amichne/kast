@@ -54,8 +54,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryRouting.kt
 generated: { by: "pi", at: "2026-11-11T10:52:58.442Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T11:08:36.331Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T14:25:07.841Z
 ---
 
 # Direct MCP and tool RPC

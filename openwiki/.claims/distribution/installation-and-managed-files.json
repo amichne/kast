@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c9c97d53b4b04f2821ea45527d43254410a74b2dbabfcef9345f396fd9041008",
+  "pageVersion": "sha256:ecd44c679269195fc540eed0e09b5934fb111ca99c489e8e1e717c3b358f3f41",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
           "version": "repo-file-v1:sha256:de9b9061f387a3681b8afc4dc707801820e7011740d4cc8503dff41d28335206"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt#L50-L50",
+          "version": "repo-lines-v1:sha256:60022f4393ec1186110c4cd4ef28dfb52987eef036523d830bf87976f648abab:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjAwMjJmNDM5M2VjMTE4NjExMGM0Y2Q0ZWYyOGRmYjUyOTg3ZWVmMDM2NTIzZDgzMGJmODc5NzZmNjQ4YWJhYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjAwMjJmNDM5M2VjMTE4NjExMGM0Y2Q0ZWYyOGRmYjUyOTg3ZWVmMDM2NTIzZDgzMGJmODc5NzZmNjQ4YWJhYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGVkZThjYTBmMWY3OTY0MWM1N2YyNzFkZjAwZWRkYzdkOTI0Zjg1MzU3YjExZTc5Zjg2YjNkOTA4YzdhOTU4MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjcxYzAxYmE5NzhlZjg1MWY2NzIyNGQyNDI2MTg4MDZkY2VlZTY5NjI4NDk3Y2ZiZTE5YTdjNmI1NTMwYmYzZSJ9"
         },
         {
           "resource": "repo://packaging/host-installation.py",
@@ -23,6 +27,10 @@
         {
           "resource": "repo://packaging/host-installation.py",
           "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+        },
+        {
+          "resource": "repo://packaging/host-installation.py#L1222-L1222",
+          "version": "repo-lines-v1:sha256:1a1928d30727b31925d8043f8bf0b7367ef361c35852c946ffcc9c07ab6d23de:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWExOTI4ZDMwNzI3YjMxOTI1ZDgwNDNmOGJmMGI3MzY3ZWYzNjFjMzU4NTJjOTQ2ZmZjYzljMDdhYjZkMjNkZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWExOTI4ZDMwNzI3YjMxOTI1ZDgwNDNmOGJmMGI3MzY3ZWYzNjFjMzU4NTJjOTQ2ZmZjYzljMDdhYjZkMjNkZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjY5YTRkODk1YjQ1YTIyNWUzZDYzYjc3ZjFmMzRlMTk4ZmEyOTI1NmM2OWUyZjM4OTM3OGQ3ZmJiNDdjMzdiMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDQxNDNiMDcxYTRmNTE4MWM4OWYyMjJkOGVkMjAxNmUzYTMzZWVlM2FlNjc0Nzc3ZjBiMTc3MmZlMjU5MDA2OSJ9"
         }
       ]
     },
@@ -33,6 +41,10 @@
         {
           "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt",
           "version": "repo-file-v1:sha256:595fc2611a1f5d63e30d3522e583a946d6252680e36013de6cb39c6156c81589"
+        },
+        {
+          "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt#L17-L17",
+          "version": "repo-lines-v1:sha256:061dc306856bd8c34cc998253497184426e84a6f5faa216ebe3c4b47586be696:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDYxZGMzMDY4NTZiZDhjMzRjYzk5ODI1MzQ5NzE4NDQyNmU4NGE2ZjVmYWEyMTZlYmUzYzRiNDc1ODZiZTY5NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDYxZGMzMDY4NTZiZDhjMzRjYzk5ODI1MzQ5NzE4NDQyNmU4NGE2ZjVmYWEyMTZlYmUzYzRiNDc1ODZiZTY5NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjEyZTIwYjdhZDZhMDYyOGFlNmE5M2ViNTNkZDVjMmNkMGZhZWMxZTk4YzljMDYxZmRjNzFmZGRhYzQ3MDA0OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjljNjA5YzRjNTIxYzljODVhNTgxNWE3MTQyOTQ0YTlmMzRkOTA0YjYyZjBkZDNhMWMxZTNjZjBkYzgyMGQwMyJ9"
         }
       ]
     },
@@ -91,6 +103,10 @@
           "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
         },
         {
+          "resource": "repo://packaging/managed_installation.py#L1471-L1471",
+          "version": "repo-lines-v1:sha256:c0fb3dc07ec26085ebf1d755c700f2e372caddb247d0c7bfac842eb919b1b8e9:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBmYjNkYzA3ZWMyNjA4NWViZjFkNzU1YzcwMGYyZTM3MmNhZGRiMjQ3ZDBjN2JmYWM4NDJlYjkxOWIxYjhlOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzBmYjNkYzA3ZWMyNjA4NWViZjFkNzU1YzcwMGYyZTM3MmNhZGRiMjQ3ZDBjN2JmYWM4NDJlYjkxOWIxYjhlOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWQ2NTRkNjc1M2IwNzhlNzY4ODIyZjhiYjAzOGMxMTE3MDQ5ZjM0Njc5YjIzNWUyY2NjYWY1NmFlMDZlMmNmNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDMxZjY3MjZkMjkwNDRiNDc1MzhjNjBjYWIxN2NiMWNhMDAzM2YxNDVmMGFiNmI0MzY5ZTViNDE5MzMwN2UyYSJ9"
+        },
+        {
           "resource": "repo://packaging/managed_update_journal.py",
           "version": "repo-file-v1:sha256:648dccf6e9e4da2927b80b0178b798ceb52a5cb8c9ead97dc87db389811a9d1b"
         }
@@ -103,6 +119,10 @@
         {
           "resource": "repo://packaging/managed_installation.py",
           "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py#L308-L308",
+          "version": "repo-lines-v1:sha256:c87752398c6599f1ba538b944b10b82100923d70bb59542a661744450d989790:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzg3NzUyMzk4YzY1OTlmMWJhNTM4Yjk0NGIxMGI4MjEwMDkyM2Q3MGJiNTk1NDJhNjYxNzQ0NDUwZDk4OTc5MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzg3NzUyMzk4YzY1OTlmMWJhNTM4Yjk0NGIxMGI4MjEwMDkyM2Q3MGJiNTk1NDJhNjYxNzQ0NDUwZDk4OTc5MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDc1MTU3NmEyNzc0N2VhYzFlZmVhZTgzM2YxMDljMThjYzc2NGNiM2E0NmIzNzc0MTY5MDI2ZDc2MTViYmIxNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTZjZTYyNzEwZGM0MDlmNGVjMDdjYzU5ZDVkYTNhMGVhNTVmMDEyYjQ2MDkxZjVkNTZlYWUxMWUyMzRkY2E2MSJ9"
         }
       ]
     },
@@ -141,6 +161,10 @@
           "version": "repo-file-v1:sha256:6ccb75e39b897cea90f090e5905fd44d52e40c4818e7df532b1fc66372284413"
         },
         {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt#L14-L14",
+          "version": "repo-lines-v1:sha256:6744726e51deff20f57cd841e932e793fd46b90b3e4971f7ea2293405e121644:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjc0NDcyNmU1MWRlZmYyMGY1N2NkODQxZTkzMmU3OTNmZDQ2YjkwYjNlNDk3MWY3ZWEyMjkzNDA1ZTEyMTY0NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjc0NDcyNmU1MWRlZmYyMGY1N2NkODQxZTkzMmU3OTNmZDQ2YjkwYjNlNDk3MWY3ZWEyMjkzNDA1ZTEyMTY0NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjU2ZjA3M2QwMzc1Y2NlMmQwZWNlYWZhYjY1YzMzYzg3OWVkYTJkN2EyMDcyN2YzMTcxZDczMzI4YWFiYjczYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWJkYTVhNDUxMmNlY2I5YWEzOTkzMzI4MjJjYTAzZDMwOTA3YzM1NjA2YTA5M2Y4OGJmZjlhNjMwY2FlYWI0NyJ9"
+        },
+        {
           "resource": "repo://packaging/managed_release.py",
           "version": "repo-file-v1:sha256:ef4cc70c132b363eb60ab7d7e4cf5570f5a4c63b9d66720ad786b422d1bc2d65"
         }
@@ -176,7 +200,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-11T10:38:11.930Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T14:25:07.841Z"
   }
 }

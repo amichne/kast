@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:bcd7815922bed0ea40afa969f811e1d74820caef1a54c7e3d230357ea0e0eb5c",
+  "pageVersion": "sha256:fe6f682f7cc8e4773b558aef05c0414e3bb68893316b846b07e36c1761737839",
   "claims": [
     {
       "id": "claim_ace555ef5bde4d7ca87a186cd8d9b62d",
@@ -12,7 +12,7 @@
         },
         {
           "resource": "repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinDocumentationScanner.kt",
-          "version": "repo-file-v1:sha256:312a2c8df4f956c244a866d38d1dca894807c109f62948aaee4bc00ce1ad6b47"
+          "version": "repo-file-v1:sha256:8982f8636b61093dfdd4148a556a60ad35e656a5debddcaad1967f190a40777b"
         }
       ]
     },
@@ -60,7 +60,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-11T10:38:11.930Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T14:25:07.841Z"
   }
 }

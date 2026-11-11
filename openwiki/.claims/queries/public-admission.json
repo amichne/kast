@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b49979a1b643b09e765a7763385f6cc143a86c28a4425ed349ce11ea4c0ae0d4",
+  "pageVersion": "sha256:64fe5ea03ccb24fcf5bf85f6641c9ec5109d6bbe023e307a3e47aab185c1f4c1",
   "claims": [
     {
       "id": "claim_f582456c7d50479bb6b1a848a1c7e9a9",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt",
           "version": "repo-file-v1:sha256:e2e2dd2ed1f5e6d2bddbe242c507e4d0ad412da7793cd3cfc075e14b7290d2bf"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt#L172-L172",
+          "version": "repo-lines-v1:sha256:b5cd43b9ea8ae3dd405b5c950d698e9c788e21539efa721a12e63be6a3f708ae:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjVjZDQzYjllYThhZTNkZDQwNWI1Yzk1MGQ2OThlOWM3ODhlMjE1MzllZmE3MjFhMTJlNjNiZTZhM2Y3MDhhZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjVjZDQzYjllYThhZTNkZDQwNWI1Yzk1MGQ2OThlOWM3ODhlMjE1MzllZmE3MjFhMTJlNjNiZTZhM2Y3MDhhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzM5MmYwMzE0MThhYzU5YjEwZDkxMjE0M2U3NmZhNWQzYzBkMWQzYjVkODMwMjdlZGU0MzkwNDMwZGFiYjFkMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTgxYjQ5ZjdiZTI4ZjlhNzVhMjdhZjJiOTM4ODc4YWIwYTQ3ZjZjNzRmODdkNmZlY2E4ZmNjYzk2ODFhODY1MSJ9"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolRefinement.kt",
@@ -25,6 +29,10 @@
           "version": "repo-file-v1:sha256:e98e9ad3ebb20d3b208beffb110c12d6dd8abb0d49837205db31c00ae1032eb9"
         },
         {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt#L7-L7",
+          "version": "repo-lines-v1:sha256:c8281f8eabf289b5f222dbe8d14b4c89d9ab279953c8a7ce6c978731e5828686:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzgyODFmOGVhYmYyODliNWYyMjJkYmU4ZDE0YjRjODlkOWFiMjc5OTUzYzhhN2NlNmM5Nzg3MzFlNTgyODY4NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzgyODFmOGVhYmYyODliNWYyMjJkYmU4ZDE0YjRjODlkOWFiMjc5OTUzYzhhN2NlNmM5Nzg3MzFlNTgyODY4NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWQwM2VlZGMxZDllMjFlNjFhYTZiYjc0OWFhNGFiNzVmNGViZjlmYzJhMjgzMjkyNTdlYjMwNDc4Yzk0ZDU1ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDA2MzNlZjZhMmEyYTMyOTY5ZjYxY2VjOTIxNDQ5MjQyNWI1YWNlOTYxZmRjOWQ2YjhjYWFiYzU0MGZiMTM4YiJ9"
+        },
+        {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
           "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
@@ -39,6 +47,10 @@
           "version": "repo-file-v1:sha256:e2e2dd2ed1f5e6d2bddbe242c507e4d0ad412da7793cd3cfc075e14b7290d2bf"
         },
         {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt#L172-L172",
+          "version": "repo-lines-v1:sha256:b5cd43b9ea8ae3dd405b5c950d698e9c788e21539efa721a12e63be6a3f708ae:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjVjZDQzYjllYThhZTNkZDQwNWI1Yzk1MGQ2OThlOWM3ODhlMjE1MzllZmE3MjFhMTJlNjNiZTZhM2Y3MDhhZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjVjZDQzYjllYThhZTNkZDQwNWI1Yzk1MGQ2OThlOWM3ODhlMjE1MzllZmE3MjFhMTJlNjNiZTZhM2Y3MDhhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzM5MmYwMzE0MThhYzU5YjEwZDkxMjE0M2U3NmZhNWQzYzBkMWQzYjVkODMwMjdlZGU0MzkwNDMwZGFiYjFkMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTgxYjQ5ZjdiZTI4ZjlhNzVhMjdhZjJiOTM4ODc4YWIwYTQ3ZjZjNzRmODdkNmZlY2E4ZmNjYzk2ODFhODY1MSJ9"
+        },
+        {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
           "version": "repo-file-v1:sha256:788e03df7db0fb7d086a1689fbc803fbd1c09d29e20e07fa7b836968275211cd"
         }
@@ -46,7 +58,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-10T17:49:52.067Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }
