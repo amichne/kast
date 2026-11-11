@@ -7,13 +7,14 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import re
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from composed_host_probe import HostIdentity, live_host
-from composition_platform import host_platform
+from composition_platform import UnsupportedHost, host_platform
 
 type JsonValue = None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
 
@@ -104,7 +105,9 @@ def probe(
     identity = record.get("id")
     if not isinstance(identity, str) or not re.fullmatch("[a-f0-9]{32}", identity):
         raise RuntimeError("create: exact container id required")
-    target = host_platform()
+    target = host_platform(platform.system(), platform.machine())
+    if isinstance(target, UnsupportedHost):
+        raise RuntimeError("native qualification requires a supported OS and CPU")
     runtime_key = record.get("runtime")
     if not isinstance(runtime_key, str) or not re.fullmatch(
         r"[0-9]+\.[0-9]+\.[0-9]+-" + re.escape(target.value), runtime_key

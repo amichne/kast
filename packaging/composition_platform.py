@@ -36,7 +36,7 @@ class HostPlatform(StrEnum):
                     "Resources/product-info.json",
                     "runtime/Kast Analysis Host.app/Contents",
                     "macOS",
-                    "aarch64" if self == HostPlatform.MACOS_ARM64 else "x86_64",
+                    "aarch64" if self == HostPlatform.MACOS_ARM64 else "amd64",
                     ("Info.plist", "Resources/build.txt"),
                 )
             case HostPlatform.LINUX_ARM64 | HostPlatform.LINUX_X86_64:

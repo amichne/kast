@@ -63,6 +63,16 @@ def test_native_launcher_keeps_required_vendor_field_and_selected_classpath() ->
     )
 
 
+def test_macos_x86_launcher_preserves_the_pinned_vendor_amd64_identity() -> None:
+    launch = replace(VendorMetadata().launch[0], arch="amd64")
+    raw = json.dumps(asdict(replace(VendorMetadata(), launch=(launch,)))).encode()
+    result = product(raw, frozenset({"lib/core.jar"}), ())
+    assert isinstance(result, Product), result
+    assert result.launch[0].os == "macOS"
+    assert result.launch[0].arch == "amd64"
+    assert result.launch[0].launcherPath == "../MacOS/idea"
+
+
 def test_linux_launcher_keeps_native_paths_and_selected_classpath() -> None:
     launch = replace(
         VendorMetadata().launch[0],
