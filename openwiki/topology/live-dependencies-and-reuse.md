@@ -26,8 +26,8 @@ sources:
     resource: repo://topology/intellij/src/main/kotlin/io/github/amichne/kast/topology/intellij/IntellijSemanticDependencyCapture.kt
 generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-06T05:26:56.646Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Live dependency proofs and fact reuse

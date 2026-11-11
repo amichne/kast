@@ -12,7 +12,7 @@ review the associated sources and claim before updating reviewedSourceRevision.
 Preserve unsupported or uncertain claims as unresolved; never manufacture proof.
 Update only docs/public/, docs/okf-public.json, openwiki/, or
 docs/tooling/knowledge-refresh/ status artifacts. Do not change other paths.
-Run focused checks relevant to your edits. Report failures and unreviewed work.
+Run focused checks relevant to your edits. Report failures and work you did not review.
 The caller retains the worktree for human review and integration.
 
 For scheduling, configure a host scheduler separately with an explicit invocation

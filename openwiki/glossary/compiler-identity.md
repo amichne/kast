@@ -19,6 +19,8 @@ code_sources:
 sources:
   - id: openwiki-source-432d05143d371dfe54d7f30d
     resource: repo://change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/LiveMutationAuthority.kt
+  - id: openwiki-source-24c325f3801f9356e69d68e1
+    resource: repo://change/contract/src/main/kotlin/io/github/amichne/kast/change/contract/PlannedAddDeclaration.kt
   - id: openwiki-source-6774ed1d0295b67d908dbbd8
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijK2SymbolIdentity.kt
   - id: openwiki-source-bc400ee5321e91684ef51817
@@ -39,8 +41,8 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/exact/IntellijKotlinCompilerSymbolLookup.kt
 generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-03T06:09:31.584Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Compiler identity

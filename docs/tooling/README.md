@@ -168,7 +168,7 @@ This check is not a sandbox and cannot prove that no transient effects occurred.
 
 `--launchd-plan` prints a daily 09:00 user-agent recipe without installing it.
 After this command is available on the host's checkout, review that recipe before loading it with the host scheduler.
-Do not activate a recipe against a checkout where this command has not landed.
+Do not start the job from a checkout that lacks this command.
 On an ephemeral cloud host, invoke `--run --bootstrap` from the environment's authorized startup hook.
 A cloud session does not establish a persistent schedule.
 A completed agent process is an unverified candidate, not publication admission.

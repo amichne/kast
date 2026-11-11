@@ -35,8 +35,8 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
 generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-10T17:49:52.067Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Public query admission and capabilities

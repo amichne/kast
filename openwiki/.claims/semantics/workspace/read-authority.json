@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e04ba59a5a64c1ca6e17a127d7e836c2df86c587a5ff1763e252cf0f7b50a196",
+  "pageVersion": "sha256:71f25a7ca253876ef702ffcf3d1f402d4050e273a4e4d689e9513c9299dbf1ec",
   "claims": [
     {
       "id": "claim_fcdb3f93b2664084afe3b3d46c1e4c2f",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt",
           "version": "repo-file-v1:sha256:ad7f01cd585e6e4144892d78b67f791cab743243df0de6c172468fbeaa285a7e"
+        },
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L7-L7",
+          "version": "repo-lines-v1:sha256:d77ef766656c0bb23d02518d663e26b5ceb6fdd027d0c8c45ca6dc6fc216d3ca:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc3ZWY3NjY2NTZjMGJiMjNkMDI1MThkNjYzZTI2YjVjZWI2ZmRkMDI3ZDBjOGM0NWNhNmRjNmZjMjE2ZDNjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc3ZWY3NjY2NTZjMGJiMjNkMDI1MThkNjYzZTI2YjVjZWI2ZmRkMDI3ZDBjOGM0NWNhNmRjNmZjMjE2ZDNjYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzJjMmE3NjM1YjZkYTMxYzk0NTcxMTkxY2E0Y2M2ZDIxZTM4YTAxNjhkMDQzNTlhMzBiNTI2NjM3MTlhYmVlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGJjNzEzOWRiZjdlYmIwN2NlMTRiZjI2ODQzYTgyZjIyODdhYjUzYTA0ZWZkN2JkMzZkZDYxYjkzYTZiZmNmNCJ9"
         }
       ]
     },
@@ -19,6 +23,10 @@
         {
           "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt",
           "version": "repo-file-v1:sha256:ad7f01cd585e6e4144892d78b67f791cab743243df0de6c172468fbeaa285a7e"
+        },
+        {
+          "resource": "repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt#L7-L7",
+          "version": "repo-lines-v1:sha256:d77ef766656c0bb23d02518d663e26b5ceb6fdd027d0c8c45ca6dc6fc216d3ca:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc3ZWY3NjY2NTZjMGJiMjNkMDI1MThkNjYzZTI2YjVjZWI2ZmRkMDI3ZDBjOGM0NWNhNmRjNmZjMjE2ZDNjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc3ZWY3NjY2NTZjMGJiMjNkMDI1MThkNjYzZTI2YjVjZWI2ZmRkMDI3ZDBjOGM0NWNhNmRjNmZjMjE2ZDNjYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzJjMmE3NjM1YjZkYTMxYzk0NTcxMTkxY2E0Y2M2ZDIxZTM4YTAxNjhkMDQzNTlhMzBiNTI2NjM3MTlhYmVlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGJjNzEzOWRiZjdlYmIwN2NlMTRiZjI2ODQzYTgyZjIyODdhYjUzYTA0ZWZkN2JkMzZkZDYxYjkzYTZiZmNmNCJ9"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/execution/AdmittedProjectReadExecution.kt",
@@ -33,12 +41,16 @@
         {
           "resource": "repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ExecutionBudget.kt",
           "version": "repo-file-v1:sha256:1a6e91f13c80c03ba05bbb6781b4d689ae2cee24e2e48cf959364c0c23eb6967"
+        },
+        {
+          "resource": "repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/ExecutionBudget.kt#L19-L19",
+          "version": "repo-lines-v1:sha256:0fb65d642db7d3ac16087925e397686b1e600a1efc17010b54726d0a24da7c1e:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGZiNjVkNjQyZGI3ZDNhYzE2MDg3OTI1ZTM5NzY4NmIxZTYwMGExZWZjMTcwMTBiNTQ3MjZkMGEyNGRhN2MxZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGZiNjVkNjQyZGI3ZDNhYzE2MDg3OTI1ZTM5NzY4NmIxZTYwMGExZWZjMTcwMTBiNTQ3MjZkMGEyNGRhN2MxZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTllNzYzNTVjZjExOTk0ODBjM2Y5OTgzNmIxNDg2Yzg0MWQ4OTFmYWFkOTA0YzYwOGUwOTMwMjJkMzc1N2FlZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjVmMWYzYjUzNmFlM2Q3ZGUxMzgxN2I4MzMzNTVkZmI0MmY0ZjNlOWYwZTA2ZWFmZjczYWIzZjQ3MTIxMTZkNiJ9"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

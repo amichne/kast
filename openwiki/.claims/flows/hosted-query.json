@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7abb9715862ae09f50f762ea5f92d3f1e77ef7cfd6ce6bfc1eb755ee18d467ff",
+  "pageVersion": "sha256:408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -369,8 +369,12 @@
       "statement": "The production Host packages separate archives and descriptors for IDEA release lines 262 and 263.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L248-L274",
+          "resource": "repo://build.gradle.kts#L238-L264",
           "version": "repo-lines-v1:sha256:9068766bc806480d3ee0c88c13d71ad2590783774a18f47f4f74dccdea44cd0d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5YjI5ZGY1MmEzZDBhNGI1M2U5Njk4ZTJjODBiN2E4YmI0YTJlOGYwN2Y4MTM1NDY1OTM1OWRkYjlmZjg2NWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlOWQzNGFiOGRhZmRkZjg5N2Y5MDY5ZTdmNzQ1M2E3NmRmOTQzMjc3ZGMyNGI2NTZlNTMzMTZkNTYxY2U0YmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiNTUzNWExY2MyMTI3NWU2YTQxMWQ0ZDEyOGZmNzkxZDhlN2ViOTY5MWRhMTM4Y2NiYTkzYTlmNWFjYzBlN2YifQ"
+        },
+        {
+          "resource": "repo://gradle/libs.versions.toml#L13-L15",
+          "version": "repo-lines-v1:sha256:a180f5d8bfc8458d8fa8d7a4c7620dd0ed11a64a54c57db75928121ed8f28e69:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmYzMTI3NzAxYmNiY2E1OTlhZmQzOGM4MTM5MjQ0MTliOWU0MmIyYWNlNGE3ZmRlOWNmN2ZhODhlMGRjZjZlYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzhiMTYwMjE3ZTcwYTVhZmVhYWRlODk1ODg5YWFkMGQzODVkZTFjMjg0MmJiYTExM2I3MThmM2I0NGYyMWE3NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTFhOWYzYzQxZWEwODJkNmRhM2FjMTE0OGQzNDZhYWRlZDQwZjgwZGFlMWIyZTllNThhMzIzODQ3ODNlZDEzZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDNjNzkwZjM5MDg5YTkzNGIxNzI2N2I1ZDIzZDk4YmYxYjQ2NWIyZjc1ZTA1YmI5NGFlOWQxY2Y2MTEyODFjYSJ9"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts#L141-L147",
@@ -402,7 +406,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-10T06:03:12.348Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

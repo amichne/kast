@@ -7836,6 +7836,1530 @@
         "severity": "warning"
       },
       "reason": "Keep complete peer target-basis admission before token restoration. Single evaluation, final freshness, child grant, aggregate work, and elapsed time remain coupled."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/architecture/codex-transport.mdx",
+        "sourceSha256": "ef167521491c15d3ccc6b88157abe9237e0beefd83e15cc5a8dd3c11bbf8846d",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.71 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "This generated shell has a two-sentence introduction linking setup to Agent harnesses and limits to Compatibility. The named destinations and Codex framing terms are necessary routing vocabulary; canonical details live in the imported concept. Its complete static footprint was reviewed separately; a short-shell grade does not measure reader comprehension."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/architecture/relations-and-traversal.mdx",
+        "sourceSha256": "bdd5602aeec2c8f26d73f44fd8b330aaa91e9c662b699d5a0e776e36d8582c83",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 9.38 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "The generated introduction links executable request forms to Query forms and callback-specific evidence to Callback evidence. Keep those existing page labels and precise distinctions rather than rename them to reduce syllables. The complete static footprint is reviewed separately."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/changes/planning-and-write-admission.mdx",
+        "sourceSha256": "75abfde5b93c625f9e31445740859680def2c93966900cee2b4e95ff8d73b239",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 10.94 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact preimage admission and durable planning before source mutation. Preserve exact identifiers `CanonicalChangePlanProtocol`, `PureAddDeclarationPlanningService`, `LiveMutationAuthority.prepare`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/changes/receipts-and-recovery.mdx",
+        "sourceSha256": "618dd71d25699253ab298b7953a481c3da9f806b65c273a50fe89c85a0cf3271",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.76 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep mutation receipt identity and finite exact-state recovery limits. Preserve exact identifiers `SqliteHostedChangeStores.open`, `LiveAddDeclarationVerificationReplay`, `AddDeclarationRecoveryService.prepare`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/contracts/source-failures.mdx",
+        "sourceSha256": "0b77bfa4d2d35a194a7cedfc5742492906db39fcf021a5380a6cf5930534f4b7",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.80 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep finite rejection origin, preserved admission reports, and unavailable retention. Preserve exact identifiers `SourceReadCause`, `AdmittedSourceReadRejection`, `type`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This is the public projection of the same canonical concept, not a new behavioral claim. Keep the finite failure and authority terms rather than simplify away their distinctions."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/contracts/source-failures.mdx",
+        "sourceSha256": "0b77bfa4d2d35a194a7cedfc5742492906db39fcf021a5380a6cf5930534f4b7",
+        "rule": "Slopsentral.LongSentence",
+        "line": 59,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep admitted facts and upstream coverage beside retention_unavailable and its explicit absence of a token. Keep this as an assessed length exception, without a reader-comprehension claim. This is the public projection of the same canonical concept, not a new behavioral claim. Keep the finite failure and authority terms rather than simplify away their distinctions."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/contracts/source-identity.mdx",
+        "sourceSha256": "1045a7aac22c94f27e320f818e39f2745eae0e61601c0598c122ad50ccf8af95",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.02 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "The reviewed five responsibility headings, paragraph breaks, and grammar correction preserve exact source identities and owner constraints. Keep compiler, token, epoch, and wire-compatibility terms. The grade target remains unmet, and reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/contracts/source-identity.mdx",
+        "sourceSha256": "1045a7aac22c94f27e320f818e39f2745eae0e61601c0598c122ad50ccf8af95",
+        "rule": "Slopsentral.LongSentence",
+        "line": 130,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the complete list of internal wire defaults and its explicit separation from public request requirements. This unchanged compatibility sentence preserves one qualified contract. The sentence-length advisory remains visible. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/contracts/source-identity.mdx",
+        "sourceSha256": "1045a7aac22c94f27e320f818e39f2745eae0e61601c0598c122ad50ccf8af95",
+        "rule": "Slopsentral.LongSentence",
+        "line": 165,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the complete list of internal wire defaults and its explicit separation from public request requirements. This unchanged compatibility sentence preserves one qualified contract. The sentence-length advisory remains visible. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/queries/execution-and-composition.mdx",
+        "sourceSha256": "3f9e65b8f2777485fa66b4b309407859b4f3dd3c6ef79542d186b0e150c1d926",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 10.45 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep query composition, retained row facts, and incomplete-coverage provenance. Preserve exact identifiers `IMPACT`, `QueryRowAdmission`, `PROJECT_BINDING`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/queries/public-admission.mdx",
+        "sourceSha256": "372beeb2b6a867e4dcceb0542e7ae532fe92691fdb87d0dc25ac5c000164ff67",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.10 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep closed public operation variants and explicit installed capabilities. Preserve exact identifiers `tools.schema.json`, `PublicToolContract`, `AdmittedPublicTool`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This is the public projection of the same canonical concept, not a new behavioral claim. Keep the finite failure and authority terms rather than simplify away their distinctions."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/queries/retention-and-presentation.mdx",
+        "sourceSha256": "19d479cb43125e03ff6a60433c39893365f3f19edbc6b64c0ac4d7bcecdff550",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.13 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep immutable retained identity and presentation without semantic completion. Preserve exact identifiers `QueryStateStore`, `QueryInvocationPublication`, `RetainedQueryPresentation`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/semantics/relation/callback-reuse-and-completion.mdx",
+        "sourceSha256": "7de66ccd19e5a740ac0130c893283ec7eb4f5ccdbfe0e3b9e35a17837d6f0d71",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.68 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep callback supplier proof, exact dependency identity, and independent completion obligations. Preserve exact identifiers `SemanticCallbackFactStore`, `SemanticDependencySnapshot`, `CallbackSummaryReuse`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/semantics/relation/callback-supply-and-binding.mdx",
+        "sourceSha256": "7cf7028a38b7983d275570c59f178bb8ca62cfca97b3e059a61959f7827efb4c",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.09 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep source supplier identity, actual formal bindings, and binary effect qualifications. Preserve exact identifiers `CallbackArgumentBinding`, `IntellijCallbackDependencyContract`, `kotlin.lazy`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/semantics/relation/named-relations.mdx",
+        "sourceSha256": "327534d8202a9bbba0f386def442d83145d75e158cb1d28dd98c5a687e22b491",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.42 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep compiler-confirmed relationship occurrences and qualified absence. Preserve exact identifiers `RelationFileEnumerationPlan`, `RelationService`, `RelationReferenceOccurrence`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This is the public projection of the same canonical concept, not a new behavioral claim. Keep the finite failure and authority terms rather than simplify away their distinctions."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/semantics/source/anchors-and-paging.mdx",
+        "sourceSha256": "42fdce0105ee2ec3d86bfe84250137de505d48e6a5c853f12a5a41dedc263f5e",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.52 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep UTF-16 source anchors and continuation-bound structural pages. Preserve exact identifiers `SourceReadService`, `SourceSnapshot`, `Utf16Coordinate`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This is the public projection of the same canonical concept, not a new behavioral claim. Keep the finite failure and authority terms rather than simplify away their distinctions."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/semantics/symbol/discovery-and-identity.mdx",
+        "sourceSha256": "d27615ee43bd033b6b13aaf7f6750aaad20dd6bbcff85a89c74dee4d6c76a2e7",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.92 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep indexed declaration discovery versus exact K2 declaration identity. Preserve exact identifiers `IntellijScopedDeclarationEnumeration`, `PsiNamedElement`, `IntellijPsiExactDeclarationLookup`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/semantics/traversal/frontiers-and-continuations.mdx",
+        "sourceSha256": "cf24d5c7a945f2ce11d0999a08df57d3e92f39728be40fe841584c7ff8005f2c",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.05 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep frontier state, historical omissions, and resumable versus terminal incompleteness. Preserve exact identifiers `TraversalPlan`, `WALK`, `TRACE`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This is the public projection of the same canonical concept, not a new behavioral claim. Keep the finite failure and authority terms rather than simplify away their distinctions."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/semantics/workspace/model-and-freshness.mdx",
+        "sourceSha256": "f76b32f28347abaf644c9b284338d0ad375724214f47cf914f0907ff903c3cbb",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.02 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep cached imported-model capture and final live-epoch admission. Preserve exact identifiers `DetachedModelCapture`, `SemanticDependencySnapshot`, `runHostedReadTransaction`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/semantics/workspace/read-authority.mdx",
+        "sourceSha256": "597d301fccb91f550a685fcd9b67fc0ef9fdee3e687c00dba6d39f7f9107bcea",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.47 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep published leases versus owner-local live authority and terminal retirement. Preserve exact identifiers `SemanticReadAuthority`, `requirePublished`, `LiveSemanticReadReference`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/topology/live-dependencies-and-reuse.mdx",
+        "sourceSha256": "27654afcc2873fcfdf21e29e87a965c3b67e6399644340cdebf33ba5b60ede85",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.42 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact dependency proof and fact reuse under fresh authority. Preserve exact identifiers `IntellijSemanticDependencyCapture`, `SemanticDependencySnapshot.fromCompiler`, `reuseFrom`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/snippets/okf/transport/codex-hosts-and-framing.mdx",
+        "sourceSha256": "e9680e124f9715268f5e29cd2e08ca681f2fc97217fb8ebc2d8fb0c74a529d75",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 10.92 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep qualified Codex protocol families and bounded transport frames. Preserve exact identifiers `CodexProtocolQualifier`, `AgentSessionBootstrap`, `CodexProtocolAdapter`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. This is the public projection of the same canonical concept, not a new behavioral claim. Keep the finite failure and authority terms rather than simplify away their distinctions."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/changes/planning-and-write-admission.md",
+        "sourceSha256": "67406ffa90f96ab185d94b687e9d976367469390d94f5d13d056eed5b3245693",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.62 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact preimage admission and durable planning before source mutation. Preserve exact identifiers `CanonicalChangePlanProtocol`, `PureAddDeclarationPlanningService`, `LiveMutationAuthority.prepare`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/changes/receipts-and-recovery.md",
+        "sourceSha256": "0972ea651387b93b0862c2b2b6da7fc06eb9e45ef8520abb5e0c2dd70444a816",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.52 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep mutation receipt identity and finite exact-state recovery limits. Preserve exact identifiers `SqliteHostedChangeStores.open`, `LiveAddDeclarationVerificationReplay`, `AddDeclarationRecoveryService.prepare`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/configuration.md",
+        "sourceSha256": "7ab4baf3cc6d4d0fab02d33e855622128cd613277e645f1137d0a416d71f4b44",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.70 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep configuration ownership, selector provenance, retired-key rejection, and IDEA admission distinct. Preserve the exact environment identifiers. The grade target remains unmet. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/configuration.md",
+        "sourceSha256": "7ab4baf3cc6d4d0fab02d33e855622128cd613277e645f1137d0a416d71f4b44",
+        "rule": "Slopsentral.LongSentence",
+        "line": 119,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep inherited-selector provenance and the explicit override procedure together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/configuration.md",
+        "sourceSha256": "7ab4baf3cc6d4d0fab02d33e855622128cd613277e645f1137d0a416d71f4b44",
+        "rule": "Slopsentral.LongSentence",
+        "line": 161,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the distinct channel and private-report environment variables with their different publication consumers. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/configuration.md",
+        "sourceSha256": "7ab4baf3cc6d4d0fab02d33e855622128cd613277e645f1137d0a416d71f4b44",
+        "rule": "Slopsentral.LongSentence",
+        "line": 219,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the distinct channel and private-report environment variables with their different publication consumers. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/operation-outcomes.md",
+        "sourceSha256": "2a745504f434f9c00904dff2f2e6bd2277ac5079e0a7eb26d78a159116ba446f",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.31 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "The reviewed article correction and six responsibility headings preserve every Claim statement and outcome qualification. Keep the exact finite failures and recovery actions. The grade target remains unmet, and reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.77 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep closed public request variants, nullable/default semantics, and installed-catalog qualification. Preserve exact identifiers `terminalStep`, `EMIT`, `TRACE`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+        "rule": "Slopsentral.LongSentence",
+        "line": 290,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all five published identities and the hosted-only qualification on workspace_lifecycle. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+        "rule": "Slopsentral.LongSentence",
+        "line": 292,
+        "message": "Long sentence: 51 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the exhaustive admitted-source list, optional issued row IDs, and independent optional run controls. This is a reference inventory, not a first-use prerequisite. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+        "rule": "Slopsentral.LongSentence",
+        "line": 292,
+        "message": "Long sentence: 44 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep RUN and READ_RESULT output inventories distinct and keep the retained-row-type constraint. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+        "rule": "Slopsentral.LongSentence",
+        "line": 334,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the complete INDEXED_WORD exemplar record and its 512-character and UTF-16 constraints. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+        "rule": "Slopsentral.LongSentence",
+        "line": 364,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all five published identities and the hosted-only qualification on workspace_lifecycle. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+        "rule": "Slopsentral.LongSentence",
+        "line": 433,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all five published identities and the hosted-only qualification on workspace_lifecycle. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+        "rule": "Slopsentral.LongSentence",
+        "line": 437,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep occurrence ownership alternatives distinct from traversal reachability. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+        "rule": "Slopsentral.LongSentence",
+        "line": 481,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact row identity, result identity, ordinal cursor, and maxResults:1 together for full-row expansion. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/public-tools.md",
+        "sourceSha256": "a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+        "rule": "Slopsentral.LongSentence",
+        "line": 524,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all detached dependency-contract proof fields, including binary digest and declared invocation kind. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/source-identity.md",
+        "sourceSha256": "b9073f1ab79adfe2ff89ff4f5f640535726ae99cfa8089a886db45d8dd6f2b99",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.50 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "The reviewed five responsibility headings, paragraph breaks, and grammar correction preserve exact source identities and owner constraints. Keep compiler, token, epoch, and wire-compatibility terms. The grade target remains unmet, and reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/source-identity.md",
+        "sourceSha256": "b9073f1ab79adfe2ff89ff4f5f640535726ae99cfa8089a886db45d8dd6f2b99",
+        "rule": "Slopsentral.LongSentence",
+        "line": 192,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the complete list of internal wire defaults and its explicit separation from public request requirements. This unchanged compatibility sentence preserves one qualified contract. The sentence-length advisory remains visible. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/contracts/source-identity.md",
+        "sourceSha256": "b9073f1ab79adfe2ff89ff4f5f640535726ae99cfa8089a886db45d8dd6f2b99",
+        "rule": "Slopsentral.LongSentence",
+        "line": 227,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the shared cursor owner and its explicit exclusion of live PSI or compiler sessions. This unchanged sentence preserves detached-state ownership. The sentence-length advisory remains visible. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/development/knowledge-upkeep.md",
+        "sourceSha256": "376204da3601c7e26fb704b603ae2a8a892784d255bb5544783a9d722ba77d59",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.78 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "The updated upkeep page names the actual native runtime, parser owners, canonical check, review-age rule, and host refresh boundary. Those identifiers retain precise ownership. Sections separate byte agreement, syntactic evidence, behavior, and publication. Keep the measured grade as an advisory, not a comprehension claim."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/installation-and-managed-files.md",
+        "sourceSha256": "2b23b8637663cd6fdfa2734b22388a0ca73692230c21fce5f2306a1c3f599382",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.05 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep physical installation identity, managed inventory rules, and exact force-install permissions. VerifyDistributionTasks rejects the retired share/kast/container payload. The new sentence describes that guard. The grade advisory remains unmet. Reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/installation-and-managed-files.md",
+        "sourceSha256": "2b23b8637663cd6fdfa2734b22388a0ca73692230c21fce5f2306a1c3f599382",
+        "rule": "Slopsentral.LongSentence",
+        "line": 106,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep changed-device handling constrained by inode, owner, and consistent identity mapping. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/management-and-connections.md",
+        "sourceSha256": "12403d5779287f5d011abaafce3e7b248d680d9fa0ba8f7d29a1b7f0f84d3db3",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.86 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact workspace trust, passive status, and provider ownership distinct. The grade target remains unmet. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+        "sourceSha256": "b4e8eb6f10dbad8e07e76ac1a9c34e2b2401741be25fbdcb0dda2bcdf1b445a0",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.82 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep upgrade recovery, daemon retirement, and guarded reset ownership. Preserve exact identifiers `InstalledDaemonUpgrade`, `ManagedUpgrade`, `--recover-only`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. Rechecked the new post-STOP settlement paragraph: unavailable metadata is pending only after acknowledged STOP and within the existing deadline; changed identities and other native failures still reject. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.51 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep native evidence qualifications, reviewed IDEA/Kotlin pairs, separate archives, and exact request-budget ownership. Historical manual proofs remain revision-bound. The grade target remains unmet and does not establish reader comprehension. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 333,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the four rejected folder/model cases and their bounded failure evidence. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 346,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep valid owner and policy-root prerequisites before KNOWN_EMPTY admission. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 399,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the four rejected folder/model cases and their bounded failure evidence. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 416,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep canonical decoding, all three outcome variants, and exact live root/host identity together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 425,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the four rejected folder/model cases and their bounded failure evidence. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 447,
+        "message": "Long sentence: 30 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep passive model capture, same-epoch cancellation, and direct-supertype compiler proof together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 479,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all archive admission facts and the selected IDEA release line before atomic installation. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 506,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the four rejected folder/model cases and their bounded failure evidence. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 543,
+        "message": "Long sentence: 30 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep passive model capture, same-epoch cancellation, and direct-supertype compiler proof together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 569,
+        "message": "Long sentence: 43 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the exact diagnostic phase inventory and distinguish phase entry from cumulative durations after drainage. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 661,
+        "message": "Long sentence: 30 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep passive model capture, same-epoch cancellation, and direct-supertype compiler proof together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 664,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep canonical decoding, all three outcome variants, and exact live root/host identity together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 704,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep canonical decoding, all three outcome variants, and exact live root/host identity together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 757,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep valid owner and policy-root prerequisites before KNOWN_EMPTY admission. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 766,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep native refresh/readiness between the ordinary source edit and the fresh epoch assertion. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 774,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all archive admission facts and the selected IDEA release line before atomic installation. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 785,
+        "message": "Long sentence: 30 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep passive model capture, same-epoch cancellation, and direct-supertype compiler proof together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 816,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep canonical decoding, all three outcome variants, and exact live root/host identity together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 826,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep canonical decoding, all three outcome variants, and exact live root/host identity together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 875,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all archive admission facts and the selected IDEA release line before atomic installation. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/flows/hosted-query.md",
+        "sourceSha256": "408a29632caacc43d728740b7fe67f1aa6b97f24a607b488a3f4613ff831ae20",
+        "rule": "Slopsentral.LongSentence",
+        "line": 879,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all archive admission facts and the selected IDEA release line before atomic installation. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/glossary/compiler-identity.md",
+        "sourceSha256": "4bcee3e73ea3d2e02a984cf4c880094f6c6f9644b24ea6c2167ef557fddeaad0",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.37 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep compiler-owned declaration identity and exact local/anonymous-owner constraints. Preserve exact identifiers `AddDeclaration`, `LiveMutationAuthority`, `local-function-v1`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/glossary/compiler-identity.md",
+        "sourceSha256": "4bcee3e73ea3d2e02a984cf4c880094f6c6f9644b24ea6c2167ef557fddeaad0",
+        "rule": "Slopsentral.LongSentence",
+        "line": 76,
+        "message": "Long sentence: 43 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the full conjunction for compiler-owned enum-entry identity. PSI naming alone remains insufficient. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/knowledge/installed-projection-and-retrieval.md",
+        "sourceSha256": "3131b3432d67355fa003cc019f9a9e755d0e540cfa9978d51948f8aded22f690",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.77 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep release-bound installed knowledge and source-owned generation. Preserve exact identifiers `GenerateKnowledgeDocsTask`, `KnowledgeDocsMain`, `KotlinDocumentationScanner`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/architecture.md",
+        "sourceSha256": "48cd83454bbcb111219807558379066215aa1f1e171ecd4f826c91b7bac01897",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.91 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the existing module and installer owners, exact artifact identities, private state, and separate native evidence. The managed headless addition uses the existing hosted plugin and installer. Exact code names preserve these distinctions. The grade and sentence advisories remain visible without a reader comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/architecture.md",
+        "sourceSha256": "48cd83454bbcb111219807558379066215aa1f1e171ecd4f826c91b7bac01897",
+        "rule": "Slopsentral.LongSentence",
+        "line": 126,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the task dependency inventory and its two distinct production/test line limits. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the current page against merged main: the complete body is unchanged and only the native verification timestamp differs. Bind this review to the current bytes without removing the advisory. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.72 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep independent artifact owners, fixed-root installation, and native evidence distinct. The grade target remains unmet. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 411,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the historical removed-runtime inventory distinct from IDEA's current import/trust ownership. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 413,
+        "message": "Long sentence: 36 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep archive admission before atomic replacement and preserve the dry-run exclusion of plugin-state writes. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 413,
+        "message": "Long sentence: 41 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the native uninstall fixture's real setup, exact owned removals, and unrelated sentinel protection. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 592,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep both bounded retirement observation after bootout and typed retirement stages with admitted exit status. Preserve the explicit exclusion of command arguments, service labels, and child output. Both flagged 27-word sentences remain unchanged from merged main; the current hash and shifted line identify this assessed length exception without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 594,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the shared producer/consumer entry limit and its pre-publication release rejection. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 608,
+        "message": "Long sentence: 37 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep historical paired maintenance distinct from the next control-only recovery receipt and unchanged plugin bytes. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 611,
+        "message": "Long sentence: 39 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep activation-lock fencing, alias cleanup, and recovery staging ordered before another payload stage. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 688,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the historical removed-runtime inventory distinct from IDEA's current import/trust ownership. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 702,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact property-list reconstruction and Codex-home profile binding, including the qualified older form. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 732,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact property-list reconstruction and Codex-home profile binding, including the qualified older form. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 747,
+        "message": "Long sentence: 32 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the unavailable legacy version projection visible and keep the conjunctive fresh epoch/generation evidence. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 769,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep both bounded retirement observation after bootout and typed retirement stages with admitted exit status. Preserve the explicit exclusion of command arguments, service labels, and child output. Both flagged 27-word sentences remain unchanged from merged main; the current hash and shifted line identify this assessed length exception without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "49664aa3e2f6f0241112f67624f311bf105e7db799e2df087c9fff296a407671",
+        "rule": "Slopsentral.LongSentence",
+        "line": 771,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the historical removed-runtime inventory distinct from IDEA's current import/trust ownership. Keep this as an assessed length exception, without a reader-comprehension claim. Rechecked the unchanged sentence in its current source context; the exact digest and line retain this limited exception. Compared the flagged passage with merged main after the reviewed CI section was added; its wording remains unchanged. This review binds the current page hash and shifted line. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.42 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep private launch, exact workspace trust, and live Host admission distinct. The grade target remains unmet. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 336,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep startup's exact ACTIVATING/reset-lease conjunction and the full fenced-invalid inventory. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 348,
+        "message": "Long sentence: 34 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep native workspace demand before immutable plan loading and preserve every admission/output qualification. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 350,
+        "message": "Long sentence: 33 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep socket openness in the launched process and physical identity checks before and after each connection. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 393,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep startup's exact ACTIVATING/reset-lease conjunction and the full fenced-invalid inventory. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 421,
+        "message": "Long sentence: 30 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep application-only linking separate from passive semantic read admission and preceding native refresh. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 421,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep stale-model signaling, finite presemantic rejection, and exactly one safe post-import retry together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 500,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep stale-model signaling, finite presemantic rejection, and exactly one safe post-import retry together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 510,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the addressed digest, fingerprint, finite phase, and terminal/foreign-process settlement exclusions. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 540,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep stale-model signaling, finite presemantic rejection, and exactly one safe post-import retry together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 556,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep passive management's captured version and workspace/connection/compatibility observations qualified as observations. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 574,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep stale-model signaling, finite presemantic rejection, and exactly one safe post-import retry together. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 587,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the addressed digest, fingerprint, finite phase, and terminal/foreign-process settlement exclusions. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 598,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep startup's exact ACTIVATING/reset-lease conjunction and the full fenced-invalid inventory. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
+        "rule": "Slopsentral.LongSentence",
+        "line": 604,
+        "message": "Long sentence: 39 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep target-basis admission before token restoration and preserve child grant, aggregate work, and whole elapsed time. Keep this as an assessed length exception, without a reader-comprehension claim. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/queries/execution-and-composition.md",
+        "sourceSha256": "bc717ca66b6d41bbb5ba05264784260dd7380058ab26381d85777d59415b6ec9",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 10.80 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep query composition, retained row facts, and incomplete-coverage provenance. Preserve exact identifiers `IMPACT`, `QueryRowAdmission`, `PROJECT_BINDING`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/queries/impact-and-peer-proof.md",
+        "sourceSha256": "e9738a426f7b14af2b682fa0af934856ecd17bc17163b58ad6aece4b1fd002ea",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.92 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep source-owned impact ledgers and independently admitted peer evidence. Preserve exact identifiers `QueryImpactSourceAdmission`, `QueryImpactTasks`, `QueryImpactLedger`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/queries/public-admission.md",
+        "sourceSha256": "64fe5ea03ccb24fcf5bf85f6641c9ec5109d6bbe023e307a3e47aab185c1f4c1",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.79 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep closed public operation variants and explicit installed capabilities. Preserve exact identifiers `tools.schema.json`, `PublicToolContract`, `AdmittedPublicTool`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/queries/retention-and-presentation.md",
+        "sourceSha256": "f939ec7ebfe421c16806c83cdafd238dc04bb801df4f518d390af051c9a0145f",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.89 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep immutable retained identity and presentation without semantic completion. Preserve exact identifiers `QueryStateStore`, `QueryInvocationPublication`, `RetainedQueryPresentation`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/queries/trace-and-completion.md",
+        "sourceSha256": "c9783a6912913f1a2a131cb7522214f32f623c1aaa06b0da922795caf8a9404b",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.76 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep compiler-static completion and fixture-qualified dependency-contract effects. Preserve exact identifiers `TRACE`, `QueryTraceTasks`, `CanonicalQueryProtocol`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/runtime/hosted-composition-and-publication.md",
+        "sourceSha256": "fa6e591632b8060e89667df81c405e830e83f6c07cbb31d3e6f47c090baa15f8",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.42 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep request drainage, final freshness, and atomic publication ownership. Preserve exact identifiers `HostedEndpointService`, `Service`, `HostedConnectionAdmission`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/runtime/idea-lifecycle-and-refresh.md",
+        "sourceSha256": "01f5e81b82cc21743429aa813b8a54043a1a81fdc33f465319e5d749db4a3e00",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.05 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep configured bounded and indefinite waiting, shared native deadline continuation, Host/root/project checks, and transport limits explicit. Separate paragraphs distinguish policy, continuation, and transport. Exact lifecycle and refresh identifiers preserve the ownership boundaries. The grade target remains unmet; reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/semantics/diagnostics/scans-and-progress.md",
+        "sourceSha256": "eb1a21b71826920abc16c8dabfdec73051ffffbf460ac75a9883d287356a77c6",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.46 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep diagnostic admission and separate enumeration/analysis progress evidence. Preserve exact identifiers `DiagnosticService`, `DiagnosticScanService`, `HostedDiagnosticResponse`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/semantics/relation/callback-reuse-and-completion.md",
+        "sourceSha256": "872372de2986973533fc6c7e34e22cb3e135d2ce4413476a3bea2bea31fb9399",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.30 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep callback supplier proof, exact dependency identity, and independent completion obligations. Preserve exact identifiers `SemanticCallbackFactStore`, `SemanticDependencySnapshot`, `CallbackSummaryReuse`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/semantics/relation/callback-supply-and-binding.md",
+        "sourceSha256": "23121f588d2b7040038cf81a1117e16c9fd5ea0e7e2844e56e3ad98c4cb83515",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.60 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep source supplier identity, actual formal bindings, and binary effect qualifications. Preserve exact identifiers `CallbackArgumentBinding`, `IntellijCallbackDependencyContract`, `kotlin.lazy`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/semantics/relation/named-relations.md",
+        "sourceSha256": "7db2b591834d24130ff86ed507bd91a6a6bf02dfa7a84649d8ac097e03bd06c0",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.19 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep compiler-confirmed relationship occurrences and qualified absence. Preserve exact identifiers `RelationFileEnumerationPlan`, `RelationService`, `RelationReferenceOccurrence`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/semantics/relation/value-flow-and-models.md",
+        "sourceSha256": "5821ebb611c547164930d8a9d1e54f351998fe24ba267cfa9a04d32523c11fe8",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.04 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep compiler transfer facts versus reviewed representation models. Preserve exact identifiers `ValueSite`, `IntellijValueSiteRevalidationNative`, `ValueProducerSeed`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/semantics/source/anchors-and-paging.md",
+        "sourceSha256": "159c9c2f346ae4f0c5ca4bd01afa1ab074ee899767c73f75ca9438c8ce53e2a3",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.20 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep UTF-16 source anchors and continuation-bound structural pages. Preserve exact identifiers `SourceReadService`, `SourceSnapshot`, `Utf16Coordinate`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/semantics/symbol/discovery-and-identity.md",
+        "sourceSha256": "9c025e6e6d3215f9c3da0822e2fd1447e7ec23eb051df40cfc14c41e46cde015",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 15.74 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep indexed declaration discovery versus exact K2 declaration identity. Preserve exact identifiers `IntellijScopedDeclarationEnumeration`, `PsiNamedElement`, `IntellijPsiExactDeclarationLookup`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/semantics/traversal/frontiers-and-continuations.md",
+        "sourceSha256": "9bc2cfc1a5d0c11819331156c83350b6e2ce03c8ed40ca1fe4f8a33aa905c4f5",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.76 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep frontier state, historical omissions, and resumable versus terminal incompleteness. Preserve exact identifiers `TraversalPlan`, `WALK`, `TRACE`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/semantics/workspace/model-and-freshness.md",
+        "sourceSha256": "4f3475deb03c1b7566f23d6166095d71ed0a5996d11764fd406c40c497533344",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.72 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep cached imported-model capture and final live-epoch admission. Preserve exact identifiers `DetachedModelCapture`, `SemanticDependencySnapshot`, `runHostedReadTransaction`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/semantics/workspace/read-authority.md",
+        "sourceSha256": "71f25a7ca253876ef702ffcf3d1f402d4050e273a4e4d689e9513c9299dbf1ec",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.18 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep published leases versus owner-local live authority and terminal retirement. Preserve exact identifiers `SemanticReadAuthority`, `requirePublished`, `LiveSemanticReadReference`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/topology/live-dependencies-and-reuse.md",
+        "sourceSha256": "96ce585ce11ba3eda2f48045ede7579d9cc236980e7cff2f8d5c6bef61679362",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.14 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact dependency proof and fact reuse under fresh authority. Preserve exact identifiers `IntellijSemanticDependencyCapture`, `SemanticDependencySnapshot.fromCompiler`, `reuseFrom`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/transport/codex-hosts-and-framing.md",
+        "sourceSha256": "294063d59827431667f7c037116f3ebd340ee09d179488a6a9b30a1b564d0582",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.53 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep qualified Codex protocol families and bounded transport frames. Preserve exact identifiers `CodexProtocolQualifier`, `AgentSessionBootstrap`, `CodexProtocolAdapter`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/transport/coordinator-and-workspace-preparation.md",
+        "sourceSha256": "7bd8c10f8e736c90749cfcf314ddf7eb3561255c038a4babae9ec6cef116948b",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.44 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep installed coordinator admission, preparation ownership, and existing reference authority distinct. The new preparation-selection paragraph explains why issued source reads cannot restart preparation. Exact owner identifiers preserve this causal boundary. The grade target remains unmet; reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/transport/direct-mcp-and-tool-rpc.md",
+        "sourceSha256": "dc0cd9ea3f86d6acfdec0a2a8265d3478fc622a61617c0a564abb88f236a1025",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.09 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep MCP startup effects separate from CLI and one-shot RPC operation demand. Preserve the exact transport owners and the existing authority used for issued source and retained-reference reads. The grade target remains unmet; reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/transport/harness-delivery.md",
+        "sourceSha256": "18ab0904850e7ebeaf7510ad7d398b2fad8dd8c8f82292837e9e5ec9f3f645b2",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.59 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep asynchronous exact-workspace preparation, model-visible wait guidance, stale-session rejection, bounded context, and optional MCP availability distinct. Exact CLI, MCP, Node, and resource identifiers preserve these contracts. The grade target remains unmet; reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/transport/invocations-and-durable-records.md",
+        "sourceSha256": "4d6241b9008571e28a2a2b8402180d111d135594ff1d148453f359fa9983716d",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.35 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep invocation fences, durable thread identity, and finite recovery. Preserve exact identifiers `InvocationFence`, `invocationTransition`, `FileInvocationRecords`. Accept the grade advisory with these precision constraints. The grade target remains unmet, and actual reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line."
+    },
+    {
+      "finding": {
+        "stage": "reader-prose-3.25.1",
+        "path": "docs/public/snippets/okf/semantics/symbol/discovery-and-identity.mdx",
+        "sourceSha256": "d27615ee43bd033b6b13aaf7f6750aaad20dd6bbcff85a89c74dee4d6c76a2e7",
+        "rule": "Prose.Complexity",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade is 14.90. Review sentence structure; preserve precise technical terms.",
+        "severity": "suggestion"
+      },
+      "reason": "The source uses focused sections for source-universe constraints, exact identity, and compiler reacquisition. Its precise identifiers include IntellijScopedDeclarationEnumeration, IntellijPsiExactDeclarationLookup, and ExactRevalidationService. The prose distinguishes candidate location from identity and detached epochs from current authority. Keep those necessary terms and qualifications. Grade15 remains an advisory and does not prove reader comprehension. This generated projection now uses refreshed native provenance and public concept link destinations. Its canonical explanation and technical qualifications remain; retain the current measured grade as an advisory, not comprehension evidence."
     }
   ]
 }

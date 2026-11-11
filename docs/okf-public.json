@@ -233,6 +233,52 @@
         "public-fields"
       ],
       "introduction": "This page explains declaration identity and the source contracts that use it. The shared contracts include source APIs other than `query_symbols`.\n\nFor `query_symbols`, `READ_SOURCE.candidateRef` checks the issued snapshot. It does not reacquire a stale exact reference. A fresh `RUN` can reacquire an exact reference after current compiler identity checks. It does not refresh retained rows or source snapshots. [Query forms](/reference/api#actions) defines the current public actions.\n\nTask procedures: [Find and trace code](/reference/search).\n\nExplanations: [Staleness](/reference/staleness)."
+    },
+    {
+      "route": "architecture/query-admission",
+      "frontmatter": "title: \"Query admission and capabilities\"\ndescription: \"Understand public query admission, scope, and issued capabilities.\"\nicon: \"list-checks\"\nhideFooterPagination: true",
+      "concepts": [
+        "openwiki/queries/public-admission.md"
+      ],
+      "imports": [],
+      "diagrams": [],
+      "anchors": [],
+      "introduction": "For current request forms, use [Query forms](/reference/api). For result fields and recovery, use [Results](/reference/responses)."
+    },
+    {
+      "route": "architecture/source-reads",
+      "frontmatter": "title: \"Source reads and failures\"\ndescription: \"Understand source anchors, structural pages, and source-read rejection.\"\nicon: \"file-code\"\nhideFooterPagination: true",
+      "concepts": [
+        "openwiki/semantics/source/anchors-and-paging.md",
+        "openwiki/contracts/source-failures.md"
+      ],
+      "imports": [],
+      "diagrams": [],
+      "anchors": [],
+      "introduction": "For public request forms, use [Query forms](/reference/api). For reference reuse, see [Staleness](/reference/staleness)."
+    },
+    {
+      "route": "architecture/relations-and-traversal",
+      "frontmatter": "title: \"Relationships and traversal\"\ndescription: \"Understand relationship evidence, bounded traversal, and their limits.\"\nicon: \"git-branch\"\nhideFooterPagination: true",
+      "concepts": [
+        "openwiki/semantics/relation/named-relations.md",
+        "openwiki/semantics/traversal/frontiers-and-continuations.md"
+      ],
+      "imports": [],
+      "diagrams": [],
+      "anchors": [],
+      "introduction": "For executable request forms, use [Query forms](/reference/api). For callback-specific evidence, see [Callback evidence](/reference/callbacks)."
+    },
+    {
+      "route": "architecture/codex-transport",
+      "frontmatter": "title: \"Codex hosts and framing\"\ndescription: \"Understand protocol qualification and the Codex host transport boundaries.\"\nicon: \"cable\"\nhideFooterPagination: true",
+      "concepts": [
+        "openwiki/transport/codex-hosts-and-framing.md"
+      ],
+      "imports": [],
+      "diagrams": [],
+      "anchors": [],
+      "introduction": "For setup, use [Agent harnesses](/agent-harnesses). For compatibility limits, see [Compatibility](/reference/compatibility)."
     }
   ],
   "authored": [
@@ -867,7 +913,7 @@
         "outcome": "Read the source, display-name adaptations, and evidence limits of the customer and welcome-email illustration.",
         "scope": [
           "Explain fixture provenance and adaptations.",
-          "State the illustration’s limits."
+          "State the illustration\u2019s limits."
         ],
         "exclusions": "A second general value-flow introduction.",
         "sourceOwner": "docs/public/explanation/value-journey-evidence.mdx",
@@ -1601,6 +1647,82 @@
           "status": "ACCEPTED",
           "reason": "Keep the page within its declared role and scope. Its complete source footprint includes imported MDX and every static panel."
         }
+      },
+      {
+        "route": "/architecture/query-admission",
+        "role": "explanation",
+        "outcome": "Understand public query admission and the distinct capabilities of issued references.",
+        "scope": [
+          "Explain schema admission and canonical lowering.",
+          "Distinguish scope, completion, and issued capabilities."
+        ],
+        "exclusions": "A complete request reference or proof of workspace authority.",
+        "sourceOwner": "docs/okf-public.json",
+        "densityProfile": "explanation",
+        "completionEvidence": "The reader distinguishes syntax admission from semantic authority and output delivery from semantic execution.",
+        "primaryContinuation": "/reference/api",
+        "recoveryDestination": "/troubleshooting",
+        "densityDisposition": {
+          "status": "ACCEPTED",
+          "reason": "Author-reviewed coherent explanation with 502 prose words and no code lines in its complete static footprint. Public requests and recovery link to existing references. This review is not rendered or human-comprehension evidence."
+        }
+      },
+      {
+        "route": "/architecture/source-reads",
+        "role": "explanation",
+        "outcome": "Understand source anchor authority, structural progress, and finite source-read failures.",
+        "scope": [
+          "Explain snapshots, coordinates, filtering, and structural cursors.",
+          "Distinguish request, reference, and internal failures."
+        ],
+        "exclusions": "An exhaustive public API catalogue or a promise to reacquire stale source snapshots.",
+        "sourceOwner": "docs/okf-public.json",
+        "densityProfile": "explanation",
+        "completionEvidence": "The reader distinguishes source identity and progress from the origin of a rejection.",
+        "primaryContinuation": "/reference/staleness",
+        "recoveryDestination": "/troubleshooting",
+        "densityDisposition": {
+          "status": "ACCEPTED",
+          "reason": "Author-reviewed coherent explanation with 1042 prose words and no code lines in its complete static footprint. Public requests and recovery link to existing references. This review is not rendered or human-comprehension evidence."
+        }
+      },
+      {
+        "route": "/architecture/relations-and-traversal",
+        "role": "explanation",
+        "outcome": "Understand how compiler-confirmed relationships compose into bounded traversal.",
+        "scope": [
+          "Distinguish subject scope, destination scope, occurrences, and omissions.",
+          "Explain traversal frontiers and continuation integrity."
+        ],
+        "exclusions": "Runtime reachability claims and the complete public request grammar.",
+        "sourceOwner": "docs/okf-public.json",
+        "densityProfile": "explanation",
+        "completionEvidence": "The reader distinguishes scope exclusions from omissions and internal traversal continuation from public output continuation.",
+        "primaryContinuation": "/reference/callbacks",
+        "recoveryDestination": "/troubleshooting",
+        "densityDisposition": {
+          "status": "ACCEPTED",
+          "reason": "Author-reviewed coherent explanation with 793 prose words and no code lines in its complete static footprint. Public requests and recovery link to existing references. This review is not rendered or human-comprehension evidence."
+        }
+      },
+      {
+        "route": "/architecture/codex-transport",
+        "role": "explanation",
+        "outcome": "Understand Codex protocol qualification and the two host transport boundaries.",
+        "scope": [
+          "Explain schema qualification and broker ownership.",
+          "Distinguish frame admission from semantic success."
+        ],
+        "exclusions": "Setup instructions and claims of a live client handshake.",
+        "sourceOwner": "docs/okf-public.json",
+        "densityProfile": "explanation",
+        "completionEvidence": "The reader distinguishes transport admission, workspace binding, and semantic readiness.",
+        "primaryContinuation": "/reference/compatibility",
+        "recoveryDestination": "/troubleshooting",
+        "densityDisposition": {
+          "status": "ACCEPTED",
+          "reason": "Author-reviewed coherent explanation with 457 prose words and no code lines in its complete static footprint. Public requests and recovery link to existing references. This review is not rendered or human-comprehension evidence."
+        }
       }
     ],
     "firstUse": {
@@ -1777,11 +1899,11 @@
         },
         {
           "path": "docs/public/snippets/okf/changes/planning-and-write-admission.mdx",
-          "sha256": "34df11df37330acb315a0bc4a3d236d4b392805aa7909d8489cf0ce125189dc2"
+          "sha256": "75abfde5b93c625f9e31445740859680def2c93966900cee2b4e95ff8d73b239"
         },
         {
           "path": "docs/public/snippets/okf/changes/receipts-and-recovery.mdx",
-          "sha256": "b80cb2ae44fa61ce9b267ac69375c079fe984fefdd782c04a54b515190d60df9"
+          "sha256": "618dd71d25699253ab298b7953a481c3da9f806b65c273a50fe89c85a0cf3271"
         }
       ],
       "claims": [
@@ -1823,6 +1945,75 @@
         }
       ],
       "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+    },
+    {
+      "route": "architecture/codex-transport",
+      "content": [
+        {
+          "path": "docs/public/architecture/codex-transport.mdx",
+          "sha256": "ef167521491c15d3ccc6b88157abe9237e0beefd83e15cc5a8dd3c11bbf8846d"
+        },
+        {
+          "path": "docs/public/snippets/okf/transport/codex-hosts-and-framing.mdx",
+          "sha256": "e9680e124f9715268f5e29cd2e08ca681f2fc97217fb8ebc2d8fb0c74a529d75"
+        }
+      ],
+      "claims": [
+        {
+          "page": "openwiki/transport/codex-hosts-and-framing.md",
+          "claimId": "claim_38dafc6c84934c4686aef201b1729568",
+          "statementSha256": "62401f667833bf41402437c23ab5054e6c8375fb497bbbf6e1d6f61bb33d231d"
+        },
+        {
+          "page": "openwiki/transport/codex-hosts-and-framing.md",
+          "claimId": "claim_ec3a39c7eb8148779d6d2801858be5ef",
+          "statementSha256": "3f457d455896632bb1a1b4675b2dfab71400ef61dc0a69ffd568a5b3f353be06"
+        },
+        {
+          "page": "openwiki/transport/codex-hosts-and-framing.md",
+          "claimId": "claim_9efe0add23434b0cb33a5346f161ca05",
+          "statementSha256": "f06c25978e96c0ccb6d32c48f45b907e38a390ec04eb60734486201eb5d8c25b"
+        },
+        {
+          "page": "openwiki/transport/codex-hosts-and-framing.md",
+          "claimId": "claim_6d7e1beb5f554e81af20f91c6ee1c7c7",
+          "statementSha256": "e63714053c3c523ce39308d3b6c7a32daa8e9e2799c1ccd3eb5ce746d9ba1f89"
+        }
+      ],
+      "generatedOwners": [],
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+    },
+    {
+      "route": "architecture/query-admission",
+      "content": [
+        {
+          "path": "docs/public/architecture/query-admission.mdx",
+          "sha256": "2ec32614ef0a7217de8b2f9359ba02ca0333d495f88219b661ec1685a9f6b2f8"
+        },
+        {
+          "path": "docs/public/snippets/okf/queries/public-admission.mdx",
+          "sha256": "372beeb2b6a867e4dcceb0542e7ae532fe92691fdb87d0dc25ac5c000164ff67"
+        }
+      ],
+      "claims": [
+        {
+          "page": "openwiki/queries/public-admission.md",
+          "claimId": "claim_f582456c7d50479bb6b1a848a1c7e9a9",
+          "statementSha256": "690aada52b85ebe05ddcd3d134870946ca5dcb51b1bbfc3eb7c3f8d6c0ce4816"
+        },
+        {
+          "page": "openwiki/queries/public-admission.md",
+          "claimId": "claim_8a19ad3da17c41a5863b5993e4ce5336",
+          "statementSha256": "f582a7520fc9edaf8d1520a30d0d683a1feef98e6d37ec6d626f7b7bcf8d8b15"
+        },
+        {
+          "page": "openwiki/queries/public-admission.md",
+          "claimId": "claim_c79b8d1a6faa4fbdafb8ddda57e7dd1f",
+          "statementSha256": "af3a1c917dc2152535ee92e686f6b461c005f62cfbc955a3c91acee243de5e5b"
+        }
+      ],
+      "generatedOwners": [],
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "architecture/query-reuse",
@@ -2126,6 +2317,108 @@
         }
       ],
       "reviewedSourceRevision": "c4f013c8e6f998968ef1e2d154b39da29924a7ba"
+    },
+    {
+      "route": "architecture/relations-and-traversal",
+      "content": [
+        {
+          "path": "docs/public/architecture/relations-and-traversal.mdx",
+          "sha256": "bdd5602aeec2c8f26d73f44fd8b330aaa91e9c662b699d5a0e776e36d8582c83"
+        },
+        {
+          "path": "docs/public/snippets/okf/semantics/relation/named-relations.mdx",
+          "sha256": "327534d8202a9bbba0f386def442d83145d75e158cb1d28dd98c5a687e22b491"
+        },
+        {
+          "path": "docs/public/snippets/okf/semantics/traversal/frontiers-and-continuations.mdx",
+          "sha256": "cf24d5c7a945f2ce11d0999a08df57d3e92f39728be40fe841584c7ff8005f2c"
+        }
+      ],
+      "claims": [
+        {
+          "page": "openwiki/semantics/relation/named-relations.md",
+          "claimId": "claim_fe33fe126b7646c38ff54533310b15dd",
+          "statementSha256": "5b9fa7968c4c4d673f64cdf91aa0147190cbc27a0478edc8b1af620825618e0f"
+        },
+        {
+          "page": "openwiki/semantics/relation/named-relations.md",
+          "claimId": "claim_2b99ef3b0940447ab38d313dcc1dfafb",
+          "statementSha256": "433f013463190d8fdad78dc6d5740a6424808939ccff135d0404092f965bab4c"
+        },
+        {
+          "page": "openwiki/semantics/relation/named-relations.md",
+          "claimId": "claim_2b0c9413a11647f39523394329154353",
+          "statementSha256": "85523849fb714509b2b537d7aef88680c592182f900a530b547c00ac63da0ee1"
+        },
+        {
+          "page": "openwiki/semantics/traversal/frontiers-and-continuations.md",
+          "claimId": "claim_798895ae650c48729590630fac020cc9",
+          "statementSha256": "cc7a48827d25d92ae039e532472dbce510b797c78e25e42634f63df27f5a20a7"
+        },
+        {
+          "page": "openwiki/semantics/traversal/frontiers-and-continuations.md",
+          "claimId": "claim_ca419d13013a4317b5fda1402ac1729a",
+          "statementSha256": "3e62d520fb3fb431422106922aebe47def4ce995ece6a6e00394bf2f665bbb13"
+        },
+        {
+          "page": "openwiki/semantics/traversal/frontiers-and-continuations.md",
+          "claimId": "claim_7002a39560a64280b4b1d50881396ff6",
+          "statementSha256": "29cc69eadbbbe3d6d62dee95c1e670a80e3f99dab183fb4b6b93864e73768f12"
+        }
+      ],
+      "generatedOwners": [],
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+    },
+    {
+      "route": "architecture/source-reads",
+      "content": [
+        {
+          "path": "docs/public/architecture/source-reads.mdx",
+          "sha256": "3bff0fce78c75b31554ab6703a18f47c27b53d14da61e3deca559ff0c9569e41"
+        },
+        {
+          "path": "docs/public/snippets/okf/contracts/source-failures.mdx",
+          "sha256": "0b77bfa4d2d35a194a7cedfc5742492906db39fcf021a5380a6cf5930534f4b7"
+        },
+        {
+          "path": "docs/public/snippets/okf/semantics/source/anchors-and-paging.mdx",
+          "sha256": "42fdce0105ee2ec3d86bfe84250137de505d48e6a5c853f12a5a41dedc263f5e"
+        }
+      ],
+      "claims": [
+        {
+          "page": "openwiki/semantics/source/anchors-and-paging.md",
+          "claimId": "claim_90cad2d488b6484a870c9ed1f1528dbf",
+          "statementSha256": "eecabce691302f8f63152afb12f9f4fd5b3f9afe7a6815c284e2f97025912333"
+        },
+        {
+          "page": "openwiki/semantics/source/anchors-and-paging.md",
+          "claimId": "claim_eab67fb51ca041b1a6c9365f502a7a11",
+          "statementSha256": "3836ed13a3808e1beb05b30a1666a886ab82b810841faab8ff523598cc4faae3"
+        },
+        {
+          "page": "openwiki/semantics/source/anchors-and-paging.md",
+          "claimId": "claim_86579eeaeb3d4b2bb4b52770dddf1b7e",
+          "statementSha256": "0437592425c35fe44c6b0d9e1e4cd0c21f9c5d9cf36a82b99e8f57045565e847"
+        },
+        {
+          "page": "openwiki/contracts/source-failures.md",
+          "claimId": "claim_e37981e7ad044e14ac48fcdd4091d406",
+          "statementSha256": "842ff030a5c72c17faf217bff42ad8c917cd73e97a25d6db6c033b4d677cf119"
+        },
+        {
+          "page": "openwiki/contracts/source-failures.md",
+          "claimId": "claim_fbdd46a68d554d0d9df43d919ba620e0",
+          "statementSha256": "15b6c5bb0712473a1d2304e985805bee8ae903b5310856596f1054d54dac64a3"
+        },
+        {
+          "page": "openwiki/contracts/source-failures.md",
+          "claimId": "claim_8a7a699b91e24ebb84f1e611690a5f57",
+          "statementSha256": "480e1425e677fbed8b29d140fd402ee3bc177606707bbbfdc616f526232d8075"
+        }
+      ],
+      "generatedOwners": [],
+      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
     },
     {
       "route": "architecture/topology",
@@ -2566,11 +2859,11 @@
         },
         {
           "path": "docs/public/snippets/okf/queries/execution-and-composition.mdx",
-          "sha256": "e69b7b0b1faf3719f843ce4d8029b28250ef0650e63c88edc489843c932fc0be"
+          "sha256": "3f9e65b8f2777485fa66b4b309407859b4f3dd3c6ef79542d186b0e150c1d926"
         },
         {
           "path": "docs/public/snippets/okf/queries/retention-and-presentation.mdx",
-          "sha256": "4bf7d182e9fa4f72f01dfab44b0df0aaabd1f40afa2bbd4725bc8f79f552bdc6"
+          "sha256": "19d479cb43125e03ff6a60433c39893365f3f19edbc6b64c0ac4d7bcecdff550"
         }
       ],
       "claims": [
@@ -5425,11 +5718,11 @@
         },
         {
           "path": "docs/public/snippets/okf/semantics/relation/callback-reuse-and-completion.mdx",
-          "sha256": "6228174998a497d990103f9b98ac147a0c64c25def70eedd8fc1f86b3007d0e2"
+          "sha256": "7de66ccd19e5a740ac0130c893283ec7eb4f5ccdbfe0e3b9e35a17837d6f0d71"
         },
         {
           "path": "docs/public/snippets/okf/semantics/relation/callback-supply-and-binding.mdx",
-          "sha256": "58d2d4f37f8e02b65d8f1bc2c2f142b1c8c75020e3a41fe1ab283ccab3e737cb"
+          "sha256": "7cf7028a38b7983d275570c59f178bb8ca62cfca97b3e059a61959f7827efb4c"
         }
       ],
       "claims": [
@@ -6374,7 +6667,7 @@
         },
         {
           "path": "docs/public/snippets/okf/queries/execution-and-composition.mdx",
-          "sha256": "e69b7b0b1faf3719f843ce4d8029b28250ef0650e63c88edc489843c932fc0be"
+          "sha256": "3f9e65b8f2777485fa66b4b309407859b4f3dd3c6ef79542d186b0e150c1d926"
         }
       ],
       "claims": [
@@ -6905,7 +7198,7 @@
         },
         {
           "path": "docs/public/snippets/okf/semantics/workspace/read-authority.mdx",
-          "sha256": "dd38ac20b8751789809c5171d95cf943141dafcdc6f8e0e6aef06cae4454897e"
+          "sha256": "597d301fccb91f550a685fcd9b67fc0ef9fdee3e687c00dba6d39f7f9107bcea"
         }
       ],
       "claims": [
@@ -13968,11 +14261,11 @@
         },
         {
           "path": "docs/public/snippets/okf/semantics/workspace/model-and-freshness.mdx",
-          "sha256": "6631338d9401beea92ed0c05483bf4ba70a3dc822985b7dc5ec279a97c2b0d37"
+          "sha256": "f76b32f28347abaf644c9b284338d0ad375724214f47cf914f0907ff903c3cbb"
         },
         {
           "path": "docs/public/snippets/okf/topology/live-dependencies-and-reuse.mdx",
-          "sha256": "66cb3f87b6ad76d3108b2d7f93b0e0aa804a06f0964ef52775e363c7f4c75218"
+          "sha256": "27654afcc2873fcfdf21e29e87a965c3b67e6399644340cdebf33ba5b60ede85"
         }
       ],
       "claims": [
@@ -14024,11 +14317,11 @@
         },
         {
           "path": "docs/public/snippets/okf/contracts/source-identity.mdx",
-          "sha256": "836e3f3c7612450b83eaf41093cb7fe3de7a6bacd735c6999b1503dcf818c164"
+          "sha256": "1045a7aac22c94f27e320f818e39f2745eae0e61601c0598c122ad50ccf8af95"
         },
         {
           "path": "docs/public/snippets/okf/semantics/symbol/discovery-and-identity.mdx",
-          "sha256": "0f829498a8ed46d132afcbe6dc87b4e503a8f341de41e9ef2e59bd611a571fba"
+          "sha256": "d27615ee43bd033b6b13aaf7f6750aaad20dd6bbcff85a89c74dee4d6c76a2e7"
         }
       ],
       "claims": [

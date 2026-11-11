@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3a0cbb1bccb27ea1dd0928858c07e55202e5dfa1135c3297c37c10d3540c51e9",
+  "pageVersion": "sha256:5821ebb611c547164930d8a9d1e54f351998fe24ba267cfa9a04d32523c11fe8",
   "claims": [
     {
       "id": "claim_fd7c3d76299f4cc4ba039552d6c6105d",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt",
           "version": "repo-file-v1:sha256:6545489d7c4c435d5c31ab51fb8fab3cba9ef53c59d6e6f4badfb0471de356a3"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt#L33-L33",
+          "version": "repo-lines-v1:sha256:4557804219e011182fa9be33eccae3d74cb5ddfadcb7d100332fad3fab7883fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDU1NzgwNDIxOWUwMTExODJmYTliZTMzZWNjYWUzZDc0Y2I1ZGRmYWRjYjdkMTAwMzMyZmFkM2ZhYjc4ODNmZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDU1NzgwNDIxOWUwMTExODJmYTliZTMzZWNjYWUzZDc0Y2I1ZGRmYWRjYjdkMTAwMzMyZmFkM2ZhYjc4ODNmZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGJlZTk1ZjgyYjRlNmE1YTczN2FlMjg2ZTc1MzA5MzcyMWVmMWRkNDE0MmMyZDAyYmVkMDc1YjJmNzE0OWMwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWZhYTBmN2VmMjBjOGQ2NjE3MzVjYzY5NWVkZmUzYmNjNGJhMGMwYmQxY2Y1MTUwZTRlY2QyOTFlOWQ3Zjc2NiJ9"
         }
       ]
     },
@@ -23,6 +27,10 @@
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt",
           "version": "repo-file-v1:sha256:957d825e9ab5b2521d98d31cbe61e99e2c263c4bee34797a83607c605cc845d7"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt#L52-L52",
+          "version": "repo-lines-v1:sha256:bbbf9cd60be58369b2c8634092414d1bb5110f5a8e297a576cfcfe37005edd3c:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmJiZjljZDYwYmU1ODM2OWIyYzg2MzQwOTI0MTRkMWJiNTExMGY1YThlMjk3YTU3NmNmY2ZlMzcwMDVlZGQzYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmJiZjljZDYwYmU1ODM2OWIyYzg2MzQwOTI0MTRkMWJiNTExMGY1YThlMjk3YTU3NmNmY2ZlMzcwMDVlZGQzYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNThkNDEyNjU3Y2YwNGExYjMyMTliYjFiNDNiNjg5ZWJmMjkyM2ZiODYzOTA1MmQ0YTNkMzQzNTU1OGMwMTZhYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjI0MGQ4MjgyNTFiOGZjNTVlZGZhMTUxN2JmMWE4ZTFmZTJmNjY1NTFmMjNhNjNmMWVhNWFkZDRiYjNiNmI2NiJ9"
         }
       ]
     },
@@ -35,6 +43,10 @@
           "version": "repo-file-v1:sha256:d45e99a2bcb44fa357bf14516339834436a432c1b82eaf705673142cb6761523"
         },
         {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationModel.kt#L45-L45",
+          "version": "repo-lines-v1:sha256:3df17e978ea6031e2adcf6560a059107e2077fcad38f73aec3035d182f0d8866:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2RmMTdlOTc4ZWE2MDMxZTJhZGNmNjU2MGEwNTkxMDdlMjA3N2ZjYWQzOGY3M2FlYzMwMzVkMTgyZjBkODg2NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2RmMTdlOTc4ZWE2MDMxZTJhZGNmNjU2MGEwNTkxMDdlMjA3N2ZjYWQzOGY3M2FlYzMwMzVkMTgyZjBkODg2NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjdkODk5YTNhMDM2MGQ4ODc3MzY4YjBjMjZmOTlkODQ0ODFkYmM1NzVlZWRlNWVjNWM1ZDMzMGFkNWM3ZGRjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzhmNjg4MjgwYWE3OTAxYTAxOGQ4NzVhNTdjOGNkNDAyMGRlNWZmMTRmYzg1OWQwZjViNzk2ZGU5ZDZiNDY2MiJ9"
+        },
+        {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/RepresentationProvenance.kt",
           "version": "repo-file-v1:sha256:aa41c1238c336842c7a23dc43c6b0b5f234aeb820b286f49d30fd3af58ed4382"
         }
@@ -42,7 +54,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-10-30T23:25:02.193Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

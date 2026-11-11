@@ -253,6 +253,8 @@ sources:
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryJournal.kt
   - id: openwiki-source-a27a8f11a4689cb821b5f6e8
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
+  - id: openwiki-source-1320464fca8af68fbc8ba11a
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt
   - id: openwiki-source-1905c35a82810ccf74696707
     resource: repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt
   - id: openwiki-source-d6999ec49aac231ecbc30c0b
@@ -301,8 +303,8 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
 generated: { by: "codex", at: "2026-11-11T02:08:52.690Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T02:37:07.098Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Runtime and process hosts

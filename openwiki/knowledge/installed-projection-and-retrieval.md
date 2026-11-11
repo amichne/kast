@@ -43,8 +43,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
 generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T01:55:34.136Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Installed knowledge projection and retrieval

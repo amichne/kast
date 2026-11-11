@@ -32,8 +32,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-03T05:45:59.282Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Invocation fences and durable thread records

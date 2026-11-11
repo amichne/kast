@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dfaf0d567abbcbc083f3027ad17a5c997b4657d12fe51794164cded790c1464c",
+  "pageVersion": "sha256:872372de2986973533fc6c7e34e22cb3e135d2ce4413476a3bea2bea31fb9399",
   "claims": [
     {
       "id": "claim_7fda699bacbb4390ab5eb06aef3b31b3",
@@ -13,6 +13,10 @@
         {
           "resource": "repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt",
           "version": "repo-file-v1:sha256:f1b4951b42e05c6bc3263e8b5c6ad784dfea578e90dd8be3b6e90a8dc0ccf8bd"
+        },
+        {
+          "resource": "repo://topology/contract/src/main/kotlin/io/github/amichne/kast/topology/contract/SemanticDependencySnapshot.kt#L37-L37",
+          "version": "repo-lines-v1:sha256:b8131a2e213837a3cd310ce2623e73c34035356c22559f396282efdfe6f46f1c:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjgxMzFhMmUyMTM4MzdhM2NkMzEwY2UyNjIzZTczYzM0MDM1MzU2YzIyNTU5ZjM5NjI4MmVmZGZlNmY0NmYxYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjgxMzFhMmUyMTM4MzdhM2NkMzEwY2UyNjIzZTczYzM0MDM1MzU2YzIyNTU5ZjM5NjI4MmVmZGZlNmY0NmYxYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjc2NmViNjQyZjAyNTg3ZWViN2YyNmRlY2Y4MDY0Y2ViNzYzMjlkNDNjYjYyODgxZTc2MGUzMmJkOTZkNTc2OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTZjODc2ZDNiMTMzNTBmZDliZGVlNGMxODk3ZDMzZjk2YWM2ZTI2MzFjNDQ0MTY1YTdjY2M1YTIwNjFlMDYyZSJ9"
         }
       ]
     },
@@ -23,6 +27,10 @@
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackSummaryReuse.kt",
           "version": "repo-file-v1:sha256:baf555f15edc021cc709a58f0a2c18ba5ca1378400c0f7ddb5c0b7ecebd10ceb"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/CallbackSummaryReuse.kt#L31-L31",
+          "version": "repo-lines-v1:sha256:6c8b22be60c6ba2c55f5e857a237142a64d9c5932c2d0b7846093423fe841d63:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmM4YjIyYmU2MGM2YmEyYzU1ZjVlODU3YTIzNzE0MmE2NGQ5YzU5MzJjMmQwYjc4NDYwOTM0MjNmZTg0MWQ2MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmM4YjIyYmU2MGM2YmEyYzU1ZjVlODU3YTIzNzE0MmE2NGQ5YzU5MzJjMmQwYjc4NDYwOTM0MjNmZTg0MWQ2MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDI0ZThiNmI1OGE0ZGYzYWQzNDlhMzE2NGI2OWVhYzQyMGExMGE0ODY5MzQ5ODU4YmI2ZTE4NDUyZTEzOTc3YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWUzYWRkMzFjYTc5NjQxNWNlZjUxNjQxNGQxZjNiODA3MjliNDFhNTc3MzEyODYwYzRlZTA5YjcyNmU2ZTgyZSJ9"
         }
       ]
     },
@@ -37,6 +45,10 @@
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt",
           "version": "repo-file-v1:sha256:3e7b1950349306ab766caedf11eaf38848bc0afb485fa2eac8f623d864241110"
+        },
+        {
+          "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CompleteStaticCallbackGraph.kt#L15-L15",
+          "version": "repo-lines-v1:sha256:801c696a0b7d01a9034f5b36251e61a28a8130932d6dc3db3ec4705304444e99:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODAxYzY5NmEwYjdkMDFhOTAzNGY1YjM2MjUxZTYxYTI4YTgxMzA5MzJkNmRjM2RiM2VjNDcwNTMwNDQ0NGU5OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODAxYzY5NmEwYjdkMDFhOTAzNGY1YjM2MjUxZTYxYTI4YTgxMzA5MzJkNmRjM2RiM2VjNDcwNTMwNDQ0NGU5OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2NhNmFjOWUzMmE0YzBlYTkzMjllMTE3MjIxYzBkYmI4N2M0NWQ1MzM2YjQ5YTUxZjZlOWQzZDE3NGM0MjU3OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGZmYmM0ODc1OGQ1ODNjZDVlNzc1NWY0OTkyOGI1NzI2MjhkOGIxZTI0ZDU3N2MxODkxZTM2NGZlNzEyZDM2ZSJ9"
         }
       ]
     },
@@ -96,7 +108,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T05:45:59.282Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

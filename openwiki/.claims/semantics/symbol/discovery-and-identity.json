@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:62bd0ab70186ebf5b777ad9f5b33e2fbde1e930883b53fcaadd4ff6fbb82a824",
+  "pageVersion": "sha256:9c025e6e6d3215f9c3da0822e2fd1447e7ec23eb051df40cfc14c41e46cde015",
   "claims": [
     {
       "id": "claim_8c0d2193cfc6423db92d99f0cda80e68",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt",
           "version": "repo-file-v1:sha256:35e61f6c1617c5842be7f437f0916559471df6885f3bd3288cc1dfd15067d3c4"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijIncrementalDeclarationDiscovery.kt#L15-L15",
+          "version": "repo-lines-v1:sha256:72db32154782e9fc25362d60d2c9a627ad940fb6f76f522884b8143197f95643:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzJkYjMyMTU0NzgyZTlmYzI1MzYyZDYwZDJjOWE2MjdhZDk0MGZiNmY3NmY1MjI4ODRiODE0MzE5N2Y5NTY0MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzJkYjMyMTU0NzgyZTlmYzI1MzYyZDYwZDJjOWE2MjdhZDk0MGZiNmY3NmY1MjI4ODRiODE0MzE5N2Y5NTY0MyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjlmZDllNGFhMGQxNmExM2M3ODJhNTk3YTRhYjEwMWI5NTIxOTRhODNhZTEzNTk0MWE1M2VlN2IwZmNlNGI3NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjgyZDZkMjQ5OWNhZDVmMTUzMzQwNjE0MmI3NDNjY2RiZGY3ZjNjY2E3OWI4MjdjYWY3YjQ0MjFjMjc4ZmM0ZiJ9"
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt",
@@ -23,6 +27,10 @@
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt",
           "version": "repo-file-v1:sha256:120c44788382c43d79d03bf3a8a847e3486bbfb95ab8b7ba5a4de636928b2f86"
+        },
+        {
+          "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijPsiExactDeclarationLookup.kt#L69-L69",
+          "version": "repo-lines-v1:sha256:08fcab17d03082da707b12a3f128c9f208668d68cd1e5b49f4a1c1d4faccffb7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDhmY2FiMTdkMDMwODJkYTcwN2IxMmEzZjEyOGM5ZjIwODY2OGQ2OGNkMWU1YjQ5ZjRhMWMxZDRmYWNjZmZiNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDhmY2FiMTdkMDMwODJkYTcwN2IxMmEzZjEyOGM5ZjIwODY2OGQ2OGNkMWU1YjQ5ZjRhMWMxZDRmYWNjZmZiNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjY4NTczZjQ5Njg0NzZiN2Y5NmQ0Y2MxYzVhZTkwNjk5MTZlZWI2MTFkMGNhNTcyZDczNTc3YTJiZjQ2M2Q4NCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTU4YTBiYzcwZTM2ODg3NDg0OGMwODZiMmQwZGRjYjBkNDY0NzVkZjhkMzM2MDk3OTI3YWMzZTRkZGRjYzg1NyJ9"
         }
       ]
     },
@@ -33,12 +41,16 @@
         {
           "resource": "repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt",
           "version": "repo-file-v1:sha256:1dacbb29b54269cf7de0a13088a2ad2513a3b63125b67d242b0840f0754a81ed"
+        },
+        {
+          "resource": "repo://symbol/service/src/main/kotlin/io/github/amichne/kast/symbol/service/ExactRevalidationService.kt#L18-L18",
+          "version": "repo-lines-v1:sha256:28e0826c61a0f923900f0c87b5bbc394f2a75d28940a8d43ea6462bc3ca39c02:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjhlMDgyNmM2MWEwZjkyMzkwMGYwYzg3YjViYmMzOTRmMmE3NWQyODk0MGE4ZDQzZWE2NDYyYmMzY2EzOWMwMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjhlMDgyNmM2MWEwZjkyMzkwMGYwYzg3YjViYmMzOTRmMmE3NWQyODk0MGE4ZDQzZWE2NDYyYmMzY2EzOWMwMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmQ3ZWZkOTcxZWJlYzcyMzYwNTkwMWRmNzE5MjdiYWNhMTBmYzBiZmE5M2E4YWNlMGMzNmUwOWQzMjJmZGQ2ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWIxZGQyMTYyOWIzYjcyMzA5ZDU4M2U4NTFjNmI0N2QwODRlNTFhOGY3Yzc4MWQ0MzhkZWYzYmRiOTY3YzJhYyJ9"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T05:45:59.282Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

@@ -31,8 +31,8 @@ sources:
     resource: repo://traversal/service/src/main/kotlin/io/github/amichne/kast/traversal/service/RelationBackedTraversal.kt
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-30T23:25:02.193Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Traversal frontiers and continuations

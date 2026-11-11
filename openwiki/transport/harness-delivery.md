@@ -63,8 +63,8 @@ sources:
     resource: repo://pi/mcp-extension.ts
 generated: { by: "codex", at: "2026-11-10T17:49:52.067Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T01:55:34.136Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Agent context and harness delivery

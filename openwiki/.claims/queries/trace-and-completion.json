@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2e1b4edd6251f82ef1d67ed80d1bb5725a6b2e0b89e4d510483d85668bd6cfce",
+  "pageVersion": "sha256:c9783a6912913f1a2a131cb7522214f32f623c1aaa06b0da922795caf8a9404b",
   "claims": [
     {
       "id": "claim_dce9b1010e3841d895b0ab00b6bd1625",
@@ -9,6 +9,10 @@
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceMembers.kt",
           "version": "repo-file-v1:sha256:71f062118d9b1d923b38d593d2c981f0f1f45642be4019d8f43f406cb7f49c34"
+        },
+        {
+          "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceMembers.kt#L83-L83",
+          "version": "repo-lines-v1:sha256:9274b4a55a67c36264cb6df8ac5c5e4f225d262dae2465697f303f52cfeabfa1:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTI3NGI0YTU1YTY3YzM2MjY0Y2I2ZGY4YWM1YzVlNGYyMjVkMjYyZGFlMjQ2NTY5N2YzMDNmNTJjZmVhYmZhMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTI3NGI0YTU1YTY3YzM2MjY0Y2I2ZGY4YWM1YzVlNGYyMjVkMjYyZGFlMjQ2NTY5N2YzMDNmNTJjZmVhYmZhMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzU3Yjk4YWE4YTRiMzQwYTg0MmZkMzk3MDE3N2ZlM2E2NWRlMmE5OWVjNDQ0MWQwYWZmNTdmM2YxNjNlODEwYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzUyZTlhYjJhNjczYjYzYWQ2NDZjNTAyNjRmNjNjZTE4MzAxZTRhNmUyYzk3YmZhZGE4MGJmNWI0YThlOTc2OSJ9"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt",
@@ -23,6 +27,10 @@
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt",
           "version": "repo-file-v1:sha256:49bc93a739b7e3769f24d2f66f3393607afc2764641894cca312a13e207b0b40"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt#L13-L13",
+          "version": "repo-lines-v1:sha256:5300e107016073b1d5c666f6d23efb19508857e4e3dbc047630cffc0d4bbde89:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTMwMGUxMDcwMTYwNzNiMWQ1YzY2NmY2ZDIzZWZiMTk1MDg4NTdlNGUzZGJjMDQ3NjMwY2ZmYzBkNGJiZGU4OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTMwMGUxMDcwMTYwNzNiMWQ1YzY2NmY2ZDIzZWZiMTk1MDg4NTdlNGUzZGJjMDQ3NjMwY2ZmYzBkNGJiZGU4OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDQ1YTA4MmUzODNhZTI0MGFiODQwNzQ2ZTljMmNmZmEyMDhlNzhjMGUzNjYxMmU4NDUwMDUxMDQ4OGQxOTIyNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTI1MjQ2ZGE1NmI1NWZjNTg2MWE5YmM2N2IzMTA4ZmIzODIyNTMyMjA1N2Y1YTdiNWY3MmM1MzQ4MzY5YjY5ZSJ9"
         }
       ]
     },
@@ -33,6 +41,10 @@
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt",
           "version": "repo-file-v1:sha256:788e03df7db0fb7d086a1689fbc803fbd1c09d29e20e07fa7b836968275211cd"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt#L25-L25",
+          "version": "repo-lines-v1:sha256:bc974cd894cda10e5931d2b81fda6ca20cfb748f7a03fabe1a1c82bda7a91582:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmM5NzRjZDg5NGNkYTEwZTU5MzFkMmI4MWZkYTZjYTIwY2ZiNzQ4ZjdhMDNmYWJlMWExYzgyYmRhN2E5MTU4MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmM5NzRjZDg5NGNkYTEwZTU5MzFkMmI4MWZkYTZjYTIwY2ZiNzQ4ZjdhMDNmYWJlMWExYzgyYmRhN2E5MTU4MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWMxMGU0Mzg2NDU0NTY4ZTQwM2Q5ZDljNzhiMDRhNTU3MTliYTVkODE2YTEzNjU0YzJhZTE5M2M5NzE2OTFlNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTE5MTNmZjg5NDA2YzY0Y2ZmYTcyMWJhZmMzMTU3NGIyNWY0MjIxZTY4NWQyYTFmODJiMmVkNWY2NjVhNjI4MiJ9"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
@@ -51,6 +63,10 @@
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt",
           "version": "repo-file-v1:sha256:520111af7176bbd684d9e06f82ee171622229148b88d358f960d9b8444f2b295"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt#L9-L9",
+          "version": "repo-lines-v1:sha256:9c0b5ebc33736868cdab6328fce4ad67875a34ea12d6cba7579572c6a6134316:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWMwYjVlYmMzMzczNjg2OGNkYWI2MzI4ZmNlNGFkNjc4NzVhMzRlYTEyZDZjYmE3NTc5NTcyYzZhNjEzNDMxNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWMwYjVlYmMzMzczNjg2OGNkYWI2MzI4ZmNlNGFkNjc4NzVhMzRlYTEyZDZjYmE3NTc5NTcyYzZhNjEzNDMxNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzI4NmFiNDQ0ZDlhMGViZjFmZjgzZDJjMDY3MWNiOTQyN2Y0M2NkOGM4ZWRlZDc2ZDk3NGY3N2IxOWE1MzY3ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGZhMzc3Yzc0ZTcwMjIxZGU0ZjU2NzMxZjI3MzE0NGFmNGY4YjA1M2ZhNTk1NjljYWQ3NGNjYWE2YTg5NGZiYiJ9"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryTraceTasks.kt",
@@ -73,6 +89,10 @@
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeCallbackReturnSemantics.kt",
           "version": "repo-file-v1:sha256:018e805ec4cb16c1e67c9da0a5237409838b1ba2c1b3777bb8cbb16db0ced432"
+        },
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeCallbackReturnSemantics.kt#L21-L21",
+          "version": "repo-lines-v1:sha256:ade5cf8a6279e297a65a987ff406d47a1682b651d822ad17e8c6d40a434d221c:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWRlNWNmOGE2Mjc5ZTI5N2E2NWE5ODdmZjQwNmQ0N2ExNjgyYjY1MWQ4MjJhZDE3ZThjNmQ0MGE0MzRkMjIxYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWRlNWNmOGE2Mjc5ZTI5N2E2NWE5ODdmZjQwNmQ0N2ExNjgyYjY1MWQ4MjJhZDE3ZThjNmQ0MGE0MzRkMjIxYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGZkNTY2Mjg5YWMyYzUxOTYyZDEzYzg0NWI0ODY1MzkzMWE1ODEyNjYyNTk3OTQzMjI5NWUwZmE2NDI0MWNmOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjk2YjI3YWMyODUyOGVmNjQ5YmY5M2NiNjE5NDQ3YTZmYmJjNDk4MTQ2YTMwZjU0MjQ4ZGJlMTE5YjJjMTcyYiJ9"
         }
       ]
     },
@@ -83,6 +103,10 @@
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt",
           "version": "repo-file-v1:sha256:520111af7176bbd684d9e06f82ee171622229148b88d358f960d9b8444f2b295"
+        },
+        {
+          "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackCompletion.kt#L9-L9",
+          "version": "repo-lines-v1:sha256:9c0b5ebc33736868cdab6328fce4ad67875a34ea12d6cba7579572c6a6134316:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWMwYjVlYmMzMzczNjg2OGNkYWI2MzI4ZmNlNGFkNjc4NzVhMzRlYTEyZDZjYmE3NTc5NTcyYzZhNjEzNDMxNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWMwYjVlYmMzMzczNjg2OGNkYWI2MzI4ZmNlNGFkNjc4NzVhMzRlYTEyZDZjYmE3NTc5NTcyYzZhNjEzNDMxNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzI4NmFiNDQ0ZDlhMGViZjFmZjgzZDJjMDY3MWNiOTQyN2Y0M2NkOGM4ZWRlZDc2ZDk3NGY3N2IxOWE1MzY3ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGZhMzc3Yzc0ZTcwMjIxZGU0ZjU2NzMxZjI3MzE0NGFmNGY4YjA1M2ZhNTk1NjljYWQ3NGNjYWE2YTg5NGZiYiJ9"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackGraphAdmission.kt",
@@ -99,6 +123,10 @@
           "version": "repo-file-v1:sha256:e2e2dd2ed1f5e6d2bddbe242c507e4d0ad412da7793cd3cfc075e14b7290d2bf"
         },
         {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt#L172-L172",
+          "version": "repo-lines-v1:sha256:b5cd43b9ea8ae3dd405b5c950d698e9c788e21539efa721a12e63be6a3f708ae:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjVjZDQzYjllYThhZTNkZDQwNWI1Yzk1MGQ2OThlOWM3ODhlMjE1MzllZmE3MjFhMTJlNjNiZTZhM2Y3MDhhZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjVjZDQzYjllYThhZTNkZDQwNWI1Yzk1MGQ2OThlOWM3ODhlMjE1MzllZmE3MjFhMTJlNjNiZTZhM2Y3MDhhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzM5MmYwMzE0MThhYzU5YjEwZDkxMjE0M2U3NmZhNWQzYzBkMWQzYjVkODMwMjdlZGU0MzkwNDMwZGFiYjFkMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTgxYjQ5ZjdiZTI4ZjlhNzVhMjdhZjJiOTM4ODc4YWIwYTQ3ZjZjNzRmODdkNmZlY2E4ZmNjYzk2ODFhODY1MSJ9"
+        },
+        {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
           "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
@@ -113,6 +141,10 @@
           "version": "repo-file-v1:sha256:20f6f454c979f4527cf421283735b9a9ecaa6446f571ed4039efb0f542b17b44"
         },
         {
+          "resource": "repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeCallbackDirectoryIsolationTest.kt#L47-L47",
+          "version": "repo-lines-v1:sha256:3aa2db228d044fdce1b346300a402d132bb6b7dae77ac531e613691cf2c7d76e:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2FhMmRiMjI4ZDA0NGZkY2UxYjM0NjMwMGE0MDJkMTMyYmI2YjdkYWU3N2FjNTMxZTYxMzY5MWNmMmM3ZDc2ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2FhMmRiMjI4ZDA0NGZkY2UxYjM0NjMwMGE0MDJkMTMyYmI2YjdkYWU3N2FjNTMxZTYxMzY5MWNmMmM3ZDc2ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjFmOTM2NjI3NzNlNjE1NTNiYTc3OWM1YTY2OTg2M2UxMDZhOWE3ZmQ2OWZmOTg5NjEzMmY0MWZhZTY3NDU4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2UzZDMzNTliMTlkNTg0MTg2MjdiMzMyYzJmZmZjYjdhMDQ2YWQ4MzVhMzI5MjY2ZWFlMzgxYmQyMGM4YTE2MiJ9"
+        },
+        {
           "resource": "repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeDependencyCallbackTest.kt",
           "version": "repo-file-v1:sha256:3ffe0cbf673fa8910f5f54a6cf24982cc83a91f954e21fad56b429ae9b49349d"
         }
@@ -120,7 +152,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-10T15:20:01.732Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

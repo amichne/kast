@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:999a5f06e731346c5a97636572a6c381e73ca58a8b2a611c1ee94b80ad152775",
+  "pageVersion": "sha256:0de26d6f7ae034d86d563ffb3138f65c033f6e8c202ba55b1b5eca56a3e5d72b",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -50,6 +50,10 @@
       "id": "claim_c1a7ea6a7b35409d94230918bc720a48",
       "statement": "The live Host reports its own packaged plugin version, actual running IntelliJ and Kotlin builds, and complete provided HostedContract through the existing describe and lifecycle inspection exchanges.",
       "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt#L12-L27",
+          "version": "repo-lines-v1:sha256:6081ec56e3ec15c848afb1d93cc95d58cd52a8fefb565cef89647b154f55bb8e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5MzMwY2NkZTFiNjZiN2I2NDdlNjRlZGVjZDIwY2M2YmE3MWI5MzRmYmRmNTk2OWVlNjI1NGEzZWZmODM2NDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMTYzZjc3ODZjNDJjYTg4OTI3MGY3NTNhNzgwNjI2NDI2YzAzZjk3M2EwNWFkZWFlZGQ0ZmE0ZDI3MGYwZDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlNjg3NmU3NDE4MzhlZWIyMTYzMGFiYzY5YWRjYzEwMDY3NDMyYzJmMGZmZjFhNTViZjg4ZWEyZmRjMzFhOWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFiM2QyZjRhZDFlOGY3ZTYzOTY2YmFlODFkZTY0MGU5MGM5NjcwNzc4NzE4ZjNhOWUyZDdiOWZlNTVkY2ZhYTYifQ"
+        },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCompatibilityMetadata.kt",
           "version": "repo-file-v1:sha256:cc500f00d97140833999e5d322b9c3ebad820d3624a4bc0ed83fb978852636e8"
@@ -396,7 +400,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-11T02:37:07.098Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

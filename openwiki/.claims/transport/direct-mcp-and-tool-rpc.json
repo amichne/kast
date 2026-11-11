@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:821c2c5bd055ac3d3cc6c3871f2fed798de816233a90abad7aaf0bf838433c68",
+  "pageVersion": "sha256:dc0cd9ea3f86d6acfdec0a2a8265d3478fc622a61617c0a564abb88f236a1025",
   "claims": [
     {
       "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
@@ -39,6 +39,10 @@
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt",
           "version": "repo-file-v1:sha256:978bf5c6857886a1e45e1ef740e40a898f802550019120e92386828b78f82f8d"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt#L22-L22",
+          "version": "repo-lines-v1:sha256:11ea22c204038434774f6a421bf5fcec93175ca4301fc78f6acdf7c288058267:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTFlYTIyYzIwNDAzODQzNDc3NGY2YTQyMWJmNWZjZWM5MzE3NWNhNDMwMWZjNzhmNmFjZGY3YzI4ODA1ODI2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTFlYTIyYzIwNDAzODQzNDc3NGY2YTQyMWJmNWZjZWM5MzE3NWNhNDMwMWZjNzhmNmFjZGY3YzI4ODA1ODI2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTA2NDM0MDdiNjNkOTk3ZjYzODRiY2VkZjY0ZWMxYTk4NDQ3NTEwNWVkNjZiNTFhYzBjMjJjZTExNjFiNWMzNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2ZkNDhlY2E0ZTIxZDQ1N2M1M2I1OTFlMmM0OWVkZjQyMGI2N2I4OGU3ZjIwMjkxMGYzMjk3OWNhNmZiMmU0YiJ9"
         }
       ]
     },
@@ -53,6 +57,10 @@
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt",
           "version": "repo-file-v1:sha256:a6662a05c0ef6573f4c18ab826e36add62bb7463d6927e1eed889dd3029596b1"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt#L40-L40",
+          "version": "repo-lines-v1:sha256:09ca7490578f5d5aa8489d925f513740a88936ba8d08b05a1e600cfa32d13c46:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDljYTc0OTA1NzhmNWQ1YWE4NDg5ZDkyNWY1MTM3NDBhODg5MzZiYThkMDhiMDVhMWU2MDBjZmEzMmQxM2M0NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDljYTc0OTA1NzhmNWQ1YWE4NDg5ZDkyNWY1MTM3NDBhODg5MzZiYThkMDhiMDVhMWU2MDBjZmEzMmQxM2M0NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjJhNzUwZDlkNWQyYmQ1OGVmYjIzMWVkOTczODljMjQzZDFlMDgxNmI4YTI1MDFjNGJkNmQ1YWQ0YzBhNWM1ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzIxNjM5NTNlNDc3ZjFjYmFjYzM5Y2Q2YzJmOGUwYmQyNjA2NjZhNzczNWExNDUxYWViZTc4OTMyOTc5YWRlYSJ9"
         }
       ]
     },
@@ -65,6 +73,10 @@
           "version": "repo-file-v1:sha256:990daf6adee87ca63e2bdde3712d330f699ab6fa1753d804cd1c3bdc42f718be"
         },
         {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L33-L33",
+          "version": "repo-lines-v1:sha256:126bfe01ec52b6b5f1068b500470a5182a87e80d981137922bf6b13c6481cedc:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTI2YmZlMDFlYzUyYjZiNWYxMDY4YjUwMDQ3MGE1MTgyYTg3ZTgwZDk4MTEzNzkyMmJmNmIxM2M2NDgxY2VkYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTI2YmZlMDFlYzUyYjZiNWYxMDY4YjUwMDQ3MGE1MTgyYTg3ZTgwZDk4MTEzNzkyMmJmNmIxM2M2NDgxY2VkYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2U1MjhkNzI1N2ZiMmNhNzk1NDBkYjQ5NTE1NTVmMWQxYTY4ZTM5YTcyNTBiNzM3NTExNWFlNjFkYzAzOTRhMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmUwOWE1YjcxOTRlZGVmYTRmYzkyMTdkYjg3MWJkMGVlNzQ1Mzk1Y2ZmZTk5YmVhNjI3MzgzNTM3ZmYzZGZiOSJ9"
+        },
+        {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt",
           "version": "repo-file-v1:sha256:fe4449f9a5c282893fd4e5357c72405edf610fee07babd0fefb9a808543d47aa"
         }
@@ -72,7 +84,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-06T05:26:56.646Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-11T06:28:10.019Z"
   }
 }

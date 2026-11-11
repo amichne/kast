@@ -71,8 +71,8 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringConversion.kt
 generated: { by: "codex", at: "2026-11-03T06:27:58.730Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-10T06:03:12.348Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Operation outcomes

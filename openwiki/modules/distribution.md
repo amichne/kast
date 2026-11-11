@@ -276,6 +276,12 @@ sources:
     resource: repo://.github/workflows/ci.yml
   - id: openwiki-source-804f227d6f0416062f3436fe
     resource: repo://.github/workflows/developer-release.yml
+  - id: openwiki-source-2da8eafaca7cee8408b937d2
+    resource: repo://.github/workflows/gradle-cache.yml
+  - id: openwiki-source-4193ecac4b6f2b80dfd3f975
+    resource: repo://.github/workflows/release-component.yml
+  - id: openwiki-source-4d1d392666be6dfdd7a91a2e
+    resource: repo://.github/workflows/release.yml
   - id: openwiki-source-20e85ee434d9dedec13e85f7
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - id: openwiki-source-16803a9d8df1ded50a107e29
@@ -344,6 +350,8 @@ sources:
     resource: repo://distribution/release/test_run_product_gate.py
   - id: openwiki-source-a27a8f11a4689cb821b5f6e8
     resource: repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt
+  - id: openwiki-source-81d5f1627e19148569f46f81
+    resource: repo://gradle/libs.versions.toml
   - id: openwiki-source-03ffc32a0ca502ab67c54b25
     resource: repo://install.sh
   - id: openwiki-source-d53edde1666c585216ff3c8d
@@ -378,8 +386,8 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
 generated: { by: "codex", at: "2026-11-11T02:08:52.690Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T02:37:07.098Z
+  - by: openwiki/0.9.0
+    at: 2026-11-11T06:28:10.019Z
 ---
 
 # Distribution and packaging
