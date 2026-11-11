@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
 REPOSITORY = Path(__file__).resolve().parent.parent
 LINUX_PACKAGES = {
+    "libstdc++6": ("libstdc++.so.6",),
     "libfontconfig1": ("libfontconfig.so.1",),
     "libfreetype6": ("libfreetype.so.6",),
     "libexpat1": ("libexpat.so.1",),

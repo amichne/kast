@@ -10,10 +10,10 @@ sources:
     resource: repo://settings.gradle.kts
   - id: openwiki-source-096cb7b190932815f87b4a1d
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
-generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
+generated: { by: "pi", at: "2026-11-11T10:38:11.930Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-09T12:12:21.037Z
+    at: 2026-11-11T10:38:11.930Z
 ---
 
 # Kast repository guide
@@ -45,6 +45,7 @@ Package coverage does not prove every branch or native effect.
 | Which workspace facts permit a read? | [Read authority](semantics/workspace/read-authority.md) | [Model and freshness](semantics/workspace/model-and-freshness.md), [hosted publication](runtime/hosted-composition-and-publication.md) |
 | How does IDEA refresh occur? | [Lifecycle and refresh](runtime/idea-lifecycle-and-refresh.md) | [Coordinator preparation](transport/coordinator-and-workspace-preparation.md), [hosted query flow](flows/hosted-query.md) |
 | How does a private headless Host run? | [Managed headless Host](modules/runtime-hosts.md#managed-headless-host) | [Assembly](modules/distribution.md#managed-headless-assembly), [configuration](contracts/configuration.md#managed-headless-selection) |
+| How are workspace containers managed? | [Private workspace commands](distribution/management-and-connections.md#private-workspace-commands) | [Runtime archives](modules/distribution.md#isolated-runtime-archive), [configuration](contracts/configuration.md#managed-headless-selection) |
 | How does discovery preserve identity? | [Symbol discovery](semantics/symbol/discovery-and-identity.md) | [Source anchors](semantics/source/anchors-and-paging.md), [source failures](contracts/source-failures.md) |
 | Which relation facts come from the compiler? | [Named relations](semantics/relation/named-relations.md) | [Value flow](semantics/relation/value-flow-and-models.md), [callback supply](semantics/relation/callback-supply-and-binding.md) |
 | What proves callback completion? | [Callback reuse and completion](semantics/relation/callback-reuse-and-completion.md) | [Live dependency proofs](topology/live-dependencies-and-reuse.md) |

@@ -322,7 +322,8 @@ private fun extractRuntimeLinks(
 private fun sealRuntime(staging: Path) {
     Files.walk(staging).use { paths ->
         paths
-            .filter { !Files.isSymbolicLink(it) }
+            // Keep the private publication entry renameable; all payload files and descendants are sealed.
+            .filter { it != staging && !Files.isSymbolicLink(it) }
             .forEach { path ->
                 val mode = if (Files.isDirectory(path) || Files.isExecutable(path)) "r-x------" else "r--------"
                 Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(mode))

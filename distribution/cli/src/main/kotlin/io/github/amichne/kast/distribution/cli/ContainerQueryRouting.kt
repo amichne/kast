@@ -13,6 +13,7 @@ internal fun routedContainerQuery(
     environment: Map<String, String>,
     output: ManagementOutput,
 ): Int? {
+    if (arguments.take(2) == listOf("query", "plan")) return null
     if (
         arguments.firstOrNull() == "describe" ||
             "--help" in arguments ||

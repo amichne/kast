@@ -33,6 +33,45 @@ class ContainerStoreTest {
     }
 
     @Test
+    fun `runtime publication keeps a renameable private root over sealed payload bytes`() {
+        val store =
+            ContainerStore(
+                temporary.toRealPath().resolve("manager"),
+                (ContainerPlatform.current() as Refinement.Refined).value,
+            )
+        val runtime = runtime(store)
+        assertEquals(
+            java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"),
+            Files.getPosixFilePermissions(runtime.root),
+        )
+        assertEquals(
+            java.nio.file.attribute.PosixFilePermissions.fromString("r-x------"),
+            Files.getPosixFilePermissions(runtime.home),
+        )
+        assertEquals(
+            java.nio.file.attribute.PosixFilePermissions.fromString("r--------"),
+            Files.getPosixFilePermissions(runtime.root.resolve("manifest.json")),
+        )
+    }
+
+    @Test
+    fun `request-only query planning bypasses even an invalid container registry`() {
+        val home = Files.createDirectory(temporary.resolve("home")).toRealPath()
+        val registry = Files.createDirectories(home.resolve(".local/share/kast-workspaces/containers"))
+        val foreign = Files.writeString(registry.resolve("foreign"), "not a container record")
+        val before = Files.readAllBytes(foreign)
+        val result =
+            routedContainerQuery(
+                listOf("query", "plan", "--json"),
+                home.resolve("unavailable-workspace"),
+                mapOf("HOME" to home.toString()),
+                ManagementOutput(),
+            )
+        org.junit.jupiter.api.Assertions.assertNull(result)
+        assertTrue(before.contentEquals(Files.readAllBytes(foreign)))
+    }
+
+    @Test
     fun `create owns one workspace trust and private Gradle state over a shared immutable runtime`() {
         val root = temporary.toRealPath().resolve("manager")
         val platform = (ContainerPlatform.current() as Refinement.Refined).value

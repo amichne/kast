@@ -67,10 +67,10 @@ sources:
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
+generated: { by: "pi", at: "2026-11-11T10:38:11.930Z" }
 verified:
   - by: openwiki/0.6.1
-    at: 2026-11-11T02:25:11.104Z
+    at: 2026-11-11T10:38:11.930Z
 ---
 
 # Verified module architecture
@@ -94,7 +94,7 @@ Every module role requires its matching Gradle convention. Validated module poli
   Architecture policy names the exact distribution-to-SQLite edge and rejects general CLI-to-SQLite dependencies.
   The module keeps no IntelliJ, semantic, MCP implementation, or App Server implementation dependency.
   The `cli` module composes this management implementation through one named policy edge and produces the shared native Control executable.
-  Shutdown fence writes stay within the exact lifecycle effect owner.
+  Installation and container fence writes stay within their exact lifecycle effect owners.
 - The MCP launcher retains the hosted catalog and uses Kotlin MCP SDK tool annotations at its adapter boundary. Its one-call change tool submits the exact canonical plan identity to current native mutation admission.
 
 The App Server's direct login-agent publisher and the installation service lock are explicit scoped filesystem-write owners. The publisher writes or removes only the qualified per-user launchd entry; the lock serializes launchd start, retirement, and direct login resumption.
@@ -173,6 +173,10 @@ requires the hosted contract, without a host archive producer. Independent host
 assembly produces no control package, and independent control assembly produces
 no host package. Fresh-pair assembly composes both artifacts as an installation
 convenience; exact hosted contract equality governs communication.
+
+Host packaging takes local runtime JARs from Gradle's resolved project-artifact closure.
+It does not maintain a second filename list for project dependencies.
+The packaged SQLite and serialization libraries remain explicitly selected external artifacts.
 
 ## Kotlin semantic coverage gates
 

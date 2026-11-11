@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b683af3a07460dfa34aecb7eb303b6e8a6a98704fe8f91b441de9f188c500012",
+  "pageVersion": "sha256:b00ee9a811d57b259eee9870505d1dfc6f1f4d13eaecc0f2a0b093bc9e00f098",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -32,7 +32,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:ee456e0076b8ddcc4446ea817174f4f47efcf903263067e0e9a7d0fe47dddb57"
+          "version": "repo-file-v1:sha256:d5b8ee76c1caaf9c28d611224265f5f69296e00f2aefeb2dc5c6dc9a124ccdd0"
         }
       ]
     },
@@ -42,7 +42,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:ee456e0076b8ddcc4446ea817174f4f47efcf903263067e0e9a7d0fe47dddb57"
+          "version": "repo-file-v1:sha256:d5b8ee76c1caaf9c28d611224265f5f69296e00f2aefeb2dc5c6dc9a124ccdd0"
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt",
@@ -131,6 +131,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T20:52:34.571Z"
+    "at": "2026-11-11T10:38:11.930Z"
   }
 }

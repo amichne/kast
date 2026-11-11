@@ -13,6 +13,10 @@ from composed_release import ReleaseFailure, ReleaseRejected, assemble_release, 
 from managed_headless import Failure, Rejected
 
 
+def test_linux_support_includes_the_cpp_soname_required_by_the_arm_host() -> None:
+    assert composed_release.LINUX_PACKAGES.get("libstdc++6") == ("libstdc++.so.6",)
+
+
 @pytest.mark.parametrize(
     ("version", "revision", "failure"),
     [

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:821c2c5bd055ac3d3cc6c3871f2fed798de816233a90abad7aaf0bf838433c68",
+  "pageVersion": "sha256:91894b7940d04e264d35137efa70f54644e62b77c4fea8e560b122771321c096",
   "claims": [
     {
       "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
-      "statement": "KastDirectToolSession shares compiled registration, installation admission, and existing-IDE invocation between direct transports. MCP initialization or its first admitted modern request starts one preparation owner; CLI and one-shot RPC leave preparation to typed operation demand, preserving existing authority for issued source and retained-reference reads.",
+      "statement": "KastDirectToolSession shares compiled registration, installation admission and existing-IDE invocation between direct transports. MCP initialization or its first admitted modern request starts one preparation owner. Within the session, CLI and one-shot RPC use typed operation demand and preserve existing authority for issued source and retained-reference reads; cwd-routed container queries prepare the private Host in an outer management step first.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
@@ -24,11 +24,15 @@
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt",
-          "version": "repo-file-v1:sha256:9b98cee4aaf49e5374d16a105678fcfb6c38e4d6b95c4e70fcd1b8badd21898c"
+          "version": "repo-file-v1:sha256:d4a7015ce96f002f6887fc0d694360f6737d5f8464df60bf41c43fa7e9fea295"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L169-L180",
           "version": "repo-lines-v1:sha256:f206e4c39cf8abeb0fc4bb4f3f8417c64541c894f219273bbe0abb69981da47f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMzdmYmZlYmU4ZTYxZGE2NmZjZGNmZmE5YjkxZGFhM2JlZmEwMzBjMzVkNjBkNDZhNzExMDI3OTk4MDgxZDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNzQ1NDRhMjYxYTdjYWI3MDA1N2M5MDVlOTMwYmNlZDBkMTZiN2NhYzY2YWMwMmZkODAzYWMxZWI3ZmZlOWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzYzQ4N2U1ZmNmYTU4YTA5NWZkNTVlZjIyNjNhYjYxOGQ5OGQ3NDVlMzkwM2YyNDFmNzZlNTBmMDI4M2VjYTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyNzczYWU5NTM0M2RmNTg4NGFhZmFlYmI3Y2EzMjAxNDA2YTZmYmUyMDdhY2I0MDIzOWEyOTAyNWQ4N2JjNGQifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryRouting.kt",
+          "version": "repo-file-v1:sha256:65406bf95afc9c6d22f948d60c4e58ab6cf7329847e48376bf406798cd5507b1"
         }
       ]
     },
@@ -73,6 +77,6 @@
   ],
   "verification": {
     "by": "openwiki/0.6.1",
-    "at": "2026-11-06T05:26:56.646Z"
+    "at": "2026-11-11T11:08:36.331Z"
   }
 }
