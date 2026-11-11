@@ -50,6 +50,7 @@ SOURCE_REQUIRED = frozenset(
         ":verifyVerificationGraph",
         ":verifyConfigurationIngress",
         ":verifyKnowledgeBase",
+        ":verifyKnowledgeClaims",
         ":hostObservationTest",
         ":componentReleaseTest",
         ":managedInstallationTest",

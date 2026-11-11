@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from verify_documentation import commands
+from verify_documentation import ROOT, commands
 
 
 class DocumentationProofTest(unittest.TestCase):
@@ -42,6 +42,13 @@ class DocumentationProofTest(unittest.TestCase):
         self.assertIn(
             ("uv", "run", "--locked", "--project", "docs/tooling", "python",
              "docs/tooling/okf_public.py", "--check"),
+            commands(()),
+        )
+
+    def test_documentation_lane_rejects_stale_canonical_claims(self):
+        self.assertIn(
+            ("node", "docs/tooling/markdown/evidence-assess.ts", "--root", str(ROOT),
+             "--scope", "canonical"),
             commands(()),
         )
 

@@ -577,6 +577,18 @@ val verifyPublicKnowledge = tasks.register<VerificationReportTask>("verifyPublic
     arguments.set(listOf("run", "--locked", "--project", "docs/tooling", "python", "docs/tooling/okf_public.py", "--check"))
 }
 
+// Every canonical Claim must resolve against current source bytes. Source-only changes
+// select this guard, so cited evidence cannot drift until the next documentation change.
+val verifyKnowledgeClaims = tasks.register<VerificationReportTask>("verifyKnowledgeClaims") {
+    group = "verification"
+    description = "Rejects stale, unresolved, missing, or orphaned canonical OpenWiki Claims."
+    dependsOn(documentationMarkdownDependencies)
+    doNotTrackState("Claim currentness examines the live Git revision and every cited source file.")
+    executableFile.set(validationExecutable("node"))
+    arguments.set(listOf("docs/tooling/markdown/evidence-assess.ts", "--root", rootDir.absolutePath, "--scope", "canonical"))
+    runtimeFiles.from("docs/tooling/markdown/node_modules")
+}
+
 val verifyDocumentationGlossary = tasks.register<VerificationReportTask>("verifyDocumentationGlossary") {
     group = "verification"
     description = "Rejects glossary projection drift and rejected forms in current prose."
@@ -627,7 +639,7 @@ tasks.register<VerificationReportTask>("verifyScopedProse") {
     sourceFiles.from(selectedProse, ".vale.ini", "config/vale")
 }
 
-tasks.named("check") { dependsOn(verifyDocumentationGlossary, documentationToolingTest, verifyPublicKnowledge) }
+tasks.named("check") { dependsOn(verifyDocumentationGlossary, documentationToolingTest, verifyPublicKnowledge, verifyKnowledgeClaims) }
 
 val productBuildGate = tasks.register("productBuildGate") {
     group = "verification"
