@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
 REPOSITORY = Path(__file__).resolve().parent.parent
 LINUX_PACKAGES = {
+    "gcc-12-base": (),
     "libstdc++6": ("libstdc++.so.6",),
     "libfontconfig1": ("libfontconfig.so.1",),
     "libfreetype6": ("libfreetype.so.6",),
@@ -73,6 +74,12 @@ class ReleaseFailure(StrEnum):
     WRONG_PLATFORM = "WRONG_PLATFORM"
     INSTALLER_FAILED = "INSTALLER_FAILED"
     EFFECT_FAILED = "EFFECT_FAILED"
+    LINUX_PACKAGE_IDENTITY = "LINUX_PACKAGE_IDENTITY"
+    LINUX_PACKAGE_INVENTORY = "LINUX_PACKAGE_INVENTORY"
+    LINUX_PACKAGE_LOCATION = "LINUX_PACKAGE_LOCATION"
+    LINUX_PACKAGE_NOTICE = "LINUX_PACKAGE_NOTICE"
+    LINUX_PACKAGE_IO = "LINUX_PACKAGE_IO"
+    LINUX_PACKAGE_PROCESS = "LINUX_PACKAGE_PROCESS"
 
 
 class ReleaseStage(StrEnum):
@@ -82,6 +89,9 @@ class ReleaseStage(StrEnum):
     COMPOSITION = "COMPOSITION"
     BUNDLE = "BUNDLE"
     QUALIFICATION = "QUALIFICATION"
+    LINUX_PACKAGE_ADMISSION = "LINUX_PACKAGE_ADMISSION"
+    LINUX_PACKAGE_EXTRACTION = "LINUX_PACKAGE_EXTRACTION"
+    LINUX_PACKAGE_PAYLOAD = "LINUX_PACKAGE_PAYLOAD"
 
 
 class StageOutcome(StrEnum):
@@ -461,7 +471,9 @@ def prepare_linux_support(output: Path) -> LinuxSupportPrepared | ReleaseRejecte
         ]
         for command in (["update"], ["download", *LINUX_PACKAGES]):
             _ = subprocess.run([*apt, *command], cwd=work, stdout=sys.stderr, check=True)
-        packages = tuple(prepare_linux_package(deb, files) for deb in sorted(work.glob("*.deb")))
+        packages = prepare_linux_packages(tuple(sorted(work.glob("*.deb"))), files)
+        if isinstance(packages, ReleaseRejected):
+            return packages
         if sorted(record.package for record in packages) != sorted(LINUX_PACKAGES):
             return ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "Linux support packages")
         _ = (files / "fonts.conf").write_text(
@@ -476,41 +488,135 @@ def prepare_linux_support(output: Path) -> LinuxSupportPrepared | ReleaseRejecte
     return result
 
 
-def prepare_linux_package(deb: Path, files: Path) -> LinuxPackage:
+@dataclass(frozen=True, slots=True)
+class _LinuxPackageInput:
+    archive: Path
+    name: str
+    source: str
+    version: str
+    architecture: str
+    archive_sha256: str
+
+    @property
+    def directory(self) -> Path:
+        return self.archive.with_suffix("")
+
+
+def read_linux_package(deb: Path, native: str) -> _LinuxPackageInput | ReleaseRejected:
     def field(name: str) -> str:
         return subprocess.check_output(["dpkg-deb", "-f", str(deb), name], text=True).strip()
 
     name, version, architecture = field("Package"), field("Version"), field("Architecture")
-    native_architecture = subprocess.check_output(
-        ["dpkg", "--print-architecture"], text=True
-    ).strip()
-    if (
-        name not in LINUX_PACKAGES
-        or not version
-        or architecture not in {native_architecture, "all"}
-    ):
-        raise ValueError("Linux support package identity")
-    package_root = deb.with_suffix("")
-    _ = subprocess.run(["dpkg-deb", "-x", str(deb), str(package_root)], check=True)
+    if name not in LINUX_PACKAGES or not version or architecture not in {native, "all"}:
+        return ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_IDENTITY, "Linux support")
+    return _LinuxPackageInput(
+        deb, name, field("Source") or name, version, architecture, sha256(deb)
+    )
+
+
+def prepare_linux_packages(
+    archives: tuple[Path, ...], files: Path
+) -> tuple[LinuxPackage, ...] | ReleaseRejected:
+    """Admit inputs before extraction and resolve shared notices through admitted suppliers."""
+    stage = ReleaseStage.LINUX_PACKAGE_ADMISSION
+    observe(stage, StageOutcome.STARTED)
+    if not archives or len(archives) > len(LINUX_PACKAGES):
+        observe(stage, StageOutcome.REJECTED)
+        return ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_IDENTITY, "Linux support")
+    try:
+        native = subprocess.check_output(["dpkg", "--print-architecture"], text=True).strip()
+        inputs: list[_LinuxPackageInput] = []
+        for archive in archives:
+            admitted = read_linux_package(archive, native)
+            if isinstance(admitted, ReleaseRejected):
+                observe(stage, StageOutcome.REJECTED)
+                return admitted
+            inputs.append(admitted)
+        if not inputs or len({item.name for item in inputs}) != len(inputs):
+            observe(stage, StageOutcome.REJECTED)
+            return ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_IDENTITY, "Linux support")
+        observe(stage, StageOutcome.COMPLETE)
+        stage = ReleaseStage.LINUX_PACKAGE_EXTRACTION
+        observe(stage, StageOutcome.STARTED)
+        for item in inputs:
+            _ = subprocess.run(
+                ["dpkg-deb", "-x", str(item.archive), str(item.directory)], check=True
+            )
+        observe(stage, StageOutcome.COMPLETE)
+        stage = ReleaseStage.LINUX_PACKAGE_PAYLOAD
+        observe(stage, StageOutcome.STARTED)
+        packages: list[LinuxPackage] = []
+        for item in inputs:
+            copied = copy_linux_package(item, tuple(inputs), files)
+            if isinstance(copied, ReleaseRejected):
+                observe(stage, StageOutcome.REJECTED)
+                return copied
+            packages.append(copied)
+        observe(stage, StageOutcome.COMPLETE)
+        return tuple(packages)
+    except OSError:
+        observe(stage, StageOutcome.REJECTED)
+        return ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_IO, "Linux support")
+    except subprocess.SubprocessError:
+        observe(stage, StageOutcome.REJECTED)
+        return ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_PROCESS, "Linux support")
+
+
+def linux_package_notice(
+    item: _LinuxPackageInput, inputs: tuple[_LinuxPackageInput, ...]
+) -> Path | ReleaseRejected:
+    notice = (item.directory / "usr/share/doc" / item.name / "copyright").resolve()
+    if not notice.is_relative_to(item.directory):
+        return ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_LOCATION, "Linux support notice")
+    if notice.is_file():
+        return notice
+    # Debian's libstdc++6 documentation is a relative link to gcc-12-base.
+    # Keep each archive's file ownership; do not merge extracted package trees.
+    relative = notice.relative_to(item.directory)
+    suppliers = tuple(
+        supplier
+        for supplier in inputs
+        if relative == Path("usr/share/doc") / supplier.name / "copyright"
+        and supplier.name != item.name
+        and supplier.source == item.source
+        and supplier.version == item.version
+    )
+    if len(suppliers) != 1:
+        return ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_NOTICE, "Linux support notice")
+    supplier = suppliers[0]
+    provided = (supplier.directory / relative).resolve()
+    if not provided.is_relative_to(supplier.directory) or not provided.is_file():
+        return ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_NOTICE, "Linux support notice")
+    return provided
+
+
+def copy_linux_package(
+    item: _LinuxPackageInput, inputs: tuple[_LinuxPackageInput, ...], files: Path
+) -> LinuxPackage | ReleaseRejected:
+    notice = linux_package_notice(item, inputs)
+    if isinstance(notice, ReleaseRejected):
+        return notice
     installed: list[str] = []
-    for member in LINUX_PACKAGES[name]:
-        candidates = tuple(package_root.rglob(member))
+    for member in LINUX_PACKAGES[item.name]:
+        candidates = tuple(item.directory.rglob(member))
         if len(candidates) != 1:
-            raise ValueError("Linux support file inventory")
+            return ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_INVENTORY, "Linux support file")
         source = candidates[0].resolve()
-        if not source.is_relative_to(package_root) or not source.is_file():
-            raise ValueError("Linux support file location")
+        if not source.is_relative_to(item.directory) or not source.is_file():
+            return ReleaseRejected(ReleaseFailure.LINUX_PACKAGE_LOCATION, "Linux support file")
         # IntelliJ's JNA filesystem probe opens the unversioned name first.
         filename = "libe2p.so" if member == "libe2p.so.2" else member
         location = ("fonts/" if filename.endswith(".ttf") else "lib/") + filename
         _ = shutil.copyfile(source, files / location)
         installed.append(location)
-    notice = (package_root / "usr/share/doc" / name / "copyright").resolve()
-    if not notice.is_relative_to(package_root) or not notice.is_file():
-        raise ValueError("Linux support package notice")
-    _ = shutil.copyfile(notice, files / "licenses" / (name + ".copyright"))
+    _ = shutil.copyfile(notice, files / "licenses" / (item.name + ".copyright"))
     return LinuxPackage(
-        name, field("Source") or name, version, architecture, sha256(deb), tuple(installed)
+        item.name,
+        item.source,
+        item.version,
+        item.architecture,
+        item.archive_sha256,
+        tuple(installed),
     )
 
 
