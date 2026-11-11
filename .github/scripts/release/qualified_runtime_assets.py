@@ -20,7 +20,7 @@ import zipfile
 from pathlib import Path
 from typing import TypeGuard
 
-TARGETS = ("linux-x86_64", "linux-aarch64", "macos-aarch64", "macos-x86_64")
+TARGETS = ("linux-x86_64", "macos-aarch64")
 RELEASE_ASSET_LIMIT = 2 * 1024**3
 MANIFEST_LIMIT = 16_777_216
 RECEIPT_LIMIT = 1_048_576

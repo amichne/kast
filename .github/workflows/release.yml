@@ -54,21 +54,18 @@ jobs:
           --repository "$GITHUB_REPOSITORY"
           --bump "$RELEASE_BUMP"
 
-  runtimes:
-    name: Qualify container runtimes
+  linux-runtime:
+    name: Qualify Linux x86-64 runtime
     needs: version
     uses: ./.github/workflows/composed-linux.yml
     with:
       version: ${{ needs.version.outputs.version }}
-      release_assets: true
+      release_target: linux-x86_64
 
   release:
-    name: Build and publish release
-    needs: [version, runtimes]
+    name: Prepare stable release candidate
+    needs: version
     if: github.ref == 'refs/heads/main' && vars.KAST_MACOS_CHECKS == 'true' && vars.KAST_NATIVE_COMPILATION != 'false'
-    permissions:
-      actions: read
-      contents: write
     runs-on: [self-hosted, macOS, ARM64, kast-main]
     timeout-minutes: 60
     env:
@@ -165,6 +162,37 @@ jobs:
           overwrite: true
           compression-level: 0
           retention-days: 7
+
+  mac-runtime:
+    name: Qualify Apple silicon runtime
+    needs: [version, release]
+    uses: ./.github/workflows/composed-linux.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+      release_target: macos-aarch64
+
+  publish:
+    name: Publish immutable release
+    needs: [version, release, linux-runtime, mac-runtime]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+      - name: Download exact release candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: release-candidate-v${{ env.RELEASE_VERSION }}-${{ github.sha }}
+          path: build/release/v${{ env.RELEASE_VERSION }}
 
       - name: Download qualified runtimes
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8

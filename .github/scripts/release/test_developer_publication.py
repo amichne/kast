@@ -30,7 +30,7 @@ BUILD = "a" * 40
 MAIN = "b" * 40
 TREE = "c" * 40
 VERSION = "0.0.123"
-RUNTIME_TARGETS = ("linux-x86_64", "linux-aarch64", "macos-aarch64", "macos-x86_64")
+RUNTIME_TARGETS = ("linux-x86_64", "macos-aarch64")
 
 
 def runtime_fixture(
@@ -442,6 +442,7 @@ class CandidateFixture(unittest.TestCase):
                 version=VERSION,
                 revision=revision,
             )
+        runtime_fixture(runtimes, "linux-aarch64", version=VERSION, revision=revision)
         result = subprocess.run(
             (
                 "bash",

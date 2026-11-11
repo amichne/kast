@@ -547,12 +547,11 @@ class SourceInventoryTest(unittest.TestCase):
         path = Path(__file__).resolve().parents[2] / "workflows/composed-linux.yml"
         body = path.read_text().split("\n  candidate:\n", 1)[1]
         self.assertIn("runs-on: ${{ matrix.runner }}", body)
-        self.assertRegex(
-            body,
-            r"'\{\"target\":\"linux-x86_64\",\"runner\":\"ubuntu-24\.04\"[^\n]*',\n"
-            r"\s*\(!inputs\.linux_only && vars\.KAST_MACOS_CHECKS == 'true'\)"
-            r" && ',\{\"target\":\"macos-aarch64\",\"runner\":\"macos-15\"[^\n]*' \|\| ''",
-        )
+        self.assertIn('{"target":"linux-x86_64","runner":"ubuntu-24.04"', body)
+        self.assertIn('{"target":"macos-aarch64","runner":"macos-15"', body)
+        self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", body)
+        self.assertNotIn("linux-aarch64", body)
+        self.assertNotIn("macos-x86_64", body)
 
     def test_isolated_candidates_keep_one_job_per_target(self):
         workflow = (
@@ -562,7 +561,11 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertEqual(["candidate"], re.findall(r"^  ([\w-]+):$", jobs, re.M))
         self.assertEqual(1, jobs.count("matrix:"))
         self.assertEqual(1, jobs.count("ref: ${{ github.sha }}"))
-        self.assertNotIn("actions/download-artifact@", jobs)
+        reuse = jobs.split("- name: Download exact macOS release candidate\n", 1)[1]
+        reuse = reuse.split("\n      - name:", 1)[0]
+        self.assertIn("if: inputs.release_target == 'macos-aarch64'", reuse)
+        self.assertIn("name: release-candidate-v", reuse)
+        self.assertNotIn("run-id:", reuse)
         self.assertLess(
             jobs.index("Retain the assembled candidate"),
             jobs.index("Install and qualify the exact candidate"),
@@ -572,26 +575,35 @@ class SourceInventoryTest(unittest.TestCase):
         workflow = (
             Path(__file__).resolve().parents[2] / "workflows/composed-linux.yml"
         ).read_text()
-        self.assertEqual(1, workflow.count("./gradlew"))
         assembly = workflow.split("- name: Assemble matching Control, Host, and bootstrap\n", 1)[1]
         assembly = assembly.split("\n      - name:", 1)[0]
+        self.assertIn("if: inputs.release_target != 'macos-aarch64'", assembly)
         self.assertIn("assembleRelease :runtime:hosted:headlessBootstrapPlugin", assembly)
         self.assertIn(
             "${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}",
             assembly,
         )
+        bootstrap = workflow.split("- name: Assemble bootstrap for the reused candidate\n", 1)[1]
+        bootstrap = bootstrap.split("\n      - name:", 1)[0]
+        self.assertIn(":runtime:hosted:headlessBootstrapPlugin", bootstrap)
+        self.assertNotIn("assembleRelease", bootstrap)
 
     def test_stable_release_consumes_qualified_runtime_artifacts_from_its_own_run(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
         release = (workflows / "release.yml").read_text()
         self.assertIn("uses: ./.github/workflows/composed-linux.yml", release)
-        self.assertIn("needs: [version, runtimes]", release)
+        linux = release.split("\n  linux-runtime:\n", 1)[1].split("\n  mac-runtime:", 1)[0]
+        mac = release.split("\n  mac-runtime:\n", 1)[1].split("\n  publish:", 1)[0]
+        self.assertIn("needs: version", linux)
+        self.assertIn("release_target: linux-x86_64", linux)
+        self.assertIn("needs: [version, release]", mac)
+        self.assertIn("release_target: macos-aarch64", mac)
+        self.assertIn("needs: [version, release, linux-runtime, mac-runtime]", release)
         self.assertIn("version: ${{ needs.version.outputs.version }}", release)
-        self.assertIn("release_assets: true", release)
         candidate = (workflows / "composed-linux.yml").read_text()
         artifact = candidate.split("- name: Retain qualified runtime for stable release\n", 1)[1]
         artifact = artifact.split("\n      - name:", 1)[0]
-        self.assertIn("if: inputs.release_assets", artifact)
+        self.assertIn("if: inputs.release_target != ''", artifact)
         self.assertNotIn("always()", artifact)
         self.assertIn("build/composed-evidence/qualification.json", artifact)
         self.assertNotIn("github.run_attempt", artifact)

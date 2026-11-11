@@ -151,7 +151,7 @@ release_notes="$(
     '' \
     '- **Control:** native `kast` management command, private service lifecycle, hosted tool schemas, broker, and typed wire transport.' \
     '- **Existing-IDE plugin:** the release-line plugin installed programmatically by the verified shell installer.' \
-    '- **Workspace containers:** version-matched runtime ZIPs and SHA-256 files for macOS and Linux on AArch64 and x86-64.' \
+    '- **Workspace containers:** runtime archives and SHA-256 files for Apple silicon and Linux x86-64.' \
     '- **Agent tools:** MCP plugins, shared session context, and an installable marketplace. Run `kast plugin codex` after installing Kast.' \
     '- **Installation:** one physical installation directory, with no current selector or selectable historical versions. Existing selector-based installs migrate through the published installer.'
 )"

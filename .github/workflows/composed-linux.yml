@@ -13,15 +13,15 @@ on:
         required: false
         type: string
       linux_only:
-        description: Assemble and qualify only the two Linux CPU targets
+        description: Assemble and qualify only Linux x86-64
         type: boolean
         default: false
   workflow_call:
     inputs:
-      release_assets:
-        description: Keep qualified runtime ZIPs for the calling stable release
-        type: boolean
-        default: false
+      release_target:
+        description: Platform to qualify for the calling stable release
+        type: string
+        required: true
       version:
         description: Exact numeric version for the candidates
         required: true
@@ -47,9 +47,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(format('[{0}{1}]',
-          '{"target":"linux-x86_64","runner":"ubuntu-24.04","donor":"idea-2026.2.2.tar.gz"},{"target":"linux-aarch64","runner":"ubuntu-24.04-arm","donor":"idea-2026.2.2-aarch64.tar.gz"}',
-          (!inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true') && ',{"target":"macos-aarch64","runner":"macos-15","donor":"idea-2026.2.2-aarch64.dmg"},{"target":"macos-x86_64","runner":"macos-15-intel","donor":"idea-2026.2.2.dmg"}' || '')) }}
+        include: ${{ fromJSON(format('[{0}{1}{2}]',
+          inputs.release_target != 'macos-aarch64' && '{"target":"linux-x86_64","runner":"ubuntu-24.04","donor":"idea-2026.2.2.tar.gz"}' || '',
+          inputs.release_target == '' && !inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true' && ',' || '',
+          (inputs.release_target == 'macos-aarch64' || (inputs.release_target == '' && !inputs.linux_only)) && vars.KAST_MACOS_CHECKS == 'true' && '{"target":"macos-aarch64","runner":"macos-15","donor":"idea-2026.2.2-aarch64.dmg"}' || '')) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,9 +58,13 @@ jobs:
           persist-credentials: false
 
       - name: Admit source and version
+        env:
+          RELEASE_TARGET: ${{ inputs.release_target }}
+          TARGET: ${{ matrix.target }}
         run: |
           bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
           python3 -c 'import os,re; assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", os.environ["BUNDLE_VERSION"]), "numeric version required"'
+          test -z "$RELEASE_TARGET" || test "$RELEASE_TARGET" = "$TARGET"
 
       - name: Set up Python
         id: candidate-python
@@ -86,12 +91,29 @@ jobs:
       - name: Run composition tests on the target platform
         run: mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test_runtime_archive.py packaging/test-managed-headless.py -q
 
-      - name: Assemble matching Control, Host, and bootstrap
+      - name: Download exact macOS release candidate
+        if: inputs.release_target == 'macos-aarch64'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: release-candidate-v${{ inputs.version }}-${{ github.sha }}
+          path: build/release/v${{ inputs.version }}
+
+      - name: Assemble bootstrap for the reused candidate
+        if: inputs.release_target == 'macos-aarch64'
         run: >-
           mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
           -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
-          assembleRelease :runtime:hosted:headlessBootstrapPlugin
-          ${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}
+          :runtime:hosted:headlessBootstrapPlugin
+
+      - name: Assemble matching Control, Host, and bootstrap
+        if: inputs.release_target != 'macos-aarch64'
+        run: |
+          mkdir -p build/reports/native
+          mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2 \
+            -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA" \
+            -PkastNativeBuildMetrics=true \
+            assembleRelease :runtime:hosted:headlessBootstrapPlugin \
+            ${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}
 
       - name: Download pinned donor and assemble the archive
         shell: bash
@@ -118,7 +140,7 @@ jobs:
         run: bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
 
       - name: Retain the assembled candidate
-        if: '!inputs.release_assets'
+        if: inputs.release_target == ''
         id: candidate-artifact
         uses: actions/upload-artifact@v7.0.2
         with:
@@ -173,7 +195,7 @@ jobs:
             --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
 
       - name: Retain qualified runtime for stable release
-        if: inputs.release_assets
+        if: inputs.release_target != ''
         uses: actions/upload-artifact@v7.0.2
         with:
           name: kast-release-runtime-v${{ inputs.version }}-${{ matrix.target }}-${{ github.sha }}
