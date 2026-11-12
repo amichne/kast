@@ -294,14 +294,19 @@ internal constructor(
         check(end > start + opening.length && end == text.lastIndexOf(closing)) {
             "Expected one closing marker after the expression: $marker"
         }
+        val content = text.substring(start + opening.length, end)
+        check(content.isNotBlank()) { "Marker must contain an expression: $marker" }
+        val leadingWhitespace = content.length - content.trimStart().length
+        val trailingWhitespace = content.length - content.trimEnd().length
         val anchor =
             ExactDeclarationTextRange.parse(
-                    host.textRange.startOffset + start + opening.length,
-                    host.textRange.startOffset + end,
+                    host.textRange.startOffset + start + opening.length + leadingWhitespace,
+                    host.textRange.startOffset + end - trailingWhitespace,
                 )
                 .nativeRefined()
         check(PsiTreeUtil.collectElementsOfType(host, KtExpression::class.java).any { range(it) == anchor }) {
-            "Marker must delimit one exact Kotlin expression: $marker"
+            "Marker must delimit one exact Kotlin expression: $marker anchor=$anchor " +
+                "expressions=${PsiTreeUtil.collectElementsOfType(host, KtExpression::class.java).take(MARKER_DIAGNOSTIC_EXPRESSIONS).map { range(it) }}"
         }
         PacketExpression(selector(host), anchor)
     }
@@ -418,5 +423,7 @@ private fun frozenPacketSource(path: String): ByteArray {
 
 internal fun range(element: com.intellij.psi.PsiElement): ExactDeclarationTextRange =
     ExactDeclarationTextRange.parse(element.textRange.startOffset, element.textRange.endOffset).nativeRefined()
+
+private const val MARKER_DIAGNOSTIC_EXPRESSIONS = 20
 
 private fun <Value> nativeRead(action: () -> Value): Value = ReadAction.compute<Value, RuntimeException>(action)

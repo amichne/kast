@@ -26,7 +26,10 @@ internal sealed interface NativeValueReturnEffect {
         val dispatch: ValueImplementationDispatch,
     ) : NativeValueReturnEffect
 
-    data class Rejected(val cause: RelationCompilerRejection) : NativeValueReturnEffect
+    data class Rejected(
+        val cause: RelationCompilerRejection,
+        val origin: io.github.amichne.kast.relation.contract.ValueNativeRelationOrigin,
+    ) : NativeValueReturnEffect
 
     data class InventoryIncomplete(val limitations: Set<RelationLimitation>) : NativeValueReturnEffect
 }
@@ -70,7 +73,8 @@ internal class NativeValueReturnFlow(
             is NativeValueReturnEffect.Dispatch -> recordCoverage(effect.value)
             is NativeValueReturnEffect.UnsupportedDispatch ->
                 result = retained.unresolvedImplementation(effect.cause, effect.dispatch)
-            is NativeValueReturnEffect.Rejected -> result = Refinement.Rejected(effect.cause.nativeFlowRejection())
+            is NativeValueReturnEffect.Rejected ->
+                result = Refinement.Rejected(effect.cause.nativeFlowRejection(effect.origin))
             is NativeValueReturnEffect.InventoryIncomplete ->
                 effect.limitations.map { it.nativeImplementationCause() }.distinct().forEach(retained::unresolved)
         }

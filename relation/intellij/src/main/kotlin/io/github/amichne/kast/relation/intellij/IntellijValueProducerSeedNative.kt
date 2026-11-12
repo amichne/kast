@@ -18,14 +18,15 @@ import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueInvocationSelection
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
+import io.github.amichne.kast.relation.contract.ValueNativeOperation
 import io.github.amichne.kast.relation.contract.ValueProducerSeed
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
+import io.github.amichne.kast.relation.contract.ValueProducerSeedReadFailure
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRejection
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
@@ -47,7 +48,7 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
             current,
             request.enclosing.lease,
             { ValueProducerSeedRead.Rejected(it.seedCause()) },
-            IntellijReadStage.VALUE_PRODUCER_SEED,
+            ValueNativeOperation.PRODUCER_SEED,
         ) {
             produceSeed(project, request, model)
         }
@@ -64,7 +65,7 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
             current,
             selector.lease,
             { ValueModelDeclarationRead.Rejected(it.seedCause()) },
-            IntellijReadStage.VALUE_MODEL_ADMISSION,
+            ValueNativeOperation.MODEL_DECLARATION,
         ) {
             revalidateDeclaration(project, selector, budget, model)
         }
@@ -125,7 +126,7 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
         budget: RelationBudget,
         model: WorkspaceSearchScopeModelCompilation,
         declaration: NativeSeedDeclaration,
-    ): Refinement<IntellijValueFlowCompilerAdapter.Prepared.Ready, ValueProducerSeedRejection> =
+    ): Refinement<IntellijValueFlowCompilerAdapter.Prepared.Ready, ValueProducerSeedReadFailure> =
         when (
             val result =
                 adapter.prepare(
@@ -307,7 +308,7 @@ private fun NativeInitialValueFailure.seedRejection(request: ValueProducerSeedRe
         ),
     )
 
-private fun NativeInitialValueFailure.producerCause(): ValueProducerSeedRejection =
+private fun NativeInitialValueFailure.producerCause(): ValueProducerSeedReadFailure =
     when (this) {
         is NativeInitialValueFailure.Native -> cause.seedCause()
         is NativeInitialValueFailure.Unsupported ->
@@ -368,7 +369,7 @@ private enum class NativeSeedDeclaration {
 
 private fun ValueFlowRejection.seedCause(
     declaration: NativeSeedDeclaration = NativeSeedDeclaration.ENCLOSING
-): ValueProducerSeedRejection =
+): ValueProducerSeedReadFailure =
     when (this) {
         ValueFlowRejection.STALE_SITE ->
             when (declaration) {
@@ -381,7 +382,7 @@ private fun ValueFlowRejection.seedCause(
         ValueFlowRejection.AUTHORITY_MOVED -> ValueProducerSeedRejection.AUTHORITY_MOVED
         ValueFlowRejection.UNSUPPORTED_SEED -> ValueProducerSeedRejection.UNSUPPORTED_INVOCATION
         ValueFlowRejection.UNRESOLVED_SEED -> ValueProducerSeedRejection.UNRESOLVED_INVOCATION
-        ValueFlowRejection.NATIVE_UNAVAILABLE -> ValueProducerSeedRejection.NATIVE_UNAVAILABLE
+        is ValueFlowRejection.Native -> ValueProducerSeedReadFailure.Native(this)
         ValueFlowRejection.GRANT_TOO_SMALL -> ValueProducerSeedRejection.GRANT_TOO_SMALL
     }
 

@@ -126,11 +126,11 @@ def parse_catalog(raw_catalog: bytes) -> Catalog | Rejected:
             reason=Reason.INVALID_REPLY,
             detail="The installed command did not return a tool catalog.",
         )
-    if catalog.schemaVersion not in (17, 18):
+    if catalog.schemaVersion not in (17, 18, 19):
         return Rejected(
             stage=Stage.CATALOG,
             reason=Reason.CONTRACT_MISMATCH,
-            detail=f"Task access needs contract 17 or 18. Installed contract is {catalog.schemaVersion}.",
+            detail=f"Task access needs contract 17, 18, or 19. Installed contract is {catalog.schemaVersion}.",
         )
     return catalog
 

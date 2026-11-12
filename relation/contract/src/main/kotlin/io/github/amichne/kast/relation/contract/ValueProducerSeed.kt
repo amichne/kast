@@ -85,7 +85,11 @@ class ValueProducerSeed private constructor(val site: ValueSite, val selection: 
 private fun RelationEndpoint.sameDeclaration(selector: SymbolSelector): Boolean =
     compilerIdentity == selector.compilerIdentity && file == selector.file && range == selector.range
 
-enum class ValueProducerSeedRejection {
+sealed interface ValueProducerSeedReadFailure {
+    data class Native(val cause: ValueFlowRejection.Native) : ValueProducerSeedReadFailure
+}
+
+enum class ValueProducerSeedRejection : ValueProducerSeedReadFailure {
     STALE_ENCLOSING,
     STALE_CALLABLE,
     UNRESOLVED_INVOCATION,
@@ -108,7 +112,6 @@ enum class ValueProducerSeedRejection {
     CALL_CONTEXT_DEPTH_EXCEEDED,
     RECURSIVE_SOURCE_CALL,
     AUTHORITY_MOVED,
-    NATIVE_UNAVAILABLE,
     GRANT_TOO_SMALL,
     OUTSIDE_DOMAIN,
     TIME_LIMIT_REACHED,
@@ -120,7 +123,7 @@ sealed interface ValueProducerSeedRead {
     data class Seeded(val seed: ValueProducerSeed, val examinedWorkUnits: RelationWorkCount) : ValueProducerSeedRead
 
     data class Rejected(
-        val cause: ValueProducerSeedRejection,
+        val cause: ValueProducerSeedReadFailure,
         val diagnostic: ValueProducerSeedDiagnostic = ValueProducerSeedDiagnostic.NotAcquired,
     ) : ValueProducerSeedRead
 
@@ -131,7 +134,7 @@ sealed interface ValueModelDeclarationRead {
     data class Revalidated(val declaration: RevalidatedRelationEndpoint, val examinedWorkUnits: RelationWorkCount) :
         ValueModelDeclarationRead
 
-    data class Rejected(val cause: ValueProducerSeedRejection) : ValueModelDeclarationRead
+    data class Rejected(val cause: ValueProducerSeedReadFailure) : ValueModelDeclarationRead
 }
 
 /** Native effects use the same admitted semantic context and grants as query execution. No live handles escape. */
@@ -141,5 +144,5 @@ interface ValueProducerSeedCompilerPort {
     suspend fun revalidate(selector: SymbolSelector, budget: RelationBudget): ValueModelDeclarationRead
 
     suspend fun revalidateSite(request: ValueSiteRevalidationRequest): ValueModelSiteRead =
-        ValueModelSiteRead.Rejected(ValueFlowRejection.NATIVE_UNAVAILABLE)
+        ValueModelSiteRead.Rejected(ValueFlowRejection.Native.PortUnconfigured(ValueNativeOperation.MODEL_SITE))
 }

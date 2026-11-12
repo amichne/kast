@@ -233,7 +233,12 @@ internal class NativeValueSourceReturns(
                 Refinement.Refined(NativeValueCallerTarget.Implementation(callable, dispatch.evidence))
             is NativeValueArgumentDispatch.Unsupported -> Refinement.Rejected(unsupported(dispatch.cause))
             is NativeValueArgumentDispatch.Rejected ->
-                Refinement.Rejected(NativeValueReturnEffect.Rejected(dispatch.cause))
+                Refinement.Rejected(
+                    NativeValueReturnEffect.Rejected(
+                        dispatch.cause,
+                        io.github.amichne.kast.relation.contract.ValueNativeRelationOrigin.IMPLEMENTATION_DISPATCH,
+                    )
+                )
         }
 
     private fun announce(target: NativeValueCallerTarget, consume: (NativeValueReturnEffect) -> Boolean): Boolean =

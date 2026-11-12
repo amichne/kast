@@ -17,6 +17,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueLocalVersion
 import io.github.amichne.kast.relation.contract.ValueModelSiteRead
+import io.github.amichne.kast.relation.contract.ValueNativeOperation
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueSiteRevalidationLimit
@@ -25,7 +26,6 @@ import io.github.amichne.kast.relation.contract.ValueSiteRoleClaim
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompilation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
-import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
 
@@ -45,7 +45,7 @@ internal class IntellijValueSiteRevalidationNative(
             current,
             request.enclosing.lease,
             { ValueModelSiteRead.Rejected(it) },
-            IntellijReadStage.VALUE_MODEL_SITE_ADMISSION,
+            ValueNativeOperation.MODEL_SITE,
         ) {
             val work =
                 when (request.role) {

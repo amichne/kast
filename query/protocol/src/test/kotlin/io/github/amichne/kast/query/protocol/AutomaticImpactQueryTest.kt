@@ -242,6 +242,16 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
         case.assertDrained()
     }
 
+    @Test
+    fun `two local transfers survive native rejection and retained witness reads`() = runTest {
+        Case(1).assertRejectedPrefixPreserved()
+    }
+
+    @Test
+    fun `two rejected reads keep their own typed explanations across paths witnesses and paging`() = runTest {
+        Case(1).assertRejectedPrefixPreserved(branching = true)
+    }
+
     private inner class Case(pageRows: Int, private val unresolved: Boolean = false, work: Long = 100) {
         val allowance =
             budget.copy(
@@ -343,6 +353,28 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
                 presentation,
             )
 
+        suspend fun assertRejectedPrefixPreserved(branching: Boolean = false) {
+            val scenario = RejectedPrefixRetentionCase(invocations.first(), fixture.selector, branching)
+            val source = (request.from as QueryFromDocument.Impact).investigation
+            val requested =
+                request.copy(from = QueryFromDocument.Impact(source.copy(seeds = bounded(source.seeds.values.take(1)))))
+            val original = automatic(requested, scenario.flow, scenario.producerSeeds)
+            val reference = scenario.rejectedReference(original)
+            scenario.assertRetained(reference) { readRequest, pageRows ->
+                val page =
+                    protocol.executePage(
+                        readRequest,
+                        fixture.authority,
+                        allowance.copy(
+                            resources =
+                                allowance.resources.bounded().copy(resultLimit = ResultLimit.parse(pageRows).refined())
+                        ),
+                    )
+                scenario.assertQualified(page, QueryQuestionDocument.from(requested))
+            }
+            assertEquals(0, unexpected)
+        }
+
         suspend fun nativeProgressPages(): List<QueryExecutionResult.Qualified> =
             NativeImpactProgressCase(
                     fixture.selector,
@@ -384,40 +416,50 @@ internal class AutomaticImpactQueryTest : AutomaticSymbolQueryCase() {
         lateinit var protocol: CanonicalQueryProtocol
             private set
 
-        private fun protocol(presentation: QueryPresentationExecution) =
+        private fun protocol(
+            presentation: QueryPresentationExecution,
+            flow: ValueFlowCompilerPort,
+            producerSeeds: ValueProducerSeedCompilerPort,
+        ) =
             CanonicalQueryProtocol(
-                service(presentation),
+                service(presentation, flow),
                 fixture.references,
                 state,
-                producerSeeds =
-                    object : ValueProducerSeedCompilerPort {
-                        override suspend fun seed(request: ValueProducerSeedRequest): ValueProducerSeedRead {
-                            if (seeds >= sites.size) {
-                                unexpected++
-                                error("Excess seed")
-                            }
-                            val index = seeds++
-                            assertEquals(invocations[index].range, request.anchor)
-                            return ValueProducerSeedRead.Seeded(
-                                ValueProducerSeed.fromCompiler(request, sites[index], invocations[index]).refined(),
-                                RelationWorkCount.parse(1).refined(),
-                            )
-                        }
-
-                        override suspend fun revalidate(
-                            selector: SymbolSelector,
-                            budget: RelationBudget,
-                        ): ValueModelDeclarationRead {
-                            unexpected++
-                            error("Unexpected model revalidation")
-                        }
-                    },
+                producerSeeds = producerSeeds,
             )
 
-        suspend fun automatic(requested: QueryRunRequest.Run = request): QueryPublishedPage =
+        private fun nativeSeeds() =
+            object : ValueProducerSeedCompilerPort {
+                override suspend fun seed(request: ValueProducerSeedRequest): ValueProducerSeedRead {
+                    if (seeds >= sites.size) {
+                        unexpected++
+                        error("Excess seed")
+                    }
+                    val index = seeds++
+                    assertEquals(invocations[index].range, request.anchor)
+                    return ValueProducerSeedRead.Seeded(
+                        ValueProducerSeed.fromCompiler(request, sites[index], invocations[index]).refined(),
+                        RelationWorkCount.parse(1).refined(),
+                    )
+                }
+
+                override suspend fun revalidate(
+                    selector: SymbolSelector,
+                    budget: RelationBudget,
+                ): ValueModelDeclarationRead {
+                    unexpected++
+                    error("Unexpected model revalidation")
+                }
+            }
+
+        suspend fun automatic(
+            requested: QueryRunRequest.Run = request,
+            flow: ValueFlowCompilerPort = nativeFlow(),
+            producerSeeds: ValueProducerSeedCompilerPort = nativeSeeds(),
+        ): QueryPublishedPage =
             QueryPresentationExecution.evaluateAndFit(
                 evaluate = { presentation ->
-                    protocol = protocol(presentation)
+                    protocol = protocol(presentation, flow, producerSeeds)
                     protocol.execute(
                         requested,
                         fixture.authority,

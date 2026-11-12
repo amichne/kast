@@ -20,7 +20,6 @@ import io.github.amichne.kast.relation.contract.ModelVersion
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
-import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueLoopResultPhase
 import io.github.amichne.kast.relation.contract.ValueReceiverKind
@@ -198,19 +197,6 @@ internal fun ValueSiteRevalidationFailure.impactFailure(): QueryImpactSourceFail
         ValueSiteRevalidationFailure.CALLABLE_MISMATCH -> QueryImpactSourceFailureCode.CALLABLE_MISMATCH
         ValueSiteRevalidationFailure.ARGUMENT_POSITION_MISMATCH ->
             QueryImpactSourceFailureCode.ARGUMENT_POSITION_MISMATCH
-    }
-
-internal fun ValueFlowRejection.boundaryFailure(): QueryImpactSourceFailureCode =
-    when (this) {
-        ValueFlowRejection.STALE_SITE -> QueryImpactSourceFailureCode.STALE_BOUNDARY_SITE
-        ValueFlowRejection.OUTSIDE_DOMAIN -> QueryImpactSourceFailureCode.OUTSIDE_DOMAIN
-        ValueFlowRejection.OWNER_UNAVAILABLE -> QueryImpactSourceFailureCode.OWNER_UNAVAILABLE
-        ValueFlowRejection.AUTHORITY_MOVED -> QueryImpactSourceFailureCode.AUTHORITY_MOVED
-        ValueFlowRejection.UNSUPPORTED_SEED -> QueryImpactSourceFailureCode.UNSUPPORTED_BOUNDARY_SITE
-        ValueFlowRejection.UNRESOLVED_SEED -> QueryImpactSourceFailureCode.UNRESOLVED_BOUNDARY_SITE
-        ValueFlowRejection.NATIVE_UNAVAILABLE -> QueryImpactSourceFailureCode.NATIVE_UNAVAILABLE
-        ValueFlowRejection.GRANT_TOO_SMALL -> QueryImpactSourceFailureCode.GRANT_TOO_SMALL
-        ValueFlowRejection.NESTED_EXECUTION -> QueryImpactSourceFailureCode.NESTED_EXECUTION
     }
 
 internal fun ValueFlowUnsupportedCause.boundaryFailure(): QueryImpactSourceFailureCode =

@@ -1,0 +1,17 @@
+[
+  {"type":"STALE_SITE"},
+  {"type":"OUTSIDE_DOMAIN"},
+  {"type":"OWNER_UNAVAILABLE"},
+  {"type":"AUTHORITY_MOVED"},
+  {"type":"UNSUPPORTED_SEED"},
+  {"type":"UNRESOLVED_SEED"},
+  {"type":"GRANT_TOO_SMALL"},
+  {"type":"NESTED_EXECUTION"},
+  {"type":"HOST_UNAVAILABLE","operation":"FLOW_READ","prerequisite":"PROJECT_DISPOSED"},
+  {"type":"HOST_UNAVAILABLE","operation":"MODEL_SITE","prerequisite":"INDEXES_UNAVAILABLE"},
+  {"type":"UNEXPECTED_NATIVE_FAILURE","operation":"FLOW_READ","kind":"RUNTIME","exceptionType":"java.lang.IllegalStateException","adapterFrames":["io.github.amichne.kast.Adapter.read:12"]},
+  {"type":"UNEXPECTED_NATIVE_FAILURE","operation":"PRODUCER_SEED","kind":"LINKAGE","exceptionType":"java.lang.NoSuchMethodError","adapterFrames":[]},
+  {"type":"NESTED_RELATION_REJECTED","origin":"IMPLEMENTATION_DISPATCH","rejection":"WORKSPACE_INDEX_UNAVAILABLE"},
+  {"type":"NESTED_RELATION_REJECTED","origin":"RETURN_CALLER_REFERENCES","rejection":"COMPILER_CONTRACT_VIOLATION"},
+  {"type":"PORT_UNCONFIGURED","operation":"FLOW_READ"}
+]

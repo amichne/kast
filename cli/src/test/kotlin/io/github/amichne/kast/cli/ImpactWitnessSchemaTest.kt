@@ -319,7 +319,9 @@ private fun witnessExamples(): List<ImpactWitnessDocument> {
                 ImpactReadRejectionDocument.Native(
                     site,
                     ImpactRequestedBoundaryDocument.Workspace,
-                    ImpactNativeReadRejectionDocument.NATIVE_UNAVAILABLE,
+                    ImpactNativeReadRejectionDocument.PortUnconfigured(
+                        io.github.amichne.kast.protocol.contract.ImpactNativeOperationDocument.FLOW_READ
+                    ),
                     count(3),
                 )
             ),

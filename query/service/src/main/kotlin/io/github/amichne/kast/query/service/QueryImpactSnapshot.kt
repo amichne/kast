@@ -24,7 +24,6 @@ import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
 
 private const val IMPACT_CONTAINER_STORAGE_BYTES = 512L
-private const val IMPACT_REJECTION_STORAGE_BYTES = 4096L
 private const val PROGRESS_HASH_MULTIPLIER = 31
 
 /** Detached routes are tasks in the one query interpreter, never independent continuation tokens. */
@@ -135,7 +134,7 @@ internal data class QueryImpactSnapshot(
                     saturatedAdd(
                         remainders.values.fold(0L) { bytes, value -> saturatedAdd(bytes, graph.remainder(value)) },
                         readRejections.entries.fold(0L) { bytes, entry ->
-                            saturatedAdd(bytes, saturatedAdd(graph.site(entry.key), IMPACT_REJECTION_STORAGE_BYTES))
+                            saturatedAdd(bytes, saturatedAdd(graph.site(entry.key), graph.rejection(entry.value)))
                         },
                     ),
                 ),

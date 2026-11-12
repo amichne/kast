@@ -297,7 +297,8 @@ private val reusableServerOutputSchemas: Map<String, JsonObject> by lazy {
         .apply {
             for ((name, serializer) in
                 io.github.amichne.kast.protocol.wire.presentation.CanonicalCallbackSchemaDocuments.serializers +
-                    CanonicalReviewedSchemaDocuments.serializers) {
+                    CanonicalReviewedSchemaDocuments.serializers +
+                    io.github.amichne.kast.cli.CanonicalNativeFailureSchemaDocuments.serializers) {
                 check(name !in this) { "Duplicate canonical schema address: $name" }
                 this[name] = generatedOutputSchema(serializer)
             }

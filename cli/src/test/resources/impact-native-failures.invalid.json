@@ -1,0 +1,13 @@
+[
+  "NATIVE_UNAVAILABLE",
+  {"type":"NATIVE_UNAVAILABLE"},
+  {"type":"HOST_UNAVAILABLE","operation":"FLOW_READ"},
+  {"type":"HOST_UNAVAILABLE","prerequisite":"PROJECT_DISPOSED"},
+  {"type":"UNEXPECTED_NATIVE_FAILURE","operation":"FLOW_READ","kind":"LINKAGE","exceptionType":"java.lang.NoSuchMethodError"},
+  {"type":"UNEXPECTED_NATIVE_FAILURE","operation":"FLOW_READ","exceptionType":"java.lang.NoSuchMethodError","adapterFrames":[]},
+  {"type":"UNEXPECTED_NATIVE_FAILURE","operation":"FLOW_READ","kind":"LINKAGE","adapterFrames":[]},
+  {"type":"NESTED_RELATION_REJECTED","origin":"IMPLEMENTATION_DISPATCH"},
+  {"type":"NESTED_RELATION_REJECTED","rejection":"WORKSPACE_INDEX_UNAVAILABLE"},
+  {"type":"PORT_UNCONFIGURED"},
+  {"type":"NESTED_RELATION_REJECTED","origin":"IMPLEMENTATION_DISPATCH","rejection":"UNKNOWN"}
+]

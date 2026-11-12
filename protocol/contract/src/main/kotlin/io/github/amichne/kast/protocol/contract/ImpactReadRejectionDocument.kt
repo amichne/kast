@@ -30,19 +30,6 @@ sealed interface ImpactReadRejectionDocument {
 }
 
 @Serializable
-enum class ImpactNativeReadRejectionDocument {
-    STALE_SITE,
-    OUTSIDE_DOMAIN,
-    OWNER_UNAVAILABLE,
-    AUTHORITY_MOVED,
-    UNSUPPORTED_SEED,
-    UNRESOLVED_SEED,
-    NATIVE_UNAVAILABLE,
-    GRANT_TOO_SMALL,
-    NESTED_EXECUTION,
-}
-
-@Serializable
 enum class ImpactReadContractRejectionDocument {
     INVALID_PROGRESS,
     WORK_LIMIT_EXCEEDED,

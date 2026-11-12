@@ -6,7 +6,18 @@ import anyio
 import pytest
 from access import prepare
 from pydantic import BaseModel
-from transport import Catalog, CatalogReply, Envelope, Reason, Rejected, Reply, Tool, admit, execute
+from transport import (
+    AdmittedTool,
+    Catalog,
+    CatalogReply,
+    Envelope,
+    Reason,
+    Rejected,
+    Reply,
+    Tool,
+    admit,
+    execute,
+)
 
 
 class Document(BaseModel):
@@ -14,7 +25,7 @@ class Document(BaseModel):
     reason: str
 
 
-def catalog(effect: str = "READ") -> bytes:
+def catalog(effect: str = "READ", version: int = 17) -> bytes:
     tool = Tool.model_validate(
         {
             "name": "query_symbols",
@@ -32,7 +43,7 @@ def catalog(effect: str = "READ") -> bytes:
         CatalogReply(
             type="catalog",
             catalog=Catalog(
-                schemaVersion=17,
+                schemaVersion=version,
                 tools=(tool,),
                 callTimeoutMillis=1_800_000,
                 maxResponseBytes=4_194_304,
@@ -50,6 +61,11 @@ def test_catalog_rejects_write_without_explicit_selection(tmp_path: Path) -> Non
     outcome = admit(prepared, catalog("WRITE"))
     assert isinstance(outcome, Rejected)
     assert outcome.reason == Reason.WRITE_NOT_SELECTED
+
+
+@pytest.mark.parametrize("version", [17, 18, 19])
+def test_known_catalog_contracts_preserve_request_admission(version: int) -> None:
+    assert isinstance(admit(prepare(["find", "Thing"]), catalog(version=version)), AdmittedTool)
 
 
 def test_unknown_contract_and_bad_request_are_local_failures(tmp_path: Path) -> None:

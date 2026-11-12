@@ -372,5 +372,10 @@ private fun <V, F> Refinement<V, F>.impactRefined(): V =
     }
 
 internal val unavailableValueFlowPort = ValueFlowCompilerPort {
-    ValueFlowRead.Rejected(ValueFlowRejection.NATIVE_UNAVAILABLE, RelationWorkCount.parse(0).impactRefined())
+    ValueFlowRead.Rejected(
+        ValueFlowRejection.Native.PortUnconfigured(
+            io.github.amichne.kast.relation.contract.ValueNativeOperation.FLOW_READ
+        ),
+        RelationWorkCount.parse(0).impactRefined(),
+    )
 }

@@ -69,7 +69,22 @@ private fun ValueFlowRejection.valueFlowTermination(): IntellijReadTermination =
         ValueFlowRejection.AUTHORITY_MOVED -> IntellijReadTermination.VALUE_FLOW_REJECTED_AUTHORITY_MOVED
         ValueFlowRejection.UNSUPPORTED_SEED -> IntellijReadTermination.VALUE_FLOW_REJECTED_UNSUPPORTED_SEED
         ValueFlowRejection.UNRESOLVED_SEED -> IntellijReadTermination.VALUE_FLOW_REJECTED_UNRESOLVED_SEED
-        ValueFlowRejection.NATIVE_UNAVAILABLE -> IntellijReadTermination.VALUE_FLOW_REJECTED_NATIVE_UNAVAILABLE
+        is ValueFlowRejection.Native.HostUnavailable ->
+            when (prerequisite) {
+                io.github.amichne.kast.relation.contract.ValueNativePrerequisite.PROJECT_DISPOSED ->
+                    IntellijReadTermination.VALUE_FLOW_PROJECT_DISPOSED
+                io.github.amichne.kast.relation.contract.ValueNativePrerequisite.INDEXES_UNAVAILABLE ->
+                    IntellijReadTermination.VALUE_FLOW_INDEXES_UNAVAILABLE
+            }
+        is ValueFlowRejection.Native.Unexpected ->
+            when (failure.kind) {
+                io.github.amichne.kast.relation.contract.ValueNativeUnexpectedKind.RUNTIME ->
+                    IntellijReadTermination.VALUE_FLOW_UNEXPECTED_RUNTIME
+                io.github.amichne.kast.relation.contract.ValueNativeUnexpectedKind.LINKAGE ->
+                    IntellijReadTermination.VALUE_FLOW_UNEXPECTED_LINKAGE
+            }
+        is ValueFlowRejection.Native.RelationRejected -> IntellijReadTermination.VALUE_FLOW_NESTED_RELATION_REJECTED
+        is ValueFlowRejection.Native.PortUnconfigured -> IntellijReadTermination.VALUE_FLOW_PORT_UNCONFIGURED
         ValueFlowRejection.GRANT_TOO_SMALL -> IntellijReadTermination.VALUE_FLOW_REJECTED_GRANT_TOO_SMALL
         ValueFlowRejection.NESTED_EXECUTION -> IntellijReadTermination.VALUE_FLOW_REJECTED_NESTED_EXECUTION
     }

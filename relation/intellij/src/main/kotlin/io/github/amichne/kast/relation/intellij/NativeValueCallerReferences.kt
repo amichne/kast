@@ -37,7 +37,13 @@ internal class NativeValueCallerReferences(
         val selected =
             when (val value = scope.forRequest(question)) {
                 is Refinement.Refined -> value.value
-                is Refinement.Rejected -> return consume(NativeValueReturnEffect.Rejected(value.failure))
+                is Refinement.Rejected ->
+                    return consume(
+                        NativeValueReturnEffect.Rejected(
+                            value.failure,
+                            io.github.amichne.kast.relation.contract.ValueNativeRelationOrigin.RETURN_CALLER_REFERENCES,
+                        )
+                    )
             }
         val collector =
             IntellijRelationCollector(request = question, observation = projection.observation, allowance = allowance)
@@ -55,7 +61,13 @@ internal class NativeValueCallerReferences(
                 consume(NativeValueReturnEffect.InventoryIncomplete(compiled.coverage.limitations))
                 false
             }
-            is RelationCompilation.Rejected -> consume(NativeValueReturnEffect.Rejected(compiled.reason))
+            is RelationCompilation.Rejected ->
+                consume(
+                    NativeValueReturnEffect.Rejected(
+                        compiled.reason,
+                        io.github.amichne.kast.relation.contract.ValueNativeRelationOrigin.RETURN_CALLER_REFERENCES,
+                    )
+                )
         }
     }
 

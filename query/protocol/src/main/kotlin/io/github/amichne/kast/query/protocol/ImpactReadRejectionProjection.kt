@@ -43,7 +43,7 @@ internal fun ValueFlowRejection.impactDocument(): ImpactNativeReadRejectionDocum
         ValueFlowRejection.AUTHORITY_MOVED -> ImpactNativeReadRejectionDocument.AUTHORITY_MOVED
         ValueFlowRejection.UNSUPPORTED_SEED -> ImpactNativeReadRejectionDocument.UNSUPPORTED_SEED
         ValueFlowRejection.UNRESOLVED_SEED -> ImpactNativeReadRejectionDocument.UNRESOLVED_SEED
-        ValueFlowRejection.NATIVE_UNAVAILABLE -> ImpactNativeReadRejectionDocument.NATIVE_UNAVAILABLE
+        is ValueFlowRejection.Native -> nativeDocument()
         ValueFlowRejection.GRANT_TOO_SMALL -> ImpactNativeReadRejectionDocument.GRANT_TOO_SMALL
         ValueFlowRejection.NESTED_EXECUTION -> ImpactNativeReadRejectionDocument.NESTED_EXECUTION
     }
