@@ -209,7 +209,10 @@ internal class NativeValueExpressionFlow(
     private fun assignmentDestination(expression: KtExpression, assignment: KtBinaryExpression) {
         if (nativeExternalInfixCall(assignment, observation)) {
             val context = receiverContext(request, scope, projection, allowance)
-            when (val role = nativeReviewedTupleRole(expression, assignment, request.source.executionOwner, context)) {
+            when (
+                val role =
+                    nativeReviewedExternalTupleRole(expression, assignment, request.source.executionOwner, context)
+            ) {
                 is Refinement.Refined ->
                     when (val selected = role.value) {
                         is ValueRole.Receiver -> retained.emit(expression, selected, ValueTransferKind.RECEIVER)
