@@ -53,6 +53,8 @@ class HostedManagedApplicationEncodingTest {
         val json = Json { encodeDefaults = true }
         val encoded = json.encodeToString(document)
         assertTrue(schema.validate(encoded, InputFormat.JSON).isEmpty(), encoded)
+        val obsoleteSchema = json.encodeToString(document.copy(querySchema = "kast.query.run.v9"))
+        assertTrue(schema.validate(obsoleteSchema, InputFormat.JSON).isNotEmpty())
         val desktop =
             json.encodeToString(
                 document.copy(

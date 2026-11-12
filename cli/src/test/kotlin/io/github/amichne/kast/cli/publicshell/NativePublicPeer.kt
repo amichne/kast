@@ -233,7 +233,7 @@ private data class PeerDescriptor(
     val type: String = "KAST_IDE_ENDPOINT",
     val protocol: Int = 3,
     val hostPid: Long = ProcessHandle.current().pid(),
-    val querySchema: String = "kast.query.run.v9",
+    val querySchema: String = "kast.query.run.v10",
     val operations: List<String> = peerOperations(),
 )
 
@@ -245,7 +245,7 @@ private data class PeerHost(
     val type: String = "KAST_IDE_HOST",
     val protocol: Int = 3,
     val hostPid: Long = ProcessHandle.current().pid(),
-    val querySchema: String = "kast.query.run.v9",
+    val querySchema: String = "kast.query.run.v10",
     val indexAuthority: String = "existing_ide_kotlin_stub_index",
     val operations: List<String> = peerOperations(),
 )

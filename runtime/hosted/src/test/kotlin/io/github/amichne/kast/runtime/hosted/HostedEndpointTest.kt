@@ -61,9 +61,10 @@ class HostedEndpointTest {
             canonical,
             (CanonicalOperationWireBindings.queryRun.encodeRequest(admitted.request) as WireEncoding.Encoded).document,
         )
+        assertTrue(canonical.contains("kast.query.run.v10"))
         assertEquals(
             Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST),
-            HostedRequests.decode(hosted(canonical.replace("kast.query.run.v9", "kast.query.run.v8"))),
+            HostedRequests.decode(hosted(canonical.replace("kast.query.run.v10", "kast.query.run.v9"))),
         )
         assertEquals(
             Refinement.Rejected(HostedEndpointFailure.INVALID_REQUEST),
