@@ -4,6 +4,18 @@
     {
       "finding": {
         "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/composition.mdx",
+        "sourceSha256": "eab17aa6dce52a202b0501f1d5325e23c22a29bcf176918811048e00318f77a0",
+        "rule": "Reference.Examples",
+        "line": 1,
+        "message": "Reference provides examples. There is no code block on this page.",
+        "severity": "suggestion"
+      },
+      "reason": "This view explains internal row transitions. Query pipelines owns runnable requests and keeps examples beside the public command forms."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
         "path": "docs/public/snippets/okf/contracts/operation-outcomes.mdx",
         "sourceSha256": "2d985ea524de3e051e9c4fd2f1e81e33874bd0a4c0119996685db3728ceee395",
         "rule": "Slopsentral.Grade",
@@ -609,18 +621,6 @@
         "rule": "Slopsentral.LongSentence",
         "line": 424,
         "message": "Long sentence: 28 words.",
-        "severity": "warning"
-      },
-      "reason": "Keep the exact original-row expansion rule, accounting invariants, and unused-semantic-executor control together. This paragraph remains unchanged after the separate grammar correction. The sentence-length advisories remain visible."
-    },
-    {
-      "finding": {
-        "stage": "root-vale-3.24.0",
-        "path": "openwiki/modules/query-protocol.md",
-        "sourceSha256": "29ff34591aa836da626ca985e0f098e73623119410d063edb77ea4da4dfbe343",
-        "rule": "Slopsentral.LongSentence",
-        "line": 424,
-        "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
       "reason": "Keep the exact original-row expansion rule, accounting invariants, and unused-semantic-executor control together. This paragraph remains unchanged after the separate grammar correction. The sentence-length advisories remain visible."

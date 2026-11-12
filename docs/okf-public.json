@@ -73,7 +73,7 @@
         "source-evidence",
         "state-determines-whether-reuse-remains-legal"
       ],
-      "introduction": "This page explains internal query stages and stored evidence. [How to understand a Kast answer](/explanation) introduces the reader concepts.\n\nFor public requests, use [Query forms](/reference/api). Contract 18 selects `TRACE` through `terminalStep`, never through `steps`. The internal TRACE stage described here does not change that public request grammar.\n\nExact reference: [Results](/reference/responses).\n\nExplanations: [Query reuse](/architecture/query-reuse).\n\nTask procedures: [Read retained output](/how-to/read-retained-evidence)."
+      "introduction": "This page explains internal query stages and stored evidence. [How to understand a Kast answer](/explanation) introduces the reader concepts.\n\nFor public requests, use [Query forms](/reference/api). Contract 19 selects `TRACE` through `terminalStep`, never through `steps`. The internal TRACE stage described here does not change that public request grammar.\n\nExact reference: [Results](/reference/responses).\n\nExplanations: [Query reuse](/architecture/query-reuse).\n\nTask procedures: [Read retained output](/how-to/read-retained-evidence)."
     },
     {
       "route": "reference/callbacks",
@@ -114,7 +114,7 @@
         "row-compatibility",
         "set-operations"
       ],
-      "introduction": "Use this page to understand why some set operations need complete inputs. See [Combine query results](/reference/query-pipelines) for runnable requests.\n\nIn [query contract 18](/reference/api), set `terminalStep.type` to `TRACE` to trace results after the optional transformation steps."
+      "introduction": "Use this page to understand why some set operations need complete inputs. See [Combine query results](/reference/query-pipelines) for runnable requests.\n\nIn [query contract 19](/reference/api), set `terminalStep.type` to `TRACE` to trace results after the optional transformation steps."
     },
     {
       "route": "reference/evidence-boundaries",
@@ -1729,10 +1729,10 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "architecture/codex-transport",
@@ -1961,7 +1961,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -2021,7 +2021,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -2097,14 +2097,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "architecture/relations-and-traversal",
@@ -2283,10 +2283,10 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "explanation",
@@ -2430,7 +2430,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -2490,7 +2490,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -2621,21 +2621,21 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "explanation/query-lifecycle",
       "content": [
         {
           "path": "docs/public/explanation/query-lifecycle.mdx",
-          "sha256": "633d2ddab6130e63565627ff42f62b398ecf3e648551072399cb94f9897ad780"
+          "sha256": "b738a8c190a64b4079059ddca2908cdada303f736faa02fdcac5d68a5baf66d1"
         },
         {
           "path": "docs/public/snippets/diagrams/query-lifecycle.jsx",
@@ -2709,10 +2709,10 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "explanation/value-journey",
@@ -2805,18 +2805,18 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         },
         {
           "path": "docs/tooling/value-journey/src/trace.ts",
           "sha256": "6e948fb730e4b47985f1d7397f7020a5c4dc68dd78d6d8a922761d4b53f04c48"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "explanation/value-journey-evidence",
@@ -2901,18 +2901,18 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         },
         {
           "path": "docs/tooling/value-journey/src/trace.ts",
           "sha256": "6e948fb730e4b47985f1d7397f7020a5c4dc68dd78d6d8a922761d4b53f04c48"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "glossary",
@@ -3164,7 +3164,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -3224,7 +3224,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -3355,14 +3355,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "how-to/inspect-diagnostics",
@@ -3392,14 +3392,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "how-to/read-retained-evidence",
@@ -3543,7 +3543,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -3603,7 +3603,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -3679,14 +3679,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "index",
@@ -3889,7 +3889,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -3949,7 +3949,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -4150,14 +4150,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference",
@@ -4301,7 +4301,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -4361,7 +4361,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -4492,21 +4492,21 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/api",
       "content": [
         {
           "path": "docs/public/reference/api.mdx",
-          "sha256": "3775d6c63c5a8edd4a5f4628aef57a1b4a95a8a8a84a46c41a76802728990b35"
+          "sha256": "cf82d14cbbec8565055bc35f4ccb1f1e7f930de7b15e5406a5001cfe2135de59"
         }
       ],
       "claims": [
@@ -4643,7 +4643,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -4703,7 +4703,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -4849,25 +4849,25 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/callables/add-declaration",
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "cd82864a39fdec1096c7e53bb9025f0a2cd46502d2cbd2b4bb979ac28b527569"
+          "sha256": "fedcc8bcc13e3daa5b623821332b93526b3f90f0cae7aaa2475abb6d45d10b47"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         },
         {
           "path": "docs/public/reference/callables/add-declaration.mdx",
@@ -4875,7 +4875,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "eada7a6050e1f1acc321c4c5bb30529e242eb04925adf3c6a18deeca6c42bdfc"
+          "sha256": "cd04b82d7a502d7741b9f1e378a0e6d74dc5ea5b971371aa3c9a1478392dac51"
         }
       ],
       "claims": [],
@@ -4897,18 +4897,18 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/callables/check-diagnostics",
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "cd82864a39fdec1096c7e53bb9025f0a2cd46502d2cbd2b4bb979ac28b527569"
+          "sha256": "fedcc8bcc13e3daa5b623821332b93526b3f90f0cae7aaa2475abb6d45d10b47"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         },
         {
           "path": "docs/public/reference/callables/check-diagnostics.mdx",
@@ -4916,7 +4916,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "eada7a6050e1f1acc321c4c5bb30529e242eb04925adf3c6a18deeca6c42bdfc"
+          "sha256": "cd04b82d7a502d7741b9f1e378a0e6d74dc5ea5b971371aa3c9a1478392dac51"
         }
       ],
       "claims": [],
@@ -4938,18 +4938,18 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/callables/query-symbols",
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "cd82864a39fdec1096c7e53bb9025f0a2cd46502d2cbd2b4bb979ac28b527569"
+          "sha256": "fedcc8bcc13e3daa5b623821332b93526b3f90f0cae7aaa2475abb6d45d10b47"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         },
         {
           "path": "docs/public/reference/callables/query-symbols.mdx",
@@ -4957,7 +4957,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "eada7a6050e1f1acc321c4c5bb30529e242eb04925adf3c6a18deeca6c42bdfc"
+          "sha256": "cd04b82d7a502d7741b9f1e378a0e6d74dc5ea5b971371aa3c9a1478392dac51"
         }
       ],
       "claims": [],
@@ -4979,18 +4979,18 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/callables/replace-body",
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "cd82864a39fdec1096c7e53bb9025f0a2cd46502d2cbd2b4bb979ac28b527569"
+          "sha256": "fedcc8bcc13e3daa5b623821332b93526b3f90f0cae7aaa2475abb6d45d10b47"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         },
         {
           "path": "docs/public/reference/callables/replace-body.mdx",
@@ -4998,7 +4998,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "eada7a6050e1f1acc321c4c5bb30529e242eb04925adf3c6a18deeca6c42bdfc"
+          "sha256": "cd04b82d7a502d7741b9f1e378a0e6d74dc5ea5b971371aa3c9a1478392dac51"
         }
       ],
       "claims": [],
@@ -5020,18 +5020,18 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/callables/workspace-lifecycle",
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "cd82864a39fdec1096c7e53bb9025f0a2cd46502d2cbd2b4bb979ac28b527569"
+          "sha256": "fedcc8bcc13e3daa5b623821332b93526b3f90f0cae7aaa2475abb6d45d10b47"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         },
         {
           "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
@@ -5039,7 +5039,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "eada7a6050e1f1acc321c4c5bb30529e242eb04925adf3c6a18deeca6c42bdfc"
+          "sha256": "cd04b82d7a502d7741b9f1e378a0e6d74dc5ea5b971371aa3c9a1478392dac51"
         }
       ],
       "claims": [],
@@ -5061,7 +5061,7 @@
           "sha256": "78771c203eeb7433d2028e994071d631c631e16478080727419004245c01fc96"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/callback-observations",
@@ -5176,14 +5176,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/callbacks",
@@ -5266,10 +5266,10 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/change",
@@ -5314,14 +5314,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/cli",
@@ -5465,7 +5465,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -5525,7 +5525,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -5708,7 +5708,7 @@
         },
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "cli/build.gradle.kts",
@@ -5856,7 +5856,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         },
         {
           "path": "gradle/libs.versions.toml",
@@ -5875,7 +5875,7 @@
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/compatibility",
@@ -6125,21 +6125,21 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "aa550bd1b0dff38eb492d20df0658bb62cf44512"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/composition",
       "content": [
         {
           "path": "docs/public/reference/composition.mdx",
-          "sha256": "b6743f2b59f1181b15e2775061e60bc4db4d0a957e1d2c10be8f93b0f74ffa76"
+          "sha256": "eab17aa6dce52a202b0501f1d5325e23c22a29bcf176918811048e00318f77a0"
         },
         {
           "path": "docs/public/snippets/okf/queries/execution-and-composition.mdx",
@@ -6186,10 +6186,10 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/evidence-boundaries",
@@ -6200,7 +6200,7 @@
         },
         {
           "path": "docs/public/snippets/okf/contracts/operation-outcomes.mdx",
-          "sha256": "4c49fd4be208fc32f1047be317b298af2a77145d194fcbc66694000df4b9baf4"
+          "sha256": "2d985ea524de3e051e9c4fd2f1e81e33874bd0a4c0119996685db3728ceee395"
         },
         {
           "path": "docs/public/snippets/okf/glossary/evidence-authority.mdx",
@@ -6297,15 +6297,20 @@
           "page": "openwiki/contracts/operation-outcomes.md",
           "claimId": "claim_ba8e32ac6ea44054aeb88e260d10f277",
           "statementSha256": "2ca5a80a705624db6ce35c43e8ce838cce90b5bf09615dccb2a3ec9405124854"
+        },
+        {
+          "page": "openwiki/contracts/operation-outcomes.md",
+          "claimId": "claim_bab1df967f9f4a3dab11086081317997",
+          "statementSha256": "b608656e2c5cc5f74c2c6e83d72c550e2f39e895080bde0ca12d0c89f07146b0"
         }
       ],
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/installation",
@@ -6545,14 +6550,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/integrations",
@@ -6672,14 +6677,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/internals/architecture",
@@ -6717,10 +6722,10 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/internals/background-startup",
@@ -6802,10 +6807,10 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/lifecycles",
@@ -6951,7 +6956,7 @@
         },
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
@@ -6963,10 +6968,10 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/limits",
@@ -7165,7 +7170,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -7225,7 +7230,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -7426,14 +7431,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "aa550bd1b0dff38eb492d20df0658bb62cf44512"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/management",
@@ -7628,14 +7633,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/mcp-catalog",
@@ -7779,7 +7784,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -7839,7 +7844,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -8010,14 +8015,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/models/diagnostic",
@@ -8161,7 +8166,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -8221,7 +8226,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -8352,14 +8357,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/models/live-evidence",
@@ -8503,7 +8508,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -8563,7 +8568,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -8694,14 +8699,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/models/mcp-change-result",
@@ -8845,7 +8850,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -8905,7 +8910,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -9036,14 +9041,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/models/mcp-investigation-result",
@@ -9187,7 +9192,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -9247,7 +9252,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -9378,14 +9383,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/models/mcp-read-result",
@@ -9529,7 +9534,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -9589,7 +9594,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -9720,14 +9725,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/models/mcp-tool-call-result",
@@ -9871,7 +9876,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -9931,7 +9936,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -10062,14 +10067,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/models/query-item",
@@ -10213,7 +10218,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -10273,7 +10278,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -10404,14 +10409,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/models/relation-fact",
@@ -10555,7 +10560,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -10615,7 +10620,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -10746,14 +10751,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/models/tool-rpc-reply",
@@ -10897,7 +10902,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -10957,7 +10962,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -11088,14 +11093,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/program-tracing",
@@ -11244,14 +11249,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/query-pipelines",
@@ -11395,7 +11400,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -11455,7 +11460,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -11531,14 +11536,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/responses",
@@ -11682,7 +11687,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -11742,7 +11747,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -11888,21 +11893,21 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/rpc-catalog",
       "content": [
         {
           "path": "docs/public/reference/rpc-catalog.mdx",
-          "sha256": "38f28196c2daa51fda38e3050100c69d70c7c742fdd50db2f76fd1ffca19d346"
+          "sha256": "a11c6b32d37cac714b2ac7d2586a4fc0340691b0be7084fdb20112343da8a381"
         }
       ],
       "claims": [
@@ -12039,7 +12044,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -12099,7 +12104,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -12270,14 +12275,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/schemas",
@@ -12421,7 +12426,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -12481,7 +12486,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -12557,14 +12562,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/search",
@@ -12708,7 +12713,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -12768,7 +12773,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -12899,14 +12904,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/source-map",
@@ -13135,7 +13140,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -13195,7 +13200,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -13731,14 +13736,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/staleness",
@@ -13799,10 +13804,10 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/symbols",
@@ -13865,10 +13870,10 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/troubleshooting",
@@ -14118,14 +14123,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "reference/walkthrough",
@@ -14269,7 +14274,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -14329,7 +14334,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -14405,14 +14410,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "search",
@@ -14560,7 +14565,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -14620,7 +14625,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -14811,14 +14816,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "start",
@@ -15021,7 +15026,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -15081,7 +15086,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -15342,14 +15347,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "troubleshooting",
@@ -15603,14 +15608,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     },
     {
       "route": "tutorials/first-query",
@@ -15758,7 +15763,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
+          "statementSha256": "0f47498e308c4b5704dff8b0b31abc316421d244792b049b2377900d7ef9854c"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -15818,7 +15823,7 @@
         {
           "page": "openwiki/contracts/public-tools.md",
           "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
+          "statementSha256": "5e8900cc129f8faa65396e8451eafb9ead94db3551ff90821fde20e4aa72b442"
         },
         {
           "page": "openwiki/contracts/public-tools.md",
@@ -15949,14 +15954,14 @@
       "generatedOwners": [
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
+          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
+      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
     }
   ]
 }
