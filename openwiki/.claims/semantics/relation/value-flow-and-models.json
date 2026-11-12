@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5821ebb611c547164930d8a9d1e54f351998fe24ba267cfa9a04d32523c11fe8",
+  "pageVersion": "sha256:e6ea77accdf499c97f92324127212b4b6de586fa722d4f8e30fe16578013ff3c",
   "claims": [
     {
       "id": "claim_fd7c3d76299f4cc4ba039552d6c6105d",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt",
-          "version": "repo-file-v1:sha256:6545489d7c4c435d5c31ab51fb8fab3cba9ef53c59d6e6f4badfb0471de356a3"
+          "version": "repo-file-v1:sha256:6f715d958ea9ec8c056a67390af19df133fd2bf8418d3f1361f49fa571116f4d"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt#L33-L33",
@@ -22,14 +22,14 @@
       "evidence": [
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/ValueFlow.kt",
-          "version": "repo-file-v1:sha256:ebd7eac500e614a53866f324801369fccd3144eabfe18a3cbbf1ca8dc7406535"
+          "version": "repo-file-v1:sha256:4978a9109a715f80c3459e7e776d95ebfd9334734511bc2daa498d9323590b8c"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt",
-          "version": "repo-file-v1:sha256:957d825e9ab5b2521d98d31cbe61e99e2c263c4bee34797a83607c605cc845d7"
+          "version": "repo-file-v1:sha256:bc79516a4aaf02c9c00fca3676f08615aa50a27353a5423d72691a53e2957359"
         },
         {
-          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt#L52-L52",
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt#L57-L57",
           "version": "repo-lines-v1:sha256:bbbf9cd60be58369b2c8634092414d1bb5110f5a8e297a576cfcfe37005edd3c:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmJiZjljZDYwYmU1ODM2OWIyYzg2MzQwOTI0MTRkMWJiNTExMGY1YThlMjk3YTU3NmNmY2ZlMzcwMDVlZGQzYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmJiZjljZDYwYmU1ODM2OWIyYzg2MzQwOTI0MTRkMWJiNTExMGY1YThlMjk3YTU3NmNmY2ZlMzcwMDVlZGQzYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNThkNDEyNjU3Y2YwNGExYjMyMTliYjFiNDNiNjg5ZWJmMjkyM2ZiODYzOTA1MmQ0YTNkMzQzNTU1OGMwMTZhYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjI0MGQ4MjgyNTFiOGZjNTVlZGZhMTUxN2JmMWE4ZTFmZTJmNjY1NTFmMjNhNjNmMWVhNWFkZDRiYjNiNmI2NiJ9"
         }
       ]
@@ -51,10 +51,28 @@
           "version": "repo-file-v1:sha256:aa41c1238c336842c7a23dc43c6b0b5f234aeb820b286f49d30fd3af58ed4382"
         }
       ]
+    },
+    {
+      "id": "claim_73130c43604d419db0ce456027fdb363",
+      "statement": "An established external call keeps its EXTERNAL_CALL obligation if the tuple fallback finds no matching model or source artifact. The adapter adds no transfer through the call.",
+      "evidence": [
+        {
+          "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeReviewedTupleFlow.kt",
+          "version": "repo-file-v1:sha256:276c47babc674c9748ab86d6f931ba8c5665748a032986bbb28281887bd74cd1"
+        },
+        {
+          "resource": "repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeFlowClosureTest.kt",
+          "version": "repo-file-v1:sha256:ecdb548dff47f9b5ba2db44d70dfe0b1f259e0fe5a38217d76d5ea09b53af530"
+        },
+        {
+          "resource": "repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeImpactBoundaryReproductionTest.kt",
+          "version": "repo-file-v1:sha256:34c216289950b287f96bea49180bccaf2d024481a8671290e5ff91eedfd4e45a"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-12T06:35:59.298Z"
   }
 }

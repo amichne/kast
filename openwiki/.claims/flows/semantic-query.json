@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ec380b72486baac9faf80285896711c091c90f36295fe27bd28913341df54778",
+  "pageVersion": "sha256:d13190a18c809e29d6c79137f5957e115ad98a1778580d0ff413b84001cda68d",
   "claims": [
     {
       "id": "claim_028d251874414d8da5da1449de9e8ce4",
@@ -42,11 +42,11 @@
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactSnapshot.kt",
-          "version": "repo-file-v1:sha256:f666f8f68d01ee51752dec25c71f1e610cfbfb1631a1e35b1135b4d46fe425ff"
+          "version": "repo-file-v1:sha256:3e9ea72caca2725f40df79f6148967e26984ec7316ede8a7ddfb637d21079b4a"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt",
-          "version": "repo-file-v1:sha256:da227b2815b06fcdfe761f4347bb09fafb1e742f7a50593044cef95af7e8085f"
+          "version": "repo-file-v1:sha256:07d5a8b472c1552b79b1061a9cb345ae0eefddd0992a31f042d9bb62cac4aa5a"
         }
       ]
     },
@@ -56,7 +56,7 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
-          "version": "repo-file-v1:sha256:e6e52d39b3b443768fbea0ec1a8df85cb8317e7e68a8c8d34bf8c257cba61ef7"
+          "version": "repo-file-v1:sha256:c65d3df226fed10a77dcabdfa8c217b3daebf0200943cb1cc85d9a1284a2898c"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt",
@@ -90,7 +90,7 @@
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/ImpactFindingQualificationTest.kt",
-          "version": "repo-file-v1:sha256:c4baf707f5cd25485fb8cb4400413ee76c7820aaabb77ab359d9c0a05ea312f2"
+          "version": "repo-file-v1:sha256:3958c9db11709f81a9babf6a9bcda8673b4d10ec8a044fc58f799b7d85011a81"
         }
       ]
     },
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt",
-          "version": "repo-file-v1:sha256:da227b2815b06fcdfe761f4347bb09fafb1e742f7a50593044cef95af7e8085f"
+          "version": "repo-file-v1:sha256:07d5a8b472c1552b79b1061a9cb345ae0eefddd0992a31f042d9bb62cac4aa5a"
         }
       ]
     },
@@ -140,7 +140,7 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRetainedGraph.kt",
-          "version": "repo-file-v1:sha256:e6e52d39b3b443768fbea0ec1a8df85cb8317e7e68a8c8d34bf8c257cba61ef7"
+          "version": "repo-file-v1:sha256:c65d3df226fed10a77dcabdfa8c217b3daebf0200943cb1cc85d9a1284a2898c"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt",
@@ -173,10 +173,24 @@
           "version": "repo-file-v1:sha256:7ea8bd454818eeabba32af0c7ef7ac06b5ddac6a2f6fef9c71626c8f7f0f0b8e"
         }
       ]
+    },
+    {
+      "id": "claim_166d19776cd447eba113081ce6cae2b8",
+      "statement": "Each rejected native read keeps its own cause in the retained path and paged witness. Two rejected reads in one investigation can carry different causes.",
+      "evidence": [
+        {
+          "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryValuePathEvidence.kt",
+          "version": "repo-file-v1:sha256:eba06ed64b0583eb7597b854412c354929117529829fe46a50bd386c54a65a36"
+        },
+        {
+          "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RejectedPrefixRetentionCase.kt",
+          "version": "repo-file-v1:sha256:e3063720cab1f7ef0d884013f7c0ade6b5ebc931c1961dce7a24f161aed64525"
+        }
+      ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T06:09:31.584Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-12T06:35:59.298Z"
   }
 }

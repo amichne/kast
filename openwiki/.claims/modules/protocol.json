@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:424674180fb41ee4bb678f252389a5343e2053a2c1483446494e0f278d336649",
+  "pageVersion": "sha256:8f8fe938c56122d80c50273c3023cecfb201e851147e7f9e62bbef3f01647bf0",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -42,7 +42,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt",
-          "version": "repo-file-v1:sha256:0e48e737e95b2c7dc8b3351ab9c246d3054efda61b3f7f7cfdd954e808a0c6bb"
+          "version": "repo-file-v1:sha256:699c66b2890e7c9c382210ab93037f784f131d7350507ae54c15cd2af3621581"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/CanonicalQueryCliDocuments.kt",
@@ -172,7 +172,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-06T20:52:34.571Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-12T06:30:47.924Z"
   }
 }

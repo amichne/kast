@@ -263,10 +263,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-8d15fa1e67cdc054e05e2796
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+generated: { by: "codex", at: "2026-11-12T06:30:47.924Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-03T06:09:31.584Z
+  - by: openwiki/0.9.0
+    at: 2026-11-12T06:35:59.298Z
 ---
 
 # Semantic read domains
@@ -701,7 +701,7 @@ or installed IDE result.
 The restoration boundary adds `VALUE_SITE_RESTORATION` phase evidence and one
 `VALUE_SITE_RESTORATIONS` counter with a finite restored-shape, rejected-shape or
 unavailable-anchor outcome. Request-local hosted diagnostics accumulate those
-bounded counters and phase evidence beside the existing receipt. The schema-16
+bounded counters and phase evidence beside the existing receipt. The schema-17
 receipt also initializes explicit zero counters for producer seed reads, model
 declaration revalidation, model-site revalidation, model-site revalidation rejection and value-flow reads; entered
 providers add their actual observations. Completion or rejection finalizes one

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2a745504f434f9c00904dff2f2e6bd2277ac5079e0a7eb26d78a159116ba446f",
+  "pageVersion": "sha256:d02bb9b105929db0747e31c9f8807de01f315b22d787f586529b49f65affcaf0",
   "claims": [
     {
       "id": "claim_55bbe06398c44272b3f13d3df179d4ee",
@@ -17,8 +17,8 @@
       "statement": "Read recovery actions are finite directions derived exhaustively from rejection data; they grant no retry, refresh or mutation capability.",
       "evidence": [
         {
-          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt#L6-L104",
-          "version": "repo-lines-v1:sha256:5b05731b4dcfbd35c7ccb764a8149f405fe9842b2d2d59722f792cfb2b4af364:eyJzZWxlY3RlZExpbmVDb3VudCI6OTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZGFiNzgxNjdiZTllOWY5ZjhmNzJkYWVhZmVkNjRlYmQ4NjkyZjhjYjlkMTE3MTliNmJjMTBmOTQ5MTNlZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZmJlYWM5ZGFmN2Y1ODNhMWVjMzc4Y2RjYWNmMmY0YTgxNTlhM2MzZDgwZDJmNzRkMTRmNTdkYzQ5MzQ3MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNzEyMGRhZTk4ODdiOTlhMTg4YmI4ZTg5YTYxZjE0MmY1ZTBlYWViNjU0YTY0NjZkMTIyZDlhODE5MmU1YjUifQ"
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReadRecoveryAction.kt#L6-L118",
+          "version": "repo-lines-v1:sha256:e1d9644d713fc8acf35d29cc30a731444990c3631743301a62d2059955c613e9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI4OGRhYjc4MTY3YmU5ZTlmOWY4ZjcyZGFlYWZlZDY0ZWJkODY5MmY4Y2I5ZDExNzE5YjZiYzEwZjk0OTEzZWYyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ODkzZjQwZTM3ODFlYjg5NmM4MmQwNDZhMDgwNjdhMTFlMzVjZGYyZjFkZmFmMjZmZWE5MGI4ZGI2Njc2NDEzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwOGZiZWFjOWRhZjdmNTgzYTFlYzM3OGNkY2FjZjJmNGE4MTU5YTNjM2Q4MGQyZjc0ZDE0ZjU3ZGM0OTM0NzMwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5ZTcxMjBkYWU5ODg3Yjk5YTE4OGJiOGU4OWE2MWYxNDJmNWUwZWFlYjY1NGE2NDY2ZDEyMmQ5YTgxOTJlNWI1In0"
         }
       ]
     },
@@ -239,10 +239,20 @@
           "version": "repo-lines-v1:sha256:9f38c5ab71312dcbe0704cee5d20f9d45e723de06860dcac772b25f0d6af07ae:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWYzOGM1YWI3MTMxMmRjYmUwNzA0Y2VlNWQyMGY5ZDQ1ZTcyM2RlMDY4NjBkY2FjNzcyYjI1ZjBkNmFmMDdhZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWYzOGM1YWI3MTMxMmRjYmUwNzA0Y2VlNWQyMGY5ZDQ1ZTcyM2RlMDY4NjBkY2FjNzcyYjI1ZjBkNmFmMDdhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzYzZjRiNWU5YmU4Mzc5NjBjNjQwNDU4MTYzMzNiNjBlMzIxODkwNjNhOTFmNWVmZDBkYmJmNDkyMjUzODIyMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzFhZWE0ZGI5NjBlYjU2NWUyYTViNGM3MTdhOWRmYzEyYzYyZDlkYWNjNDcwYzc1NGYyYzg4NTU5OTJmZjYwNSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_bab1df967f9f4a3dab11086081317997",
+      "statement": "An operational native read rejection records a host prerequisite, an unexpected failure, a nested relation rejection, or PORT_UNCONFIGURED. A nested relation rejection keeps the received reason and its origin.",
+      "evidence": [
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactNativeReadRejectionDocument.kt#L12-L57",
+          "version": "repo-lines-v1:sha256:9ef005b55adc83e9147ee3c3028da0a95a56084b31305657689cb762963668d1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhZmY2ZWM3NDliZTc1YmRmZjBhNTZlYmUyOTI2MTM2YWQ2OGQ2NDA4MjliMjBkOTM4N2I5NjQ0ZjE3NTFlYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0ZDE4Njk4ZDE0NDFjNjI1ZTY2YmM5Y2RiYmM1MGFiNDBiY2JlYjA3MWQ4YjAyYTM4NGU5MDBjOGQwNzdkNWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlMTNjOGRjNDhiOGRlOTdjMjNmZjNhNzdiZjg4NDc5OGU0NWU4NTk2YWM2ZjU0ODNhNTllNmNhNDU1ZDkxZWYifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-12T06:38:10.825Z"
   }
 }

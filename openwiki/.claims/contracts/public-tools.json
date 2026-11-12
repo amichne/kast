@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a544109bdf38ec5a489a2a3e5bff62390ab85fa59c49a70a0205deeaa3681c6a",
+  "pageVersion": "sha256:95170b0cff9f7ce76ff85a4ab7c9f3c0fdf64b4b1894b9d60ae79b78353aaea8",
   "claims": [
     {
       "id": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
@@ -194,19 +194,23 @@
     },
     {
       "id": "claim_9631e8c5a90e442f94b16206c07b3094",
-      "statement": "Public contract version18 and generated Pi/Copilot catalog admission need compatible versions before registration. They preserve branch evidence and local addresses.",
+      "statement": "Public contract version 19 keeps branch evidence and adds typed native read rejections. Pi and Copilot reject an incompatible catalog version before tool registration.",
       "evidence": [
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:14a437bda450c93145c9f62622e60483dbd00e5280c9193472ce89a7786ad499"
+          "version": "repo-file-v1:sha256:d63fb1863b8a38ed682afc0bf484364626f7245d865b3dee7ac74428b57db8b7"
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:b93c3360385c1f111ead7ecc5200e50addecffccf05ff7b10735de9e1d072e02"
+          "version": "repo-file-v1:sha256:8daf138e431a0853a36462c1f4ed3c655fdda64da544407fef1f453a3c5541eb"
+        },
+        {
+          "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactNativeReadRejectionDocument.kt",
+          "version": "repo-file-v1:sha256:8d58598cd8874c3e2c26f819c5b9ebdd79449bcd35fc943d011c133dcb9c2501"
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt",
-          "version": "repo-file-v1:sha256:1362c14cd6cfbc35f0e2e4c8d0b69087dfede2e9ed1a238dce05f862ca1de74b"
+          "version": "repo-file-v1:sha256:732f74f2c200027f8e97f943315ac5075701524a08e7680271ffa0a761d38f84"
         },
         {
           "resource": "repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt#L22-L22",
@@ -264,7 +268,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalSchemaReferences.kt",
-          "version": "repo-file-v1:sha256:d5e7e440052fa4aabeb1a4ee1a289d43439e702375c4aeafa300d22f5abb5a74"
+          "version": "repo-file-v1:sha256:0ffc588023538821f999164577e7819d9624ccc59c9648337634d91a7eb52f58"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KotlinxRequestJsonSchema.kt",
@@ -434,7 +438,7 @@
     },
     {
       "id": "claim_2882712e6d974207b2b4d13b9387d926",
-      "statement": "Contract 18 RUN requires one EMIT or TRACE terminalStep after at most 1000 or 999 nonterminal transformations respectively; terminal output and expansion options remain variant-owned, while retired RUN-level output and TRACE steps reject.",
+      "statement": "RUN requires one EMIT or TRACE terminalStep after at most 1000 or 999 nonterminal transformations respectively. The terminal variant owns its output and expansion options. RUN-level output and TRACE steps reject.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt",
@@ -446,7 +450,7 @@
         },
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "version": "repo-file-v1:sha256:0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ]
     },
@@ -464,7 +468,7 @@
         },
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "version": "repo-file-v1:sha256:0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ]
     },
@@ -482,7 +486,7 @@
         },
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "version": "repo-file-v1:sha256:0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ]
     },
@@ -510,7 +514,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "version": "repo-file-v1:sha256:d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
+          "version": "repo-file-v1:sha256:0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactWitnessProjection.kt",
@@ -525,6 +529,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-12T06:35:59.298Z"
   }
 }

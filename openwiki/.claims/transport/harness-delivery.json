@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:5c4fc80b8d5eff7e6435b3139b1a628382f4d44a2e061f8865d32db9c22de513",
+  "pageVersion": "sha256:f98f065e5828eb2578b0d10f2ec43992e19e1eb4451f628ff209fcdf51eb302b",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -8,15 +8,15 @@
       "evidence": [
         {
           "resource": "repo://copilot/extension.mjs",
-          "version": "repo-file-v1:sha256:14a437bda450c93145c9f62622e60483dbd00e5280c9193472ce89a7786ad499"
+          "version": "repo-file-v1:sha256:d63fb1863b8a38ed682afc0bf484364626f7245d865b3dee7ac74428b57db8b7"
         },
         {
           "resource": "repo://copilot/extension.mjs#L2-L2",
-          "version": "repo-lines-v1:sha256:405e2d9fe5b6ef1f046f848918dded52f6b9d757365862d7c01cee91869af412:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDA1ZTJkOWZlNWI2ZWYxZjA0NmY4NDg5MThkZGVkNTJmNmI5ZDc1NzM2NTg2MmQ3YzAxY2VlOTE4NjlhZjQxMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDA1ZTJkOWZlNWI2ZWYxZjA0NmY4NDg5MThkZGVkNTJmNmI5ZDc1NzM2NTg2MmQ3YzAxY2VlOTE4NjlhZjQxMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjEsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTUwMzVmMGQ4MzdmZGQ5MjdhZWUxNjUwYjgxMWJjZWU1OGY1ZTdiZTkyYTU2NDU1ZDAwMzAwNjI3Y2NkNTU0NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjViMjJkNDdjZGRkNjg0ZGYyYWVjOWVmOGU2ZmUwOTlhNzBiNTFiNGVkZjRmYzQ5MTQ5NmM3M2I0MDVmMzlmMyJ9"
+          "version": "repo-lines-v1:sha256:8d282a4481a4853e0ca03e0833936bae791333973df395ca23026087cf98f06d:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGQyODJhNDQ4MWE0ODUzZTBjYTAzZTA4MzM5MzZiYWU3OTEzMzM5NzNkZjM5NWNhMjMwMjYwODdjZjk4ZjA2ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGQyODJhNDQ4MWE0ODUzZTBjYTAzZTA4MzM5MzZiYWU3OTEzMzM5NzNkZjM5NWNhMjMwMjYwODdjZjk4ZjA2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjEsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTUwMzVmMGQ4MzdmZGQ5MjdhZWUxNjUwYjgxMWJjZWU1OGY1ZTdiZTkyYTU2NDU1ZDAwMzAwNjI3Y2NkNTU0NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjViMjJkNDdjZGRkNjg0ZGYyYWVjOWVmOGU2ZmUwOTlhNzBiNTFiNGVkZjRmYzQ5MTQ5NmM3M2I0MDVmMzlmMyJ9"
         },
         {
           "resource": "repo://pi/extension.ts",
-          "version": "repo-file-v1:sha256:b93c3360385c1f111ead7ecc5200e50addecffccf05ff7b10735de9e1d072e02"
+          "version": "repo-file-v1:sha256:8daf138e431a0853a36462c1f4ed3c655fdda64da544407fef1f453a3c5541eb"
         }
       ]
     },
@@ -171,6 +171,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T14:25:07.841Z"
+    "at": "2026-11-12T06:30:47.924Z"
   }
 }

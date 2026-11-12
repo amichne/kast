@@ -294,7 +294,7 @@ sources:
 generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T14:25:07.841Z
+    at: 2026-11-12T06:30:47.924Z
 ---
 
 # Existing-IDE semantic query

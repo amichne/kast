@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e4a879892ea9d983f1ed0f65c7140d3f36b114513cd7f8a13b21ab73d049cd23",
+  "pageVersion": "sha256:47f936b797d91023fa394b3f1c88e54a251b7ac17df3cd0505731d0866696e6d",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -56,11 +56,11 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt",
-          "version": "repo-file-v1:sha256:957d825e9ab5b2521d98d31cbe61e99e2c263c4bee34797a83607c605cc845d7"
+          "version": "repo-file-v1:sha256:bc79516a4aaf02c9c00fca3676f08615aa50a27353a5423d72691a53e2957359"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt",
-          "version": "repo-file-v1:sha256:6545489d7c4c435d5c31ab51fb8fab3cba9ef53c59d6e6f4badfb0471de356a3"
+          "version": "repo-file-v1:sha256:6f715d958ea9ec8c056a67390af19df133fd2bf8418d3f1361f49fa571116f4d"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt",
@@ -78,13 +78,13 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt",
-          "version": "repo-file-v1:sha256:e641b30243cf247829277a13afa9901de266108ff0ad9ba0ce980ea10c944001"
+          "version": "repo-file-v1:sha256:777a7635cdb400bf5e8058187b6153dcbda31dfdcf39c9e256920c82251f82d9"
         }
       ]
     },
     {
       "id": "claim_a60e53048e6a4cd9b3c98d3e85d906d4",
-      "statement": "Request-local value-site diagnostics add a restoration phase and finite shape or anchor outcome counters to the bounded hosted receipt; schema-16 serialization preserves additive observations and explicit provider zeros after completion or rejection without claiming K2 authority or complete flow coverage.",
+      "statement": "Request-local value-site diagnostics add a restoration phase and finite shape or anchor outcome counters to the bounded hosted receipt; schema-17 serialization preserves additive observations and explicit provider zeros after completion or rejection without claiming K2 authority or complete flow coverage.",
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt",
@@ -92,7 +92,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnosticEncoding.kt",
-          "version": "repo-file-v1:sha256:ef061e7b405547dfae3f5a58e719ce840ae2cb3cebb086367c4f91f10fa67629"
+          "version": "repo-file-v1:sha256:ea86c96fdc5207ccea243fb3b855f51772f62f62ff2d99985d7088254bca53e2"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt",
@@ -100,7 +100,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedValueFlowDiagnosticsTest.kt",
-          "version": "repo-file-v1:sha256:8adb341b21f88f2ece5abfb09829e5a18aff10a49b59877c85a48c6a3736cda1"
+          "version": "repo-file-v1:sha256:351888894091cafdd5f9409e3bd2c0d53df4f5e12a5dd1ff67fc8c416da40803"
         }
       ]
     },
@@ -118,7 +118,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:d8b9a27b56b23c219193386ea4480523d1dc13609e304aff8352a5eb09414d98"
+          "version": "repo-file-v1:sha256:94a86d7a950b2ca3d902a9e68d2cb71db8bf66b46168754d3d8b86a58c924a52"
         }
       ]
     },
@@ -132,7 +132,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:d8b9a27b56b23c219193386ea4480523d1dc13609e304aff8352a5eb09414d98"
+          "version": "repo-file-v1:sha256:94a86d7a950b2ca3d902a9e68d2cb71db8bf66b46168754d3d8b86a58c924a52"
         },
         {
           "resource": "repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt",
@@ -324,7 +324,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T06:09:31.584Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-12T06:35:59.298Z"
   }
 }

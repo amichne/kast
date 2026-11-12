@@ -85,8 +85,8 @@ sources:
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
 generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-06T20:52:34.571Z
+  - by: openwiki/0.9.0
+    at: 2026-11-12T06:30:47.924Z
 ---
 
 # Protocol

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7ec58c92b8da823f84c510d4d41154472bb66e704b7d2a74ee9145c47ff57f55",
+  "pageVersion": "sha256:40a5a0204b5b29801ecb2464cab58539c95f14055f655863f26d1730ed1630fa",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -252,7 +252,7 @@
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
-          "version": "repo-file-v1:sha256:d8b9a27b56b23c219193386ea4480523d1dc13609e304aff8352a5eb09414d98"
+          "version": "repo-file-v1:sha256:94a86d7a950b2ca3d902a9e68d2cb71db8bf66b46168754d3d8b86a58c924a52"
         }
       ]
     },
@@ -407,6 +407,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T14:25:07.841Z"
+    "at": "2026-11-12T06:30:47.924Z"
   }
 }

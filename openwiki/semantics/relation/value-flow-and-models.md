@@ -27,10 +27,16 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt
   - id: openwiki-source-5e4eb99eb5fd7a5dcae4b5eb
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+  - id: openwiki-source-4ac3b45fc423ca232ace384d
+    resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeReviewedTupleFlow.kt
+  - id: openwiki-source-16fae81d6fcf541847447988
+    resource: repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeFlowClosureTest.kt
+  - id: openwiki-source-43611a102eb1cd7eacc3c547
+    resource: repo://relation/intellij/src/nativeTest/kotlin/io/github/amichne/kast/relation/intellij/NativeImpactBoundaryReproductionTest.kt
+generated: { by: "codex", at: "2026-11-12T06:30:47.924Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-12T06:35:59.298Z
 ---
 
 # Value flow and representation models
@@ -56,6 +62,9 @@ The query engine owns multi-hop scheduling, checkpoints, branch conservation, an
 
 Unsupported effects or unknown flow do not become an empty complete transfer set.
 The result keeps the site, provenance, scope, grant, and reason that limits the conclusion.
+
+An established external call keeps its `EXTERNAL_CALL` obligation if the tuple fallback finds no matching model or source artifact.
+The adapter adds no transfer through the call.
 Cross-workspace flow needs its independently admitted peer site and completed authority.
 It does not follow from a matching serialized representation name.
 
