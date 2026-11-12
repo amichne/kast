@@ -104,6 +104,22 @@ private enum class InternalInstallExit(val code: Int) {
 
 private fun retireManagedInstallation(root: Path, environment: Map<String, String>): InternalInstallExit {
     val home = managedRetirementHome(environment)
+    if (
+        !java.nio.file.Files.notExists(
+            root.resolve("installation/share/kast/product-selection.json"),
+            java.nio.file.LinkOption.NOFOLLOW_LINKS,
+        )
+    ) {
+        return when (val result = retireManagedProduct(root, home, environment)) {
+            is io.github.amichne.kast.kernel.Refinement.Refined -> InternalInstallExit.COMPLETED
+            is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                throw ManagementRejected("managed-retirement", result.failure.name)
+        }
+    }
+    return retireLegacyInstallation(root, home, environment)
+}
+
+private fun retireLegacyInstallation(root: Path, home: Path, environment: Map<String, String>): InternalInstallExit {
     val admitted = InstallationLifecycle.admit(root, home, environment, LifecycleExecution())
     if (admitted !is LifecycleAdmission.Admitted) throw ManagementRejected("managed-retirement", "ownership unproven")
     return when (val result = admitted.lifecycle.fenceAndRetire(LifecycleOperation.STOP_FORCE)) {

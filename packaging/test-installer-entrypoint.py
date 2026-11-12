@@ -22,7 +22,7 @@ import zipfile
 
 
 ROOT = Path(__file__).resolve().parent.parent
-INSTALLER = ROOT / "install.sh"
+INSTALLER = ROOT / "packaging/install-legacy.sh"
 DOCUMENTS = (
     ROOT / "README.md",
     ROOT / "docs/public/start.mdx",
@@ -1099,7 +1099,7 @@ with open(os.environ['TEST_LOG'], 'a') as log: log.write('registration:' + sys.a
                         self.assertFalse(Path(environment['KAST_INSTALL_ROOT']).exists())
                         self.assertTrue((Path(environment['HOME']) / 'Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/kast-ide-hosted/lib/plugin.jar').exists())
 
-    def test_checkout_selects_only_its_component_and_reaches_real_public_installer(self):
+    def test_checkout_selects_only_its_component_and_reaches_legacy_component_installer(self):
         version = '0.20261002.30000'
         for component in ('control', 'host', 'pair'):
             with self.subTest(component=component), tempfile.TemporaryDirectory(prefix='kast-checkout-component-') as directory:
@@ -1145,7 +1145,7 @@ for source, destination in {copies!r}:
                 date = root / 'bin/date'
                 date.write_text('#!/bin/sh\ncase "$*" in "-u +%Y%m%d") echo 20261002 ;; "-u +%H%M%S") echo 030000 ;; *) exit 97 ;; esac\n')
                 date.chmod(0o755)
-                public_entry = checkout / 'install.sh'
+                public_entry = checkout / 'packaging/install-legacy.sh'
                 public_entry.write_text(f'''#!/bin/sh
 test ! -e "$TEST_FORWARDING" || exit 98
 printf 'host-selector:%s:%s\\n' "${{KAST_HOST_VERSION+x}}" "${{KAST_HOST_VERSION-}}" > "$TEST_FORWARDING"

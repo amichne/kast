@@ -264,12 +264,6 @@ private constructor(
         return lift()
     }
 
-    fun liftInstalled(installed: InstalledReset): ResetEffect {
-        if (installed.staged.erased.fence !== this || storage != InstallationResetStorage.Erased)
-            return ResetEffect.Rejected(ForceResetFailure.RESET_BUSY)
-        return lift()
-    }
-
     private fun lift(): ResetEffect =
         try {
             if (!lock.isValid || !channel.isOpen) return ResetEffect.Rejected(ForceResetFailure.RESET_BUSY)

@@ -135,7 +135,7 @@ def decode(kind, value):
             raise Rejected(Failure.RECEIPT)
         return value
     if kind is Replacement and isinstance(value, dict):
-        value = {'reservation': None, 'composition': None} | value
+        value = {'reservation': None, 'composition': None, 'product': None} | value
     if kind is ManagedHostReplacement and isinstance(value, dict):
         value = {'lock': None} | value
     if kind is ManagedComposition and isinstance(value, dict):

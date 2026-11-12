@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 internal enum class ReleaseReadStage {
     OPEN,
     RESPONSE,
+    REDIRECT,
     BODY,
 }
 
@@ -17,6 +18,8 @@ internal enum class ReleaseReadFailure {
     TIMED_OUT,
     IO_FAILURE,
     HTTP_REJECTED,
+    REDIRECT_REJECTED,
+    REDIRECT_LIMIT,
     DOCUMENT_TOO_LARGE,
     INVALID_ENCODING,
     INVALID_ARGUMENT,

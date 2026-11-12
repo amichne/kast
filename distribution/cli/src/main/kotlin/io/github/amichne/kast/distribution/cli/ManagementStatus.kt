@@ -12,14 +12,19 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-internal fun printManagementStatus(root: Path, json: Boolean, output: ManagementOutput = ManagementOutput()) {
+internal fun printManagementStatus(
+    root: Path,
+    json: Boolean,
+    output: ManagementOutput = ManagementOutput(),
+    scope: WorkspaceScope = WorkspaceScope.Current,
+) {
     val commandPath =
         ProcessHandle.current()
             .info()
             .command()
             .map { Path.of(it).toAbsolutePath().normalize().toString() }
             .orElse("unavailable")
-    val status = readStatus(root, commandPath)
+    val status = readStatus(root, commandPath, scope, Path.of("").toAbsolutePath())
     if (output.structured(json)) output.publish(status.asJson()) else println(status.asText())
 }
 
@@ -58,6 +63,8 @@ internal data class InstallationStatus(
     val unresolvedTransaction: Observation<PendingInstallationRecords> =
         Observation.unavailable("transaction_state_unavailable"),
     val applicationHost: Observation<LoadedApplicationHost> = Observation.unavailable("application_host_unavailable"),
+    val product: Observation<InstalledProductReference> = Observation.unavailable("product_unrecorded"),
+    val workspaces: Observation<List<ManagedWorkspaceStatus>> = Observation.unavailable("workspace_scope_unavailable"),
 )
 
 @Serializable
@@ -74,7 +81,12 @@ internal val managementJson = Json {
 private val manifestJson = Json { ignoreUnknownKeys = true }
 
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod")
-internal fun readStatus(root: Path, commandPath: String): InstallationStatus {
+internal fun readStatus(
+    root: Path,
+    commandPath: String,
+    scope: WorkspaceScope = WorkspaceScope.Current,
+    directory: Path = root,
+): InstallationStatus {
     val receipt = readReceipt(root)
     val installation = resolvedInstallation(root, receipt)
     val installedVersion = installation?.let(::readInstalledVersion)
@@ -109,8 +121,17 @@ internal fun readStatus(root: Path, commandPath: String): InstallationStatus {
             else Observation.unavailable("receipt_unavailable"),
         unresolvedTransaction = passiveTransactionState(root),
         applicationHost =
-            root.parent?.parent?.parent?.let { readApplicationHost(root, it) }
-                ?: Observation.unavailable("user_home_unavailable"),
+            if (receipt is ReceiptRead.Read && receipt.receipt.product != null)
+                Observation.unavailable("WORKSPACE_SCOPED")
+            else
+                root.parent?.parent?.parent?.let { readApplicationHost(root, it) }
+                    ?: Observation.unavailable("user_home_unavailable"),
+        product =
+            if (receipt is ReceiptRead.Read)
+                receipt.receipt.product?.let { Observation.verified(it) }
+                    ?: Observation.unavailable("product_unrecorded")
+            else Observation.unavailable("receipt_unavailable"),
+        workspaces = readWorkspaceStatuses(root, scope, directory),
     )
 }
 

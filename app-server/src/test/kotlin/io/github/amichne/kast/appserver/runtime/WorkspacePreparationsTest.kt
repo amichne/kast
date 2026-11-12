@@ -2,7 +2,7 @@
 
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 class WorkspacePreparationsTest {
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
     private val requestId = checkNotNull(WorkspacePreparationId.admit("00000000-0000-0000-0000-000000000001"))
     private val target =
         IdeProjectTarget("00000000-0000-0000-0000-000000000002", "00000000-0000-0000-0000-000000000003", "/workspace")
@@ -44,7 +44,8 @@ class WorkspacePreparationsTest {
             )
         val first = (preparations.prepare(root) as Refinement.Refined).value
         assertEquals(emptyList<String>(), preparations.activeRoots())
-        val joined = (preparations.prepareForDemand(CanonicalRoot(Path.of("/workspace"))) as Refinement.Refined).value
+        val joined =
+            (preparations.prepareForDemand(canonicalRootFixture(Path.of("/workspace"))) as Refinement.Refined).value
         assertSame(first, joined)
         assertEquals(setOf(UpgradeBlocker.PREPARATION_ACTIVE), preparations.upgradeBlockers())
         runCurrent()
@@ -146,7 +147,7 @@ class WorkspacePreparationsTest {
         val entry = (preparations.prepare(root) as Refinement.Refined).value
         assertEquals(
             Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED),
-            preparations.prepare(CanonicalRoot(Path.of("/other"))),
+            preparations.prepare(canonicalRootFixture(Path.of("/other"))),
         )
         preparations.close()
         runCurrent()

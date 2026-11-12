@@ -2,7 +2,7 @@
 
 **Compiler understanding for your coding agent.**
 
-Kast lets your coding agent ask IntelliJ IDEA about your Kotlin Gradle project.
+Kast gives your coding agent a private IntelliJ analysis runtime for your Kotlin Gradle project.
 The agent gets resolved declarations, callers, and IDEA diagnostics instead of text matches.
 Each answer says whether the search finished, so the agent can tell "none found" from "not fully searched".
 
@@ -10,21 +10,21 @@ Each answer says whether the search finished, so the agent can tell "none found"
 
 You need:
 
-- An Apple silicon Mac and a Kotlin Gradle project.
-- IntelliJ IDEA 2026.2 or 2026.3 (build `262.*` or `263.*`), with its bundled Kotlin plugin and Java 25 JetBrains Runtime (JBR).
+- An Apple silicon Mac or Linux x86-64 machine and a Kotlin Gradle project.
 - The Codex, Copilot, or Pi CLI.
-- Python 3.12 or 3.13, available as `python3` on your `PATH`.
-- For `kast upgrade` and the optional MCP setup: the uv Python package manager, version 0.12.9 or later.
+
+Kast supplies its runtime. You do not need desktop IDEA, Python, or uv.
+This branch documents the managed-runtime contract; native acceptance and publication are not yet complete.
 
 Setup takes three steps.
 
-1. Install Kast from any directory, then restart IntelliJ IDEA so that it loads Kast.
+1. Install Kast from any directory.
 
    ```shell
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview
    ```
 
-   `--skip-codex-plugin` skips the installer's Codex prompt; step 2 connects every agent, including Codex.
+   The installer selects one complete build. Step 2 connects your agent.
    If your shell cannot find `kast`, add the directory that the installer prints to your `PATH`, then open a new terminal.
 
 2. Connect your agent. Use `copilot` or `pi` instead of `codex` for those agents.
@@ -33,16 +33,18 @@ Setup takes three steps.
    kast install codex
    ```
 
-   Open your project in IntelliJ IDEA, and keep IDEA open while you work. Then start a new agent session in the same project.
+   Start a new agent session in your project. Session hooks are passive; they do not start the runtime or grant trust.
 
-3. Check the setup from your project root. Replace `DECLARATION_NAME` with a class or function in your project, and look for `"type": "complete"` and that declaration's file in the output.
+3. Query from a project root whose build code you trust. The first explicit semantic request grants trust to that exact root and starts its private Host. Replace `DECLARATION_NAME` with a class or function in your project.
 
    ```shell
    kast query --name DECLARATION_NAME --fields name,location --json
    ```
 
+   Look for `"type": "complete"` and that declaration's file. A first query can take several minutes for Gradle import and indexing.
+
 [Set up Kast](https://kast.michne.com/start/) explains each step.
-On Linux x86-64, or to run Kast without desktop IDEA, see [Run Kast without desktop IDEA](https://kast.michne.com/reference/installation/#manage-isolated-workspaces).
+Queries use installed runtime bytes without contacting release servers. Your Gradle build can still need network access.
 
 ## Learn more
 

@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.directToolDocument
@@ -8,7 +7,7 @@ import io.github.amichne.kast.cli.mcp.KastMcpServer
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.cli.rpc.KastToolRpcBridge
 import io.github.amichne.kast.cli.rpc.ToolRpcReply
-import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.protocol.contract.ToolOutputDetail
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.AgentInterfaceDiscoveryFixture
@@ -81,7 +80,6 @@ class AgentInterfaceAdapterTest {
                     KastDirectToolSession(
                         catalog,
                         { FilesystemCanonicalRootDiscovery.discover(temporary) },
-                        { Refinement.Refined(Unit) },
                         {
                             calls++
                             assertEquals(1, calls, "No semantic retry or detail read is permitted")

@@ -1,7 +1,10 @@
 # Public CLI reads
 
 Use the installed `kast` command for Kotlin queries without MCP registration.
-The existing IntelliJ Host remains necessary for semantic work.
+Kast supplies a private IntelliJ Host; no user IDEA installation is needed.
+The first explicit semantic request trusts the exact canonical workspace root and prepares that Host.
+Session hooks and discovery remain passive. Use the first useful operation rather than a readiness probe.
+Queries do not fetch releases. A missing runtime requires explicit management repair, not a desktop fallback.
 
 Semantic CLI results use JSON by default, including errors, plans, and descriptors.
 Set `KAST_OUTPUT_TOON=1` to select TOON.

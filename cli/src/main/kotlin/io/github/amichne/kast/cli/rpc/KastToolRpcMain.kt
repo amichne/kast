@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli.rpc
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.PublicToolInputFailure
@@ -15,6 +14,7 @@ import io.github.amichne.kast.cli.direct.observeDirectToolStage
 import io.github.amichne.kast.cli.direct.selectDirectCatalog
 import io.github.amichne.kast.cli.mcp.McpChangePhase
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.OperationExecutionBudget
 import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION
@@ -50,10 +50,9 @@ object KastToolRpcMain {
     private fun runInstalled(selected: DirectCatalogArguments) {
         val command = selected.command
         val directory = Path.of("").toAbsolutePath()
-        val home = Path.of(System.getProperty("user.home"))
         val session =
             observeDirectToolStage(DirectToolStage.SESSION_COMPOSITION) {
-                KastDirectToolSession.installed(directory, home, System.getenv(), selected.catalog)
+                KastDirectToolSession.installed(directory, System.getenv(), selected.catalog)
             }
         val bridge =
             observeDirectToolStage(DirectToolStage.BRIDGE_COMPOSITION) {

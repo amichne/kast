@@ -2,13 +2,13 @@
 
 package io.github.amichne.kast.appserver
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationActivity
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationActivityOutcome
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationObserver
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparations
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test
 class McpWorkspaceOperationClientTest {
     @Test
     fun `health preparation waits for the single native operation and preserves a blocked reason`() = runTest {
-        val root = CanonicalRoot(Path.of("/workspace"))
+        val root = canonicalRootFixture(Path.of("/workspace"))
         val response = CompletableDeferred<IdeLifecycleResult>()
         var opens = 0
         val preparations =
@@ -64,7 +64,7 @@ class McpWorkspaceOperationClientTest {
 
     @Test
     fun `health preparation accepts only the completed exact workspace`() = runTest {
-        val root = CanonicalRoot(Path.of("/workspace"))
+        val root = canonicalRootFixture(Path.of("/workspace"))
         val response = CompletableDeferred<IdeLifecycleResult>()
         val preparations = WorkspacePreparations(this, { response.await() })
         val session =
@@ -138,7 +138,7 @@ class McpWorkspaceOperationClientTest {
 
     @Test
     fun `startup queues one exact open and retains finite terminal evidence`() = runTest {
-        val root = CanonicalRoot(Path.of("/workspace"))
+        val root = canonicalRootFixture(Path.of("/workspace"))
         val requests = mutableListOf<WorkspaceLifecycleRequest>()
         val events = mutableListOf<WorkspacePreparationActivity>()
         val preparations =

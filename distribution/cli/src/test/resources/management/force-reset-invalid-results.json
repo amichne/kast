@@ -1,94 +1,45 @@
 [
   {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
+    "type": "RESET_INSTALLED",
     "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
-    "failure": "READINESS_REJECTED"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "generation": "12345678-1234-1234-1234-123456789abc"
-  },
-  {
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE"
-  },
-  {
-    "type": "RESET_INSTALLED",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE"
-  },
-  {
-    "type": "RESET_INSTALLED",
-    "installation": "/kast/installation",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE"
-  },
-  {
-    "type": "RESET_INSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "operation": "REINSTALL_FORCE"
-  },
-  {
-    "type": "RESET_INSTALLED",
     "installation": "/kast/installation",
     "version": "1.2.3",
     "command": "/kast/bin/kast"
   },
   {
-    "type": "RESET_INSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "UNINSTALL_FORCE"
-  },
-  {
-    "type": "RESET_INSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
+    "type": "RESET_REINSTALLATION_PENDING",
     "operation": "REINSTALL_FORCE",
-    "generation": "12345678-1234-1234-1234-123456789abc"
-  },
-  {
-    "type": "RESET_INSTALLED",
     "installation": "/kast/installation",
     "version": "1.2.3",
     "command": "/kast/bin/kast",
+    "stage": "FINAL_VERIFICATION",
+    "failure": "READINESS_REJECTED"
+  },
+  {
+    "type": "RESET_RECOVERY_REQUIRED",
     "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION"
+    "stage": "ACTIVATION",
+    "failure": "READINESS_REJECTED",
+    "recoveryFailure": "PROCESS_RETIREMENT_REJECTED",
+    "root": "/kast"
   },
   {
-    "type": "RESET_INSTALLED",
-    "installation": "/kast/installation",
-    "version": null,
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE"
+    "type": "RESET_REJECTED",
+    "operation": "REINSTALL_FORCE",
+    "stage": "FENCE",
+    "failure": "FENCE_REJECTED"
   },
   {
-    "type": "RESET_INSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "relative/kast",
-    "operation": "REINSTALL_FORCE"
+    "type": "RESET_REJECTED",
+    "operation": "UNINSTALL_FORCE",
+    "stage": "INSTALLATION",
+    "failure": "FENCE_REJECTED"
   },
   {
-    "type": "RESET_INSTALLED",
-    "installation": "/kast/installation",
-    "version": "unknown",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE"
+    "type": "RESET_REJECTED",
+    "operation": "UNINSTALL_FORCE",
+    "stage": "FENCE",
+    "failure": "INSTALLER_REJECTED"
   },
   {
     "root": "/kast",
@@ -112,140 +63,6 @@
     "type": "REMOVED",
     "root": "/kast",
     "operation": "STOP_FORCE"
-  },
-  {
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "generation": "12345678-1234-1234-1234-123456789abc"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "generation": "12345678-1234-1234-1234-123456789abc"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "generation": "12345678-1234-1234-1234-123456789abc"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "operation": "REINSTALL_FORCE",
-    "generation": "12345678-1234-1234-1234-123456789abc"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "generation": "12345678-1234-1234-1234-123456789abc"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "generation": "12345678-1234-1234-1234-123456789abc",
-    "unexpected": "unknown"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "STOP_FORCE",
-    "generation": "12345678-1234-1234-1234-123456789abc"
-  },
-  {
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "stage": "FINAL_VERIFICATION",
-    "failure": "READINESS_REJECTED"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "stage": "FINAL_VERIFICATION",
-    "failure": "READINESS_REJECTED"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "stage": "FINAL_VERIFICATION",
-    "failure": "READINESS_REJECTED"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "operation": "REINSTALL_FORCE",
-    "stage": "FINAL_VERIFICATION",
-    "failure": "READINESS_REJECTED"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "stage": "FINAL_VERIFICATION",
-    "failure": "READINESS_REJECTED"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "failure": "READINESS_REJECTED"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "stage": "FINAL_VERIFICATION"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "stage": "FINAL_VERIFICATION",
-    "failure": "READINESS_REJECTED",
-    "unexpected": "unknown"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "STOP_FORCE",
-    "stage": "FINAL_VERIFICATION",
-    "failure": "READINESS_REJECTED"
   },
   {
     "operation": "UNINSTALL_FORCE",
@@ -293,66 +110,7 @@
     "recoveryPath": "/.kast-retiring-example/payload"
   },
   {
-    "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
-    "failure": "READINESS_REJECTED",
-    "recoveryFailure": "PROCESS_RETIREMENT_REJECTED",
-    "root": "/kast"
-  },
-  {
-    "type": "RESET_RECOVERY_REQUIRED",
-    "stage": "ACTIVATION",
-    "failure": "READINESS_REJECTED",
-    "recoveryFailure": "PROCESS_RETIREMENT_REJECTED",
-    "root": "/kast"
-  },
-  {
-    "type": "RESET_RECOVERY_REQUIRED",
-    "operation": "REINSTALL_FORCE",
-    "failure": "READINESS_REJECTED",
-    "recoveryFailure": "PROCESS_RETIREMENT_REJECTED",
-    "root": "/kast"
-  },
-  {
-    "type": "RESET_RECOVERY_REQUIRED",
-    "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
-    "recoveryFailure": "PROCESS_RETIREMENT_REJECTED",
-    "root": "/kast"
-  },
-  {
-    "type": "RESET_RECOVERY_REQUIRED",
-    "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
-    "failure": "READINESS_REJECTED",
-    "root": "/kast"
-  },
-  {
-    "type": "RESET_RECOVERY_REQUIRED",
-    "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
-    "failure": "READINESS_REJECTED",
-    "recoveryFailure": "PROCESS_RETIREMENT_REJECTED"
-  },
-  {
-    "type": "RESET_RECOVERY_REQUIRED",
-    "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
-    "failure": "READINESS_REJECTED",
-    "recoveryFailure": "PROCESS_RETIREMENT_REJECTED",
-    "root": "/kast",
-    "unexpected": "unknown"
-  },
-  {
-    "type": "RESET_RECOVERY_REQUIRED",
-    "operation": "STOP_FORCE",
-    "stage": "ACTIVATION",
-    "failure": "READINESS_REJECTED",
-    "recoveryFailure": "PROCESS_RETIREMENT_REJECTED",
-    "root": "/kast"
-  },
-  {
-    "operation": "REINSTALL_FORCE",
+    "operation": "UNINSTALL_FORCE",
     "stage": "FENCE",
     "failure": "RESET_BUSY"
   },
@@ -363,17 +121,17 @@
   },
   {
     "type": "RESET_REJECTED",
-    "operation": "REINSTALL_FORCE",
+    "operation": "UNINSTALL_FORCE",
     "failure": "RESET_BUSY"
   },
   {
     "type": "RESET_REJECTED",
-    "operation": "REINSTALL_FORCE",
+    "operation": "UNINSTALL_FORCE",
     "stage": "FENCE"
   },
   {
     "type": "RESET_REJECTED",
-    "operation": "REINSTALL_FORCE",
+    "operation": "UNINSTALL_FORCE",
     "stage": "FENCE",
     "failure": "RESET_BUSY",
     "unexpected": "unknown"
@@ -385,59 +143,9 @@
     "failure": "RESET_BUSY"
   },
   {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "generation": "generation"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "generation": "12345678-1234-1234-1234-123456789ABC"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "generation": ""
-  },
-  {
     "type": "REMOVED",
     "root": "relative/kast",
     "operation": "UNINSTALL_FORCE"
-  },
-  {
-    "type": "RESET_REINSTALLED",
-    "installation": "/kast/installation",
-    "version": "latest",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "generation": "12345678-1234-1234-1234-123456789abc"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "stage": "INSTALLATION",
-    "failure": "READINESS_REJECTED"
-  },
-  {
-    "type": "RESET_REINSTALLATION_PENDING",
-    "installation": "/kast/installation",
-    "version": "1.2.3",
-    "command": "/kast/bin/kast",
-    "operation": "REINSTALL_FORCE",
-    "stage": "FINAL_VERIFICATION",
-    "failure": "UNKNOWN"
   },
   {
     "type": "RESET_RETAINED",
@@ -447,22 +155,14 @@
     "recoveryPath": "relative/payload"
   },
   {
-    "type": "RESET_RECOVERY_REQUIRED",
-    "operation": "REINSTALL_FORCE",
-    "stage": "ACTIVATION",
-    "failure": "READINESS_REJECTED",
-    "recoveryFailure": "UNKNOWN",
-    "root": "/kast"
-  },
-  {
     "type": "RESET_REJECTED",
-    "operation": "REINSTALL_FORCE",
+    "operation": "UNINSTALL_FORCE",
     "stage": "COORDINATOR",
     "failure": "RESET_BUSY"
   },
   {
     "type": "RESET_REJECTED",
-    "operation": "REINSTALL_FORCE",
+    "operation": "UNINSTALL_FORCE",
     "stage": "FENCE",
     "failure": "OWNERSHIP_UNPROVEN"
   }

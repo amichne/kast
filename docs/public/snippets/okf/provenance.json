@@ -121,8 +121,8 @@
     },
     {
       "path": "openwiki/contracts/operation-outcomes.md",
-      "sha256": "d02bb9b105929db0747e31c9f8807de01f315b22d787f586529b49f65affcaf0",
-      "claimsSha256": "0017a8a96149db7dc802a4d9cbb5a9460014e3b8b77b2bf7b710c8572fee8855",
+      "sha256": "ccdec8f07c53fc094cc13efc769dbfd4f654aab519407c44693acdeefbcf3bf3",
+      "claimsSha256": "3d89c7b9cef18eaf19cbb2af3a35ab237834c527ebc7e7e2a81260c63c579cfb",
       "evidence": [
         {
           "claim": "claim_55bbe06398c44272b3f13d3df179d4ee",
@@ -154,9 +154,9 @@
         },
         {
           "claim": "claim_e33e1df867cd458cb285276411f1490d",
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L132-L177",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L131-L176",
           "recordedVersion": "repo-lines-v1:sha256:6a2bfb942e7ea6c9b63bdf031b1934b26d5637cc1f4de186dd7d1bbad6acbc49:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkZDkxMzQ3YjJmZWZhNGU2YzA0YzFkM2IzZjg4ZWZkZGE5MjUyMTJlNWU4NWU1NDY0ZDJkMTNhODFhNmQ4MTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNmM3YjVkZWJjNTY1ZDQ5ODIzM2UwNWY4OWFiMTc2MmNlNDZhZjUwMDIwNmZjZThiOTE3YjhiNGE5YThiYTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxYjdlMjcwNWViY2Q5MTM4OTVkOGU3OTc1MzE4OTc4YTkzMzg1YmQ4MzcyYTliNmM3MzNlYzZhNDcyMGIzNzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhZjRjZWM2YjNhMjc5YTA4MjhjODJlOTQ4OWIxNjU2N2MwMWZkNzUwYWNmOWI4ZjhmNjNkNjMyZDkwY2EwMzEifQ",
-          "currentVersion": "repo-file-v1:sha256:990daf6adee87ca63e2bdde3712d330f699ab6fa1753d804cd1c3bdc42f718be",
+          "currentVersion": "repo-file-v1:sha256:d676db7f2d637239e828d44755f5f66f0771ee36d597e01cd77737feda61006f",
           "status": "NOT_ASSESSED"
         },
         {
@@ -308,24 +308,24 @@
         },
         {
           "claim": "claim_770132c0072344e8b04bab69aea754ea",
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt",
-          "recordedVersion": "repo-file-v1:sha256:165a5fd16a9d60b960a1fc7c8d44e93b6041629348712c9ab30cb79d3f36371e",
-          "currentVersion": "repo-file-v1:sha256:165a5fd16a9d60b960a1fc7c8d44e93b6041629348712c9ab30cb79d3f36371e",
-          "status": "MATCHED"
-        },
-        {
-          "claim": "claim_770132c0072344e8b04bab69aea754ea",
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt#L11-L11",
-          "recordedVersion": "repo-lines-v1:sha256:94c3842b4864f51dbce3c7228b7c08afa1c2d353d01b6dac3f8e8b7658ef347c:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTRjMzg0MmI0ODY0ZjUxZGJjZTNjNzIyOGI3YzA4YWZhMWMyZDM1M2QwMWI2ZGFjM2Y4ZThiNzY1OGVmMzQ3YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTRjMzg0MmI0ODY0ZjUxZGJjZTNjNzIyOGI3YzA4YWZhMWMyZDM1M2QwMWI2ZGFjM2Y4ZThiNzY1OGVmMzQ3YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTM2ZjQ0MTA5NDlkM2VmODRjY2U3MGFhNWVkNzQyNjk2ZDI3NjRkY2MwYzkxMjAyYWIxYzdmOWQ3YWVhZDU1YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2M5NjQyZWQ1MDRhZDc0MGViMzAxNjM3NGQyODRiMjJiN2ZhZmM5NGY0Y2VkM2U3MmIzOTUxY2EzZDE5NTJkOCJ9",
-          "currentVersion": "repo-file-v1:sha256:165a5fd16a9d60b960a1fc7c8d44e93b6041629348712c9ab30cb79d3f36371e",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt#L240-L285",
+          "recordedVersion": "repo-lines-v1:sha256:9a1a92fcfcb4a93e42b594822dbbeaddf2e63cbf83fd7b7458dc175f3b320c7c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5NTc1NTA5MzM2NzAzOGFiMDIyM2E4ZjI4NzVmZDgwMTcxYTZhNDY5MTI0OGU4ZDVjZjNmOTA3MTgxYzNjNTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhYjkyNmEwZWZjY2U3NmVkY2RhYjc3ZDA1ZmI3NGIwYWM4OTFkZWUzOGU3ZWI3NTIxNzEzMGJiMTQ4MzVmNjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ2NzE0OTRmNGNhMzZhYzQwOTk1NWM2MGZkZTNkY2VkOTNjNzIyNDA3YWNiYWM5NDYzNWY0YWQ1OWM4MTBlZDkifQ",
+          "currentVersion": "repo-file-v1:sha256:1ab040b4a71b2a46a3ffc09522c7a9ce3421da97087c17fda78f7cef63812e3a",
           "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_770132c0072344e8b04bab69aea754ea",
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt",
-          "recordedVersion": "repo-file-v1:sha256:3706f0683b09bf7439c5d5b277a17bd79baa2bac2a95c60f2f8f9713216171f0",
-          "currentVersion": "repo-file-v1:sha256:3706f0683b09bf7439c5d5b277a17bd79baa2bac2a95c60f2f8f9713216171f0",
-          "status": "MATCHED"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt#L66-L82",
+          "recordedVersion": "repo-lines-v1:sha256:21f04fc5b538851cbc7b94491c3c9e99f45b3c2aa0a5cff057938e1f2706cad5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmYTlmYTYzZTVlYTY5ZWY3OGNlZDYzZTEwMjNhOTc5ZjgxMzMzZDAyYTJlYTBiNzIwMGI1ZDFiMDUzYTg0ODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiY2VlNDc0YjYzNGI0ZmMyMzZjNzM5OTI5ZDJkOGI4MmU0YzU1OGNkZTk1ZTYwODc2YWRmN2NhNzE4MzJjODMifQ",
+          "currentVersion": "repo-file-v1:sha256:1ab040b4a71b2a46a3ffc09522c7a9ce3421da97087c17fda78f7cef63812e3a",
+          "status": "NOT_ASSESSED"
+        },
+        {
+          "claim": "claim_770132c0072344e8b04bab69aea754ea",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpTransportRejection.kt#L8-L32",
+          "recordedVersion": "repo-lines-v1:sha256:72aadbe4d64b898f3d5c73324cb8054468484079f50b648408dca362b8ffaea8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiZTc1MmJkNTUwMGM2ZjIxZTczMmM5ZGE0YjVlNzY4MzgwODc2YzcwZjlkYjYxOWYzZWNmODFlODMxMWYzODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQzMjA3NTFlN2U5MWJjMGUyYTJiMDMwYTU2ODQyMzRhOTM1YzA3OWY5NzZlZTc3MmM5ZmZmY2UyMDlmNTcxN2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFlYzU0NDE2MjQyMjA2ZmRkZjA3OTc2NjhlM2M5ZGI1MDQ4NzJjNzY1OThiNjU4YTI5Mzk4MDJmZjcwZWIyMGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5MmI2NzQ1YzFjNTFjMDA5OTI5YTc1YWE4YmNjNDdjNTczNzc2ZGRkNWI2ZTFiZDNmZDJjZjdhYzJlOTIxNjEifQ",
+          "currentVersion": "repo-file-v1:sha256:1d7430021b90e6edca33be5230775950ac27af48860524361b07415d41fed527",
+          "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_30509bf0f92d42e9bc59f07f8677ea62",
@@ -562,8 +562,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "a40cb0d06674666f5b5d1d2fcbf2b9263c9936bf775a4bcb728877d4436ae421",
-      "claimsSha256": "a900a53db16b10be6e231bc890e0012ade551d29c2d814fd7843e21bb14b9e37",
+      "sha256": "649f3a8e924daeb677a28767b515f5273f35c6174988cfafdd3998cb3ddd1e87",
+      "claimsSha256": "2ab929126d902df193c99460551ba159bae00f1785cde76871b03bc1589ff6a0",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -583,7 +583,7 @@
           "claim": "claim_8fbe8cf0364241bd9c44e5851da8c409",
           "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L3",
           "recordedVersion": "repo-lines-v1:sha256:903c81dc02bcd6dc5a04ddb10984408b5c823595e6ab789ed39c0d866651b5f6:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTAzYzgxZGMwMmJjZDZkYzVhMDRkZGIxMDk4NDQwOGI1YzgyMzU5NWU2YWI3ODllZDM5YzBkODY2NjUxYjVmNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTAzYzgxZGMwMmJjZDZkYzVhMDRkZGIxMDk4NDQwOGI1YzgyMzU5NWU2YWI3ODllZDM5YzBkODY2NjUxYjVmNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWNlN2ViODUyNjM3ZmNkZmQwMjBiMGZmZWVmODRiY2Y0NjBhNmI2NTQ4YjMzMDNjZjM5M2Q0MWNkZjE2NzM2OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjJhN2RlZTc3MzVkNzAzMzVkMDQ2Zjc5NTU3YjdkNjNjOWRjZjEwZmIzNGEzZDUxZGM5YmRkYWU5ZDM0MTU5ZSJ9",
-          "currentVersion": "repo-file-v1:sha256:0364767aba5dda9da9425147e51121554ec32c3e4610e2baae4696e5e71c7fe0",
+          "currentVersion": "repo-file-v1:sha256:83924999dce521dda583c54d39afbadb241c1a34f58f4996c2bd33de85fae662",
           "status": "NOT_ASSESSED"
         },
         {
@@ -611,14 +611,14 @@
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
           "resource": "repo://build.gradle.kts#L104-L123",
           "recordedVersion": "repo-lines-v1:sha256:1f809cbe56fb43c60678bb4eae7c28529eb3d35c334884cafdf85acb755f73c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNGU0NWUyOWRhNjc2ZGM0MDVkODNiN2Q2MDVjMjE0MmRjYTZhZjU0N2NmNDVhMzZkM2JlY2NlNDE2NDQ0MTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOTgwZTUxYjM3MTQzYjdmMjhlN2M1ZmVkMzIxYzcxYjhiNjIyYzdiZjc4ZmFiMWUzMzg3NWNmMWVkZjU2OTUifQ",
-          "currentVersion": "repo-file-v1:sha256:bc5004739fb1a9d167a275c664d8c2fbdebbcf22a41fc0f24e71c329df6f077a",
+          "currentVersion": "repo-file-v1:sha256:246c9806757c6d84f699babf44f2a4804145d12e323a87a5cd51c90fdf44c161",
           "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
-          "resource": "repo://build.gradle.kts#L139-L166",
-          "recordedVersion": "repo-lines-v1:sha256:3de5f81a1415b830b7f4f3ddfed820e760d5e41b7da0e4af7a794a5d503b7b7d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3ZGUwNDMzOTM4NGU5YzI4MTg4MTM4NTQ3YzY5MGJiZGU3Yzc3ZjQ5OGI3NmU3YWExNDhmODcxOGQyNDI1ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZjkzNDZlODI1NTY4ZmFmNjc2YjA4NWFjOGFhNGQxOWQxYWQ5ZThlMjgyNTgwYjdmODM5ODM5MWUwZTY5OWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjMWE2Y2EyZjBjY2NmMWM4MmRhODFkZDZmOTE4ZDE3Y2NhNDdjNWY1MWQ2ZTMzNTY0OTY2ZDYxMGM2YTQ5MzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNjg1YzA0MmI4YzY2OGM1NDZhZGIwY2Y5MzFhZTY2NTAxNTkxMjI5MmFiY2UzYWNiMTgwYjA2OWNhMmVlY2MifQ",
-          "currentVersion": "repo-file-v1:sha256:bc5004739fb1a9d167a275c664d8c2fbdebbcf22a41fc0f24e71c329df6f077a",
+          "resource": "repo://build.gradle.kts#L135-L150",
+          "recordedVersion": "repo-lines-v1:sha256:949d296e11253de9b7e40468898a823cdcefc5a276fe521a57fddc508f742ccf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmMjg3ZmYyYmE3MjFjMTU3NzNkMTAwZWVjM2QzYzMwM2YzZWFhNmE1YjAyZWU3NzRhMTg0N2Y4Yjc5N2ZmZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyNWNkYjlhMjNlYTQxNWU0NmVmNjZiYzE2YWI1NGRhMzg0MjE2MDFlOWU3OWQwMTVhMjJiM2UxMzZjYzg3ZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkMzdkN2FjZGU1ZDI5ZDM5YjA4MTg1NzNhODgyMGYxZmFkZmExYmFkMDlhYzgxM2ZhMDRmODBlN2RkOGNhYTYifQ",
+          "currentVersion": "repo-file-v1:sha256:246c9806757c6d84f699babf44f2a4804145d12e323a87a5cd51c90fdf44c161",
           "status": "NOT_ASSESSED"
         },
         {
@@ -630,16 +630,16 @@
         },
         {
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
-          "resource": "repo://build.gradle.kts#L816-L853",
+          "resource": "repo://build.gradle.kts#L826-L863",
           "recordedVersion": "repo-lines-v1:sha256:05e3309e3445a91849800ecd976ec37dcddbbd2482044a5b9d145bedd21b4337:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmMGNlMGU2ODgyNTJlNDdkMWMxMDQ2Y2ZkNDQwMmUyYWFkYWEyZTFhMTQ0NjljZjFiYjM1YmFiZGE4ZTE2YjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0OGY5YmI1NThjY2UyMjU3MGE3YzJiNTczMTYzNTMyYjNhZjRiY2FiOWRkZGJiM2YxMjIyOWJiMjdjMDliMjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZiYWRiZjMyMTcyMTFjOGMxYTYzYWYxZWQyNzU3NmE1MTdiNDBmMTQ1NmE0ZjlkMzRjNTgwZWI3YWNlMDU3YzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2YzgzZmJhZjkyYjljMmU3Yjg1YTljY2Q1NzUwZThlZjQxMjZmMjc4ZWNmYjJhYTU3MTY3MDU2YmFiZThiMTgifQ",
-          "currentVersion": "repo-file-v1:sha256:bc5004739fb1a9d167a275c664d8c2fbdebbcf22a41fc0f24e71c329df6f077a",
+          "currentVersion": "repo-file-v1:sha256:246c9806757c6d84f699babf44f2a4804145d12e323a87a5cd51c90fdf44c161",
           "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
-          "resource": "repo://build.gradle.kts#L849-L886",
+          "resource": "repo://build.gradle.kts#L859-L896",
           "recordedVersion": "repo-lines-v1:sha256:a8eae36b4a254b4a99e0ff299b1ada839533417a38d3ce1c79dd5117b566d38a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjYzAyOWJkYWJiMWEwM2RkNzUyMjQ0MGM4MGU3YTlkMzlmNjhiZTA1OTUzZDA4Y2NjZTA0MjI0OGM0YmQ2YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzMmRlYzFiZDA1NTEyYTEzNDBkZjkyNTI3YWQ0NWQzNWI1NmQ1MjA0ZjU3YmQ3MjA4NDI2M2UzYWQ1OGRkZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkxOTIwNTE1MzMzN2JjMzEwNGE4ZDBiNmMwYWM0NTg1YzliNzcxOTRjZGU5NDk3ZDBlZjgwMDhhNjI4NzNhMTIifQ",
-          "currentVersion": "repo-file-v1:sha256:bc5004739fb1a9d167a275c664d8c2fbdebbcf22a41fc0f24e71c329df6f077a",
+          "currentVersion": "repo-file-v1:sha256:246c9806757c6d84f699babf44f2a4804145d12e323a87a5cd51c90fdf44c161",
           "status": "NOT_ASSESSED"
         },
         {
@@ -653,7 +653,7 @@
           "claim": "claim_54f2a2e4c8df43fdae34c80ce389e8c6",
           "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L3",
           "recordedVersion": "repo-lines-v1:sha256:903c81dc02bcd6dc5a04ddb10984408b5c823595e6ab789ed39c0d866651b5f6:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTAzYzgxZGMwMmJjZDZkYzVhMDRkZGIxMDk4NDQwOGI1YzgyMzU5NWU2YWI3ODllZDM5YzBkODY2NjUxYjVmNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTAzYzgxZGMwMmJjZDZkYzVhMDRkZGIxMDk4NDQwOGI1YzgyMzU5NWU2YWI3ODllZDM5YzBkODY2NjUxYjVmNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWNlN2ViODUyNjM3ZmNkZmQwMjBiMGZmZWVmODRiY2Y0NjBhNmI2NTQ4YjMzMDNjZjM5M2Q0MWNkZjE2NzM2OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjJhN2RlZTc3MzVkNzAzMzVkMDQ2Zjc5NTU3YjdkNjNjOWRjZjEwZmIzNGEzZDUxZGM5YmRkYWU5ZDM0MTU5ZSJ9",
-          "currentVersion": "repo-file-v1:sha256:0364767aba5dda9da9425147e51121554ec32c3e4610e2baae4696e5e71c7fe0",
+          "currentVersion": "repo-file-v1:sha256:83924999dce521dda583c54d39afbadb241c1a34f58f4996c2bd33de85fae662",
           "status": "NOT_ASSESSED"
         },
         {
@@ -679,9 +679,9 @@
         },
         {
           "claim": "claim_80ac4fa29f9f455b8b4ac1ee06966cfa",
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L472-L483",
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L473-L484",
           "recordedVersion": "repo-lines-v1:sha256:9672c50fc74cc1b6c84a3de8ad95c6c7c4140044f613ce063dc76b50d2d75db3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZDlmNzM0YmU1YWEwMzkzNWM0OTliNzE0MTEzNTVjZWZhYzJhMmJmNTc5ODllMTI0NmQzNWE3MzUyYzdlOWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMjNlZDEwMjlmYTE4YTc1Zjg5M2ZiNDFmZTYxOWE0MmZkNjI3ODk2M2QxMjM4NTUxYThiMGMzZTEwOTNiOGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzOGVhYzMzZmQzODU2YWUwN2UzZGUwZmUzNjQ2ZGY0YzQ5M2RmMTI0MGEwNDc5Mzg5ODJiMTI4MjM5MGE1YTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2YzRmNWI2ZDcyM2I4ODkyMmM1ZmFmZjUzNGU1NWY1Y2Y1YjkwZTc0MzMyZmZhM2VkZjBlOTZkZWFiNTgwOGYifQ",
-          "currentVersion": "repo-file-v1:sha256:0364767aba5dda9da9425147e51121554ec32c3e4610e2baae4696e5e71c7fe0",
+          "currentVersion": "repo-file-v1:sha256:83924999dce521dda583c54d39afbadb241c1a34f58f4996c2bd33de85fae662",
           "status": "NOT_ASSESSED"
         },
         {
@@ -693,10 +693,10 @@
         },
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-          "recordedVersion": "repo-file-v1:sha256:0364767aba5dda9da9425147e51121554ec32c3e4610e2baae4696e5e71c7fe0",
-          "currentVersion": "repo-file-v1:sha256:0364767aba5dda9da9425147e51121554ec32c3e4610e2baae4696e5e71c7fe0",
-          "status": "MATCHED"
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L26-L35",
+          "recordedVersion": "repo-lines-v1:sha256:cd22be51d93cffa5ed628effb7d5050dc46995216f05b507b634949b50049112:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiZmNiOTk1MDI3YjkzNWMwY2ExMjcyZTFmOGNkMzFjNGExMzE4Y2JkOTM1Nzg3NDQyODNhNmUyNTQyMTdlZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjOTVmYjZiZDFjNDliMTdhNmFkY2FiYTAwZDZkZmI4ZTFhZWI5MWQ1MWQwY2NkNDgwMTI2ZTdjNDc0NGVlZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmYTdiZDBjNTQyNWQyMTFmZmY1MjJlYzg5YzQxNjg5ZTZlODE1ODZkYjY1MGRiNzEwMzg4YTEwODgwYTNhZDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2ZDJhNTRmZWFiZjIzYzYwNTU2YzllNzcwZTk4ZDk3NTM5NjNjYWM3OWZjZWQ2Yzc3YzVlMzg4ZDA2MjVjOWYifQ",
+          "currentVersion": "repo-file-v1:sha256:83924999dce521dda583c54d39afbadb241c1a34f58f4996c2bd33de85fae662",
+          "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
@@ -714,17 +714,24 @@
         },
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
-          "resource": "repo://cli/build.gradle.kts",
-          "recordedVersion": "repo-file-v1:sha256:3fdba09274f861814014570a7d58632f3dcc28e94e6938c4651a4f0d7f7c3016",
-          "currentVersion": "repo-file-v1:sha256:3fdba09274f861814014570a7d58632f3dcc28e94e6938c4651a4f0d7f7c3016",
-          "status": "MATCHED"
+          "resource": "repo://cli/build.gradle.kts#L178-L184",
+          "recordedVersion": "repo-lines-v1:sha256:259d8a6e5f2c066752a07aff31f0f19c682ce890f117aa16d923699a1b7c85df:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2JhMzE0NWFlZTBkYTA1OTI0ZDNhZDBiMWVlYjRhZGU3NzYxYjY2N2Q4YTk2MTQ2ZGVlZjM5YWJkMWNlNDhjYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDUyOWFmMTIyMzZjYTFhMTFkYmM3MTlhNzA5NzFhMjM4YTgxMjNjMzY0MWM0Y2M0ZjJlNGVkYjU3MDc2NTAyOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzQ4OTE2MGJjNjU3YzQzZTU1MWRmYWM0YjFjYmIyMDAwOWM0NWJkM2M1NzNlNzMzOGRkZTgzMDg4NzRiZjY3OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmExYzQxZDgwNmVlZmQyMTRiNjgwYzA1M2Y1YTlkNmQ5YjE5OWJiYTI0ZmM0MjViMTMwNmM2YzU4Zjg4ZTdlOCJ9",
+          "currentVersion": "repo-file-v1:sha256:fced37f2407b186ceadfe06528c3db7109a4a7a3d323970b2a3c50c734c98bb8",
+          "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
-          "resource": "repo://distribution/cli/build.gradle.kts",
-          "recordedVersion": "repo-file-v1:sha256:41addc36f155754d7f6733090688c469adf97320ec38439aa7791c913de1d3c1",
-          "currentVersion": "repo-file-v1:sha256:41addc36f155754d7f6733090688c469adf97320ec38439aa7791c913de1d3c1",
-          "status": "MATCHED"
+          "resource": "repo://cli/build.gradle.kts#L45-L55",
+          "recordedVersion": "repo-lines-v1:sha256:b3b04ba172a5f43103046f1c3586719990cf6d8e677b26a3438ba88ec3ec5943:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxMmM0Y2E3N2E1MzEwOTQzMzBiZmNkY2M0ZGM4OWQ5MTdiYzhmODU2ZmVjZjgyN2JmYmVhZTdlZmEwODYwNDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzM2U1NWRkZDFkOTkxNzk2M2Y4MjlkMWQ3YjM0Zjc5ZWVhMjIwMTg4OWI2MDUzOTdhNWFlYjI4NjRkY2Q5MjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5MWU0ZjMyZjU2NjY0OWRjNzJlNjY4NjM1MTRiYmQ2YWMwMTQ2ZGJjMjk4ZTc4YjIyZWY1ZmRlOGIxNjBhNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMmViMTE4MDFlZWQzODM1NGEwYmJjZjRjYTMyNDE1ZjFhNGE5NTk2ZjRhMDZmYmQ3ZTRhZjFmZWE3NzI0OTEifQ",
+          "currentVersion": "repo-file-v1:sha256:fced37f2407b186ceadfe06528c3db7109a4a7a3d323970b2a3c50c734c98bb8",
+          "status": "NOT_ASSESSED"
+        },
+        {
+          "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
+          "resource": "repo://distribution/cli/build.gradle.kts#L20-L34",
+          "recordedVersion": "repo-lines-v1:sha256:29da102fdbc9acddc32709a15e4a24ad15a76dd325979c39beaa43a2517fc374:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiYTMxNDVhZWUwZGEwNTkyNGQzYWQwYjFlZWI0YWRlNzc2MWI2NjdkOGE5NjE0NmRlZWYzOWFiZDFjZTQ4Y2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0ZTE4OGZlZmIwN2VhZWRkY2IwYWExNDgxYTcyOWE3ZDU0YTNmM2Y5ZWFlOGI3NGU4ZmFkNzhhM2ZkMzMwYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhMzY4YmU1MTYyNmI2NTkxZjdhMWMyZDVmNTI1MDBhZDY0YzA4ODQyNWE4ODQ4ODUwN2YyM2JlZGU1NDI0MGUifQ",
+          "currentVersion": "repo-file-v1:sha256:f1b2f67e58868ebb14af6075a1e20274a79d39c65c46867e2c7e6665fd9bca24",
+          "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_9d5bbef224bb433b82205fb924c4dee4",
@@ -1108,8 +1115,8 @@
     },
     {
       "path": "openwiki/runtime/idea-lifecycle-and-refresh.md",
-      "sha256": "01f5e81b82cc21743429aa813b8a54043a1a81fdc33f465319e5d749db4a3e00",
-      "claimsSha256": "d1a24ea9027c607459b77ecaa8a5b81122d7e022612d0444d05f7a001468969d",
+      "sha256": "22abc73463186b20d0ebe596810c8abde5a5c95042e7c175bdb055ddefb24a8c",
+      "claimsSha256": "13e320abb65232c71696affc6466945a561e09a9b290acee6e1fe3cb1850567c",
       "evidence": [
         {
           "claim": "claim_06e2aac3fd894966a82caf7cfced11b7",
@@ -1197,16 +1204,16 @@
         },
         {
           "claim": "claim_6841e7e3c40a485aaee1af9d7abbb523",
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
-          "recordedVersion": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4",
-          "currentVersion": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4",
-          "status": "MATCHED"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt#L21-L35",
+          "recordedVersion": "repo-lines-v1:sha256:24999af2274ce195034056a24d8f63d65f90d40bd5524e98e2dd7387fa403779:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjYzk5Y2U5ZDdjOTI1ZmE4YTY3ZmMzODc1MGQ1ZTJiNjI2YWJmNDExMzhiYmFmY2ZiMGJlMDkxZjg0NDVlOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI4OTgzM2MyZmEyYzI5N2ZlMjE2MDYyMzE2MjM3ZDg3MmE1MTNjZjUwNzkwZDA1YWUwYjM1NWY1ZWRiMDAxODEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjExYzRiYmY5MzA3OGJlMjljOTM3ZTg4NTNhNjE4NDk5YTVkMTNmYWMxMTFhMWE5MDg4MDE1ODQzYzcwYmVhNDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEyN2Y1MDI5ZjMyNDFkNjFmMzdlZjI5OTA5M2VhOTAwYTAzZTUwMTM2ZDJmMWI2OTUwYTlkM2JjMGRmOWYyYjAifQ",
+          "currentVersion": "repo-file-v1:sha256:2bafb2ae93b58db7651caf1d51193085e549157c11121237d3834990d6853fd0",
+          "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_6841e7e3c40a485aaee1af9d7abbb523",
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt#L22-L22",
-          "recordedVersion": "repo-lines-v1:sha256:ad60961eeebdb4bcd949c140de8a741eec9b80f3e1e173a4c8ed2f83e415fe24:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWQ2MDk2MWVlZWJkYjRiY2Q5NDljMTQwZGU4YTc0MWVlYzliODBmM2UxZTE3M2E0YzhlZDJmODNlNDE1ZmUyNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWQ2MDk2MWVlZWJkYjRiY2Q5NDljMTQwZGU4YTc0MWVlYzliODBmM2UxZTE3M2E0YzhlZDJmODNlNDE1ZmUyNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGQzY2YzNzczZGJhMzY3M2Y1ZGM0OTg1YTFjNzA4OTBlMTFjYjJjOWIyZTg0Mjg1NjRhMjYyOTA2NmJiN2IyZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDE1ZTg5NWU0ODk2NzhkYmJmMjEzMTg0NDllMGIxMjY1ZjlhOTc1YTUxOGVkY2FiMTIwMGYwYTYzOTYwMGMzYSJ9",
-          "currentVersion": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt#L58-L113",
+          "recordedVersion": "repo-lines-v1:sha256:3feb6eed36b042c31ad8ebbf98663ffb10d357571eabbdace90b106f7ce4c39c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMTg2Y2JkMGYyZTFlNzJhYzBjYjdiMDBmODJiYzhjMTk0ODdiYjRiZjgxZmFkMzJhMjQxZDQ3MTc2NzBlMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkNDg2YWVhNDAxYjE3YWNmMGZmMTUzNDczYzUxYTJlZDc2NjQ5OTJiZDVhYTljN2UwOWE1ODFhOGNlOGI0NDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwYzYxMzYxOTc1MGJkN2UwMGY1ODJhN2QyOGI4MTgwMjE4MjI1MjI1M2QxMDEzZDZjNTNiYzc3ZjI4ODFmNzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU3NDdiYmQ4YjU5Zjk4NjcyMTBmYzlmZjk1Y2IzZWY0Yjc4MTI1YzA2YjRjZjkyODQxM2M4MzdhNTlkZWY4NDAifQ",
+          "currentVersion": "repo-file-v1:sha256:2bafb2ae93b58db7651caf1d51193085e549157c11121237d3834990d6853fd0",
           "status": "NOT_ASSESSED"
         },
         {
@@ -1969,8 +1976,8 @@
     },
     {
       "path": "openwiki/transport/codex-hosts-and-framing.md",
-      "sha256": "294063d59827431667f7c037116f3ebd340ee09d179488a6a9b30a1b564d0582",
-      "claimsSha256": "5a27b22e0b053112837eccc02bde9494cf8b87b2f6d3a9972ef9329ce71edc56",
+      "sha256": "ea438a0300c5a3d61f556e1733f0332adf615de67ac331099d9e3e3639fda968",
+      "claimsSha256": "d8b446f456a96951affab1b9a3f871907dc3af0e7851a798cc94538c28b0679e",
       "evidence": [
         {
           "claim": "claim_38dafc6c84934c4686aef201b1729568",
@@ -2016,16 +2023,23 @@
         },
         {
           "claim": "claim_9efe0add23434b0cb33a5346f161ca05",
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt",
-          "recordedVersion": "repo-file-v1:sha256:d2dca295ac03839db9de00d5a990e72275b96c266d626681273608a4ea814ebc",
-          "currentVersion": "repo-file-v1:sha256:d2dca295ac03839db9de00d5a990e72275b96c266d626681273608a4ea814ebc",
-          "status": "MATCHED"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt#L698-L730",
+          "recordedVersion": "repo-lines-v1:sha256:be9efb000e7bc239178a80396c0cf3ffed5aba36e7a4a3297d2a85543dcf812b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ZTk5MjYyYTJlN2ZmZDcwMzcwOTkwYmU2ZWIxMWE4MmMwMjNkNDM5MjI3N2M1ZWQyODU1NTU0OWMxY2M5ZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzMGI3ODlhODFmNWE2OTk2NjA5YTFiYjlkZGIzYWI4OWE5NTQ5NmJiZGRiZGYwYTg5YTUyZWE1M2E2N2RiZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzOTFiNmZiMTI5MWIwYWNkY2NkZmUzZmE2NWE4NjNiYTUyMjE0MzM1MTk3YTU1NWM4OWJjOWY3ZjVkZTJmMzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjMGVhZDI3MjQ5NjBiMmU5YTdmZjRjYWQzOTIwMTA2YmE0ZmM4Y2FkNmZhNmI2ZDViNTcxYzk3ZTBhOTg1ODQifQ",
+          "currentVersion": "repo-file-v1:sha256:1d63f9ba299d28e83d891b3e98c4cec0fa4e08e03a75c61785036d80eaa9af4a",
+          "status": "NOT_ASSESSED"
+        },
+        {
+          "claim": "claim_9efe0add23434b0cb33a5346f161ca05",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt#L803-L832",
+          "recordedVersion": "repo-lines-v1:sha256:450035614e96610b72c9fe085b24ca13cc7f7e9bac47823f0bd4188f4e186379:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyNDMwOWUxZGM5YWQ5MDMwNmUyYjFlN2Y1ZWRmMGFiZmZjZGQyMDNmNDc2YmRjODM0MTdlMjk4ODU5MmM1NzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiNGIyZTk1ZjFiZWU4ZDAyOGRjYjg5NmI0Yjk1MDg3Y2I1ZDk3NTcyZDdjNDM5YzJiOGU1YTRjNWZjOTI3NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY2ODE2MmIxZTFhOTE5YzE1NDU3ZmYxYTg0OGJkMDgzOWQ1ZTc3M2NhMzQyMjQ4MjJlNDc5MGEyMWFiOGRmM2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE3NjQ4OWM4ZGM4MDNmNjM3ZmY0ZTQ0NDA4NWI4NDI2Njg2M2JjYWI0ODA1NWMzMjYwMTdmZTBmMWNiYzFiNzMifQ",
+          "currentVersion": "repo-file-v1:sha256:1d63f9ba299d28e83d891b3e98c4cec0fa4e08e03a75c61785036d80eaa9af4a",
+          "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_6d7e1beb5f554e81af20f91c6ee1c7c7",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt#L504-L634",
           "recordedVersion": "repo-lines-v1:sha256:b96063e17468d0ed0f2769009b82eb20cb31fb8097ee8744cdac3e71f87cf68b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzYWEyNWRkODhkN2Q4MDgxNzM4NTZmZDE4MmIxYzY4OWQ0ZDg2Y2YyZjg4OWE1MzhkODlkNzJmMzZmZjVkZGY2IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJjYjU3NzBiOTlmYjcyY2E0ODQ2ZjE2ZWU5NzcwYjNhYzkzNzk2NjAyNmVhMTdhNTA0ZTU2ODE2ZjM2NTc2OTM0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNDliNTUyN2I2ZGVkZWU0YThhNTk3YzlmYmE3NzRiYWFhZWJhMjJlYThlZjZkM2Y3Y2IzMTI2ZThlYTlhMWM2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzMjA5OTliNmE0NmFlMTkxNDUzMmNlMTBlY2Y0MGM4MDBhYzYwMzFhMjIzMzk2NzAwMzFkZTg3OTdlNzFjODE3In0",
-          "currentVersion": "repo-file-v1:sha256:d2dca295ac03839db9de00d5a990e72275b96c266d626681273608a4ea814ebc",
+          "currentVersion": "repo-file-v1:sha256:1d63f9ba299d28e83d891b3e98c4cec0fa4e08e03a75c61785036d80eaa9af4a",
           "status": "NOT_ASSESSED"
         },
         {
@@ -2039,35 +2053,35 @@
     },
     {
       "path": "openwiki/transport/coordinator-and-workspace-preparation.md",
-      "sha256": "7bd8c10f8e736c90749cfcf314ddf7eb3561255c038a4babae9ec6cef116948b",
-      "claimsSha256": "5910431adb7e98239e1c992c5933bb1101fdf04abd028cd6a9666fc1e87dd562",
+      "sha256": "13a74d3e0fa10384e989145a197fc4be085f1263b7c09435cf0210b221aa5b59",
+      "claimsSha256": "4198338d47c9e20402441057ce3fb09b3a89c53afee0be06d61a372a03754edc",
       "evidence": [
         {
           "claim": "claim_9afc4ce3301b4badb9651eeb2f54f674",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
-          "recordedVersion": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4",
-          "currentVersion": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4",
+          "recordedVersion": "repo-file-v1:sha256:2bafb2ae93b58db7651caf1d51193085e549157c11121237d3834990d6853fd0",
+          "currentVersion": "repo-file-v1:sha256:2bafb2ae93b58db7651caf1d51193085e549157c11121237d3834990d6853fd0",
           "status": "MATCHED"
         },
         {
           "claim": "claim_9afc4ce3301b4badb9651eeb2f54f674",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt#L22-L22",
           "recordedVersion": "repo-lines-v1:sha256:ad60961eeebdb4bcd949c140de8a741eec9b80f3e1e173a4c8ed2f83e415fe24:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWQ2MDk2MWVlZWJkYjRiY2Q5NDljMTQwZGU4YTc0MWVlYzliODBmM2UxZTE3M2E0YzhlZDJmODNlNDE1ZmUyNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWQ2MDk2MWVlZWJkYjRiY2Q5NDljMTQwZGU4YTc0MWVlYzliODBmM2UxZTE3M2E0YzhlZDJmODNlNDE1ZmUyNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGQzY2YzNzczZGJhMzY3M2Y1ZGM0OTg1YTFjNzA4OTBlMTFjYjJjOWIyZTg0Mjg1NjRhMjYyOTA2NmJiN2IyZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDE1ZTg5NWU0ODk2NzhkYmJmMjEzMTg0NDllMGIxMjY1ZjlhOTc1YTUxOGVkY2FiMTIwMGYwYTYzOTYwMGMzYSJ9",
-          "currentVersion": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4",
+          "currentVersion": "repo-file-v1:sha256:2bafb2ae93b58db7651caf1d51193085e549157c11121237d3834990d6853fd0",
           "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_e26a437aa26b41068e118b49725d068c",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt",
-          "recordedVersion": "repo-file-v1:sha256:218e1f3a602a8320e101d88e4cec00961185226296335b7e37d370150c9aa570",
-          "currentVersion": "repo-file-v1:sha256:218e1f3a602a8320e101d88e4cec00961185226296335b7e37d370150c9aa570",
+          "recordedVersion": "repo-file-v1:sha256:fb7546edb36fa61ced081321127ab8d8c054c34e6fbf4f877c57ff37048565b8",
+          "currentVersion": "repo-file-v1:sha256:fb7546edb36fa61ced081321127ab8d8c054c34e6fbf4f877c57ff37048565b8",
           "status": "MATCHED"
         },
         {
           "claim": "claim_e26a437aa26b41068e118b49725d068c",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt#L19-L19",
           "recordedVersion": "repo-lines-v1:sha256:cb4a27a0aa7807c3bdea018950aef58556531af78d1cf629db990b35c17a8555:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I0YTI3YTBhYTc4MDdjM2JkZWEwMTg5NTBhZWY1ODU1NjUzMWFmNzhkMWNmNjI5ZGI5OTBiMzVjMTdhODU1NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I0YTI3YTBhYTc4MDdjM2JkZWEwMTg5NTBhZWY1ODU1NjUzMWFmNzhkMWNmNjI5ZGI5OTBiMzVjMTdhODU1NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDhmYmVhYzlkYWY3ZjU4M2ExZWMzNzhjZGNhY2YyZjRhODE1OWEzYzNkODBkMmY3NGQxNGY1N2RjNDkzNDczMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmIyZjZkMWEzMDNhNjk5NDJlZDEzNzIzYWFjMjk1ODQ5YzBiZjg5NDc5Y2UyN2NhYzQ3NjE2YzIzZTg5YjJjMiJ9",
-          "currentVersion": "repo-file-v1:sha256:218e1f3a602a8320e101d88e4cec00961185226296335b7e37d370150c9aa570",
+          "currentVersion": "repo-file-v1:sha256:fb7546edb36fa61ced081321127ab8d8c054c34e6fbf4f877c57ff37048565b8",
           "status": "NOT_ASSESSED"
         },
         {
@@ -2093,24 +2107,31 @@
         },
         {
           "claim": "claim_3fce1e0d79b8463a88b4460260199b38",
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt#L173-L188",
-          "recordedVersion": "repo-lines-v1:sha256:271b98221225770886676d761946f5643f55c0daa57460d2c9976da478c5c421:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzMjRhYjY2YzgxOTgxNmI1ZmY1Nzg5ZDZiYTQzMzUxNmU1NzYzNWZhY2ExNDgwOWM1MDdhNmI4NDRjZmM3MzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyOGNjN2JjOGQ5MGU1NjQ3MjY1YjZiNTJjOGQwZWM1MTI4MWU5MDQ1MmNmYmJjZTA3YjRhM2NkMGZhNmU1MmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwNjY1NWNlMTJhNWQ4ZWJhYWY0ZTQ3YWQ4ZTI4OGI4Yjc0MTkyNGNjMTdhM2QyYjA3ZTU2ZGMwMmFlZWQxODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwNjVhNDFjZTk1MzU5YjgxMzRiZmZlZDAxNGRjZGUwYzc1ZWJhMjFlOTVmNGE1YmE2MjE2ZWQ4NDE1MzJkZDYifQ",
-          "currentVersion": "repo-file-v1:sha256:b2f824d9c2d4c5bd84bb06bc9c7b4bc18ba9a0bc8fcf9ff9d7f1927c2acabb8a",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt#L20-L43",
+          "recordedVersion": "repo-lines-v1:sha256:a81c587975fdeb27cfb78aad80ec03b59063d82aed0e235d7cb036be033bdf82:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxOTBmOWVhM2M1YTgxNzQxYTk1MjBmY2VhNTgyMTJkNzA3MjBmNDUyZDIwZjU0Y2VkYjU1ZmU3OGQ1ZGE2MDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3Y2ZmMDQ0ZDRiMmJjOTdiYTkwZGNhNDQ1NGVjZjE2NzIyNDY0NDkyMWE0MDI3NjdmMDMwNGZiMTYzNWI3MjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ",
+          "currentVersion": "repo-file-v1:sha256:cc944731d41640789668bfdccf0bc9f24f4cbe5e5b181169637fdadcbc99a20d",
           "status": "NOT_ASSESSED"
         },
         {
-          "claim": "claim_3fce1e0d79b8463a88b4460260199b38",
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt",
-          "recordedVersion": "repo-file-v1:sha256:4d82773260bd18012d8f498f15aeac740dd68d2d01bb17304213aef09249b978",
-          "currentVersion": "repo-file-v1:sha256:4d82773260bd18012d8f498f15aeac740dd68d2d01bb17304213aef09249b978",
-          "status": "MATCHED"
+          "claim": "claim_eb5b260b52254c7da77dcde65f3170b4",
+          "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/CanonicalRoot.kt#L43-L78",
+          "recordedVersion": "repo-lines-v1:sha256:1e4e292ed583a720cc72a37004a0f868b78e570d1318e47a292bdcac858d3e56:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiMDAzMGQyNTI0ZDNhZTdmNTk2NmFhN2I5MzIyNzgzODY5NDRlZjU1ZjU5ZTJkYjQ4ODdkZjY2NTU5MDQyYWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ZDAwZTI4ZDU0NTYwZDcxNTE2NGI2ZDhhNzZjNWVkMjIxMDlhM2FkNjcwZjM5YmUyN2Q0MDMzYzA0YzVkYTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyYWY3NjIxY2I2OTgyZmQ0NTU0Mjc2ZGE3ODE4MmYyMDA3MzQxMTY3YjE0NDg3MzNkMGVhMDlmY2UwODY2YjEifQ",
+          "currentVersion": "repo-file-v1:sha256:ffedc6674bc555b78f216f9ba375d6a9119c45098f53afb385a2ae2930599c87",
+          "status": "NOT_ASSESSED"
         },
         {
-          "claim": "claim_3fce1e0d79b8463a88b4460260199b38",
-          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmissionTest.kt",
-          "recordedVersion": "repo-file-v1:sha256:707726b4a4d91208f910c83995dee040552afb09ee717c3a522ab31a90da0758",
-          "currentVersion": "repo-file-v1:sha256:707726b4a4d91208f910c83995dee040552afb09ee717c3a522ab31a90da0758",
-          "status": "MATCHED"
+          "claim": "claim_7cab00c5e96b43b9af5c79bf81ebba27",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L160-L205",
+          "recordedVersion": "repo-lines-v1:sha256:fe54899323afe2e516f965e308c4f6989ee26700ce2c16c8ff6b9df06ee01cd9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExM2M5ZjgzM2M3MDdkMWJkYmE3NWYwY2I4MmFiMWI0NDNkMWY1YjI1ZGVlNWRkODBmMzE2MTE4MGIxOTg4M2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZjljOWFjMWY4ZmZmNzMwYzRlNTU3YzczOTUzNzAxODYwZGUwODIzOTYyYWFlN2EwZDI1NmFjMGMwNTA5NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMzQwNzEwYjJmZDU5NGRiYzRjN2U2YzZlMTgzM2ZiMTVlM2Q1YjUwYzAyOGNhODllNWJlYTM2MzgyMjIzNTEifQ",
+          "currentVersion": "repo-file-v1:sha256:d20bd7e084b6bb5bff1d2cbd8b1702eef579b4cb279a4a2a24c414ef0dcc2b81",
+          "status": "NOT_ASSESSED"
+        },
+        {
+          "claim": "claim_7cab00c5e96b43b9af5c79bf81ebba27",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L49-L100",
+          "recordedVersion": "repo-lines-v1:sha256:a60705e73905b0a5f5df693553d3e91d9399814c6b88cf4025e2f51a5df07f67:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZWU0MmVmNWQ0YmVlOTA0MmMxYzRmYzNjMTgyZmFjZWM5OGRiZDc4NGJjMGRkMmJhNzk5NzE0N2U3N2U4ODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyZjIzZDE1YmQ1MmY1Y2NmNTA3MGE5YTc2ZTgzZWIyMGZkZDI1ZDUwZjc2ODk4NTE1YzE1ODk4ZTBmY2Q3MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlZmMwNjQ1MzlmZGE5NzAyYjQzNTgzZDViNzM1ODQxYTk1OWM0YmJkYjhmNDgxNTNiYzljNTZjNGRiYTI4NmIifQ",
+          "currentVersion": "repo-file-v1:sha256:d20bd7e084b6bb5bff1d2cbd8b1702eef579b4cb279a4a2a24c414ef0dcc2b81",
+          "status": "NOT_ASSESSED"
         }
       ]
     }

@@ -1,8 +1,5 @@
 package io.github.amichne.kast.cli.rpc
 
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.LiveReadOutputSchemaTest
@@ -13,6 +10,9 @@ import io.github.amichne.kast.cli.direct.directSupportTools
 import io.github.amichne.kast.cli.direct.directToolDocument
 import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.cli.mcp.KastMcpServer
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
@@ -62,16 +62,11 @@ class KastToolRpcBridgeTest {
         val root = (FilesystemCanonicalRootDiscovery.discover(temporary) as CanonicalRootDiscovery.Discovered).root
         val document = completeSourceDocument()
         var invocations = 0
-        var preparations = 0
         val session =
             KastDirectToolSession(
                 registration =
                     DirectToolRegistration(setOf(name)) { error("Invocation must not build discovery schemas") },
                 root = { CanonicalRootDiscovery.Discovered(root) },
-                start = {
-                    preparations++
-                    Refinement.Refined(Unit)
-                },
                 invokePublic = { admitted ->
                     assertEquals(PublicToolIdentity.QUERY_SYMBOLS, admitted.identity)
                     invocations++
@@ -86,7 +81,6 @@ class KastToolRpcBridgeTest {
             bridge.call(name.value, publicExample(PublicToolIdentity.QUERY_SYMBOLS, "runByName")),
         )
         assertEquals(1, invocations)
-        assertEquals(0, preparations)
     }
 
     @Test
@@ -99,7 +93,6 @@ class KastToolRpcBridgeTest {
             KastDirectToolSession(
                 catalog = publicTools.map { it.directToolDocument() },
                 root = { CanonicalRootDiscovery.Rejected(CanonicalRootFailure.ROOT_MARKER_NOT_FOUND) },
-                start = { error("no preparation expected") },
                 invokePublic = { error("no call expected") },
             )
         val rpc = (KastToolRpcBridge(session).catalog() as ToolRpcReply.Catalog).catalog.tools.associateBy { it.name }
@@ -122,7 +115,6 @@ class KastToolRpcBridgeTest {
                         .filter { tool -> PublicToolIdentity.entries.any { it.toolName == tool.name } }
                         .map { it.directToolDocument() } + directSupportTools(),
                 root = { error("catalog must not inspect the workspace") },
-                start = { error("catalog must not prepare the workspace") },
                 invokePublic = { error("catalog must not invoke a tool") },
             )
         val catalog = temporary.resolve("catalog.json")
@@ -219,7 +211,6 @@ class KastToolRpcBridgeTest {
         val read = installedHostedBootstrap().tools.single { it.name == "query_symbols" }
         val change = installedHostedBootstrap().tools.single { it.name == "add_declaration" }
         val document = completeSourceDocument()
-        var preparationCount = 0
         var invokedName: String? = null
         val session =
             KastDirectToolSession(
@@ -227,10 +218,6 @@ class KastToolRpcBridgeTest {
                     listOf(read.directToolDocument(), change.directToolDocument()) +
                         directSupportTools().filter { it.name == "health_check" },
                 root = { FilesystemCanonicalRootDiscovery.discover(temporary) },
-                start = {
-                    preparationCount++
-                    Refinement.Refined(Unit)
-                },
                 invokeSupport = { identity, _ ->
                     assertEquals(SupportToolIdentity.HEALTH_CHECK, identity)
                     CliExit.Complete(document)
@@ -254,10 +241,8 @@ class KastToolRpcBridgeTest {
         val complete = assertInstanceOf(ToolRpcReply.Complete::class.java, bridge.call("query_symbols", queryRequest))
         assertEquals("complete", complete.document.jsonObject.getValue("status").jsonPrimitive.content)
         assertEquals("query_symbols", invokedName)
-        assertEquals(0, preparationCount)
         val changeRequest = publicExample(PublicToolIdentity.ADD_DECLARATION, "exactTarget")
         assertInstanceOf(ToolRpcReply.RejectedDocument::class.java, bridge.call("add_declaration", changeRequest))
-        assertEquals(0, preparationCount)
     }
 
     @Test
@@ -267,7 +252,6 @@ class KastToolRpcBridgeTest {
             KastDirectToolSession(
                 catalog = listOf(read.directToolDocument()),
                 root = { error("shutdown must precede workspace discovery") },
-                start = { error("shutdown must precede preparation") },
                 invokePublic = { error("shutdown must precede semantic dispatch") },
                 admission = { InstalledToolAdmission.STOPPED },
             )
@@ -303,7 +287,6 @@ class KastToolRpcBridgeTest {
                 catalog =
                     listOf(installedHostedBootstrap().tools.single { it.name == "query_symbols" }.directToolDocument()),
                 root = { error("root must not be inspected") },
-                start = { error("preparation must not start") },
                 invokePublic = { error("operation must not run") },
             )
         val bridge = KastToolRpcBridge(session)

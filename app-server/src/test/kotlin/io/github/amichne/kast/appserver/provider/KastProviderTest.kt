@@ -12,15 +12,15 @@ import io.github.amichne.kast.appserver.core.ProviderFailureCode
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
 import io.github.amichne.kast.appserver.runtime.document
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscoverer
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
@@ -105,7 +105,7 @@ class KastProviderTest {
         val options =
             KastProviderOptions(
                 catalogSource = executor,
-                roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(cwd)) },
+                roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(canonicalRootFixture(cwd)) },
                 ideClient = client,
             )
         val qualification = KastProviderQualifier.qualify(options) as KastProviderQualification.Qualified
@@ -126,7 +126,8 @@ class KastProviderTest {
                 val options =
                     KastProviderOptions(
                         catalogSource = RecordingCatalogSource(installedKastCatalogFixture()),
-                        roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(cwd)) },
+                        roots =
+                            CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(canonicalRootFixture(cwd)) },
                         ideClient =
                             ExistingIdeClient { _, _ ->
                                 ExistingIdeExchange.HostRejected(
@@ -258,7 +259,7 @@ class KastProviderTest {
             val options =
                 KastProviderOptions(
                     catalogSource = executor,
-                    roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(cwd)) },
+                    roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(canonicalRootFixture(cwd)) },
                     ideClient =
                         ExistingIdeClient { _, operation ->
                             operations += operation

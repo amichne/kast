@@ -6,8 +6,10 @@ description: Use the installed Kast CLI for Kotlin declaration discovery, relati
 # Kast
 
 Use the installed `kast` command for supported Kotlin work.
-The persistent IntelliJ IDEA Host owns compiler authority and project state.
-Separate CLI calls use that Host without a client JVM or a new daemon.
+The managed IntelliJ IDEA Host owns compiler authority and project state.
+The first explicit semantic request trusts the exact workspace root and prepares its private Host.
+Use a workspace whose build code the user trusts. Session hooks and discovery do not grant trust or start a Host.
+Separate CLI calls reuse that Host without a client JVM. Queries never contact release servers.
 Use ordinary source tools for other languages.
 
 Use flags for exact-name selection and one-hop relations.
@@ -67,7 +69,7 @@ If Host or workspace admission rejects, state the reason and use qualified sourc
 ## Optional MCP tools
 
 `kast install <harness> --mcp` selects the optional MCP composition.
-CLI and MCP share the persistent IDEA Host and semantic contracts.
+CLI, MCP, and tool RPC share the managed workspace Host and semantic contracts.
 Use `find` before exact relationship tasks.
 Use `source` with `ANCHOR` before a body region.
 Use `schema` before an advanced existing operation through `raw`.

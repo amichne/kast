@@ -69,10 +69,10 @@ class ResetJournalContractTest {
     fun `reset observations encode stage and failure only on the owning variant`() {
         val observations =
             listOf(
-                ResetObservation.Started(ForceResetOperation.REINSTALL, ForceResetStage.DAEMONS),
-                ResetObservation.Completed(ForceResetOperation.REINSTALL, ForceResetStage.DAEMONS),
+                ResetObservation.Started(ForceResetOperation.UNINSTALL, ForceResetStage.DAEMONS),
+                ResetObservation.Completed(ForceResetOperation.UNINSTALL, ForceResetStage.DAEMONS),
                 ResetObservation.Rejected(
-                    ForceResetOperation.REINSTALL,
+                    ForceResetOperation.UNINSTALL,
                     ForceResetStage.DAEMONS,
                     ForceResetFailure.PROCESS_RETIREMENT_REJECTED,
                 ),

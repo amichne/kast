@@ -3,7 +3,7 @@
   "hooks": {
     "sessionStart": [{
       "type": "command",
-      "bash": "PATH=\"${HOME}/.local/bin:${PATH}\" kast hook session-start --wait none --host copilot",
+      "bash": "PATH=\"${HOME}/.local/bin:${PATH}\" kast --internal-entrypoint=query hook session-start --host copilot",
       "timeoutSec": 90
     }]
   }

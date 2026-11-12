@@ -26,8 +26,27 @@ class ManagementUninstallTest {
     @Test
     fun `retry after payload retirement removes receipted registrations and executable`() {
         val fixture = retiredUninstallFixture(temporary)
+        val skill = Files.createDirectories(fixture.home.resolve(".pi/agent/skills/kast"))
+        val guidance = Files.writeString(skill.resolve("SKILL.md"), "owned guidance")
+        val foreignSkill = Files.writeString(skill.parent.resolve("foreign.md"), "preserved guidance")
+        val receipt = admittedReceipt(fixture.root)
+        writeManagementReceipt(
+            fixture.root,
+            receipt.copy(
+                guidance =
+                    listOf(
+                        ManagedGuidance(
+                            Harness.PI,
+                            skill.toString(),
+                            listOf(GuidanceFile("SKILL.md", sha256(guidance))),
+                        )
+                    )
+            ),
+        )
         val events = mutableListOf<UninstallCleanupObservation>()
         uninstallInstallation(fixture.root, fixture.home, observe = events::add)
+        assertFalse(Files.exists(skill))
+        assertEquals("preserved guidance", Files.readString(foreignSkill))
         assertFalse(Files.exists(fixture.extension))
         assertFalse(Files.exists(fixture.executable))
         assertFalse(Files.exists(receiptPath(fixture.root)))

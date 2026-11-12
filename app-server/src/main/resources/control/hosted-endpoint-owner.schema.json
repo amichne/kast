@@ -89,6 +89,11 @@
       "examples": [
         "kast.query.run.v9"
       ]
+    },
+    "application": {
+      "type": "object",
+      "description": "Opaque at owner selection only. A live owner must pass the current managed application schema before semantic admission.",
+      "additionalProperties": true
     }
   },
   "examples": [

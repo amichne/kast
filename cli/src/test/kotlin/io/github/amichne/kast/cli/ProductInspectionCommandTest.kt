@@ -1,12 +1,12 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.CliLocalMetadataAdmission
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscoverer
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.KastPluginVersion
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers

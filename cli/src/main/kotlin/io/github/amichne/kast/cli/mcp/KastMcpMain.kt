@@ -18,15 +18,13 @@ object KastMcpMain {
             }
         if (selected.command.isNotEmpty()) return
         val directory = Path.of("").toAbsolutePath()
-        val home = Path.of(System.getProperty("user.home"))
-        val tools = KastDirectToolSession.installed(directory, home, System.getenv(), selected.catalog) ?: return
+        val tools = KastDirectToolSession.installed(directory, System.getenv(), selected.catalog) ?: return
         val record = tools.beginInvocation(InvocationRecordKind.MCP_SESSION) ?: return
         record.use {
             KastMcpServer(
                     catalog = tools.catalog,
                     invoke = tools::invoke,
                     root = tools.root,
-                    onInitialize = tools.start,
                 )
                 .run(BufferedInputStream(System.`in`), System.out)
         }

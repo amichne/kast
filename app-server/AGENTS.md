@@ -74,7 +74,7 @@ Owns the shared coordinator, workspace preparation, host adapters, Codex transpo
 - For public syntax, read the nested query guide, authored schema, and canonical mappings.
 - For preparation failures, trace the exact root through `WorkspacePreparations` into the existing-IDE client.
 - For managed headless selection, read `IdeLifecycleDeployment` and `ManagedSemanticDeployment`.
-- Keep deployment admission on workspace preparation and exact-reference reads. Reject an invalid managed selection before desktop discovery.
+- Keep deployment admission on workspace preparation and exact-reference reads. Reject an invalid managed selection without desktop fallback.
 - `IdeLaunchPlatform.startManaged` starts only the admitted private installation.
 - Coordinator readiness alone does not establish workspace enrollment or semantic availability.
 - `KastInvocationInput` keeps the admitted execution mode through provider dispatch. `WorkspaceExecutionAccess.RunnerControlledQuery` carries an unlimited semantic lifetime only for a schema-admitted query with a read effect. Provider dispatch and the workspace lane omit semantic deadlines for that access. Queue admission and output limits keep their existing grants.

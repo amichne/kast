@@ -16,12 +16,12 @@ import io.github.amichne.kast.appserver.ManagementRuntimeProjection
 import io.github.amichne.kast.appserver.WorkerControlFailure
 import io.github.amichne.kast.appserver.WorkspaceEnrollmentStore
 import io.github.amichne.kast.appserver.coordinatorConfigurationIdentity
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.rejectedCoordinatorControl
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.Frame

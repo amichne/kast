@@ -54,7 +54,7 @@ abstract class GenerateAgentToolsTask : DefaultTask() {
             "The default Copilot plugin must select CLI guidance and the shared preparation hook"
         }
         check(mcp.mcpServers.kast.command == "/bin/bash" && mcp.mcpServers.kast.args == listOf(
-            "-c", "PATH=\"\${HOME}/.local/bin:\${PATH}\" exec uv run --locked --script \"\${PLUGIN_ROOT:-\${COPILOT_PLUGIN_ROOT:-\${HOME}/.local/share/kast/installation/share/kast/agent-tools/compositions/mcp/plugins/kast}}/skills/kast/scripts/server.py\"",
+            "-c", "I=\"\${KAST_INSTALL_ROOT:-\${HOME}/.local/share/kast}/installation\"; exec \"\$I/share/kast/private-python/bin/python3.12\" -I -S -B \"\$I/share/kast/mcp_environment.py\" serve --install-root \"\$I\"",
         )) { "Kast plugin must use the installed repository-bound MCP launcher" }
         check(mcp.mcpServers.kast.toolTimeoutSeconds == 3780 && mcp.mcpServers.kast.timeoutMillis == 3_780_000) {
             "MCP host deadlines must cover the admitted task service allowance"

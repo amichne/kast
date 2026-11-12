@@ -1,13 +1,13 @@
 package io.github.amichne.kast.cli.mcp
 
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.direct.directSupportTools
 import io.github.amichne.kast.cli.rpc.QueryDeliveryFixtures
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream

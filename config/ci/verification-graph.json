@@ -2,7 +2,7 @@
     "inputs": [
         {
             "path": "app-server/build.gradle.kts",
-            "sha256": "390459ebab948bee2199cb919660927c5847f1dc68771c1d733561aaaba7fbe3"
+            "sha256": "6f7103aa5eed0ed06094ab69604c4f697752f544acc177b7fd0dc6b0ccec75f2"
         },
         {
             "path": "build-logic/build.gradle.kts",
@@ -234,7 +234,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-            "sha256": "0364767aba5dda9da9425147e51121554ec32c3e4610e2baae4696e5e71c7fe0"
+            "sha256": "83924999dce521dda583c54d39afbadb241c1a34f58f4996c2bd33de85fae662"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt",
@@ -306,7 +306,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-            "sha256": "bbe1bac2be06839c755904326d5c592a71c767a342a484095f01aec15917b26b"
+            "sha256": "05cbca22244ba9287dcc097e0f5df3c1011630f6f962a1e8abe2e1e742767089"
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/control/GenerateComponentReleaseTask.kt",
@@ -362,7 +362,7 @@
         },
         {
             "path": "build.gradle.kts",
-            "sha256": "bc5004739fb1a9d167a275c664d8c2fbdebbcf22a41fc0f24e71c329df6f077a"
+            "sha256": "246c9806757c6d84f699babf44f2a4804145d12e323a87a5cd51c90fdf44c161"
         },
         {
             "path": "change/apply/build.gradle.kts",
@@ -394,7 +394,7 @@
         },
         {
             "path": "cli/build.gradle.kts",
-            "sha256": "3fdba09274f861814014570a7d58632f3dcc28e94e6938c4651a4f0d7f7c3016"
+            "sha256": "fced37f2407b186ceadfe06528c3db7109a4a7a3d323970b2a3c50c734c98bb8"
         },
         {
             "path": "diagnostic/contract/build.gradle.kts",
@@ -410,7 +410,7 @@
         },
         {
             "path": "distribution/cli/build.gradle.kts",
-            "sha256": "41addc36f155754d7f6733090688c469adf97320ec38439aa7791c913de1d3c1"
+            "sha256": "f1b2f67e58868ebb14af6075a1e20274a79d39c65c46867e2c7e6665fd9bca24"
         },
         {
             "path": "distribution/contract/build.gradle.kts",
@@ -418,7 +418,7 @@
         },
         {
             "path": "distribution/managed/build.gradle.kts",
-            "sha256": "306b80ab3f761a5964277537f70f08b5cdf0f7769e33102dae44a71d1f87da08"
+            "sha256": "2c66c0efc900cbb1268025b8de086ca80d8668b6c4edc7cb19ce95f325ae1565"
         },
         {
             "path": "distribution/output/build.gradle.kts",
@@ -812,7 +812,10 @@
                 "distribution/cli/src/main/resources",
                 "distribution/cli/src/test/java",
                 "distribution/cli/src/test/kotlin",
-                "distribution/cli/src/test/resources"
+                "distribution/cli/src/test/resources",
+                "distribution/cli/src/testFixtures/java",
+                "distribution/cli/src/testFixtures/kotlin",
+                "distribution/cli/src/testFixtures/resources"
             ]
         },
         {
@@ -849,7 +852,10 @@
                 "distribution/managed/src/main/resources",
                 "distribution/managed/src/test/java",
                 "distribution/managed/src/test/kotlin",
-                "distribution/managed/src/test/resources"
+                "distribution/managed/src/test/resources",
+                "distribution/managed/src/testFixtures/java",
+                "distribution/managed/src/testFixtures/kotlin",
+                "distribution/managed/src/testFixtures/resources"
             ]
         },
         {

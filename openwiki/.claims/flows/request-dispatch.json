@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b00ee9a811d57b259eee9870505d1dfc6f1f4d13eaecc0f2a0b093bc9e00f098",
+  "pageVersion": "sha256:4f21248840b6ccb6576cf18adcda86e0faeecb506284a6a40614b410a064ec34",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -31,8 +31,8 @@
           "version": "repo-file-v1:sha256:980f3b4b034d06367713576a511a6a372a8085edc610d1397ca53854ebadd805"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:d5b8ee76c1caaf9c28d611224265f5f69296e00f2aefeb2dc5c6dc9a124ccdd0"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L169-L237",
+          "version": "repo-lines-v1:sha256:b578a27139e9c3596e6f9e436c7eff6b51957e92124a7c694c5fc4205eef9117:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMGNjOGIxODc3MmZlNTRjM2UzM2U5MDI4ZGU0NGUwNDUxNDgzNDFlYTY4YWZiYzNlYzE5YTdlNmEyNzllMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhNWU2OGI1YzNmNGIwMGI2M2ZhZThiNTFlNTc1YzBmYmE5OGM3YmJlZjZiZTkyYmZiYWE2NmI1Yjk3OWYxNWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzYTZkZDdmNWI0ZWFkYTc4MjY4MTI0MzVjOGE4MGIxMmVkMGIxNDBkMjM5OGNlOTVkYjA1OTU5NDMwM2YxNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2MWY3YjZmY2ZiYjBlODgyODM2ZDk4MjQ5ZGFlNTAwY2NjMjNjMWQzYTBlMzBkNTJiNTU4ZmU5NWIwMjRmMzcifQ"
         }
       ]
     },
@@ -41,12 +41,12 @@
       "statement": "The project socket client retains successfully loaded packaged Control compatibility requirements for its lifetime, retries rejected loads, and still obtains and admits fresh live describe evidence for every operation.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:d5b8ee76c1caaf9c28d611224265f5f69296e00f2aefeb2dc5c6dc9a124ccdd0"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L169-L215",
+          "version": "repo-lines-v1:sha256:509815e47c4d97f04e67f4386457a76abc52b97485fb549cb13319170af5f25c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMGNjOGIxODc3MmZlNTRjM2UzM2U5MDI4ZGU0NGUwNDUxNDgzNDFlYTY4YWZiYzNlYzE5YTdlNmEyNzllMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU0ZjE0NDdhMWUwNTliYmViNjFlYmFkYjA5OWI3NDE1MGJlMWJkZWU2MWY4NDNmNTFjYzNmNGRkN2RiZjFiMWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzYTZkZDdmNWI0ZWFkYTc4MjY4MTI0MzVjOGE4MGIxMmVkMGIxNDBkMjM5OGNlOTVkYjA1OTU5NDMwM2YxNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNmMzZlZTM1ZmI5MDkzMDk3M2ViN2M1MzY0Njc0MzVhODljYWQ4NjJjMTc4Y2FjYTg4ZjIxMTEzZGFjZjU0YzYifQ"
         },
         {
-          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt",
-          "version": "repo-file-v1:sha256:4c02ee614f10ab0911e805aa0b4a883a56f8d5df2afa6bc70a8bb6f0c3b5e157"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L56-L79",
+          "version": "repo-lines-v1:sha256:7b1037d3e6da4d42de8c3057c51fcb006472aeecd351fb97f3b4e0dcbb38e5d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwMTcwZTdhMjY3ODc5ZjRkNjU0ZGVkZDQ5YjlkYmY1ZDk2MDYwNDQzMDQ3ZDgwZWUzMmExOTBlNTE5NjA5ODQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmMWI1NTc0MjM1YzRjZDUyNTg3OTUwNTcxMmQyYmYzNzFkYjZkZWU1MzI0Y2E0MzBhMGNmNGNkYzIwODEzOTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyNmMyZmNjMGNmNmVmOTdlMDg0MGYwNzM2MWJjMmFlNzc2MTczM2ZlYjE1NDk4ODAxMzNhMTExZWIxZmQwOTIifQ"
         }
       ]
     },
@@ -69,8 +69,8 @@
       "statement": "With debug configuration enabled, the existing-IDE client emits bounded private response activity for frame, body, strict JSON, canonical wire, live-basis and prepared-completion admission while preserving finite public rejections.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseAdmission.kt",
-          "version": "repo-file-v1:sha256:0320736139cbf7b23db460ae1240ee1d80d4d4b47a3b67569aa31318b0c0d0cf"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseAdmission.kt#L10-L54",
+          "version": "repo-lines-v1:sha256:d5c71f37d05684dd30a429da2044ea123a4ddf52b65369f3482ff4cf30aac13c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1NmFlNGYxYmE1YTU1YmUyOTE2Y2MxZGY2ODEyMjFjNmIyYjUzMThiZGUyNDQxYjQ2M2UxMGFiMTJjOGZiNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNiNzJhYWRkYjg1Yzc5Njk1ZGU3NzNhNTUzYzQyMTEwYWJlYTE4OGM0NmRiOWNjOTYxOGNkMWFlNDEzYjVmY2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeResponseEvidence.kt",
@@ -130,7 +130,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-11T10:38:11.930Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-12T22:38:11.044Z"
   }
 }

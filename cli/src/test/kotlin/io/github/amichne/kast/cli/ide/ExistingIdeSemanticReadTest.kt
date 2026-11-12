@@ -6,8 +6,6 @@ import io.github.amichne.kast.appserver.DaemonOperationClient
 import io.github.amichne.kast.appserver.DaemonOperationClientRejection
 import io.github.amichne.kast.appserver.DaemonOperationFailure
 import io.github.amichne.kast.appserver.DaemonOperationResult
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
 import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
@@ -17,11 +15,13 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeReadOperation
 import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
 import io.github.amichne.kast.appserver.ide.admitOutcome
-import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.*
 import io.github.amichne.kast.cli.command.CliAction
 import io.github.amichne.kast.cli.command.CliRequestDocumentInput
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscoverer
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.*
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.*

@@ -31,7 +31,9 @@ code_sources:
 # Native management CLI
 
 This module owns management commands. `cli` composes them into the single native Control executable.
-Route `query`, `result`, `source`, `describe`, and `hook` through the selected `bin/kast-query-complete` launcher with unchanged argv.
+The public management verbs are `install`, `status`, `stop`, `versions`, `upgrade`, and `uninstall`.
+Route `query`, `result`, `source`, and `describe` through the selected `bin/kast-query-complete` launcher with unchanged argv.
+Hooks use the internal query entry point, not a public management verb.
 The query process mode owns semantic options, admission, output, and public-shell exit policy.
 Keep native dispatch thin and preserve management independence from JVM startup.
 Forward signals only to the owned query child and reap that child.
@@ -43,8 +45,8 @@ Status must not start Java, prepare workspaces, or contact release servers.
 Admit release manifests and external registration documents before effects.
 Preserve foreign files and registrations. Use the existing installer and shutdown owner for replacement and removal.
 
-Explicit `uninstall --force` and `reinstall --force` bypass old payload and receipt ownership admission.
-These operations still need a canonical deletion scope, an exterior reset fence, and a stable lock.
+Explicit `uninstall --force` bypasses old payload and receipt ownership admission.
+It still needs a canonical deletion scope, an exterior reset fence, and a stable lock.
 Record durable retention intent before atomic detachment.
 Prove retirement of root-scoped jobs and process incarnations before erasure.
 Force retirement admits native worker modes through `NativeControlEntry`.
@@ -56,22 +58,15 @@ Remove only the exact selected installation's exterior login entries.
 Never signal shared IDEA or Gradle processes.
 Keep deletion scope distinct from ownership. Never erase filesystem roots, HOME, or its ancestors.
 
-Force lifecycle transitions carry prerequisites in privately constructed types: fenced, quiescent, erased, staged, and installed.
-A single-use lease rejects repeated detach, erase, stage, and completion effects.
-
-The bundled installer stages a manifest-qualified replacement without service activation.
-Completion examines the payload again and removes the exact owned reset fence.
-`RESET_INSTALLED` carries installation identity, version, and command. It carries no service generation or readiness claim.
-No success path starts a broker or publishes Codex discovery.
-
-Failed staging or completion restores the fence and retires partial processes, with both causes if recovery fails.
+Force removal carries prerequisites in privately constructed fenced, quiescent, and erased states.
+A single-use lease rejects repeated destructive effects. Keep `reinstall` retired; exact repair belongs to `upgrade --repair` and the existing replacement journal.
 Report kept storage when retirement or cleanup rejects. OS refusal is a finite failure.
 The exterior lock stays stable across directory deletion and later reset tries.
 
 `kast install codex|copilot|pi` selects canonical CLI guidance from the admitted installed bundle.
 The default composition is `CliOnly`. `--mcp` explicitly selects `CliWithMcp`.
 Codex and Copilot own their plugin resources. Pi uses native skill discovery and a session extension.
-All three harnesses call `kast hook session-start` for workspace preparation.
+All three harnesses call `kast --internal-entrypoint=query hook session-start` for passive context, without trust or Host effects.
 Preserve foreign provider resources and reject unresolved conflicts before effects.
 Provisioning success describes installed resources. It does not describe an existing agent session.
 
@@ -89,14 +84,22 @@ Legacy connection migration needs the recorded MCP command and a proven `PAYLOAD
 Preserve the replacement receipt, old launcher digest, filesystem identities, selector target, and actual Codex command.
 If migration fails, restore the provider configuration and management receipt. The installer owns terminal cleanup.
 
-## Managed installation candidate
+## Managed product and workspace admission
 
-`kast versions [--json]` lists stable and the captured catalog of qualified main builds.
+`kast versions [--json]` lists complete stable and preview products. `main` is a compatibility alias for preview.
 `kast upgrade` obeys the recorded update policy.
-Explicit selectors use `--channel stable|main`, `--version`, or `--commit`. These selectors are mutually exclusive.
+Explicit selectors use `--channel stable|preview`, `--version`, or `--commit`. These selectors are mutually exclusive.
 Exact versions and commits create pins. An unqualified upgrade of a pin rejects with `PINNED_BUILD`.
 `BuildSelection` owns selector admission. `BuildCatalog` preserves distinct main revision, build revision, and source tree facts.
 `ManagementBuilds` resolves one selection and invokes the manifest-owned candidate installer.
+
+`ManagedWorkspaceQuery` owns installed-only admission for CLI, MCP, and tool RPC. Semantic requests never contact release servers.
+The first explicit semantic request trusts one exact `CanonicalRoot`. Discovery and hooks do not create trust or workspace state.
+Keep the immutable vendor base separate from exact product components and private per-workspace HOME, IDE profile, and default Gradle state.
+Saved settings may select an external Gradle home; inherited credentials remain available. Private state is not an OS sandbox.
+`stop` retires the selected workspace generation temporarily. Later explicit requests may prepare it again.
+Vanished-root reclamation requires an absent root, the exact retired Host generation, no query lease, and settled `.kast` evidence.
+Interrupted deletion retains its exterior `.removing-ID.json` receipt. Unknown ownership or process state blocks reclamation.
 
 Keep installed bytes, loaded Host identity, update policy, and unresolved replacement state separate in status.
 `PassiveApplicationHost` reads the existing application advertisement and admits its exact process incarnation.
@@ -104,11 +107,10 @@ It starts no Java process and sends no lifecycle request.
 A loaded Host does not establish workspace readiness or compatibility through version equality.
 `BROKER_NOT_OBSERVED` describes absent broker evidence for private endpoints. It does not describe a compiler epoch or workspace readiness.
 
-The current public `install.sh` remains active during candidate qualification.
-The candidate path does not establish stable publication or public bootstrap activation.
+Source checks do not establish native acceptance, stable publication, or public bootstrap activation.
 Read the [candidate evidence guide](../../docs/reviews/managed-installation-cli.md) for the release limits and source owners.
 
-Run `./gradlew :distribution:cli:test :cli:nativeCompile` for changes here, then the affected release, architecture, JSON, and knowledge guards.
+Run focused `:distribution:cli:test` selectors first, then affected contract, architecture, JSON, and knowledge guards. Native compilation and acceptance are separate evidence boundaries.
 
 ## Native compilation inputs
 

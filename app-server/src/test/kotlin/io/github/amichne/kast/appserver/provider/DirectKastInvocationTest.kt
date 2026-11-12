@@ -8,14 +8,14 @@ import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.installedKastCatalogFixture
 import io.github.amichne.kast.appserver.publicNameQuery
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscoverer
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -40,7 +40,7 @@ class DirectKastInvocationTest {
             val options =
                 KastProviderOptions(
                     catalogSource = RecordingCatalogSource(installedKastCatalogFixture()),
-                    roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(root)) },
+                    roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(canonicalRootFixture(root)) },
                     ideClient =
                         ExistingIdeClient { admittedRoot, operation ->
                             assertEquals(root, admittedRoot.path)

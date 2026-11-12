@@ -1,11 +1,8 @@
 package io.github.amichne.kast.cli
 
 import io.github.amichne.kast.appserver.InstalledAppServerManager
-import io.github.amichne.kast.appserver.InstalledSavedConfigurationIngress
-import io.github.amichne.kast.appserver.SavedConfigurationIngress
 import io.github.amichne.kast.appserver.host.installedCodexClientLauncher
 import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
 import io.github.amichne.kast.cli.command.CliCommandGraphFailure
@@ -16,6 +13,9 @@ import io.github.amichne.kast.cli.projection.CliLocalMetadataFailure
 import io.github.amichne.kast.distribution.cli.MANAGEMENT_VERSION
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.InstalledSavedConfigurationIngress
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityFailure
 import io.github.amichne.kast.protocol.contract.KastPluginVersion

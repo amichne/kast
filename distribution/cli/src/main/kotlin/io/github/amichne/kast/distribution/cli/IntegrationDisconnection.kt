@@ -117,3 +117,44 @@ internal fun disconnectionDirectory(root: Path, home: Path, registration: Manage
         registration,
     )
 }
+
+internal fun removeRecordedGuidance(root: Path, harness: Harness): PluginObservation<Unit> {
+    val receipt = admittedReceipt(root)
+    for (guidance in receipt.guidance.filter { it.harness == harness }) {
+        when (val removed = removeGuidanceDirectory(guidance)) {
+            is PluginObservation.Rejected -> return removed
+            is PluginObservation.Observed -> Unit
+        }
+    }
+    writeManagementReceipt(root, receipt.copy(guidance = receipt.guidance.filterNot { it.harness == harness }))
+    return PluginObservation.Observed(Unit)
+}
+
+private fun removeGuidanceDirectory(guidance: ManagedGuidance): PluginObservation<Unit> {
+    val directory = Path.of(guidance.destination)
+    if (Files.notExists(directory, LinkOption.NOFOLLOW_LINKS)) return PluginObservation.Observed(Unit)
+    val inventory =
+        when (val read = guidanceInventory(directory)) {
+            is GuidanceInventoryRead.Rejected -> return PluginObservation.Rejected(PluginInstallFailure.PluginConflict)
+            is GuidanceInventoryRead.Read -> read
+        }
+    val expected = guidance.files.associateBy { it.path }
+    val directories = expectedSkillDirectories(guidance.files.map { it.path })
+    if (inventory.files.any { expected[it.path] != it } || !directories.containsAll(inventory.directories))
+        return PluginObservation.Rejected(PluginInstallFailure.PluginConflict)
+    for (file in inventory.files) {
+        val path = directory.resolve(file.path)
+        if (
+            !Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) ||
+                path.toRealPath() != path ||
+                sha256(path) != file.sha256
+        )
+            return PluginObservation.Rejected(PluginInstallFailure.PluginConflict)
+        Files.delete(path)
+    }
+    for (relative in inventory.directories.filter { it.isNotEmpty() }.sortedByDescending { Path.of(it).nameCount }) {
+        Files.delete(directory.resolve(relative))
+    }
+    Files.delete(directory)
+    return PluginObservation.Observed(Unit)
+}

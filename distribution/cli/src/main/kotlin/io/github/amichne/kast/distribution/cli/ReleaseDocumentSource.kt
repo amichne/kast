@@ -17,6 +17,9 @@ private const val BUILD_CATALOG_URL = "https://raw.githubusercontent.com/amichne
 private const val STABLE_RELEASE_URL = "https://api.github.com/repos/amichne/kast/releases/latest"
 private const val RELEASE_READ_TIMEOUT_MILLIS = 15_000
 private const val RELEASE_DOCUMENT_BYTES = 65_536
+private const val RELEASE_REDIRECT_LIMIT = 4
+private const val HTTP_TEMPORARY_REDIRECT = 307
+private const val HTTP_PERMANENT_REDIRECT = 308
 private val releaseJson = Json { ignoreUnknownKeys = true }
 
 internal sealed interface ReleaseDocumentRead {
@@ -26,41 +29,14 @@ internal sealed interface ReleaseDocumentRead {
 }
 
 internal fun readReleaseDocument(url: String): ReleaseDocumentRead =
-    readReleaseDocumentObserved(url) { System.err.println(managementJson.encodeToString(it)) }
+    readReleaseDocumentObserved(url, { System.err.println(managementJson.encodeToString(it)) })
 
 internal fun readReleaseDocumentObserved(
     url: String,
     observe: (ReleaseReadObservation) -> Unit,
+    open: (URI) -> HttpURLConnection = { it.toURL().openConnection() as HttpURLConnection },
 ): ReleaseDocumentRead {
-    var stage = ReleaseReadStage.OPEN
-    val result =
-        try {
-            val connection = URI(url).toURL().openConnection() as HttpURLConnection
-            configureReleaseConnection(connection)
-            try {
-                stage = ReleaseReadStage.RESPONSE
-                if (connection.responseCode != HttpURLConnection.HTTP_OK)
-                    unavailable(stage, ReleaseReadFailure.HTTP_REJECTED)
-                else {
-                    stage = ReleaseReadStage.BODY
-                    readReleaseBody(connection)
-                }
-            } finally {
-                connection.disconnect()
-            }
-        } catch (_: MalformedURLException) {
-            unavailable(stage, ReleaseReadFailure.URL_REJECTED)
-        } catch (_: SSLException) {
-            unavailable(stage, ReleaseReadFailure.TLS_FAILURE)
-        } catch (_: SocketTimeoutException) {
-            unavailable(stage, ReleaseReadFailure.TIMED_OUT)
-        } catch (_: CharacterCodingException) {
-            unavailable(stage, ReleaseReadFailure.INVALID_ENCODING)
-        } catch (_: IOException) {
-            unavailable(stage, ReleaseReadFailure.IO_FAILURE)
-        } catch (_: IllegalArgumentException) {
-            unavailable(stage, ReleaseReadFailure.INVALID_ARGUMENT)
-        }
+    val result = readReleaseResponse(url, RELEASE_REDIRECT_LIMIT, open)
     observe(
         when (result) {
             is ReleaseDocumentRead.Read -> ReleaseReadObservation.Read(result.text.toByteArray().size)
@@ -69,6 +45,74 @@ internal fun readReleaseDocumentObserved(
     )
     return result
 }
+
+private fun readReleaseResponse(
+    url: String,
+    redirectsRemaining: Int,
+    open: (URI) -> HttpURLConnection,
+): ReleaseDocumentRead {
+    var stage = ReleaseReadStage.OPEN
+    return try {
+        val uri = URI.create(url)
+        if (!uri.isAbsolute) return unavailable(stage, ReleaseReadFailure.INVALID_ARGUMENT)
+        if (!secureReleaseUri(uri)) return unavailable(stage, ReleaseReadFailure.URL_REJECTED)
+        val connection = open(uri)
+        configureReleaseConnection(connection)
+        try {
+            stage = ReleaseReadStage.RESPONSE
+            when (connection.responseCode) {
+                HttpURLConnection.HTTP_OK -> {
+                    stage = ReleaseReadStage.BODY
+                    readReleaseBody(connection)
+                }
+                HttpURLConnection.HTTP_MOVED_PERM,
+                HttpURLConnection.HTTP_MOVED_TEMP,
+                HttpURLConnection.HTTP_SEE_OTHER,
+                HTTP_TEMPORARY_REDIRECT,
+                HTTP_PERMANENT_REDIRECT -> {
+                    stage = ReleaseReadStage.REDIRECT
+                    followReleaseRedirect(uri, connection.getHeaderField("Location"), redirectsRemaining, open)
+                }
+                else -> unavailable(stage, ReleaseReadFailure.HTTP_REJECTED)
+            }
+        } finally {
+            connection.disconnect()
+        }
+    } catch (_: MalformedURLException) {
+        unavailable(stage, ReleaseReadFailure.URL_REJECTED)
+    } catch (_: SSLException) {
+        unavailable(stage, ReleaseReadFailure.TLS_FAILURE)
+    } catch (_: SocketTimeoutException) {
+        unavailable(stage, ReleaseReadFailure.TIMED_OUT)
+    } catch (_: CharacterCodingException) {
+        unavailable(stage, ReleaseReadFailure.INVALID_ENCODING)
+    } catch (_: IOException) {
+        unavailable(stage, ReleaseReadFailure.IO_FAILURE)
+    } catch (_: IllegalArgumentException) {
+        unavailable(stage, ReleaseReadFailure.INVALID_ARGUMENT)
+    }
+}
+
+private fun followReleaseRedirect(
+    source: URI,
+    location: String?,
+    redirectsRemaining: Int,
+    open: (URI) -> HttpURLConnection,
+): ReleaseDocumentRead {
+    if (location.isNullOrBlank()) return unavailable(ReleaseReadStage.REDIRECT, ReleaseReadFailure.REDIRECT_REJECTED)
+    val target = source.resolve(location)
+    return when {
+        !secureReleaseUri(target) -> unavailable(ReleaseReadStage.REDIRECT, ReleaseReadFailure.REDIRECT_REJECTED)
+        redirectsRemaining == 0 -> unavailable(ReleaseReadStage.REDIRECT, ReleaseReadFailure.REDIRECT_LIMIT)
+        else -> readReleaseResponse(target.toString(), redirectsRemaining - 1, open)
+    }
+}
+
+private fun secureReleaseUri(uri: URI): Boolean =
+    uri.scheme.equals("https", ignoreCase = true) &&
+        !uri.host.isNullOrBlank() &&
+        uri.userInfo == null &&
+        uri.fragment == null
 
 private fun unavailable(stage: ReleaseReadStage, failure: ReleaseReadFailure) =
     ReleaseDocumentRead.Unavailable(ReleaseReadObservation.Unavailable(stage, failure))

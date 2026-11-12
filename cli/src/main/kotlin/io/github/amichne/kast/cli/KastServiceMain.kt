@@ -9,6 +9,9 @@ import io.github.amichne.kast.appserver.InstalledAppServerManager
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
 import io.github.amichne.kast.cli.installation.InstallationCliInspection
 import io.github.amichne.kast.cli.installation.InstallationHandling
+import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+import io.github.amichne.kast.distribution.managed.InstalledSavedConfigurationIngress
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlin.system.exitProcess
@@ -29,12 +32,7 @@ object KastServiceMain {
         if (arguments.firstOrNull() == "managed-host")
             exitProcess(io.github.amichne.kast.cli.installation.ManagedHostCli.run(arguments.drop(1), System.getenv()))
         if (arguments.toList() == listOf("host-admission")) {
-            when (
-                val observed =
-                    io.github.amichne.kast.appserver.ide.observeRunningHostedServices(
-                        Path.of(System.getProperty("user.home"))
-                    )
-            ) {
+            when (val observed = observeConfiguredHosts(Path.of(System.getProperty("user.home")), System.getenv())) {
                 is io.github.amichne.kast.appserver.ide.HostedServicesObservation.Admitted -> exitProcess(0)
                 is io.github.amichne.kast.appserver.ide.HostedServicesObservation.Rejected -> {
                     System.err.println(
@@ -70,6 +68,25 @@ object KastServiceMain {
                 exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
             }
         }
+    }
+}
+
+internal fun observeConfiguredHosts(
+    home: Path,
+    environment: Map<String, String>,
+): io.github.amichne.kast.appserver.ide.HostedServicesObservation {
+    val rejected =
+        io.github.amichne.kast.appserver.ide.HostedServicesObservation.Rejected(
+            io.github.amichne.kast.appserver.ide.ExistingIdeFailure.CONFIGURATION_REJECTED
+        )
+    return when (val saved = InstalledSavedConfigurationIngress.load(environment)) {
+        is SavedConfigurationIngress.Rejected -> rejected
+        is SavedConfigurationIngress.Loaded ->
+            when (val configuration = ResolvedKastConfiguration.resolve(saved.sources)) {
+                is Refinement.Rejected -> rejected
+                is Refinement.Refined ->
+                    io.github.amichne.kast.appserver.ide.observeRunningHostedServices(home, configuration.value)
+            }
     }
 }
 

@@ -10,6 +10,18 @@ Recorded evidence differs from current source or needs further assessment. This 
 
 ## Coordinator and workspace preparation
 
+<a id="okf-transport-coordinator-and-workspace-preparation-managed-request-admission-precedes-preparation" />
+
+## Managed request admission precedes preparation
+
+`distribution/managed` owns `CanonicalRoot` and nearest Gradle-settings root discovery.
+Discovery resolves the physical directory and stops at a nested checkout boundary rather than borrowing another repository's settings.
+CLI, MCP, and tool RPC use `ManagedWorkspaceQuery` to select the installed product and private workspace generation before semantic execution.
+The first explicit preparation request grants trust only to that exact root. Retained-reference access requires an existing record.
+The request owns the query lease and private HOME; MCP initialization and session-start context remain passive.
+Saved installation and workspace configuration are admitted by the shared managed configuration owner.
+Queries do not acquire release assets or discover desktop IDEA installations.
+
 <a id="okf-transport-coordinator-and-workspace-preparation-admit-one-installed-coordinator" />
 
 ## Admit one installed coordinator
@@ -81,7 +93,8 @@ They do not prove a fresh installed IDEA model or external process readiness.
 - [DaemonWorkspacePreparation.kt](https://github.com/amichne/kast/blob/main/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/DaemonWorkspacePreparation.kt)
 - [AppServerManagement.kt](https://github.com/amichne/kast/blob/main/app-server/src/main/kotlin/io/github/amichne/kast/appserver/AppServerManagement.kt)
 - [AgentSessionBootstrap.kt](https://github.com/amichne/kast/blob/main/app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/AgentSessionBootstrap.kt)
-- [CanonicalRoot.kt](https://github.com/amichne/kast/blob/main/app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/CanonicalRoot.kt)
+- [CanonicalRoot.kt](https://github.com/amichne/kast/blob/main/distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/CanonicalRoot.kt)
+- [ManagedWorkspaceQuery.kt](https://github.com/amichne/kast/blob/main/distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt)
 - [BrokerProcess.kt](https://github.com/amichne/kast/blob/main/app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/BrokerProcess.kt)
 - [BrokerControlRoute.kt](https://github.com/amichne/kast/blob/main/app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerControlRoute.kt)
 

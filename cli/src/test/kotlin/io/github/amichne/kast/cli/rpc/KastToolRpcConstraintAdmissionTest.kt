@@ -70,7 +70,6 @@ class KastToolRpcConstraintAdmissionTest {
             KastDirectToolSession(
                 registration,
                 root = { error("Rejected input cannot discover a workspace") },
-                start = { error("Rejected input cannot start preparation") },
                 invokePublic = { error("Rejected input cannot invoke semantics") },
             )
         return KastToolRpcBridge(session).call("query_symbols", input)

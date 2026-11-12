@@ -6,7 +6,7 @@
       "timeout": 3780000,
       "args": [
         "-c",
-        "PATH=\"${HOME}/.local/bin:${PATH}\" exec uv run --locked --script \"${PLUGIN_ROOT:-${COPILOT_PLUGIN_ROOT:-${HOME}/.local/share/kast/installation/share/kast/agent-tools/compositions/mcp/plugins/kast}}/skills/kast/scripts/server.py\""
+        "I=\"${KAST_INSTALL_ROOT:-${HOME}/.local/share/kast}/installation\"; exec \"$I/share/kast/private-python/bin/python3.12\" -I -S -B \"$I/share/kast/mcp_environment.py\" serve --install-root \"$I\""
       ]
     }
   }

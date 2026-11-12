@@ -4,7 +4,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 fail() { printf 'kast-install: %s\n' "$*" >&2; exit 1; }
-installer="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)/install.sh"
+installer="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)/install-legacy.sh"
 mode=${1:-}
 case "$mode" in persistent) shift ;; session) fail 'session installations are retired; use persistent to replace the sole user installation' ;; *) fail 'usage: packaging/install-checkout.sh persistent --idea-home <path> [--force] [--install-codex-plugin|--skip-codex-plugin]' ;; esac
 [[ -n "${HOME:-}" ]] || fail 'HOME is required'

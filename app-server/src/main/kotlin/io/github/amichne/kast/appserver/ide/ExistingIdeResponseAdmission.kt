@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement

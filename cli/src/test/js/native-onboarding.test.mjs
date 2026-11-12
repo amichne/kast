@@ -22,7 +22,7 @@ test('Pi CLI hook preserves workspace arguments and reports preparation failure 
     });
     const cwd = '/project with spaces/$literal;value';
     await handlers.get('session_start')({}, { cwd, ui: { notify: (...args) => notices.push(args) } });
-    assert.deepEqual(calls, [['kast', ['hook', 'session-start', '--workspace', cwd, '--wait', 'none'], { timeout: 90_000 }]]);
+    assert.deepEqual(calls, [['kast', ['--internal-entrypoint=query', 'hook', 'session-start', '--workspace', cwd], { timeout: 90_000 }]]);
     assert.equal(notices.length, code === 0 ? 0 : 1);
     assert.deepEqual([...handlers.keys()], ['session_start', 'before_agent_start']);
   }
@@ -110,7 +110,7 @@ for (const composition of ['CLI', 'MCP']) {
       }
       const startup = session({}, ctx);
       assert.equal(startup, undefined, 'The session handler must return while preparation is pending');
-      assert.deepEqual(calls, [['kast', ['hook', 'session-start', '--workspace', ctx.cwd, '--wait', 'none'], { timeout: 90_000 }]]);
+      assert.deepEqual(calls, [['kast', ['--internal-entrypoint=query', 'hook', 'session-start', '--workspace', ctx.cwd], { timeout: 90_000 }]]);
       assert.deepEqual(notifications, []);
       if (composition === 'MCP') {
         assert.ok(handlers.get('before_agent_start')({ systemPrompt: 'base' }).systemPrompt.includes('Kast shared context'));
@@ -120,8 +120,8 @@ for (const composition of ['CLI', 'MCP']) {
       await preparation.promise.catch(() => {});
       assert.deepEqual(notifications, outcome === 'complete' ? [] : [[
         outcome === 'launch-failed'
-          ? 'Kast workspace preparation could not be observed. Inspect kast status and retry explicit workspace preparation when appropriate.'
-          : 'Kast workspace preparation was rejected. ' + 'x'.repeat(4096),
+          ? 'Kast session context could not be observed. Inspect kast status for passive evidence.'
+          : 'Kast session context was rejected. ' + 'x'.repeat(4096),
         'warning',
       ]]);
     });
@@ -137,7 +137,7 @@ test('Pi delivers the generated semantic routing policy without probing readines
   // These are instruction-delivery checks, not a simulated agent or semantic oracle.
   for (const clause of [
     'Use reachable Kast tools first for supported Kotlin semantic tasks in this exact workspace',
-    'Preparation can save editor buffers and refresh the imported project',
+    'The first explicit semantic request trusts the exact workspace root and prepares its private Host',
     'Tasks without a Kotlin semantic question need no Kast call',
     'Use an available schema directly; otherwise discover the tool once',
     'For `codemode` exposure, use `searchTools` and `describeTool`',
@@ -242,11 +242,12 @@ function assertContinuesWithoutContext(f, reason) {
 test('Pi registers native MCP and delegates preparation to the public executable', async t => {
   const f = await fixture(t);
   assert.deepEqual(f.servers, [['kast', {
-    command: 'uv', args: ['run', '--locked', '--script', join(f.installation, 'share/kast/agent-tools/compositions/mcp/plugins/kast/skills/kast/scripts/server.py')], timeout: 3780,
+    command: join(f.installation, 'share/kast/private-python/bin/python3.12'),
+    args: ['-I', '-S', '-B', join(f.installation, 'share/kast/mcp_environment.py'), 'serve', '--install-root', f.installation], timeout: 3780,
   }]]);
-  assert.match(f.handlers.get('before_agent_start')({ systemPrompt: 'base' }).systemPrompt, /preparation is starting in the background/);
+  assert.match(f.handlers.get('before_agent_start')({ systemPrompt: 'base' }).systemPrompt, /first semantic query/);
   await f.handlers.get('session_start')({}, f.ctx);
-  assert.deepEqual(f.preparations, [['kast', ['hook', 'session-start', '--workspace', f.workspace, '--wait', 'none'], { timeout: 90_000 }]]);
+  assert.deepEqual(f.preparations, [['kast', ['--internal-entrypoint=query', 'hook', 'session-start', '--workspace', f.workspace], { timeout: 90_000 }]]);
   const expected = 'Other extension context\n\nKast shared context' +
     '\nWorkspace: ' + JSON.stringify(f.workspace) +
     '\nKast skill: ' + JSON.stringify(join(f.references, '../skills/kast/SKILL.md')) +
@@ -336,8 +337,9 @@ test('optional plugin MCP entries select the bundled task server and skill', () 
   const root = new URL('../../../../agent-tools/', import.meta.url);
   const mcp = JSON.parse(readFileSync(new URL('mcp.json', root), 'utf8'));
   assert.deepEqual(Object.keys(mcp.mcpServers), ['kast']);
-  assert.match(mcp.mcpServers.kast.args.join(' '), /skills\/kast\/scripts\/server.py/);
-  assert.doesNotMatch(mcp.mcpServers.kast.args.join(' '), /kast-mcp-complete/);
+  assert.match(mcp.mcpServers.kast.args.join(' '), /private-python\/bin\/python3.12/);
+  assert.match(mcp.mcpServers.kast.args.join(' '), /mcp_environment.py" serve --install-root/);
+  assert.doesNotMatch(mcp.mcpServers.kast.args.join(' '), /kast-mcp-complete|\buv\b|\bpip\b|prepare/);
   assert.match(readFileSync(new URL('skills/kast/SKILL.md', root), 'utf8'), /name: kast/);
 });
 
@@ -356,11 +358,11 @@ test("background startup gives the model pending context before and after native
   const { default: register } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(hook)).toString('base64'));
   register(pi);
   handlers.get("session_start")({}, { cwd: "/workspace with spaces", ui: { notify() { assert.fail("Pending is not failure"); } } });
-  assert.deepEqual(calls, [["kast", ["hook", "session-start", "--workspace", "/workspace with spaces", "--wait", "none"], { timeout: 90_000 }]]);
+  assert.deepEqual(calls, [["kast", ["--internal-entrypoint=query", "hook", "session-start", "--workspace", "/workspace with spaces"], { timeout: 90_000 }]]);
   const prompt = () => handlers.get("before_agent_start")({ systemPrompt: "original" }).systemPrompt;
-  assert.match(prompt(), /preparation is starting in the background/);
-  assert.match(prompt(), /--wait indefinite/);
-  const nativeOutput = "Kast workspace is being prepared (IMPORTING); this is pending.";
+  assert.match(prompt(), /first semantic query/);
+  assert.doesNotMatch(prompt(), /--wait|starting in the background/);
+  const nativeOutput = "Session hooks do not grant trust or start a Host.";
   settle({ code: 0, stdout: nativeOutput, stderr: "" });
   await Promise.resolve();
   assert.equal(prompt(), "original\n\n" + nativeOutput);

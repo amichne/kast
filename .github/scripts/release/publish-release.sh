@@ -145,23 +145,5 @@ while IFS= read -r asset; do
   upload_assets+=("${runtimes_directory}/${asset}")
 done <<< "${runtime_assets}"
 
-release_notes="$(
-  printf '%s\n' \
-    "Kast installs a persistent agent broker and a matched IntelliJ IDEA plugin:" \
-    '' \
-    '- **Control:** native `kast` management command, private service lifecycle, hosted tool schemas, broker, and typed wire transport.' \
-    '- **Existing-IDE plugin:** the release-line plugin installed programmatically by the verified shell installer.' \
-    '- **Workspace containers:** runtime archives and SHA-256 files for Apple silicon and Linux x86-64.' \
-    '- **Agent tools:** MCP plugins, shared session context, and an installable marketplace. Run `kast plugin codex` after installing Kast.' \
-    '- **Installation:** one physical installation directory, with no current selector or selectable historical versions. Existing selector-based installs migrate through the published installer.'
-)"
-
-gh release create "${release}" "${upload_assets[@]}" \
-  --repo "${repository}" \
-  --target "${commit}" \
-  --title "Kast ${release}" \
-  --generate-notes \
-  --notes "${release_notes}"
-
-gh release view "${release}" --repo "${repository}" \
-  --json tagName,targetCommitish,isDraft,publishedAt,url,assets
+# Retain legacy admission diagnostics, but never publish an independently assembled pair.
+fail "complete immutable build record required; use publish_developer.py stable with an exact preview tag and record digest"

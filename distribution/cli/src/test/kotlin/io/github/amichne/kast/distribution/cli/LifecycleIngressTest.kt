@@ -7,15 +7,19 @@ import org.junit.jupiter.api.Test
 
 class LifecycleIngressTest {
     @Test
-    fun `stop force selects the existing bounded termination mode`() {
-        val stop = parseManagementCommand(listOf("stop", "--force", "--json"))
+    fun `stop selects exact workspace scope without persistent disablement`() {
+        val stop = parseManagementCommand(listOf("stop", "--all", "--json"))
         assertEquals(
-            ManagementParsing.Selected(ManagementCommand.Lifecycle(LifecycleOperation.STOP_FORCE, true)),
+            ManagementParsing.Selected(ManagementCommand.Stop(WorkspaceScope.All, true)),
             stop,
         )
         val help = parseManagementCommand(listOf("stop", "--help")) as ManagementParsing.Print
         assertFalse(help.error)
-        assertTrue(help.text.contains("--force"))
+        assertTrue(help.text.contains("--workspace"))
+        assertTrue(
+            (parseManagementCommand(listOf("stop", "--all", "--workspace", "/repo")) as ManagementParsing.Print).error
+        )
+        assertTrue((parseManagementCommand(listOf("stop", "--force")) as ManagementParsing.Print).error)
     }
 
     @Test
@@ -25,23 +29,51 @@ class LifecycleIngressTest {
     }
 
     @Test
-    fun `uninstall and reinstall accept force without installation discovery`() {
-        listOf("uninstall", "reinstall").forEach { command ->
-            assertTrue(parseManagementCommand(listOf(command, "--force", "--json")) is ManagementParsing.Selected)
-            val help = parseManagementCommand(listOf(command, "--help")) as ManagementParsing.Print
-            assertFalse(help.error)
-            assertTrue(help.text.contains("--force"))
+    fun `harness uninstall selects only one integration`() {
+        for (harness in Harness.entries) {
+            val parsed = parseManagementCommand(listOf("uninstall", harness.publicName))
+            assertEquals(ManagementParsing.Selected(ManagementCommand.UninstallHarness(harness)), parsed)
+        }
+        for (arguments in listOf(listOf("uninstall", "skill"), listOf("uninstall", "pi", "copilot"))) {
+            assertTrue((parseManagementCommand(arguments) as ManagementParsing.Print).error)
         }
     }
 
     @Test
-    fun `ordinary stop and reinstall still select verified lifecycle`() {
-        listOf("stop" to LifecycleOperation.STOP, "reinstall" to LifecycleOperation.REINSTALL).forEach {
-            (name, operation) ->
-            assertEquals(
-                ManagementParsing.Selected(ManagementCommand.Lifecycle(operation, true)),
-                parseManagementCommand(listOf(name, "--json")),
-            )
+    fun `retired management surfaces reject before installation discovery`() {
+        for (arguments in
+            listOf(
+                listOf("container"),
+                listOf("container", "create", "example"),
+                listOf("reinstall"),
+                listOf("reinstall", "--force"),
+                listOf("disconnect", "pi"),
+                listOf("upgrade", "--idea-home", "/idea"),
+                listOf("upgrade", "--restart-ide"),
+            )) {
+            assertTrue((parseManagementCommand(arguments) as ManagementParsing.Print).error, arguments.toString())
         }
+        assertEquals(
+            ManagementParsing.Selected(ManagementCommand.Uninstall),
+            parseManagementCommand(listOf("uninstall")),
+        )
+    }
+
+    @Test
+    fun `ordinary stop uses current workspace and help lists only supported management verbs`() {
+        assertEquals(
+            ManagementParsing.Selected(ManagementCommand.Stop(WorkspaceScope.Current, true)),
+            parseManagementCommand(listOf("stop", "--json")),
+        )
+        val help = parseManagementCommand(listOf("--help")) as ManagementParsing.Print
+        assertFalse(help.error)
+        for (name in listOf("container", "reinstall", "disconnect", "hook", "workspace")) assertFalse(
+            Regex("(?m)^  $name\\s").containsMatchIn(help.text),
+            help.text,
+        )
+        for (name in listOf("install", "status", "stop", "versions", "upgrade", "uninstall")) assertTrue(
+            Regex("(?m)^  $name\\s").containsMatchIn(help.text),
+            help.text,
+        )
     }
 }

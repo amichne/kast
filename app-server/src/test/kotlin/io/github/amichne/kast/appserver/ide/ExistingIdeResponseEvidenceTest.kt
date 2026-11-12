@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
@@ -234,7 +235,7 @@ class ExistingIdeResponseEvidenceTest {
 }
 
 private class ResponseFixture {
-    val root = CanonicalRoot(Path.of("/workspace"))
+    val root = canonicalRootFixture(Path.of("/workspace"))
     val descriptor =
         ExistingIdeDescriptor(
             refined(HostedEndpointOwnerPid.parse("123")),

@@ -1,6 +1,9 @@
 package io.github.amichne.kast.appserver.ide
 
 import io.github.amichne.kast.appserver.runtime.PreparedWorkspace
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
@@ -27,7 +30,7 @@ internal constructor(
     private val debug: io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch =
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationSwitch.DISABLED,
     private val deployment: Refinement<SelectedLifecycleDeployment, ExistingIdeFailure> =
-        Refinement.Refined(SelectedLifecycleDeployment.Desktop),
+        Refinement.Rejected(ExistingIdeFailure.CONFIGURATION_REJECTED),
     private val policyLoader: () -> Refinement<HostedCompatibilityRequirements, ExistingIdeFailure>,
 ) : ExistingIdeClient {
     constructor(
@@ -129,7 +132,6 @@ internal constructor(
                 val root = target.root
                 val endpointHome =
                     when (selected) {
-                        SelectedLifecycleDeployment.Desktop -> home
                         is SelectedLifecycleDeployment.Headless -> selected.installation.userHome
                     }
                 val directory =

@@ -7,7 +7,6 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
-import kotlinx.serialization.encodeToString
 
 /** Installer-only path admission. It never picks a fallback after a rejected destination. */
 @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
@@ -134,6 +133,8 @@ private fun nextManagementReceipt(
     composition: ManagementPublication,
 ): ManagementReceipt {
     val prior = destination.previous
+    if (composition == ManagementPublication.Preserve && prior?.product != null)
+        return prior.copy(executable = destination.path.toString(), executableSha256 = sha256(staged))
     val policy =
         when (composition) {
             ManagementPublication.Preserve ->
@@ -156,6 +157,7 @@ private fun nextManagementReceipt(
         policy,
         identity,
         prior?.guidance.orEmpty(),
+        providers = prior?.providers.orEmpty(),
     )
 }
 
@@ -163,7 +165,7 @@ internal fun writeManagementReceipt(root: Path, receipt: ManagementReceipt) {
     val path = receiptPath(root)
     val temporary = Files.createTempFile(root, ".management-", ".json")
     try {
-        Files.writeString(temporary, managementJson.encodeToString(receipt) + "\n")
+        Files.writeString(temporary, encodeManagementReceipt(receipt) + "\n")
         Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
     } finally {
         Files.deleteIfExists(temporary)
@@ -254,7 +256,7 @@ internal fun writePublicResetRecovery(file: PublicRecoveryFile, receipt: Managem
     try {
         Files.writeString(
             file.path,
-            managementJson.encodeToString(receipt),
+            encodeManagementReceipt(receipt),
             java.nio.file.StandardOpenOption.CREATE_NEW,
             java.nio.file.StandardOpenOption.WRITE,
             LinkOption.NOFOLLOW_LINKS,

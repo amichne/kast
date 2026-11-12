@@ -1,28 +1,56 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4832d13d50e2f4274eb1800a30bcb03cb50f9191c2e98be4556f35232ad37053",
+  "pageVersion": "sha256:8b7c62f5adad62fb7aba61ba94b48f6e7f30f8f1439a4b7d7833aaca11e5ec10",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
-      "statement": "CI seals one tested candidate with exact source, producer run, toolchain, and asset identities before retaining it for reuse.",
+      "statement": "CI seals both component-native-qualified targets into one immutable complete-product record with exact source, producer attempt, toolchain inputs, and asset identities. Detached installed-product receipts are then joined without rewriting the record; sealing alone does not establish installed acceptance.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
+          "resource": "repo://.github/scripts/release/product_producer.py#L145-L190",
+          "version": "repo-lines-v1:sha256:e6aa3405b972fc9a4ec19d0a62309b8228b1132ac6b43cdd74190e503e8770de:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ3OGEwZGJlNWQwMWZhOWMwZGQ3ZGFlM2ZlNjBiYTlhMjk5YjdmZTBmNGIzNzBjYTJlZjEzZGFmODY1NWMyMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZGEwZjQ3M2ZmN2EzMjU5MDdiYTQzNTFmZGE0Y2I2YWRhOTIyMjk5YzdkZjY1ZmY0MzJiYWFlNDRjNTVjODYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiYTI2ZjYzZmVmNDQ3YmQ1Nzc1MmNjZWU4MDhhOTg5NTU2NTljNTJmMTcyNzhhODEyMjVmOGM5MTMxYTEzNTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJhMjFjOWQ3MGUwZmYzMmM0MDQ0Y2QwYThmYmUzNGNhNGZmMDdmZmU1MGE1NjAyNDhlYTQ3MWRhNTQ0NTFiOWEifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:9421bd57ad0afbc8075a61a150900f8a1920e0b26d282486b95f88c206beca0b"
+          "resource": "repo://.github/scripts/release/product_producer.py#L243-L312",
+          "version": "repo-lines-v1:sha256:c008869139594ec92f057fbde23172133975d845fd45f0c9b8c58b1aec153596:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4MDE2Njk2NmYzMmJmZTI0Y2ZlZGFlZjg4NzU5YjljNGQ5Nzg0NGQ5NGZhZDk3OTM0Mzk1YTQyNzg1NWVlZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwM2IyZDM3MjJjMTdmZDFkNjJmNTY2MTk4ZjViY2JjYTJkNDhjOGM3YTExYTNjZTFmMDZmOTI5NDA5ZTkzZjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY5MGZiY2VlMGU2MzhhNzRkNjcyMzFlOGNiMWM4NzUyODE2ZTliMDM4NjdhYzBiMjBiODJhYjlkOWVlODU1MmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjczYzY0ZTQxOGM0MmVkNzhlYmJiY2JlNzJkMTgwNzhkN2EwYWNhMjk4NmFhOWUxYTQ0NmFhM2ZmZTE4YjM2NTMifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/release/product_producer.py#L315-L342",
+          "version": "repo-lines-v1:sha256:04c215febf4e6f54e1d6720509914d4345b8f020497cec9a533a99b00319155a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkYjBlZGY2OTAzOWZhNmMwOTE4ZGNkYWU2OWZiM2M1NDY5Mjk2ZWY1MDcyNzQ4Zjc2YzVhNjAyMDQxMjg5Y2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc1NDMwNmUyM2JmZjI2ODg2MzQ0NTY4ODQ4ZTAzOGY4NzJhZDFiYTljNjZkNmNjZTdjYzk3ODMwNWY2ODI3ZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0OGQ3NDgzZDA2MGYxNzIyZTI0NTM2ODg4MzM0MjU2YjU0OTBlOGJiZTg2OTgyMDY3NmNhOWVhZjM1MDljYzkifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L445-L475",
+          "version": "repo-lines-v1:sha256:a3233156f880f7803cdd5a837565926cbc99c130933e02933ecbb9600ae5bc16:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwYWVmMmM1MmI0MmFjZmVlZjM3NDQ0MTA3YTBlODQ1MDA0NTY4YmE0NGM3MTg0ZDAyYTlhOThjNTcxZDllMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMzJhYzIwODBhMTM0NWM2NDY4ZDBlMGUwOWE0OTMyMDE1MTc2NzQzZjkyYTUyNTM1NWNmZGZkNTg5N2NmZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjExYmFiNDk5Mzc0NzJlNWMwNGQ4YmFkODlhMTMwYWQ2ODkxNzQzMjBjODcwMDQ2MTVmYWI2YzEzMzU4NTQ1MTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgzYWFmYWIyNWQ4MjE4MWI4ZjIwZjFjOGU4YmRmMzg4MDA5OGQ3NzM3OGYxMjVhMDdiODMwZjU2YzFhNTM0OTcifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L571-L602",
+          "version": "repo-lines-v1:sha256:293230c1879a4f4d36f5efd6c89bf0a722fbd5d469ba55c99f53d816f3bb4aa0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjNmQ2ZDExMDg3ZjdhYmVmZWFlOTgzZGE0ZmQyODVhYWViZTJkOTQ5ZDYzZTIyMjhjMWJmNDM2MTAyYjllOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMzJhYzIwODBhMTM0NWM2NDY4ZDBlMGUwOWE0OTMyMDE1MTc2NzQzZjkyYTUyNTM1NWNmZGZkNTg5N2NmZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NDQ5NDlkZTc3NGZiZTgyNWI4Y2ViODNmNjFmYzlkODZhMTcyYTQyOGNkODc1MWQ3MmNmMGVhOWRjZTQ4ODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYjgxYjg3ZjlkZDVhNTIwOTZkNTliMDkzZGY3N2MyMTY5NWNiMGQ1YjI3ZmY5YWRmYjYzNDc1MDM5NTAxNTcifQ"
         }
       ]
     },
     {
       "id": "claim_ce4b8eae80b545c9a408e2eff1fce670",
-      "statement": "Candidate reuse admits source-tree equality and exact payload digests while preserving the original producer and merged revision in promotion evidence.",
+      "statement": "The retained component-candidate reuse path admits source-tree equality and exact payload digests while preserving original producer and merged revision in promotion evidence. That legacy component candidate is not the complete two-target product used by current developer publication.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
+          "resource": "repo://.github/scripts/release/build_candidate.py#L195-L211",
+          "version": "repo-lines-v1:sha256:f0e1ffb605950fa2e54a91e498d05e2cd2eeea0c840f92f9b6b27baea52ac2a0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2MWM2YWVlZjUyZThiMmViMDFhZmIxYjMyNjE4ZmJhMjUyOTZkNTY4NzI1ZGE1NDYyODkzZjQ0MTZhMWQ5ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4Y2NmYzYxOTI3OWIxN2RkMzIzYTA5YWM5ZDYwYTc0YTFkMDhkNjkwMDFiYzBjNTg5MWIxODE0MGUwMmU1ZjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIyNWYyZjc3NmM1MmVmMTRhZGY3NDg4NzAxMmMwNWE0ZTU2OTUzMzJiY2Q0YjZhNTg2NjI5NGM5OTYyNWE5Y2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwZDU5MDIxMTViZTA1OGI2MDAyOWE4ZDU3YzJjMTE3MWQ3MTZkZGU5OThlZGE3ODY5MGM5ZWM0NzU1MzNkODEifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/release/build_candidate.py#L278-L296",
+          "version": "repo-lines-v1:sha256:0a0a26bb30b9bef27611dae3fc1e3b3d0b7cc4c686d15b1dde2df98b8486bdf9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkYjZiN2VkZmFhN2YzYWJlYWI0NGRkMjQzMjhjMGFmZjFlMjEzZGYyM2QxMWQ0NDcxZDM1Yzk4NDA3MTJjZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5N2UxOTk2MDRjYWIyZTNhYjk2YTczNTA5YzcyNjMzNTE3MmI5MDliYjQ1MWUzMDdjMTBmNWVhMTllNDg3NDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5ZWUxOTMyODRlODJmYjc2YWY0ZjRmNTgzZTQzZjA1MDdiNWYxMzJiMTY0ZTZkMzUyM2JhZmI5NGMwYzdiMWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc3ODAwNjYwYjNjN2JkZGE1Nzc4MDZiYzM5MGM5OGVlODM0YjZiMDQ1YjQ0OGU3NmJkYzEwYjEwODJhMjhiNDIifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/release/build_candidate.py#L427-L439",
+          "version": "repo-lines-v1:sha256:ed170c921fbb5fb715c3d1bb802e3596dd6f07f3537bee5b7c43b6c454b390a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzZjFiZDZiYzc2M2JhMDZmNTMxOTYzOGI0ODg3OThiNzcyMDU0MTMzODAzOTJjMjNjMzU5Mzk3ZTkzNGU4M2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5N2UxOTk2MDRjYWIyZTNhYjk2YTczNTA5YzcyNjMzNTE3MmI5MDliYjQ1MWUzMDdjMTBmNWVhMTllNDg3NDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5MmRlZmNhYzdlYzIwMzUzNjA0MTJmZTQyYjI4YzJiODhiM2QxNjQzMGQ2NDRkNjcyYzlhNzc0OGUxZTNlODEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMxYTQ4ZjU4YTk4ZWVkNDNiZWQ0Y2UyOGYwYWEzNTQ3MzYxMjhlOTBiZDE4YTIyZGQxMmUwMjVjZjAyYWU1NDMifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L412-L427",
+          "version": "repo-lines-v1:sha256:7879e018b33d51090a161d261b8b9dda94b3785fd8a52b8af6742d03aa30cc73:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNjZTYzMDBkMzcwZDczZGU1YzU5ZmYyYjQxZDkxNTk3OTQ5ODM2ODYzODQ3MjAwMGJiNmM0NjYzMGJhYmNiZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2MjRiODNlZmE5Njk2NzQ4ZmU1OGVjNmFlOTFmZmM2MmRiYjZiMjJkNjBiNGM2NmQ1MjFjOGQ4YzFkYTkyMDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhOThkYWYwMGJhMzc1OWRhNThmZjFiZGYwZWM4ODc4NTExYTA5OTBiNWNjZDkxOTc0NDRmZDAxZmEyMjcyZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMxOGYwODkxMWNlNDY0NDc3NjYyYjQ2ZDAxZjQzMDZjZjUxYWU1MzFiOTM2NzAxN2RiZjNiNWUyYzFjNmUzMGMifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/developer-release.yml#L62-L78",
+          "version": "repo-lines-v1:sha256:f9fcbf1ed2e606611609be953332ef0c918c39ae6b15f21a889f549bf294b322:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExMTIzMjQyZDhjY2I2MDE1YmY5YmRmZWZkNmRmZWNmNDkyZjE1ZDgyOGExMzc1OTIxZjQwN2Q5ODA1N2Y2NzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzNjdmNDNmNTg5MmY3ODg5MjRjZThhZmEyZjYyNzgyZDllYjNhZDVjNzY2Mzc4ZmQzY2VlNTVmNzFiNWQ3NDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhODRhZWIzZTQ3MzI4OTc0NWVjYzc4NmU0MjRiZDJhYmMzMDIxNjBjN2VkYzczYmMyNGJkY2QzYWFhOTA3MTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJiNjM5NTYwNWRlNDllMmM0MDU5ZTg1MGFhMTNkMzMzYzJjZDA5NmVkMzAyNjgyNWI3ZmM1MjFhYzBiMTFlOGYifQ"
         }
       ]
     },
@@ -42,25 +70,49 @@
     },
     {
       "id": "claim_b9b6adfd6e804bcb8c3776d4a9f73f80",
-      "statement": "The published main catalog keeps at most five immutable releases ordered by proven main ancestry. Guarded publication changes the catalog and latest pointer together after asset admission and rereads after contention.",
+      "statement": "Published preview discovery keeps at most five immutable products ordered by proven main ancestry. Product publication converts the discovery window to product-only entries without deleting old releases or pins. Guarded publication changes the catalog and pointer together after asset admission and rereads after contention.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/developer_catalog.py",
-          "version": "repo-file-v1:sha256:42d55a59436e67eb3ef900dc642cd79865a26bce17ca755e5eb8176f2ea5eaba"
+          "resource": "repo://.github/scripts/release/developer_catalog.py#L17-L19",
+          "version": "repo-lines-v1:sha256:bf62391d322acce42e6d8729ff7c457ef1aefae2fcd64fc3b33e4f9d24ea147c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTczMjEwNGJjYTg4NDViYjNhYTFjZWQ5Njc1MmFjOTc4M2ZhM2FkNmZjNDg4Y2JjMjEzOTAyODFlNDdjNDFiYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGU4MmRlYjkzODc2YTc3ZTc3Y2FlY2RmNWNhY2VjNGRlZDM1OTZmOTliZDc1ZTI5YmQ4N2RmNDk1Mzg2MGQxZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzA1ZGJhNzUzMGE5N2I4NGUyOWNjYWRhNDllMjc0MzZlYTczZGUxNWI1Zjc0YmQ3ODg5ZDQ4MmIyNWM2ZTBkYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2MyZTA1Y2YzMDMyNTFiMWFhNjQ2MTMxOTA0OWRjOGNiMGYzMGIyZjMxMDNhZTc4ZjA0YzkzYzZkZWViZTZkYiJ9"
         },
         {
-          "resource": "repo://.github/scripts/release/publish_developer.py",
-          "version": "repo-file-v1:sha256:f095afe38633b13aff1287c76d49a7039c069ca436ef1618b062b4f537562726"
+          "resource": "repo://.github/scripts/release/developer_catalog.py#L225-L290",
+          "version": "repo-lines-v1:sha256:60f588524c1d23e1e375179d3dc5132ecf8d9ab13772b866b48384b63fe52f71:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZDJhNjc1NTlhMTdlZWQxM2M4ZjJiODU1ZTllYTFmZTAyMWZmYmRkMWU2YWY5MzJkNzVhZmZiMmFkODljOWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzZGE0NWEwNTM0ZWMzZGM4MWZhYzgxNjJjZGUwNGIxMTgwY2Q2MGI4NWE1NjRhMmNlNGVlZTI3YmYwMDk5NzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkwN2Q0YmJjZTkzZmU2OTE1YWExMzNiZTYzMDBkMjBlZjg3MDk0YzEwNzBmMzgzNDVmNjA5Yjc0MWNlYTAxM2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/release/developer_catalog.py#L58-L75",
+          "version": "repo-lines-v1:sha256:388acd05da0d2e38b45bb6b34f6c50b105f6f661882a151a16f13684e3fcf4e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlM2ZiMWU1OGZiYzkwNDc5NGQ1MDczMTRmYTkxYzlmMmYxOThjODhkM2ZmMzk1ZTAwODI4OTAxYzM3ZGM5MWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZGM3NDQyN2YxMTRiNjY1ZDg0NjMzYWZhYmY2Y2UyNDM1NjU2ZTAyZDgzZWZjOTMyNzFkZDQzNjZjYmM3ODIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkZjY2ZGY0Zjg3MjhmYWMyMzEwNzYwOWNmMGY0Yjg1ZDBmMjhhMDBkMTY1OWFhZDcxYTZhM2M4NjQ5YThmZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQzNGUyOGU2YTA3ZjVjNTI1NzEyOGRhYTMyZTYzMjYwY2ZlYjJiOGM1MzhmNDcxMDI3NDVkMDY2MDVhMjljZGUifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/release/publish_developer.py#L463-L505",
+          "version": "repo-lines-v1:sha256:cdc9ab5c34109fb2cc91f42959ef508281304c0a38e667ffb956df4e04c9234d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZDk4ZWE3MGVmYTZiYjMxMjQzMWJkMzUzYzJlYTQyMDFiZWI2MjEwZWI5OGU5NjYxNzdkMGY4MzNlYzIzMzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjliOTk3YTJkMjhiMDIwZDQ4ODliM2IzYWY3MmIyODhmOTI3NTVjMDRmYzkwNTYyZWVjMDBmZjI3NTc1NWVkZTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI4YjkzNWE2ZmIzYTljZDkxMDIzZTk5NzlkN2FlNmY4NTY2MjVhMjQxOTMwMjNhZDk0MWJkZTFlMTcyY2Y0ZjIifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/release/publish_developer.py#L557-L566",
+          "version": "repo-lines-v1:sha256:d6a8283f479b6a2e8c659a0221de88514d6e220fa3ec3a6711986abb68017a5c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlNDJiM2Y5NzE2ZmI2OGYyMGM5YWNjMGJhNGU5OGY1Nzg5M2RmYzczZTAwZGM1MGVmZmMxODBhODRmNTExZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjZjI4ODZiNTEyZDAwY2RiZDgxN2M2NTgwMjgxYjAyMzkwNGFmMDRmNWVkODQxNWI0Mzc1NzY4ZmU1YTkxYTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzMDE1MTUzMWI3OTgzOTI2YjA0MzM0YTBiZWM3NWNhZmY1N2Q4NTBlNGJmNmYzOWYwOGIyOWZkN2M1Y2YyMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ5MmQzNTZkZTRiYTU0MmU3MzI4YmMzMzc2YmMzNDgzY2YxNDZkNTE1OTNmODlmMmI1ZjdlZGZlN2RlNzAwMTYifQ"
         }
       ]
     },
     {
       "id": "claim_49265ebfb2964e7384175f55bac63b1d",
-      "statement": "The managed installer consumes one captured selection and admits exact component records, candidate and promotion digests, archive bytes, original producer identity, and hosted compatibility before composition effects.",
+      "statement": "The managed installer consumes one captured complete-product selection, rechecks its exact build-record bytes and both targets, and admits the selected target's archive bytes, native receipt, composed inventory, and component compatibility before activation. Legacy main component-pair selections reject; stable selections need an exact product mapping.",
       "evidence": [
         {
-          "resource": "repo://packaging/managed_release.py",
-          "version": "repo-file-v1:sha256:ef4cc70c132b363eb60ab7d7e4cf5570f5a4c63b9d66720ad786b422d1bc2d65"
+          "resource": "repo://packaging/managed_product.py#L340-L385",
+          "version": "repo-lines-v1:sha256:5c0f5e1a0ef581bf0cf40074bc616ae6c01b6c4239a45a13c94ac751949b356d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUzNGNjNzk2ZmFmZjc1Y2UwZjdjMjgyZjhhMTVkZjgyMWIwZTdlYmUwMDhhNWQ5ZDU4YzRmNTZjYzBjMjZkYTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5ODc2NTRhNTJjZDk4NDJjYjM0ZDkxZDk1ZTQ2M2JmMTZmMDA2YzFmYTc3ZjFjNDY1MmU5ZGNmYmNkOGZjYmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg3OTFiMjkwMTgzZWRjNTc5NjAxNzhiMGRmZmRhN2U1NGFiOTBiODNmYmQ4ZjM0M2U1MWIwMDk2MDQxYjMxNGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3NjU1NmEwZTIwN2U3NzgzZjYyOGFiMzkyMjk2MmM3YWIzNWM0MzYzYTY2NDM5MDNlZjI5NDBiNjk3NjRlMmYifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_product.py#L414-L450",
+          "version": "repo-lines-v1:sha256:df450bf7ef1ed21a20a77b33543635633732af65a0984924bb3f32b1927e1692:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxYjRlMWU1NDNmMzFlZTRkMjAxZDdjYmZmMjhiNDcyZDliOTg3N2RhYzg5OWYzYmMyMzYxOTYxYmU2MTk4ODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ5OTMyMThkMWZmZjYwMDkzZDMyMDJmNDA4MzEyYWQxNTM0ZTQ2NzA4ZDNhOTg1ZjljOGI5MWZiZDUyNGEwMTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQyYjJmNjVmMDhkNWNiYTE1NDU3MDcxNDY4OTZjOThjZDE4ZmYyYTE4YWM3YjIwNmZiZGU5ZjBjNjc0OGQzOTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEwZjhmZTI1ZDJhNWE5MTkwMTVjODdmYTc1NzE0ZDJhOGIzNDMyN2Q1OTQ0ODU4NjA2MmYyY2FmOGM3YWJmNTcifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_release.py#L1421-L1475",
+          "version": "repo-lines-v1:sha256:84ad098d6033a3e9e14286d1b67ce3aa94df00e28f21abac3675ba0a88ca7c99:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmNTE0NTViMjlmY2Q2Y2Y1MTA0NWZjY2JlN2FiYjUxNjVlZTM1MjFlN2I1YWIxNzc4ZDIwYmY4MTllZTM4YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5MmZlZDRmYTA5NTk0ZTgzMjAxOWE4NjBmZjkwMWYyN2NkYzRiN2Q2MGNkZDM1MjM5OWU2MjExZWYwMmM3NDYifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_release.py#L434-L475",
+          "version": "repo-lines-v1:sha256:af9bbd3d03a37658645752d5d64e7f1548fd9ba84ceda2f8f0b279eb4adc0833:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiNTk1OGI0ZDViNDlhMzJmYzJlN2U5ZDJlYjFmNjQxOTA3NTk1M2VlYTFkYTUyMDI1MGQ3MDQwYjg1ZGQ0ZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiZTQ1NjgxNThjZTM1OTc3MjQ4M2E5MmU3OWIyZWRkMDU0MTJkOWI2YWIzMWY0YzFhMmI1MzM4MGUxOWZiZWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkifQ"
         }
       ]
     },
@@ -81,22 +133,54 @@
           "version": "repo-file-v1:sha256:d684e10762053786a750ca15fa03329b6e702d4624bd4a03b279be5c491ff3e2"
         },
         {
-          "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
+          "resource": "repo://.github/scripts/release/build_candidate.py#L495-L530",
+          "version": "repo-lines-v1:sha256:3cfe637281daea75e3d6acd5a4e5a15e9f338f4e4fe03267dbb7dd37c5ed8393:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViNTY5ZWYzOTk4OGQ5ZTU5MDhiZDIyN2M1OTQ1NDVjOWY1OTA2N2VjMjJhNTc4ZjY2MDBjODkyMGI2NWM3ODciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4ZDcxNmRhZGE1YWIwNTliZWM5NTlmNTRkZWZlMjljNjdlYzY3MTM0ZDk1ZTQzNzlhYTFkYzdhNWFlMDU1ZDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg0MDQ2YWQ1OGVlZTAyYmJiYjAxM2VmYWExYzlmNTljMzNjZDRkYWQ3YjA1ZTA0MjYyZWFjN2ZjZDRkM2ZkMzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4Y2ZlOTZlMjBjNGZlZTFkNmQ1MTRlZWZmNzRkMTM5OWY3ODRjYzJlMTYzZjk4MjliMjk0NGVjNmM0NzI3ZDcifQ"
         },
         {
           "resource": "repo://.github/scripts/release/test_build_candidate.py",
           "version": "repo-file-v1:sha256:9b9dc41792914a472735c47da798ff97348ae484ee3c0067cf9ded5d8d77cf3f"
         },
         {
-          "resource": "repo://.github/workflows/developer-release.yml",
-          "version": "repo-file-v1:sha256:ef3e1f513478b27e90c21170e931a5505a220db053daf86c6f899e3f81bc1eec"
+          "resource": "repo://.github/workflows/developer-release.yml#L34-L82",
+          "version": "repo-lines-v1:sha256:8ebf121edb9e3f505e91e1956a3c3df2b9a3c45f6f30ce6a7898f3dc626871a0:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5ZDgwMTU0ZWQ0MmZjNWM3NzliMTMzMTU3OGI1OGI4OWM4MDFlYWNlNzRmMjRjZDQ4ZWI0YTIzNTc5NDBhOTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyYjFjOTlkN2RkYjZlZmViMDExZDk1M2U0M2ZiNTYzZWEyYThmZjFlZDA5ZTExYTExNmVhNDU1MjM4ZmI4NDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NGY1OTdmM2E2YzllN2M5NmZmZjMwYTQxZjEyY2U5MzFkM2IxODMzOTFlYmQzNDQ5YTg2NzE0ZGJiNzljMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f652a58f042f4148815da04ba7140ec0",
+      "statement": "Installed-product acceptance admits a sealed component-qualified baseline without requiring prior publication or installed acceptance; each target must differ in its actual bundle/runtime/Control composition. CI verifies the exact baseline record, producer attempt, and successful sealing job even if a later job in that run failed.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/product_candidate.py#L167-L220",
+          "version": "repo-lines-v1:sha256:5320d2ba9a87329b2378c1e0f7129e456152230a9a0ef122e9f3b56d26014a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNDBkMzVhMTI4ZTYyMjE5NjcxZTQ0OTE0N2Y5ZTFlNjQ2MTBiNzI2NGQyMmRmYWQ1Njg4YWMzMGQzMmIwMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5N2M3NTQxMjk2NmE4ODZiNjM1YzA3YWI3MjhkOWY3M2VlYjM4ODYzZmEwYmFmMGNmMjcwNmFkYzgwZWZiMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwY2I3M2UyMzg2ZWM2NDFhYjY2YTcxYTViMjRmNzJiNWJlNzRjMjVkMTlkOTQyZDRmNDk3MDdiZWQ3NmI3ZTAifQ"
+        },
+        {
+          "resource": "repo://packaging/product_lifecycle_probe.py#L307-L319",
+          "version": "repo-lines-v1:sha256:1f2fc2991f535dab21d02226f9b089f4fd6c2cb0c06f967cc5852d2289f89f55:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmZjg2ZTUzY2I3OThlN2ZjNTlhNjUzNDY4MTZmZDcyOTVhYzA3MjYzMGI4ZmMwMzVkMDkzMWJmMmMyYjk5ZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxMTEzYmNmZTE3YTE2ZjFmNzA2ODJjNjVlMjA0M2NmYjViODQzZjhiNTY2NWQ4ZWI3MTQ4OGVkMmE3ZWUxYjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5Y2JmZjEwODVlYmEwMjdhYjBkYmRmMGQ1ZmI4ODllOGQxYmU0N2JmN2FhODUxZGI0YTJlNDg5NjhjYmUyYWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiMzliZWI2NzRjMGUyNjUxNzQ4YWY3MTJkZDlmN2Y5NDIzMWYwNDI5M2UwMTNmNzdkNGE0ODZhMTE2N2VkYTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6b6d0e8741004313a92d5dcbed450fb6",
+      "statement": "The installed-product probe upgrades a baseline, removes that installation, installs the fresh candidate, and verifies passive discovery before simultaneous same-root first queries. Its case inventory also requires two roots and protected deletion sentinels; source and receipt admission do not establish that these native scenarios have run.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/product_acceptance.py#L15-L45",
+          "version": "repo-lines-v1:sha256:41e79b64a5218a183674a1700da2ce4396c2fc36b16edd42a88a637139eda8fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyZTlkODk5ZTQyZDMyNzkxZjBiNTExZjM0NmQ0N2M0ZjNjMzcyZGJkMjE1NmM5MjM4YjY1NmM0NjhmZjg1ZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyZjllMjk5NGExYTc5N2FjYWI5M2I5MjAwMTAwYjBlMGMwZTlhNGU5Mzg4M2ZkNjc0MGJlZGNmZWNhYjI2OTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYzQwOGU2OWZmZjk2NzA4YmY1NTZiODJhM2I1NTE4NGQ0YzRhY2ZkMGFjY2NhMDg1MWU4Zjc2Yjc3Y2U4ODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3YzBlZWFmYTFjZTFlZGZjZTRiOTdiMmFhMzE3ZGI2OTI5MTVjMTc1YjVlOTVlOWY2YjY3M2I3ZDZhNzBmMzkifQ"
+        },
+        {
+          "resource": "repo://packaging/product_lifecycle_probe.py#L364-L429",
+          "version": "repo-lines-v1:sha256:98e7fe406b5cfb21cf5e2cd36d02355f5ab7c02f19630a567d3c26e41da17234:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhNTk1ZWRjOGQwNjA0ZmJlZDYxNjdhZjI1MTI0MjhkNWIxNWIzOTU4MWYwOTljYjQyZDBiMGYzNjYwMzhiYWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMThlMmNlMmIwZmQwNzJiZjI4NTA1ZjJkY2I5MGRhZTYzNzk2MjdiN2E3YTJjMTkzNjRlMDE4MWRkMGY0NDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFkOWI3YWZmOWE5N2E0MTlmMTJjYmI5MDM3OGUzNTU0ZDk2ODc2NmZkMTlkNmU5NDQ0NGYzYWZiMjcyOTQ5NmQifQ"
+        },
+        {
+          "resource": "repo://packaging/product_lifecycle_probe.py#L447-L468",
+          "version": "repo-lines-v1:sha256:8478949add9d17d0b0ecccdad5ce5f35cd02afcd45978d0d7a3ef2ef37f9ac02:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ZmNlYzJkMmI5MjBkZGM5NjZhYjY2MGM2NzJlMDliMDM1YzFhYmNhYTc1MzE5OTU3OTViNTQ0ZDc4YzY0OTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0MTc5ZDczYjU1NDZhYjlmMGNhZTM3YmI3ZTI1NjBkNDA3MzBlN2Y2YzkxOTU2ZmI3ZDMzZmYxMDAwZGJkZWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5NGU4ZDM2NTI1YzI4NDg0YTNlNmU5NTEzYTI3ZDM1ZDYyYzI5YjYxMjg3MDgxZTM1Y2I0ZmVmOTlkOGJmMWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMzMzhjOTkxZTQ1NjMxYmNkMjhkNDI5MjM5ZDE1YjEyZjgxZTE3YWZlODJmZjcwMWQzMjJlMzJlMGU0MGUyMDIifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T04:56:18.579Z"
+    "at": "2026-11-12T22:42:07.175Z"
   }
 }

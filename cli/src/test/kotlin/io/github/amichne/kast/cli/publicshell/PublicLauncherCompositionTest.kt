@@ -32,7 +32,13 @@ class PublicLauncherCompositionTest {
                 val child =
                     fixture.start(
                         label,
-                        listOf("hook", "session-start", "--workspace", directory.toString()),
+                        listOf(
+                            "--internal-entrypoint=query",
+                            "hook",
+                            "session-start",
+                            "--workspace",
+                            directory.toString(),
+                        ),
                         environment = mapOf("KAST_OUTPUT_TOON" to toon),
                     )
                 fixture.assertExit(child, 0, label)
@@ -245,7 +251,6 @@ private fun nativeMetadataCommands(): List<Pair<List<String>, Int>> =
         listOf("result", "--help") to 0,
         listOf("diagnostic", "--help") to 0,
         listOf("diagnostic", "check", "--help") to 0,
-        listOf("workspace", "wait", "--help") to 0,
         listOf("describe") to 0,
         listOf("describe", "query", "--section", "input") to 0,
         listOf(

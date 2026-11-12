@@ -5,9 +5,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PATH=\"${HOME}/.local/bin:${PATH}\" kast hook session-start --wait none --host codex",
+            "command": "PATH=\"${HOME}/.local/bin:${PATH}\" kast --internal-entrypoint=query hook session-start --host codex",
             "timeout": 90,
-            "statusMessage": "Start Kast workspace preparation; continue while IntelliJ prepares it"
+            "statusMessage": "Read passive Kast session context"
           }
         ]
       }

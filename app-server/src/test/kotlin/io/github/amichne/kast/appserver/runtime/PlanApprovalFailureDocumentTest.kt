@@ -1,6 +1,6 @@
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test
 
 class PlanApprovalFailureDocumentTest {
     private val request = Json.encodeToJsonElement(Request(17)).jsonObject
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
 
     @Test
     fun `every approval failure keeps its existing wire name and omits workspace`() {

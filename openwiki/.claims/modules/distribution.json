@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fd7faf5ec386c777fb7778d8a10c739bcde4160c3add2eafc4927f544467c882",
+  "pageVersion": "sha256:b2c3c079bbded08a0c9e87346c387dd03c0162135f5fc45b5c72a0a1c19a4214",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
-      "statement": "Kast admits the manifest-owned selected guidance composition and exact provider resources under its setup lock. CLI-only is the default. Explicit MCP composition adds transport preparation. Exact legacy ownership permits cleanup after success while providers own plugin configuration and cache.",
+      "statement": "Kast admits selected guidance and provider resources under its setup lock. CLI-only is the default; explicit MCP adds transport dependencies. Session hooks are passive, and exact legacy registration cleanup follows successful provider setup.",
       "evidence": [
         {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:bbe1bac2be06839c755904326d5c592a71c767a342a484095f01aec15917b26b"
+          "version": "repo-file-v1:sha256:05cbca22244ba9287dcc097e0f5df3c1011630f6f962a1e8abe2e1e742767089"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt",
-          "version": "repo-file-v1:sha256:97436d7aa632398e05c38bf703b357cefc1db3bd20289159dff8303ac87cb714"
+          "version": "repo-file-v1:sha256:c79760eacad6955ec729d5da371a3e15d1014014a053ccb50ad7ca9609974c2b"
         }
       ]
     },
@@ -28,11 +28,15 @@
     },
     {
       "id": "claim_1114e59973ab4e4ab3a712483fb15c67",
-      "statement": "Verified shutdown fences new work, disables the coordinator, retires requests and then the selected host, stopping on a finite stage-qualified rejection before reporting Stopped.",
+      "statement": "Legacy installation shutdown fences work, disables the coordinator and retires requests before the selected Host. Managed product fencing is distinct from temporary scoped stop.",
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:3047de7fcef890a738fc74b21809dd54c2cf02e00142b0ded003c52187d8e3cb"
+          "version": "repo-file-v1:sha256:dbfcc4234660d3ea22263631d705ac05967fea8c63007547ee00ce4863aff155"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRetirement.kt",
+          "version": "repo-file-v1:sha256:595bf547c7c98e4cfec6d3d5ecebed7c3a7e5aa51102b8c04747890ab20fb249"
         }
       ]
     },
@@ -41,28 +45,8 @@
       "statement": "Force reset capability constructors are private and their effect transitions consume single-use leases: erasure requires successfully retired QuiescentReset ownership and records the erased fence before issuing its successor.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt#L5-L108",
-          "version": "repo-lines-v1:sha256:ff8e396dc6c91eccb68044ff861a175943aa5f1fc8d4e833df05c9635554fe58:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyMzQ5MTcyYjM0MmU5NjkwNzdmMGZkZGU4YTA4ZWViNjYwNThhZDZiNDRhMDZmMDE1Y2Y3ZDkyOGZhYmNiOGE5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI3OTZkZDdmZTNiY2MzMjc2NTljZDdlYWVjODQxZTczN2U0NDhiMGJlODJhOGI4OWFjN2Y0YzlmNWZjMmVlNTBhIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI3NWE4Yzc4YzRhNGE2ZWNkM2U2ZDFmYWU2OTJjYWYwYTk3MmI3ZjQzZWRlOGJiOTQwOTA1MjAxMzhmNzZhMmRkIn0"
-        }
-      ]
-    },
-    {
-      "id": "claim_2e634ea531ed4e518b51f67f61ca44fd",
-      "statement": "Force reinstall cold-stages through the embedded installer with --stage-only and a restricted child environment before admitting fresh payload bytes; staged bytes do not establish active readiness.",
-      "evidence": [
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceReinstallation.kt#L54-L87",
-          "version": "repo-lines-v1:sha256:0f6de962b0654bb0f2d85bcaa702c570a6b044dec09753ebfb3818778438c84f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1OGI3NzdmYzMwNWY2ZTk0YmQyNzk0YWQ2ODc1MjBiNTIwYjc1OTU3YmIzZmZlZTM2M2EyYjRlNDNlZWJhOTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhNDY5M2U1ZmYxMjk4ZmIwNTdmM2MzYTU5N2FhODcyNDY0OGE5YmRiZTEzNWY3ZmY2Y2ExZWU1NmExNGNjMzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwMDExOTI5M2Y0NzAzYTlmYmE4OWFlMzM2ZmUyZTY1NjIwNTFmNDM4ZDg0OWEzYjk5ZjEwODZiOGQ0OTBjZjkifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_230f86cec81d4dadb1e81f512bc1ad92",
-      "statement": "Failed staging or payload completion triggers stopped-state compensation. A failed compensation preserves both the original failure and recovery failure instead of reporting completion.",
-      "evidence": [
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetExecution.kt",
-          "version": "repo-file-v1:sha256:4b55040765fe2e228418a62f86387f3755992e3ef81eb119c72602856ab635d4"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt#L5-L95",
+          "version": "repo-lines-v1:sha256:33524c684a2e8416c812217db12ecc412455c900b096ed1e7687cabd8bbadb5c:eyJzZWxlY3RlZExpbmVDb3VudCI6OTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzNDkxNzJiMzQyZTk2OTA3N2YwZmRkZThhMDhlZWI2NjA1OGFkNmI0NGEwNmYwMTVjZjdkOTI4ZmFiY2I4YTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5NmRkN2ZlM2JjYzMyNzY1OWNkN2VhZWM4NDFlNzM3ZTQ0OGIwYmU4MmE4Yjg5YWM3ZjRjOWY1ZmMyZWU1MGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1YThjNzhjNGE0YTZlY2QzZTZkMWZhZTY5MmNhZjBhOTcyYjdmNDNlZGU4YmI5NDA5MDUyMDEzOGY3NmEyZGQifQ"
         }
       ]
     },
@@ -79,7 +63,7 @@
           "version": "repo-lines-v1:sha256:1f809cbe56fb43c60678bb4eae7c28529eb3d35c334884cafdf85acb755f73c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNGU0NWUyOWRhNjc2ZGM0MDVkODNiN2Q2MDVjMjE0MmRjYTZhZjU0N2NmNDVhMzZkM2JlY2NlNDE2NDQ0MTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOTgwZTUxYjM3MTQzYjdmMjhlN2M1ZmVkMzIxYzcxYjhiNjIyYzdiZjc4ZmFiMWUzMzg3NWNmMWVkZjU2OTUifQ"
         },
         {
-          "resource": "repo://build.gradle.kts#L227-L265",
+          "resource": "repo://build.gradle.kts#L232-L270",
           "version": "repo-lines-v1:sha256:64d31b63bafcae0d3882982679ca4a806d4b79df6159b4913d0e93046927a286:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZThlNDk0NDUxZmQ4OTQ2YWZhNDU2NWVmNmYwYjJkYjQ4MzU1MjYyNjA2N2Y3NDdhYjlkMDJhMTA3ZmQ3MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxOWQyZTA0ZGIwYzViYWUyMjVlYzllOGY0MDgzN2U3OGQwZmIxYmQ2YzViMmQ0ZGQxOTkxNDAzN2I1Mzk3OGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhZjU1Y2ExMjEzYzlmNzQxYzc4ODNiNTJmMDhhNmExYTZkYjFhM2Y3YWNlMGY2MmZkOThlZjU3Y2RlODQzMTMifQ"
         },
         {
@@ -103,38 +87,28 @@
       ]
     },
     {
-      "id": "claim_b12b0cb12d684d09af1019d1b2de6893",
-      "statement": "Exact reinstall and force reset stage Control without a Host artifact and complete through the existing fence owner without broker activation. Stage-only and control-only upgrade cannot be combined.",
-      "evidence": [
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt",
-          "version": "repo-file-v1:sha256:de9b9061f387a3681b8afc4dc707801820e7011740d4cc8503dff41d28335206"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:3047de7fcef890a738fc74b21809dd54c2cf02e00142b0ded003c52187d8e3cb"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt",
-          "version": "repo-file-v1:sha256:3c7b0af9f203e311a990b3009aa43c98b3a5d1df2c07ece053250eef33f98519"
-        }
-      ]
-    },
-    {
       "id": "claim_aabb05e3798b4bc283779dddf552160a",
       "statement": "Native installation dispatch binds the sole HOME-derived installation; public uninstall rejects alternate or nonphysical roots before owned removal, preserving the canonical installation and Host files on rejection.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
-          "version": "repo-file-v1:sha256:760bcd49423cbb8de0ab93a1a77b77d213ea98f90081b3a39f9075bed7f8887c"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt#L13-L26",
+          "version": "repo-lines-v1:sha256:f6e7688f11f0090949527e3839df9006c29dc7a8d4bf31a3872b88fcba18c840:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkMWQwNzM5NWNjZGNkM2RjOTkyMDhmOTU1ZDc0NjY3MTk0ZDI3MjRlYmUxMzVkM2YxZjU4YzJmY2M5ZDAzZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5MjQ3M2Q4OGMzNWJmMTY5NzhlN2EzMDZmZWMyMzc5ZmQ0YTM0ZTg1YWJlYjY2MzViOTBjOGZjMGQyMTRlYjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3YTg0MmZmMDkxMmJmNTMzZjI4M2Y4Y2QxYjJmY2QxZjFhMmEyNTIwMGMyM2U0NGIxM2E5OTk0YjcwMzY1OWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZmNTE2ZTU0ODU5YzlmMWQ3ZTFkMGFkMDkzOWJhMTZkZjYzN2QzMzU5YzYzZDJlY2UwZTgyMDYzZTlkMGE4OTIifQ"
         },
         {
-          "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:969ce00154f200601d7136f1d6f0f17c56c49383fedee99f5c1e5679a16bf995"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt#L197-L216",
+          "version": "repo-lines-v1:sha256:dea6545dfd00278f8d1ca09e9455d65fffc58d42e523aec026680a2773bce35b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwNjcxNGI1MmNjYzFiMTZjYjE3NGQwZWRlYmZkMjQ2YTFhYTMyNjkzNTc0M2EwYmQ0ZDI1NDRmYzNlNzIzYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVhOTNmOTM5NGVkODgyZGE5NzQxOWUxZjEyYmM0YmQzODVjZTk3YThjZTJjMTg0NDQ0MmJlMThkZTFmNjU2YzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyMTcxYjA3OGJhNTcyMjVmNDZmNDQxMGI2OTA3Yzk5MTYyMGM4MDgxYWIzZDc4MzJhZDgzZjQxZDBhZjlkNTYifQ"
         },
         {
-          "resource": "repo://packaging/test-installer-removal.py",
-          "version": "repo-file-v1:sha256:0909040f3a209e31f54b7087ee19d2983b983bffa36dc615c3bc8932d64539c7"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt#L24-L29",
+          "version": "repo-lines-v1:sha256:50102d7be1cf0b45e4c3ba2e4bf5afef82cf9621dfcca74ccb3a6ac92d9f6a28:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTE0YTQ5NTZhODdlMTkzODEwNmY3MWI5ZGYxZTMzNTA3YWJjNmZiOTk5Njg2ODE1ZTY3NDk3YzJiYTg2NGUxYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWNhYTk4OGNlZmM5ZTcxZmNhZDhhMjhkNjZhZWEyN2RlOTM5NzMyOGQ0NmVkMmJlZmJhYWM4ZTA0Nzg1ZjQ2MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2U1NjdhODk3ZDczNWY0ZjQzOTM0M2ViYTA2ZGQyZDliNjZkZDc5MGUzMGY5YzBlZjg4MTk1ZTY3NThjZTJkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWFkM2Y3Mzg2Y2U4MzZlNWEyZTQzNjMwMzdlZGM4MzliNGM1YWJjZWEwYjVlN2VmMmEzOGRiYjllYWY4MWYxOCJ9"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt#L14-L35",
+          "version": "repo-lines-v1:sha256:b265bb406746af577431166e92297a23b60588dc60400428fdd4910da577c236:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzZjc0ZTY3N2EzMzQwNTkxOTY4ZjU1NjFlMjAyNmY4NzM2MGI2OWExOTI5NTBlN2FiZWY2NzA4OTM5MmI0YmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFmMTc5MzE5ZDk3NWE2ZWQ4YTRkNjkwY2I5MjJhODJkOGRhYTdjOWIxYmY0ZWRjNTQ5MDdmZmQzMzAwMTRhNzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViMWYzYTk4YWJjNjk2ZDgxZjQxMTdmMjIwOWI1ZTk4ZWEzNjRiZTBiY2Q0NjFlYzM0NTQ2MzU1NmQ1MWI3NDQifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py#L2553-L2563",
+          "version": "repo-lines-v1:sha256:e483d021751c4d0a928e490a8434486045e7f19d4a8c54e3c087988c40c6b1b5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYWRjY2Q0OGRlZmViYjc5ZTY1NWQ3NzA4OTlmZDZlMzc0MmVhMzE5YjIxZmM0N2RhYTEwYjljMjJmYjcxOGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNGYzODI0NDMyOGI0ODlmOGMwMGIxOWJkYmJlZDViMDAwYTBkY2VkZTk4NDk3NGVkM2UzMjIzZGJjN2YyYTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0NjE3NmY5MGQzOWYzNjliNWRhY2YzMTk5ZjY1MDFhM2RmMTRmNTJiMTliN2U2ZTYxMmVhMDEyNTZkODRlMjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxZmNhZmU1ZGFkYjc3M2ZhZTdlNTUxYjA2Y2ZlNzVmMzQ1NWNlZjdkNjA4NjY1MTNiY2M2ZmZkNzc0MDA2YTAifQ"
         }
       ]
     },
@@ -152,25 +126,21 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt",
-          "version": "repo-file-v1:sha256:1d5a5df1f4a619357efc4d036709d49e64e92100b1cd9f9068339c453a9e4131"
+          "version": "repo-file-v1:sha256:bac9e23462792851991482c8ab32639fa2660e302a58205c3d0d5d593e70dcfd"
         }
       ]
     },
     {
       "id": "claim_82ac8f4c351843108b7ed80fd36307b3",
-      "statement": "Assembled-product acceptance stages production Control in an owned HOME, verifies canonical cold staging and publication, then stages the receipted Host, creates an empty canonical mutation database and invokes the real published native uninstall, requiring owned Host, Control, public executable and user-state removal while preserving an unrelated sentinel; it does not establish live IDE or Codex behavior.",
+      "statement": "The retained installed-product fixture stages production Control, receipted Host files and an empty canonical mutation database under an owned HOME before native removal assertions. This legacy fixture does not establish managed-product native qualification.",
       "evidence": [
-        {
-          "resource": "repo://build.gradle.kts#L322-L344",
-          "version": "repo-lines-v1:sha256:6366f949b15984bbe3fba1eb501f9309ba9eff04aa84b54b15edc1e14251b190:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2ZDI0M2MyODA1ZDU3ZTJlNjEwMGQzMmJkMmU0MmQwYjNkMWJiYTMwMzdlMWU3MWZiZjI5OGNlZDZkN2M3MTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMmM1MTE5MzI3MjZkMjc5MTVmMDlhZGUxNTlmMThlZjE3NjkzYzY2ODk3NGZjZjg0MDQ0YmE3YzRmMTU5N2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliNmI4NWNjZjViMGE2NWUyZmUyMWUzZjMwNDA4MDE2YjVlZGZmZTAxYjhmMTc2YjBmMzk0MmNhODcyZGQ3ZmUifQ"
-        },
         {
           "resource": "repo://packaging/installer_fixture.py",
           "version": "repo-file-v1:sha256:82f00cd72889105c170a2dd2bd2b326775607ef7634b0ba6cfc2619ea772c67c"
         },
         {
           "resource": "repo://packaging/run-installed-product.py",
-          "version": "repo-file-v1:sha256:3b2c9cec747fd33a09bebcba1267edc85b41bcbe18375bd38604360fcb0801fd"
+          "version": "repo-file-v1:sha256:c58dd44a3a0195acf4fae7e64d848d854c3eaada5cfb71e44576b12900ab792d"
         }
       ]
     },
@@ -248,95 +218,83 @@
     },
     {
       "id": "claim_539123f98b294889b48c968e8754549a",
-      "statement": "The public installer parses the Codex plugin choice once. Component and stage-only installation skip it by default, explicit plugin installation needs a paired install, and former MCP registration flags remain aliases.",
+      "statement": "The retained legacy installer offers paired Codex plugin setup and skips it by default for component or stage-only requests. Public product bootstrap instead selects one complete product and leaves harness installation explicit.",
       "evidence": [
         {
-          "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:969ce00154f200601d7136f1d6f0f17c56c49383fedee99f5c1e5679a16bf995"
+          "resource": "repo://install.sh#L1-L61",
+          "version": "repo-lines-v1:sha256:df448de16a4457cc57029a96bd37f034143f66e59eca6313edeadc1b6bd278c9:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4NzVmOTI4NTQ2YWVlNzg1NWNiMWRiOWFmYzhhYjNmMWE4YTM0ZDQzZGU1YmJkNjJmNzA3NmQ3YmE5ZjM5MTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhZjc4NWRlNzA4OGFlMWI2ZGE1Y2M0ZjZjOWQxNGE3NTJjYTJjYzljNjdmNzEzZjA3NmI2YTFiOTlmZWEwYzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMTc2MzlmYjEwNDJiMjYwOWNkZjg3OTAwNjRlZTA3MjlhZTMyM2I5NmMxNzlmNDBmYzcyNDhhMTIxOGY1ZmMifQ"
         },
         {
-          "resource": "repo://packaging/test-installer-entrypoint.py",
-          "version": "repo-file-v1:sha256:f70a26bd106df3779975501b0d04038bac854dc3ddca25f215574c39c36189e0"
+          "resource": "repo://packaging/install-legacy.sh",
+          "version": "repo-file-v1:sha256:026e401ee9880e53ddd88cce73cfc72f0e10042bdfd6bb4fb0555542dd48742d"
         }
       ]
     },
     {
       "id": "claim_fc2e6da4c90e48b38aef801aa45c09fd",
-      "statement": "Checkout installation needs the selected IDEA executable JBR with Java 25 or newer before Gradle and scopes Java to its children. Exactly one fully quoted JAVA_VERSION declaration is necessary. Installed Control launchers select modes in one native executable without JVM setup and pass nonempty HOME and TMPDIR as system properties.",
+      "statement": "The legacy checkout adapter requires selected IDEA JBR Java 25 or newer and exactly one fully quoted JAVA_VERSION declaration before Gradle. Installed native launchers need no JVM setup and pass nonempty HOME and TMPDIR as system properties. This is not a public setup prerequisite.",
       "evidence": [
-        {
-          "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:3fdba09274f861814014570a7d58632f3dcc28e94e6938c4651a4f0d7f7c3016"
-        },
         {
           "resource": "repo://cli/src/main/native-launchers/bin/kast",
           "version": "repo-file-v1:sha256:b2710696b1c843e7f10c9f1cd3d80dc226d9844dd87fbc128fa7355c6b1b2c0c"
         },
         {
           "resource": "repo://packaging/install-checkout.sh",
-          "version": "repo-file-v1:sha256:8b0a85ab15e80064e03f8357d03d57c7021c0897316ad56b4f3e9c5f683044d1"
+          "version": "repo-file-v1:sha256:b71785a696898867ea435a7c3666ee524cd7a65ddeb5b050db6f0a725f9a6f39"
         }
       ]
     },
     {
       "id": "claim_f5e05cda61794cb68880d63ee3163ae2",
-      "statement": "Full native uninstall retains a receipt-bound exterior retirement journal through staged cleanup and delegates locked physical user-state inventory and read-only settled mutation inspection to existing owners; unknown, live, changed or unsettled evidence remains protected.",
+      "statement": "Full uninstall retains its exterior journal and recovery interpreter/import inventory through cleanup. Provider resources are removed before Host retirement using current provider ownership evidence; conflicts preserve the Host. A registration-lock recheck protects payload removal. Receipt-owned guidance cleanup preserves foreign siblings, and unknown or unsettled state remains protected.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
-          "version": "repo-file-v1:sha256:760bcd49423cbb8de0ab93a1a77b77d213ea98f90081b3a39f9075bed7f8887c"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationDisconnection.kt",
+          "version": "repo-file-v1:sha256:5086b5ad1d6f8a9172db2e23808028345b1a7a776b74ed2b7db62927e7707b17"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallRetirementJournal.kt",
-          "version": "repo-file-v1:sha256:1f801d3cf54406f22cd16268ab8fe51cc94fcbbe0a379efc06756741fbe32967"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
+          "version": "repo-file-v1:sha256:271f11e2c9c1328b20fb4b6dd79dd217003ca535c3c66db9644fec11df4c0379"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt",
+          "version": "repo-file-v1:sha256:7d2057b06673aaa3faa3446cb1ab6b8fa4b27295c8e283de7963ea7af852aafc"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt",
+          "version": "repo-file-v1:sha256:1c541f8e6d12023295907eb593ebe7b0e84f8d9c479d4fbb19943e2f89cdaebd"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UserStateInventory.kt",
           "version": "repo-file-v1:sha256:0b851a71bef50a4a3c147890b84695dc25ff588dc0d41cf1c4d49f0233c5022c"
-        },
-        {
-          "resource": "repo://evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationStateInspection.kt",
-          "version": "repo-file-v1:sha256:f65a4d37d1058dc5e4581de68942a11beb8ab16882aefc8074c729ca93faec3b"
         }
       ]
     },
     {
       "id": "claim_447f107d597641368d051439eee9c019",
-      "statement": "The product CI lane retains one complete versioned candidate. Main reuses same-repository PR bytes only after successful producer admission and equality of complete source trees. Documentation-only validation needs no product candidate.",
+      "statement": "Legacy component candidates retain source-tree reuse proof but are not complete products. The complete-product CI join requires both retained native target inputs from the exact producer attempt without rebuilding; documentation-only validation needs no product candidate.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/ci/required_checks.py",
-          "version": "repo-file-v1:sha256:100f22e0148cf302d2cd6508a0920a13c5698e0c313f5c49ff4a1f8386e7e25e"
-        },
-        {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
+          "version": "repo-file-v1:sha256:bf2b4a5eaa35320422e9ef01db590af625f7bd3296de84fd9dadfefccb1c525c"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:9421bd57ad0afbc8075a61a150900f8a1920e0b26d282486b95f88c206beca0b"
+          "resource": "repo://.github/workflows/ci.yml#L433-L602",
+          "version": "repo-lines-v1:sha256:3eeb7f0e63adb3e260828c4890f5369fa5b8ca92a57c21b2ffdd4dd35dcbb446:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI2ZTMzMDNkMjU4OGFlYjNiZDI1ZTUyMjA3ZDgwM2Y2OTY0YWQ4ZDJmNGYzYWM1YzMwZjdkNzk5M2M2NjRmNjIyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI4ZDMyYWMyMDgwYTEzNDVjNjQ2OGQwZTBlMDlhNDkzMjAxNTE3Njc0M2Y5MmE1MjUzNTVjZmRmZDU4OTdjZmQzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI4M2VhNTI4MTg1Mjc5ZmJhZGYzMTA2MDRjYmY3ZmExYWVkODY4ZWQ1MjA5YWFhZDY5Y2JmN2JmMmMzZDI4ZGMxIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4ZGI4MWI4N2Y5ZGQ1YTUyMDk2ZDU5YjA5M2RmNzdjMjE2OTVjYjBkNWIyN2ZmOWFkZmI2MzQ3NTAzOTUwMTU3In0"
         }
       ]
     },
     {
       "id": "claim_d407483e65e045288fecd3b152e7e6a3",
-      "statement": "Successful main product validation from push or manual CI permits promotion of unchanged candidate bytes to the developer channel. The publisher admits matching producer events and identities, digest provenance, and exact retries. It preserves latest when main advances. Documentation-only validation completes without product publication.",
+      "statement": "Developer publication admits the complete retained product and both native target qualifications before promotion. Documentation-only validation publishes nothing. Stable promotion selects exact preview bytes by source tag and record digest without rebuilding.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/ci/validation_outcome.py",
-          "version": "repo-file-v1:sha256:24a30aefa486182b37f74dd54a2e2345536e283163e046ac60bdc2fa3804760b"
-        },
-        {
-          "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
-        },
-        {
-          "resource": "repo://.github/scripts/release/publish-developer.sh",
-          "version": "repo-file-v1:sha256:4178a6f69f95c8bd10a75fd36e027aabd3c48922213c90cd66f494f916960267"
-        },
-        {
           "resource": "repo://.github/workflows/developer-release.yml",
-          "version": "repo-file-v1:sha256:ef3e1f513478b27e90c21170e931a5505a220db053daf86c6f899e3f81bc1eec"
+          "version": "repo-file-v1:sha256:db0aaac561c719a36b04dec856358f2a8bde291d3f1e884500f8dfcbbc27cc4c"
+        },
+        {
+          "resource": "repo://.github/workflows/release.yml",
+          "version": "repo-file-v1:sha256:5158cbaa9d3626f9ff54f4c464111f65067fe7bb0cf80bed538c460907838c48"
         }
       ]
     },
@@ -349,28 +307,12 @@
           "version": "repo-file-v1:sha256:0a03e166df92557b9de822f5a682334b5bbec1d1582aba64314f694ddf96fe93"
         },
         {
-          "resource": "repo://.github/scripts/ci/native_handoff.py#L298-L298",
-          "version": "repo-lines-v1:sha256:b9286dd81275e4869351ab450b423555b08533df7e4fea18a17ab1bf8bcff2aa:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjkyODZkZDgxMjc1ZTQ4NjkzNTFhYjQ1MGI0MjM1NTViMDg1MzNkZjdlNGZlYTE4YTE3YWIxYmY4YmNmZjJhYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjkyODZkZDgxMjc1ZTQ4NjkzNTFhYjQ1MGI0MjM1NTViMDg1MzNkZjdlNGZlYTE4YTE3YWIxYmY4YmNmZjJhYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTZkZmJmNDUzZjdmMWJlYmFiNzI4MzYxYjBmMzkzZWViNGMxZmI2NjhmOWVhMjJiOTE2ZGFjZjVkZmY4MWQ4MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTE1NTA3NzYxZTA4YmZlYTViNDU0MTdlODY4OWZkN2ExODJkNzVmZWMxNTQ2MDQxZTQ2MWVhNjhmOGVkZWUyOSJ9"
+          "resource": "repo://.github/scripts/ci/native_handoff.py",
+          "version": "repo-file-v1:sha256:89cc86c4e5bc7abf75894d626e9e21ff871665e2794dbf761adf7bb04a769e7c"
         },
         {
-          "resource": "repo://.github/scripts/ci/native_handoff.py#L307-L342",
-          "version": "repo-lines-v1:sha256:c5584eba3bd4655f48a278bca246bcda76e2b1ab12dd454b93f1d58f41afe5a0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkNTg4ODYyYWFiZTkzMjRlMDJjMzI5ZWNkYzIzNTg1NzM3MDAxOTcxOWRlZWQ4ZDIwZDA5MzA4YzFmMTI1NTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkZGNmMGE4ZDkwYmRiNjI2Yjc3ZmNlNzViZWNlNzk0OWExY2JiNDUwMjgzYmU5MWE5YWI5ZGVhMTU3ODRhYTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzMTFjNWI3ODVmNDc3NzUzMDY2NzUxZGQ1OGE4ODliNzRkYWE4OGIyNGFjODBjNjc0YzRlMWZmNmZhYmUwOWMifQ"
-        },
-        {
-          "resource": "repo://.github/workflows/ci.yml#L125-L170",
-          "version": "repo-lines-v1:sha256:4ccf1abe162c654186993f465da5b84b4c181e88b37f12b98ce4265b4895f800:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiNDQyZWM0MTc0ZWQ0ZDg4OTNlNTIzMTlmM2U5ZDcxZTdhOTJmMTNmY2M0ZTlkODU1NWU3M2QxZjkyMGViMzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMmNmNDFjMmUyMGM4MmJkYTRkZTY2ZGIzNjA2YjdmZGEwMTk0OWVlNjQ5MWExODFhYTA0Y2M4NzA2YjVmMzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNkNjFiMzYxNDQzMTg2ODMyZGVmMWIyMjhiZGYyMjEwMjBkZmFmZDAzNmJhNzI2ODg4OWU4NTFmYmZlYzczMjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjYmQwMzg4ZWY5MjJlMDhmZDAzNmYyNjA0ZGEyN2VjNWNlYzFmODZmZTVjMTMxY2IyYTQzZTVhZTE2MjliYmUifQ"
-        },
-        {
-          "resource": "repo://.github/workflows/ci.yml#L230-L267",
-          "version": "repo-lines-v1:sha256:5c5550e13037b249db23f8e765df38a87bc0778ae33d127f28ec74ead21d216c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0NDk0OTExNzYwMmEyOWY4ZTJmOTM3N2ZmZmViMGQ5NjZmYzBhODg3ZGYwNzI0ODJiYjcyZThiMmRhNDRjYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5ZDRiOGE2OTUyYzFiMzEyOGFhZWYyZTQ0NWQwY2YxZDEyMDIyYmYzOGMxN2RmZThlZDUyZTljMWYzMGQ0MjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5ODRjMTg0OGI4M2ZhODU2ZjM5N2FmM2UzN2Q0YTcwN2YzMDRiNmE5M2QzYzZlZDcyMTNlOWY5OWY1MGY5OTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliMjY0ZjkwMWZmNjZmMWJmNGZiMDBmMGI2MjUyYTRiYWU5ZTBkNzQ2ZjA1NmJiYzA4MTA4MTAyOGU3OTlhZDcifQ"
-        },
-        {
-          "resource": "repo://.github/workflows/release-component.yml",
-          "version": "repo-file-v1:sha256:d778ddbc3ed0b595348de2dc29ca11afbd7e9e71c96123333c843fc45485751a"
-        },
-        {
-          "resource": "repo://.github/workflows/release.yml",
-          "version": "repo-file-v1:sha256:c9243275ee2f2490a027dba48a974e1f5bf9841e223deeb6844d49b5fc22f3e5"
+          "resource": "repo://.github/workflows/ci.yml",
+          "version": "repo-file-v1:sha256:0f3423e1969884280396aa3f81bcdc0af6e99d633a5dcd26ddeffa6b145b7da6"
         },
         {
           "resource": "repo://cli/native-image.args",
@@ -384,11 +326,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/release/build_candidate.py",
-          "version": "repo-file-v1:sha256:529ddce328e0353cb742d507c10caf635c4e1317413045c9150b1851bfde7e7c"
+          "version": "repo-file-v1:sha256:bf2b4a5eaa35320422e9ef01db590af625f7bd3296de84fd9dadfefccb1c525c"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:9421bd57ad0afbc8075a61a150900f8a1920e0b26d282486b95f88c206beca0b"
+          "version": "repo-file-v1:sha256:0f3423e1969884280396aa3f81bcdc0af6e99d633a5dcd26ddeffa6b145b7da6"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
@@ -408,51 +350,29 @@
     },
     {
       "id": "claim_c0d802cfaf904b648f45d929cc29ab7e",
-      "statement": "Default installer failure presentation reads bounded stream tails and prioritizes rejection and recovery details over routine telemetry. It keeps the child exit status and limits display to 12 details plus one truncation notice. Verbose output keeps complete child streams.",
+      "statement": "Legacy installer failure presentation reads bounded stream tails and prioritizes rejection and recovery details. It keeps the child exit status and limits display to 12 details plus one truncation notice; verbose output retains complete streams.",
       "evidence": [
         {
-          "resource": "repo://install.sh#L75-L195",
-          "version": "repo-lines-v1:sha256:a2abdcf6f95bfacb4d7bdec3087b6747dd0c1629a376c46de164697829aa9513:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjNTg1ZjgxMzFkNTg5MGJiMGUzMTNmZDM0YzhlMzViNmU0OWJkMDYzYWNlNmFhMjE5ZGMwYjliM2QzZjI5MmVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI1MjJjYjVkYjA2NTY4OWFkOGJlNmVlYWY4ZDVjYmY0MjRiN2VlZGMzODY1YTUyYTIwMDVlYTg4YWM4MmViZDFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmMjQ4MDUxODRmODZkNGVlZDExOWVkZjNiMTBlZDc0YTNhOGRhMWVhOTg4MzUwMzUwNGFhODk0Zjk2M2I4Y2RhIn0"
-        },
-        {
-          "resource": "repo://packaging/test-installer-entrypoint.py#L855-L912",
-          "version": "repo-lines-v1:sha256:72ed803b67a7c29c67caad1d8974e873e2c70a76e549ffb5072c33f616d412a9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxOWUzNzA5ZTg1MTg4MTE5MDBkODEzNWI4MTY1ZjI1MmU4NDUwMGQ2ZmQyYTcxZDRhNGI2ODU4ZGQ3ZDA3OTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZjM2YzVhNTg1ZGM4YWUwNTlmM2JmNDlkM2JlY2YxNzliYmI4MTU0MDI5ZjQwNWNiMGZiM2FhZDkzYjEzZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhMWI3NGViNzI0ZjA2YzlhNDRjMTFkZTJiYmUzODYyMzdiMzIxZWJjYmNlMjFlMGJiOGYyMDZhMzk1MDEzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJjMjgwNDc1ODQzYTA3MTc2NDlkNDdhMzVlNDM1Yzk0OTFiNDI5YzE0ZGQ0N2ExMTQ1ODE1MWNlOTVlMWQ2MTUifQ"
-        }
-      ]
-    },
-    {
-      "id": "claim_5972726abcac4e90b0bcb2ee465d2480",
-      "statement": "Force reset completes through InstalledReset with single-use payload and exact-fence admission, exposes no startup or readiness capability, and reports RESET_INSTALLED without a service generation.",
-      "evidence": [
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt",
-          "version": "repo-file-v1:sha256:aea0bc438814f988e0a80636fea05eb3b13fa737252c153f8ed1daaa1e1b0265"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt",
-          "version": "repo-file-v1:sha256:04fcc18051e608a391a77604574b1442ff5c961aef861c2c164c3b1b4a2752eb"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceResetOutcome.kt",
-          "version": "repo-file-v1:sha256:07f243ac1e4445290b192a6f4932bdfe555352078524b19dcbddf66aefd6fba6"
+          "resource": "repo://packaging/install-legacy.sh#L75-L195",
+          "version": "repo-lines-v1:sha256:711621f49f98845bdfe7ae3e240ccdce73ac3183a35c9c24f703a14ff36c0ebe:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzY2NjNjRkMjIyY2VjM2M0OTU0YmZlZjJiYzc2Zjc3ZWJkZjZlODc3MGU1MTgwNzVkMzU1Y2M4YzZkOGE0Y2IxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI4ZTQyM2E1MTZiNTBiZjNiZmJlYjVhN2Y0ODJhYjljYjJjNTBhYTNmYzM0OWUxYTBmYjNiZTQzMTZkYjZhNjY1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmNmQ2OWQwZWU1YTljMmFiN2JjODE0NmE5ODE4ZmE3Mjk4ZGQ3NTgwYTg2ZTY0M2FmOThkNTM0MTE4OTVkMjNjIn0"
         }
       ]
     },
     {
       "id": "claim_6aa736adc7734b8d8b08addaaa0c3476",
-      "statement": "Managed composition captures typed preimages and coordinates existing Control and Host owners under admitted locks. Pending recovery precedes selection, uses its recorded transaction, and preserves unresolved fencing. The bounded main catalog keeps original candidate provenance and main-ancestry order.",
+      "statement": "Managed product replacement uses the existing typed replacement journal, immutable installed identity and exact recorded selection. Pending recovery precedes new selection and cannot silently choose another release.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/developer_catalog.py",
-          "version": "repo-file-v1:sha256:42d55a59436e67eb3ef900dc642cd79865a26bce17ca755e5eb8176f2ea5eaba"
-        },
-        {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
-          "version": "repo-file-v1:sha256:998e70fde7d4f7340ad28cdf4d256b726dd135ee60ada82c0533ed690bd8add3"
+          "version": "repo-file-v1:sha256:543f7c5a4987ef9d80e136f0ad961732b33eb558e5336d0445da1545d2c09e04"
         },
         {
           "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
+          "version": "repo-file-v1:sha256:1e29e37c52f66d3e64873c7988da9f122bf087ada95ba3dc220e1bcd39b50402"
+        },
+        {
+          "resource": "repo://packaging/managed_product_installation.py",
+          "version": "repo-file-v1:sha256:5bcc2f04bd5a14dbc1b6bcfaa727d5fad19e6948665e2899da98918bb9372cba"
         }
       ]
     },
@@ -492,7 +412,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:9421bd57ad0afbc8075a61a150900f8a1920e0b26d282486b95f88c206beca0b"
+          "version": "repo-file-v1:sha256:0f3423e1969884280396aa3f81bcdc0af6e99d633a5dcd26ddeffa6b145b7da6"
         },
         {
           "resource": "repo://build.gradle.kts#L67-L88",
@@ -651,46 +571,16 @@
       ]
     },
     {
-      "id": "claim_c9e23d197818486c811c3d0a9a900cad",
-      "statement": "Control assembly stamps the skill front matter with the Control version. After Control replacement commits, the installer refreshes admitted harness guidance.",
-      "evidence": [
-        {
-          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:bbe1bac2be06839c755904326d5c592a71c767a342a484095f01aec15917b26b"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt",
-          "version": "repo-file-v1:sha256:52adf19f328b05a64f715b756b6d0e62c48d110cd197407529142befb2e0f7fb"
-        },
-        {
-          "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:969ce00154f200601d7136f1d6f0f17c56c49383fedee99f5c1e5679a16bf995"
-        },
-        {
-          "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
-        }
-      ]
-    },
-    {
       "id": "claim_62b31492f84b4a84a50c056fff0156c3",
-      "statement": "Complete setup archives contain the composed Host, bundled JBR and matching Kast components. Assembly and digest admission cover macOS and Linux on AArch64 and x86-64 before the shared private installer runs; those contracts do not establish native execution on each platform.",
+      "statement": "The retained standalone archive assembler combines Host, bundled JBR and matching components across its platform matrix. It is not a public installation route or evidence of managed native qualification.",
       "evidence": [
         {
-          "resource": "repo://packaging/composed_bundle.py",
-          "version": "repo-file-v1:sha256:5a7b10707e97c4d3321fa76088d824be49da2def27386fc6e9379d884dfa2ded"
+          "resource": "repo://packaging/composed_bundle.py#L466-L579",
+          "version": "repo-lines-v1:sha256:9f6e12d33406bab6231b261ab2e2a52e72278c471ec73b065482a7294f73fae7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIwNjM4ZjkwZmRiMTM4MmNkYzg4NTAwMThjZmQ2MDc3YWU2Njg0ZmY0ZTE1YzliNjUyYzcyMTgzNzRkMTIyNmExIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIxOTlkNzcyYmY2YmE0ZWUyMTE5ZmNkNWE2YzM3ZDE3NjBmNDgyMzVmNGRmMmZjOGZiZDYzZjc1OGVhMGYwYWI5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxODI0M2Y0ZTI5ZDQxZWRiOTZjNGY3NTE5MDYyNGE4MjMxYmY1NDA2NTJiODc4OTYwNmFhMGRhM2RmMWRkMWYwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI3YTk1ZGFkN2RmNjg5MWI3NTBjY2FhYjc2ZjhiYTcxMzFhNjU0ZjVlMmY1ZTZjN2NkOGIwMzM2YzhiZWJlNDkwIn0"
         },
         {
-          "resource": "repo://packaging/composition_platform.py",
-          "version": "repo-file-v1:sha256:99365f0de14523ec7bc7a71ca567fd26b91cd35efee17dc339f01ea337b5ee10"
-        },
-        {
-          "resource": "repo://packaging/managed_headless.py",
-          "version": "repo-file-v1:sha256:03301f67fab0b880ee0d3190004adec420c3c4d7db52ce8f48a53d6403c5c430"
-        },
-        {
-          "resource": "repo://packaging/managed_headless.py#L563-L563",
-          "version": "repo-lines-v1:sha256:e21a0be654cef76854077b51fa5b910454fe1186cd20954999b115682a073379:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTIxYTBiZTY1NGNlZjc2ODU0MDc3YjUxZmE1YjkxMDQ1NGZlMTE4NmNkMjA5NTQ5OTliMTE1NjgyYTA3MzM3OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTIxYTBiZTY1NGNlZjc2ODU0MDc3YjUxZmE1YjkxMDQ1NGZlMTE4NmNkMjA5NTQ5OTliMTE1NjgyYTA3MzM3OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDcwMTQ5ZTA2OWFkNjdlY2NmNDczNjQ2ZmYxYzc1MDA1MGQzMjlkMTEwMDE4ZGM1NzY2ODc4ZWFmYTFkNjA3ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWJhYzZmOTI1MDA1M2Q4MTczYWRmZGIzNzFlY2ZlMGZhZmYzZjFlMTk3YTNlNGRhMGMyNGYxYjRlNDEwY2FmOSJ9"
+          "resource": "repo://packaging/composition_platform.py#L18-L54",
+          "version": "repo-lines-v1:sha256:d5360a857947e92480c97199a38d2e7ab0cd7303b6c8f472c84a9380ea80d3e9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzNzUxOGM3OGQwMjQ1ODNjMzE5YmIxNTQxNTRhNzRlMDAwMDBmMmI2NWNjOGM0MzYzNmRhM2JhNWMyNWUwMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2MWU2ZjhiODUyYjQ3M2E2NzA0OTc5ZWM5NTNiY2QxYjA5M2E1NzliYzIxY2I1ZjAyYTE2N2E1MmQwODU3NWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmYTcxOTIzYTBkMGEwYmNiNzkyZDg4ODRmMjUyOTFmYzdkMmNmOTliYmExM2Y3OTY5ZDc0MzE5ODIwMzU5OTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhOGI5Y2MwZmJmZGU2Y2ZlMGRiNjFlMTBjOGFmYTkzNzg4NDkxZTY5ZWViZGRhMjJkNWZjOWUzODkxODNlMzYifQ"
         }
       ]
     },
@@ -722,19 +612,15 @@
     },
     {
       "id": "claim_9eaa2539bec849d78a5a206e77c0cb63",
-      "statement": "After a private stop, kast-task asks the lifecycle owner to examine retirement before it removes the exact shutdown fence.",
+      "statement": "The retained private kast-task owner examines retirement before removing its exact shutdown fence; this legacy recovery path is not public managed request admission.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
-          "version": "repo-file-v1:sha256:3047de7fcef890a738fc74b21809dd54c2cf02e00142b0ded003c52187d8e3cb"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt#L78-L110",
+          "version": "repo-lines-v1:sha256:532e1a92a42f040722faefec26db485ae51fb65fa715629f0b3af50d2f209a57:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllZTNkM2MyMzBmYjVhN2I0ZjJhMmNiOWE2M2QxNjUzYmQ1NzQ1OTMyMzg4MzZiYTQxYTM4NDBiMDc0OTZhMDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2ZjQxMzA1ZDI2NDBjNzkyNWE0OTMyNTRjNjRmZjM5MDI1OTNmNTAyMjFhMTY3Y2YyMmEyZDgyMWVjYmM1YmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljMDAwMjYwNTY1Y2FmYjRjZGQ0ZmRjZWVmNzZkNTgzOTQyNWNmNTE0MjVkNjA1N2FjNzYzODI5YjNjMmIzZDQifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt#L27-L27",
-          "version": "repo-lines-v1:sha256:b2b2490698ba3a3f718160a1a743af845226c8431fbec0dab554161aaa4cdbe0:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjJiMjQ5MDY5OGJhM2EzZjcxODE2MGExYTc0M2FmODQ1MjI2Yzg0MzFmYmVjMGRhYjU1NDE2MWFhYTRjZGJlMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjJiMjQ5MDY5OGJhM2EzZjcxODE2MGExYTc0M2FmODQ1MjI2Yzg0MzFmYmVjMGRhYjU1NDE2MWFhYTRjZGJlMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODgzZjRlOTFmNWYxZTNhMmU3Y2I3NjFhZjk4YWNiOTNlYTAyOTA5M2E4MjBjMWQxZTMxMTZiNzEzZTNmMjIzYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWVmYjc2YWU1MmUzYzNlOTAxMWNhZmQ3ZWJkNzVmNTM0NzkxODc0OGZjMTgwOWQxMGRiZTYxMTVmYTk1ZTFmNSJ9"
-        },
-        {
-          "resource": "repo://packaging/isolated_runtime.py",
-          "version": "repo-file-v1:sha256:a358c71b2d66a23f86400a154ad21e0b17dfb54e49640afb51c7ebbb8652e248"
+          "resource": "repo://packaging/isolated_runtime.py#L200-L261",
+          "version": "repo-lines-v1:sha256:0b62bdb3744e69ec2216187fafc63a3b26bbb54da65ccf30916829e4d0b4a8a5:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyYTdiNDY2NjUyNDc0ZGIzNDBkNmVhNWE2ZmIyZTAxYzllMDcxN2RhMTA5ZDUzMDI5MmY4ZmRkYTFiZDFhYzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2OGZjODMwMDM3YjA2OTA4OGI4YmQ1M2RhMzU4NTc3NzJlNDcyYzgzZTI1ZWU3Y2U2MWQ2N2ZmMDAzZTI0NGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlYzIzZTJjMTE3YTU5Y2M2NzEwNzBiZDcwY2E0NzY1OWJkNzE4YTA1NTJkNDJlNWQ1ODlmOWQwNTBiMmE5ZGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -744,14 +630,14 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt",
-          "version": "repo-file-v1:sha256:c6114965a4ca1938d4b633453b9db665c571179d7cc879030fc3dab98d62f364"
+          "version": "repo-file-v1:sha256:b6217cdaa4817f401f2d8daa54c0d35bbf155bd967d57bd75f4dd09ea5ad9aec"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt#L137-L137",
           "version": "repo-lines-v1:sha256:7c4a18e878d4f17b1e0f47361764c4381a100bc60ba35cf3aef2b8c08ecdd1c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2M0YTE4ZTg3OGQ0ZjE3YjFlMGY0NzM2MTc2NGM0MzgxYTEwMGJjNjBiYTM1Y2YzYWVmMmI4YzA4ZWNkZDFjMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2M0YTE4ZTg3OGQ0ZjE3YjFlMGY0NzM2MTc2NGM0MzgxYTEwMGJjNjBiYTM1Y2YzYWVmMmI4YzA4ZWNkZDFjMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDA0OWQ5N2ExYWNkMmM4ODE0YTRhZDk5NTBkYTZjYmEyMzAxYTY3YzczNDExM2NhMzA4YjBkZjliY2EwMzkzZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzk0MGQxMzlmNzQ0NjdmZDgwMTA1ZDZjNDI5ZGQ3YmMwNTQ0YmI4NGNiNThmOTJiZjcxNDA0M2NjMzYwNDIzYiJ9"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt#L322-L322",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt#L321-L321",
           "version": "repo-lines-v1:sha256:ccc6e86c22621efee861754ef67b127a5640cb660b0ab8e90513b042375917e7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2NjNmU4NmMyMjYyMWVmZWU4NjE3NTRlZjY3YjEyN2E1NjQwY2I2NjBiMGFiOGU5MDUxM2IwNDIzNzU5MTdlNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2NjNmU4NmMyMjYyMWVmZWU4NjE3NTRlZjY3YjEyN2E1NjQwY2I2NjBiMGFiOGU5MDUxM2IwNDIzNzU5MTdlNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTAyYTI1ODYyZDA3MmM3OWJiYjk4N2FmZTg0MzU5MTgxZWYyMjljMDFlNjA3YjBjOGViNDFiNzY2NWY0NWE5MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2JjOTUxMjg0NmYxMGU4MjQ5MzExMDYzNzI4NDlhNTU1OGRjNzZhNTZlNGMwNDE2NzBlOTRjM2IzNjc5M2Q2OSJ9"
         },
         {
@@ -759,10 +645,242 @@
           "version": "repo-file-v1:sha256:6051b8889f1dd417123f457c54b3a8c6021478b314e6d49f77ac4d086402b097"
         }
       ]
+    },
+    {
+      "id": "claim_066ca86996ed4e4283d0cb8314243027",
+      "statement": "Immutable runtime bases bind donor, target, recipe, support inputs and file inventory. Overlay copies verified base bytes, rejects component collisions and verifies base ownership, modes and digests without hard-linking mutable compositions.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_product_installation.py",
+          "version": "repo-file-v1:sha256:5bcc2f04bd5a14dbc1b6bcfaa727d5fad19e6948665e2899da98918bb9372cba"
+        },
+        {
+          "resource": "repo://packaging/runtime_base.py#L332-L383",
+          "version": "repo-lines-v1:sha256:d80d31fe08d65741696415051b48663a10cedead5dc40c94e3293e321a63e08c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNWU4NTMwZjdlZTliZDg5M2VkYTFiMzc5MzZlN2M0YWQ0NGMwMWVmZmU2ODEyZmQzMzJjNzI1YzA4YzA3OWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3ODI5MzQyNWI5NzQ3NjA1NGFhNjlhOTVlOTA4ZDk2OTJkN2Q3NDQ1NmUyNTBhNTJjMDQ3NWQyZjQzMjc3MDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3NmNjYjU4OTAxM2Q0YTYzZmJjOGU3YThiMDI1MzFhZTc2OWQ5MmY0N2IxYzI1MTZmZGM1YWMyY2NjYjM5NTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZmMTBiYzliMDI2YzRlMzJiNjk3ZjQ2NzBiNjE4Y2ExNGEzZGQyNDc5NjlhZGFhYmY2NzhlNDM3MGU2OTU1ZTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a564dad9fb634a9ea8147a33742eeff4",
+      "statement": "InstalledProductSelection admits exact recorded identity for repair without requiring runtime bytes. InstalledProductRuntime additionally admits local runtime bytes for semantic requests without release-server access.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntime.kt",
+          "version": "repo-file-v1:sha256:6ee0e63288ffb8bdc19ea7887b7e6c9670ea07fa698bb0f3ce0e4ef24ba870d8"
+        }
+      ]
+    },
+    {
+      "id": "claim_3f021b5a016e40409a587df6d15261c8",
+      "statement": "Legacy force uninstall holds an exterior workspace lifetime lease and rejects managed workspace/runtime stores or product-selection.json with MANAGED_STATE_REQUIRES_UNINSTALL before detachment. Managed products use ordinary journaled uninstall.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
+          "version": "repo-file-v1:sha256:34f51ddfb7f9468cb8cdc45177aa6cd024664f0451ed85e46def2b0d192c2bfc"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt",
+          "version": "repo-file-v1:sha256:0873a18f09137dd9a9fcabb16e140c56e84f6f80542da229b60fa8e329216ff5"
+        }
+      ]
+    },
+    {
+      "id": "claim_b075e9a912e04acb9ad327107cbc92c6",
+      "statement": "ProviderRegistration stores only CODEX/COPILOT routing intent before provider mutation. Harness removal forgets only its selected route after verified cleanup. Kotlin schema-2/schema-3 receipts and Python replacement preserve those records without treating them as resource ownership proof.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/HarnessUninstall.kt",
+          "version": "repo-file-v1:sha256:61b4605982dae9b60e869c133f26e884d75e01f125bd41473141f8bc86512c98"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProductManagementReceipt.kt",
+          "version": "repo-file-v1:sha256:6d72f305fe242a735fc9ab222bef5f1136ef562f9a6902c01d77ced9fafd3979"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt",
+          "version": "repo-file-v1:sha256:7d2057b06673aaa3faa3446cb1ab6b8fa4b27295c8e283de7963ea7af852aafc"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py#L417-L439",
+          "version": "repo-lines-v1:sha256:bcb5e20473f6691ad46969c4f6ef44677904d15f94c32400c7ef920822249944:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMGUwMzQwYmNhZjk2NmRmYWIyN2ZhZDkwNmMxZTM2YzU0MTUxN2EyMjdjZjRlNTQxNDI4Nzk2MjI4MDNmODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzYjNmY2ZlYmU1ZDAwOWFiODgxMDA0MjBmYjMzNDY2YzQ4NTE3MDVmZTQzZjc2YjAwMWVhZmYwY2FiNThhZmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxODI0NmY1ZjA5ZTI5MmM1YWE3ZjNhZDg3ZmUxNjA2N2YwYzFmOGNmODMzZTRmY2FiYmM2ODQ5NGM4MTQ3MGMifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_product_installation.py#L286-L342",
+          "version": "repo-lines-v1:sha256:49c337dd0de100a3ac8cfd0842ef5755c7ca02ee9ae507cbe37fc96b4fbe3b19:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0ODIxZTM3ZjBmZTE3YzNmNzhkYTAyZDc5ZThmNjQ4NWM3YmU4MDFkZTI3NjFhZTlhNWQ2NmY4YmI1NWIwZWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY1ODVlZGU0MjhkNGFlMmMyZDg4ODM1YjU1Y2Y1MzU5MzUyNjZjZThmMmI4MTIwMzUyNzdjZjUzM2U5MjgyYjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_002a641468474ebcb96e4972c2af95be",
+      "statement": "Control assembly stamps the skill version. Managed ProductInstalled and legacy installation results enter capability-marked guidance refresh; failure or interruption retains HARNESS_REFRESH_REQUIRED, while success clears that notice without discarding other notices. This source contract does not establish live provider success.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt#L86-L100",
+          "version": "repo-lines-v1:sha256:ac104e5e6a20cee2a96085c1cbbbc2d85a65b07d63720d2e238c3afdd3563741:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiMjc5NjkzNzc2Y2YxN2MyOGQ5YWM5NDE4ZjVhYjg1YWJmMzlkNDc0MDM1ZTQ4NzFkYzNlN2Q0NmIwNDllN2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2OGI5MjM1NGUzZWZjOTk4MzNkOGEyZGU2ZGU3NDA5MzFiZjg2OGExNmUxZGJlMzg4MjBhYzg1OGQwYjk3MDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2ZDA5ZjdkMjUyMDU5Mjg0NTg2YjkwZGM1NTkwZDM2NDhlN2EzYjZkN2M5MTNlNTJlNjcyNjAwMTFkMzBjMzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBmMzVhZTg0YThhZWY3ZTJiMTM3ZDM2ZmQ3MDQ2NWNjYzE4YjBlNzgxZTYyNWNiZGNiMzU3MDlkZGQ2ZTFjZGQifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py#L2494-L2526",
+          "version": "repo-lines-v1:sha256:92d1b05dc68dfb812b73443fbaaf75308b7dd0c6b0f6adf9726793ac57912a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmNWNiY2JlNjlhYjRlNWJjN2I5YTg5ODc0Y2NhOTIyNTQzZTg0ZDhiZTFiOTY3OGY4YmZkNDFjNzAyZGJmMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjNjdjNzgyNmY2MWJhYzM5ZGViZjE3YjJjZDNmMDlhOTdmYzZjNzgzNWQ4YWEzMGJhNTY0OTRhNWJhYWMxY2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3MGRhYTgxNjVlNDgyZmFmYzM0ZDQ4NTM4ZDQ3YTQyZDU2ZmQzMTQ0ZWRiNDhkODFmODkxYjA2NmFmMGJmYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiMDBkODA0ZGUzOWRkMGYxMWYwNDNhMWE4YWE1MmM5NmEzMmE4NjM1ZTg1OTVjOTRkYWE1MDhhM2Y0NjgyNWYifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py#L2654-L2685",
+          "version": "repo-lines-v1:sha256:19d1adfc3bef38320f095db00664659d5ec51c9e8b30bcc45a23e7fcbce6237c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2Y2E5M2EwMGViYTA3OTFiZDAwYzdkZThlZTM5NzI0ZWM3NzE2Njg4MjBkY2NiODI2NjU0YjRkZWZiZjUwZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3MjY2YTFkYTdlZGY0M2U3NWI1NjJmNzlmMWZjNzE0NDhiYzNjNjVmZjY0NTk4MGE0ZjljNzIzOTRkOGEzMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlMWQ1M2Y0N2NmODkwZTg0OTZhZDRmMWYzNTc3OGQ2NDI4NDQyNGRlMDdiNDdiMzMzZTljZDYwYzE3ZmE5OGIifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_product_installation.py#L62-L70",
+          "version": "repo-lines-v1:sha256:7269e9a38b04b3e63615294d9ef5f1be403444247b8e52c769738b2bec62cff2:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjY5YTEzOTc1YzI1NmVjODMyMGUyMDE2MDgzYzk2ZGY2MzdjYTNkMzViZWJkZTIzMTRiZWUzYTQ3MTFiNTZjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjQ5NTkyM2UwZTljMDAyNDhiZTViYzVkNWJmNWZiZmYxODlkNGNmMTQ5OWFlMjcxMmZiNTdiOTQ0YmI4NmI5ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWVkN2QxZDUwMTNjODkxMzYwNGY2MDRmZGFkYzQ2OTc3MGQxNmJlNjRlZDFhYTIxNTk4Y2NjMzc4ZWU2OGZiNCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_4ef11021590e418c988cdce15f10facb",
+      "statement": "Component qualification validates exact runtime, Control and test-native harness inputs and emits COMPONENT_NATIVE evidence before public product installation. ComponentHarness drives compiler and workspace-retirement probes rather than retired public standalone or container commands; this does not grant installed-product acceptance.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/component_probe.py#L61-L135",
+          "version": "repo-lines-v1:sha256:e94e19b91d3bb3d1bfe52caf23e3de232937cebe44495253e235f8624eadea58:eyJzZWxlY3RlZExpbmVDb3VudCI6NzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2MjFmNzZhZTQ3YjIyNWNkZTEyYWQ4M2MwN2I1MTljODU2NTcwNjllZjEzNWNmZWFmY2Q4ZmEwMWZjMzRkODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmNTVjMjA0ODc0YjY1ZDViZDI2YjJkNDM4M2E4YTZiOGQzYzczOTVjZGJkNWNhYzdkOGVlNTExNTM4YjYxNjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcwY2UzZjI0YWI0N2MyZjVhOWQzMzdmMzc3ZWQ4NTczZmE1NjU4NDA3NjQwMmYxYWYwNTRhM2RlZDYxOTQ2MmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packaging/composed_host_probe.py#L323-L405",
+          "version": "repo-lines-v1:sha256:5a61a87be2aa77595c32b5e3b65952b7acfad9812fd4cc590ebbbb993f8e24f5:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5ZDIwMGY0MGE2MWU4M2EzMTlmMGNmMDNlNmJjZTY1NmI5N2JkOTYyZTFmMTEzM2E1YmVhNGFjNGUyOGQwNTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5NWQwM2ZlNTFhMzE4ZmRkNTg2M2VhMTZlNzE2ZmFjOGNiY2E1ZDYyNTE2MzkyMjZmYjA2MDM4MmU0Y2Y2NjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0ZTc0OThkMGI0NjJlNDMxMzcyNzkzZDc5N2I0Yzg1ZjFlZTJhNjdhZGI0YTA2Yjg2OTAyOTJlZGVhMjA1MDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0MDIxMzZjZDdjNTUwYzhiNGIyOTdkODE0Y2FmMzhiYzA2YzNlY2IyNjAwZGMwYzlmYzYwOTliOTUyNjgzNGUifQ"
+        },
+        {
+          "resource": "repo://packaging/composed_release.py#L418-L554",
+          "version": "repo-lines-v1:sha256:a9ff1b607e93e2c33ecff5cf78c08dbd9e4e7af42055cd803f90c86dc694b6bf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhMmRiZjg5ZWRmYTZkMDIzOWU2YTEzMGNkOTZjNTgzMDg3ZjMzZDAwNTRmMGU3MjM1ZTZhM2RkNWQ1ZDMwNWQ1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIzOTNhNzlkYzE4MDZjZTQ2ODQwNDhjM2E0ZWVhZDZlODJkMWY3YmRkNzkzOWU4Y2U0OThiNTljNjFjNzkyNjE3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI2M2Q3MDgzOTZlNzkyNDA0MWNmZTFkYWYxNDllMmU4YWQzZmVmOWUzNTU5YWZiNjI5MDlhOGZlMzQ5MDg5ZjlhIn0"
+        },
+        {
+          "resource": "repo://packaging/container_probe.py#L46-L132",
+          "version": "repo-lines-v1:sha256:1ef545604a2efdc403e1a04766b54aa2ded965863550aaa861fdd1b7de185a28:eyJzZWxlY3RlZExpbmVDb3VudCI6ODcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkYzM5YmMwZDUyODdkMDAzODJhMzczZDQwMDJkYjE2YmRlODdkMzczYmUwZTRiZDc4NGU3YzhmMDQ5ZTY2MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhMTFjMDU2N2QwYTVmOWU5YjEzNWY2NWNkMjUzNzJkZmQ2Mjg3NzVmN2MxZWQyNTNmOGJhZDQyZGQyZDY2NjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkYTBlYjNkMTgzY2IzZDdhN2FiZDRmZWM3NTE2MDVlMjVkZWY4M2Y0NThlZjVjZTQyZDc4YzhhZTk1ZTE1ZjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_83eab0ed9c8f461d96dc28138216a272",
+      "statement": "The producer records each component-qualified target, seals both exact producer-attempt inputs into an immutable build record, then joins detached installed acceptance receipts without rewriting it. Preview publication and stable promotion require both receipts and retain record and payload bytes.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/product_candidate.py#L22-L49",
+          "version": "repo-lines-v1:sha256:b80d526a177c6cf9bfe93839373b4e7c4286651a39631077e2a68abecff00cbc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzNjAyM2I1ZWU5MzBjODU2NTEyNDg5YTgyNzM3YWJkOGQ5Zjg1MWMyODNlZTRjNjhhMjc4YjZmNjBhYTRjMzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcwZTM0OTE0OWI4MTQ2ZjJlNjAzODY3MjVkODc4OGE3YmM1M2U5MThlOWE3OGQ2OTAyZDdmMmE2ODA3OTk0YTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUxMmI3YzNhOTAxMTUxMjRjMTA5MWI2NTI5ODEwZTJhODMwMTM2YjBmZGI5ZWQ0N2U0YTNhM2Q1Yjc3NjYyYmMifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/release/product_candidate.py#L257-L263",
+          "version": "repo-lines-v1:sha256:ab3d8b5d12c665823971c9aea16d8c162df39c1764a28f2dddb2f5e6adf97de5:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWJjZmM3OWIzOGMzMDFhYWUxYWEyM2JkZTIwY2JkMTYxNGQ4YTk1NmViMzc2MzM4YzhmNThiMjljNmVhNWU3YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2RiMWFhYTkxMThkOGM0OThjM2JhMzZiMjhjNDE1YzVjYjMxODA2M2Q4NmM0MjBjZDc2YjZmYTQzZWI1ZjgzNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGNjNGE3ZDFjYzc5NmFiYTNlNDY3MjMzMjdmNTE3ZTlmODExOTgyZDI1MGYwNzAyOTg2ZTRiNTc2NGFkOTU4OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDdhODFjYmRhMDNiMjNkZDdhZTBiNDM0MGJhYzc2MzA1ZmY1NTE3NTI2ZGMzYzkzNjA2Mjk4MzllZjAwYjNkYyJ9"
+        },
+        {
+          "resource": "repo://.github/scripts/release/product_producer.py#L243-L342",
+          "version": "repo-lines-v1:sha256:af37e31fc2dd308c745de825ca05e9dcefbdb1ee3aa9cd27f3583ef00f9ae1be:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJiODAxNjY5NjZmMzJiZmUyNGNmZWRhZWY4ODc1OWI5YzRkOTc4NDRkOTRmYWQ5NzkzNDM5NWE0Mjc4NTVlZWRhIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJkOGVjZTU0NjRmMWQ3N2YyZGMxYjRmMTQ0NTQ2NGJhNjkyMThkMDY5MmY1NGY2OWYwOGVkNTE1NTU0OGQyN2Y4IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI2OTBmYmNlZTBlNjM4YTc0ZDY3MjMxZThjYjFjODc1MjgxNmU5YjAzODY3YWMwYjIwYjgyYWI5ZDllZTg1NTJjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1NDhkNzQ4M2QwNjBmMTcyMmUyNDUzNjg4ODMzNDI1NmI1NDkwZThiYmU4Njk4MjA2NzZjYTllYWYzNTA5Y2M5In0"
+        },
+        {
+          "resource": "repo://.github/scripts/release/product_producer.py#L97-L156",
+          "version": "repo-lines-v1:sha256:d4c9b37e679c930268d40eb60633e39994f771b0380a38a9cfcbca5650511f68:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiOTQzODJmOTNiYjE4YzJjZDRiNjc3YjlkY2QyNWFiZjRjZTg1YWQ5MGNkYzBkMjkzNjhkYzVkNjRmNGUwZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2YzEyNzNhODMyNjcwMDU1ZmQxOWY2MWUzOTkwYjJhNTlkNGYzOTBkM2UwM2Q1Y2QzYzRkYWM1NjQyNjQ3MTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkNTQ4NDFlZTRjYzhkNmQ0NjY5YjUyNWYyOTIzMDkyOTVjNDUzMzI5ZTVkNmNiNzdjMWEyZmM4ZTRhMWQzMzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkNmZhMDBiZmU5Nzc2NjQ0YWJhMTNjNjg2MGI5NjdiOWUzZDVjOGZhMWE4N2E2YTMyNTljYjM0M2E0NWFlNjEifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/release/publish_developer.py#L194-L246",
+          "version": "repo-lines-v1:sha256:1ef0ef1f7f347e5a719d42adcb7e2e257919fa06db6e188c428c557625f8dd74:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1Zjg3NGI4ZGYzZjY1NWFlZjlkYzYxODU1OGMzN2FiNTMyYTI0ZGY2MWMzNzk3ODIyMzJmZDBhZTEyZTg0NGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZTczOTIyOTliM2Q0MjZjN2JiZTI0NjYwNjliMjE1YTQyYmEyNmRmZGNmNjY5YTY1YjQ4OTc3ZDY0YTZjNGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5OGYwOTVkZTRiMDFhNzg0ZjhmMTc3YzNjMjBmN2NlZDUwOGI2ODkzODk1MjllNjBjNjQ0Yjc2ODA2ZGVhYTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_85a1ae21345546f39a95cfc33381880d",
+      "statement": "Public product records require both supported targets and COMPLETE component qualification; sealed-record admission is distinct from later installed-product acceptance and cannot establish native Host success.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/product_candidate.py#L22-L79",
+          "version": "repo-lines-v1:sha256:e7e636a67446fde7b8caf4fd7aefec41fe495ce0cdc603635fd6ef80f0223075:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzNzc0ZGVhZWNhNWZlZWNkMjQ4M2QwOWFjYmJjMzExZmM2MzA3YjA1NzQ3MWQ5ZTU2YTY0ZTJhYmZmNWM5ZDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcwZTM0OTE0OWI4MTQ2ZjJlNjAzODY3MjVkODc4OGE3YmM1M2U5MThlOWE3OGQ2OTAyZDdmMmE2ODA3OTk0YTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1ZGM2ZDYxYmZhODAxZmJkMjNlYmM1ZTg3NzQyMzEwMmY2OTU3MzFjYjQwODQzZjEzOTZlZjYzZGE1ZWZlOWUifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_release.py#L334-L475",
+          "version": "repo-lines-v1:sha256:b7ded6ffe8b073da15d826b1a0798207dd6c40ef758e113f5da305b21b033720:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlNWI5MzU0MjI0M2UwN2FjZmNmYzA0MmJhZTg1MzU2MDdkMzRhYzUzNTQ3ZGM3YTg0ZTY3ODcwZWIzOTY3OGM1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIyYmU0NTY4MTU4Y2UzNTk3NzI0ODNhOTJlNzliMmVkZDA1NDEyZDliNmFiMzFmNGMxYTJiNTMzODBlMTlmYmVkIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI4ODU3NTBiOTU4NmZmYTliZTU3NWU3YTBmYTAxMDczNTk4OTdiZTE4NjI3NGM0ZmIyMzZmMTkxZGI2OTM5MzI4IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4Y2M0YTdkMWNjNzk2YWJhM2U0NjcyMzMyN2Y1MTdlOWY4MTE5ODJkMjUwZjA3MDI5ODZlNGI1NzY0YWQ5NTg5In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_a3f4dcdab88d4087a499f56565a70c89",
+      "statement": "Installed acceptance needs an exact retained component-qualified baseline with a successful sealing job, not prior publication or installed acceptance. CI verifies its record digest, source revision and producer attempt; later failure of the overall baseline run does not erase sealing evidence. The baseline can share the candidate source revision, but each native target must have a different actual bundle/runtime/Control composition; metadata-only change or exact repair is insufficient.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/product_candidate.py#L167-L220",
+          "version": "repo-lines-v1:sha256:5320d2ba9a87329b2378c1e0f7129e456152230a9a0ef122e9f3b56d26014a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNDBkMzVhMTI4ZTYyMjE5NjcxZTQ0OTE0N2Y5ZTFlNjQ2MTBiNzI2NGQyMmRmYWQ1Njg4YWMzMGQzMmIwMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5N2M3NTQxMjk2NmE4ODZiNjM1YzA3YWI3MjhkOWY3M2VlYjM4ODYzZmEwYmFmMGNmMjcwNmFkYzgwZWZiMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwY2I3M2UyMzg2ZWM2NDFhYjY2YTcxYTViMjRmNzJiNWJlNzRjMjVkMTlkOTQyZDRmNDk3MDdiZWQ3NmI3ZTAifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L504-L544",
+          "version": "repo-lines-v1:sha256:2771c08ea8e7542006be8a206002531ccf0f6653805cf7035da74ed534184a87:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiMDc4NDhhNDM2NjY1NmIyYmE2MTk3YmUwMmI5MjA4MTQ1NDZmOWQ5YWQwYjUzMzllNGMyNmEyYzk0NjUxMTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUzMDFhZTU0ODEwNjVlZThmMzA5Y2JjMzhiYmJiZDMyZTViMzQyMjE1MWExODk5MTAwYTg4NDkyNTg2NDE1OGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFlMDU0NTZhNjg3YmEzN2FjNTNiZTQ5YmNiNDE2ZDM2MDc4ZjE2ZmQzOGNlMjk3YTc2ZjFmYTEyZGQyY2IzY2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlMTYxOTg2Y2I5MDg0YjQ2OWU5M2M2Zjc4Zjg1NGJlOTU2ZWQ4MDlmNzc2MDBmNjJhMWRjNTM4ZDdkOTVmM2EifQ"
+        },
+        {
+          "resource": "repo://packaging/product_acceptance.py#L58-L113",
+          "version": "repo-lines-v1:sha256:9128fcd3c23e1ad118f567f27ce8a5e0d8cb03c756e9a77661067f647d026067:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4ZjhkODk1MTUzYzFhOTA0OWIxM2NlMjExOWMxMDY4ZjFjMmJiZWQ3N2M2ZWFlMWFhOTliODgyNjM1NzQ5MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlNTEwNjVmOTY3NDlhZWI2NDAwMzI0NGRmNjU1OGI3YWFiMzhjMmZhZjU0MDFhNDg4MjhjZjQwZWZjZDdkNDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4MjhjZjNmMzI1ZDZkOTZlZThlMjAzMmRmNmRiNzhjNzhlOWJlOGQ1MmZhODEwYjk5MDZkODNiMjAyMDc1MDYifQ"
+        },
+        {
+          "resource": "repo://packaging/product_lifecycle_probe.py#L307-L321",
+          "version": "repo-lines-v1:sha256:5baa0ee3daf07f43224098c247ef028e23e6fb8ba0c47a0f361328faeb619a53:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmZjg2ZTUzY2I3OThlN2ZjNTlhNjUzNDY4MTZmZDcyOTVhYzA3MjYzMGI4ZmMwMzVkMDkzMWJmMmMyYjk5ZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5Y2JmZjEwODVlYmEwMjdhYjBkYmRmMGQ1ZmI4ODllOGQxYmU0N2JmN2FhODUxZGI0YTJlNDg5NjhjYmUyYWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhZTVhN2FlNmM5YzllYWRmZGUyNTAwOWI0YjAxOTk1ZDk2YTYwYjE0NDQwZDJiMDI3YjY2ZWJlODc4NTUxMzkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b86fe5ac2622451f982224685c68209c",
+      "statement": "Installed-product acceptance checks CLI, MCP, RPC, stop/restart, simultaneous requests across separate roots, edits, different-composition upgrade and uninstall. It preserves private-HOME, foreign-profile, explicit external-Gradle-directory and repository sentinels. A detached receipt is written only after all required cases complete and binds candidate record, target, Control, producer and baseline composition; both target receipts name the same baseline record and source revision. This source contract and decoding do not establish native success.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/product_acceptance.py#L114-L130",
+          "version": "repo-lines-v1:sha256:2e1d6d3d3a70cab691c3e09d34e10651ec2705d9cf3ab7c5ae2c63f9e779e977:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmMWRhMThlOTE0NDkxMTlhZWQ3YjgzMzM2MmQwNDBiNzE5MGU0NzMxM2RhNWNmYzgxOWRiODI3NTA3NmQxYWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2YTk5ODc2MjBmMjcyMDQyOTZjN2Q1ZDk4ODY4MmI4M2M2ZTM3M2M0MDQ4MTQyZDg0ZmE0NzcyMGE3YTBkNzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packaging/product_acceptance.py#L15-L45",
+          "version": "repo-lines-v1:sha256:41e79b64a5218a183674a1700da2ce4396c2fc36b16edd42a88a637139eda8fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyZTlkODk5ZTQyZDMyNzkxZjBiNTExZjM0NmQ0N2M0ZjNjMzcyZGJkMjE1NmM5MjM4YjY1NmM0NjhmZjg1ZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyZjllMjk5NGExYTc5N2FjYWI5M2I5MjAwMTAwYjBlMGMwZTlhNGU5Mzg4M2ZkNjc0MGJlZGNmZWNhYjI2OTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYzQwOGU2OWZmZjk2NzA4YmY1NTZiODJhM2I1NTE4NGQ0YzRhY2ZkMGFjY2NhMDg1MWU4Zjc2Yjc3Y2U4ODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3YzBlZWFmYTFjZTFlZGZjZTRiOTdiMmFhMzE3ZGI2OTI5MTVjMTc1YjVlOTVlOWY2YjY3M2I3ZDZhNzBmMzkifQ"
+        },
+        {
+          "resource": "repo://packaging/product_lifecycle_probe.py#L353-L399",
+          "version": "repo-lines-v1:sha256:ef9db52bde6dea76227e14000cc1ddfec04f0fe8b8c1c2feeb62838d719526eb:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmZmJkZjlmYjE5ZTZkYmYyNGJkNTM2N2Q0MjAzZDhiYjQ2MDJmYzg3MDIzM2EwYWU5MTgxMDQ1OTg4NjUxOTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0NTY3ZTFkYmFkZjg2N2FmYWU1YWZlMjNhYTU3ZmVjOWVkYzJjMWZmNzQyMzk5MGMxNTQzZDAwNmIzOTAxNzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzODgwOGRhZDgzNTA5M2Q1M2YyZDk0YjczZGVlZWYxNjZjZmZiODBmZTNjOGJlY2ZjMjY3NGI1OGVlZDk0NzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc0YWQ0MjE5M2IzMzE4MmEyNmZmZTBiMGRhM2UzNDdmMTM3MzM5MDMzOGY1MzU2YzAwMGZhYTkyY2ZkYjQ3YTMifQ"
+        },
+        {
+          "resource": "repo://packaging/product_lifecycle_probe.py#L430-L492",
+          "version": "repo-lines-v1:sha256:2837a586df9fd7f7b7328c9de9682b72db7ac8ed603ea73ca5fd8614413b00e5:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0NDM0MWIyMWVmMzQ1NGYzMWM3MzhjNjY2NzY5ZmMzNjI0ZDBjMDNhYTQ0ZGUzYWRiMmFhMDFjYzU1ZjRhOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY4YWJhZjkxMWNhNjlhOGJlM2NkYjk2MzM5YTEwMDVkMjMzYTA5NWE0MWRkNjAzMDZjOTk4NTE4NTAyZTM3MzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0OGQ3NDgzZDA2MGYxNzIyZTI0NTM2ODg4MzM0MjU2YjU0OTBlOGJiZTg2OTgyMDY3NmNhOWVhZjM1MDljYzkifQ"
+        },
+        {
+          "resource": "repo://packaging/product_lifecycle_probe.py#L505-L521",
+          "version": "repo-lines-v1:sha256:16b3a250b772ba48767ba67b2c09dbeb318ad9df6b483fbdd54222d359078be2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkYTVjNjZlMTdiMTQ1Mzk3ODM0YjhjODU0ZGM0MTkzZTIxMjUxODBhODk5NmExNGMzMTg4MzMyNmIyZWZiY2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzMDg2NmUxYmNjNWFiNzZlM2VmNTkwMTJkMGFkMzlhNjg3YWJlMDAyM2I0MzhhY2IxMTMwYTE4ODI1ZTgxOTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5ODFjNzljMTkyN2QxOTU1NTBlOWU3OWYzOTdiYzEwNDM3YzAzZWMzMmQ1ZWIzY2JhZTNmMGQ5MmMwMjQ5YmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNDEzNDBjYzIzOWExNTljZTliNjAyMmU5ZjYzMjI4MzJlMmVhZDc2Y2FlOWU0NzU0ZDIxMGViOGZiNmQ1ZTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f47952e0bcc1479c9dacaeb9ba987134",
+      "statement": "CI seals both component-qualified native targets before the installed-product matrix, runs acceptance on Linux x86-64 and macOS ARM64, then joins both detached receipts into the retained publication candidate without rewriting the sealed record.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/release/product_producer.py#L316-L342",
+          "version": "repo-lines-v1:sha256:0d29e28feb5defa37afc99368b16b11ec8203ab10bc0154b9bd4315d8a1f4539:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2NTQwOTAxNzY1MWFjYzA2YjQzOWU0Mzg1ZmQwOWU3YWZjY2NmYzI3N2Q5M2FmYTk2ZTExOGMxNjA5ZWRmOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczYzY0ZTQxOGM0MmVkNzhlYmJiY2JlNzJkMTgwNzhkN2EwYWNhMjk4NmFhOWUxYTQ0NmFhM2ZmZTE4YjM2NTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0OGQ3NDgzZDA2MGYxNzIyZTI0NTM2ODg4MzM0MjU2YjU0OTBlOGJiZTg2OTgyMDY3NmNhOWVhZjM1MDljYzkifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L445-L489",
+          "version": "repo-lines-v1:sha256:252a7486ecd34e9c0e7f55519f0766d4196766083ec87168d0fdf7be91ac97cc:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwYWVmMmM1MmI0MmFjZmVlZjM3NDQ0MTA3YTBlODQ1MDA0NTY4YmE0NGM3MTg0ZDAyYTlhOThjNTcxZDllMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwNDRlOTk3NGMzMjc5OGIzODg3YWYwNzJiMjQ3OGQzYTMzMDIwOWI3YWM4NzJlZGU3ZTVhZmJjMWRiNTljOGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjExYmFiNDk5Mzc0NzJlNWMwNGQ4YmFkODlhMTMwYWQ2ODkxNzQzMjBjODcwMDQ2MTVmYWI2YzEzMzU4NTQ1MTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3YTA2NzNjOGIwNWMzNDA4NzVhZmVmNmRhOGZjNjVjNDA3YzQxODgzOTU2NjNiZTg0YjhhYjNjODkwZjljZTgifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L548-L609",
+          "version": "repo-lines-v1:sha256:031fe9be559fd3011a15805b4c7e6beca7b92d7c2d0354fee12989c5ee675f4d:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2NjAxODkyNDY3ZmVlYmE0MTNlMWM5ZjNjZTMwOTZjYmNjY2VhNDQ1ZGQxNDg1YTBhZjk1NzZmOTJlODdmNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5MjNjOGU5NzIxYTc0MGU4YThmZWIwMmU1N2VkYTQ5NTE4YzEwZDYyOTNlZmIxYWRkYzQ3MGE4NzE1YTI4OGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlMTYxOTg2Y2I5MDg0YjQ2OWU5M2M2Zjc4Zjg1NGJlOTU2ZWQ4MDlmNzc2MDBmNjJhMWRjNTM4ZDdkOTVmM2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3YTA2NzNjOGIwNWMzNDA4NzVhZmVmNmRhOGZjNjVjNDA3YzQxODgzOTU2NjNiZTg0YjhhYjNjODkwZjljZTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7472cc71f8914bd18621f614be60c6ea",
+      "statement": "Installed acceptance upgrades the baseline, uninstalls it and installs the candidate afresh before passive discovery and simultaneous first queries. Installation, help, status, description help, query planning and the RPC catalog must leave semantic workspace state absent. Both first queries must share the lifetime of a later query. The receipt inventory requires FRESH_INSTALL, PASSIVE_DISCOVERY and SAME_ROOT_PARALLEL_FIRST_QUERIES.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/product_acceptance.py#L15-L27",
+          "version": "repo-lines-v1:sha256:e4c89d4d3ff1f8d3ecdafb49ededf69ab3778ecac95057092e44326414a9f420:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyZTlkODk5ZTQyZDMyNzkxZjBiNTExZjM0NmQ0N2M0ZjNjMzcyZGJkMjE1NmM5MjM4YjY1NmM0NjhmZjg1ZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5NzM5ZGEyYTU4NTMyOTdlNWYxNWU3NjcwMTc2YTQwNmU4YzY2ODM1OTNjYzc4YTc3NGJiMmE3OGU5OGIwMDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYzQwOGU2OWZmZjk2NzA4YmY1NTZiODJhM2I1NTE4NGQ0YzRhY2ZkMGFjY2NhMDg1MWU4Zjc2Yjc3Y2U4ODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwY2UzZjI0YWI0N2MyZjVhOWQzMzdmMzc3ZWQ4NTczZmE1NjU4NDA3NjQwMmYxYWYwNTRhM2RlZDYxOTQ2MmYifQ"
+        },
+        {
+          "resource": "repo://packaging/product_acceptance.py#L89-L96",
+          "version": "repo-lines-v1:sha256:a554122d54dc921fd6e11c084b42b1beada4c4f94f8985a4cab27110fbcdd7a1:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2VjMzMxMTk0ZmZmNmUyZmYzMzJkYjAyNjliZDk0YTY0NTExOGJjNGJjN2U2YTQ1ZjVjODVkOTU3NGUxZmQ3YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzAxNGFlYjAxNWU4YjhlNzEwN2M1NDI2ZmM4NjZkZmY5ZGJhYzI2MGM2ZjExNmFjMzU4NjFiNzA5OTk4YzhmZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWFiMWMxYmQwNzgwYjUxZTBiOTQ0MGNhNDRhNGVhOWFjN2QzMWVlNzFmOWY5NzllZDliZjExZmQ4OTBmY2ZiZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDk4MDQ5YmQ2Y2JkM2FhYTdhY2QzMWY0NTY3NzAzN2Y0YmQxNTExOTQ4YzhhOWExYjA2YzAwNDlmMDYyZWFhYiJ9"
+        },
+        {
+          "resource": "repo://packaging/product_lifecycle_probe.py#L386-L429",
+          "version": "repo-lines-v1:sha256:db0d5ae9c5473a1c26919a56272f96ebe592693640bfb271bd7c4852883e6b04:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3OGFlNTc2NmFjZGYzODNmNmMxODAwM2I0MWQ0ODkwNGQyOTY4NjNiOTJiYWMyOTE5NzIzNGUzNmUzZTQxNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAxNTI3NWIzMzU1NmJkMDZhNDA0NjI4OWMwZGQ5YjkzMjkyOTU0MWJkMDVlOWRjYzUyNzlmMTJiNWZiMzE1YjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFkOWI3YWZmOWE5N2E0MTlmMTJjYmI5MDM3OGUzNTU0ZDk2ODc2NmZkMTlkNmU5NDQ0NGYzYWZiMjcyOTQ5NmQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T22:06:17.381Z"
+    "at": "2026-11-12T22:50:57.382Z"
   }
 }

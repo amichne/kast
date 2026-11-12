@@ -157,7 +157,12 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from("packaging/install-completion-v1") { into("share/kast") }
     from("distribution/cli/guidance-refresh-v1") { into("share/kast") }
     from("packaging/managed-install-v1") { into("share/kast") }
+    from("packaging/runtime_base.py") { into("share/kast") }
+    from("packaging/managed_product_removal.py") { into("share/kast") }
+    from(listOf("packaging/immutable_store.py", "packaging/product_removal_recovery.py", "packaging/product_mcp_removal.py")) { into("share/kast") }
+    from(listOf("packaging/mcp_environment.py", "packaging/mcp-requirements.txt", "packaging/mcp-requirements.txt.lock")) { into("share/kast") }
     from(listOf("packaging/install-candidate.sh", "packaging/managed_installation.py", "packaging/managed_installation.py.lock", "packaging/managed_release.py", "packaging/managed_update_contract.py", "packaging/managed_update_journal.py", "packaging/reload_hosted.py", "packaging/host_directory_exchange.py")) { into("share/kast") }
+    from(listOf("packaging/managed_product.py", "packaging/managed_product_installation.py", "packaging/composed_bundle.py", "packaging/composition_platform.py", "packaging/isolated_runtime.py", "packaging/managed_headless.py", "packaging/runtime_archive.py", "packaging/private_interpreter.py", "packaging/bootstrap_entry.py")) { into("share/kast") }
     from("distribution/contract/src/main/resources/management/reset-inventory-observation.schema.json") { into("share/kast/schema") }
     from("distribution/contract/src/main/resources/management/management-lifecycle.schema.json") { into("share/kast/schema") }
     from("distribution/cli/one-shot-observation-v1") {
@@ -400,13 +405,16 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
     group = "verification"
     description = "Proves immutable selection, managed replacement, and recorded recovery."
     sourceFiles.from(fileTree("packaging") { include("*.py", "*.sh", "pyproject.toml", "uv.lock") })
+    sourceFiles.from("install.sh", "packaging/bootstrap.sh.in")
     executableFile.set(validationExecutable("uv"))
     arguments.set(listOf("run", "--locked", "--project", "packaging", "pytest",
         "packaging/test-managed-installation.py", "packaging/test-managed-release.py",
+        "packaging/test-managed-build-record.py", "packaging/test-managed-bootstrap.py",
         "packaging/test-managed-update-contract.py", "packaging/test-managed-headless.py",
         "packaging/test_composition_graph.py", "packaging/test_composition_index.py",
         "packaging/test_composition_descriptors.py", "packaging/test_composition_host.py",
         "packaging/test_composition_bundle.py", "packaging/test_composition_release.py",
+        "packaging/test_runtime_archive.py",
         "packaging/test_composition_isolated_runtime.py", "packaging/test_composition_platform.py", "-q"))
 }
 
@@ -420,6 +428,8 @@ val developerPublicationTest = tasks.register<VerificationReportTask>("developer
     arguments.set(listOf("run", "--locked", "--project", ".github/scripts/release", "pytest",
         ".github/scripts/release/test_build_candidate.py",
         ".github/scripts/release/test_developer_catalog.py",
+        ".github/scripts/release/test_product_candidate.py",
+        ".github/scripts/release/test_product_producer.py",
         ".github/scripts/release/test_developer_publication.py", "-q"))
 }
 

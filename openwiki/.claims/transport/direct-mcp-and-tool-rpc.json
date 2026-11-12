@@ -1,52 +1,32 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:de3a318ce08ed9c8f544f45e82eb447e1f29e6aaf5750ab51e9470c936519262",
+  "pageVersion": "sha256:aa2e8550e96f7d76c6e64b3c923e8ee9fdd456521ee10340def60b27d070a2c3",
   "claims": [
     {
       "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
-      "statement": "KastDirectToolSession shares compiled registration, installation admission and existing-IDE invocation between direct transports. MCP initialization or its first admitted modern request starts one preparation owner. Within the session, CLI and one-shot RPC use typed operation demand and preserve existing authority for issued source and retained-reference reads; cwd-routed container queries prepare the private Host in an outer management step first.",
+      "statement": "KastDirectToolSession shares compiled registration and managed invocation across CLI and direct transports. Each request owns a ManagedWorkspaceQuery lease and its preparation jobs; retained-reference operations require existing state without another preparation effect.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
-          "version": "repo-file-v1:sha256:b2f824d9c2d4c5bd84bb06bc9c7b4bc18ba9a0bc8fcf9ff9d7f1927c2acabb8a"
-        },
-        {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt",
-          "version": "repo-file-v1:sha256:4d82773260bd18012d8f498f15aeac740dd68d2d01bb17304213aef09249b978"
+          "version": "repo-file-v1:sha256:cc944731d41640789668bfdccf0bc9f24f4cbe5e5b181169637fdadcbc99a20d"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt",
-          "version": "repo-file-v1:sha256:2aa11fa926f4b5bd4189ea046117d2da556bf0ab1190c4ec4a79df5f946b1ede"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt#L91-L133",
+          "version": "repo-lines-v1:sha256:b01be96069c69f3453244258b5689662c5be7120d8cf7055ec19daca88e34b3a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0MTdlOTk2ZmEyNDQ5MTYwZGZhMTEyOGIwYmY0MWI5MTVlNTg1YTdkMmRkNjVhNWVkZGExMzg2YjkwOWMyZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExYTNjYmZjYmE3ZGRiYjZkMDNlY2EwNmU0ZGM1NTYzZmUwMDFiZDJiYTFiM2UxYzY4YzNiYmM3YjRiYWI0MGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhMWFkYjNiNzY3YjJjNDI2ZDA3OWNkMmM3MjcxMGUyMDhjOWQ2MWMwZDM5NWFmNmJjMjAwMDA2NzFmZWEzMTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1M2EyZWE2MjkwZTRmM2EwM2Q4OWEyNzYwMTdkZWM1ZTc4Nzg3MmQ3YWE4ZTJhNGVhNzVkN2Y5NTczNmEwYTkifQ"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt",
-          "version": "repo-file-v1:sha256:978bf5c6857886a1e45e1ef740e40a898f802550019120e92386828b78f82f8d"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt",
-          "version": "repo-file-v1:sha256:d4a7015ce96f002f6887fc0d694360f6737d5f8464df60bf41c43fa7e9fea295"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L169-L180",
-          "version": "repo-lines-v1:sha256:f206e4c39cf8abeb0fc4bb4f3f8417c64541c894f219273bbe0abb69981da47f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBiMzdmYmZlYmU4ZTYxZGE2NmZjZGNmZmE5YjkxZGFhM2JlZmEwMzBjMzVkNjBkNDZhNzExMDI3OTk4MDgxZDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNzQ1NDRhMjYxYTdjYWI3MDA1N2M5MDVlOTMwYmNlZDBkMTZiN2NhYzY2YWMwMmZkODAzYWMxZWI3ZmZlOWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzYzQ4N2U1ZmNmYTU4YTA5NWZkNTVlZjIyNjNhYjYxOGQ5OGQ3NDVlMzkwM2YyNDFmNzZlNTBmMDI4M2VjYTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyNzczYWU5NTM0M2RmNTg4NGFhZmFlYmI3Y2EzMjAxNDA2YTZmYmUyMDdhY2I0MDIzOWEyOTAyNWQ4N2JjNGQifQ"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryRouting.kt",
-          "version": "repo-file-v1:sha256:65406bf95afc9c6d22f948d60c4e58ab6cf7329847e48376bf406798cd5507b1"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt#L26-L123",
+          "version": "repo-lines-v1:sha256:3563b83fb0792da7a6d35ece69c6f84c76413a529b3ef877128e2e3160225667:eyJzZWxlY3RlZExpbmVDb3VudCI6OTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5NWRjOGU2YzgzMDUyMzVmZTE0OGM1ZjE1N2JlZjQ4MzU1NTU3NmVjYmU1NjNkNGNmODkzM2I0Y2U4MzE5MjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlZmNiN2RjOGFmOGUwNTdlZGEwZGJhOWNhYzAzNGRlNWFkNjg1YTMzOWZlNTdkOTYxMzc5ODliYTZiMmYzODcifQ"
         }
       ]
     },
     {
       "id": "claim_05307cdbcd41467ca1c4f1fbda84e2dd",
-      "statement": "KastMcpServer fixes one protocol era per connection and starts workspace preparation once.",
+      "statement": "KastMcpServer fixes one protocol era per connection, but initialization, discovery and tool listing do not prepare a workspace; explicit admitted calls reach the managed invocation owner.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt",
-          "version": "repo-file-v1:sha256:978bf5c6857886a1e45e1ef740e40a898f802550019120e92386828b78f82f8d"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt#L22-L22",
-          "version": "repo-lines-v1:sha256:11ea22c204038434774f6a421bf5fcec93175ca4301fc78f6acdf7c288058267:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTFlYTIyYzIwNDAzODQzNDc3NGY2YTQyMWJmNWZjZWM5MzE3NWNhNDMwMWZjNzhmNmFjZGY3YzI4ODA1ODI2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTFlYTIyYzIwNDAzODQzNDc3NGY2YTQyMWJmNWZjZWM5MzE3NWNhNDMwMWZjNzhmNmFjZGY3YzI4ODA1ODI2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTA2NDM0MDdiNjNkOTk3ZjYzODRiY2VkZjY0ZWMxYTk4NDQ3NTEwNWVkNjZiNTFhYzBjMjJjZTExNjFiNWMzNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2ZkNDhlY2E0ZTIxZDQ1N2M1M2I1OTFlMmM0OWVkZjQyMGI2N2I4OGU3ZjIwMjkxMGYzMjk3OWNhNmZiMmU0YiJ9"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt#L85-L137",
+          "version": "repo-lines-v1:sha256:d1f8fc721f6e74ec2fb22e956fc05ccf6af3e24f61e35b2994dea87010eabdf7:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiNjc2YWUwZGM4MmZlOTcyMmQ0NmM4MThmMjgxMTkzNGQ4YTI3ZGNiNTNiYmYxMjdhY2U4ZjJiNTYxN2ZkMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZjIzNmI1NzM0MmY0ZmRjYmFjMzNhZDgxMDFiZDdjMTI5OTJkNDc2ODAyMzU4NTc2ZTg4NTFiMTJhMTM2Y2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzYzU5MmNlNDY1YzA5N2NiMDllNmY2Y2ExNDQzZmFlNGI3NGI5NDFkMzgxNmY2YjVjNTk5ZjRmNjg4YjU2NzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1YjQ1NzMyNGFhNmVmNTk0ZWQzNmM0MzA2ZThlYjI5NDk5N2UzMDc5NzJiOTZiYTIyNWE2NjkzYmNmMDRjMmUifQ"
         }
       ]
     },
@@ -56,7 +36,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:990daf6adee87ca63e2bdde3712d330f699ab6fa1753d804cd1c3bdc42f718be"
+          "version": "repo-file-v1:sha256:d676db7f2d637239e828d44755f5f66f0771ee36d597e01cd77737feda61006f"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt",
@@ -74,7 +54,7 @@
       "evidence": [
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:990daf6adee87ca63e2bdde3712d330f699ab6fa1753d804cd1c3bdc42f718be"
+          "version": "repo-file-v1:sha256:d676db7f2d637239e828d44755f5f66f0771ee36d597e01cd77737feda61006f"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L33-L33",
@@ -85,10 +65,24 @@
           "version": "repo-file-v1:sha256:fe4449f9a5c282893fd4e5357c72405edf610fee07babd0fefb9a808543d47aa"
         }
       ]
+    },
+    {
+      "id": "claim_29d91f03e5d047b7ab32c38c53265927",
+      "statement": "Managed semantic selection reads installed product and runtime locally; preparation may grant exact-root trust, while retained reads reject missing state rather than creating it.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L160-L205",
+          "version": "repo-lines-v1:sha256:fe54899323afe2e516f965e308c4f6989ee26700ce2c16c8ff6b9df06ee01cd9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExM2M5ZjgzM2M3MDdkMWJkYmE3NWYwY2I4MmFiMWI0NDNkMWY1YjI1ZGVlNWRkODBmMzE2MTE4MGIxOTg4M2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZjljOWFjMWY4ZmZmNzMwYzRlNTU3YzczOTUzNzAxODYwZGUwODIzOTYyYWFlN2EwZDI1NmFjMGMwNTA5NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMzQwNzEwYjJmZDU5NGRiYzRjN2U2YzZlMTgzM2ZiMTVlM2Q1YjUwYzAyOGNhODllNWJlYTM2MzgyMjIzNTEifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L49-L100",
+          "version": "repo-lines-v1:sha256:a60705e73905b0a5f5df693553d3e91d9399814c6b88cf4025e2f51a5df07f67:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZWU0MmVmNWQ0YmVlOTA0MmMxYzRmYzNjMTgyZmFjZWM5OGRiZDc4NGJjMGRkMmJhNzk5NzE0N2U3N2U4ODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyZjIzZDE1YmQ1MmY1Y2NmNTA3MGE5YTc2ZTgzZWIyMGZkZDI1ZDUwZjc2ODk4NTE1YzE1ODk4ZTBmY2Q3MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlZmMwNjQ1MzlmZGE5NzAyYjQzNTgzZDViNzM1ODQxYTk1OWM0YmJkYjhmNDgxNTNiYzljNTZjNGRiYTI4NmIifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T14:25:07.841Z"
+    "at": "2026-11-12T21:32:17.187Z"
   }
 }

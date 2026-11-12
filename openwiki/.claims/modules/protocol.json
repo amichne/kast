@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8f8fe938c56122d80c50273c3023cecfb201e851147e7f9e62bbef3f01647bf0",
+  "pageVersion": "sha256:b5879aa465e22261b4e0ad4d8387b109f4d70995b1b166f2e6fa042a04b45507",
   "claims": [
     {
       "id": "claim_33df4f539870445aaef2d593695dca1b",
@@ -55,8 +55,12 @@
       "statement": "The keyless hosted contract declares kast.ide-hosted.runtime.v3, and daemon operation RPC version 3 projects canonical Apply and Recover requests without private approval preparation or assertions.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt",
-          "version": "repo-file-v1:sha256:f93eefd3d001f3302299e151a5aef85f4caaeaa24389f82cf045a1fdff793d2f"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt#L19-L27",
+          "version": "repo-lines-v1:sha256:b7334b887aec24e9d05970a59c16efeeb5156b39b2b2b9da2ee74223cd3a2702:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTliMjVhZDQyYWUwYjFlMGYyOWRlODU5YjBkODkyZTdkODk2MWYzNGMwYzYwMjM5MmQ1MTYxZjA2MmIzMjdhMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjBkY2QwYThjN2M1YmYzMTFmYjQ5YmRkZjZkYzAwN2EzZTQyZTJmMDMxNTI0NTRmZTkzZWE0ODk1NjNmNDYyZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjU2NTIzNDExOGI2ODk5NDhmZmNlZDk5YWYyMGRhOGYxOGQ2NDI5ODAzMDljZDEwNTllMDVkZTZjOTZjNjczNyJ9"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/DaemonOperationProtocol.kt#L62-L76",
+          "version": "repo-lines-v1:sha256:504740413a1e48cdf6ec87cf982f321f52bfd9821a43d322ac715c834b93f205:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxMmQyYTc3ZWEyY2EyNWI4MDc2Yzk2YjU1YjUxN2ZiZWE3YWEzMTJkMWY1OGE5YzY1M2NkYWMxM2NlZDQyMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzOGNkM2Q1MTYyZDM4YzNjMzgzYjE3MmQ5M2QzMDVjMWQ5MTUyNWIzMTBmYzI4NjQ1MDBjMmViMGJmYzQxOGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjZjRjMWZmYmVhZGY4NTQzMWUwZjdlYTMzMDEwYTBiY2YyNjI1NWIxMGZjMDViMGE1YjBjMjI4MTQxMTM4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiYTcwMzQ1YTIwN2U3Y2M1NDI4ZjBjYzAxYjVhYzYxOTQ0YzI2ZjE3NzIyYzFkYWFiMGJmYzViZmVjODUyMmQifQ"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
@@ -173,6 +177,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T06:30:47.924Z"
+    "at": "2026-11-12T22:39:33.821Z"
   }
 }

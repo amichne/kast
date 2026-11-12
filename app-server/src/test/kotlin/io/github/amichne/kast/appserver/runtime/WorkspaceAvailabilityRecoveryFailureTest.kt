@@ -2,8 +2,8 @@
 
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.HostedContractDocument
@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 internal class WorkspaceAvailabilityRecoveryFailureTest {
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
     private val firstId = id("00000000-0000-0000-0000-000000000001")
     private val retryId = id("00000000-0000-0000-0000-000000000002")
     private val laterId = id("00000000-0000-0000-0000-000000000005")

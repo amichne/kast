@@ -409,7 +409,9 @@ jobs:
             build/reports/tests/publicLauncherTest/
           if-no-files-found: warn
           retention-days: 14
-      - name: Seal tested candidate identity
+      # This legacy component candidate is not a two-target private-runtime product.
+      # Product publication requires build-record.json and retained native evidence for both targets.
+      - name: Seal tested component candidate identity
         if: needs.source-work.outputs.candidate != 'REUSED'
         env:
           CHECKOUT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -418,11 +420,183 @@ jobs:
           --repository "$GITHUB_REPOSITORY" --revision "$CHECKOUT_SHA"
           --run-id "$GITHUB_RUN_ID" --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT"
           --event "$GITHUB_EVENT_NAME" --bundle build/candidate
-      - name: Retain immutable build candidate
+      - name: Retain immutable component candidate
         uses: actions/upload-artifact@v7.0.2
         with:
           name: ci-build-candidate-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
           path: build/candidate/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  composed-products:
+    name: Native complete-product qualification
+    needs: [scope, source-work]
+    if: >-
+      needs.scope.outputs.product == 'run' && vars.KAST_MACOS_CHECKS == 'true' &&
+      vars.KAST_NATIVE_COMPILATION != 'false' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (inputs.rollout == '' || inputs.rollout == 'none')
+    uses: ./.github/workflows/composed-linux.yml
+    with:
+      version: 0.0.${{ github.run_number }}
+      complete_product: true
+
+  sealed-product:
+    name: Seal both native targets without rebuilding
+    needs: [scope, composed-products]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-qualified-product-linux-x86_64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/product-inputs/linux-x86_64
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-qualified-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/product-inputs/macos-aarch64
+      # Producer attempts are exact. A partial retry lacking either retained input
+      # rejects; it never borrows another attempt or rebuilds inside this join.
+      - name: Seal the complete immutable build record
+        run: >-
+          python3 .github/scripts/release/product_producer.py seal
+          --directory build/product-inputs --output build/product-candidate
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/product-candidate/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  installed-product:
+    name: Installed product acceptance on ${{ matrix.target }}
+    needs: sealed-product
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x86_64
+            runner: ubuntu-24.04
+          - target: macos-aarch64
+            runner: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/product-candidate
+      - name: Require an explicit component-qualified baseline
+        env:
+          BASELINE_RUN_ID: ${{ vars.KAST_ACCEPTANCE_BASELINE_RUN_ID }}
+          BASELINE_RUN_ATTEMPT: ${{ vars.KAST_ACCEPTANCE_BASELINE_RUN_ATTEMPT }}
+          BASELINE_REVISION: ${{ vars.KAST_ACCEPTANCE_BASELINE_REVISION }}
+          BASELINE_RECORD_SHA256: ${{ vars.KAST_ACCEPTANCE_BASELINE_RECORD_SHA256 }}
+        run: |
+          test -n "$BASELINE_RUN_ID" && test -n "$BASELINE_RUN_ATTEMPT" && test -n "$BASELINE_REVISION" && test -n "$BASELINE_RECORD_SHA256" || {
+            echo 'Unmet input: explicit different component-qualified baseline required; repair is not upgrade' >&2
+            exit 1
+          }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ci-product-sealed-${{ vars.KAST_ACCEPTANCE_BASELINE_REVISION }}-${{ vars.KAST_ACCEPTANCE_BASELINE_RUN_ATTEMPT }}
+          run-id: ${{ vars.KAST_ACCEPTANCE_BASELINE_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: build/product-baseline
+      - name: Admit exact sealed baseline provenance and pinned interpreter inputs
+        env:
+          BASELINE_RUN_ID: ${{ vars.KAST_ACCEPTANCE_BASELINE_RUN_ID }}
+          BASELINE_RUN_ATTEMPT: ${{ vars.KAST_ACCEPTANCE_BASELINE_RUN_ATTEMPT }}
+          BASELINE_REVISION: ${{ vars.KAST_ACCEPTANCE_BASELINE_REVISION }}
+          BASELINE_RECORD_SHA256: ${{ vars.KAST_ACCEPTANCE_BASELINE_RECORD_SHA256 }}
+          GH_TOKEN: ${{ github.token }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          PYTHONPATH=.github/scripts/release:packaging python3 - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          import product_candidate
+          from private_interpreter import PINS, DEPENDENCY_URL, PrivateInterpreter
+          producer = product_candidate.product.ProductProducer(int(os.environ['BASELINE_RUN_ID']), int(os.environ['BASELINE_RUN_ATTEMPT']), '.github/workflows/ci.yml')
+          route = f'repos/amichne/kast/actions/runs/{producer.runId}/attempts/{producer.runAttempt}/jobs?per_page=100'
+          jobs = product_candidate.product.document(subprocess.run(['gh', 'api', route], check=True, capture_output=True, timeout=30).stdout)
+          baseline = product_candidate.admit_baseline(Path('build/product-baseline'), os.environ['BASELINE_RECORD_SHA256'], os.environ['BASELINE_REVISION'], producer, product_candidate.observe(producer), jobs)
+          source = product_candidate.product.HttpReleaseSource()
+          if isinstance(baseline, product_candidate.candidate.Failure):
+              raise SystemExit(f'Unmet baseline input: {baseline.value}')
+          pin = next(item for item in PINS if item.target == os.environ['TARGET'])
+          for url, name, limit in ((pin.url, 'private-python.tar.gz', 268435456), (DEPENDENCY_URL, 'defusedxml.whl', 1048576)):
+              result = source.download(url, Path('build') / name, limit)
+              if isinstance(result, product_candidate.product.TransferFailure):
+                  raise SystemExit(result.value)
+          PrivateInterpreter.admit(Path('build/private-python.tar.gz'), Path('build/defusedxml.whl'), pin.target)
+          PY
+      - name: Exercise installed CLI MCP RPC and lifecycle against retained bytes
+        env:
+          TARGET: ${{ matrix.target }}
+        run: >-
+          mise exec -- uv run --locked --project packaging python packaging/product_lifecycle_probe.py
+          --candidate build/product-candidate --baseline build/product-baseline
+          --target "$TARGET" --private-python-archive build/private-python.tar.gz
+          --private-dependency build/defusedxml.whl --evidence build/installed-evidence
+          --receipt "build/acceptance-${TARGET}.json"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-installed-product-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/acceptance-${{ matrix.target }}.json
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: kast-installed-evidence-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/installed-evidence/
+          if-no-files-found: warn
+          retention-days: 14
+
+  complete-product:
+    name: Join installed acceptance without rewriting the build record
+    needs: [sealed-product, installed-product]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/product-sealed
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-installed-product-linux-x86_64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/product-acceptance
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: kast-installed-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/product-acceptance
+      - run: >-
+          python3 .github/scripts/release/product_producer.py accept
+          --directory build/product-sealed --receipt build/product-acceptance --output build/product-candidate
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ci-product-candidate-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/product-candidate/
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
@@ -462,7 +636,7 @@ jobs:
 
   required:
     name: CI required checks
-    needs: [scope, source, documentation, portable, kotlin]
+    needs: [scope, source, documentation, portable, kotlin, complete-product]
     if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -476,6 +650,12 @@ jobs:
         env:
           CI_NEEDS: ${{ toJSON(needs) }}
         run: python3 .github/scripts/ci/required_checks.py
+
+      - name: Require both native targets for a selected product gate
+        if: needs.scope.outputs.product == 'run'
+        env:
+          COMPLETE_PRODUCT_RESULT: ${{ needs.complete-product.result }}
+        run: test "$COMPLETE_PRODUCT_RESULT" = success
 
       - name: Seal successful validation outcome
         env:

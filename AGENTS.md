@@ -78,8 +78,8 @@ This guide owns repository rules and routes source investigation.
 - Replay performance targets: use `run_pi_evaluation.mjs --assess-target` with the contract in `experiments/host-observation/interface-replay/hill-climb.md`.
 - Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
-- Local installation: `./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"`.
-- Isolated setup: use the [archive installer](docs/public/reference/installation.mdx#isolated-runtime) for a private native Host.
+- Product installation: use the [managed installer](docs/public/reference/installation.mdx). Desktop IDEA, user Python, and uv are not product prerequisites.
+- Contributor assembly and native acceptance use their own toolchains. Do not present source checks as native qualification or publication.
 - Unified native entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt`.
 - Management commands: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
 - Public semantic entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.

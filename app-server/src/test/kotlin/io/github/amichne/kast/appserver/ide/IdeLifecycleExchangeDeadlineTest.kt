@@ -1,8 +1,8 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
-import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -64,8 +64,8 @@ class IdeLifecycleExchangeDeadlineTest {
             expire()
             AutoCloseable { timerClosed++ }
         }
-        val client = IdeLifecycleClient(realRoot, selectedHome, timer, { now })
-        val result = client.execute(WorkspaceLifecycleRequest.Inspect, "test") as IdeLifecycleResult.Blocked
+        val client = LifecycleSocketExchange(realRoot, timer, { now })
+        val result = client.exchange(selectedHome, IdeLifecycleCommand.Inspect) as IdeLifecycleResult.Blocked
         assertEquals(IdeLifecycleFailure.EXCHANGE_DEADLINE_EXCEEDED, result.reason)
         assertEquals(5000, result.exchange?.elapsedMillis)
         assertEquals(5000, result.exchange?.limitMillis)

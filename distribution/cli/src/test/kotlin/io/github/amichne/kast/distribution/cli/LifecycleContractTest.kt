@@ -65,32 +65,14 @@ class LifecycleContractTest {
         val completed =
             listOf(
                 ForceResetOutcome.Removed("/kast"),
-                ForceResetOutcome.Installed(
-                    "/kast/installation",
-                    "1.2.3",
-                    "/kast/bin/kast",
-                ),
-                ForceResetOutcome.Pending(
-                    "/kast/installation",
-                    "1.2.3",
-                    "/kast/bin/kast",
-                    ForceResetFailure.READINESS_REJECTED,
-                ),
                 ForceResetOutcome.Retained(
                     ForceResetOperation.UNINSTALL,
                     ForceResetStage.DAEMONS,
                     ForceResetFailure.LAUNCH_JOB_REJECTED,
                     "/.kast-retiring-example/payload",
                 ),
-                ForceResetOutcome.RecoveryRequired(
-                    ForceResetOperation.REINSTALL,
-                    ForceResetStage.ACTIVATION,
-                    ForceResetFailure.READINESS_REJECTED,
-                    ForceResetFailure.PROCESS_RETIREMENT_REJECTED,
-                    "/kast",
-                ),
                 ForceResetOutcome.Rejected(
-                    ForceResetOperation.REINSTALL,
+                    ForceResetOperation.UNINSTALL,
                     ForceResetStage.FENCE,
                     ForceResetFailure.RESET_BUSY,
                 ),
@@ -100,15 +82,6 @@ class LifecycleContractTest {
         completed.forEachIndexed { index, result ->
             assertTrue(schema.validate(result.asJson(), InputFormat.JSON).isEmpty(), result.asJson())
             assertEquals(expected[index], Json.parseToJsonElement(result.asJson()))
-        }
-    }
-
-    @Test
-    fun `pending cold installation keeps final verification for every finite failure`() {
-        ForceResetFailure.entries.forEach { failure ->
-            val result = ForceResetOutcome.Pending("/kast/installation", "1.2.3", "/kast/bin/kast", failure)
-            assertEquals(ForceResetStage.FINAL_VERIFICATION, result.stage)
-            assertTrue(schema.validate(result.asJson(), InputFormat.JSON).isEmpty(), result.asJson())
         }
     }
 
@@ -125,7 +98,7 @@ class LifecycleContractTest {
     }
 
     @Test
-    fun `force completion and recovery reject missing unknown and stale wire facts`() {
+    fun `force removal and retention reject missing unknown and stale wire facts`() {
         // Deliberately malformed wire documents exercise the trust boundary.
         resourceArray("force-reset-invalid-results.json").forEach {
             assertTrue(schema.validate(it.toString(), InputFormat.JSON).isNotEmpty(), it.toString())

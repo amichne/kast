@@ -5,6 +5,7 @@ import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -38,6 +39,37 @@ class ManagementReceiptAdmissionTest {
         val destination: String,
         val payloadSha256: String,
     )
+
+    @Test
+    fun `provider routing retains exact namespaces and rejects ambiguous records`() {
+        for (harness in ProviderHarness.entries) {
+            val provider = ProviderRegistration(harness, "/home/example/custom")
+            val value = receipt.copy(providers = listOf(provider))
+            assertEquals(ReceiptRead.Read(value), admit(value))
+            val encoded =
+                managementJson
+                    .parseToJsonElement(encodeManagementReceipt(value))
+                    .jsonObject
+                    .getValue("providers")
+                    .jsonArray
+                    .single()
+                    .jsonObject
+            assertEquals(setOf("harness", "directory"), encoded.keys)
+            assertEquals(harness.name, encoded.getValue("harness").jsonPrimitive.content)
+            assertEquals("/home/example/custom", encoded.getValue("directory").jsonPrimitive.content)
+            for (invalid in
+                listOf(
+                    listOf(provider, provider),
+                    listOf(provider.copy(directory = "relative")),
+                    listOf(provider.copy(directory = "/home/../foreign")),
+                    (1..33).map { provider.copy(directory = "/home/example/$it") },
+                )) assertInstanceOf(ReceiptRead.Unavailable::class.java, admit(receipt.copy(providers = invalid)))
+        }
+        assertEquals(
+            false,
+            managementJson.parseToJsonElement(encodeManagementReceipt(receipt)).jsonObject.containsKey("providers"),
+        )
+    }
 
     @Test
     fun `legacy registrations retain MCP and new receipts explicitly encode composition`() {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:71ae0445662d94da92e4cf98a91ed52ac16934de1642c17788e55facedd8fce7",
+  "pageVersion": "sha256:523d49abe3a94d685396d417b5f4949bdca1f257b5542ef0399f19b3d2267943",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -77,8 +77,12 @@
           "version": "repo-file-v1:sha256:704c6fae450e2b83c1ba216a4139c9e5658833b9e02d47d394d4ceda313fb0bd"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt",
-          "version": "repo-file-v1:sha256:98318c1ea12d2513b141a8d55f4267f7d1e434ab199172bda9bc1c07d69a8dc5"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt#L44-L65",
+          "version": "repo-lines-v1:sha256:a03ef3eb47adcd3ee8b5d5e061405e5cb055bdb28c53dd048e23178d4f467df7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2YjY1ZTdlNzI1NWM2OWIxNWNmYmJkNTY4YjZkOWVmODhkYjBmZDQ0OTcwNGJmNjQ3OTk2ODhiZjRiNThlNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0MTA4YmMzNTJmZmIyMzY1YTljMjNlYjg4ZDUwMjM2Y2FjNzZlMzNiZDYyNTM1YWYyMGMyMDAwNDdmYmE2YzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlM2NkMTdjZDlhZmE2NmE1MDBmYjdlZjQ2MTA0NTJkZWY1YjJjNjAxNzM5NDljZjA0ODA0ZDY4ZDVkY2U2YzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt#L5-L20",
+          "version": "repo-lines-v1:sha256:34388afebf7f5b0eb21563cf7385f05cd4e709cf91a3784b04f80c9857bf7bec:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyY2M2MmZmYTE2MTRmZjBlMjdiYTc4NzE2YjM0OTU5NTVkOWQ2MTIxMDQxMjI5NWYzNzc3ODU4Mjk5ZGQyNzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4MzM5N2E3OGQ1NTQzN2Q1MDA2N2NjZjZiNGUzMjE0M2NhNjQ2ZDcwODNkODFkMzBkYjczNjFkMmQyMTQ4ZTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1MTkxY2UyOGNhZmUxMGE0ZTI1YWUzMDI0ZTNkMzkxNzE2NGMxYTk3NGI5NmM0NjVhYzU1ZjRjMzI2M2I5ZWEifQ"
         }
       ]
     },
@@ -91,12 +95,12 @@
           "version": "repo-file-v1:sha256:48fa79d192b5fad4c1e677b8a3ba400f28694de9cee79b91c7a4965f71e308d1"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt",
-          "version": "repo-file-v1:sha256:6b77dafa468d7499d88ad674ecaf8298ff28edf088d7565816ab95c9ab842d5f"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt#L13-L41",
+          "version": "repo-lines-v1:sha256:6fe646dc2c9ac304de95325fe734b0f95e286352d494ccafebbc33087c8ba332:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3YTJiMzc2NjAwOTFkYjA1ZDFjYjY4YTFhNzAwNDNjOWEyNTkwYTljZDE2ZDU4MTBmMjExY2MwYzMwZmI1NjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5YmI4MTIzNmI4YmIyNzY3NmZiYzUxNTJlOGEyZGFiNWQ1MjYyZjI1NmJlZGIwNTgwMjRiY2UxNzc1NTVkNmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3M2M5OTNkMDIyNTMyNjA3YjIxNDllNzlmMjk1ZTNiZDBlNDEyZTBjYzFmZGEzYjJjNzBlOGZlZDA3M2M0YmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMxMjZhZDJjZTE3YjI2YzBlMjQ4ZjBmYmYyYWFjOTBiZTYwOTE1YzVjZjU2ZDIxM2JhODYyMGM3NzcwYThkNzAifQ"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L82-L108",
-          "version": "repo-lines-v1:sha256:bf1712245252729a2c43a5a29df7938a3e74d645ca40a9f3e1cc66cd52aa5448:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlMWI5OTVhZjI2YzA2ZjhhZmY1MmIwZThjMjBlZTc5ZmM1NzVhZmQ3MGQ3MjU2Njk0ZjNlMzcxMDYyNjRkMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNiMDNiYTMzNGMzODQ3NWEwYjY0ZTk3NjIwYTU5NDZmNWFiZjk0MWJiYjZkYzQzYjQ2NWZiZDJmOWQzNTFiODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5NTQxYWFkNjRiZjg3YTE4Mjg4YTNlMTRkZGE4NzdkZjM1MzZlMmUzZjk1ZTI2N2QzOTg1NjBhM2U3ODFlYmQifQ"
+          "version": "repo-lines-v1:sha256:910ba64669dd006445344ba5d2432696f88d2b103bbd196e5c52a2bb92960631:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4MTEwNmZhNzRmNTEwYjc3ZDU2MzRmYTBkMDhkNGI5M2M4NjBlMTA3M2MzMmI0ZjhhOGU2ODE0MzMxYjZkYzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlNWU2MDhhODAzMmRiZTc2YmQ1OTRkMjIxYmRhNDlmYTNkMjI3ZmUzMWMzMjI1ODczYzU4NDIxYmRlNDZhNjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4ZTIzNDRmYzlmNDQ1MDZlYWJhZjAxMTQzY2M2NWU5YTMzODU3MWY1ZDMxOTFhYTIxM2JjYjQzMjliMzJiOWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwNjY2MTU1NDEwMmU5MDE4NmEwZDI4Nzk1YWZmMGIzMGQwOTFiODVkMTFjNTJhODc0YmZlZjc3MTAzOTQ1ODgifQ"
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServicesTest.kt",
@@ -109,12 +113,12 @@
       "statement": "Rejected workspace roots retain their known path as unavailable; rejected registry observations use the separate REGISTRY_UNAVAILABLE variant with a registry path and closed failure rather than inventing host or workspace identity.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt",
-          "version": "repo-file-v1:sha256:6b77dafa468d7499d88ad674ecaf8298ff28edf088d7565816ab95c9ab842d5f"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt#L13-L50",
+          "version": "repo-lines-v1:sha256:3118ca2b84f949c9fed489cabeb67fda381e1612beb0d439e60fe6c0d739f31b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3YTJiMzc2NjAwOTFkYjA1ZDFjYjY4YTFhNzAwNDNjOWEyNTkwYTljZDE2ZDU4MTBmMjExY2MwYzMwZmI1NjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyZTAyNWY3MDc3ODg0MzA3NTBjNDU3Y2FiNDc3NmQ0ZDk3ZDA1MzExNTdmNmY5MjEyNDM2ZjZmZmFlOTA0OGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3M2M5OTNkMDIyNTMyNjA3YjIxNDllNzlmMjk1ZTNiZDBlNDEyZTBjYzFmZGEzYjJjNzBlOGZlZDA3M2M0YmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt",
-          "version": "repo-file-v1:sha256:98318c1ea12d2513b141a8d55f4267f7d1e434ab199172bda9bc1c07d69a8dc5"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt#L44-L65",
+          "version": "repo-lines-v1:sha256:a03ef3eb47adcd3ee8b5d5e061405e5cb055bdb28c53dd048e23178d4f467df7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2YjY1ZTdlNzI1NWM2OWIxNWNmYmJkNTY4YjZkOWVmODhkYjBmZDQ0OTcwNGJmNjQ3OTk2ODhiZjRiNThlNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0MTA4YmMzNTJmZmIyMzY1YTljMjNlYjg4ZDUwMjM2Y2FjNzZlMzNiZDYyNTM1YWYyMGMyMDAwNDdmYmE2YzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlM2NkMTdjZDlhZmE2NmE1MDBmYjdlZjQ2MTA0NTJkZWY1YjJjNjAxNzM5NDljZjA0ODA0ZDY4ZDVkY2U2YzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostedServiceStatus.kt",
@@ -127,12 +131,20 @@
       "statement": "Control preflight filters project endpoint families before capacity accounting, excludes only proven absent recorded owners before current descriptor/root admission, and requires full current descriptor, exact root/socket and live matching owner/Host identity for every surviving host; unknown liveness rejects.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt#L176-L220",
-          "version": "repo-lines-v1:sha256:1e5a78d5cc8c565a7debf8168452f78b03b96c7b75784c0cb2afec7fcc907feb:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmMjNhMjRiMWFiNWRkOGU5NGQ3MDQyYjY4OTA5Y2U0NTllNWFkMTZmM2Y0Zjk3ZmMyMGNmYzY3YWIxNTI5MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5ZTg3NzRjYmFjOWFhN2UxNzQ3ZDI5NWIxMWZkNTA2NDczMmRkMDE2ZWYxNWUwMWU2ZWE0NWU4YWYyNTczYmMifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt#L129-L146",
+          "version": "repo-lines-v1:sha256:2e91ad79e422a9b6b9625f0416f413ac7eff008c7271086c113a31879cdca47a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3NGVmZGJiOWU4NzI5NTM5YTA4MTgwZmJjYzQ2YjJhMGYxNDg0OTMwYTk1YjAzOTBkMDMwYzQ5ODVmNzY4NWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZWVkNjM3NWRlOGYxNzc5Y2VkZTUwZDg1MWFjZTdkYTc2OWFlYzBlZWRjYjU2MGZiNjE2NTgxYWIzMmVkOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA4Y2YyMzQ1YzY3N2Y4NGI5ZWE5NDY0MTEzMWY0ODNlNWY5ZmYzYTMzYjJkY2UzZjY5MTA1Nzc3NGE4YzI1MTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhjNTBhMTVlMDJjYmZjNjFmMTk0NDJmMGYxMjk5ODA1MzFkMzMwYjMwYTQ3NzhhYTE1YTkzOWExMDYxZGMwODcifQ"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt#L20-L146",
-          "version": "repo-lines-v1:sha256:91f853df99eb945f157358258eee6436f40462542629e4084862fac78d2388fd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlYjEyZjUwZmFlZDY1YjAyZDVkZmRjMjY1NTI4MTAyZWQ4ZmVmYTU5NzU1MGExOTJiOGQ3MGM2NTQ4YTU4MDhkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0NzM0MGYyMGU0ZTgyZTMxMjgwOGNmNTZiZTVmZTZjMjYyYTk1YTYwY2RkMDE2MDYzOGFjNzA2ZTc0NmJlODlkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI5OWZhZjJlODg3OWJmNDk2YTFhZGVkYmI3OTIzMjMzZjFhNDA0MjIyMDVkMGU3N2QwMjI5YjE1ZDI0MDNiYjI4In0"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt#L177-L220",
+          "version": "repo-lines-v1:sha256:b560a0bef6ef4d81031a38e3ca4b056d77fe6a57bb129ec449d61b11e3fda439:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmMjNhMjRiMWFiNWRkOGU5NGQ3MDQyYjY4OTA5Y2U0NTllNWFkMTZmM2Y0Zjk3ZmMyMGNmYzY3YWIxNTI5MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2Y2Y0YTJkZjU0NzkxNzhjN2QyZDQ5MDZiZjNiMjAxMDk1ZjVjMWFmZjNiMTA5Y2FhOGUyZDEyZmJkNjZiMGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt#L20-L59",
+          "version": "repo-lines-v1:sha256:e938fd41346ac61ac3ce4fb26ba671bcf0125fdec0b1d63cc92b63030c70a1f0:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBhZGQxNmRkZTNhY2JiNDllMTM3NDk3MzRjNTFlZjcwZGU5Y2JhNmZiYjBkYzAzM2JmN2I4NzJmMTJkYjcxZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlmNWFiMjY0NzM0ZTQ4ZmJkMjNhMWI3YjdhMjI2OGRkOGRlY2QyZTU5YTJjZTI2MDdiNjA4OTA0OWI3YjVmZjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBmODAyNTY1MjVkMDgzNmU4Mzg3ODE3MTM3YjQ2MDhkY2EwYTEzMjU5YjRlYjcxOTczZmI3NmJkN2RmNmQ2YjQifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedServiceAdmissionScan.kt#L70-L118",
+          "version": "repo-lines-v1:sha256:16fc228a31566d256d9dafdae580e73aba1f10b82c93b6b93b2b2abc7a5cb907:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmZDI2MWUwZTUxZDdlOGVkZWRlZTlmYjU5ZWI3MDUxMWM2NGJkNmYzZTg2ODE1ZjdiNDU3NDI0Y2VmNjFlNjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU2MjdhYTNjOTU4N2IwODZmNzczNTgwZTk4NDVhYmJiYjRiNDU1NjFlZGIzZDJkZTAzZjViZmUwOTRjY2YyMTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjNDhmNWY2Njk4NWUzOGM2MjJlMmYyOGEwMzZkMjUwYTA0MDdlNTU2NTY5MzgyNWM1OWMyMjlhN2NkNjE4YjQifQ"
         }
       ]
     },
@@ -141,8 +153,8 @@
       "statement": "The recorded owner envelope is a Control-local structural schema and is excluded from the hosted-contract digest inputs.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json",
-          "version": "repo-file-v1:sha256:ca9ef63062af047e868ca5cc45b8a26ae8e6ad47826ec66b6f461fae5ab5ca4b"
+          "resource": "repo://app-server/src/main/resources/control/hosted-endpoint-owner.schema.json#L1-L5",
+          "version": "repo-lines-v1:sha256:979d877665ac581adc8b7825fd6c677f26d598774d3bfecba67c63ab1960d997:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTZmYjA4ZmRhMWFjYjk1N2I2MTE2YmQzNzgxMWExZmU0MWEwMTYxMWMwNjMxZWRiZjc4NmQ2ODg5YTI3YTU1YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGMwMzk3NDgzZDYwYjc5MzhlODI2MGI2MDBkNzYwNzRlYzI3NTM3YTcxYWJhMGRlYmJkNDQ1MTA1YzI2N2E1OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjQwM2NhYjQ2NDgyMTZlZjBkOThjOWZmMmQwMWFjNWNiZWQ5Y2Y0NGIyZDUxNGFhNDQ3YmNlOWMwZjJmNDRiZCJ9"
         },
         {
           "resource": "repo://protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/CanonicalHostedContract.kt",
@@ -269,12 +281,20 @@
           "version": "repo-file-v1:sha256:e1e783e924821ea9ca511d5c5bbc65ad9f0e6710a6aaa37de9f328d6c327fa33"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt",
-          "version": "repo-file-v1:sha256:2aa11fa926f4b5bd4189ea046117d2da556bf0ab1190c4ec4a79df5f946b1ede"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt#L130-L150",
+          "version": "repo-lines-v1:sha256:a1fbfeeb9aba141a3ca586874e3c3a2710b36794f681fe29bf2a99aa0908bb69:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBlYmJlODRhYmZmNGFhYTJjNDMzODMxYzYzOTA1YjY5YzE2NjlmOTc3NWM2ZDIyZWI5OWU0MzZjMmRlYTJlOTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjOTEzZWQ1Zjc0MjdiZGVkNjdmMzg4ZWU1NDNmOGM1MzMxYjM4YzU1YmRmNjdjYWM4YzZlNTY1NTE3Y2YzOGYifQ"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt",
-          "version": "repo-file-v1:sha256:990daf6adee87ca63e2bdde3712d330f699ab6fa1753d804cd1c3bdc42f718be"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt#L62-L73",
+          "version": "repo-lines-v1:sha256:e483e57b24580eecf39a7687ad5eccbab3dbd9d1b63c88e1f4ec621c9e540c31:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2YjY5NmM5NzMzOGE0MDZhMjE1ODExNDIxZWU5OTJhMjA1YTk2MTk0N2Q0ZjVlMjY1OGMyOGJhMDU3ODc3ZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxZTNiZWQ4N2MwODc4YWM3N2ExMGRkMDMyMjFlOWE1NzdkZjQxNTVkY2M5OTIzM2ZmNDFmNGJjMzQ2ODcyMzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZmNDVhZmIxN2Q3ZjJjYmNjNmQ3YjMzMDAxMjdmNGVlYjNmNTliMjM1M2NkYjhhMGQyMDc3MTY3YTAyNmE1M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5YjY0NDg4OGVmZDA3MDlhYzdjZDlhOTgxODRiM2ZjYzMwMjQ4ZDJkYzdhOTczNTA1ZDM5MGViYjZjZjU0ZDAifQ"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt#L91-L102",
+          "version": "repo-lines-v1:sha256:e1577b9eb2c7369214fc1f88bb59e9a9db56f6c09733e1b9d78143e99ec3b015:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0MTdlOTk2ZmEyNDQ5MTYwZGZhMTEyOGIwYmY0MWI5MTVlNTg1YTdkMmRkNjVhNWVkZGExMzg2YjkwOWMyZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNjQ3OWNjMjMwNDQwZmQ0MWU4MjI0MjE4Njc5Njk4NTU5ZDI4OTNiZDY3YjQzODBhZmFiODExYjM4YTU1YWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhMWFkYjNiNzY3YjJjNDI2ZDA3OWNkMmM3MjcxMGUyMDhjOWQ2MWMwZDM5NWFmNmJjMjAwMDA2NzFmZWEzMTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1ODI5N2ZmYzA3YmIwYTVlNGZkMGE0MjUyNDUyM2QwNzRlOWY5NDlmZTVlMjdhYTQ5MDM1MzQxODM5MjgxYjIifQ"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt#L117-L165",
+          "version": "repo-lines-v1:sha256:31cee2d5f87103048b8b79c434e1057432d98277272e40278fa931b904ae1dd7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxNWQzMTIzNDBkYWQ4ZDAxZTlkMTg0N2IzYWNiYTYzOGM0MDRmOGM0ZjFkNDhjNzJiNzc4ZTI4NDRiMGYyYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1MjA0MDA2MjgwMmJhMjdmZDE5ZGZjMThjNzRlNjdlODg2YWE1YzExMmViZjVmMmM1Y2JiMWRmNDVkMGMwOTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmODcyNDA2ZTY1ZTY1ZDdkMDcxZWVkMzRlMjhkZjU1YjlmZmRlZWNlZDNmNjhkYmFkMzZjYTkxYTFiYjdkYjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyZjBjMjQ5NDUwYzNmYTA1ZDc3NTcyMDg5M2MzYTU5ZjNjZjBjMzUzOTAyYmUwOTA3YTNhZGY0ZmE2MDBiYTEifQ"
         }
       ]
     },
@@ -287,8 +307,8 @@
           "version": "repo-file-v1:sha256:57cc56c17ad868c3af6491138fb5ac5a78ab953ff0bfe7b6a6181b21d1ebf4d9"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt",
-          "version": "repo-file-v1:sha256:3fa42eecd562307c13b18cb1258e539e2af0fc1c405aaa94a598b7f7d4eeecba"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceStartupEnrollment.kt#L32-L81",
+          "version": "repo-lines-v1:sha256:45427d12d556e6b32f60b7093510c22772c181f9d4ae86adb29b5221666bb46a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1OTg0MTRmNzhiZjQ2ZjY2MjM0NDVmNWM1ZWY4NmZkYTU2Y2I0ODhlOGM1ZTk4MDk5NDFkM2U2NWYwYzBlZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkxYWIyYTk0NmZlMzBjYWI5NjRlM2FiZjExZmJjMmFhYzkxNjEyOTc5ODk1ZTJhOTY1ZGNjMWY3Zjg1MjQxY2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcyODM3MjkzMzY4ZmFjYjQ0OGQxNGViM2QwNjUxNGIxOWExYzA3M2FhZWJhOGEwNTMxODRlOWJlYmFlM2EzZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVjODM5Zjg0MjM0ZGNhNzA2OGU0NDMxMjhlMTc4OTk1ODdjY2E0OTBmNDgxMThlMjVjY2FkYmRjOGQ3NWY0ZmIifQ"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/CodexProtocolAdapter.kt#L504-L634",
@@ -375,12 +395,12 @@
       "statement": "Managed cold launch skips desktop process discovery. Native profile locking owns exclusivity, and an exited child grants no live Host admission.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L224-L258",
-          "version": "repo-lines-v1:sha256:e5ffebbbc7cdee5f57e24e15fccb01f1be443b4e3065dbc1cb9bb09b871bc7b1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3YzM4NDA2ZTRhNWFlZmYyZDU1Zjk4Y2Y5NDIzOGE5NDBkMWY0NmI4MTUyMzM0ZTdlNGJjYjgwNWEwNmEwZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkMmIzZjg3MzkxMDBhY2M0NDRmODE4ZjQzMWZjZWQ4MjQ0YzhkOTg3MzE2ODRjMDZmZDg0Y2RhNzE3YmE4ZmQifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L191-L212",
+          "version": "repo-lines-v1:sha256:b0595cf2efb778fdedeeb07d6cf1628341b5677ce8f35dc71bef700b360712d6:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3YzM4NDA2ZTRhNWFlZmYyZDU1Zjk4Y2Y5NDIzOGE5NDBkMWY0NmI4MTUyMzM0ZTdlNGJjYjgwNWEwNmEwZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NWUwNmQ5OGY1MzZkYTE0YTMzY2JiNWI3Mjg5NWZkZjBmMjAyOTViNWViMzFkOTkzZGJhZjEyNTVlZjUxNTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUyYmZhZDZkOTljYWM4YzhiZGUyZDdiMzg3NTdjMmExYTMyN2MyN2VjMWUxMzQ2NTMxMzU3ZjdhM2YwNDZiY2MifQ"
         },
         {
-          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/LinuxIdeLifecycleTest.kt#L29-L68",
-          "version": "repo-lines-v1:sha256:eedf989538de4c3b6307d3db0b63cde56f9c6c335b7f7e841dac96eb440585e7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1YTk5MWYwMGMwYTdlOTNmMmQ0NmJlZTMyMzVkNmM1MDRmMjlmOWFmYjQ2MjI1MDBlOTVhNWRlNzg4NDFiNmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgxMTAyMTEyNzI1Y2MyNmFlMTY2YWU2M2Y0MWUzYjUwMzcwNGNhMTYxZDYyYTE0NDc3YTM1ZmFkNDU4YzhlMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlNzQxMTJiMzIwNmQ3OGE1OGE0YzYxNWU2OTc1MWRjOWE1M2NjOThkZmZjMzE2ZTZiMDU0NmY0ZmY3ZjIzN2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2NDk0YmU1ZWJiYTZlZWViODc2Yjg2YmVhYWM4ODI3OGI1ZDZhOGNkMTA3MjIzMWE1NDAxMjI4M2ViMTYwMzQifQ"
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/LinuxIdeLifecycleTest.kt#L20-L47",
+          "version": "repo-lines-v1:sha256:e87f1b4860805cced41301429592698fd55af9b1693b2dfc034beeaa93baa6c4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0MDVkZTViY2YwZWIyNDExOWM0MTcxZGU5ODU5ZGNiMGE4NjQ0ZTg2MDQ2YzVjZjYyNWUzMmQ4MDc5M2NjYTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ2NGRkNGEyZmI2ZTE4NDZmZGZlYWY5OTA2ZTMxZGFkODQzZDVkNjI2MjcyMmYzNDQ2NGFkY2ZlYTllNWUyNzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMzZmRmMjNkNGI5Y2NiYWZjMjZhZWEwY2QzNmM1MjBmOTQ5OThiN2ZjNDhmNDcwZGUxOGYxNWZlYmM2OTIzYjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4ZWFmM2UxZGIyODRmNmE2ZmQ0ZTA2NmFlMmZiNjU0YWU2OGZkZmNmM2U3ZTRkY2E0YzJkZDIxNGE0OWI5ZDAifQ"
         }
       ]
     },
@@ -389,8 +409,12 @@
       "statement": "Private workspace preparation needs a trust record before a cold Host starts. The running private Host rejects workspace open unless its sole trust grant names that exact workspace.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L199-L269",
-          "version": "repo-lines-v1:sha256:89f7082d93a03b99a5ef34910e1149690d357d9bca7c04d965ae4ee9342501f9:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkMzk3MGYxZTIzYjZlMjdmOGVlN2YxMjMxMmZmMjgwM2M1ZjVkMTc4ZDQ0ZDk2MTBjMDE0ZWI4MGU5Y2EzMTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4MGVjM2IwOTMyOTkyYmUzNGY4NmRjNjJhOGRmNmIzMTcyNDA0NzkyOTY1NzM2NzJhZTRhMDg4MjZlOTZkYTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5N2IzY2QyODExNjM0M2VlMDAxMGI2NjAwY2E2NmNkYjk2Mjk3ZGEzMzA1NGUyYmZhZmVmNTIwZjg0ODFjYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRmYWY1YzU2ODg1MTg3MjZiNzdiYTFiYTdlMjRlZWUwN2Y2YWI2YmJhNWE4MjhmYzA2NTFiZmIwNzg0NzUwMDQifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L164-L184",
+          "version": "repo-lines-v1:sha256:08e3efffa2358d9e380a741d42e39d9453ad19a542ccd44dd9ebb722e9a23606:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmZjU3MzU5ZjBlYmE5ZDBlYjU1ZjU4Yjc5OTYyZjUyYTcyZmE3YzIzYmRkOTk2ZmVlNTYyMGQzMGRhNGY4NTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhZDZjOGVhYTg1M2RmYjcwNzIwNTFhNWY1OTYyOWJiNzZmMDJkMTMzMDQyZjY0MTQzNDNmYTAxOWFiOGU2ZDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkZTkwYWE4MTlmYzU4NWQ1ZWFlNjE3Y2JhNjYwYzE4ZjNlYmUzZDliZTg5ZTczY2YyNzBlNjEyZjY5NTQ0YWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMyYjEyZjZlN2IzYmM4ZDRjM2RjY2I5Y2NhYjYzMDY0NmYyMjMwMzkwOWRmYjNjOTIyMmMzOTlkN2M4OTM1NzIifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L215-L225",
+          "version": "repo-lines-v1:sha256:f8294b81acd688cf186738435ce0da78755beca7d55a7cbd96704532a6559929:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3NjU5NDU5OTUzNDQyZjEwNjM2YmZlZDEzZjVkYzZkM2FlNjRkZDg3MThhZDZmOTEyOTQzYzFkNDNjNGIzZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0ZTNmNmRjY2RjMTI1NDVhZGNmY2UxMWQ4NDUzYjhiMTEzNDQ4MTY0MjgzMmJmYTkzZmZmMWZkYTI2YmMzZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmM2NkNDYwZmFjYzVkNWY3YTI0ZTc4MDgwYWUyZjVhMWQ1MDQ4NjE4NmVhNDlmMzk2ZTdhMjVmMjMzNjc4YzMifQ"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L149-L167",
@@ -401,6 +425,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T14:25:07.841Z"
+    "at": "2026-11-12T22:40:35.936Z"
   }
 }

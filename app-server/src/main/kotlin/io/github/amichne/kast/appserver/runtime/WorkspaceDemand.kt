@@ -1,10 +1,10 @@
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.HostedPresemanticRecovery
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -70,18 +70,39 @@ internal class PreparedWorkspaceDemand(
         else first
     }
 
-    private suspend fun queryOnce(root: CanonicalRoot, operation: ExistingIdeOperation): WorkspaceDemandResult {
+    private suspend fun queryOnce(root: CanonicalRoot, operation: ExistingIdeOperation): WorkspaceDemandResult =
+        when (val ready = prepare(root)) {
+            is Refinement.Rejected -> WorkspaceDemandResult.Rejected(ready.failure)
+            is Refinement.Refined -> ready.value.query(root, operation)
+        }
+
+    /** Captures one prepared incarnation; using it never starts or substitutes another Host. */
+    suspend fun prepare(root: CanonicalRoot): Refinement<WorkspaceDemand, WorkspaceDemandFailure> {
         val entry =
             when (val admitted = preparations.prepareForDemand(root)) {
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected ->
-                    return WorkspaceDemandResult.Rejected(WorkspaceDemandFailure.Admission(root, admitted.failure))
+                    return Refinement.Rejected(WorkspaceDemandFailure.Admission(root, admitted.failure))
             }
         return when (val outcome = entry.state.filterIsInstance<WorkspacePreparationOutcome.Terminal>().first()) {
-            is WorkspacePreparationOutcome.Complete -> queryReady(entry, outcome.workspace, operation)
+            is WorkspacePreparationOutcome.Complete ->
+                Refinement.Refined(
+                    WorkspaceDemand { selected, operation ->
+                        if (selected != root)
+                            WorkspaceDemandResult.Rejected(
+                                WorkspaceDemandFailure.Admission(selected, WorkspacePreparationFailure.ROOT_REJECTED)
+                            )
+                        else queryReady(entry, outcome.workspace, operation)
+                    }
+                )
             is WorkspacePreparationOutcome.Rejected ->
-                rejected(entry, WorkspaceDemandCause.Preparation(outcome.failure))
-            is WorkspacePreparationOutcome.Blocked -> rejected(entry, WorkspaceDemandCause.Lifecycle(outcome.reason))
+                Refinement.Rejected(
+                    WorkspaceDemandFailure.Operation(entry.id, root, WorkspaceDemandCause.Preparation(outcome.failure))
+                )
+            is WorkspacePreparationOutcome.Blocked ->
+                Refinement.Rejected(
+                    WorkspaceDemandFailure.Operation(entry.id, root, WorkspaceDemandCause.Lifecycle(outcome.reason))
+                )
         }
     }
 

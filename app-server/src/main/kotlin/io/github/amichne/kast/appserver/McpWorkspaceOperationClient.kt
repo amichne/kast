@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
@@ -14,12 +13,17 @@ import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.runtime.ExistingWorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.JsonLineWorkspacePreparationObserver
 import io.github.amichne.kast.appserver.runtime.PreparedWorkspaceDemand
+import io.github.amichne.kast.appserver.runtime.WorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandFailure
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationOutcome
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparations
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.InstalledSavedConfigurationIngress
+import io.github.amichne.kast.distribution.managed.InstalledWorkspaceConfigurationIngress
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
@@ -29,13 +33,14 @@ import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPrep
 import java.nio.file.Path
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
 
-/** One MCP session owns both eager preparation and later semantic demand for the same root. */
+/** The caller owns preparation jobs and closes them when its request or session ends. */
 class McpWorkspaceOperationClient
 internal constructor(
     private val delegate: DaemonOperationClient,
@@ -45,7 +50,28 @@ internal constructor(
         io.github.amichne.kast.kernel.ElapsedTimeAllowance.Bounded(
             io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit
         ),
-) : DaemonOperationClient by delegate {
+    private val preparedDemand: PreparedWorkspaceDemand? = null,
+) : DaemonOperationClient by delegate, AutoCloseable {
+    /** The returned client retains this exact ready incarnation and cannot prepare a replacement. */
+    suspend fun prepared(root: CanonicalRoot): Refinement<DaemonOperationClient, DaemonOperationFailure> =
+        when (val demand = preparedDemand) {
+            null -> Refinement.Rejected(DaemonOperationFailure.Host(ExistingIdeFailure.CONFIGURATION_REJECTED))
+            else ->
+                when (val ready = demand.prepare(root)) {
+                    is Refinement.Rejected -> Refinement.Rejected(ready.failure.daemonFailure())
+                    is Refinement.Refined -> Refinement.Refined(mcpDemandClient(ready.value))
+                }
+        }
+
+    override fun close() {
+        val interrupted = Thread.interrupted()
+        try {
+            runBlocking(NonCancellable) { preparations?.close() }
+        } finally {
+            if (interrupted) Thread.currentThread().interrupt()
+        }
+    }
+
     /** Explicit session lifecycle effect; semantic reads never call this path. */
     fun lifecycle(request: WorkspaceLifecycleRequest): IdeLifecycleResult = lifecycle.execute(request, "kast-mcp")
 
@@ -181,22 +207,33 @@ private fun configuredMcpWorkspaceOperationClient(
                 WorkspaceOperationAdmission.PREPARE -> demand
                 WorkspaceOperationAdmission.EXISTING_AUTHORITY -> ExistingWorkspaceDemand(native, dispatcher)
             }
-        when (val result = runBlocking { selected.query(root, operation) }) {
-            is WorkspaceDemandResult.Native -> mcpResult(result.exchange)
-            is WorkspaceDemandResult.Rejected ->
-                DaemonOperationResult.Rejected(
-                    DaemonOperationClientRejection.Server(
-                        when (val failure = result.failure) {
-                            is WorkspaceDemandFailure.Admission -> DaemonOperationFailure.Preparation(failure.failure)
-                            is WorkspaceDemandFailure.Operation ->
-                                DaemonOperationFailure.Workspace(failure.id.toString(), failure.cause)
-                        }
-                    )
-                )
-        }
+        runBlocking { selected.query(root, operation) }.daemonResult()
     }
-    return McpWorkspaceOperationClient(delegate, preparations, lifecycle, config.workspacePreparationWait)
+    return McpWorkspaceOperationClient(delegate, preparations, lifecycle, config.workspacePreparationWait, demand)
 }
+
+private fun mcpDemandClient(demand: WorkspaceDemand): DaemonOperationClient = DaemonOperationClient { root, call ->
+    when (val operation = mcpOperation(call)) {
+        is Refinement.Rejected ->
+            DaemonOperationResult.Rejected(
+                DaemonOperationClientRejection.Server(DaemonOperationFailure.Host(operation.failure))
+            )
+        is Refinement.Refined -> runBlocking { demand.query(root, operation.value) }.daemonResult()
+    }
+}
+
+private fun WorkspaceDemandResult.daemonResult(): DaemonOperationResult =
+    when (this) {
+        is WorkspaceDemandResult.Native -> mcpResult(exchange)
+        is WorkspaceDemandResult.Rejected ->
+            DaemonOperationResult.Rejected(DaemonOperationClientRejection.Server(failure.daemonFailure()))
+    }
+
+private fun WorkspaceDemandFailure.daemonFailure(): DaemonOperationFailure =
+    when (this) {
+        is WorkspaceDemandFailure.Admission -> DaemonOperationFailure.Preparation(failure)
+        is WorkspaceDemandFailure.Operation -> DaemonOperationFailure.Workspace(id.toString(), cause)
+    }
 
 private fun rejectedMcpConfiguration() =
     McpWorkspaceOperationClient(

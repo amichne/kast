@@ -29,7 +29,7 @@ class HostedRequiredPolicyExchangeTest {
                     expected = listOf("DESCRIBE", "CLASS_LOOKUP", "DESCRIBE"),
                     describeMetadata = listOf(actual, successor),
                 )
-        ) { client, root ->
+        ) { client, root, _ ->
             assertInstanceOf(ExistingIdeExchange.HostRejected::class.java, client.query(root, classes()))
             val admitted =
                 assertInstanceOf(HostedServiceObservation.Compatible::class.java, client.latestObservation(root))
@@ -50,14 +50,19 @@ class HostedRequiredPolicyExchangeTest {
                     expected = List(3) { listOf("DESCRIBE", "CLASS_LOOKUP") }.flatten(),
                     describeMetadata = List(3) { compatibility },
                 ),
-            clientFactory = { home ->
-                ExistingIdeSocketClient(home, ReadLimits.Default, 2_000) {
+            clientFactory = { deployment ->
+                ExistingIdeSocketClient(
+                    deployment.home,
+                    ReadLimits.Default,
+                    2_000,
+                    deployment = Refinement.Refined(deployment.selected),
+                ) {
                     loads += 1
                     check(loads <= 3) { "unexpected required policy load" }
                     requiredHostedCompatibilityPolicy()
                 }
             },
-        ) { client, root ->
+        ) { client, root, _ ->
             repeat(3) {
                 assertInstanceOf(ExistingIdeExchange.HostRejected::class.java, client.query(root, classes()))
             }
@@ -77,7 +82,7 @@ class HostedRequiredPolicyExchangeTest {
                     expected = listOf("DESCRIBE", "CLASS_LOOKUP", "DESCRIBE"),
                     describeMetadata = listOf(compatibility, changed),
                 )
-        ) { client, root ->
+        ) { client, root, _ ->
             assertInstanceOf(ExistingIdeExchange.HostRejected::class.java, client.query(root, classes()))
             assertEquals(
                 ExistingIdeExchange.Rejected(ExistingIdeFailure.COMPATIBILITY_REJECTED),
@@ -106,8 +111,13 @@ class HostedRequiredPolicyExchangeTest {
                     expected = listOf("DESCRIBE", "DESCRIBE", "CLASS_LOOKUP", "DESCRIBE", "CLASS_LOOKUP"),
                     describeMetadata = List(3) { compatibility },
                 ),
-            clientFactory = { home ->
-                ExistingIdeSocketClient(home, ReadLimits.Default, 2_000) {
+            clientFactory = { deployment ->
+                ExistingIdeSocketClient(
+                    deployment.home,
+                    ReadLimits.Default,
+                    2_000,
+                    deployment = Refinement.Refined(deployment.selected),
+                ) {
                     loads += 1
                     when (loads) {
                         1 -> Refinement.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE)
@@ -117,7 +127,7 @@ class HostedRequiredPolicyExchangeTest {
                     }
                 }
             },
-        ) { client, root ->
+        ) { client, root, _ ->
             assertEquals(
                 ExistingIdeExchange.Rejected(ExistingIdeFailure.SCHEMA_UNAVAILABLE),
                 client.query(root, classes()),

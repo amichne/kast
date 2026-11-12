@@ -84,6 +84,9 @@ internal data class ManagementReceipt(
         if (channel == ReleaseChannel.STABLE) UpdatePolicy.TrackStable else UpdatePolicy.TrackMain,
     val installedBuild: InstalledBuildIdentity? = null,
     val guidance: List<ManagedGuidance> = emptyList(),
+    @kotlinx.serialization.Transient val product: InstalledProductReference? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val providers: List<ProviderRegistration> = emptyList(),
 )
 
 internal sealed interface ReceiptRead {
@@ -100,6 +103,8 @@ private fun decodeReceipt(raw: String): ReceiptRead {
             when (receiptVersionJson.decodeFromString<ReceiptVersion>(raw).schemaVersion) {
                 1 -> managementJson.decodeFromString<LegacyManagementReceipt>(raw).refine()
                 2 -> managementJson.decodeFromString<ManagementReceipt>(raw)
+                PRODUCT_MANAGEMENT_SCHEMA_VERSION ->
+                    managementJson.decodeFromString<ProductManagementReceipt>(raw).refine()
                 else -> return ReceiptRead.Unavailable("receipt_invalid")
             }
         } catch (_: SerializationException) {
@@ -122,6 +127,7 @@ internal fun admitManagementReceipt(root: Path, raw: String?): ReceiptRead {
         }
     if (!validReceiptIdentity(root, receipt) || !validRecordedBuild(receipt) || !validGuidance(receipt.guidance))
         return ReceiptRead.Unavailable("receipt_invalid")
+    if (!validProviders(receipt.providers)) return ReceiptRead.Unavailable("receipt_invalid")
     return ReceiptRead.Read(receipt)
 }
 
@@ -183,7 +189,13 @@ private fun normalizedAbsolutePath(raw: String): Boolean =
     }
 
 private fun validReceiptIdentity(root: Path, receipt: ManagementReceipt): Boolean =
-    receipt.schemaVersion == 2 && receipt.installationRoot == root.toString() && validReceiptResources(root, receipt)
+    receipt.installationRoot == root.toString() &&
+        validReceiptResources(root, receipt) &&
+        when (receipt.schemaVersion) {
+            2 -> receipt.product == null
+            PRODUCT_MANAGEMENT_SCHEMA_VERSION -> validManagementProduct(root, receipt)
+            else -> false
+        }
 
 private fun validReceiptResources(root: Path, receipt: ManagementReceipt): Boolean =
     validSha256(receipt.executableSha256) &&

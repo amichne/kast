@@ -1,9 +1,6 @@
 package io.github.amichne.kast.appserver.provider
 
 import io.github.amichne.kast.appserver.core.BrokerInvocationContext
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
@@ -14,6 +11,10 @@ import io.github.amichne.kast.appserver.runtime.WorkspaceDemandResult
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
 import io.github.amichne.kast.appserver.runtime.WorkspaceRecoveryEvidence
 import io.github.amichne.kast.appserver.runtime.WorkspaceRecoverySettlement
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscoverer
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
 import io.github.amichne.kast.kernel.OperationOutcome
@@ -53,13 +54,13 @@ class KastSingleChangeInvocationTest {
     fun `root rejection preserves exact predispatch failure and never invokes the host`() = runBlocking {
         val cases =
             listOf(
-                io.github.amichne.kast.appserver.ide.CanonicalRootFailure.START_UNAVAILABLE to
+                io.github.amichne.kast.distribution.managed.CanonicalRootFailure.START_UNAVAILABLE to
                     io.github.amichne.kast.appserver.core.ProviderFailureCode.WORKSPACE_START_UNAVAILABLE,
-                io.github.amichne.kast.appserver.ide.CanonicalRootFailure.START_NOT_DIRECTORY to
+                io.github.amichne.kast.distribution.managed.CanonicalRootFailure.START_NOT_DIRECTORY to
                     io.github.amichne.kast.appserver.core.ProviderFailureCode.WORKSPACE_START_NOT_DIRECTORY,
-                io.github.amichne.kast.appserver.ide.CanonicalRootFailure.ROOT_MARKER_NOT_FOUND to
+                io.github.amichne.kast.distribution.managed.CanonicalRootFailure.ROOT_MARKER_NOT_FOUND to
                     io.github.amichne.kast.appserver.core.ProviderFailureCode.WORKSPACE_ROOT_MARKER_NOT_FOUND,
-                io.github.amichne.kast.appserver.ide.CanonicalRootFailure.INVALID_ROOT_MARKER to
+                io.github.amichne.kast.distribution.managed.CanonicalRootFailure.INVALID_ROOT_MARKER to
                     io.github.amichne.kast.appserver.core.ProviderFailureCode.WORKSPACE_INVALID_ROOT_MARKER,
             )
         val context =
@@ -352,7 +353,7 @@ class KastSingleChangeInvocationTest {
     private suspend fun invocationWithDemand(
         observe: suspend (CanonicalRoot, ExistingIdeOperation) -> WorkspaceDemandResult
     ): io.github.amichne.kast.appserver.core.ProviderCall<KastInvocationOutput> {
-        val root = CanonicalRoot(home.toRealPath())
+        val root = canonicalRootFixture(home.toRealPath())
         val options =
             KastProviderOptions(
                 catalogSource = KastCatalogSource { error("Catalog not needed") },

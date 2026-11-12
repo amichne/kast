@@ -9,9 +9,6 @@ import io.github.amichne.kast.appserver.core.BrokerLimits
 import io.github.amichne.kast.appserver.core.ProviderNamespace
 import io.github.amichne.kast.appserver.core.ToolAddress
 import io.github.amichne.kast.appserver.core.ToolName
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
@@ -20,6 +17,9 @@ import io.github.amichne.kast.appserver.publicNameQuery
 import io.github.amichne.kast.appserver.publicToolCase
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscoverer
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -141,7 +141,8 @@ class KastPublicQueryProviderTest {
         check(executable.toFile().setExecutable(true))
         return KastProviderOptions(
             catalogSource = executor,
-            roots = CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(CanonicalRoot(root.toRealPath())) },
+            roots =
+                CanonicalRootDiscoverer { CanonicalRootDiscovery.Discovered(canonicalRootFixture(root.toRealPath())) },
             ideClient =
                 ExistingIdeClient { _, operation ->
                     executor.operations += operation

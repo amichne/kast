@@ -53,6 +53,21 @@ class BootstrapImportTest(unittest.TestCase):
             names = (
                 "managed_installation.py",
                 "managed_release.py",
+                "managed_product.py",
+                "managed_product_installation.py",
+                "managed_product_removal.py",
+                "immutable_store.py",
+                "product_removal_recovery.py",
+                "product_mcp_removal.py",
+                "mcp_environment.py",
+                "private_interpreter.py",
+                "bootstrap_entry.py",
+                "composed_bundle.py",
+                "composition_platform.py",
+                "isolated_runtime.py",
+                "managed_headless.py",
+                "runtime_archive.py",
+                "runtime_base.py",
                 "managed_update_contract.py",
                 "managed_update_journal.py",
                 "reload_hosted.py",
@@ -77,6 +92,42 @@ class BootstrapImportTest(unittest.TestCase):
                 timeout=10,
             )
             self.assertEqual(0, result.returncode, result.stderr)
+            environment["HOME"] = str(root / "home")
+            imported = subprocess.run(
+                [
+                    sys.executable,
+                    str(bundle / "managed_installation.py"),
+                    "--recover-only",
+                    "--dry-run",
+                    "--json",
+                ],
+                cwd=bundle,
+                env=environment,
+                capture_output=True,
+                timeout=10,
+            )
+            # No installation exists, but the real script must import the product path
+            # before rejecting recovery, without creating bytecode in its payload.
+            self.assertEqual(1, imported.returncode, imported.stderr)
+            self.assertNotIn(b"Traceback", imported.stderr)
+            removed = subprocess.run(
+                [
+                    sys.executable,
+                    str(bundle / "bootstrap_entry.py"),
+                    "--remove-product",
+                    "--install-root",
+                    str(root / "absent"),
+                    "--uninstall-journal",
+                    str(root / "absent.json"),
+                ],
+                cwd=root,
+                env=environment,
+                capture_output=True,
+                timeout=10,
+            )
+            self.assertEqual(1, removed.returncode, removed.stderr)
+            self.assertNotIn(b"Traceback", removed.stderr)
+            self.assertEqual("REMOVAL_REJECTED", json.loads(removed.stdout)["status"])
             after = {
                 path.relative_to(bundle).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
                 for path in bundle.rglob("*")

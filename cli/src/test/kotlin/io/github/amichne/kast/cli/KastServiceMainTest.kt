@@ -20,6 +20,17 @@ import org.junit.jupiter.api.Test
 
 class KastServiceMainTest {
     @Test
+    fun `host admission requires an explicit managed configuration`() {
+        val expected =
+            io.github.amichne.kast.appserver.ide.HostedServicesObservation.Rejected(
+                io.github.amichne.kast.appserver.ide.ExistingIdeFailure.CONFIGURATION_REJECTED
+            )
+        for (environment in listOf(emptyMap(), mapOf("KAST_CONFIGURATION_FILE" to "relative/environment"))) {
+            assertEquals(expected, observeConfiguredHosts(Path.of("/unobserved/home"), environment))
+        }
+    }
+
+    @Test
     fun `only exact private service actions are admitted`() {
         assertEquals(
             ServiceControlSelection.Selected(ServiceControlAction.ENABLE),

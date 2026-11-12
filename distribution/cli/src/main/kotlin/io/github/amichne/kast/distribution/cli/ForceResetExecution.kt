@@ -4,14 +4,12 @@ import java.nio.file.Path
 
 internal data class ForceResetExecution(
     val runtime: ForceDaemonRuntime = NativeForceDaemonRuntime,
-    val installer: ForceReinstaller = BundledForceReinstaller,
     val observe: (ResetObservation) -> Unit = { System.err.println(it.asJson()) },
 )
 
 internal fun forceResetInstallation(
     root: Path,
     home: Path,
-    environment: Map<String, String>,
     operation: ForceResetOperation,
     execution: ForceResetExecution = ForceResetExecution(),
     removalScope: ResetRemovalScope = ResetRemovalScope.SelectedRoot,
@@ -31,7 +29,7 @@ internal fun forceResetInstallation(
     var released: ResetEffect
     val result =
         try {
-            executeAcquired(fence, home, environment, operation, execution, removalScope)
+            executeAcquired(fence, home, operation, execution, removalScope)
         } finally {
             released = fence.release()
         }
@@ -44,7 +42,6 @@ internal fun forceResetInstallation(
 private fun executeAcquired(
     fence: ForceResetFence,
     home: Path,
-    environment: Map<String, String>,
     operation: ForceResetOperation,
     execution: ForceResetExecution,
     removalScope: ResetRemovalScope,
@@ -56,13 +53,12 @@ private fun executeAcquired(
             is ResetFencing.Rejected -> return rejected(operation, ForceResetStage.FENCE, detached.failure, execution)
         }
     execution.observe(ResetObservation.Completed(operation, ForceResetStage.FENCE))
-    return executeFenced(fenced, home, environment, operation, execution, removalScope)
+    return executeFenced(fenced, home, operation, execution, removalScope)
 }
 
 private fun executeFenced(
     fenced: FencedReset,
     home: Path,
-    environment: Map<String, String>,
     operation: ForceResetOperation,
     execution: ForceResetExecution,
     removalScope: ResetRemovalScope,
@@ -89,10 +85,7 @@ private fun executeFenced(
                 )
         }
     execution.observe(ResetObservation.Completed(operation, ForceResetStage.CLEANUP))
-    return when (operation) {
-        ForceResetOperation.UNINSTALL -> finishRemoval(erased, home, execution, removalScope)
-        ForceResetOperation.REINSTALL -> stageReplacement(erased, home, environment, execution)
-    }
+    return finishRemoval(erased, home, execution, removalScope)
 }
 
 private fun finishRemoval(
@@ -120,104 +113,6 @@ private fun finishRemoval(
         }
         is ResetEffect.Rejected -> rejected(operation, ForceResetStage.FINAL_VERIFICATION, lifted.failure, execution)
     }
-}
-
-private fun stageReplacement(
-    erased: ErasedReset,
-    home: Path,
-    environment: Map<String, String>,
-    execution: ForceResetExecution,
-): ForceResetOutcome {
-    val operation = ForceResetOperation.REINSTALL
-    execution.observe(ResetObservation.Started(operation, ForceResetStage.INSTALLATION))
-    val staged =
-        when (val preparation = StagedReset.stage(erased, home, environment, execution.installer)) {
-            is ResetStaging.Staged -> preparation.reset
-            is ResetStaging.Rejected -> return compensate(erased, home, preparation.failure, execution)
-        }
-    execution.observe(ResetObservation.Completed(operation, ForceResetStage.INSTALLATION))
-    execution.observe(ResetObservation.Started(operation, ForceResetStage.FINAL_VERIFICATION))
-    return when (val completion = InstalledReset.complete(staged)) {
-        is ResetInstallation.Installed -> {
-            execution.observe(ResetObservation.Completed(operation, ForceResetStage.FINAL_VERIFICATION))
-            val installed = completion.reset.staged.payload
-            ForceResetOutcome.Installed(
-                installed.installation.toString(),
-                installed.version.value,
-                installed.command.toString(),
-            )
-        }
-        is ResetInstallation.Rejected -> compensateStaged(staged, home, completion.failure, execution)
-    }
-}
-
-private fun compensate(
-    erased: ErasedReset,
-    home: Path,
-    failure: ForceResetFailure,
-    execution: ForceResetExecution,
-): ForceResetOutcome {
-    execution.observe(ResetObservation.Rejected(ForceResetOperation.REINSTALL, ForceResetStage.INSTALLATION, failure))
-    return when (val recovery = restoreStopped(erased, home, execution)) {
-        ResetEffect.Completed ->
-            ForceResetOutcome.Rejected(ForceResetOperation.REINSTALL, ForceResetStage.INSTALLATION, failure)
-        is ResetEffect.Rejected ->
-            ForceResetOutcome.RecoveryRequired(
-                ForceResetOperation.REINSTALL,
-                ForceResetStage.INSTALLATION,
-                failure,
-                recovery.failure,
-                erased.root.toString(),
-            )
-    }
-}
-
-private fun compensateStaged(
-    staged: StagedReset,
-    home: Path,
-    failure: ForceResetFailure,
-    execution: ForceResetExecution,
-): ForceResetOutcome {
-    execution.observe(
-        ResetObservation.Rejected(ForceResetOperation.REINSTALL, ForceResetStage.FINAL_VERIFICATION, failure)
-    )
-    return when (val recovery = restoreStopped(staged.erased, home, execution)) {
-        ResetEffect.Completed ->
-            ForceResetOutcome.Pending(
-                staged.payload.installation.toString(),
-                staged.payload.version.value,
-                staged.payload.command.toString(),
-                failure,
-            )
-        is ResetEffect.Rejected ->
-            ForceResetOutcome.RecoveryRequired(
-                ForceResetOperation.REINSTALL,
-                ForceResetStage.FINAL_VERIFICATION,
-                failure,
-                recovery.failure,
-                staged.erased.root.toString(),
-            )
-    }
-}
-
-private fun restoreStopped(erased: ErasedReset, home: Path, execution: ForceResetExecution): ResetEffect {
-    execution.observe(ResetObservation.Started(ForceResetOperation.REINSTALL, ForceResetStage.RECOVERY))
-    val fenced = erased.fence.erased()
-    // Attempt retirement even if restoring the filesystem barrier failed.
-    val retired = ForceDaemonRetirement(execution.runtime).retire(erased.root, home)
-    val outcome =
-        when (fenced) {
-            is ResetEffect.Rejected -> fenced
-            ResetEffect.Completed -> retired
-        }
-    execution.observe(
-        when (outcome) {
-            ResetEffect.Completed -> ResetObservation.Completed(ForceResetOperation.REINSTALL, ForceResetStage.RECOVERY)
-            is ResetEffect.Rejected ->
-                ResetObservation.Rejected(ForceResetOperation.REINSTALL, ForceResetStage.RECOVERY, outcome.failure)
-        }
-    )
-    return outcome
 }
 
 private fun rejected(

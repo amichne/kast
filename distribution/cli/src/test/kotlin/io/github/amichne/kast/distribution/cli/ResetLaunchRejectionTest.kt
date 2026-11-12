@@ -82,9 +82,8 @@ class ResetLaunchRejectionTest {
             forceResetInstallation(
                 root,
                 home,
-                emptyMap(),
                 ForceResetOperation.UNINSTALL,
-                ForceResetExecution(runtime, forbiddenInstaller(), observations::add),
+                ForceResetExecution(runtime, observations::add),
             )
                 as ForceResetOutcome.Retained
         runtime.assertConsumed()
@@ -147,10 +146,6 @@ class ResetLaunchRejectionTest {
                 ForceResetFailure.LAUNCH_JOB_REJECTED,
             ),
         )
-
-    private fun forbiddenInstaller(): ForceReinstaller = ForceReinstaller { _, _, _ ->
-        error("installer cannot run before quiescence")
-    }
 
     private fun home(): Path = Files.createDirectories(temporary.resolve("home"))
 

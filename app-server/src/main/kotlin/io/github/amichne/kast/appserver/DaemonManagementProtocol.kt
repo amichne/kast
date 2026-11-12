@@ -182,7 +182,8 @@ sealed interface DaemonManagementRejection {
 
     @Serializable
     @SerialName("root")
-    data class Root(val failure: io.github.amichne.kast.appserver.ide.CanonicalRootFailure) : DaemonManagementRejection
+    data class Root(val failure: io.github.amichne.kast.distribution.managed.CanonicalRootFailure) :
+        DaemonManagementRejection
 
     @Serializable
     @SerialName("preparation")

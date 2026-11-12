@@ -380,7 +380,7 @@ def seal(repository: str, revision: str, run_id: int, number: int, attempt: int,
     return candidate
 
 
-def admit_validation(repository: str, revision: str, run: dict, expected_tree: str):
+def admit_validation(repository: str, revision: str, run: dict[object, object], expected_tree: str):
     name = f"ci-validation-outcome-{revision}-{run['run_attempt']}"
     artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100", ObservationStage.RUN_ARTIFACTS), "artifacts")
     matches = tuple(artifact for artifact in artifacts if artifact.get("name") == name and artifact.get("expired") is False)
@@ -492,9 +492,49 @@ def output(path: str | None, **values: str) -> None:
                 destination.write(f"{name}={value}\n")
 
 
+def promote_product(repository: str, revision: str, run_id: int, run_attempt: int, bundle: Path, github_output: str | None) -> None:
+    import product_candidate
+
+    identity(repository, revision)
+    empty(bundle)
+    if not positive(run_id) or not positive(run_attempt):
+        raise Rejected(Failure.INVALID_IDENTITY)
+    run = observe(f"repos/{repository}/actions/runs/{run_id}/attempts/{run_attempt}", ObservationStage.WORKFLOW_RUN)
+    if (not reusable_run(run, repository, revision) or run.get("head_branch") != "main"
+            or run.get("event") not in validation.MAIN_PUBLICATION_EVENTS
+            or run.get("run_attempt") != run_attempt):
+        raise Rejected(Failure.PRODUCER_NOT_SUCCESSFUL)
+    expected_tree = tree(repository, revision)
+    outcome = admit_validation(repository, revision, run, expected_tree)
+    if isinstance(outcome, validation.DocumentationValidated):
+        output(github_output, publication=PublicationState.DOCS_VALIDATED.value)
+        return
+    if not isinstance(outcome, validation.ProductValidated):
+        raise Rejected(Failure.SOURCE_NOT_QUALIFIED)
+    name = f"ci-product-candidate-{revision}-{run['run_attempt']}"
+    artifacts = listing(observe(f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100",
+                                ObservationStage.RUN_ARTIFACTS), "artifacts")
+    if len([item for item in artifacts if item.get("name") == name and item.get("expired") is False]) != 1:
+        raise Rejected(Failure.INVALID_RECORD)
+    bundle.mkdir(parents=True, exist_ok=True)
+    execute(["gh", "run", "download", str(run_id), "--repo", repository, "--name", name,
+             "--dir", str(bundle)], Failure.DOWNLOAD_FAILED)
+    try:
+        record = product_candidate.admit(bundle)
+    except product_candidate.candidate.Rejected as rejection:
+        raise Rejected(Failure(rejection.failure.value)) from None
+    if isinstance(record, product_candidate.candidate.Failure):
+        raise Rejected(Failure(record.value))
+    if (record.sourceRevision != revision or record.sourceTree != expected_tree
+            or record.producer.runId != run_id or record.producer.runAttempt != run["run_attempt"]):
+        raise Rejected(Failure.WRONG_PRODUCER)
+    output(github_output, publication=PublicationState.PUBLISH.value,
+           version=record.version, source_revision=record.sourceRevision)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("seal", "reuse", "promote", "verify-publication", "current-main"))
+    parser.add_argument("action", choices=("seal", "reuse", "promote", "promote-product", "verify-publication", "current-main"))
     parser.add_argument("--repository", required=True)
     parser.add_argument("--revision", required=True)
     parser.add_argument("--bundle", type=Path)
@@ -512,6 +552,9 @@ def main() -> None:
             return
         if args.bundle is None:
             raise Rejected(Failure.INVALID_IDENTITY)
+        if args.action == "promote-product":
+            promote_product(args.repository, args.revision, args.run_id, args.run_attempt, args.bundle, args.github_output)
+            return
         if args.action == "verify-publication":
             if args.promotion_record is None:
                 raise Rejected(Failure.INVALID_IDENTITY)

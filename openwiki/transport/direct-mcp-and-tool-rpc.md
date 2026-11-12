@@ -8,6 +8,8 @@ tags:
   - transport
 code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
@@ -34,28 +36,26 @@ code_sources:
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlanTest.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetailTest.kt
 sources:
-  - id: openwiki-source-a856ab1fe259496cbf44bc53
-    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt
   - id: openwiki-source-eee64eb8ca3aa3550601ed99
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt
   - id: openwiki-source-7685e27063adfdefffa21252
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
+  - id: openwiki-source-e2eb0f864f441066834169f4
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt
   - id: openwiki-source-59b559d53d91096a82b485a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
-  - id: openwiki-source-a566d74d2962e0f1901a1d38
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
   - id: openwiki-source-1d161f3eb7933044519fd33a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - id: openwiki-source-021e60454b473f51dc29603a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
   - id: openwiki-source-210e5a1fdf9d35bc022594a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
-  - id: openwiki-source-167d1a669da1a6f9cf901888
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryRouting.kt
-generated: { by: "pi", at: "2026-11-11T10:52:58.442Z" }
+  - id: openwiki-source-ecb21af09f4a49f9e40342dd
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
+generated: { by: "amp", at: "2026-11-12T21:32:17.187Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T14:25:07.841Z
+    at: 2026-11-12T21:32:17.187Z
 ---
 
 # Direct MCP and tool RPC
@@ -70,10 +70,13 @@ A stopped or unproved installation returns a typed rejection.
 
 The session routes public changes to the shared change owner.
 Read operations use the existing-IDE client and admitted public request.
-Within this session, CLI and one-shot RPC invocation leave preparation to the typed operation demand.
+CLI, MCP, and RPC invocation select preparation through typed operation admission.
 Fresh discovery and diagnostics prepare the workspace.
 Issued source and retained-reference reads use existing authority without an eager session preparation step.
-Container management prepares the selected private Host before a cwd-routed query child starts.
+`ManagedToolInvocation` opens the shared `ManagedWorkspaceQuery` lease for each request, not for the lifetime of the transport session.
+It rechecks Control admission after acquiring the lease, binds the private HOME and generation, and closes request-owned preparation jobs after execution.
+The first explicit preparation request can create the exact-root trust record; retained reads require that record already to exist.
+Installed product and runtime selection is local. Missing runtime bytes reject rather than downloading a release or using desktop IDEA.
 MCP and harness-neutral RPC choose different client protocols around that same session.
 Neither transport creates another semantic implementation.
 
@@ -84,9 +87,9 @@ The connection cannot switch eras after admission.
 Modern requests need the supported protocol version.
 The server distinguishes initialization, discovery, tool listing, calls, and unsupported methods.
 
-Legacy initialization or the first admitted modern request starts workspace preparation once.
-The same session owner serves later semantic demand and health requests.
-Installed agent preparation hooks remain a separate caller of the existing preparation owner.
+Legacy initialization and modern discovery are passive.
+Only an explicit semantic or health invocation enters managed workspace admission and preparation when its operation requires it.
+Session-start hooks also remain passive; an internal explicit wait path is a distinct lifecycle request.
 Tool annotations describe the preparation effect as well as the tool's nominal read behavior.
 Preparation can save editor buffers and refresh the project.
 A read query therefore does not imply an entirely effect-free client invocation.

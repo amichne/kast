@@ -38,6 +38,8 @@ class ManagementReceiptPreservationTest {
                 .copy(
                     updatePolicy = UpdatePolicy.PinnedBuild(identity),
                     installedBuild = identity,
+                    providers =
+                        listOf(ProviderRegistration(ProviderHarness.CODEX, home.resolve("custom-codex").toString())),
                     guidance =
                         listOf(
                             ManagedGuidance(
@@ -55,5 +57,6 @@ class ManagementReceiptPreservationTest {
         assertEquals(prior.installedBuild, after.installedBuild)
         assertEquals(prior.updatePolicy, after.updatePolicy)
         assertEquals(prior.guidance, after.guidance)
+        assertEquals(prior.providers, after.providers)
     }
 }

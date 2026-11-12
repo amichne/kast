@@ -1,17 +1,25 @@
 package io.github.amichne.kast.cli.direct
 
+import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.installation.InstallationManifest
 import io.github.amichne.kast.cli.installation.PayloadFile
 import io.github.amichne.kast.cli.installation.installationManifestJson
 import io.github.amichne.kast.cli.rpc.OneShotInvocationRecord
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.registry.PublicToolCatalog
+import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -102,6 +110,26 @@ class InstalledClientContextTest {
         Files.writeString(payload, "replacement")
         assertEquals(InstalledToolAdmission.UNPROVEN, context.observe())
         assertInstanceOf(Refinement.Rejected::class.java, InstalledClientContext.admit(payload, emptyMap()))
+    }
+
+    @Test
+    fun `installed semantic entry rejects an unqualified product rather than using a desktop`(
+        @TempDir temporary: Path
+    ) {
+        val payload = installedPayload(temporary.toRealPath(), "bin/kast-query")
+        val workspace = Files.createDirectory(temporary.resolve("workspace"))
+        Files.writeString(workspace.resolve("settings.gradle.kts"), "")
+        val session =
+            checkNotNull(KastDirectToolSession.installed(workspace, admitted(payload), PublicToolCatalog.COMPLETE))
+        val identity = PublicToolIdentity.QUERY_SYMBOLS
+        val request = PublicToolContract.examples(identity).examples.getValue("runByName").value.jsonObject
+        val rejection =
+            assertInstanceOf(CliExit.BoundaryRejected::class.java, session.invoke(identity.toolName, request))
+        val document = Json.parseToJsonElement(rejection.document.value).jsonObject
+        assertEquals("rejected", document.getValue("status").jsonPrimitive.content)
+        assertEquals("managed_workspace", document.getValue("boundary").jsonPrimitive.content)
+        assertEquals("INVALID_RECORD", document.getValue("failure").jsonPrimitive.content)
+        assertFalse(Files.exists(payload.parent.parent.parent.resolveSibling("kast-workspaces")))
     }
 
     private fun admitted(payload: Path, environment: Map<String, String> = emptyMap()): InstalledClientContext =

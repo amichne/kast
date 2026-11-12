@@ -5,7 +5,7 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
-import io.github.amichne.kast.appserver.ide.canonicalRootFixture
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import java.util.UUID

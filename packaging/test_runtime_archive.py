@@ -3,21 +3,26 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import tarfile
 import zipfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import pytest
 
+import runtime_base
 from composed_bundle import BundleRejected, PackedBundle
 from composition_platform import HostPlatform
 from managed_headless import AssemblyRecord
+from managed_product import extract_runtime
 from runtime_archive import pack_runtime
 
 
-@pytest.mark.parametrize("target", tuple(HostPlatform))
-def test_payload_has_no_installer_or_mutable_state(tmp_path: Path, target: HostPlatform) -> None:
+def runtime_fixture(
+    tmp_path: Path, target: HostPlatform, host: bytes = b"Host"
+) -> tuple[Path, Path]:
     root = tmp_path / "assembled"
     home = root / target.layout.home
     bootstrap = home / "third-party-plugins/kast-managed-headless/lib/kast-managed-headless.jar"
@@ -46,7 +51,7 @@ def test_payload_has_no_installer_or_mutable_state(tmp_path: Path, target: HostP
     plugins = root / "state/home/.local/share/JetBrains/Kast/plugins"
     plugin = plugins / "kast-ide-hosted/lib/kast-ide-hosted.jar"
     plugin.parent.mkdir(parents=True)
-    _ = plugin.write_bytes(b"Host")
+    _ = plugin.write_bytes(host)
     selection = root / "state/home/.local/share/kast/installation/config/selected-ide.json"
     selection.parent.mkdir(parents=True)
     _ = selection.write_text(json.dumps(asdict(Selection(PluginTarget(str(plugins))))))
@@ -61,6 +66,12 @@ def test_payload_has_no_installer_or_mutable_state(tmp_path: Path, target: HostP
     packed = pack_runtime(root, output, "1.2.3", target, linux_support=support)
     assert isinstance(packed, PackedBundle), packed
     assert packed.sha256 == hashlib.sha256(output.read_bytes()).hexdigest()
+    return root, output
+
+
+@pytest.mark.parametrize("target", tuple(HostPlatform))
+def test_payload_has_no_installer_or_mutable_state(tmp_path: Path, target: HostPlatform) -> None:
+    root, output = runtime_fixture(tmp_path, target)
     with zipfile.ZipFile(output) as archive:
         manifest = json.loads(archive.read("manifest.json"))
         assert set(manifest) == {
@@ -91,9 +102,54 @@ def test_payload_has_no_installer_or_mutable_state(tmp_path: Path, target: HostP
             "state/" in name or name.endswith((".py", ".pyz", "install.sh", "kast-headless.json"))
             for name in archive.namelist()
         )
-    assert isinstance(
-        pack_runtime(root, output, "1.2.3", target, linux_support=support), BundleRejected
-    )
+    assert isinstance(pack_runtime(root, output, "1.2.3", target), BundleRejected)
+
+
+@pytest.mark.parametrize("target", (HostPlatform.MACOS_ARM64, HostPlatform.LINUX_X86_64))
+def test_host_change_reuses_exact_base_and_composes_owned_bytes(
+    tmp_path: Path, target: HostPlatform
+) -> None:
+    bases: list[bytes] = []
+    components: list[bytes] = []
+    for index, host in enumerate((b"Host one", b"Host two")):
+        directory = tmp_path / str(index)
+        directory.mkdir()
+        _, runtime = runtime_fixture(directory, target, host)
+        setup = directory / "setup.tar.gz"
+        with tarfile.open(setup, "w:gz") as archive:
+            member = tarfile.TarInfo("setup-kast/fixture")
+            member.size = 7
+            archive.addfile(member, io.BytesIO(b"fixture"))
+        work = directory / "split"
+        work.mkdir()
+        selected = runtime_base.split(runtime, setup, target, Path(__file__).parent, work)
+        base_archive = directory / selected.base.name
+        bases.append(base_archive.read_bytes())
+        components.append(runtime.read_bytes())
+        base = directory / "base"
+        manifest = runtime_base.extract_base(base_archive, selected, base)
+        before = base_archive.read_bytes()
+        composed = directory / "composed"
+        _ = extract_runtime(runtime, composed, "1.2.3", target, base=(base, manifest, selected))
+        vendor = runtime_base.prefix(target) + "/bin/idea"
+        assert (composed / vendor).stat().st_mode & 0o777 == 0o555
+        assert (composed / (vendor + "-link")).is_symlink()
+        assert (
+            composed / "components/plugins/kast-ide-hosted/lib/kast-ide-hosted.jar"
+        ).read_bytes() == host
+        (composed / vendor).chmod(0o700)
+        _ = (composed / vendor).write_bytes(b"owned mutation")
+        assert (base / vendor).read_bytes() == b"native"
+        assert before == base_archive.read_bytes()
+        with zipfile.ZipFile(runtime) as archive:
+            assert vendor not in archive.namelist()
+            assert runtime_base.MARKER in archive.namelist()
+        with pytest.raises(ValueError, match="base artifact bytes"):
+            _ = base_archive.write_bytes(b"corrupt")
+            _ = runtime_base.extract_base(base_archive, selected, directory / "rejected")
+        assert not (directory / "rejected").exists()
+    assert bases[0] == bases[1]
+    assert components[0] != components[1]
 
 
 @dataclass(frozen=True)

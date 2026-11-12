@@ -1,18 +1,18 @@
 ---
 title: "Platform and compatibility"
-description: "Use the supported IDEA installation and distinguish installed build identity, loaded Host identity, and semantic evidence."
+description: "Select a complete managed product and distinguish installed identity, workspace Host identity, and semantic evidence."
 icon: "shield-check"
 hideFooterPagination: true
 ---
 
-Use an Apple silicon Mac and a Kotlin Gradle project.
-Kast needs IntelliJ IDEA `262.*` or `263.*` with its bundled Kotlin plugin and Java 25 JBR.
-Your project's JDK does not replace the IDEA runtime.
+The managed product targets macOS ARM64 and Linux x86-64.
+Kast supplies the admitted IntelliJ, Kotlin plugin, and Java runtime bytes. Your project's JDK does not replace that runtime.
+There is no user-selected desktop IDEA or container setup path.
 
-Each release line has its own Host archive and descriptor.
-Control admits the actual IDEA and Kotlin builds only when both belong to the same supported release line.
+The product record binds the immutable vendor base and exact component identities.
+Control admits the actual IDEA and Kotlin builds against the selected runtime contract.
 The runtime protocol, operation registry, wire schema, and capabilities must match exactly.
-The composed Host recipe keeps its separate pinned `262` vendor input.
+Native acceptance and publication of this managed-only product are not yet complete; see [installation](/reference/installation).
 
 <span id="installed-contract-authority" />
 
@@ -36,10 +36,12 @@ Use the [setup guide](/start) for an initial installation. To update an installe
 
 ```shell
 kast versions
-kast upgrade --channel main
+kast upgrade --channel preview
 ```
 
-Control supplies the command and agent resources. Host supplies the IDEA plugin and semantic runtime. Kast admits their contracts and build identities before replacement. An exact version or commit selector records a pin. See [build selection](/reference/installation#pin-a-published-build).
+Control supplies the command and agent resources. Host supplies the IDEA plugin and semantic runtime.
+Build selection resolves one complete product, not independently chosen components.
+An exact version or commit selector records a pin. See [build selection](/reference/installation#pin-a-published-build).
 
 ## Loaded Host identity
 
@@ -47,9 +49,9 @@ Control supplies the command and agent resources. Host supplies the IDEA plugin 
 kast status --json
 ```
 
-Installed build identity describes disk contents. Loaded Host identity describes the admitted running IDEA process.
-An update reports `ACTIVATED` only after the affected running Host matches the selected build and contract.
-`INSTALLED_NOT_RUNNING` describes the planned stopped-IDE path. It does not claim that IDEA loaded Host.
+Installed build identity describes disk contents. Workspace Host observations describe admitted running processes.
+Inspect `workspaces`, not the old installation-wide `applicationHost` field, for a managed product.
+Status remains passive. The next explicit semantic request prepares the selected workspace generation.
 
 A loaded Host does not prove readiness in a particular project or worktree.
 A successful query keeps its own scope and completion evidence.

@@ -1,8 +1,8 @@
 package io.github.amichne.kast.appserver
 
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals

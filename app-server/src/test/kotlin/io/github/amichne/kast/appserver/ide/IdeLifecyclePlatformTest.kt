@@ -10,11 +10,13 @@ import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
+import org.junit.jupiter.api.io.TempDir
 
 class IdeLifecyclePlatformTest {
     @Test
-    fun `workspace lifecycle admits reviewed platforms and preserves exact contract rejection`() {
-        val home = Path.of("/disposable/idea")
+    fun `workspace lifecycle admits reviewed platforms and preserves exact contract rejection`(@TempDir root: Path) {
+        val fixture = ManagedDeploymentFixture(root.toRealPath())
+        val home = fixture.idea
         for (line in listOf("262", "263", "261", "264")) {
             val build = "$line.7307.200"
             val host =
@@ -24,13 +26,14 @@ class IdeLifecyclePlatformTest {
                     "IU-$build",
                     emptyList(),
                     HostedCompatibilityDocument(build, "$build-IJ", "1.2.3", CanonicalHostedContract.document),
+                    runtimeIdentity = fixture.identity(),
                 )
             val actual =
                 admitWorkspaceLifecycleHost(
                     home,
                     host,
                     IdeLifecycleCommand.Inspect,
-                    SelectedLifecycleDeployment.Desktop,
+                    fixture.selected,
                 )
             if (line in setOf("262", "263")) {
                 assertEquals(Refinement.Refined(Unit), actual)
@@ -51,7 +54,7 @@ class IdeLifecyclePlatformTest {
                                 home,
                                 changed,
                                 IdeLifecycleCommand.Inspect,
-                                SelectedLifecycleDeployment.Desktop,
+                                fixture.selected,
                             )
                         )
                         .failure,

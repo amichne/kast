@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from enum import StrEnum
+from pathlib import Path
 from typing import TypeGuard
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packaging"))
+import managed_release as product
 
 MAXIMUM_PUBLICATION_TRIES = 4
 MAXIMUM_CATALOG_BYTES = 65_536
@@ -51,9 +56,32 @@ class Build:
 
 
 @dataclass(frozen=True, slots=True)
+class ProductBuild:
+    mainRevision: str
+    releaseTag: str
+    record: product.ProductRecord
+    recordSha256: str
+
+    @property
+    def buildRevision(self) -> str:
+        return self.record.sourceRevision
+
+    @property
+    def sourceTree(self) -> str:
+        return self.record.sourceTree
+
+    @property
+    def version(self) -> str:
+        return self.record.version
+
+
+type Entry = Build | ProductBuild
+
+
+@dataclass(frozen=True, slots=True)
 class Catalog:
     schemaVersion: int
-    builds: tuple[Build, ...]
+    builds: tuple[Entry, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +100,17 @@ def sequence(value: object) -> TypeGuard[list[object]]:
     return isinstance(value, list)
 
 
-def valid(build: Build) -> bool:
+def valid(build: Entry) -> bool:
+    if isinstance(build, ProductBuild):
+        return (
+            SHA.fullmatch(build.mainRevision) is not None
+            and build.mainRevision != "0" * 40
+            and build.mainRevision == build.record.sourceRevision
+            and build.releaseTag == f"developer-v{build.version}"
+            and DIGEST.fullmatch(build.recordSha256) is not None
+            and product.decode_product_record(json.dumps(asdict(build.record)).encode())
+            == build.record
+        )
     return (
         all(
             SHA.fullmatch(value) and value != "0" * 40
@@ -98,7 +136,19 @@ def record(value: object, name: str) -> RecordReference | Failure:
     return RecordReference(filename, digest)
 
 
-def build(value: object) -> Build | Failure:
+def build(value: object) -> Entry | Failure:
+    if mapping(value) and set(value) == {"mainRevision", "releaseTag", "record", "recordSha256"}:
+        main, tag, digest = value["mainRevision"], value["releaseTag"], value["recordSha256"]
+        product_record = product.parse_product_record(value["record"])
+        if (
+            not isinstance(main, str)
+            or not isinstance(tag, str)
+            or not isinstance(digest, str)
+            or isinstance(product_record, product.Failure)
+        ):
+            return Failure.CATALOG_INVALID
+        complete = ProductBuild(main, tag, product_record, digest)
+        return complete if valid(complete) else Failure.CATALOG_INVALID
     if not mapping(value) or set(value) != {
         "mainRevision",
         "buildRevision",
@@ -148,30 +198,34 @@ def decode(raw: str) -> Catalog | Failure:
         return Failure.CATALOG_INVALID
     if not mapping(value) or set(value) != {"schemaVersion", "builds"}:
         return Failure.CATALOG_INVALID
-    if type(value["schemaVersion"]) is not int or value["schemaVersion"] != 1:
+    if type(value["schemaVersion"]) is not int or value["schemaVersion"] not in (1, 2):
         return Failure.CATALOG_INVALID
     values = value["builds"]
     if not sequence(values) or len(values) > WINDOW:
         return Failure.CATALOG_INVALID
-    entries: list[Build] = []
+    entries: list[Entry] = []
     for item in values:
         admitted = build(item)
-        if isinstance(admitted, Failure):
-            return admitted
+        if (
+            isinstance(admitted, Failure)
+            or (value["schemaVersion"] == 1 and isinstance(admitted, ProductBuild))
+            or (value["schemaVersion"] == 2 and isinstance(admitted, Build))
+        ):
+            return Failure.CATALOG_INVALID
         entries.append(admitted)
     if len({item.mainRevision for item in entries}) != len(entries):
         return Failure.CATALOG_INVALID
-    return Catalog(1, tuple(entries))
+    return Catalog(value["schemaVersion"], tuple(entries))
 
 
 def encode(catalog: Catalog) -> str:
     return json.dumps(asdict(catalog), separators=(",", ":")) + "\n"
 
 
-def merge(current: Catalog, incoming: Build, main_history: tuple[str, ...]) -> Catalog | Failure:
+def merge(current: Catalog, incoming: Entry, main_history: tuple[str, ...]) -> Catalog | Failure:
     """History lists source identities newest first. Job time and version do not order builds."""
     if (
-        current.schemaVersion != 1
+        current.schemaVersion not in (1, 2)
         or len(current.builds) > WINDOW
         or not valid(incoming)
         or not all(valid(item) for item in current.builds)
@@ -194,8 +248,14 @@ def merge(current: Catalog, incoming: Build, main_history: tuple[str, ...]) -> C
     if previous is not None and previous != incoming:
         return Failure.IDENTITY_CONFLICT
     entries = current.builds if previous is not None else (*current.builds, incoming)
+    if isinstance(incoming, ProductBuild):
+        # Old releases and pins are untouched; the discovery window now advertises products only.
+        entries = tuple(item for item in entries if isinstance(item, ProductBuild))
+    elif current.schemaVersion == 2:
+        return Failure.CATALOG_INVALID
     return Catalog(
-        1, tuple(sorted(entries, key=lambda item: positions[item.mainRevision])[:WINDOW])
+        2 if isinstance(incoming, ProductBuild) or current.schemaVersion == 2 else 1,
+        tuple(sorted(entries, key=lambda item: positions[item.mainRevision])[:WINDOW]),
     )
 
 
@@ -205,7 +265,7 @@ def latest_pointer(catalog: Catalog) -> str:
 
 
 def publish(
-    incoming: Build,
+    incoming: Entry,
     read: Callable[[], Snapshot | Failure],
     history: Callable[[tuple[str, ...]], tuple[str, ...] | Failure],
     commit: Callable[[Snapshot, Catalog, str], CommitResult | Failure],

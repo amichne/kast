@@ -14,6 +14,27 @@ class PublicInstallationResetTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `legacy force reset preserves managed stores before detachment or retirement`() {
+        val home = Files.createDirectories(temporary.toRealPath().resolve("home"))
+        val root = Files.createDirectories(home.resolve(".local/share/kast"))
+        val original = Files.writeString(root.resolve("management.json"), "corrupt but retained")
+        val scope = admitted(root, home)
+        for (name in listOf("kast-workspaces", "kast-runtime-bases")) {
+            val store = Files.createDirectory(root.resolveSibling(name))
+            val sentinel = Files.writeString(store.resolve("foreign"), "protected")
+            val runtime = retirementRuntime(emptyList())
+            val outcome = resetPublicInstallation(scope, execution(runtime))
+            assertTrue(outcome is ForceResetOutcome.Rejected, outcome.toString())
+            assertEquals("corrupt but retained", Files.readString(original))
+            assertEquals("protected", Files.readString(sentinel))
+            assertFalse(Files.exists(installationResetFence(root)))
+            runtime.assertConsumed()
+            Files.delete(sentinel)
+            Files.delete(store)
+        }
+    }
+
+    @Test
     fun `public reset erases corrupt state legacy artifacts and launcher without executing old commands`() {
         val home = Files.createDirectories(temporary.toRealPath().resolve("home"))
         val root = Files.createDirectories(home.resolve(".local/share/kast"))
@@ -161,7 +182,6 @@ class PublicInstallationResetTest {
     private fun execution(runtime: ForceDaemonRuntime) =
         ForceResetExecution(
             runtime = runtime,
-            installer = ForceReinstaller { _, _, _ -> error("old or fresh installer must not run during reset") },
             observe = {},
         )
 

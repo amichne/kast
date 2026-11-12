@@ -130,6 +130,27 @@ class CopilotPluginInstallationTest {
         script.assertConsumed()
     }
 
+    @Test
+    fun `Copilot uninstall admits the optional composition and verifies absence`() {
+        val root = pluginFixtureWithMcp(temporary)
+        val home = temporary.toRealPath().resolve("home")
+        val optional = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH/compositions/mcp")
+        val script =
+            PluginScript(
+                PluginStep(marketplacesCommand, markets(optional)),
+                PluginStep(pluginsCommand, installed(optional)),
+                PluginStep(listOf("copilot", "plugin", "uninstall", "kast@kast")),
+                PluginStep(pluginsCommand, installed()),
+                PluginStep(listOf("copilot", "plugin", "marketplace", "remove", "kast")),
+                PluginStep(marketplacesCommand, markets()),
+            )
+        assertEquals(
+            PluginObservation.Observed(Unit),
+            uninstallHarness(root, home, Harness.COPILOT, mapOf("CODEX_HOME" to "/invalid\u0000home"), script::execute),
+        )
+        script.assertConsumed()
+    }
+
     private fun execution(script: PluginScript) =
         GuidanceProviderExecution(script::execute) { _, _ -> throw AssertionError("CLI-only setup must not start uv") }
 

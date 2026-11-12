@@ -68,6 +68,7 @@ private fun installAdmittedCopilotGuidance(
         is PluginObservation.Rejected ->
             return rejectedCopilot(ProvisionStage.DEPENDENCY_PREPARATION, preparation.failure)
     }
+    retainProviderRegistration(root, ProviderHarness.COPILOT, home)
     val plan = CopilotProvisionPlan(bundle, marketplace, plugin)
     return if (plan.current) ProvisionOutcome.AlreadyInstalled(bundle.plugin.toString())
     else applyCopilotPlan(plan, execute)

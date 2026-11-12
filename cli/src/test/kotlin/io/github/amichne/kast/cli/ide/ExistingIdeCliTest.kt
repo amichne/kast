@@ -1,7 +1,5 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClassName
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
@@ -13,8 +11,10 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeQualifiedClassName
 import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
 import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
 import io.github.amichne.kast.appserver.ide.admitLiveEvidence
-import io.github.amichne.kast.appserver.ide.canonicalRootFixture
 import io.github.amichne.kast.cli.*
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscoverer
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Files
@@ -213,9 +213,9 @@ class ExistingIdeCliTest {
     }
 
     @Test
-    fun `missing endpoint creates no state`() {
+    fun `missing managed configuration rejects without creating endpoint state`() {
         val result = ExistingIdeSocketClient(temporary).query(root, ExistingIdeOperation.Status)
-        assertEquals(ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE), result)
+        assertEquals(ExistingIdeExchange.Rejected(ExistingIdeFailure.CONFIGURATION_REJECTED), result)
         assertFalse(Files.exists(temporary.resolve(".kast")))
     }
 

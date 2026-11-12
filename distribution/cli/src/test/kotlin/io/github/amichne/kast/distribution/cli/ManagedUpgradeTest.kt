@@ -5,6 +5,7 @@ import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
 import io.github.amichne.kast.distribution.contract.UpdatePolicy
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
@@ -152,6 +153,10 @@ class ManagedUpgradeTest {
     fun `explicit selection captures bytes once and preserves interrupt exit`() {
         val fixture = fixture()
         val request = BuildRequest.Version((StableVersion.parse("1.2.3") as SelectionAdmission.Admitted).value)
+        val record = productEntry().record
+        val raw = managementJson.encodeToString(record)
+        val digest = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray()).toHexString()
+        val reads = mutableListOf<String>()
         var captured: Path? = null
         val result =
             executeManagedUpgrade(
@@ -160,12 +165,22 @@ class ManagedUpgradeTest {
                 ManagementCommand.Upgrade(request = request),
                 emptyMap(),
                 ManagedUpgradeExecution(
-                    readRelease = { error("exact stable selection uses no discovery") },
+                    readRelease = { url ->
+                        reads += url
+                        exactStableRead(url, raw, digest)
+                    },
                     installer = { argv, _, _ ->
                         val file = Path.of(argv[argv.indexOf("--resolved-selection") + 1])
                         captured = file
                         assertEquals(
-                            ResolvedBuildSelection.Stable("1.2.3", "v1.2.3", StableSelectionPolicy.PinnedBuild),
+                            ResolvedBuildSelection.Product(
+                                "v1.2.3",
+                                record,
+                                digest,
+                                ProductSelectionPolicy.PinnedBuild,
+                                "1.2.3",
+                                null,
+                            ),
                             managementJson.decodeFromString<ResolvedBuildSelection>(Files.readString(file)),
                         )
                         130
@@ -173,6 +188,8 @@ class ManagedUpgradeTest {
                 ),
             )
         assertEquals(ManagedUpgradeOutcome.ChildExited(130), result)
+        assertEquals(2, reads.size)
+        assertEquals(2, reads.toSet().size)
         assertFalse(Files.exists(captured!!))
     }
 
@@ -180,6 +197,8 @@ class ManagedUpgradeTest {
     fun `selection cleanup failure preserves the reaped child exit and reports one notice`() {
         val fixture = fixture()
         val request = BuildRequest.Version((StableVersion.parse("1.2.3") as SelectionAdmission.Admitted).value)
+        val raw = managementJson.encodeToString(productEntry().record)
+        val digest = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray()).toHexString()
         val notices = mutableListOf<ManagedUpgradeNotice>()
         var captured: Path? = null
         try {
@@ -190,7 +209,7 @@ class ManagedUpgradeTest {
                     ManagementCommand.Upgrade(request = request),
                     emptyMap(),
                     ManagedUpgradeExecution(
-                        readRelease = { error("exact stable selection uses no discovery") },
+                        readRelease = { url -> exactStableRead(url, raw, digest) },
                         installer = { argv, _, _ ->
                             val path = Path.of(argv[argv.indexOf("--resolved-selection") + 1])
                             captured = path
@@ -213,6 +232,15 @@ class ManagedUpgradeTest {
         }
     }
 
+    private fun exactStableRead(url: String, record: String, digest: String): ReleaseDocumentRead =
+        when (url) {
+            "https://github.com/amichne/kast/releases/download/v1.2.3/release-mapping.json" ->
+                ReleaseDocumentRead.Read(managementJson.encodeToString(PublicReleaseMapping(1, "1.2.3", digest)))
+            "https://github.com/amichne/kast/releases/download/v1.2.3/build-record.json" ->
+                ReleaseDocumentRead.Read(record)
+            else -> error("Exact stable selection must not discover or substitute another release: $url")
+        }
+
     private fun assertRecovery(fixture: LifecycleFixture) {
         var reads = 0
         var calls = 0
@@ -220,7 +248,7 @@ class ManagedUpgradeTest {
             executeManagedUpgrade(
                 fixture.root,
                 fixture.home,
-                ManagementCommand.Upgrade(dryRun = true, json = true, restartIde = true, ideaHome = "ignored"),
+                ManagementCommand.Upgrade(dryRun = true, json = true),
                 mapOf("EXAMPLE" to "kept"),
                 ManagedUpgradeExecution(
                     readRelease = {

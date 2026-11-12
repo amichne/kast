@@ -1,11 +1,11 @@
 package io.github.amichne.kast.cli.rpc
 
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.direct.DirectToolRegistration
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
 import io.github.amichne.kast.protocol.contract.QueryResultReference
@@ -140,7 +140,6 @@ internal object QuerySessionSubprocessFixture {
             KastDirectToolSession(
                 registration = DirectToolRegistration(setOf(name)) { error("Query must not project a catalog") },
                 root = { FilesystemCanonicalRootDiscovery.discover(root) },
-                start = { Refinement.Refined(Unit) },
                 invokePublic = { admitted ->
                     when (scenario) {
                         QuerySessionFixtureScenario.QUERY -> {

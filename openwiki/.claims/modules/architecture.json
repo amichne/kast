@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a40cb0d06674666f5b5d1d2fcbf2b9263c9936bf775a4bcb728877d4436ae421",
+  "pageVersion": "sha256:649f3a8e924daeb677a28767b515f5273f35c6174988cfafdd3998cb3ddd1e87",
   "claims": [
     {
       "id": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -47,8 +47,8 @@
           "version": "repo-lines-v1:sha256:1f809cbe56fb43c60678bb4eae7c28529eb3d35c334884cafdf85acb755f73c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNGU0NWUyOWRhNjc2ZGM0MDVkODNiN2Q2MDVjMjE0MmRjYTZhZjU0N2NmNDVhMzZkM2JlY2NlNDE2NDQ0MTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOTgwZTUxYjM3MTQzYjdmMjhlN2M1ZmVkMzIxYzcxYjhiNjIyYzdiZjc4ZmFiMWUzMzg3NWNmMWVkZjU2OTUifQ"
         },
         {
-          "resource": "repo://build.gradle.kts#L139-L166",
-          "version": "repo-lines-v1:sha256:3de5f81a1415b830b7f4f3ddfed820e760d5e41b7da0e4af7a794a5d503b7b7d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3ZGUwNDMzOTM4NGU5YzI4MTg4MTM4NTQ3YzY5MGJiZGU3Yzc3ZjQ5OGI3NmU3YWExNDhmODcxOGQyNDI1ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyZjkzNDZlODI1NTY4ZmFmNjc2YjA4NWFjOGFhNGQxOWQxYWQ5ZThlMjgyNTgwYjdmODM5ODM5MWUwZTY5OWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjMWE2Y2EyZjBjY2NmMWM4MmRhODFkZDZmOTE4ZDE3Y2NhNDdjNWY1MWQ2ZTMzNTY0OTY2ZDYxMGM2YTQ5MzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllNjg1YzA0MmI4YzY2OGM1NDZhZGIwY2Y5MzFhZTY2NTAxNTkxMjI5MmFiY2UzYWNiMTgwYjA2OWNhMmVlY2MifQ"
+          "resource": "repo://build.gradle.kts#L135-L150",
+          "version": "repo-lines-v1:sha256:949d296e11253de9b7e40468898a823cdcefc5a276fe521a57fddc508f742ccf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmMjg3ZmYyYmE3MjFjMTU3NzNkMTAwZWVjM2QzYzMwM2YzZWFhNmE1YjAyZWU3NzRhMTg0N2Y4Yjc5N2ZmZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyNWNkYjlhMjNlYTQxNWU0NmVmNjZiYzE2YWI1NGRhMzg0MjE2MDFlOWU3OWQwMTVhMjJiM2UxMzZjYzg3ZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkMzdkN2FjZGU1ZDI5ZDM5YjA4MTg1NzNhODgyMGYxZmFkZmExYmFkMDlhYzgxM2ZhMDRmODBlN2RkOGNhYTYifQ"
         },
         {
           "resource": "repo://runtime/hosted/build.gradle.kts",
@@ -61,11 +61,11 @@
       "statement": "When semantic fixtures are enabled, root check enforces reviewed resource identity, FIR inventory accounting, and exact successful execution of declared native cases.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L816-L853",
+          "resource": "repo://build.gradle.kts#L826-L863",
           "version": "repo-lines-v1:sha256:05e3309e3445a91849800ecd976ec37dcddbbd2482044a5b9d145bedd21b4337:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmMGNlMGU2ODgyNTJlNDdkMWMxMDQ2Y2ZkNDQwMmUyYWFkYWEyZTFhMTQ0NjljZjFiYjM1YmFiZGE4ZTE2YjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0OGY5YmI1NThjY2UyMjU3MGE3YzJiNTczMTYzNTMyYjNhZjRiY2FiOWRkZGJiM2YxMjIyOWJiMjdjMDliMjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZiYWRiZjMyMTcyMTFjOGMxYTYzYWYxZWQyNzU3NmE1MTdiNDBmMTQ1NmE0ZjlkMzRjNTgwZWI3YWNlMDU3YzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2YzgzZmJhZjkyYjljMmU3Yjg1YTljY2Q1NzUwZThlZjQxMjZmMjc4ZWNmYjJhYTU3MTY3MDU2YmFiZThiMTgifQ"
         },
         {
-          "resource": "repo://build.gradle.kts#L849-L886",
+          "resource": "repo://build.gradle.kts#L859-L896",
           "version": "repo-lines-v1:sha256:a8eae36b4a254b4a99e0ff299b1ada839533417a38d3ce1c79dd5117b566d38a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjYzAyOWJkYWJiMWEwM2RkNzUyMjQ0MGM4MGU3YTlkMzlmNjhiZTA1OTUzZDA4Y2NjZTA0MjI0OGM0YmQ2YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzMmRlYzFiZDA1NTEyYTEzNDBkZjkyNTI3YWQ0NWQzNWI1NmQ1MjA0ZjU3YmQ3MjA4NDI2M2UzYWQ1OGRkZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkxOTIwNTE1MzMzN2JjMzEwNGE4ZDBiNmMwYWM0NTg1YzliNzcxOTRjZGU5NDk3ZDBlZjgwMDhhNjI4NzNhMTIifQ"
         },
         {
@@ -101,7 +101,7 @@
           "version": "repo-lines-v1:sha256:cc152c49c6e28262e0fb6a2e758749fffd8d67588db22f4667c2bb3c1d652ff6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNTBhMDQwMjYyM2EzNWUzYmUyN2UzM2RmYTQ0NjY1YjlhY2Y0OTFlOThlNTI3NGE4Y2VkNzFmZjM4ZTExMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoyLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVjZTdlYjg1MjYzN2ZjZGZkMDIwYjBmZmVlZjg0YmNmNDYwYTZiNjU0OGIzMzAzY2YzOTNkNDFjZGYxNjczNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L472-L483",
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L473-L484",
           "version": "repo-lines-v1:sha256:9672c50fc74cc1b6c84a3de8ad95c6c7c4140044f613ce063dc76b50d2d75db3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZDlmNzM0YmU1YWEwMzkzNWM0OTliNzE0MTEzNTVjZWZhYzJhMmJmNTc5ODllMTI0NmQzNWE3MzUyYzdlOWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMjNlZDEwMjlmYTE4YTc1Zjg5M2ZiNDFmZTYxOWE0MmZkNjI3ODk2M2QxMjM4NTUxYThiMGMzZTEwOTNiOGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzOGVhYzMzZmQzODU2YWUwN2UzZGUwZmUzNjQ2ZGY0YzQ5M2RmMTI0MGEwNDc5Mzg5ODJiMTI4MjM5MGE1YTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2YzRmNWI2ZDcyM2I4ODkyMmM1ZmFmZjUzNGU1NWY1Y2Y1YjkwZTc0MzMyZmZhM2VkZjBlOTZkZWFiNTgwOGYifQ"
         },
         {
@@ -115,8 +115,8 @@
       "statement": "The cli module composes the distribution:cli management implementation through an exact architecture-policy edge and produces the shared native Control executable. The management module keeps no IntelliJ, semantic, MCP implementation, or App Server implementation dependency.",
       "evidence": [
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-          "version": "repo-file-v1:sha256:0364767aba5dda9da9425147e51121554ec32c3e4610e2baae4696e5e71c7fe0"
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L26-L35",
+          "version": "repo-lines-v1:sha256:cd22be51d93cffa5ed628effb7d5050dc46995216f05b507b634949b50049112:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiZmNiOTk1MDI3YjkzNWMwY2ExMjcyZTFmOGNkMzFjNGExMzE4Y2JkOTM1Nzg3NDQyODNhNmUyNTQyMTdlZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjOTVmYjZiZDFjNDliMTdhNmFkY2FiYTAwZDZkZmI4ZTFhZWI5MWQ1MWQwY2NkNDgwMTI2ZTdjNDc0NGVlZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmYTdiZDBjNTQyNWQyMTFmZmY1MjJlYzg5YzQxNjg5ZTZlODE1ODZkYjY1MGRiNzEwMzg4YTEwODgwYTNhZDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2ZDJhNTRmZWFiZjIzYzYwNTU2YzllNzcwZTk4ZDk3NTM5NjNjYWM3OWZjZWQ2Yzc3YzVlMzg4ZDA2MjVjOWYifQ"
         },
         {
           "resource": "repo://build-logic/src/main/kotlin/support/architecture/validation/ModulePolicyValidator.kt",
@@ -127,12 +127,16 @@
           "version": "repo-lines-v1:sha256:da2eba0c2e85819044e422595e62f13710220ad99b2560a1481af3337acc0efa:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGEyZWJhMGMyZTg1ODE5MDQ0ZTQyMjU5NWU2MmYxMzcxMDIyMGFkOTliMjU2MGExNDgxYWYzMzM3YWNjMGVmYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGEyZWJhMGMyZTg1ODE5MDQ0ZTQyMjU5NWU2MmYxMzcxMDIyMGFkOTliMjU2MGExNDgxYWYzMzM3YWNjMGVmYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2YzMDk5ZGVlODkyM2U4NDBkODllOWUxMTRiNWNhMmQ5MTg4MWEwNjA3ZThlMjcyNDJmMTZlMzc5YzhjMGNmMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWJjMTUwYzc2ZGUwOTQ3YzYxNTZkMGQzN2YxZDU0N2QyZjYwY2RjMWQ0ZDQxNTdkYzM3OTQ5ZWZkZDdlOTc2NCJ9"
         },
         {
-          "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:3fdba09274f861814014570a7d58632f3dcc28e94e6938c4651a4f0d7f7c3016"
+          "resource": "repo://cli/build.gradle.kts#L178-L184",
+          "version": "repo-lines-v1:sha256:259d8a6e5f2c066752a07aff31f0f19c682ce890f117aa16d923699a1b7c85df:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2JhMzE0NWFlZTBkYTA1OTI0ZDNhZDBiMWVlYjRhZGU3NzYxYjY2N2Q4YTk2MTQ2ZGVlZjM5YWJkMWNlNDhjYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDUyOWFmMTIyMzZjYTFhMTFkYmM3MTlhNzA5NzFhMjM4YTgxMjNjMzY0MWM0Y2M0ZjJlNGVkYjU3MDc2NTAyOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzQ4OTE2MGJjNjU3YzQzZTU1MWRmYWM0YjFjYmIyMDAwOWM0NWJkM2M1NzNlNzMzOGRkZTgzMDg4NzRiZjY3OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmExYzQxZDgwNmVlZmQyMTRiNjgwYzA1M2Y1YTlkNmQ5YjE5OWJiYTI0ZmM0MjViMTMwNmM2YzU4Zjg4ZTdlOCJ9"
         },
         {
-          "resource": "repo://distribution/cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:41addc36f155754d7f6733090688c469adf97320ec38439aa7791c913de1d3c1"
+          "resource": "repo://cli/build.gradle.kts#L45-L55",
+          "version": "repo-lines-v1:sha256:b3b04ba172a5f43103046f1c3586719990cf6d8e677b26a3438ba88ec3ec5943:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcxMmM0Y2E3N2E1MzEwOTQzMzBiZmNkY2M0ZGM4OWQ5MTdiYzhmODU2ZmVjZjgyN2JmYmVhZTdlZmEwODYwNDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzM2U1NWRkZDFkOTkxNzk2M2Y4MjlkMWQ3YjM0Zjc5ZWVhMjIwMTg4OWI2MDUzOTdhNWFlYjI4NjRkY2Q5MjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5MWU0ZjMyZjU2NjY0OWRjNzJlNjY4NjM1MTRiYmQ2YWMwMTQ2ZGJjMjk4ZTc4YjIyZWY1ZmRlOGIxNjBhNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMmViMTE4MDFlZWQzODM1NGEwYmJjZjRjYTMyNDE1ZjFhNGE5NTk2ZjRhMDZmYmQ3ZTRhZjFmZWE3NzI0OTEifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/build.gradle.kts#L20-L34",
+          "version": "repo-lines-v1:sha256:29da102fdbc9acddc32709a15e4a24ad15a76dd325979c39beaa43a2517fc374:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiYTMxNDVhZWUwZGEwNTkyNGQzYWQwYjFlZWI0YWRlNzc2MWI2NjdkOGE5NjE0NmRlZWYzOWFiZDFjZTQ4Y2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0ZTE4OGZlZmIwN2VhZWRkY2IwYWExNDgxYTcyOWE3ZDU0YTNmM2Y5ZWFlOGI3NGU4ZmFkNzhhM2ZkMzMwYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhMzY4YmU1MTYyNmI2NTkxZjdhMWMyZDVmNTI1MDBhZDY0YzA4ODQyNWE4ODQ4ODUwN2YyM2JlZGU1NDI0MGUifQ"
         }
       ]
     },
@@ -171,6 +175,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T14:25:07.841Z"
+    "at": "2026-11-12T22:40:03.563Z"
   }
 }

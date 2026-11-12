@@ -35,7 +35,7 @@ class NativeReleaseCatalogTest {
             val document = json.decodeFromString<VersionsDocument>(result.output)
             assertEquals("LISTED", document.type)
             assertEquals("1.2.3", document.stable)
-            assertEquals(listOf(MainEntry()), document.main)
+            assertEquals(listOf(PreviewEntry()), document.preview)
             assertEquals(listOf(read(stable()), read(catalog())), observations(result))
         }
     }
@@ -50,12 +50,27 @@ class NativeReleaseCatalogTest {
     }
 
     @Test
-    fun `native versions rejects redirects without following them`(@TempDir directory: Path) {
+    fun `native versions rejects insecure redirects without following them`(@TempDir directory: Path) {
         ReleaseHttpsFixture(directory, listOf(stable().copy(status = 302))).use { peer ->
             val result = peer.versions()
             assertRejected(result, "CATALOG_UNAVAILABLE")
-            assertEquals(listOf(unavailable("RESPONSE", "HTTP_REJECTED")), observations(result))
+            assertEquals(listOf(unavailable("REDIRECT", "REDIRECT_REJECTED")), observations(result))
         }
+    }
+
+    @Test
+    fun `native versions follows an HTTPS redirect and retains the final document`(@TempDir directory: Path) {
+        val redirected = stable().copy(path = "/redirected")
+        ReleaseHttpsFixture(
+                directory,
+                listOf(stable().copy(status = 302, location = "/redirected"), redirected, catalog()),
+            )
+            .use { peer ->
+                val result = peer.versions()
+                assertEquals(0, result.exit, result.output + result.errors)
+                assertEquals(listOf(PreviewEntry()), json.decodeFromString<VersionsDocument>(result.output).preview)
+                assertEquals(listOf(read(redirected), read(catalog())), observations(result))
+            }
     }
 
     @Test
@@ -128,27 +143,21 @@ private data class StableDocument(
 )
 
 @Serializable
-private data class CatalogDocument(val schemaVersion: Int = 1, val builds: List<MainEntry> = listOf(MainEntry()))
+private data class CatalogDocument(val schemaVersion: Int = 2, val builds: List<PreviewEntry> = listOf(PreviewEntry()))
 
 @Serializable
-private data class MainEntry(
+private data class PreviewEntry(
     val mainRevision: String = "a".repeat(40),
-    val buildRevision: String = "b".repeat(40),
-    val sourceTree: String = "c".repeat(40),
     val releaseTag: String = "developer-v0.0.1",
-    val version: String = "0.0.1",
-    val platformTargets: List<String> = listOf("macos-aarch64"),
-    val candidate: RecordReference = RecordReference("candidate.json", "d".repeat(64)),
-    val promotion: RecordReference = RecordReference("promotion.json", "e".repeat(64)),
+    val record: NativeProductRecord = NativeProductRecord(),
+    val recordSha256: String = "9".repeat(64),
 )
-
-@Serializable private data class RecordReference(val name: String, val sha256: String)
 
 @Serializable
 private data class VersionsDocument(
     val type: String,
     val stable: String? = null,
-    val main: List<MainEntry> = emptyList(),
+    val preview: List<PreviewEntry> = emptyList(),
     val reason: String? = null,
 )
 

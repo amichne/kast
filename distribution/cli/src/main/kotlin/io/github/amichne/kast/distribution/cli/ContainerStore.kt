@@ -3,81 +3,19 @@ package io.github.amichne.kast.distribution.cli
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
-import java.io.StringWriter
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
-import java.util.UUID
-import javax.xml.stream.XMLOutputFactory
-
-internal class AdmittedContainerCreation
-internal constructor(
-    val id: ContainerId,
-    val name: ContainerName,
-    val workspace: Path,
-    val directory: Path,
-    val gradleHome: Path,
-)
 
 /** Committed records are the registry. There is no second mutable index or selected-container link. */
 internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
     val containers: Path = root.resolve("containers")
     val runtimes: Path = root.resolve("runtimes")
 
-    fun list(): Refinement<List<AdmittedContainer>, ContainerFailure> = containerFiles {
-        if (Files.notExists(containers, NOFOLLOW_LINKS)) return@containerFiles Refinement.Refined(emptyList())
-        when (val private = privateContainerDirectory(containers)) {
-            is Refinement.Rejected -> return@containerFiles private
-            is Refinement.Refined -> Unit
-        }
-        readEntries()
-    }
-
-    private fun readEntries(): Refinement<List<AdmittedContainer>, ContainerFailure> =
-        Files.newDirectoryStream(containers).use { readEntries(it) }
-
-    private fun readEntries(
-        entries: java.nio.file.DirectoryStream<Path>
-    ): Refinement<List<AdmittedContainer>, ContainerFailure> {
-        val result = mutableListOf<AdmittedContainer>()
-        var count = 0
-        for (directory in entries) {
-            count += 1
-            if (count > MAXIMUM_CONTAINER_ENTRIES) return Refinement.Rejected(ContainerFailure.CAPACITY_EXCEEDED)
-            val name = directory.fileName.toString()
-            if (name.startsWith(".creating-") || name.startsWith(".removing-")) continue
-            when (val admitted = read(directory)) {
-                is Refinement.Rejected -> return admitted
-                is Refinement.Refined -> result += admitted.value
-            }
-        }
-        val uniqueNames = result.map { it.name }.toSet().size == result.size
-        val uniqueWorkspaces = result.map { it.workspace }.toSet().size == result.size
-        return if (uniqueNames && uniqueWorkspaces) Refinement.Refined(result.sortedBy { it.id.text })
-        else Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-    }
-
-    fun select(selector: String): Refinement<AdmittedContainer, ContainerFailure> =
-        when (val all = list()) {
-            is Refinement.Rejected -> all
-            is Refinement.Refined ->
-                selectOne(
-                    all.value.filter { it.id.text == selector || it.name.text == selector },
-                    ContainerFailure.INVALID_RECORD,
-                )
-        }
-
-    fun route(directory: Path): Refinement<AdmittedContainer, ContainerFailure> =
-        when (val all = list()) {
-            is Refinement.Rejected -> all
-            is Refinement.Refined ->
-                selectOne(all.value.filter { directory.startsWith(it.workspace) }, ContainerFailure.AMBIGUOUS_WORKSPACE)
-        }
-
-    /** Cheap workspace, name, overlap, and Gradle admission precedes runtime download or allocation. */
+    /** Cheap workspace, name, and Gradle admission precedes runtime download or allocation. */
     fun admitCreation(
         request: ContainerCommand.Create,
         directory: Path,
@@ -90,11 +28,7 @@ internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
         val workspace = Path.of(request.root ?: directory.toString()).toRealPath()
         if (!validWorkspace(workspace) || !Files.isDirectory(workspace))
             return Refinement.Rejected(ContainerFailure.INVALID_WORKSPACE)
-        val id =
-            when (val parsed = ContainerId.parse(UUID.randomUUID().toString().replace("-", ""))) {
-                is Refinement.Rejected -> return parsed
-                is Refinement.Refined -> parsed.value
-            }
+        val id = ContainerId.forWorkspace(workspace)
         val defaultName =
             workspace.fileName.toString().replace(Regex("(?:[^A-Za-z0-9._-])"), "-").take(DEFAULT_NAME_CHARACTERS)
         val name =
@@ -118,21 +52,23 @@ internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
         }
     }
 
-    private fun admitAvailableCreation(creation: AdmittedContainerCreation): Refinement<Unit, ContainerFailure> =
-        when (val all = list()) {
+    internal fun admitAvailableCreation(creation: AdmittedContainerCreation): Refinement<Unit, ContainerFailure> =
+        when (val all = enumerate()) {
             is Refinement.Rejected -> all
-            is Refinement.Refined ->
+            is Refinement.Refined -> {
+                val admitted = all.value.filterIsInstance<ContainerStoreEntry.Admitted>().map { it.workspace }
                 when {
                     all.value.size >= MAXIMUM_CONTAINER_ENTRIES ->
                         Refinement.Rejected(ContainerFailure.CAPACITY_EXCEEDED)
-                    all.value.any {
-                        creation.workspace.startsWith(it.workspace) || it.workspace.startsWith(creation.workspace)
-                    } -> Refinement.Rejected(ContainerFailure.WORKSPACE_EXISTS)
-                    all.value.any {
+                    Files.exists(creation.directory, NOFOLLOW_LINKS) ||
+                        admitted.any { creation.workspace == it.workspace } ->
+                        Refinement.Rejected(ContainerFailure.WORKSPACE_EXISTS)
+                    admitted.any {
                         creation.name == it.name || creation.name.text == it.id.text || creation.id.text == it.name.text
                     } -> Refinement.Rejected(ContainerFailure.NAME_EXISTS)
                     else -> Refinement.Refined(Unit)
                 }
+            }
         }
 
     fun create(
@@ -148,35 +84,158 @@ internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
     fun create(
         creation: AdmittedContainerCreation,
         runtime: AdmittedContainerRuntime,
-    ): Refinement<AdmittedContainer, ContainerFailure> = containerFiles {
+    ): Refinement<AdmittedContainer, ContainerFailure> = withStagedCreation(creation, runtime, ::publishCreation)
+
+    fun <T> withStagedCreation(
+        creation: AdmittedContainerCreation,
+        runtime: AdmittedContainerRuntime,
+        publish: (StagedContainerCreation) -> Refinement<T, ContainerFailure>,
+    ): Refinement<T, ContainerFailure> = containerFiles {
         when (val private = privateContainerDirectory(containers)) {
             is Refinement.Rejected -> return@containerFiles private
             is Refinement.Refined -> Unit
         }
         val staging =
             Files.createDirectory(
-                containers.resolve(".creating-${creation.id.text}"),
+                containers.resolve(".creating-${java.util.UUID.randomUUID()}"),
                 PosixFilePermissions.asFileAttribute(containerDirectoryMode),
             )
+        try {
+            when (val staged = stageCreation(creation, runtime, staging)) {
+                is Refinement.Rejected -> staged
+                is Refinement.Refined -> publish(StagedContainerCreation(creation, staged.value, staging))
+            }
+        } finally {
+            if (Files.exists(staging, NOFOLLOW_LINKS))
+                Files.walk(staging).use { paths ->
+                    for (path in paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path)
+                }
+        }
+    }
+
+    private fun stageCreation(
+        creation: AdmittedContainerCreation,
+        runtime: AdmittedContainerRuntime,
+        staging: Path,
+    ): Refinement<AdmittedContainer, ContainerFailure> {
         for (child in listOf("state/home/.gradle", "state/system", "state/log", "state/tmp", "config")) Files
             .createDirectories(staging.resolve(child), PosixFilePermissions.asFileAttribute(containerDirectoryMode))
         val admitted =
             AdmittedContainer(
-                creation.id,
-                creation.name,
-                creation.workspace,
-                creation.directory,
+                AdmittedWorkspace(
+                    creation.id,
+                    creation.name,
+                    creation.workspace,
+                    creation.directory,
+                    creation.gradleHome,
+                    ContainerGenerationSource.Current,
+                ),
                 runtime,
-                creation.gradleHome,
             )
         when (val initialized = initializeProfile(admitted, staging)) {
-            is Refinement.Rejected -> return@containerFiles initialized
+            is Refinement.Rejected -> return initialized
             is Refinement.Refined -> Unit
         }
+        writeContainerRecord(
+            staging.resolve("generation.json"),
+            ContainerGenerationRecord(runtime.key, runtime.archiveSha256),
+        )
+        Files.writeString(
+            staging.resolve("trust.xml"),
+            containerTrustXml(creation.workspace),
+            StandardOpenOption.CREATE_NEW,
+        )
         writeContainerRecord(staging.resolve("container.json"), admitted.record())
-        // Only this rename publishes trust to routing; partial staging cannot be selected.
-        Files.move(staging, creation.directory, StandardCopyOption.ATOMIC_MOVE)
-        Refinement.Refined(admitted)
+        return Refinement.Refined(admitted)
+    }
+
+    fun publishCreation(staged: StagedContainerCreation): Refinement<AdmittedContainer, ContainerFailure> =
+        containerFiles {
+            when (val available = admitAvailableCreation(staged.creation)) {
+                is Refinement.Rejected -> return@containerFiles available
+                is Refinement.Refined -> Unit
+            }
+            // Only this rename publishes trust to routing; partial staging cannot be selected.
+            Files.move(staged.staging, staged.creation.directory, StandardCopyOption.ATOMIC_MOVE)
+            Refinement.Refined(staged.container)
+        }
+
+    fun rebuildRetiredGeneration(
+        previous: AdmittedContainer,
+        runtime: AdmittedContainerRuntime,
+    ): Refinement<AdmittedContainer, ContainerFailure> = containerFiles {
+        when (val retired = admitContainerRetirement(previous)) {
+            is Refinement.Rejected -> return@containerFiles retired
+            is Refinement.Refined -> Unit
+        }
+        if (runtime.root.parent != runtimes)
+            return@containerFiles Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
+        val generations =
+            when (val owned = privateContainerDirectory(previous.directory.resolve("generations"))) {
+                is Refinement.Rejected -> return@containerFiles owned
+                is Refinement.Refined -> owned.value
+            }
+        val identity = java.util.UUID.randomUUID().toString()
+        val current = AdmittedContainer(previous.owned, runtime, generations.resolve(identity))
+        val staging = generations.resolve(".creating-$identity")
+        when (val prepared = stageGeneration(current, staging)) {
+            is Refinement.Rejected -> return@containerFiles prepared
+            is Refinement.Refined -> Unit
+        }
+        publishGeneration(previous, current, staging)
+    }
+
+    private fun publishGeneration(
+        previous: AdmittedContainer,
+        current: AdmittedContainer,
+        staging: Path,
+    ): Refinement<AdmittedContainer, ContainerFailure> {
+        when (val retired = admitContainerRetirement(previous)) {
+            is Refinement.Rejected -> return retired
+            is Refinement.Refined -> Unit
+        }
+        Files.move(staging, current.profile, StandardCopyOption.ATOMIC_MOVE)
+        val identity = current.profile.fileName.toString()
+        val record = previous.directory.resolve(".generation-$identity")
+        writeContainerRecord(
+            record,
+            ContainerGenerationRecord(current.runtime.key, current.runtime.archiveSha256, 2, identity),
+        )
+        // Retired profiles and their unresolved change evidence are retained, never erased here.
+        Files.move(
+            record,
+            previous.directory.resolve("generation.json"),
+            StandardCopyOption.ATOMIC_MOVE,
+            StandardCopyOption.REPLACE_EXISTING,
+        )
+        return admitGeneration(previous.owned)
+    }
+
+    private fun stageGeneration(container: AdmittedContainer, staging: Path): Refinement<Unit, ContainerFailure> {
+        Files.createDirectory(staging, PosixFilePermissions.asFileAttribute(containerDirectoryMode))
+        for (child in listOf("state/home", "state/system", "state/log", "state/tmp", "config")) {
+            Files.createDirectories(
+                staging.resolve(child),
+                PosixFilePermissions.asFileAttribute(containerDirectoryMode),
+            )
+        }
+        return initializeProfile(container, staging)
+    }
+
+    fun recordRetirement(container: AdmittedContainer): Refinement<Unit, ContainerFailure> = containerFiles {
+        if (container.owned.generation != ContainerGenerationSource.Current)
+            return@containerFiles Refinement.Rejected(ContainerFailure.INVALID_RECORD)
+        val destination = container.directory.resolve("generation-retirement.json")
+        if (!Files.notExists(destination, NOFOLLOW_LINKS)) {
+            when (val existing = readContainerRetirement(destination)) {
+                is Refinement.Rejected -> return@containerFiles existing
+                is Refinement.Refined -> Unit
+            }
+        }
+        val temporary = container.directory.resolve(".retirement-${java.util.UUID.randomUUID()}")
+        writeContainerRecord(temporary, retirementBinding(container))
+        Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        Refinement.Refined(Unit)
     }
 
     private fun initializeProfile(container: AdmittedContainer, staging: Path): Refinement<Unit, ContainerFailure> {
@@ -194,7 +253,7 @@ internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
             is Refinement.Rejected -> return copied
             is Refinement.Refined -> Unit
         }
-        val plugins = container.directory.resolve(staging.relativize(stagedPlugins))
+        val plugins = container.profile.resolve(staging.relativize(stagedPlugins))
         val target =
             when (val parsed = SelectedIdeInstallation.admitPluginTarget(plugins.toString(), container.home)) {
                 is Refinement.Rejected -> return Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
@@ -206,7 +265,15 @@ internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
         )
         val trust = stagedPlugins.parent.resolve("options/trusted-paths.xml")
         Files.createDirectories(trust.parent)
-        Files.writeString(trust, containerTrustXml(container.workspace), StandardOpenOption.CREATE_NEW)
+        val durableTrust = container.directory.resolve("trust.xml")
+        val grant =
+            if (!Files.notExists(container.directory, NOFOLLOW_LINKS)) {
+                when (val admitted = admitContainerTrust(durableTrust, container.workspace)) {
+                    is Refinement.Rejected -> return admitted
+                    is Refinement.Refined -> Files.readString(durableTrust)
+                }
+            } else containerTrustXml(container.workspace)
+        Files.writeString(trust, grant, StandardOpenOption.CREATE_NEW)
         writeContainerRecord(
             staging.resolve("state/gradle-home.json"),
             io.github.amichne.kast.distribution.managed.ManagedHeadlessGradleHome(container.gradleHome.toString()),
@@ -232,104 +299,8 @@ internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
         }
         return Refinement.Refined(Unit)
     }
-
-    private fun read(directory: Path): Refinement<AdmittedContainer, ContainerFailure> {
-        val id =
-            when (val parsed = ContainerId.parse(directory.fileName.toString())) {
-                is Refinement.Rejected -> return parsed
-                is Refinement.Refined -> parsed.value
-            }
-        when (val private = privateContainerDirectory(directory)) {
-            is Refinement.Rejected -> return private
-            is Refinement.Refined -> Unit
-        }
-        val record =
-            when (val parsed = readContainerRecord<ContainerRecord>(directory.resolve("container.json"))) {
-                is Refinement.Rejected -> return parsed
-                is Refinement.Refined -> parsed.value
-            }
-        if (record.schemaVersion != 1 || record.id != id.text)
-            return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-        return admitRecord(record, id, directory)
-    }
-
-    private fun admitRecord(
-        record: ContainerRecord,
-        id: ContainerId,
-        directory: Path,
-    ): Refinement<AdmittedContainer, ContainerFailure> {
-        val name =
-            when (val parsed = ContainerName.parse(record.name)) {
-                is Refinement.Rejected -> return parsed
-                is Refinement.Refined -> parsed.value
-            }
-        val runtime =
-            when (val parsed = runtime(record.runtime)) {
-                is Refinement.Rejected -> return parsed
-                is Refinement.Refined -> parsed.value
-            }
-        val workspace = Path.of(record.workspace)
-        val gradle = Path.of(record.gradleHome)
-        if (!validWorkspace(workspace)) return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-        val privateGradle = directory.resolve("state/home/.gradle")
-        if (gradle != privateGradle && !validExternalGradle(gradle))
-            return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-        if (!Files.isDirectory(gradle) || gradle.toRealPath() != gradle)
-            return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-        return admitContainerState(AdmittedContainer(id, name, workspace, directory, runtime, gradle))
-    }
-
-    private fun runtime(key: String): Refinement<AdmittedContainerRuntime, ContainerFailure> =
-        if (!Regex("[0-9]+\\.[0-9]+\\.[0-9]+-${platform.publicName}").matches(key))
-            Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-        else AdmittedContainerRuntime.read(runtimes.resolve(key), key.removeSuffix("-${platform.publicName}"), platform)
-
-    private fun validWorkspace(path: Path): Boolean {
-        val canonical = path.isAbsolute && path.toFile().canonicalFile.toPath() == path
-        val disjoint = !path.startsWith(root) && !root.startsWith(path)
-        return canonical && disjoint && validContainerTrustPath(path)
-    }
-
-    private fun validExternalGradle(path: Path): Boolean {
-        val canonical = path.isAbsolute && path.toRealPath() == path && Files.isDirectory(path)
-        val disjoint = !path.startsWith(root) && !root.startsWith(path)
-        return canonical && disjoint && path.toString().none { it in "\r\n" }
-    }
-
-    private fun selectOne(
-        matches: List<AdmittedContainer>,
-        ambiguous: ContainerFailure,
-    ): Refinement<AdmittedContainer, ContainerFailure> =
-        when (matches.size) {
-            0 -> Refinement.Rejected(ContainerFailure.NOT_FOUND)
-            1 -> Refinement.Refined(matches.single())
-            else -> Refinement.Rejected(ambiguous)
-        }
 }
 
-private const val MAXIMUM_CONTAINER_ENTRIES = 1024
+internal const val MAXIMUM_CONTAINER_ENTRIES = 1024
 private const val DEFAULT_NAME_CHARACTERS = 48
 private const val DEFAULT_ID_CHARACTERS = 8
-private val workspaceXmlPath = Regex("[\\u0020-\\uD7FF\\uE000-\\uFFFD\\x{10000}-\\x{10FFFF}]+")
-
-internal fun validContainerTrustPath(path: Path): Boolean = workspaceXmlPath.matches(path.toString())
-
-internal fun containerTrustXml(workspace: Path): String {
-    val output = StringWriter()
-    val xml = XMLOutputFactory.newDefaultFactory().createXMLStreamWriter(output)
-    xml.writeStartElement("application")
-    xml.writeStartElement("component")
-    xml.writeAttribute("name", "Trusted.Paths")
-    xml.writeStartElement("option")
-    xml.writeAttribute("name", "TRUSTED_PROJECT_PATHS")
-    xml.writeStartElement("map")
-    xml.writeEmptyElement("entry")
-    xml.writeAttribute("key", workspace.toString())
-    xml.writeAttribute("value", "true")
-    xml.writeEndElement()
-    xml.writeEndElement()
-    xml.writeEndElement()
-    xml.writeEndElement()
-    xml.close()
-    return output.toString()
-}

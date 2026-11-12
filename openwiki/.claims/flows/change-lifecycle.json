@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4903a6d6c59fbcd9a0d73899eb038cba63d01c83dc6b7a4a944b8ef79d4cb859",
+  "pageVersion": "sha256:3f6f33207ac6978bb11b6cff915343f0bd9c34c715bb6067e44b85360be2216a",
   "claims": [
     {
       "id": "claim_4d6ed902909b4ef0b5885ebf90819d17",
@@ -41,8 +41,12 @@
       "statement": "The one-call change path sends canonical plan identity through apply and recovery without a signing key or challenge; version-2 verified receipts retain exact local endpoint execution, while admitted legacy version-1 approval fields are historical data without current mutation authority.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt",
-          "version": "repo-file-v1:sha256:aa1d621da3237d5503722012ceceb378c1eae4eec35915569ad1749cc32d9912"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt#L238-L265",
+          "version": "repo-lines-v1:sha256:4e1e08e10aa540e256014fa0ae7f415634fafc0b2f7b3a1a2ac1badb835f4e1d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY3Yzc0ODA3ZGQ4NDgyM2I0YzhkNWVhZDQ4NGU1ZWNhYzcxNTdlMDllZjllZGRjZjU4NmI2NDliOWJhOWY4MjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlYTVkYWFhZDdjYzZmYTk3NjIwYTUwZmE4MDRiZTVhZjY2MjkxNzU1YThmOTc3ZGJlZGU5NDY2ZDFhODI3YjYifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/provider/KastSingleChangeInvocation.kt#L68-L112",
+          "version": "repo-lines-v1:sha256:69251452e43625e7aad2b8295dd87e62e8046676b595250977b51f15bf70a615:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllNjJkYmJjY2VjODliMzU1Zjk0YjU5OWU0MTI2Y2QyZmVmZDE5ZjAyYzA0ZmU2Y2YyMmQ0ZjUwMjBiY2UwMDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhOTJjMDMwZjA0ODkzMzFkYWFlZTE5YzFiYTE4MzJiZTU5MTgzMTM2MDkzZjA2NjI1NzZkYjNiOTM3YTRkZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczZGQ3NTRmMzRkZDFmNTI1ZGNmZDQ2NjVlYjdhMWM0NmM1NDFiZWI3Zjk5Y2I0OWMwOGU2ZWY4MmYzODYwMGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUwMjQwYWVlM2IzZjBlMDBhODMyOTBmOWUzMWU1MmZmZjk3OGVhZGYyYjhkNzg2ZDFlMzNlNGFiOTE3N2U3MjIifQ"
         },
         {
           "resource": "repo://change/verify/src/main/kotlin/io/github/amichne/kast/change/verify/LiveAddDeclarationReceiptCodec.kt",
@@ -56,7 +60,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-03T06:09:31.584Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-12T22:38:20.129Z"
   }
 }

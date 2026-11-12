@@ -53,8 +53,8 @@ internal class KastProviderOptions(
             Path.of(System.getProperty("user.home")),
             readLimits,
         ),
-    val roots: io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer =
-        io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery,
+    val roots: io.github.amichne.kast.distribution.managed.CanonicalRootDiscoverer =
+        io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery,
     val lifecycleClient: io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient =
         io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient.Unavailable,
     val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO,

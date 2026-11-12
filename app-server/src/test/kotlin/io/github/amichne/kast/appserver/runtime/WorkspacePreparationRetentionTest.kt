@@ -2,10 +2,11 @@
 
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 internal class WorkspacePreparationRetentionTest {
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
     private val target =
         IdeProjectTarget("00000000-0000-0000-0000-000000000003", "00000000-0000-0000-0000-000000000004", "/workspace")
 
@@ -70,7 +71,7 @@ internal class WorkspacePreparationRetentionTest {
                 if (capacity == 1)
                     assertEquals(
                         Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED),
-                        case.preparations.prepare(CanonicalRoot(Path.of("/third"))),
+                        case.preparations.prepare(canonicalRootFixture(Path.of("/third"))),
                     )
                 case.assertDrained()
                 case.preparations.close()
@@ -79,7 +80,7 @@ internal class WorkspacePreparationRetentionTest {
 
     @Test
     fun `recovery at full capacity protects another current root and its own pending retry`() = runTest {
-        val other = CanonicalRoot(Path.of("/other"))
+        val other = canonicalRootFixture(Path.of("/other"))
         val otherTarget = target.copy(root = other.path.toString())
         val release = CompletableDeferred<Unit>()
         val script =
@@ -108,7 +109,7 @@ internal class WorkspacePreparationRetentionTest {
         assertEquals(setOf(UpgradeBlocker.PREPARATION_ACTIVE), preparations.upgradeBlockers())
         assertEquals(
             Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED),
-            preparations.prepare(CanonicalRoot(Path.of("/third"))),
+            preparations.prepare(canonicalRootFixture(Path.of("/third"))),
         )
         assertEquals(WorkspacePreparationOutcome.Blocked(IdeLifecycleFailure.HOST_UNAVAILABLE), original.state.value)
         release.complete(Unit)
@@ -121,7 +122,7 @@ internal class WorkspacePreparationRetentionTest {
 
     @Test
     fun `a retired ready record yields bounded capacity without changing the held readiness proof`() = runTest {
-        val other = CanonicalRoot(Path.of("/other"))
+        val other = canonicalRootFixture(Path.of("/other"))
         val script =
             Script(
                 listOf(

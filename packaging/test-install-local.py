@@ -24,7 +24,7 @@ class LocalInstallationTest(unittest.TestCase):
             shutil.copy2(Path(__file__).with_name('install-local.sh'), script)
             record = root / 'installer-contract'
             suffix = '-idea-263' if line == '263' else ''
-            (root / 'install.sh').write_text(
+            (root / 'packaging/install-legacy.sh').write_text(
                 '#!/bin/sh\n'
                 f'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-{line}.zip" || exit 32\n'
                 f'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-{line}.zip.sha256" || exit 33\n'

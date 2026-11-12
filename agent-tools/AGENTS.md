@@ -45,8 +45,8 @@ Its executable assertions stay in `cli/src/test/js/native-onboarding.test.mjs`.
 Keep its runtime passive, bounded, offline, and free of semantic calls or workspace writes.
 Keep its PEP 723 metadata and lock together.
 The legacy context helper uses Python 3.9 or later with the standard library. Generated plugins exclude this helper.
-`hooks/hooks.json`, `hooks/copilot.json`, and `hooks/pi.ts` call `kast hook session-start` for workspace preparation.
-The native query executable owns event admission, project selection, preparation, and typed rejection.
+`hooks/hooks.json`, `hooks/copilot.json`, and `hooks/pi.ts` call `kast --internal-entrypoint=query hook session-start` for passive context.
+The native query executable owns event admission and project selection. Hooks do not grant trust, create workspace state, or start a Host.
 Keep workspace decisions and IDE effects outside the harness adapters.
 The task service delegates preparation and semantic work to the installed tool RPC.
 `skills/kast/scripts/tasks.py` owns the catalog shared by MCP and the Copilot SDK adapter.

@@ -36,7 +36,7 @@ from dataclasses import asdict, dataclass, is_dataclass, replace
 from enum import Enum, StrEnum
 from pathlib import Path
 from types import ModuleType
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 # Imported helpers belong to the immutable installed payload, including on first invocation.
 if not sys.dont_write_bytecode:
@@ -46,6 +46,9 @@ import managed_release as release
 import managed_update_contract as contract
 import managed_update_journal as journal_types
 import reload_hosted
+
+if TYPE_CHECKING:
+    from managed_product_installation import ProductInstalled
 
 
 def module(name: str, path: Path) -> ModuleType:
@@ -156,6 +159,12 @@ class Guidance:
 
 
 @dataclass(frozen=True, slots=True)
+class ProviderRegistration:
+    harness: Literal["CODEX", "COPILOT"]
+    directory: str
+
+
+@dataclass(frozen=True, slots=True)
 class ManagementReceipt:
     schemaVersion: int
     installationRoot: str
@@ -166,6 +175,7 @@ class ManagementReceipt:
     updatePolicy: release.UpdatePolicy
     installedBuild: release.BuildIdentity | None
     guidance: tuple[Guidance, ...] = ()
+    providers: tuple[ProviderRegistration, ...] = ()
 
 
 @dataclass(slots=True)
@@ -354,6 +364,7 @@ def parse_management(raw: bytes) -> ManagementReceipt:
             "updatePolicy",
             "installedBuild",
             "guidance",
+            "providers",
         }
     ):
         raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
@@ -363,13 +374,75 @@ def parse_management(raw: bytes) -> ManagementReceipt:
         value["registrations"],
         value.get("guidance", []),
     )
-    if (
-        type(schema) is not int
-        or schema not in (1, 2)
-        or channel not in ("STABLE", "DEVELOPER")
-        or not release.sequence(registrations)
-        or not release.sequence(guidance)
+    if type(schema) is not int or schema not in (1, 2) or channel not in ("STABLE", "DEVELOPER"):
+        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
+    parsed_registrations, parsed_guidance = parse_provisioning(schema, registrations, guidance)
+    raw_build, raw_policy = value.get("installedBuild"), value.get("updatePolicy")
+    build = None if raw_build is None else release.parse_identity(raw_build)
+    if isinstance(build, release.Failure):
+        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
+    if raw_policy is None:
+        policy: release.UpdatePolicy = (
+            release.TrackStable() if channel == "STABLE" else release.TrackMain()
+        )
+    elif release.mapping(raw_policy) and raw_policy == {"type": "TrackStable"}:
+        policy = release.TrackStable()
+    elif release.mapping(raw_policy) and raw_policy == {"type": "TrackMain"}:
+        policy = release.TrackMain()
+    elif (
+        release.mapping(raw_policy)
+        and set(raw_policy) == {"type", "identity"}
+        and raw_policy["type"] == "PinnedBuild"
     ):
+        pinned = release.parse_identity(raw_policy["identity"])
+        if isinstance(pinned, release.Failure):
+            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
+        policy = release.PinnedBuild(pinned)
+    else:
+        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
+    return ManagementReceipt(
+        2,
+        text_field(value["installationRoot"]),
+        text_field(value["executable"]),
+        text_field(value["executableSha256"]),
+        channel,
+        parsed_registrations,
+        policy,
+        build,
+        parsed_guidance,
+        parse_providers(value.get("providers", [])),
+    )
+
+
+def parse_providers(raw: object) -> tuple[ProviderRegistration, ...]:
+    if not release.sequence(raw) or len(raw) > 32:
+        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
+    providers: list[ProviderRegistration] = []
+    for entry in raw:
+        if not release.mapping(entry) or set(entry) != {"harness", "directory"}:
+            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
+        harness, directory = entry["harness"], entry["directory"]
+        if (
+            harness not in ("CODEX", "COPILOT")
+            or not isinstance(directory, str)
+            or not 1 <= len(directory) <= 4096
+            or any(ord(character) < 32 for character in directory)
+            or not Path(directory).is_absolute()
+            or str(Path(directory)) != directory
+            or os.path.normpath(directory) != directory
+        ):
+            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
+        provider = ProviderRegistration(harness, directory)
+        if provider in providers:
+            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
+        providers.append(provider)
+    return tuple(providers)
+
+
+def parse_provisioning(
+    schema: int, registrations: object, guidance: object
+) -> tuple[tuple[Registration, ...], tuple[Guidance, ...]]:
+    if not release.sequence(registrations) or not release.sequence(guidance):
         raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
     parsed_registrations: list[Registration] = []
     for item in registrations:
@@ -425,40 +498,7 @@ def parse_management(raw: bytes) -> ManagementReceipt:
         parsed_guidance.append(
             Guidance(item["harness"], text_field(item["destination"]), tuple(files))
         )
-    raw_build, raw_policy = value.get("installedBuild"), value.get("updatePolicy")
-    build = None if raw_build is None else release.parse_identity(raw_build)
-    if isinstance(build, release.Failure):
-        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-    if raw_policy is None:
-        policy: release.UpdatePolicy = (
-            release.TrackStable() if channel == "STABLE" else release.TrackMain()
-        )
-    elif release.mapping(raw_policy) and raw_policy == {"type": "TrackStable"}:
-        policy = release.TrackStable()
-    elif release.mapping(raw_policy) and raw_policy == {"type": "TrackMain"}:
-        policy = release.TrackMain()
-    elif (
-        release.mapping(raw_policy)
-        and set(raw_policy) == {"type", "identity"}
-        and raw_policy["type"] == "PinnedBuild"
-    ):
-        pinned = release.parse_identity(raw_policy["identity"])
-        if isinstance(pinned, release.Failure):
-            raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-        policy = release.PinnedBuild(pinned)
-    else:
-        raise reject(contract.Stage.RE_ADMISSION, contract.Failure.OWNERSHIP_UNPROVEN)
-    return ManagementReceipt(
-        2,
-        text_field(value["installationRoot"]),
-        text_field(value["executable"]),
-        text_field(value["executableSha256"]),
-        channel,
-        tuple(parsed_registrations),
-        policy,
-        build,
-        tuple(parsed_guidance),
-    )
+    return tuple(parsed_registrations), tuple(parsed_guidance)
 
 
 def selected_management(
@@ -482,6 +522,7 @@ def selected_management(
         core.binding.policy,
         core.binding.identity,
         previous.guidance if previous else (),
+        previous.providers if previous else (),
     )
 
 
@@ -2450,12 +2491,14 @@ def recover_recorded(
 GUIDANCE_REFRESH_TIMEOUT_SECONDS = 300.0
 
 
-def refresh_installed_guidance(
+def refresh_installed_guidance[
+    Completed: contract.Activated | contract.InstalledNotRunning | ProductInstalled
+](
     root: Path,
     home: Path,
-    outcome: contract.Activated | contract.InstalledNotRunning,
+    outcome: Completed,
     runner: ChildRunner,
-) -> contract.Activated | contract.InstalledNotRunning:
+) -> Completed:
     installation = root / "installation"
     marker = installation / "share/kast/guidance-refresh-v1"
     if not os.path.lexists(marker):
@@ -2491,7 +2534,7 @@ def main(
 ) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group()
-    _ = group.add_argument("--channel", choices=("stable", "main"))
+    _ = group.add_argument("--channel", choices=("stable", "preview", "main"))
     _ = group.add_argument("--version")
     _ = group.add_argument("--commit")
     _ = group.add_argument("--resolved-selection", type=Path)
@@ -2501,17 +2544,25 @@ def main(
     _ = parser.add_argument("--restart-ide", action="store_true")
     _ = parser.add_argument("--recover-only", action="store_true")
     _ = parser.add_argument("--json", action="store_true")
+    _ = parser.add_argument("--private-python-archive", type=Path, help=argparse.SUPPRESS)
+    _ = parser.add_argument("--private-dependency", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(arguments)
+    from managed_product_installation import ProductInstalled, ProductPlanned, activate, resume
+    from private_interpreter import PrivateInterpreter
+
     state = interrupt if interrupt is not None else InterruptState()
     home = Path(os.environ["HOME"]).resolve()
     root = home / ".local/share/kast"
-    outcome: contract.Outcome | SelectionRejected
+    outcome: contract.Outcome | SelectionRejected | ProductInstalled | ProductPlanned
     try:
         if args.install_root is not None and args.install_root != root:
             outcome = contract.Rejected(
                 contract.Stage.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN
             )
-        elif platform.system() != "Darwin" or platform.machine() != "arm64":
+        elif (platform.system(), platform.machine()) not in (
+            ("Darwin", "arm64"),
+            ("Linux", "x86_64"),
+        ):
             outcome = contract.Rejected(
                 contract.Stage.PREPARATION, contract.Failure.PLATFORM_UNAVAILABLE
             )
@@ -2520,7 +2571,20 @@ def main(
             or os.path.lexists(root / "recovery/replacement")
             or os.path.lexists(root / "shutdown.json")
         ):
-            outcome = recover_recorded(root, home, args.dry_run, source, state, runner)
+            pending = root / "recovery/replacement/receipt.json"
+            record = (
+                journal_types_record(RECOVERY.load(pending, journal_types.Replacement))
+                if pending.is_file()
+                else None
+            )
+            if record is not None and record.product is not None:
+                outcome = (
+                    contract.Rejected(contract.Stage.RECOVERY, contract.Failure.RECOVERY_UNPROVEN)
+                    if args.dry_run
+                    else resume(root, home, runner)
+                )
+            else:
+                outcome = recover_recorded(root, home, args.dry_run, source, state, runner)
         else:
             provider = source if source is not None else release.HttpReleaseSource()
             selection = (
@@ -2537,40 +2601,35 @@ def main(
                     selection.selectable,
                 )
             else:
-                idea = select_idea(args.idea_home, home, root)
-                if isinstance(idea, contract.Rejected):
-                    outcome = idea
-                else:
-                    with tempfile.TemporaryDirectory(prefix="kast-managed-install-") as temporary:
-                        workspace = Path(temporary).resolve()
-                        directory = workspace / "release"
-                        directory.mkdir(mode=0o700)
-                        admitted = release.download_composition(
-                            selection, idea.line, directory, provider
+                with tempfile.TemporaryDirectory(prefix="kast-managed-install-") as temporary:
+                    workspace = Path(temporary).resolve()
+                    directory = workspace / "release"
+                    directory.mkdir(mode=0o700)
+                    admitted = release.download_composition(selection, "262", directory, provider)
+                    if isinstance(admitted, release.Rejected):
+                        outcome = SelectionRejected(
+                            admitted.reason,
+                            admitted.stage,
+                            admitted.requested,
+                            admitted.platform,
+                            admitted.selectable,
                         )
-                        if isinstance(admitted, release.Rejected):
-                            outcome = SelectionRejected(
-                                admitted.reason,
-                                admitted.stage,
-                                admitted.requested,
-                                admitted.platform,
-                                admitted.selectable,
+                    else:
+                        interpreter = (
+                            PrivateInterpreter.admit(
+                                args.private_python_archive,
+                                args.private_dependency,
+                                admitted.target.target,
                             )
-                        else:
-                            adapter = NativeComposition(
-                                root,
-                                home,
-                                idea,
-                                admitted.control_root,
-                                workspace,
-                                read_limits(admitted.control_root),
-                                dict(os.environ),
-                                runner,
-                                state,
-                            )
-                            outcome = install_composition(
-                                adapter, admitted, args.restart_ide, args.dry_run
-                            )
+                            if args.private_python_archive is not None
+                            and args.private_dependency is not None
+                            else None
+                        )
+                        if (args.private_python_archive is None) != (
+                            args.private_dependency is None
+                        ):
+                            raise ValueError("private interpreter inputs must be paired")
+                        outcome = activate(root, home, admitted, args.dry_run, interpreter, runner)
     except (
         StageRejected,
         OSError,
@@ -2592,7 +2651,7 @@ def main(
                     contract.Stage.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN
                 )
             )
-    if isinstance(outcome, (contract.Activated, contract.InstalledNotRunning)):
+    if isinstance(outcome, (contract.Activated, contract.InstalledNotRunning, ProductInstalled)):
         try:
             outcome = refresh_installed_guidance(root, home, outcome, runner)
         except KeyboardInterrupt:
@@ -2607,28 +2666,42 @@ def main(
         print(outcome.type)
         if isinstance(outcome, (contract.Activated, contract.InstalledNotRunning)):
             print(outcome.nextAction, file=sys.stderr)
-            if "HARNESS_REFRESH_REQUIRED" in outcome.notices:
-                print(
-                    "HARNESS_REFRESH_REQUIRED: run kast install <harness> before a fresh session.",
-                    file=sys.stderr,
-                )
             print(
                 "Next commands: kast versions, kast status --json, "
                 "kast install codex|copilot|pi, kast install skill.",
                 file=sys.stderr,
             )
-        elif not isinstance(outcome, contract.Planned):
+        elif not isinstance(outcome, (contract.Planned, ProductPlanned)):
             print(encoded(outcome).decode().rstrip(), file=sys.stderr)
+        if (
+            isinstance(
+                outcome, (contract.Activated, contract.InstalledNotRunning, ProductInstalled)
+            )
+            and journal_types.ManagedNotice.HARNESS_REFRESH_REQUIRED in outcome.notices
+        ):
+            print(
+                "HARNESS_REFRESH_REQUIRED: run kast install <harness> before a fresh session.",
+                file=sys.stderr,
+            )
     return (
         state.exit_code
         if state.exit_code is not None
         else 0
-        if isinstance(outcome, (contract.Activated, contract.InstalledNotRunning, contract.Planned))
+        if isinstance(
+            outcome,
+            (
+                contract.Activated,
+                contract.InstalledNotRunning,
+                contract.Planned,
+                ProductInstalled,
+                ProductPlanned,
+            ),
+        )
         else 1
     )
 
 
-if __name__ == "__main__":
+def entrypoint() -> int:
     interruption = InterruptState()
 
     def interrupted(number: int, _frame: object) -> None:
@@ -2637,4 +2710,8 @@ if __name__ == "__main__":
 
     _ = signal.signal(signal.SIGTERM, interrupted)
     _ = signal.signal(signal.SIGINT, interrupted)
-    raise SystemExit(main(sys.argv[1:], interrupt=interruption))
+    return main(sys.argv[1:], interrupt=interruption)
+
+
+if __name__ == "__main__":
+    raise SystemExit(entrypoint())

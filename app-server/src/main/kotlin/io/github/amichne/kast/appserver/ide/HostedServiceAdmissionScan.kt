@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -22,9 +23,9 @@ internal fun observeHostedEntries(
     entries: Iterable<Path>,
     ownerProbe: HostedEndpointOwnerProbe,
     evidence: HostedAdmissionObserver,
+    client: ExistingIdeSocketClient,
 ): HostedServicesObservation {
     val hosts = ArrayList<AdmittedHostedService>()
-    val client = ExistingIdeSocketClient(home, exchangeMillis = HOST_ADMISSION_EXCHANGE_MILLIS)
     val deadline = System.nanoTime() + HOST_ADMISSION_SCAN_NANOS
     var count = 0
     for (entry in entries) {
@@ -224,5 +225,4 @@ private val PROJECT_DIRECTORY = Regex("[0-9a-f]{32}")
 private const val MAXIMUM_HOST_ADMISSION_ENTRIES = 64
 private const val MAXIMUM_HOST_DESCRIPTOR_BYTES = 16_384
 private const val HOST_ROOT_DIGEST_PREFIX_BYTES = 16
-private const val HOST_ADMISSION_EXCHANGE_MILLIS = 2_000L
 private const val HOST_ADMISSION_SCAN_NANOS = 10_000_000_000L

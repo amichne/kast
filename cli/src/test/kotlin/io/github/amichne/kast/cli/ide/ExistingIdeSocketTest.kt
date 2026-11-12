@@ -5,7 +5,10 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.ExistingIdeQualifiedClassName
 import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
-import io.github.amichne.kast.appserver.ide.canonicalRootFixture
+import io.github.amichne.kast.appserver.ide.ManagedDeploymentFixture
+import io.github.amichne.kast.appserver.ide.cleanupHostedEndpointFixture
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
+import io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
@@ -27,7 +30,9 @@ class ExistingIdeSocketTest {
     @Test
     fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`() {
         for (scenario in listOf("valid", "supertype", "oversized", "utf8", "truncated")) {
-            val home = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kc-")
+            val temporary = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kc-")
+            val deployment = ManagedDeploymentFixture(temporary)
+            val home = deployment.home
             val root = canonicalRootFixture(home)
             val digest =
                 MessageDigest.getInstance("SHA-256").digest(home.toString().toByteArray()).take(16).joinToString("") {
@@ -43,15 +48,21 @@ class ExistingIdeSocketTest {
             Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
             val socket = directory.resolve("host.sock")
             val host = UUID.fromString("00000000-0000-0000-0000-000000000001")
+            val identity = deployment.identity(host.toString())
             Files.writeString(
                 directory.resolve("endpoint.json"),
-                HostedDescriptorFixture.endpoint(home.toString(), socket.toString(), host),
+                HostedDescriptorFixture.endpoint(
+                    home.toString(),
+                    socket.toString(),
+                    host,
+                    application = IdeHostApplicationAdvertisement(identity, HostedDescriptorFixture.compatibility),
+                ),
             )
             val executor = Executors.newSingleThreadExecutor()
             try {
                 ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { server ->
                     server.bind(UnixDomainSocketAddress.of(socket))
-                    val response = HostedDescriptorFixture.status(home.toString(), host).toByteArray()
+                    val response = HostedDescriptorFixture.status(home.toString(), host, identity.pid).toByteArray()
                     val task = executor.submit {
                         if (scenario == "supertype") {
                             server.accept().use { client ->
@@ -105,15 +116,17 @@ class ExistingIdeSocketTest {
                                     .value
                             )
                         else ExistingIdeOperation.Status
-                    val answer = ExistingIdeSocketClient(home).query(root, operation)
-                    if (scenario == "valid") assertTrue(answer is ExistingIdeExchange.Received)
-                    else if (scenario == "supertype") assertTrue(answer is ExistingIdeExchange.HostRejected)
+                    val answer = ExistingIdeSocketClient(home, deployment.configuration).query(root, operation)
+                    if (scenario == "valid") assertTrue(answer is ExistingIdeExchange.Received, answer.toString())
+                    else if (scenario == "supertype")
+                        assertTrue(answer is ExistingIdeExchange.HostRejected, answer.toString())
                     else assertEquals(ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED), answer)
                     task.get(3, TimeUnit.SECONDS)
                 }
             } finally {
                 executor.shutdownNow()
-                Files.walk(home).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+                cleanupHostedEndpointFixture(home)
+                Files.walk(temporary).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
             }
         }
     }

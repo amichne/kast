@@ -236,8 +236,21 @@ internal fun pluginFixtureWithMcp(temporary: Path): Path {
         composition.resolve("plugins/kast/$relative"),
         Json.encodeToString(PluginTestCompositionManifest("kast", "1.2.3", "./.mcp.json")),
     )
+    val metadata = installation.resolve("share/kast")
+    val support =
+        listOf("mcp_environment.py", "mcp-requirements.txt", "mcp-requirements.txt.lock").map { name ->
+            Files.copy(Path.of("../../packaging/$name"), metadata.resolve(name))
+        }
+    val python = metadata.resolve("private-python/bin/python3.12")
+    Files.createDirectories(python.parent)
+    Files.writeString(python, "fixture interpreter; process execution is explicitly injected")
+    Files.setPosixFilePermissions(python, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
+    val library = metadata.resolve("private-python/lib/python3.12/site.py")
+    Files.createDirectories(library.parent)
+    Files.writeString(library, "fixture standard library")
     val manifest = (readBundledManifest(installation) as BundledManifestRead.Read).manifest
-    val files = Files.walk(composition).use { it.filter(Files::isRegularFile).toList() }
+    val files =
+        Files.walk(composition).use { it.filter(Files::isRegularFile).toList() } + support + listOf(python, library)
     Files.writeString(
         installation.resolve("installation.json"),
         Json.encodeToString(
@@ -245,7 +258,11 @@ internal fun pluginFixtureWithMcp(temporary: Path): Path {
                 payloadFiles =
                     manifest.payloadFiles +
                         files.map {
-                            BundledPayload(installation.relativize(it).toString(), "sha256:${sha256(it)}", 420)
+                            BundledPayload(
+                                installation.relativize(it).toString(),
+                                "sha256:${sha256(it)}",
+                                (Files.getAttribute(it, "unix:mode") as Number).toInt().and(511),
+                            )
                         }
             )
         ),

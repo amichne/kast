@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver.ide
 
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.LiveReadContentView
@@ -142,7 +143,7 @@ class ExistingIdeQueryPresentationHeaderTest {
     }
 
     private class Fixture(path: String) {
-        val root = CanonicalRoot(Path.of(path))
+        val root = canonicalRootFixture(Path.of(path))
         val descriptor =
             ExistingIdeDescriptor(
                 HostedEndpointOwnerPid.parse("123").proven(),

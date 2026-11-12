@@ -1,319 +1,112 @@
 ---
 title: "Install and update Kast"
 sidebarTitle: "Installation and updates"
-description: "Install Kast from a remote script, select the latest published main build, and load its Host through a compatible reload or an IDEA restart."
+description: "Install one complete Kast build with a private runtime, then select preview, stable, or an exact build."
 icon: "download"
-keywords:
-  - "upgrade"
-  - "IntelliJ IDEA"
-  - "Kotlin"
 ---
 
-Use the remote installer for an initial installation, then use `kast upgrade` for updates.
-The normal setup path tracks the latest published development build with `--channel main`.
+Use the remote installer for initial setup, then `kast upgrade` for updates.
+Kast manages its own Host on macOS ARM64 and Linux x86-64. Desktop IDEA is not a prerequisite.
 
-Use the desktop steps on this page for IntelliJ IDEA on an Apple silicon Mac.
-On Linux, or without desktop IDEA, see [Run Kast without desktop IDEA](#manage-isolated-workspaces).
-
-## Desktop prerequisites
+<Warning>
+  This page describes the managed-runtime contract under implementation. Native acceptance and publication are not yet complete. The remote main installer is not evidence that this branch is available.
+</Warning>
 
 <span id="before-you-install" />
 
-Use an Apple silicon Mac and a Kotlin Gradle project.
-Use IntelliJ IDEA `262.*` or `263.*` with its bundled Kotlin plugin and Java 25 JBR.
-Your project's JDK does not replace the IDEA runtime.
+## Requirements
 
-Use Python 3.12 or 3.13, available as `python3` on `PATH`. For upgrades, install uv 0.12.9 or later. The [optional MCP service](/reference/integrations#optional-mcp) uses the same runtime versions.
-
-Save your project work before installation or an update.
+Use a supported machine, a Kotlin Gradle project, Bash, curl, and standard archive and checksum utilities.
+Kast supplies its private interpreter, Java runtime, and IntelliJ analysis runtime. No user Python or uv installation is required.
+Your project still supplies its build configuration, dependencies, and any required credentials.
 
 <a id="install" />
 
 ## Remote initial install
 
-Run this command from a terminal:
-
-```shell wrap
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview
 ```
 
-This command needs no checkout or existing `kast` installation. `--developer-latest` selects the latest qualified development build from the published channel. It installs matching Control and Host artifacts and resets stale Kast state. `--skip-codex-plugin` skips the optional MCP setup. After installation, use [agent setup](/reference/integrations) for CLI guidance.
-
-The installer replaces Kast-owned installation files, Host files, and bundled agent assets. Replacement can end active Kast sessions. Restart IDEA to load the installed Host. Start a fresh agent session.
+The installer selects one complete product: an immutable vendor base and exact Control, Host, and agent components.
+It verifies the selected records and bytes before activation. A missing component is a failure, not permission to mix builds.
+Installation does not grant trust to a project or start its Host.
 
 The installation directory is `$HOME/.local/share/kast`.
 The command path is `$XDG_CONFIG_HOME/kast` when `XDG_CONFIG_HOME` is nonempty, or `$HOME/.local/bin/kast` otherwise.
-If the shell cannot find `kast`, add the reported command directory to `PATH`.
-The installer does not edit shell profiles.
+Add the printed command directory to `PATH` if needed. The installer does not edit shell profiles.
 
-For another IDEA installation, append `--idea-home "/Applications/IntelliJ IDEA.app"` after the installer options.
-Keep Bash's `--` separator before those options.
-To preview installation without changes, append `--dry-run`. To inspect structured diagnostics, append `--verbose`.
-
-The installer selects a separate Host archive for each IDEA release line.
-Older published builds can lack the `263` archive.
-The Host profile uses `dataDirectoryName` from the selected IDEA metadata.
-IDEA `263` normally uses `IntelliJIdea2026.3`, independently of the app's name or location.
-The Kast installation and command paths stay the same.
-If several compatible IDEA apps exist, supply `--idea-home` to select one exact app.
+Use [agent setup](/reference/integrations) after installation. No desktop plugin installation or restart is needed.
 
 ## 1. Install the selected release
 
-List the published builds:
-
 ```shell
 kast versions
+kast upgrade --channel preview --dry-run
+kast upgrade --channel preview
 ```
 
-The catalog lists up to five selectable main builds. Each entry shows its revision, version, and platform targets.
-
-Preview the latest development build:
-
-```shell
-kast upgrade --channel main --dry-run
-```
-
-A successful preview returns `PLANNED`.
-It admits the selected artifacts without installation changes or an IDEA restart.
-
-Apply the latest development build and permit a normal IDEA restart when necessary:
-
-```shell
-kast upgrade --channel main --restart-ide
-```
-
-Kast uses a compatible reload when the running Host permits it.
-Active Kast sessions can end so that the selected build can replace the prior build.
-If you omit `--restart-ide`, a necessary restart returns `RESTART_REQUIRED` before installation changes.
-If IDEA is already stopped, Kast can install the selected build without starting IDEA.
-Read the [update outcome](/reference/management#lifecycle-result-contract) before you start another session.
-
-### Select another IDEA installation
-
-Supply the exact IDEA app path:
-
-```shell
-kast upgrade --channel main --idea-home "/Applications/IntelliJ IDEA.app" --restart-ide
-```
-
-The selected IDEA installation and profile determine which Host Kast updates.
-An unsupported custom-profile restart rejects before installation changes.
+`preview` selects a complete preview build. `stable` selects a complete stable build.
+`main` remains an alias for `preview`; new commands use `preview`.
+A catalog entry identifies the selected product and its platform. Component publication alone does not establish a selectable product.
 
 ### Pin a published build
 
-Use one selector per command: `--channel`, `--version`, or `--commit`.
-A version selector uses an exact published release version.
-A commit selector uses a published main revision or its unique displayed 12-character prefix.
-Copy the revision from `kast versions`.
-
-Replace `VERSION` or `MAIN_REVISION` with your selected value:
+Use one selector: `--channel`, `--version`, or `--commit`.
+Copy an exact version or revision from `kast versions`:
 
 ```shell
 kast upgrade --version VERSION
-kast upgrade --commit MAIN_REVISION
+kast upgrade --commit REVISION
 ```
 
-Either exact selector records a pin.
-An unqualified `kast upgrade` rejects a pin with `PINNED_BUILD` before installation changes.
-To track development builds again, use `kast upgrade --channel main`.
+An exact selector records a pin. An unqualified upgrade rejects a pin with `PINNED_BUILD`.
+Use `kast upgrade --channel preview` to follow preview builds again.
+Use `kast upgrade --repair` to restore the exact installed product, not to select a newer build.
 
-## 2. Load the plugin and inspect state
+<span id="2-load-the-plugin-and-inspect-state" />
 
-Examine installation and loaded Host evidence separately:
+## 2. Inspect installed state
+
+The managed Host loads its plugin on demand. No desktop action is required.
 
 ```shell
 kast status --json
+kast status --all --json
 ```
 
-`installedBuild` describes the files on disk. `applicationHost` describes the admitted running IDEA process and its loaded Host.
-`updatePolicy` describes future selection. `unresolvedTransaction` reports unfinished installation work.
-Status starts no Java process and requests no Host lifecycle action.
-
-Compare `installedBuild` with `applicationHost` to distinguish installed files from the loaded Host. A query supplies separate evidence for project readiness and completion.
+Status separates installed product identity, update policy, unfinished transactions, and workspace Host observations.
+It does not start a Host, grant trust, repair state, or contact release servers.
+A recorded workspace is not proof that its Host can answer a query.
 
 <span id="coordinator-endpoint" />
-
-Use [agent setup](/reference/integrations) to install the selected agent's guidance.
-If an update reports `HARNESS_REFRESH_REQUIRED`, your agent tool has older Kast guidance. Repeat that setup before a fresh agent session.
-
 <span id="3-establish-a-semantic-connection" />
 
 ## 3. Prove a semantic connection
 
-Start IDEA when the outcome is `INSTALLED_NOT_RUNNING`.
-Start a fresh agent session in the intended Kotlin repository or worktree.
-Ask [a question about your code](/start#3-ask-about-your-code).
+From a project whose build code you trust, run:
 
-Keep the returned scope and completion evidence with the answer.
-Use [Manage Kast](/reference/management) for update outcomes and recovery.
+```shell
+kast query --name DECLARATION_NAME --fields name,location --json
+```
 
-Task procedures: [Agent guidance](/reference/integrations).
-
-Exact reference: [Compatibility](/reference/compatibility).
-
-Recovery: [Help](/troubleshooting).
+Replace the name with a declaration in your project. Check its file and the completion evidence.
+The first explicit semantic request grants trust to the exact canonical workspace root, creates private state, and prepares its Host.
+A sibling worktree has a separate root and trust record. Discovery and session hooks do not grant trust.
 
 <span id="manage-isolated-workspaces" />
+<span id="isolated-runtime" />
 
-## Run Kast without desktop IDEA
+## Private workspace state
 
-Kast can run its own private Host instead of the plugin in your desktop IDEA.
-A private Host is a headless IntelliJ analysis process with its own Java runtime, IDE profile, and Gradle home.
-It is not a Docker container. It runs as an ordinary process under your user account, with your file permissions.
+Each workspace has a private `HOME`, IDE profile, and default Gradle home.
+This is process and profile separation, not an OS sandbox. Build code runs with your user permissions.
 
-| Option | Use it for |
-| --- | --- |
-| Workspace container (`kast container`) | `kast query` in one or more projects, one container per workspace, without desktop IDEA. |
-| `kast-task` | One command at a time in one workspace, from a [standalone installation](#isolated-runtime). |
+Saved installation or workspace settings can select an external Gradle home through `GRADLE_USER_HOME`.
+Inherited credentials remain available to the build. Treat an external Gradle home as trusted input: it can contain credentials, properties, and init scripts.
 
-### Supported platforms
+Queries use the installed runtime and never consult release servers for an update.
+Gradle import and dependency resolution can still require network access.
+There is no public container creation, archive import, or desktop fallback step.
 
-| Machine | Get `kast` from | Get the container runtime from |
-| --- | --- | --- |
-| Apple silicon Mac | The [remote installer](#install). | A download on first `create`, when your Kast version has a published runtime. Otherwise, a [candidate build](#install-from-a-candidate-build). |
-| Linux x86-64 | A [candidate build](#install-from-a-candidate-build). The remote installer has no Linux release. | The same candidate build. |
-| Intel Mac or Linux ARM | No published release. | No published runtime. |
-
-### Set up a workspace container
-
-<span id="2-create-a-container-and-query-your-code" />
-
-1. Check that your `kast` supports containers:
-
-   ```shell
-   kast --version
-   kast container --help
-   ```
-
-   If `kast container --help` fails, install `kast` from a [candidate build](#install-from-a-candidate-build).
-
-2. Create a container for a workspace whose build code you trust. `create` grants that workspace trust, so the Host runs its Gradle build.
-
-   ```shell
-   cd /path/to/trusted/workspace
-   kast container create --name backend
-   ```
-
-   `create` uses the current directory unless you pass `--root`. It records the container without starting the Host.
-   If no runtime is available for your version, [import one](#install-from-a-candidate-build) first.
-
-3. Query your code from the workspace. Replace `DECLARATION_NAME` with a class or function name:
-
-   ```shell
-   kast query --name DECLARATION_NAME --fields name,location --json
-   ```
-
-   The first query starts the private Host. Look for `"type": "complete"` and the declaration's file.
-   Any query run from the workspace or one of its subdirectories uses this container.
-
-<Note>
-  The Host keeps its Gradle state private. `kast container create --gradle-home DIR` shares an existing Gradle home instead, which gives the Host that directory's Gradle properties, credentials, and init scripts.
-</Note>
-
-<span id="3-manage-the-container" />
-
-### Manage containers
-
-| Command | Effect |
-| --- | --- |
-| `kast container --json` | List containers, with each one's ID and whether it is enabled or stopped. |
-| `kast container stop backend` | Turn off on-demand start. Queries report `STOPPED`. |
-| `kast container resume backend` | Turn on-demand start back on and prepare the Host. |
-| `kast container rm ID` | Stop the container and delete its record and private state. `rm` takes the exact ID from the list, not the name. |
-
-`rm` keeps your repository, the shared runtime, and any external Gradle home.
-If `stop` or `rm` returns `BUSY`, repeat it after the running operation ends.
-With the default installation, container state lives under `~/.local/share/kast-workspaces`. Remove containers before you uninstall Kast if you want that state removed too.
-
-Once any container exists, a query outside every container's workspace, or inside more than one, is rejected.
-To query another project, create a container for it too.
-A listed container is a record. Only a complete query proves that its Host can answer.
-
-<span id="1-get-a-matching-control-and-runtime" />
-
-### Install from a candidate build
-
-Use a candidate build on Linux, or when your Kast version has no published container runtime.
-Candidates are qualified development builds. GitHub keeps their artifacts for a limited time.
-
-1. Open a successful [Isolated runtime candidates run](https://github.com/amichne/kast/actions/workflows/composed-linux.yml).
-   Download the `kast-composed-TARGET-SHA-RUN_ID-ATTEMPT` artifact for your platform.
-2. In the qualification artifact for the same run and target, open `qualification.json`.
-   Check for `"qualification": "COMPLETE"`, and check that `containers.runtimeSha256` matches the `.sha256` file of `kast-runtime-vVERSION-TARGET.zip`.
-3. Compare `kast --version` with the candidate's `VERSION`. The installed Control and imported runtime must have the same version and platform.
-   On Linux, if the versions differ, or if `kast container --help` fails, install `kast` from this candidate.
-   Use `kast-composed-setup-vVERSION-TARGET.tar.gz` with the [standalone procedure](#isolated-runtime).
-   Then, in the same terminal, start a clean shell that uses it:
-
-   ```shell
-   env -i HOME="$root/state/home" PATH="$root/state/home/.local/bin:/usr/bin:/bin" /bin/bash --noprofile --norc
-   ```
-
-   This shell's `HOME` is `$root/state/home`, so container records go there too. Run every later `kast` command, including step 4 and your queries, from a shell with this `HOME` and `PATH`.
-
-4. Import the runtime. Use absolute paths, and replace `DIGEST` with the value from its `.sha256` file:
-
-   ```shell
-   kast container import-runtime --archive /path/to/kast-runtime-vVERSION-TARGET.zip --sha256 DIGEST
-   ```
-
-Then [set up a workspace container](#set-up-a-workspace-container).
-Several containers can share one runtime for the same Kast version and platform.
-
-## Isolated runtime
-
-A standalone installation keeps its own Host, Java runtime, configuration, and Gradle state in one directory. Your desktop IDEA stays independent.
-Use it for `kast-task`, or to get `kast` from a [candidate build](#install-from-a-candidate-build).
-It needs system Python 3.12 or 3.13. Your project supplies its own build dependencies and Gradle JVM settings.
-
-Choose a new absolute installation root whose parent exists, with no symbolic links in the path.
-For a disposable installation, use `/private/tmp/ki` on macOS or `/tmp/ki` on Linux.
-The root is fixed. To move it, install again.
-
-1. Set `archive` to the downloaded setup archive path.
-2. Set `sha256` to the digest from its `.sha256` file, and `version` to the value after `v` in the archive filename.
-3. Set `root` to the installation root.
-4. Run this command. It checks the archive digest, then starts the bundled installer.
-
-```shell
-python3 -I - "$archive" "$sha256" "$version" "$root" <<'PY'
-import hashlib
-from pathlib import Path
-import subprocess
-import sys
-import tarfile
-import tempfile
-
-archive, expected, version, root = sys.argv[1:]
-with open(archive, "rb") as source, tempfile.TemporaryDirectory() as scratch:
-    if hashlib.file_digest(source, "sha256").hexdigest() != expected:
-        raise SystemExit("Archive digest mismatch")
-    source.seek(0)
-    name = "setup-kast/bin/setup-kast.pyz"
-    installer = Path(scratch) / "setup-kast.pyz"
-    with tarfile.open(fileobj=source, mode="r:gz") as bundle:
-        matches = [member for member in bundle if member.name == name]
-        if len(matches) != 1 or not matches[0].isfile() or matches[0].size > 1_048_576:
-            raise SystemExit("Invalid archive installer")
-        with bundle.extractfile(matches[0]) as entry:
-            installer.write_bytes(entry.read())
-    result = subprocess.run(
-        [sys.executable, "-I", str(installer), "--archive", archive, "--archive-sha256", expected,
-         "--version", version, "--root", root],
-        check=False,
-    )
-    raise SystemExit(result.returncode)
-PY
-```
-
-To use `kast-task`, set `workspace` to the canonical path of a workspace whose build code you trust. The first use grants that workspace trust.
-Replace `DECLARATION_NAME` with a class or function name:
-
-```shell
-"$root/bin/kast-task" "$workspace" -- kast query --name DECLARATION_NAME --fields name,location --json
-```
-
-The command runs in the workspace and keeps its arguments and exit status.
-Repeat the same workspace path to reuse its trust and state. A different workspace needs its own installation root.
-
-To stop the private Host, run `"$root/bin/kast" stop --json`. To resume it, run `kast-task` again for the same workspace.
+Use [Manage Kast](/reference/management) for scoped stops, exact repair, removal, and recovery.

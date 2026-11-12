@@ -21,16 +21,15 @@ Setup takes three steps: install Kast, connect your agent, and run one query.
 
 You need:
 
-- An Apple silicon Mac.
+- An Apple silicon Mac or Linux x86-64 machine.
 - A Kotlin Gradle project.
-- IntelliJ IDEA 2026.2 or 2026.3 (build `262.*` or `263.*`), with its bundled Kotlin plugin and Java 25 JetBrains Runtime (JBR).
 - The Codex, Copilot, or Pi CLI.
-- Python 3.12 or 3.13, available as `python3` on your `PATH`.
-- For `kast upgrade` and the optional MCP setup: the uv Python package manager, version 0.12.9 or later.
 
-<Tip>
-  On Linux x86-64, or to run Kast without desktop IDEA, see [Run Kast without desktop IDEA](/reference/installation#manage-isolated-workspaces).
-</Tip>
+Kast supplies its private runtime. You do not need desktop IDEA, Python, or uv.
+
+<Warning>
+  This guide describes the managed-runtime contract under implementation. Native acceptance and publication are not yet complete. The remote installer does not establish that this branch is available.
+</Warning>
 
 <Steps titleSize="h2">
   <Step title="Install Kast" id="1-install-or-update-kast">
@@ -40,12 +39,11 @@ You need:
     Run this command from any directory. You do not need a checkout of the Kast repository.
 
     ```shell
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview
     ```
 
-    `--developer-latest` selects the latest development build. `--skip-codex-plugin` skips the installer's Codex prompt; step 2 connects every agent, including Codex.
-
-    Then restart IntelliJ IDEA so that it loads Kast.
+    `--channel preview` selects a complete preview build. Step 2 connects your agent.
+    Installation does not grant project trust or start a Host.
 
     If your shell cannot find `kast`, add the directory that the installer prints to your `PATH`, then open a new terminal.
 
@@ -53,10 +51,10 @@ You need:
       Installing or updating can end running Kast sessions. Save your work in your agent first.
 
       ```shell
-      kast upgrade --channel main --restart-ide
+      kast upgrade --channel preview
       ```
 
-      `--restart-ide` lets Kast restart IDEA when the update needs it.
+      Kast manages its own runtime; no desktop restart is needed.
       See [Install and update Kast](/reference/installation) to pin a version or recover a failed update.
     </Accordion>
   </Step>
@@ -94,7 +92,7 @@ You need:
       </Tab>
     </Tabs>
 
-    Open your project in IntelliJ IDEA, and keep IDEA open while you work. Then start a new agent session in the same project.
+    Start a new agent session in your project. Session hooks only supply context; they do not prepare projects or grant trust.
 
     You do not need MCP to ask about your code. Edits through Kast need the [optional MCP setup](/reference/integrations#optional-mcp).
   </Step>
@@ -108,6 +106,7 @@ You need:
     <span id="inspect-your-first-answer" />
 
     Choose the name of a class or function in your project.
+    Use a project whose build code you trust. This explicit request grants trust to its exact canonical root and starts its private Host.
     From the project root, run this command with that name in place of `DECLARATION_NAME`:
 
     ```shell
@@ -116,7 +115,8 @@ You need:
 
     The command exits with status `0` when the search finished. In the output, look for `"type": "complete"` and the file where that declaration is.
 
-    The first query can take several minutes while IDEA imports the Gradle project and builds its index. Let it run.
+    The first query can take several minutes while the private Host imports the Gradle project and builds its index. Let it run.
+    Queries do not contact release servers. Gradle can still need network access and build credentials.
     If `type` has another value or the command prints an error, the output gives the cause. See [Help](/troubleshooting).
   </Step>
 </Steps>

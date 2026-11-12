@@ -69,7 +69,8 @@ internal data class ContainerRuntimeReceipt(
     @Required val schemaVersion: Int = 1,
 )
 
-internal class AdmittedContainerRuntime private constructor(val root: Path, val manifest: RuntimeArchiveManifest) {
+internal class AdmittedContainerRuntime
+private constructor(val root: Path, val manifest: RuntimeArchiveManifest, val archiveSha256: String) {
     val key: String
         get() = root.fileName.toString()
 
@@ -80,17 +81,13 @@ internal class AdmittedContainerRuntime private constructor(val root: Path, val 
         get() = root.resolve("components/plugins")
 
     companion object {
-        fun read(
-            root: Path,
-            version: String,
-            platform: ContainerPlatform,
-        ): Refinement<AdmittedContainerRuntime, ContainerFailure> = containerFiles {
-            readSelected(root, version, platform)
-        }
+        fun read(root: Path, platform: ContainerPlatform): Refinement<AdmittedContainerRuntime, ContainerFailure> =
+            containerFiles {
+                readSelected(root, platform)
+            }
 
         private fun readSelected(
             root: Path,
-            version: String,
             platform: ContainerPlatform,
         ): Refinement<AdmittedContainerRuntime, ContainerFailure> {
             if (!Files.isDirectory(root, NOFOLLOW_LINKS) || root.toRealPath() != root)
@@ -106,7 +103,7 @@ internal class AdmittedContainerRuntime private constructor(val root: Path, val 
                     is Refinement.Rejected -> return parsed
                     is Refinement.Refined -> parsed.value
                 }
-            when (val valid = admitRuntimeManifest(manifest, version, platform)) {
+            when (val valid = admitRuntimeManifest(manifest, manifest.version, platform)) {
                 is Refinement.Rejected -> return valid
                 is Refinement.Refined -> Unit
             }
@@ -115,12 +112,15 @@ internal class AdmittedContainerRuntime private constructor(val root: Path, val 
                     is Refinement.Rejected -> return parsed
                     is Refinement.Refined -> parsed.value
                 }
+            val key = root.fileName.toString()
             val identityMatches =
-                root.fileName.toString() == "$version-${platform.publicName}" && receipt.schemaVersion == 1
+                (key == receipt.archiveSha256 || key == "${manifest.version}-${platform.publicName}") &&
+                    receipt.schemaVersion == 1
             val digestsMatch =
                 runtimeDigest.matches(receipt.archiveSha256) &&
                     receipt.manifestSha256 == sha256(root.resolve("manifest.json"))
-            return if (identityMatches && digestsMatch) Refinement.Refined(AdmittedContainerRuntime(root, manifest))
+            return if (identityMatches && digestsMatch)
+                Refinement.Refined(AdmittedContainerRuntime(root, manifest, receipt.archiveSha256))
             else Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
         }
     }
@@ -193,7 +193,7 @@ private fun publishRuntime(
         is Refinement.Rejected -> return private
         is Refinement.Refined -> Unit
     }
-    val destination = runtimes.resolve("${manifest.version}-${manifest.platform.publicName}")
+    val destination = runtimes.resolve(expected)
     if (Files.exists(destination, NOFOLLOW_LINKS)) return reuseRuntime(destination, manifest, expected)
     val staging =
         Files.createDirectory(
@@ -235,7 +235,7 @@ private fun publishRuntime(
     Files.move(staging, destination, StandardCopyOption.ATOMIC_MOVE)
     containerProgress(ContainerStage.RUNTIME_RENAME, ContainerStageOutcome.COMPLETED)
     containerProgress(ContainerStage.RUNTIME_PUBLICATION, ContainerStageOutcome.COMPLETED)
-    return AdmittedContainerRuntime.read(destination, manifest.version, manifest.platform)
+    return AdmittedContainerRuntime.read(destination, manifest.platform)
 }
 
 private fun reuseRuntime(
@@ -246,8 +246,7 @@ private fun reuseRuntime(
     when (val receipt = readContainerRecord<ContainerRuntimeReceipt>(destination.resolve("runtime.json"))) {
         is Refinement.Rejected -> receipt
         is Refinement.Refined ->
-            if (receipt.value.archiveSha256 == expected)
-                AdmittedContainerRuntime.read(destination, manifest.version, manifest.platform)
+            if (receipt.value.archiveSha256 == expected) AdmittedContainerRuntime.read(destination, manifest.platform)
             else Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
     }
 

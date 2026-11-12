@@ -7,8 +7,6 @@ import io.github.amichne.kast.appserver.DaemonOperationClientFailure
 import io.github.amichne.kast.appserver.DaemonOperationClientRejection
 import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.diagnosticCode
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
@@ -19,6 +17,8 @@ import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.command.*
 import io.github.amichne.kast.cli.command.ide.ExistingIdeRootSelection
 import io.github.amichne.kast.cli.direct.present
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscoverer
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers

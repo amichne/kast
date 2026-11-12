@@ -4,7 +4,6 @@ import io.github.amichne.kast.appserver.diagnosticCode
 import io.github.amichne.kast.appserver.host.CodexClientLaunch
 import io.github.amichne.kast.appserver.host.CodexClientLauncher
 import io.github.amichne.kast.appserver.host.UnavailableCodexClientLauncher
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscoverer
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
@@ -20,6 +19,7 @@ import io.github.amichne.kast.cli.knowledge.KnowledgeReader
 import io.github.amichne.kast.cli.projection.CliBoundaryDocuments
 import io.github.amichne.kast.cli.projection.CliLocalMetadata
 import io.github.amichne.kast.cli.projection.ProductInspectionDocuments
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscoverer
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import io.github.amichne.kast.protocol.wire.presentation.OperationProjectionFailure
 import io.github.amichne.kast.protocol.wire.presentation.OutputDocument

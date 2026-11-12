@@ -2,9 +2,10 @@
 
 The default plugin supplies canonical guidance for the native `kast` command.
 It does not register MCP or install Python hooks.
-Its session hook calls `kast hook session-start --wait none` to start preparing supported Gradle projects in IntelliJ IDEA.
-Non-project directories skip preparation. Invalid events and failed preparation return a nonzero status.
-The persistent IntelliJ IDEA Host owns Kotlin semantics for CLI and MCP.
+Its session hook calls `kast --internal-entrypoint=query hook session-start --wait none` for passive context.
+Hooks do not grant trust, start a Host, prepare a project, or contact release servers.
+The first explicit semantic request trusts the exact canonical workspace root and prepares its private IntelliJ IDEA Host.
+CLI, MCP, and tool RPC share that managed runtime. Use a workspace whose build code you trust.
 
 ## Install guidance
 
@@ -19,16 +20,15 @@ kast install pi
 Codex and Copilot own their plugin resources and configuration.
 Pi discovers the copied skill through its native skill directory.
 Pi also installs the session extension that calls the same command.
-Pi starts preparation in the background during session startup.
-Each harness gives the model context that distinguishes preparation from readiness and rejection.
-Pi includes that context before the next agent turn. Rejected preparation also produces a warning.
+Each harness gives the model passive context before semantic work.
+Pi includes that context before the next agent turn.
 Each command examines the selected installed release and the provider's actual resources.
 Start a fresh agent session after setup.
 Codex needs trust for the installed hook definition before it runs.
 
-Use `kast hook session-start --workspace /absolute/project/path --wait none` to start preparation from a terminal.
-Without `--workspace`, the command reads a host event with an absolute `cwd` from standard input.
-Hook replies report `preparing` or `ready` and the selected preparation allowance. They ignore `KAST_OUTPUT_TOON`.
+The hook is an internal adapter entry, not a public preparation command.
+Without `--workspace`, it reads a host event with an absolute `cwd` from standard input.
+Hook replies supply context without a readiness claim. They ignore `KAST_OUTPUT_TOON`.
 Codex receives `hookSpecificOutput.additionalContext`; Copilot receives `additionalContext`.
 `--host codex` and `--host copilot` select those envelopes.
 
@@ -48,7 +48,7 @@ Set `KAST_WORKSPACE_PREPARATION_WAIT` to positive milliseconds or `indefinite` f
 Each wait keeps its own allowance when it joins existing preparation.
 The setting also supports saved installation and workspace configuration. Explicit `--wait` takes precedence.
 Without a setting or flag, the existing 1020000-millisecond allowance applies.
-Background hooks return after native admission; their launch deadline does not bound an explicit workspace wait.
+Legacy hook wait selections have no preparation effect. Explicit workspace waits keep their own allowance.
 
 Follow-up source reads, retained-result reads, and queries from issued references use the existing workspace.
 They preserve the original authority and reject stale references without causing a model reload.
@@ -68,8 +68,8 @@ kast install copilot --mcp
 kast install pi --mcp
 ```
 
-The optional task service needs uv and Python 3.12 or 3.13.
-Its script locks own the dependency versions.
+The installed product supplies the optional task service's private interpreter and pinned dependencies.
+Users do not install uv or Python for this service.
 CLI-only setup removes only exactly owned MCP resources.
 Foreign registrations remain unchanged.
 

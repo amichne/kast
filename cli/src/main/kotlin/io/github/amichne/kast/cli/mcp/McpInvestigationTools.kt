@@ -6,14 +6,14 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.appserver.DaemonOperationFailure
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.generatedRequestSchema
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.cli.ide.executeExistingIdeCli
 import io.github.amichne.kast.cli.unionSchema
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ToolOutputDetail
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
@@ -34,14 +34,15 @@ internal class McpInvestigationTools(
 ) {
     fun invoke(identity: SupportToolIdentity, arguments: JsonObject): CliExit =
         when (identity) {
-            SupportToolIdentity.HEALTH_CHECK -> health(arguments)
+            SupportToolIdentity.HEALTH_CHECK ->
+                when (val admitted = admitMcpHealthInput(arguments)) {
+                    is Refinement.Rejected -> admitted.failure
+                    is Refinement.Refined -> health(admitted.value)
+                }
             SupportToolIdentity.WORKSPACE_LIFECYCLE -> error("Workspace lifecycle has no direct binding")
         }
 
-    private fun health(arguments: JsonObject): CliExit {
-        if (healthRequestSchema.validate(arguments.toString(), InputFormat.JSON).isNotEmpty())
-            return healthRejected(McpHealthErrorCode.INVALID_REQUEST, "Expected an optional boolean verbose")
-        val request = Json.decodeFromJsonElement(McpHealthInput.serializer(), arguments)
+    fun health(request: McpHealthInput): CliExit {
         val workspace =
             canonicalRoot()
                 ?: return healthRejected(McpHealthErrorCode.OUT_OF_SCOPE, "No Gradle workspace owns this directory")
@@ -91,14 +92,17 @@ internal class McpInvestigationTools(
 
     private fun canonicalRoot(): CanonicalRoot? =
         (FilesystemCanonicalRootDiscovery.discover(directory) as? CanonicalRootDiscovery.Discovered)?.root
-
-    private fun healthRejected(code: McpHealthErrorCode, message: String): CliExit.OperationRejected =
-        CliExit.OperationRejected(
-            healthRejectedFactory.create(McpHealthRejected(error = McpHealthError(code, message)))
-        )
 }
 
-@Serializable private data class McpHealthInput(val verbose: Boolean = false)
+private fun healthRejected(code: McpHealthErrorCode, message: String): CliExit.OperationRejected =
+    CliExit.OperationRejected(healthRejectedFactory.create(McpHealthRejected(error = McpHealthError(code, message))))
+
+internal fun admitMcpHealthInput(arguments: JsonObject): Refinement<McpHealthInput, CliExit.OperationRejected> =
+    if (healthRequestSchema.validate(arguments.toString(), InputFormat.JSON).isNotEmpty())
+        Refinement.Rejected(healthRejected(McpHealthErrorCode.INVALID_REQUEST, "Expected an optional boolean verbose"))
+    else Refinement.Refined(Json.decodeFromJsonElement(McpHealthInput.serializer(), arguments))
+
+@Serializable internal data class McpHealthInput(val verbose: Boolean = false)
 
 internal fun healthInputSchema(): JsonObject = generatedRequestSchema(McpHealthInput.serializer())
 

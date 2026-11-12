@@ -3,8 +3,8 @@ package io.github.amichne.kast.appserver.runtime
 import io.github.amichne.kast.appserver.DaemonManagementRejection
 import io.github.amichne.kast.appserver.DaemonManagementResponse
 import io.github.amichne.kast.appserver.DaemonManagementTarget
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 

@@ -1,11 +1,7 @@
 package io.github.amichne.kast.appserver.ide
 
-import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
-import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
-import io.github.amichne.kast.distribution.managed.SelectedIdeLayout
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ApprovedProjectCloseInvocation
-import io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCause
 import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeStage
@@ -43,60 +39,31 @@ class IdeLifecycleClient
 internal constructor(
     private val userHome: Path,
     private val selectedHome: Path,
-    private val exchangeTimer: LifecycleExchangeTimer,
-    private val nanoTime: () -> Long,
+    exchangeTimer: LifecycleExchangeTimer,
+    nanoTime: () -> Long,
     private val platform: IdeLaunchPlatform = IdeLaunchPlatform.Native,
-    private val deployment: IdeLifecycleDeployment = IdeLifecycleDeployment.Desktop,
+    private val deployment: IdeLifecycleDeployment,
 ) : WorkspaceLifecycleClient {
     constructor(
         userHome: Path,
         selectedHome: Path,
+        deployment: IdeLifecycleDeployment,
     ) : this(
         userHome = userHome,
         selectedHome = selectedHome,
         exchangeTimer = LifecycleExchangeTimer.Native,
         nanoTime = System::nanoTime,
+        deployment = deployment,
     )
 
-    constructor(
-        userHome: Path,
-        selectedHome: Path,
-        managedState: Path,
-    ) : this(
-        userHome,
-        selectedHome,
-        LifecycleExchangeTimer.Native,
-        System::nanoTime,
-        deployment = IdeLifecycleDeployment.Headless(managedState),
-    )
-
-    private val json = Json { encodeDefaults = true }
+    private val transport = LifecycleSocketExchange(userHome, exchangeTimer, nanoTime)
 
     /** Installation management uses the same admitted application endpoint without project preparation. */
-    fun manageInstallation(command: IdeLifecycleCommand): IdeLifecycleResult {
-        val inspected = inspectForInstallation()
-        if (inspected !is IdeLifecycleResult.Inspected) return inspected
-        if (command == IdeLifecycleCommand.Inspect) return inspected
-        val (host, capability) =
-            when (command) {
-                is IdeLifecycleCommand.SettleHost -> command.host to IdeLifecycleCapabilityName.HOST_SETTLEMENT
-                is IdeLifecycleCommand.SettleHostForReload ->
-                    command.host to IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH
-                is IdeLifecycleCommand.ResumeHost -> command.host to IdeLifecycleCapabilityName.HOST_SETTLEMENT
-                is IdeLifecycleCommand.StopHost -> command.host to IdeLifecycleCapabilityName.HOST_NORMAL_STOP
-                is IdeLifecycleCommand.RefreshHostBundle ->
-                    command.host to IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH
-                else -> return blocked(IdeLifecycleFailure.INVALID_REQUEST)
-            }
-        if (inspected.host != host) return blocked(IdeLifecycleFailure.WRONG_HOST)
-        val identity = inspected.runtimeIdentity ?: return blocked(IdeLifecycleFailure.CAPABILITY_MISMATCH)
-        if (identity.ideaHome != inspected.home || identity.hostLifetime != host)
-            return blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
-        if (identity.pid <= 0 || identity.processStartEpochMillis <= 0)
-            return blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
-        if (capability !in inspected.capabilities) return blocked(IdeLifecycleFailure.CAPABILITY_MISMATCH)
-        return exchange(Path.of(inspected.home), command)
-    }
+    fun manageInstallation(command: IdeLifecycleCommand): IdeLifecycleResult =
+        manageInspectedInstallation(inspectForInstallation(), command, transport::exchange)
+
+    private fun exchange(home: Path, command: IdeLifecycleCommand): IdeLifecycleResult =
+        transport.exchange(home, command)
 
     /** Starts or reuses the selected application without opening a project or granting readiness. */
     fun startInstallation(): IdeLifecycleResult {
@@ -222,11 +189,6 @@ internal constructor(
     }
 
     private fun coldHost(requireWorkspaceTrust: Boolean = false): IdeLifecycleResult {
-        val launch =
-            when (val selected = SelectedIdeInstallation.resolve(selectedHome)) {
-                is SelectedIdeLaunch.Resolved -> selected
-                is SelectedIdeLaunch.Unavailable -> return blocked(selected.reason.lifecycleFailure())
-            }
         val selectedDeployment =
             when (val selected = selectLifecycleDeployment(deployment, userHome, selectedHome)) {
                 is Refinement.Rejected -> return blocked(selected.failure)
@@ -234,15 +196,8 @@ internal constructor(
             }
         // Native directory locking owns exclusivity for the admitted private profile.
         // Managed launch never enumerates unrelated processes. Only a live handshake grants admission.
-        if (selectedDeployment == SelectedLifecycleDeployment.Desktop) {
-            when (runningIde(launch, platform)) {
-                IdeRunningProcess.PRESENT -> return blocked(IdeLifecycleFailure.PLUGIN_UNAVAILABLE)
-                IdeRunningProcess.UNAVAILABLE -> return blocked(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
-                IdeRunningProcess.ABSENT -> Unit
-            }
-        }
         val lifetime =
-            when (val started = launch(launch, selectedDeployment, requireWorkspaceTrust)) {
+            when (val started = launch(selectedDeployment, requireWorkspaceTrust)) {
                 is Refinement.Rejected -> return blocked(started.failure)
                 is Refinement.Refined -> started.value
             }
@@ -258,38 +213,34 @@ internal constructor(
     }
 
     private fun launch(
-        target: SelectedIdeLaunch.Resolved,
         selectedDeployment: SelectedLifecycleDeployment,
         requireWorkspaceTrust: Boolean,
-    ): Refinement<IdeLaunchLifetime, IdeLifecycleFailure> {
-        if (selectedDeployment is SelectedLifecycleDeployment.Headless) {
-            val trust = selectedDeployment.installation.config.resolve("options/trusted-paths.xml")
-            if (requireWorkspaceTrust && !Files.isRegularFile(trust, java.nio.file.LinkOption.NOFOLLOW_LINKS))
-                return Refinement.Rejected(IdeLifecycleFailure.TRUST_REQUIRED)
-            return launchManagedHeadless(selectedDeployment.installation, platform)
-        }
-        if (target.layout == SelectedIdeLayout.LINUX_DIRECTORY && platform.display().isNullOrBlank())
-            return Refinement.Rejected(IdeLifecycleFailure.PLATFORM_UNAVAILABLE)
-        val arguments = ideLaunchArguments(target)
-        val process =
-            try {
-                platform.start(arguments)
-            } catch (_: java.io.IOException) {
-                return Refinement.Rejected(IdeLifecycleFailure.LAUNCH_FAILED)
+    ): Refinement<IdeLaunchLifetime, IdeLifecycleFailure> =
+        when (selectedDeployment) {
+            is SelectedLifecycleDeployment.Headless -> {
+                val trust = selectedDeployment.installation.config.resolve("options/trusted-paths.xml")
+                if (requireWorkspaceTrust && !Files.isRegularFile(trust, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                    Refinement.Rejected(IdeLifecycleFailure.TRUST_REQUIRED)
+                else launchManagedHeadless(selectedDeployment.installation, platform)
             }
-        // A directly launched Linux IDE is the long-lived application, not a helper.
-        // Process creation admits launch only; the correlated Host exchange below owns readiness.
-        if (target.layout == SelectedIdeLayout.LINUX_DIRECTORY)
-            return Refinement.Refined(IdeLaunchLifetime.Application(process))
-        if (!process.waitFor(LAUNCH_HELPER_SECONDS, TimeUnit.SECONDS)) {
-            process.destroy()
-            return Refinement.Rejected(IdeLifecycleFailure.LAUNCH_FAILED)
         }
-        return if (process.exitValue() == 0) Refinement.Refined(IdeLaunchLifetime.HelperCompleted)
-        else Refinement.Rejected(IdeLifecycleFailure.LAUNCH_FAILED)
+
+    private companion object {
+        const val LAUNCH_WAIT_SECONDS = 60L
+        const val POLL_MILLIS = 100L
     }
 
-    private fun exchange(home: Path, command: IdeLifecycleCommand): IdeLifecycleResult {
+    private fun blocked(reason: IdeLifecycleFailure) = IdeLifecycleResult.Blocked(reason)
+}
+
+internal class LifecycleSocketExchange(
+    private val userHome: Path,
+    private val exchangeTimer: LifecycleExchangeTimer = LifecycleExchangeTimer.Native,
+    private val nanoTime: () -> Long = System::nanoTime,
+) {
+    private val json = Json { encodeDefaults = true }
+
+    fun exchange(home: Path, command: IdeLifecycleCommand): IdeLifecycleResult {
         val attempt = LifecycleExchangeAttempt(command, nanoTime)
         val directory =
             io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
@@ -350,17 +301,10 @@ internal constructor(
     }
 
     private companion object {
-        const val LAUNCH_HELPER_SECONDS = 10L
-        const val LAUNCH_WAIT_SECONDS = 60L
-        const val POLL_MILLIS = 100L
         const val MAX_FRAME_BYTES = 1_048_576
     }
-
-    private fun blocked(reason: IdeLifecycleFailure) = IdeLifecycleResult.Blocked(reason)
 }
 
 internal sealed interface IdeLaunchLifetime {
-    data object HelperCompleted : IdeLaunchLifetime
-
     data class Application(val process: Process) : IdeLaunchLifetime
 }

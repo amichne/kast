@@ -53,7 +53,8 @@ kast install copilot --mcp
 kast install pi --mcp
 ```
 
-The MCP service needs uv 0.12.9 or later and Python 3.12 or 3.13. It can download Python and pinned dependencies on its first run. The persistent IntelliJ IDEA Host supplies compiler analysis for both the CLI and MCP.
+The installed product supplies the MCP service runtime and pinned dependencies. No user Python or uv setup is required.
+CLI, MCP, and tool RPC use the same managed workspace Host. MCP registration and tool discovery do not grant project trust.
 
 To return to CLI guidance, repeat your agent's command without `--mcp`. Kast removes the MCP resources it owns. It keeps other registrations.
 
@@ -72,8 +73,9 @@ To return to CLI guidance, repeat your agent's command without `--mcp`. Kast rem
 The installed guidance tells your agent how to use Kast during supported Kotlin work.
 Describe your task naturally. The agent can inspect the installed contract with `kast describe`.
 
-Session hooks start workspace preparation in the background and tell the agent while it runs.
-The agent can continue other work or [wait explicitly](/reference/cli#wait-for-the-workspace).
+Session hooks provide passive context. They do not start the Host, grant trust, or contact release servers.
+The first explicit semantic request prepares the exact workspace root. Use a workspace whose build code you trust.
+The agent can [wait explicitly](/reference/cli#wait-for-the-workspace) when preparation is the requested task.
 See [agent capabilities](/search) for the available evidence and the [CLI reference](/reference/cli) for command forms.
 
 Each result applies to its stated worktree, source state, and scope.

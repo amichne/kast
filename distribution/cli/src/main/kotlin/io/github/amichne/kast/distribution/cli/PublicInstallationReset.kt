@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
@@ -67,11 +68,39 @@ internal fun resetPublicInstallation(
     scope: PublicResetScope,
     execution: ForceResetExecution = ForceResetExecution(),
 ): ForceResetOutcome =
-    forceResetInstallation(
-        scope.root,
-        scope.home,
-        emptyMap(),
-        ForceResetOperation.UNINSTALL,
-        execution,
-        ResetRemovalScope.Public(scope),
-    )
+    when (
+        val removal =
+            ContainerQueryLease.duringStoreRemoval(scope.root.resolveSibling("kast-workspaces")) {
+                val managedPaths =
+                    listOf(
+                        scope.root.resolveSibling("kast-workspaces"),
+                        scope.root.resolveSibling("kast-runtime-bases"),
+                        scope.root.resolve("installation/share/kast/product-selection.json"),
+                    )
+                Refinement.Refined(
+                    if (managedPaths.any { !Files.notExists(it, NOFOLLOW_LINKS) })
+                        ForceResetOutcome.Rejected(
+                            ForceResetOperation.UNINSTALL,
+                            ForceResetStage.ADMISSION,
+                            ForceResetFailure.MANAGED_STATE_REQUIRES_UNINSTALL,
+                        )
+                    else
+                        forceResetInstallation(
+                            scope.root,
+                            scope.home,
+                            ForceResetOperation.UNINSTALL,
+                            execution,
+                            ResetRemovalScope.Public(scope),
+                        )
+                )
+            }
+    ) {
+        is Refinement.Refined -> removal.value
+        is Refinement.Rejected ->
+            ForceResetOutcome.Rejected(
+                ForceResetOperation.UNINSTALL,
+                ForceResetStage.ADMISSION,
+                if (removal.failure == ContainerFailure.BUSY) ForceResetFailure.RESET_BUSY
+                else ForceResetFailure.FILESYSTEM_REJECTED,
+            )
+    }

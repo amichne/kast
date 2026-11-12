@@ -118,8 +118,8 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - `assembleNativeControlLayout` supplies compatibility launchers and the `native-control-v1` marker.
 - The Control archive contains no `lib/` directory, JARs, or JVM bytecode.
 - Native query compilation: `mise exec -- ./gradlew :cli:nativeCompile`. The executable accepts `--help`.
-- `PublicHook.kt` owns `kast hook session-start`. It admits host events and uses the existing workspace preparation owner.
-- Hook replies use JSON regardless of `KAST_OUTPUT_TOON`. Non-project directories skip preparation without IDE effects.
+- `PublicHook.kt` owns `kast --internal-entrypoint=query hook session-start`. It admits host events for passive context without trust, workspace writes, or Host startup.
+- Hook replies use JSON regardless of `KAST_OUTPUT_TOON`. Non-project directories return without IDE effects.
 - CI query inputs: `mise exec -- ./gradlew :cli:assembleNativeImageInputs`.
 - `collectReachabilityMetadata` supplies resolved Native Image metadata for that archive. Keep module directories and the `logback-classic` exclusion.
 - Handoff qualification runs `--internal-entrypoint=query query plan --name OrderService` with `-XX:MissingRegistrationReportingMode=Exit`.
@@ -167,7 +167,7 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 
 - Trace MCP and tool RPC through `KastDirectToolSession`. The MCP transport does not start an App Server broker.
 - Fresh and replacement installations select private endpoints and do not enable a daemon. Legacy retirement and recovery keep their ownership rules.
-- MCP starts preparation at legacy initialization or its first admitted modern request. Semantic calls wait for the selected workspace endpoint.
+- MCP initialization is passive. Its first explicit semantic request uses the same exact-root managed admission as CLI and tool RPC; semantic calls wait for that workspace endpoint.
 - In `RUNNER_CONTROLLED`, the caller owns semantic cancellation. The input owner accepts `notifications/cancelled` for the exact request identifier. End-of-input cancels the active query and drains its worker. A cancelled query emits no MCP response.
 - For query output, trace canonical types into `InstalledServerProjectionDocuments` and the shared JavaScript delivery and presentation owners.
 - For source reads and session rejection, examine `KastToolRpcQuerySession` and `QuerySessionRejectionDetail`. Issued selectors keep their current authority.

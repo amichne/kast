@@ -46,6 +46,22 @@ class ManagementCliTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `force uninstall is explicit and cannot target a harness`() {
+        assertEquals(
+            ManagementParsing.Selected(ManagementCommand.ForceUninstall(true)),
+            parseManagementCommand(listOf("uninstall", "--force", "--json")),
+        )
+        assertEquals(
+            ManagementParsing.Selected(ManagementCommand.Uninstall),
+            parseManagementCommand(listOf("uninstall")),
+        )
+        for (arguments in listOf(listOf("uninstall", "pi", "--force"), listOf("uninstall", "--json"))) {
+            val result = parseManagementCommand(arguments)
+            assertTrue(result is ManagementParsing.Print && result.error)
+        }
+    }
+
+    @Test
     fun `retired connection syntax rejects and names the install replacement`() {
         for (arguments in
             listOf(

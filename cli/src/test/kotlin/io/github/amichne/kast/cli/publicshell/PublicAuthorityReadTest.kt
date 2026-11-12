@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli.publicshell
 
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.boundaryExit
@@ -8,6 +7,7 @@ import io.github.amichne.kast.cli.direct.DirectToolDocument
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.cli.rpc.KastToolRpcBridge
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -31,7 +31,6 @@ class PublicAuthorityReadTest {
             (PublicToolContract.admit(identity, (command.input as PublicCliInput.Lowered).arguments)
                     as Refinement.Refined)
                 .value
-        var preparations = 0
         var invocations = 0
         val session =
             KastDirectToolSession(
@@ -46,10 +45,6 @@ class PublicAuthorityReadTest {
                         )
                     ),
                 root = { FilesystemCanonicalRootDiscovery.discover(root) },
-                start = {
-                    preparations++
-                    Refinement.Refined(Unit)
-                },
                 invokePublic = { request ->
                     assertSame(admitted, request)
                     invocations++
@@ -59,6 +54,5 @@ class PublicAuthorityReadTest {
         assertEquals(PublicShellExit.IO, invokePublicSession(session, admitted).exit)
         KastToolRpcBridge(session).callAdmitted(admitted)
         assertEquals(2, invocations)
-        assertEquals(0, preparations)
     }
 }

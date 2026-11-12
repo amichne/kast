@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
+import io.github.amichne.kast.appserver.ide.IdeLifecycleDeployment
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
@@ -58,7 +59,8 @@ internal fun shutdownManagedHeadless(installation: Path, home: Path, state: Path
     if (configuration !is Refinement.Refined)
         return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.ADMISSION_REJECTED)
     val selection = configuration.value.managedHeadlessState
-    val client = IdeLifecycleClient(home, Path.of(runtime.launch.home), state)
+    val client =
+        IdeLifecycleClient(home, Path.of(runtime.launch.home), deployment = IdeLifecycleDeployment.Headless(state))
     val execute: (ManagedHostRequest) -> ManagedHostResponse = {
         executeManagedHost(it, home, selection, processes = { observeOwnedHeadlessProcess(runtime, client) })
     }

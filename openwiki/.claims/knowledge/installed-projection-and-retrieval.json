@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fe6f682f7cc8e4773b558aef05c0414e3bb68893316b846b07e36c1761737839",
+  "pageVersion": "sha256:984700f4b659b75d73ccc35ae69fa051533d26d5bffdf9d051589cdf6a8cf5ea",
   "claims": [
     {
       "id": "claim_ace555ef5bde4d7ca87a186cd8d9b62d",
@@ -53,14 +53,14 @@
           "version": "repo-file-v1:sha256:85db6ce8ead5c9a0c53ab5d06e7fd1b880287d753531d6049f744f50b96525f7"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
-          "version": "repo-file-v1:sha256:695021b6d21c6319ced70b9829cb7bde0da97e2f708de7140d6516468470ccc5"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt#L36-L63",
+          "version": "repo-lines-v1:sha256:ace6e41d2f0e3d33232b8a67a2d53ed4e96d0e93666993854a4ba80a36e13b9e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5YjI5ZGY4ZDM3OWY4ZTRhMzVhOTc1NWRmMTk5MzY4OTAwNWVjOTZkZWZjZjYzMmFiOGNkOWQ3Y2FlYzBhZjciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY3Zjc5ZDgyMmRmZjk5ZmYzNjRlN2RiMzJmNmNmMDhkMTE4Yzk2YTc5YTNkM2ViOTEzYzkyZjAwZGFkZDI4ZDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzM2M1NzU2NDcxODI3MjhhY2FhMWVhZGM3MjA5ZGQxMGQ2YWM1MDVlNTMzYzRhN2U4NWYwMWE0ODJhODY2YWQifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T14:25:07.841Z"
+    "at": "2026-11-12T22:39:24.024Z"
   }
 }

@@ -15,15 +15,11 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.SupportedIdeReleaseLine
 import java.nio.file.Path
 
-internal sealed interface IdeLifecycleDeployment {
-    data object Desktop : IdeLifecycleDeployment
-
+sealed interface IdeLifecycleDeployment {
     data class Headless(val state: Path) : IdeLifecycleDeployment
 }
 
 internal sealed interface SelectedLifecycleDeployment {
-    data object Desktop : SelectedLifecycleDeployment
-
     data class Headless(val installation: ManagedHeadlessInstallation) : SelectedLifecycleDeployment
 }
 
@@ -33,7 +29,6 @@ internal fun selectLifecycleDeployment(
     selectedHome: Path,
 ): Refinement<SelectedLifecycleDeployment, IdeLifecycleFailure> =
     when (deployment) {
-        IdeLifecycleDeployment.Desktop -> Refinement.Refined(SelectedLifecycleDeployment.Desktop)
         is IdeLifecycleDeployment.Headless -> selectManagedLifecycleDeployment(deployment.state, userHome, selectedHome)
     }
 
@@ -61,7 +56,6 @@ internal fun admitLifecycleHost(
     val identity = host.runtimeIdentity
     val matches =
         when (deployment) {
-            SelectedLifecycleDeployment.Desktop -> identity == null || identity.mode == IdeHostMode.DESKTOP
             is SelectedLifecycleDeployment.Headless ->
                 identity != null &&
                     managedIdentityMatches(deployment.installation, identity) &&

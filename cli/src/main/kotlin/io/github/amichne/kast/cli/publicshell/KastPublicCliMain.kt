@@ -1,7 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
@@ -20,6 +19,7 @@ import io.github.amichne.kast.cli.rpc.decodeToolRpcInput
 import io.github.amichne.kast.cli.rpc.presentToolRpcExit
 import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import io.github.amichne.kast.distribution.contract.configuration.selectCliOutputFormat
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
 import io.github.amichne.kast.distribution.output.cliOutputRejection
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
@@ -58,25 +58,21 @@ object KastPublicCliMain {
                         exitProcess(runPublicCliInvocation({ failure }, output).code)
                     }
                 }
-        io.github.amichne.kast.distribution.cli.withPrivateContainerQuery(
-            System.getenv("KAST_MANAGED_HEADLESS_STATE")
-        ) {
-            exitProcess(
-                runPublicCliInvocation(
-                        {
-                            preparePublicCli(
-                                args.toList(),
-                                Channels.newInputStream(FileInputStream(FileDescriptor.`in`).channel),
-                                Path.of("").toAbsolutePath(),
-                                diagnostic = System.err::println,
-                            )
-                        },
-                        output,
-                        format,
-                    )
-                    .code
-            )
-        }
+        exitProcess(
+            runPublicCliInvocation(
+                    {
+                        preparePublicCli(
+                            args.toList(),
+                            Channels.newInputStream(FileInputStream(FileDescriptor.`in`).channel),
+                            Path.of("").toAbsolutePath(),
+                            diagnostic = System.err::println,
+                        )
+                    },
+                    output,
+                    format,
+                )
+                .code
+        )
     }
 }
 
@@ -104,8 +100,7 @@ internal fun preparePublicCli(
     directory: Path,
     session: (Path, PublicToolCatalog) -> KastDirectToolSession? = { root, catalog ->
         val environment = System.getenv()
-        val home = Path.of(environment["HOME"] ?: System.getProperty("user.home"))
-        KastDirectToolSession.installed(root, home, environment, catalog)
+        KastDirectToolSession.installed(root, environment, catalog)
     },
     invoke: (KastDirectToolSession, AdmittedPublicTool) -> PublicPreparedOutput = ::invokeInstalledPublic,
     diagnostic: (String) -> Unit = {},

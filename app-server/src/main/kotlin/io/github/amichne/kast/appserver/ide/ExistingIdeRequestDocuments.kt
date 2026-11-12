@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

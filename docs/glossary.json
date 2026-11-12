@@ -25,9 +25,9 @@
     {
       "id": "workspace-container",
       "term": "workspace container",
-      "definition": "A named workspace record with its own trust grant and private Host profile. Gradle state stays private by default. Containers can share verified runtime bytes.",
+      "definition": "An internal workspace record with an exact-root trust grant and private Host profile. Gradle state stays private by default. Records can share verified runtime bytes.",
       "scope": "Current Kast documentation and agent instructions.",
-      "example": "`kast container create --name backend` creates a workspace container for the current directory.",
+      "example": "The first explicit semantic request creates the record for its exact workspace root; no public container command is required.",
       "distinction": "This is process and profile separation, not an OS sandbox or a Kotlin declaration container.",
       "justification": "The record and admission owners bind one workspace to private state without duplicating runtime bytes.",
       "usage": [
@@ -109,8 +109,8 @@
       "term": "Control",
       "definition": "The part of Kast that provides the native command, coordinator, and agent adapters.",
       "scope": "Current Kast documentation and agent instructions.",
-      "example": "`kast upgrade --control-only` replaces Control while a compatible Host stays in place.",
-      "distinction": "Host supplies the IDEA plugin and semantic runtime. Control and Host versions can differ.",
+      "example": "`kast upgrade --channel preview` selects a complete product containing exact Control and Host components.",
+      "distinction": "Host supplies the IDEA plugin and semantic runtime. A product record selects both components; users do not mix them independently.",
       "justification": "The cited Kast source supplies this established term and its local meaning.",
       "usage": [
         {
@@ -123,7 +123,7 @@
       "localSources": [
         {
           "path": "docs/public/reference/compatibility.mdx",
-          "locator": "Recorded release pair and compatibility"
+          "locator": "Select a development build"
         }
       ],
       "related": [
@@ -136,7 +136,7 @@
       "term": "Host",
       "definition": "The part of Kast that provides the IntelliJ IDEA plugin and semantic runtime.",
       "scope": "Current Kast documentation and agent instructions.",
-      "example": "Restart IDEA after a Host update to load the new plugin.",
+      "example": "The first explicit semantic request prepares a private Host for the exact workspace.",
       "distinction": "Control supplies the command and agent adapters. Host runs inside IDEA.",
       "justification": "The cited Kast source supplies this established term and its local meaning.",
       "usage": [

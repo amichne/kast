@@ -17,6 +17,8 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
+  - id: openwiki-source-03ffc32a0ca502ab67c54b25
+    resource: repo://install.sh
   - id: openwiki-source-069607880d661efb9c5fbc84
     resource: repo://packaging/host_directory_exchange.py
   - id: openwiki-source-6fea3b3b86300de08664c4ee
@@ -25,6 +27,8 @@ sources:
     resource: repo://packaging/installation-lifecycle.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
+  - id: openwiki-source-7f5792fd36f508c6577b3562
+    resource: repo://packaging/managed_product_installation.py
   - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
     resource: repo://packaging/managed_release.py
   - id: openwiki-source-b1af9cf4e2649975cc7bdf86
@@ -35,10 +39,10 @@ sources:
     resource: repo://packaging/test-installation-lifecycle.py
   - id: openwiki-source-988817829b83f3eaab1d41af
     resource: repo://packaging/test-managed-installation.py
-generated: { by: "codex", at: "2026-11-11T01:55:34.136Z" }
+generated: { by: "amp", at: "2026-11-12T22:41:01.968Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T14:25:07.841Z
+    at: 2026-11-12T22:41:01.968Z
 ---
 
 
@@ -47,11 +51,12 @@ verified:
 
 ## Select the product before effects
 
-The public shell installer selects a published stable or developer channel.
-Developer selection uses published channel evidence, independently of the checkout and installed version.
-The checkout installer is a separate adapter for local development.
-It admits the selected IDEA JBR before Gradle starts.
-Installed Control launchers need no JVM.
+The public installer selects one complete product from stable or preview release evidence.
+The product record binds both supported targets to exact component and native qualification identities.
+Selection is independent of the checkout and installed version.
+A retained legacy component pair cannot satisfy complete-product admission.
+Installed Control launchers need no user JVM, IDEA installation, Python, or uv.
+Checkout assembly remains a separate developer boundary, not a product prerequisite.
 
 Control owns the management executable, coordinator, adapters, private launchers, and installed configuration.
 Host owns the IDEA plugin and semantic runtime.
@@ -67,7 +72,8 @@ Plan mode reports the admitted plan without activation effects.
 An applied replacement coordinates prior retirement, saved configuration, recovery snapshots, and payload installation.
 
 The private Control workflow reports payload installation without service activation.
-The managed composition coordinator owns Host settlement, replacement, and activation for a complete update.
+Its retained composition coordinator owns legacy Host settlement, replacement, and activation.
+Complete-product activation uses the product journal path described below.
 Saved shared endpoints migrate to private settings. Explicit shared selections reject before effects.
 
 The managed root contains one ordinary `installation` directory.
@@ -81,13 +87,22 @@ Published-release admission keeps support for the historical pair of native exec
 Its admission rejects aliases and symlink substitutions before deletion.
 Unknown paths do not become owned because their names resemble Kast artifacts.
 
-## Managed composition transaction
+## Product activation and retained composition recovery
 
-`managed_installation.py` coordinates the existing Control and Host effect owners under the selected management lock.
+`managed_installation.py` routes a newly admitted product to `managed_product_installation.activate`.
+That owner publishes verified runtime bytes and their separate immutable vendor base.
+It stages Control, saves exact management and command preimages, and publishes the existing replacement journal only after those records are durable.
+Recovery admits the recorded selection and retires the prior installation before moving payloads.
+The replacement receipt preserves provider registrations and recorded guidance.
+`ProductInstalled` reports `NOT_STARTED`; payload activation does not prove a loaded Host or workspace readiness.
+The coordinator then refreshes installed guidance and retains finite refresh notices.
+
+The retained composition recovery path coordinates the existing Control and Host effect owners under the selected management lock.
 The bootstrap disables Python bytecode writes before importing its installed helpers.
 Those imports preserve the exact installed payload inventory.
-It captures exact preimages for management, the public command, profile options, runtime state, and Host receipts.
+The legacy composition journal captures exact preimages for management, the public command, profile options, runtime state, and Host receipts.
 The typed journal records the selected artifacts and one `STOPPED`, `HOT_RELOAD`, or `NORMAL_RESTART` strategy.
+These retained strategies do not restore a public desktop or archive selection route.
 
 IDEA metadata admission accepts a regular canonical file owned by the current user or root.
 It rejects group-write permissions, world-write permissions, symbolic links, and more than one MiB of metadata.
@@ -99,7 +114,7 @@ A stopped Host stays stopped. A loaded Host needs the selected activation proof 
 Recovery uses the recorded composition and preimages. An unresolved recovery keeps the fence and returns `RECOVERY_REQUIRED`.
 A recovery-only invocation does not select a new release.
 
-## Independent Host receipts
+## Retained independent Host receipts
 
 `host-installation.py` admits the Host release and plugin destination before effects.
 The active receipt records the plugin root, destination, and artifact inventory with filesystem identities.
@@ -154,6 +169,9 @@ Read native lifecycle evidence before a claim about loaded components or workspa
 - [install-checkout.sh](../../packaging/install-checkout.sh)
 - [install-local.sh](../../packaging/install-local.sh)
 - [host-installation.py](../../packaging/host-installation.py)
+- [managed_product_installation.py](../../packaging/managed_product_installation.py)
+- [managed_installation.py](../../packaging/managed_installation.py)
+- [managed_release.py](../../packaging/managed_release.py)
 - [InstallationWorkflow.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt)
 - [ControlInstallationInput.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt)
 - [ControlInstallationRecovery.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt)

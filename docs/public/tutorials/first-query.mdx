@@ -12,8 +12,8 @@ This optional Kast check uses a small source fixture with known relationships. I
 The fixture supplies expected facts, not a captured result.
 
 [Select the development build](/start) and [install agent guidance](/start#2-install-agent-guidance).
-Use an imported Kotlin/JVM Gradle project with a `main` source set.
-Select that project in IDEA and your agent.
+Use a Kotlin/JVM Gradle project with a `main` source set whose build code you trust.
+Start your agent in that project. The first explicit semantic request prepares its private Host.
 
 <Steps>
   <Step title="Add a small example">
@@ -38,7 +38,7 @@ Select that project in IDEA and your agent.
     }
     ```
 
-    Save the file and wait for IDEA to finish its import.
+    Save the file before querying it.
     Give your agent the file's path relative to the repository root, including the module directory.
   </Step>
   <Step title="Find the function">

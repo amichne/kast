@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7bd8c10f8e736c90749cfcf314ddf7eb3561255c038a4babae9ec6cef116948b",
+  "pageVersion": "sha256:13a74d3e0fa10384e989145a197fc4be085f1263b7c09435cf0210b221aa5b59",
   "claims": [
     {
       "id": "claim_9afc4ce3301b4badb9651eeb2f54f674",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt",
-          "version": "repo-file-v1:sha256:0371271a986b52d4fe3fc9b6162c0c2d0e0ad6623e0a6ea436f1a50c690467b4"
+          "version": "repo-file-v1:sha256:2bafb2ae93b58db7651caf1d51193085e549157c11121237d3834990d6853fd0"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt#L22-L22",
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt",
-          "version": "repo-file-v1:sha256:218e1f3a602a8320e101d88e4cec00961185226296335b7e37d370150c9aa570"
+          "version": "repo-file-v1:sha256:fb7546edb36fa61ced081321127ab8d8c054c34e6fbf4f877c57ff37048565b8"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt#L19-L19",
@@ -53,22 +53,38 @@
       "statement": "WorkspaceOperationAdmission selects preparation for fresh name, text, or location discovery and diagnostics, while issued source and retained-reference operations use existing Host authority without another preparation effect.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt#L173-L188",
-          "version": "repo-lines-v1:sha256:271b98221225770886676d761946f5643f55c0daa57460d2c9976da478c5c421:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzMjRhYjY2YzgxOTgxNmI1ZmY1Nzg5ZDZiYTQzMzUxNmU1NzYzNWZhY2ExNDgwOWM1MDdhNmI4NDRjZmM3MzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyOGNjN2JjOGQ5MGU1NjQ3MjY1YjZiNTJjOGQwZWM1MTI4MWU5MDQ1MmNmYmJjZTA3YjRhM2NkMGZhNmU1MmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMwNjY1NWNlMTJhNWQ4ZWJhYWY0ZTQ3YWQ4ZTI4OGI4Yjc0MTkyNGNjMTdhM2QyYjA3ZTU2ZGMwMmFlZWQxODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwNjVhNDFjZTk1MzU5YjgxMzRiZmZlZDAxNGRjZGUwYzc1ZWJhMjFlOTVmNGE1YmE2MjE2ZWQ4NDE1MzJkZDYifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt#L20-L43",
+          "version": "repo-lines-v1:sha256:a81c587975fdeb27cfb78aad80ec03b59063d82aed0e235d7cb036be033bdf82:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxOTBmOWVhM2M1YTgxNzQxYTk1MjBmY2VhNTgyMTJkNzA3MjBmNDUyZDIwZjU0Y2VkYjU1ZmU3OGQ1ZGE2MDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3Y2ZmMDQ0ZDRiMmJjOTdiYTkwZGNhNDQ1NGVjZjE2NzIyNDY0NDkyMWE0MDI3NjdmMDMwNGZiMTYzNWI3MjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_eb5b260b52254c7da77dcde65f3170b4",
+      "statement": "Shared CanonicalRoot discovery resolves the nearest physical Gradle-settings owner without crossing a nested checkout boundary.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/CanonicalRoot.kt#L43-L78",
+          "version": "repo-lines-v1:sha256:1e4e292ed583a720cc72a37004a0f868b78e570d1318e47a292bdcac858d3e56:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiMDAzMGQyNTI0ZDNhZTdmNTk2NmFhN2I5MzIyNzgzODY5NDRlZjU1ZjU5ZTJkYjQ4ODdkZjY2NTU5MDQyYWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2ZDAwZTI4ZDU0NTYwZDcxNTE2NGI2ZDhhNzZjNWVkMjIxMDlhM2FkNjcwZjM5YmUyN2Q0MDMzYzA0YzVkYTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyYWY3NjIxY2I2OTgyZmQ0NTU0Mjc2ZGE3ODE4MmYyMDA3MzQxMTY3YjE0NDg3MzNkMGVhMDlmY2UwODY2YjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7cab00c5e96b43b9af5c79bf81ebba27",
+      "statement": "Managed request admission selects locally installed runtime and private workspace state per request; preparation may create exact-root trust, while retained reads require existing state.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L160-L205",
+          "version": "repo-lines-v1:sha256:fe54899323afe2e516f965e308c4f6989ee26700ce2c16c8ff6b9df06ee01cd9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExM2M5ZjgzM2M3MDdkMWJkYmE3NWYwY2I4MmFiMWI0NDNkMWY1YjI1ZGVlNWRkODBmMzE2MTE4MGIxOTg4M2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZjljOWFjMWY4ZmZmNzMwYzRlNTU3YzczOTUzNzAxODYwZGUwODIzOTYyYWFlN2EwZDI1NmFjMGMwNTA5NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMzQwNzEwYjJmZDU5NGRiYzRjN2U2YzZlMTgzM2ZiMTVlM2Q1YjUwYzAyOGNhODllNWJlYTM2MzgyMjIzNTEifQ"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt",
-          "version": "repo-file-v1:sha256:4d82773260bd18012d8f498f15aeac740dd68d2d01bb17304213aef09249b978"
-        },
-        {
-          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmissionTest.kt",
-          "version": "repo-file-v1:sha256:707726b4a4d91208f910c83995dee040552afb09ee717c3a522ab31a90da0758"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L49-L100",
+          "version": "repo-lines-v1:sha256:a60705e73905b0a5f5df693553d3e91d9399814c6b88cf4025e2f51a5df07f67:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZWU0MmVmNWQ0YmVlOTA0MmMxYzRmYzNjMTgyZmFjZWM5OGRiZDc4NGJjMGRkMmJhNzk5NzE0N2U3N2U4ODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyZjIzZDE1YmQ1MmY1Y2NmNTA3MGE5YTc2ZTgzZWIyMGZkZDI1ZDUwZjc2ODk4NTE1YzE1ODk4ZTBmY2Q3MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlZmMwNjQ1MzlmZGE5NzAyYjQzNTgzZDViNzM1ODQxYTk1OWM0YmJkYjhmNDgxNTNiYzljNTZjNGRiYTI4NmIifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-12T22:50:57.382Z"
   }
 }

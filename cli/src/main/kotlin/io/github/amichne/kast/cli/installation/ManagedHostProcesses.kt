@@ -1,9 +1,6 @@
 package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
-import io.github.amichne.kast.distribution.managed.SelectedIdeLayout
-import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 internal fun observeManagedIdeProcesses(launch: SelectedIdeLaunch.Resolved): ManagedProcessInventory {
     val counts = ManagedProcessCounts()
@@ -68,37 +65,4 @@ private fun captureManagedProcess(
     return admitMissingManagedExecutable(observeManagedProcessState(selected.pid))
 }
 
-internal fun startManagedIde(launch: SelectedIdeLaunch.Resolved): ManagedIdeLaunchOutcome {
-    if (launch.layout != SelectedIdeLayout.MACOS_BUNDLE) return ManagedIdeLaunchOutcome.REJECTED
-    return try {
-        val builder =
-            ProcessBuilder("/usr/bin/open", "-g", "-a", launch.bundle, "--args", "nosplash", "dontReopenProjects")
-                .redirectError(ProcessBuilder.Redirect.DISCARD)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-        for (name in
-            listOf("IDEA_PROPERTIES", "IDEA_VM_OPTIONS", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "JAVA_OPTS")) builder
-            .environment()
-            .remove(name)
-        val child = builder.start()
-        awaitManagedLaunch(child)
-    } catch (_: IOException) {
-        ManagedIdeLaunchOutcome.REJECTED
-    }
-}
-
-private fun awaitManagedLaunch(child: Process): ManagedIdeLaunchOutcome =
-    try {
-        if (child.waitFor(LAUNCH_HELPER_SECONDS, TimeUnit.SECONDS) && child.exitValue() == 0)
-            ManagedIdeLaunchOutcome.REQUESTED
-        else {
-            child.destroy()
-            ManagedIdeLaunchOutcome.REJECTED
-        }
-    } catch (_: InterruptedException) {
-        child.destroy()
-        Thread.currentThread().interrupt()
-        ManagedIdeLaunchOutcome.REJECTED
-    }
-
 private const val MAXIMUM_PROCESS_COUNT = 8_192L
-private const val LAUNCH_HELPER_SECONDS = 10L

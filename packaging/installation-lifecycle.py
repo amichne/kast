@@ -2,7 +2,7 @@
 from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
 import argparse
-from typing import Callable, Optional, Protocol, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Optional, Protocol, Tuple, Union
 import fcntl
 import hashlib
 import json
@@ -15,6 +15,9 @@ import subprocess
 import sys
 import uuid
 
+if TYPE_CHECKING:
+    from managed_product import ProductReference
+
 # Fixed projections of InstallationOperationalLimits; checked against the generated catalogue.
 RETIREMENT_CHILD_TIMEOUT_MILLIS = 60000
 STATE_MAXIMUM_ENTRIES = 100000
@@ -26,6 +29,7 @@ class RetirementConfiguration(Enum):
 
 CONTROL_MAXIMUM_ENTRIES = 16384
 CONTROL_MANIFEST_MAXIMUM_BYTES = 67108864
+UNINSTALL_JOURNAL_MAXIMUM_BYTES = 1048576
 
 class Failure(str, Enum):
     MANIFEST_REJECTED = 'MANIFEST_REJECTED'
@@ -204,6 +208,15 @@ class UninstallPhase(str, Enum):
     EXTERNALS_CLEANED = 'EXTERNALS_CLEANED'
 
 @dataclass(frozen=True)
+class ProductRemovalRoot:
+    root: Path
+    identity: FileIdentity
+
+    @property
+    def managed_root(self):
+        return self.root.parent
+
+@dataclass(frozen=True)
 class CapturedRecoveryFile:
     identity: FileIdentity
     digest: str
@@ -260,15 +273,56 @@ class UninstallRetirementJournal:
     recoveryProof: Union[AbsentRecovery, AdmittedRecovery, EmptyRecovery]
     homeConfiguration: Union[AbsentConfiguration, AdmittedConfiguration]
 
+@dataclass(frozen=True)
+class ProductUninstallRetirementJournal(UninstallRetirementJournal):
+    product: 'ProductReference'
+
+@dataclass(frozen=True)
+class WorkspaceRemoval:
+    id: str
+    identity: FileIdentity
+    recordSha256: str
+
+@dataclass(frozen=True)
+class WorkspaceUninstallRetirementJournal(UninstallRetirementJournal):
+    workspaceRemovals: list[WorkspaceRemoval]
+
+@dataclass(frozen=True)
+class ProductWorkspaceUninstallRetirementJournal(ProductUninstallRetirementJournal):
+    workspaceRemovals: list[WorkspaceRemoval]
+
+@dataclass(frozen=True)
+class RetainedProductUninstallJournal(ProductUninstallRetirementJournal):
+    productRemoval: 'ProductRemoval'
+
+@dataclass(frozen=True)
+class RetainedWorkspaceProductUninstallJournal(ProductWorkspaceUninstallRetirementJournal):
+    productRemoval: 'ProductRemoval'
+
 def exact_fields(document, fields):
     if not isinstance(document, dict) or set(document) != set(fields):
         raise Rejected(Failure.RECOVERY_REJECTED)
 
 def journal_identity(document):
     exact_fields(document, ('device', 'inode', 'owner'))
-    if any(type(value) is not int or value < 0 for value in document.values()) or document['owner'] != os.getuid():
+    if any(type(value) is not int or not 0 <= value <= 9223372036854775807 for value in document.values()) or document['owner'] != os.getuid():
         raise Rejected(Failure.RECOVERY_REJECTED)
     return FileIdentity(**document)
+
+def workspace_removals(document):
+    if not isinstance(document, list) or len(document) > 1024:
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    result = []
+    seen = set()
+    for entry in document:
+        exact_fields(entry, ('id', 'identity', 'recordSha256'))
+        if (not isinstance(entry['id'], str) or not 0 < len(entry['id']) <= 4096
+                or entry['id'] in seen or not isinstance(entry['recordSha256'], str)
+                or re.fullmatch('[0-9a-f]{64}', entry['recordSha256']) is None):
+            raise Rejected(Failure.RECOVERY_REJECTED)
+        seen.add(entry['id'])
+        result.append(WorkspaceRemoval(entry['id'], journal_identity(entry['identity']), entry['recordSha256']))
+    return result
 
 def captured_recovery_file(document):
     exact_fields(document, ('identity', 'digest'))
@@ -324,9 +378,11 @@ def admit_uninstall_journal(path, installation):
     attributes = path.lstat()
     if not stat.S_ISREG(attributes.st_mode) or attributes.st_uid != os.getuid() or stat.S_IMODE(attributes.st_mode) != 0o600:
         raise Rejected(Failure.RECOVERY_REJECTED)
-    document = read_json(path, 65536, Failure.RECOVERY_REJECTED)
-    exact_fields(document, ('installationRoot', 'executable', 'executableSha256', 'channel', 'type',
-                            'managedRootIdentity', 'controlIdentity', 'recoveryProof', 'homeConfiguration'))
+    document = read_json(path, UNINSTALL_JOURNAL_MAXIMUM_BYTES, Failure.RECOVERY_REJECTED)
+    expected_fields = ('installationRoot', 'executable', 'executableSha256', 'channel', 'type',
+                       'managedRootIdentity', 'controlIdentity', 'recoveryProof', 'homeConfiguration')
+    optional_fields = tuple(name for name in ('product', 'workspaceRemovals', 'productRemoval') if name in document)
+    exact_fields(document, expected_fields + optional_fields)
     executable = Path(document['executable'])
     if (document['installationRoot'] != str(installation.managed_root) or not executable.is_absolute()
             or executable.resolve() != executable or document['channel'] not in {'STABLE', 'DEVELOPER'}
@@ -339,21 +395,44 @@ def admit_uninstall_journal(path, installation):
         journal_identity(document['managedRootIdentity']), journal_identity(document['controlIdentity']),
         decode_recovery_proof(document['recoveryProof'], installation),
         decode_configuration_proof(document['homeConfiguration'], installation))
+    if 'product' in document:
+        from managed_installation import RECOVERY
+        from managed_product import ProductReference
+        reference = RECOVERY.decode(ProductReference, document['product'])
+        journal = ProductUninstallRetirementJournal(
+            journal.installationRoot, journal.executable, journal.executableSha256,
+            journal.channel, journal.type, journal.managedRootIdentity, journal.controlIdentity,
+            journal.recoveryProof, journal.homeConfiguration, reference)
+    if 'workspaceRemovals' in document:
+        kind = (ProductWorkspaceUninstallRetirementJournal if 'product' in document
+                else WorkspaceUninstallRetirementJournal)
+        journal = kind(**vars(journal), workspaceRemovals=workspace_removals(document['workspaceRemovals']))
+    if 'productRemoval' in document:
+        from immutable_store import removal
+        if 'product' not in document:
+            raise Rejected(Failure.RECOVERY_REJECTED)
+        kind = (RetainedWorkspaceProductUninstallJournal if 'workspaceRemovals' in document
+                else RetainedProductUninstallJournal)
+        journal = kind(**vars(journal), productRemoval=removal(document['productRemoval']))
     if (journal.managedRootIdentity != FileIdentity.observe(installation.managed_root)
             or journal.controlIdentity != installation.identity):
         raise Rejected(Failure.RECOVERY_REJECTED)
     return journal, FileIdentity.observe(path)
 
-def commit_control_retirement(path, installation, admitted):
+def commit_control_retirement(path, installation, admitted, *, next_journal=None):
     journal, identity = admitted
     current, current_identity = admit_uninstall_journal(path, installation)
     if current != journal or current_identity != identity:
+        raise Rejected(Failure.RECOVERY_REJECTED)
+    successor = next_journal if next_journal is not None else replace(journal, type=UninstallPhase.CONTROL_RETIRED)
+    raw = json.dumps(asdict(successor), separators=(',', ':'))
+    if len(raw.encode()) > UNINSTALL_JOURNAL_MAXIMUM_BYTES:
         raise Rejected(Failure.RECOVERY_REJECTED)
     temporary = path.parent / ('.kast-uninstall-stage-' + uuid.uuid4().hex)
     try:
         descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
         with os.fdopen(descriptor, 'w') as output:
-            json.dump(asdict(replace(journal, type=UninstallPhase.CONTROL_RETIRED)), output, separators=(',', ':'))
+            output.write(raw)
             output.flush()
             os.fsync(output.fileno())
         os.replace(temporary, path)
@@ -372,7 +451,7 @@ class Installation:
     manifest: dict
     identity: FileIdentity
     @staticmethod
-    def admit(raw):
+    def admit(raw, *, retired_product=None):
         root = Path(raw)
         if not root.is_absolute() or root.resolve(strict=True) != root :
             raise Rejected(Failure.MANIFEST_REJECTED)
@@ -394,7 +473,7 @@ class Installation:
                 not isinstance(anchor, dict) or anchor.get('kind') not in {'login', 'socket-alias', 'upstream-directory'}
                 for anchor in document['externalAnchors']):
             raise Rejected(Failure.MANIFEST_REJECTED)
-        verify_payload(root, document)
+        verify_payload(root, document, retired_product=retired_product)
         return Installation(root, document, FileIdentity.observe(root))
     @property
     def managed_root(self):
@@ -405,7 +484,14 @@ class Installation:
             raise Rejected(Failure.MANIFEST_REJECTED)
 
 
-def verify_payload(root, manifest):
+def verify_payload(root, manifest, *, retired_product=None):
+    if retired_product is not None and (
+            not isinstance(retired_product, ProductUninstallRetirementJournal)
+            or retired_product.type is not UninstallPhase.CONTROL_RETIRED
+            or root != Path(retired_product.installationRoot) / 'installation'
+            or FileIdentity.observe(root) != retired_product.controlIdentity
+            or FileIdentity.observe(root.parent) != retired_product.managedRootIdentity):
+        raise Rejected(Failure.RECOVERY_REJECTED)
     expected = manifest.get('payloadFiles')
     if not isinstance(expected, list) or not expected:
         raise Rejected(Failure.MANIFEST_REJECTED)
@@ -414,6 +500,14 @@ def verify_payload(root, manifest):
     if any(not isinstance(item, dict) or set(item) != {'path', 'sha256', 'mode'} for item in expected):
         raise Rejected(Failure.MANIFEST_REJECTED)
     expected = [PayloadFile(**item) for item in expected]
+    if any(not isinstance(item.path, str) or not item.path.startswith(('bin/', 'lib/', 'share/'))
+            or '..' in Path(item.path).parts or Path(item.path).as_posix() != item.path
+            or not isinstance(item.sha256, str) or re.fullmatch('sha256:[0-9a-f]{64}', item.sha256) is None
+            or type(item.mode) is not int or not 0 <= item.mode <= 0o777 for item in expected):
+        raise Rejected(Failure.MANIFEST_REJECTED)
+    expected_by_path = {item.path: item for item in expected}
+    if len(expected_by_path) != len(expected):
+        raise Rejected(Failure.MANIFEST_REJECTED)
     actual = []
     total = 0
     traversed = 0
@@ -457,7 +551,8 @@ def verify_payload(root, manifest):
                                               'sha256:' + digest.hexdigest(), observed.st_mode & 0o777))
                     if len(actual) > CONTROL_MAXIMUM_ENTRIES:
                         raise Rejected(Failure.MANIFEST_REJECTED)
-    if sorted(actual, key=lambda item: item.path) != sorted(expected, key=lambda item: item.path):
+    if (any(expected_by_path.get(item.path) != item for item in actual)
+            or (retired_product is None and len(actual) != len(expected))):
         raise Rejected(Failure.MANIFEST_REJECTED)
 
 

@@ -1,6 +1,10 @@
 package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
+import io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement
+import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
+import io.github.amichne.kast.protocol.contract.IdeHostMode
+import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectDescription
@@ -50,6 +54,7 @@ internal enum class NativePeerReply {
 internal class NativePublicPeer(private val fixture: NativePublicFixture, private val reply: NativePeerReply) :
     AutoCloseable {
     private val json = Json { encodeDefaults = true }
+    private val deployment = NativeManagedWorkspaceFixture(fixture).deployment
     private val target =
         IdeProjectTarget(
             "00000000-0000-0000-0000-000000000001",
@@ -68,7 +73,22 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
             "0.0.0",
             CanonicalHostedContract.document,
         )
-    private val lifecycle = listener("ide-lifecycle", fixture.idea)
+    private val identity =
+        IdeHostRuntimeIdentity(
+            deployment.launch.home,
+            deployment.config.toString(),
+            ProcessHandle.current().pid(),
+            ProcessHandle.current().info().startInstant().orElseThrow().toEpochMilli(),
+            target.host,
+            IdeHostBuildIdentity("0.0.0", "a".repeat(40), "b".repeat(40)),
+            mode = IdeHostMode.MANAGED_HEADLESS,
+        )
+    private val application = IdeHostApplicationAdvertisement(identity, compatibility)
+    private val endpointRoot =
+        Files.createDirectory(
+            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.root(deployment.userHome)
+        )
+    private val lifecycle = listener("ide-lifecycle", Path.of(deployment.launch.home))
     private val hosted = listener("ide-hosted", fixture.workspace)
     private val replacements = mutableListOf<ServerSocketChannel>()
     private val executor = Executors.newSingleThreadExecutor()
@@ -102,7 +122,7 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
         val socket = (hosted.localAddress as UnixDomainSocketAddress).path
         Files.writeString(
             socket.parent.resolve("endpoint.json"),
-            json.encodeToString(PeerDescriptor(target.root, socket.toString(), target.project)),
+            json.encodeToString(PeerDescriptor(target.root, socket.toString(), target.project, application)),
         )
     }
 
@@ -122,10 +142,11 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
         val inspected =
             IdeLifecycleResult.Inspected(
                 target.host,
-                fixture.idea.toString(),
+                deployment.launch.home,
                 compatibility.ideBuild,
                 listOf(IdeProjectDescription(target, IdeProjectOwnership.BORROWED, 1)),
                 compatibility,
+                runtimeIdentity = identity,
             )
         lifecycle.accept().use { channel ->
             assertEquals(IdeLifecycleCommand.Inspect, lifecycleRequest(channel))
@@ -182,7 +203,7 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
         val directory =
             Files.createDirectories(
                 io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
-                        fixture.home,
+                        deployment.userHome,
                         if (family == "ide-lifecycle")
                             io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE
                         else io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.SEMANTIC,
@@ -204,6 +225,7 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
         executor.shutdownNow()
         check(executor.awaitTermination(5, TimeUnit.SECONDS)) { "Peer worker did not settle" }
         replacements.forEach(ServerSocketChannel::close)
+        Files.walk(endpointRoot).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
     }
 }
 
@@ -230,6 +252,7 @@ private data class PeerDescriptor(
     val root: String,
     val socket: String,
     val host: String,
+    val application: IdeHostApplicationAdvertisement,
     val type: String = "KAST_IDE_ENDPOINT",
     val protocol: Int = 3,
     val hostPid: Long = ProcessHandle.current().pid(),

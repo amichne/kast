@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.projection
 
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
 import io.github.amichne.kast.protocol.contract.KastPluginVersion
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.serialization.SerialName

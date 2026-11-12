@@ -1,11 +1,11 @@
 package io.github.amichne.kast.cli.mcp
 
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.direct.directSupportTools
 import io.github.amichne.kast.cli.direct.directToolDocument
 import io.github.amichne.kast.cli.installedHostedBootstrap
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.io.BufferedInputStream

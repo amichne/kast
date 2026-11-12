@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ProtocolText
@@ -33,7 +34,7 @@ class ExistingIdeMutationTest {
                     refined(HostedPlanIdentity.parse(plan)),
                 )
             )
-        val encoded = operation.encodeControlRequest(CanonicalRoot(Path.of("/workspace")))
+        val encoded = operation.encodeControlRequest(canonicalRootFixture(Path.of("/workspace")))
         val fields = Json.parseToJsonElement(encoded.toString(Charsets.UTF_8)).jsonObject
         assertEquals(setOf("root", "type", "document"), fields.keys)
         assertEquals("CHANGE_APPLY", fields.getValue("type").jsonPrimitive.content)

@@ -14,7 +14,7 @@ Connections, project setup, requests, and daemons have separate owners. Each lif
 
 | Owner | Starts with | Ends with | Proved fact |
 | --- | --- | --- | --- |
-| Optional MCP registration | `kast install` with `--mcp` | Disconnect or removal | A client has an owned adapter or registration. |
+| Optional MCP registration | `kast install` with `--mcp` | CLI-only installation or removal | A client has an owned adapter or registration. |
 | Client session | The client starts and its protocol is admitted | Session exit or retirement | A transport can discover and call its installed tools. |
 | Workspace preparation | Demand for one canonical root | Ready, blocked, rejected, or interrupted | The selected IDEA project can reach semantic admission. |
 | Semantic request | Input and current state pass admission | A complete, qualified, rejected, or uncertain result | Evidence for one operation. |
@@ -29,7 +29,7 @@ Tool RPC shows one path. Its caller starts in the repository directory.
 <RequestLifecycleDiagram />
 
 1. Tool RPC admits the input and finds the exact Gradle root.
-2. Kast prepares the selected IDEA project. It then examines the Host contract and current read state.
+2. Kast admits the exact managed workspace, then prepares its private Host. It examines the Host contract and current read state.
 3. The canonical operation runs. Kast then examines its completion proof.
 4. Kast examines the result schema before the reply. This rule covers proved results and typed rejections.
 
@@ -59,7 +59,8 @@ The optional Tool RPC `querySession` capability permits a bounded query session 
 
 Before a dynamic tool call, hosted App Server admits the client protocol. It also admits thread ownership and workspace binding. A fresh thread gets the provider catalog.
 
-Disconnect removes the saved client connection. A client restart unloads its existing adapter. Disconnect does not itself retire the shared daemon or IDEA project.
+Repeating agent installation without `--mcp` removes exactly owned MCP resources. A client restart unloads its existing adapter.
+Transport closure does not retire the workspace Host or revoke its trust.
 
 Upgrades can change schemas and loaded components. New sessions need the new catalog. Before a semantic call, IDEA has to load the installed Host.
 
@@ -68,6 +69,10 @@ Upgrades can change schemas and loaded components. New sessions need the new cat
 ## How a project gets ready
 
 `WorkspacePreparations` owns one setup sequence per canonical root. Requests can share pending or complete setup.
+
+The first explicit semantic request grants trust to that exact root and creates private state.
+Session hooks, tool discovery, and management status are passive. They do not start this sequence.
+CLI, MCP, and tool RPC use the same managed admission; an idle transport holds no workspace lease.
 
 The sequence opens the project once. It then reads status for the issued operation. Status reads do not repeat the open effect.
 
@@ -93,7 +98,8 @@ A past blocker or rejection does not define readiness forever. A later authorize
 
 Setup history has a fixed capacity. Final results stay while a caller holds them. After Kast reclaims an ID, a lookup returns `UNKNOWN_OPERATION`.
 
-Trust, unsaved files, and plugins that do not match can block readiness. Failed import and indexing can block it too. [Background preparation](/reference/internals/background-startup) describes the user-facing effects.
+Trust or plugin admission can block readiness. Failed import and indexing can block it too.
+The [installation guide](/reference/installation#private-workspace-state) describes private state and external Gradle settings.
 
 <span id="daemon-startup-and-retirement" />
 
@@ -103,9 +109,11 @@ At startup, the service examines its installed executable and selected runtime. 
 
 Readiness records and a socket exchange identify the service generation. An old record does not prove a valid current service. Neither does a socket in use.
 
-Lifecycle fences block automatic startup during stop, reset, or payload replacement. If the fence state is unknown, startup rejects.
+Lifecycle fences block startup during installation recovery or payload replacement. If the fence state is unknown, startup rejects.
 
-`kast stop` fences new calls and automatic restart before retirement. Recovery replaces payloads only after its shutdown rules succeed.
+`kast stop` uses exclusive request leases to retire only the selected workspace Hosts.
+It writes no persistent disablement. The next explicit semantic request can start a Host again; a session hook cannot.
+Recovery replaces payloads only after its shutdown rules succeed.
 
 A daemon restart does not replay writes. A Host restart ends its live authority. Retained output then needs a new investigation.
 

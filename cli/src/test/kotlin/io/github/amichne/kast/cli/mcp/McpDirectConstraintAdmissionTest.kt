@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli.mcp
 
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.appserver.query.PublicToolParameter
@@ -8,7 +7,7 @@ import io.github.amichne.kast.appserver.query.PublicToolRule
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.direct.DirectToolDocument
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
-import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 import io.github.amichne.kast.protocol.registry.OperationEffect
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
@@ -57,7 +56,6 @@ class McpDirectConstraintAdmissionTest {
                 KastDirectToolSession(
                     catalog = listOf(tool),
                     root = { FilesystemCanonicalRootDiscovery.discover(root) },
-                    start = { Refinement.Refined(Unit) },
                     invokePublic = {
                         semanticCalls.incrementAndGet()
                         error("Rejected input cannot invoke semantics")
@@ -108,7 +106,6 @@ class McpDirectConstraintAdmissionTest {
                 session.catalog,
                 session::invoke,
                 session.root,
-                session.start,
                 PrintStream(ByteArrayOutputStream()),
             )
         val running = executor.submit {

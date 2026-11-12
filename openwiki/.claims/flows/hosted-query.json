@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:40a5a0204b5b29801ecb2464cab58539c95f14055f655863f26d1730ed1630fa",
+  "pageVersion": "sha256:6e3676a3e0654a553fb16097b8fa298c2f3c6d17d260f534e20371d259864ef2",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -37,8 +37,12 @@
       "statement": "Every existing hosted operation first observes and admits the complete live HostedContract, with implementation plugin version retained only as provenance; the same socket incarnation must survive through operation dispatch.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt",
-          "version": "repo-file-v1:sha256:d5b8ee76c1caaf9c28d611224265f5f69296e00f2aefeb2dc5c6dc9a124ccdd0"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L169-L237",
+          "version": "repo-lines-v1:sha256:b578a27139e9c3596e6f9e436c7eff6b51957e92124a7c694c5fc4205eef9117:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMGNjOGIxODc3MmZlNTRjM2UzM2U5MDI4ZGU0NGUwNDUxNDgzNDFlYTY4YWZiYzNlYzE5YTdlNmEyNzllMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhNWU2OGI1YzNmNGIwMGI2M2ZhZThiNTFlNTc1YzBmYmE5OGM3YmJlZjZiZTkyYmZiYWE2NmI1Yjk3OWYxNWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgzYTZkZDdmNWI0ZWFkYTc4MjY4MTI0MzVjOGE4MGIxMmVkMGIxNDBkMjM5OGNlOTVkYjA1OTU5NDMwM2YxNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2MWY3YjZmY2ZiYjBlODgyODM2ZDk4MjQ5ZGFlNTAwY2NjMjNjMWQzYTBlMzBkNTJiNTU4ZmU5NWIwMjRmMzcifQ"
+        },
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L267-L278",
+          "version": "repo-lines-v1:sha256:0ffa0fafc5a53c3000666ad1c0f4f26c7281fa0464f7588aa6c1c75af045a29c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMGNjOGIxODc3MmZlNTRjM2UzM2U5MDI4ZGU0NGUwNDUxNDgzNDFlYTY4YWZiYzNlYzE5YTdlNmEyNzllMjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczZTMwMmY3MzExMTE1MmZlNDdlZTIxZWI3ZTBiMjViYjRkZDE5NzI0ZDgzMDdhZWJlZGNiOWEwYjc2Njk4MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlNjk0YjQ2ZGY1YmZkOGI3NGU3MDE2MTNlM2Q0ZTlhMzAxMzQ3OTUyNjczNzVhODlmMzY4YzcyYTJjOTA3ZjkifQ"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/HostedContract.kt",
@@ -51,19 +55,19 @@
       "statement": "Raw endpoint decoding rejects duplicate fields and trailing documents and retains a positive typed process owner through full current descriptor validation and exact root/socket binding; owner-envelope parsing alone never admits hosted compatibility.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt#L33-L38",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt#L34-L39",
           "version": "repo-lines-v1:sha256:ab2fe3730d418aa1ac20ad94d8816a514e4fa3016504698ea4bdf5ce28fa8779:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWU0ZTI0MjU1Y2IyMzA0NzBkYWEzOTQ5MGQwZTI0YjBmZjBhYTIxZTQ4YjY5NjZmMjdmODA1OWY0ZThmM2U2YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzVjYmQyMjRkM2Q1MDQzODQ2YmU2NjJkOTM5MDI5ZjRjYmM3NjM1ZDFjNzA5ZGMyZGY0ZTExZmQyYjNhZWQxZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTBhNThjNzI4ZjQ4NjQxZDM1NDcwOTQ4NGRlZjYwNGQwNjY4NmYwYjg0MzA5NGJmNzc0MWU5Mjk0ZTdkYmYxOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzQ2MjhlNTUyNWQ1ODlhNTNiMjg1NDFmZGRhYzJmOWExMGMwNjM0NzRlNjBmNDUxNWE1YTRkNDMxM2RjODFhNyJ9"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt#L70-L94",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt#L71-L95",
           "version": "repo-lines-v1:sha256:06ab3c0b0c020a22ba076dd83f94a09b91f7e892ba2e2c00fb4f7c12f7c275dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYjk3YThmOTkxMDA4ZDdiYTNmMTA1Yzk3N2Q1NTMyOGI0ZDkzZDFmNzZjZGI4NGQ3ODk2YzYxMzhjMzRiMzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmMzhkMmYzOThmYWM5NWNiZTBhZGU4NzNiZTRlMTBjODg2NWRiYjJlYWVjOGI3MDBmOTJkNGIzMzFiNjYwMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc0N2JlNzNkNzUxYjAzNmNlZWExZjFmNzFmMTg2ZGJkZTFkMGJiZjg2YjZiMjM2YTg0MTMxODA5Mzk3YzQ5YWEifQ"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt#L39-L109",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt#L40-L110",
           "version": "repo-lines-v1:sha256:bd1266489f653eaf2392379c65ea83c33181bce08687a90eebddfff1221b72a3:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMWFiMTg4NzU0YmVjY2M1ZDI1YzlmM2VkYzkwMDFkMGIzNTg5NzY5Mzk2ODIzOThiYzhlZmE5NmFhYmQ2MzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MjdjNTA4YjZhOTZiZGM0OWZjYmJjY2E0M2I2YTc3ZTJhN2NlOWEzZTUyMzlmYWU4OTA3YTc4YzBlYWFjM2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ4ZjJiNDE5ZGEyNzg4MmY5NTUzYTA5YjY1YzIwODYxZGRmNmYwMTVkZjg4MWE1NTkwZWVhZWFkMGUzMzZmMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5MmE1ZmYyMTUwMjFiNGM4MDUwMjJlMzQ3NWY2YWE1ZWYxYmYyZjcyOWYwMTZjYjQ1ZWY5NzY4NTAwMzcxN2YifQ"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt#L8-L32",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt#L9-L33",
           "version": "repo-lines-v1:sha256:c657cd2203d9acdbb15b135e8ac9aaf6d1413dc9e3920203ff0ebd31d75a9bb1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzNDg2MjA4ZmViOTgyNDI5YTkyYmNjM2U3ZGUwOWY4MmE1YzY4MTE5OTY0Y2I1Y2U4YjQ3NTNlZDY3ZWRhNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1MWIyMjNhYzRmZDQ2ZGE0YTEyMTIyODAxMDU3N2JhNmExNTE4NmU5NjY4N2NhYzA2YjU3OGVjYzY2N2Q3YTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
@@ -347,20 +351,12 @@
       "statement": "Managed semantic access admits the project descriptor's application identity against the selected private installation before dispatch. Existing-reference reads use the same deployment selection.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L108-L159",
-          "version": "repo-lines-v1:sha256:a15f92fabb052b0413f7b9a3307bf4069d5ddbcd7c88ee54ba38b38f6599b77f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3YzFkYTZlZWFlZjE3NDY4ZDc5ZGI0MGFkMDRjN2NjMzgzZjU1OGNlYzRhYTlhMzI5NmJlZTgxMDc2MDM3YjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgxYTUyNmU5ZTE2ZmNmODFjNjcwNWNkYzAyNGFmY2FjMWYyODdiNDQ1MWU1Mzg4NjQ4YWMyODk3NmRiMTMxOWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA4MWVjZGRlZDQxNmEwMjkwNGNlMjdiZWMwMzlkYTY4MTY5YjBmODNiZTgwZjY1ODI1NTJlNjhiODIzZGZjZmUifQ"
-        },
-        {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt#L139-L147",
-          "version": "repo-lines-v1:sha256:4f7fc80bd697d60d8eda399267d9c071de0969e165e2bc875eaa7a62cdcc7a2c:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWViMTVkZGM2MTBmNTRiYzBjODQ1NmQwYjVkYzMzODdhNWM5Y2VjMGE3MTRiYjA4Mjg1ODdlN2I2MjU0Mzk5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjUxZjNhZGY1ZmFhNDk5ODEwOGUyYjkyMWM2YjJlZjgyODgxZjRiZmFlZWI2Njc4NjZjNWY0YmMzNTc0NmZiMSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhkMmMyYzIxMjY3M2ZlYTZkZDBkZGM1MTExMzdmZDJkODkyYmNjYmEyZmE4YWNkOGYyMzRhYTU1YWRhZDRlNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt#L119-L155",
+          "version": "repo-lines-v1:sha256:a421474d9646efa48275a51991299a2d1a4ffa863329a28ac438c21a420a433e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5M2Q0N2FmYjdkNDBhODk5ZjFkN2E3NTUyOGZmNGZmZTYwMGQzMjYzYmYxMDY5NzlmMzk2MjhmNDdmZDBmMzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1MDJmNjllNDIyY2JhYmE2ZTk5OTgxMDE4YjcyYjM4YTA3OGU2MWY2YzkwMmEzOTBiMDc3ODY2ZTA5ZTZhNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyNzQ3ZWJiYzY1MjI5MTk3MDUwMmMzMTc3YTVmNzczYzM5YTE3NzE0YTBhZDhkOWI0NTM3NjFmOWE0ZmQ3NmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiMDNhZWEyZmJiOGRmMzI2MWU2ODNmMTc3YjljZTI2NjRkNzdhYTE4ZGVmNzE4NjI2MzEyYWNmZTk0YTlmNWYifQ"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt#L8-L45",
-          "version": "repo-lines-v1:sha256:afa7570f00dd1879afdaae20fb87ffa50d8785965c2d27a75e16ca543e8b26f1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2ZDk2YzVjMTU1NzkxMjJjNzk0Y2JmZGFkZTVlZDJiNmIwNDdlNmM1OTViZWNmMzVjNzkwOTE1MjU5NWIxOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMifQ"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeReadConfiguration.kt#L13-L25",
-          "version": "repo-lines-v1:sha256:4b88199fc6558ea19adad9480469cd67e45269d00b5b032d13b6e6517f6ac003:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ZTllM2FmNzUyMTgyNmEwZGE4Njg3NTdmMjhmM2QyODBiNDBlYzYzZGRkN2NmZDI3YTI5MmMzYWVkMWNhNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "version": "repo-lines-v1:sha256:6f3dec416e7e00827749f8246625377ab64d3e5be4202c00868050d7263abacd:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2ZDk2YzVjMTU1NzkxMjJjNzk0Y2JmZGFkZTVlZDJiNmIwNDdlNmM1OTViZWNmMzVjNzkwOTE1MjU5NWIxOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -369,7 +365,7 @@
       "statement": "The production Host packages separate archives and descriptors for IDEA release lines 262 and 263.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L240-L266",
+          "resource": "repo://build.gradle.kts#L245-L271",
           "version": "repo-lines-v1:sha256:9068766bc806480d3ee0c88c13d71ad2590783774a18f47f4f74dccdea44cd0d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5YjI5ZGY1MmEzZDBhNGI1M2U5Njk4ZTJjODBiN2E4YmI0YTJlOGYwN2Y4MTM1NDY1OTM1OWRkYjlmZjg2NWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlOWQzNGFiOGRhZmRkZjg5N2Y5MDY5ZTdmNzQ1M2E3NmRmOTQzMjc3ZGMyNGI2NTZlNTMzMTZkNTYxY2U0YmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiNTUzNWExY2MyMTI3NWU2YTQxMWQ0ZDEyOGZmNzkxZDhlN2ViOTY5MWRhMTM4Y2NiYTkzYTlmNWFjYzBlN2YifQ"
         },
         {
@@ -407,6 +403,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T06:30:47.924Z"
+    "at": "2026-11-12T22:38:01.289Z"
   }
 }

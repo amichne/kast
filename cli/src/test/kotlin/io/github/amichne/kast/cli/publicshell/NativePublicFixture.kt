@@ -18,7 +18,6 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
     // Unix-domain paths must fit the production 100-byte bound, independently of JUnit's temporary path.
     val home: Path = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kn -")
     val workspace: Path = Files.createDirectory(home.resolve("workspace with spaces"))
-    val idea: Path = Files.createDirectory(home.resolve("inert-idea"))
     val installation: Path = Files.createDirectories(home.resolve(".local/share/kast/installation"))
     val payload: Path = installation.resolve("share/kast/libexec/kast-management")
     private val configuration = installation.resolve("config/environment")
@@ -30,7 +29,7 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
         Files.copy(requiredExecutable("kast.publicLauncher"), payload)
         Files.setPosixFilePermissions(payload, PosixFilePermissions.fromString("rwxr-xr-x"))
         Files.createDirectories(configuration.parent)
-        Files.writeString(configuration, "KAST_INSTALL_IDEA_HOME=$idea\n")
+        Files.writeString(configuration, "")
         Files.createDirectories(installation.resolve("share/kast"))
         Files.writeString(installation.resolve("share/kast/one-shot-observation-v1"), "1\n")
         Files.writeString(workspace.resolve("settings.gradle.kts"), "rootProject.name = \"native-peer\"\n")

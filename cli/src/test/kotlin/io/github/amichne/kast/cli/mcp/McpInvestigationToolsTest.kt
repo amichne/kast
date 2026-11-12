@@ -3,10 +3,10 @@ package io.github.amichne.kast.cli.mcp
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.direct.directSupportTools
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.SupportToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument

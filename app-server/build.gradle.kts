@@ -20,7 +20,12 @@ plugins {
 val repositoryRoot = project.isolated.rootProject.projectDirectory
 
 dependencies {
+    testFixturesApi(project(":distribution:contract"))
+    testFixturesApi(project(":protocol:contract"))
+    testFixturesImplementation(project(":kernel"))
+    testFixturesImplementation(project(":distribution:managed"))
     testFixturesImplementation(libs.serialization.json)
+    testImplementation(testFixtures(project(":distribution:managed")))
     testImplementation(libs.jimfs)
     implementation(libs.coroutines.core)
     implementation(libs.serialization.json)

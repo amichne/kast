@@ -1,11 +1,8 @@
 package io.github.amichne.kast.cli.mcp
 
-import io.github.amichne.kast.appserver.DaemonOperationFailure
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.direct.DirectToolDocument
-import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
 import io.github.amichne.kast.protocol.contract.QueryExecutionModeDocument
 import io.modelcontextprotocol.kotlin.sdk.types.ToolAnnotations
 import java.io.BufferedInputStream
@@ -23,15 +20,11 @@ internal class KastMcpServer(
     private val catalog: List<DirectToolDocument>,
     private val invoke: (String, JsonObject) -> CliExit,
     private val root: () -> CanonicalRootDiscovery,
-    private val onInitialize: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure> = {
-        Refinement.Refined(Unit)
-    },
     private val diagnostic: PrintStream = System.err,
 ) {
     private val tools = catalog.associateBy { it.name }
     private val report = McpCallReporter(diagnostic)
     private var era: McpProtocolEra? = null
-    private var preparationStarted = false
 
     fun run(input: BufferedInputStream, output: PrintStream) {
         val publicationLock = Any()
@@ -95,7 +88,6 @@ internal class KastMcpServer(
             if (hasModernMeta(request.params))
                 return response(id, error = McpError(-32600, "initialize-has-modern-envelope"))
             era = McpProtocolEra.LEGACY
-            startPreparation()
             return respond(id, McpInitializeResult())
         }
         val modern = hasModernMeta(request.params)
@@ -123,7 +115,6 @@ internal class KastMcpServer(
                         ),
                 )
             era = McpProtocolEra.MODERN
-            startPreparation()
             return when (request.method) {
                 "ping" -> respond(id, McpEmptyResult(resultType = "complete"))
                 "server/discover" -> respond(id, McpDiscoverResult())
@@ -171,23 +162,6 @@ internal class KastMcpServer(
     private fun hasModernMeta(params: JsonElement?): Boolean {
         val meta = (params as? JsonObject)?.get("_meta") as? JsonObject ?: return false
         return "io.modelcontextprotocol/protocolVersion" in meta || "io.modelcontextprotocol/clientCapabilities" in meta
-    }
-
-    private fun startPreparation() {
-        if (!preparationStarted) {
-            preparationStarted = true
-            val outcome =
-                when (val discovered = root()) {
-                    is CanonicalRootDiscovery.Discovered -> onInitialize(discovered.root)
-                    is CanonicalRootDiscovery.Rejected ->
-                        Refinement.Rejected(DaemonOperationFailure.Root(discovered.failure))
-                }
-            report(
-                "workspace",
-                McpCallStage.PREPARATION,
-                if (outcome is Refinement.Refined) McpCallOutcome.STARTED else McpCallOutcome.REJECTED,
-            )
-        }
     }
 
     @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")

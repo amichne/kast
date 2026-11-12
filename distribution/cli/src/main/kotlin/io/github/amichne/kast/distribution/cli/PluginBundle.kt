@@ -64,6 +64,7 @@ private constructor(
     val version: PluginVersion,
     private val transport: CodexTransport,
     val composition: HarnessComposition,
+    val mcpEnvironment: BundledMcpEnvironment,
     val base: Path,
     private val resources: List<BundledPayload>,
 ) {
@@ -165,6 +166,15 @@ private constructor(
                         !Files.isExecutable(verifiedBundledSource(installation, HarnessConnection.CODEX_MCP))
                 )
                     return PluginObservation.Rejected(PluginInstallFailure.PayloadRejected)
+                val mcpEnvironment =
+                    when (composition) {
+                        HarnessComposition.CliOnly -> BundledMcpEnvironment.NotSelected
+                        HarnessComposition.CliWithMcp ->
+                            when (val admitted = BundledMcpEnvironment.Selected.admit(installation, manifest)) {
+                                is PluginObservation.Rejected -> return admitted
+                                is PluginObservation.Observed -> admitted.value
+                            }
+                    }
                 val raw =
                     readBoundedFile(bundle.resolve("plugins/kast/.codex-plugin/plugin.json"), 65536)
                         ?: return PluginObservation.Rejected(PluginInstallFailure.PayloadRejected)
@@ -202,6 +212,7 @@ private constructor(
                             server.cwd,
                         ),
                         composition,
+                        mcpEnvironment,
                         base,
                         entries
                             .filter { it.path.startsWith("$prefix/plugins/kast/") }

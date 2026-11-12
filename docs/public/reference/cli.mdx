@@ -11,10 +11,11 @@ keywords:
 ---
 
 Use the native `kast` command for Kotlin queries in one exact repository or worktree.
-An IntelliJ IDEA Host supplies compiler analysis. CLI queries need no MCP registration.
+The installed private IntelliJ IDEA Host supplies compiler analysis. CLI queries need no MCP registration.
 
-For a private Host, see [workspace containers](/reference/installation#manage-isolated-workspaces).
-Run queries from the container's workspace or a subdirectory to prepare its private Host.
+The first explicit semantic request trusts the exact canonical workspace root and prepares its private Host.
+Run from a project whose build code you trust, or select it with `--workspace`.
+Queries use installed runtime bytes without contacting release servers. See [private workspace state](/reference/installation#private-workspace-state).
 
 ## Discover the installed contract
 
@@ -56,8 +57,8 @@ Full exports can be large. Use schema pages for discovery and export only when y
 
 ## Wait for the workspace
 
-Session hooks start preparation in the background. Their context tells the agent when the workspace is being prepared.
-Wait explicitly when the next task needs a ready workspace:
+Session hooks are passive and do not prepare a workspace.
+Wait explicitly only when preparation is the requested task; otherwise run the first useful semantic operation:
 
 ```shell
 kast workspace wait --wait 30000

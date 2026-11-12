@@ -18,9 +18,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 from http.client import HTTPMessage
 from pathlib import Path, PurePosixPath
-from typing import IO, Literal, Protocol, TypeGuard, override
+from typing import IO, TYPE_CHECKING, Literal, Protocol, TypeGuard, override
 
 from managed_update_journal import BuildIdentity, PinnedBuild, TrackMain, TrackStable
+
+if TYPE_CHECKING:
+    from managed_product import AdmittedProduct
 
 MAXIMUM_ENTRIES = 16_384
 MAXIMUM_PAYLOAD_BYTES = 1_073_741_824
@@ -230,6 +233,367 @@ def bounded_text(value: object) -> TypeGuard[str]:
     return isinstance(value, str) and 0 < len(value) <= 160
 
 
+PRODUCT_TARGETS = ("linux-x86_64", "macos-aarch64")
+
+
+@dataclass(frozen=True, slots=True)
+class ProductAsset:
+    name: str
+    sha256: str
+    bytes: int
+
+
+@dataclass(frozen=True, slots=True)
+class ProductProducer:
+    runId: int
+    runAttempt: int
+    workflow: str
+
+
+@dataclass(frozen=True, slots=True)
+class ProductInputs:
+    javaReleaseSha256: str
+    dependencyLocksSha256: str
+    compositionRecipeSha256: str
+    donorSha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class NativeCompositionEvidence:
+    baseSha256: str
+    nativeRuntimeSha256: str
+    nativeBundleSha256: str
+    runtimeSha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class NativeQualification:
+    receipt: ProductAsset
+    producer: ProductProducer
+    bundleSha256: str
+    runtimeSha256: str
+    controlSha256: str
+    kind: str = "NATIVE"
+    outcome: str = "COMPLETE"
+    composition: NativeCompositionEvidence | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ProductTarget:
+    target: str
+    inputs: ProductInputs
+    bundle: ProductAsset
+    runtime: ProductAsset
+    qualification: NativeQualification
+    runtimeBase: ProductAsset | None = None
+
+    def assets(self) -> tuple[ProductAsset, ...]:
+        return (self.bundle, self.runtime, self.qualification.receipt) + (
+            (self.runtimeBase,) if self.runtimeBase else ()
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ProductRecord:
+    schemaVersion: int
+    repository: str
+    sourceRevision: str
+    sourceTree: str
+    version: str
+    producer: ProductProducer
+    targets: tuple[ProductTarget, ...]
+
+    def assets(self) -> tuple[ProductAsset, ...]:
+        return tuple(asset for target in self.targets for asset in target.assets())
+
+
+def product_asset(value: object, expected_name: str) -> ProductAsset | Failure:
+    if not mapping(value) or set(value) != {"name", "sha256", "bytes"}:
+        return Failure.ARTIFACT_INVALID
+    name, sha, size = value["name"], value["sha256"], value["bytes"]
+    if (
+        name != expected_name
+        or not isinstance(sha, str)
+        or not DIGEST.fullmatch(sha)
+        or not positive(size)
+        or size >= 2 * 1024**3
+    ):
+        return Failure.ARTIFACT_INVALID
+    return ProductAsset(expected_name, sha, size)
+
+
+def product_producer(value: object, workflow: str) -> ProductProducer | Failure:
+    if not mapping(value) or set(value) != {"runId", "runAttempt", "workflow"}:
+        return Failure.ARTIFACT_INVALID
+    run, attempt = value["runId"], value["runAttempt"]
+    if not positive(run) or not positive(attempt) or value["workflow"] != workflow:
+        return Failure.ARTIFACT_INVALID
+    return ProductProducer(run, attempt, workflow)
+
+
+def product_target(value: object, version: str) -> ProductTarget | Failure:
+    if not mapping(value) or set(value) - {"runtimeBase"} != {
+        "target",
+        "inputs",
+        "bundle",
+        "runtime",
+        "qualification",
+    }:
+        return Failure.ARTIFACT_INVALID
+    target, inputs, evidence = value["target"], value["inputs"], value["qualification"]
+    if not isinstance(target, str) or target not in PRODUCT_TARGETS:
+        return Failure.ARTIFACT_INVALID
+    if not mapping(inputs) or set(inputs) != {
+        "javaReleaseSha256",
+        "dependencyLocksSha256",
+        "compositionRecipeSha256",
+        "donorSha256",
+    }:
+        return Failure.ARTIFACT_INVALID
+    digests: list[str] = []
+    for key in (
+        "javaReleaseSha256",
+        "dependencyLocksSha256",
+        "compositionRecipeSha256",
+        "donorSha256",
+    ):
+        digest = inputs[key]
+        if not isinstance(digest, str) or not DIGEST.fullmatch(digest):
+            return Failure.ARTIFACT_INVALID
+        digests.append(digest)
+    bundle = product_asset(value["bundle"], f"kast-composed-setup-v{version}-{target}.tar.gz")
+    runtime = product_asset(value["runtime"], f"kast-runtime-v{version}-{target}.zip")
+    if (
+        isinstance(bundle, Failure)
+        or isinstance(runtime, Failure)
+        or not mapping(evidence)
+        or set(evidence) - {"composition"}
+        != {
+            "receipt",
+            "producer",
+            "bundleSha256",
+            "runtimeSha256",
+            "controlSha256",
+            "kind",
+            "outcome",
+        }
+    ):
+        return Failure.ARTIFACT_INVALID
+    base: ProductAsset | None = None
+    composition: NativeCompositionEvidence | None = None
+    base_value, composition_value = value.get("runtimeBase"), evidence.get("composition")
+    if base_value is not None or composition_value is not None:
+        if (
+            not mapping(base_value)
+            or not isinstance(base_value.get("sha256"), str)
+            or not mapping(composition_value)
+            or set(composition_value)
+            != {"baseSha256", "nativeRuntimeSha256", "nativeBundleSha256", "runtimeSha256"}
+        ):
+            return Failure.ARTIFACT_INVALID
+        parsed_base = product_asset(
+            base_value, f"kast-runtime-base-{target}-{base_value['sha256']}.zip"
+        )
+        if isinstance(parsed_base, Failure):
+            return parsed_base
+        witnesses: list[str] = []
+        for key in ("baseSha256", "nativeRuntimeSha256", "nativeBundleSha256", "runtimeSha256"):
+            witness = composition_value[key]
+            if not isinstance(witness, str) or not DIGEST.fullmatch(witness):
+                return Failure.ARTIFACT_INVALID
+            witnesses.append(witness)
+        if witnesses[0] != parsed_base.sha256 or witnesses[3] != runtime.sha256:
+            return Failure.ARTIFACT_INVALID
+        base, composition = parsed_base, NativeCompositionEvidence(*witnesses)
+    receipt = product_asset(evidence["receipt"], f"qualification-{target}.json")
+    producer = product_producer(evidence["producer"], ".github/workflows/composed-linux.yml")
+    control = evidence["controlSha256"]
+    if (
+        isinstance(receipt, Failure)
+        or isinstance(producer, Failure)
+        or not isinstance(control, str)
+        or not DIGEST.fullmatch(control)
+        or evidence["bundleSha256"] != bundle.sha256
+        or evidence["runtimeSha256"] != runtime.sha256
+        or evidence["kind"] != "NATIVE"
+        or evidence["outcome"] != "COMPLETE"
+    ):
+        return Failure.ARTIFACT_INVALID
+    return ProductTarget(
+        target,
+        ProductInputs(*digests),
+        bundle,
+        runtime,
+        NativeQualification(
+            receipt, producer, bundle.sha256, runtime.sha256, control, composition=composition
+        ),
+        base,
+    )
+
+
+def parse_product_record(value: object) -> ProductRecord | Failure:
+    """Schema evidence only; producer and retained byte admission belong to the publisher."""
+    if not mapping(value) or set(value) != {
+        "schemaVersion",
+        "repository",
+        "sourceRevision",
+        "sourceTree",
+        "version",
+        "producer",
+        "targets",
+    }:
+        return Failure.ARTIFACT_INVALID
+    build, tree, version, targets = (
+        value[key] for key in ("sourceRevision", "sourceTree", "version", "targets")
+    )
+    producer = product_producer(value["producer"], ".github/workflows/ci.yml")
+    if (
+        type(value["schemaVersion"]) is not int
+        or value["schemaVersion"] not in (2, 3)
+        or value["repository"] != REPOSITORY
+        or not revision(build)
+        or not revision(tree)
+        or not isinstance(version, str)
+        or len(version) > 64
+        or not re.fullmatch(r"0\.0\.[1-9][0-9]*", version)
+        or isinstance(producer, Failure)
+        or not sequence(targets)
+        or len(targets) != 2
+    ):
+        return Failure.ARTIFACT_INVALID
+    facts: list[ProductTarget] = []
+    for target in targets:
+        admitted = product_target(target, version)
+        if isinstance(admitted, Failure):
+            return admitted
+        facts.append(admitted)
+    if tuple(item.target for item in facts) != PRODUCT_TARGETS:
+        return Failure.ARTIFACT_INVALID
+    if any((item.runtimeBase is not None) != (value["schemaVersion"] == 3) for item in facts):
+        return Failure.ARTIFACT_INVALID
+    return ProductRecord(
+        value["schemaVersion"], REPOSITORY, build, tree, version, producer, tuple(facts)
+    )
+
+
+def decode_product_record(raw: bytes) -> ProductRecord | Failure:
+    if len(raw) > MAXIMUM_RECORD_BYTES:
+        return Failure.ARTIFACT_INVALID
+    try:
+        return parse_product_record(document(raw))
+    except (ValueError, UnicodeError, RecursionError):
+        return Failure.ARTIFACT_INVALID
+
+
+def native_receipt_matches(target: ProductTarget, receipt: object) -> bool:
+    from dataclasses import asdict
+
+    if (
+        not mapping(receipt)
+        or not mapping(containers := receipt.get("containers"))
+        or receipt.get("qualificationStage") != "COMPONENT_NATIVE"
+        or not isinstance(harness := receipt.get("harnessSha256"), str)
+        or not DIGEST.fullmatch(harness)
+    ):
+        return False
+    composition = target.qualification.composition
+    expected = composition.nativeRuntimeSha256 if composition else target.runtime.sha256
+    return (
+        containers.get("runtimeSha256") == expected
+        and containers.get("controlSha256") == target.qualification.controlSha256
+        and receipt.get("composition") == (asdict(composition) if composition else None)
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ReleaseMapping:
+    schemaVersion: int
+    publicVersion: str
+    buildRecordSha256: str
+
+
+def parse_release_mapping(value: object) -> ReleaseMapping | Failure:
+    if not mapping(value) or set(value) != {"schemaVersion", "publicVersion", "buildRecordSha256"}:
+        return Failure.ARTIFACT_INVALID
+    version, digest = value["publicVersion"], value["buildRecordSha256"]
+    if (
+        type(value["schemaVersion"]) is not int
+        or value["schemaVersion"] != 1
+        or not isinstance(version, str)
+        or len(version) > 64
+        or not VERSION.fullmatch(version)
+        or not isinstance(digest, str)
+        or not DIGEST.fullmatch(digest)
+    ):
+        return Failure.ARTIFACT_INVALID
+    return ReleaseMapping(1, version, digest)
+
+
+@dataclass(frozen=True, slots=True)
+class ProductSelection:
+    releaseTag: str
+    record: ProductRecord
+    recordSha256: str
+    policy: str
+    publicVersion: str | None
+    mainRevision: str | None
+    type: Literal["Product"] = "Product"
+
+    @property
+    def version(self) -> str:
+        return self.record.version
+
+
+def parse_product_selection(value: object) -> ProductSelection | Failure:
+    if (
+        not mapping(value)
+        or set(value)
+        != {
+            "type",
+            "releaseTag",
+            "record",
+            "recordSha256",
+            "policy",
+            "publicVersion",
+            "mainRevision",
+        }
+        or value["type"] != "Product"
+    ):
+        return Failure.SELECTOR_INVALID
+    record = parse_product_record(value["record"])
+    tag, digest, policy, public, main = (
+        value[key]
+        for key in ("releaseTag", "recordSha256", "policy", "publicVersion", "mainRevision")
+    )
+    if (
+        isinstance(record, Failure)
+        or not isinstance(tag, str)
+        or not isinstance(digest, str)
+        or not DIGEST.fullmatch(digest)
+        or not isinstance(policy, str)
+        or policy not in ("TrackStable", "TrackMain", "PinnedBuild")
+    ):
+        return Failure.SELECTOR_INVALID
+    if public is None:
+        if (
+            tag != f"developer-v{record.version}"
+            or not revision(main)
+            or main != record.sourceRevision
+            or policy == "TrackStable"
+        ):
+            return Failure.SELECTOR_INVALID
+    elif (
+        not isinstance(public, str)
+        or len(public) > 64
+        or not VERSION.fullmatch(public)
+        or tag != f"v{public}"
+        or main is not None
+        or policy == "TrackMain"
+    ):
+        return Failure.SELECTOR_INVALID
+    return ProductSelection(tag, record, digest, policy, public, main)
+
+
 def parse_identity(value: object) -> BuildIdentity | Failure:
     if not mapping(value) or set(value) != {
         "releaseTag",
@@ -319,7 +683,7 @@ def parse_entry(value: object) -> MainEntry | Failure:
     return MainEntry(main, build, tree, tag, version, tuple(targets), references[0], references[1])
 
 
-def decode_selection(raw: bytes) -> Selection | Rejected:
+def decode_selection(raw: bytes) -> Selection | ProductSelection | Rejected:
     if len(raw) > MAXIMUM_RECORD_BYTES:
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, "captured selection")
     try:
@@ -328,6 +692,13 @@ def decode_selection(raw: bytes) -> Selection | Rejected:
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, "captured selection")
     if not mapping(value):
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, "captured selection")
+    if value.get("type") == "Product":
+        selected = parse_product_selection(value)
+        return (
+            Rejected(selected, Stage.SELECTION, "captured selection")
+            if isinstance(selected, Failure)
+            else selected
+        )
     if set(value) == {"type", "version", "releaseTag", "policy"} and value["type"] == "Stable":
         version, tag, policy = value["version"], value["releaseTag"], value["policy"]
         if (
@@ -363,7 +734,7 @@ def decode_selection(raw: bytes) -> Selection | Rejected:
 
 def resolve_selection(
     channel: str | None, version: str | None, commit: str | None, source: ReleaseSource
-) -> Selection | Rejected:
+) -> Selection | ProductSelection | Rejected:
     requested = commit or version or channel or "stable"
     if sum(value is not None for value in (channel, version, commit)) > 1:
         return Rejected(Failure.SELECTORS_CONFLICT, Stage.SELECTION, requested)
@@ -377,7 +748,7 @@ def resolve_selection(
         len(commit) not in (12, 40) or not re.fullmatch(r"[0-9a-f]+", commit)
     ):
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, requested)
-    if channel not in (None, "stable", "main"):
+    if channel not in (None, "stable", "main", "preview"):
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, requested)
     if commit is None and channel in (None, "stable"):
         raw = source.read(STABLE_URL, MAXIMUM_RECORD_BYTES)
@@ -408,11 +779,63 @@ def resolve_selection(
         not mapping(parsed)
         or set(parsed) != {"schemaVersion", "builds"}
         or type(parsed["schemaVersion"]) is not int
-        or parsed["schemaVersion"] != 1
+        or parsed["schemaVersion"] not in (1, 2)
         or not sequence(parsed["builds"])
         or len(parsed["builds"]) > 5
     ):
         return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
+    if parsed["schemaVersion"] == 2:
+        products: list[ProductSelection] = []
+        for item in parsed["builds"]:
+            if mapping(item) and set(item) == {
+                "mainRevision",
+                "releaseTag",
+                "record",
+                "recordSha256",
+            }:
+                record = parse_product_record(item["record"])
+                main, tag, digest = item["mainRevision"], item["releaseTag"], item["recordSha256"]
+                if (
+                    isinstance(record, Failure)
+                    or not revision(main)
+                    or main != record.sourceRevision
+                    or not isinstance(tag, str)
+                    or tag != f"developer-v{record.version}"
+                    or not isinstance(digest, str)
+                    or not DIGEST.fullmatch(digest)
+                ):
+                    return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
+                products.append(
+                    ProductSelection(
+                        tag,
+                        record,
+                        digest,
+                        "TrackMain" if commit is None else "PinnedBuild",
+                        None,
+                        main,
+                    )
+                )
+            else:
+                return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
+        revisions = [item.mainRevision for item in products]
+        if len(set(revisions)) != len(revisions):
+            return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
+        matches = (
+            products[:1]
+            if commit is None
+            else [
+                item
+                for item in products
+                if item.mainRevision is not None and item.mainRevision.startswith(commit)
+            ]
+        )
+        if len(matches) > 1:
+            return Rejected(Failure.AMBIGUOUS_COMMIT, Stage.SELECTION, requested)
+        return (
+            matches[0]
+            if matches
+            else Rejected(Failure.BINARY_UNAVAILABLE, Stage.SELECTION, requested)
+        )
     entries: list[MainEntry] = []
     for item in parsed["builds"]:
         admitted = parse_entry(item)
@@ -764,7 +1187,7 @@ def integration_digest(control: Path) -> str:
 
 
 def inspect_control(
-    control: Path, selection: Selection, record: ComponentRecord
+    control: Path, selection: Selection, record: ComponentRecord, target: str = PLATFORM
 ) -> BuildIdentity | Failure:
     try:
         marker = control / "share/kast/managed-install-v1"
@@ -798,10 +1221,18 @@ def inspect_control(
         if isinstance(selection, MainSelection) and selection.identity != identity:
             return Failure.ARTIFACT_INVALID
         executable = control / "share/kast/libexec/kast-management"
-        native_header = b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01"
+        native_header = (
+            b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01"
+            if target == "macos-aarch64"
+            else b"\x7fELF\x02\x01\x01\x00"
+        )
         with executable.open("rb") as stream:
             if stream.read(8) != native_header or not os.access(executable, os.X_OK):
                 return Failure.ARTIFACT_INVALID
+            if target == "linux-x86_64":
+                _ = stream.seek(18)
+                if stream.read(2) != b"\x3e\x00":
+                    return Failure.ARTIFACT_INVALID
         query = control / "bin/kast-query"
         with query.open("rb") as stream:
             query_header = stream.read(8)
@@ -988,17 +1419,84 @@ def admit_main_records(
 
 
 def download_composition(
-    selection: Selection, idea_line: str, directory: Path, source: ReleaseSource
+    selection: Selection | ProductSelection, idea_line: str, directory: Path, source: ReleaseSource
+) -> AdmittedProduct | Rejected:
+    """Never activate a legacy component pair as a complete private-runtime product."""
+    requested = selection.version
+    if isinstance(selection, MainSelection):
+        return Rejected(Failure.BINARY_UNAVAILABLE, Stage.RECORDS, requested)
+    if isinstance(selection, StableSelection):
+        selected = resolve_product_mapping(selection, source)
+        if isinstance(selected, Rejected):
+            return selected
+        selection = selected
+    raw = source.read(
+        f"{RELEASE_URL}/{selection.releaseTag}/build-record.json", MAXIMUM_RECORD_BYTES
+    )
+    if isinstance(raw, TransferFailure):
+        return Rejected(Failure.BINARY_UNAVAILABLE, Stage.RECORDS, requested)
+    if (
+        hashlib.sha256(raw).hexdigest() != selection.recordSha256
+        or decode_product_record(raw) != selection.record
+    ):
+        return Rejected(Failure.ARTIFACT_INVALID, Stage.RECORDS, requested)
+    # Lazy import preserves the existing self-contained legacy recovery bootstrap.
+    from managed_product import stage_product
+
+    return stage_product(selection, raw, directory, source)
+
+
+def resolve_product_mapping(
+    selection: StableSelection, source: ReleaseSource
+) -> ProductSelection | Rejected:
+    base = f"{RELEASE_URL}/{selection.releaseTag}"
+    raw = source.read(f"{base}/release-mapping.json", MAXIMUM_RECORD_BYTES)
+    if isinstance(raw, TransferFailure):
+        return Rejected(Failure.BINARY_UNAVAILABLE, Stage.RECORDS, selection.version)
+    try:
+        mapping = parse_release_mapping(document(raw))
+    except (ValueError, UnicodeError, RecursionError):
+        mapping = Failure.ARTIFACT_INVALID
+    if isinstance(mapping, Failure) or mapping.publicVersion != selection.version:
+        return Rejected(Failure.ARTIFACT_INVALID, Stage.RECORDS, selection.version)
+    raw = source.read(f"{base}/build-record.json", MAXIMUM_RECORD_BYTES)
+    if isinstance(raw, TransferFailure):
+        return Rejected(Failure.BINARY_UNAVAILABLE, Stage.RECORDS, selection.version)
+    record = decode_product_record(raw)
+    if isinstance(record, Failure) or hashlib.sha256(raw).hexdigest() != mapping.buildRecordSha256:
+        return Rejected(Failure.ARTIFACT_INVALID, Stage.RECORDS, selection.version)
+    return ProductSelection(
+        selection.releaseTag,
+        record,
+        mapping.buildRecordSha256,
+        selection.policy.value,
+        selection.version,
+        None,
+    )
+
+
+def stage_component_archives(
+    selection: Selection,
+    idea_line: str,
+    directory: Path,
+    source: ReleaseSource,
+    *,
+    target: str = PLATFORM,
 ) -> AdmittedComposition | Rejected:
+    """Legacy component inspection only. This is not complete product admission."""
     requested = (
         selection.identity.mainRevision
         if isinstance(selection, MainSelection)
         else selection.version
     )
     assert requested is not None
-    if idea_line not in ("262", "263") or (
-        isinstance(selection, MainSelection)
-        and PLATFORM not in selection.catalogEntry.platformTargets
+    if (
+        target not in PRODUCT_TARGETS
+        or idea_line not in ("262", "263")
+        or (
+            isinstance(selection, MainSelection)
+            and target not in selection.catalogEntry.platformTargets
+        )
     ):
         return Rejected(Failure.PLATFORM_UNAVAILABLE, Stage.SELECTION, requested)
     try:
@@ -1010,7 +1508,7 @@ def download_composition(
             return Rejected(Failure.ARTIFACT_INVALID, Stage.STAGING, requested)
         downloads = directory / "downloads"
         downloads.mkdir(mode=0o700)
-        control_name = f"kast-control-v{selection.version}-{PLATFORM}.tar.gz"
+        control_name = f"kast-control-v{selection.version}-{target}.tar.gz"
         host_name = f"kast-ide-hosted-v{selection.version}-idea-{idea_line}.zip"
         records: list[ComponentRecord] = []
         record_paths: list[Path] = []
@@ -1063,7 +1561,7 @@ def download_composition(
         rejected = extract_control(control.path, control_root)
         if isinstance(rejected, Failure):
             return Rejected(rejected, Stage.ARCHIVE, requested)
-        identity = inspect_control(control_root, selection, control_record)
+        identity = inspect_control(control_root, selection, control_record, target)
         if isinstance(identity, Failure):
             return Rejected(identity, Stage.CONTRACT, requested)
         rejected = inspect_host(host.path, identity, control_record.contract)

@@ -1,7 +1,7 @@
 package io.github.amichne.kast.cli.mcp
 
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.direct.directSupportTools
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream

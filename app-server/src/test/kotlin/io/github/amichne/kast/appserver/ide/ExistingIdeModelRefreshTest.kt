@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import java.util.UUID
@@ -12,7 +13,7 @@ import org.junit.jupiter.api.Test
 class ExistingIdeModelRefreshTest {
     @Test
     fun `schema admitted model blocker is a typed presemantic recovery`() {
-        val root = CanonicalRoot(Path.of("/workspace"))
+        val root = canonicalRootFixture(Path.of("/workspace"))
         val name = (ExistingIdeClassName.parse("Subject") as Refinement.Refined).value
         val response =
             ExistingIdeDocuments.response(

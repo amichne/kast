@@ -1,6 +1,6 @@
 ---
 title: "Troubleshoot Kast"
-description: "Find your symptom and fix it: the agent does not use Kast, IDEA runs an old version, the project is not ready, a query does not finish, or an edit result is unclear."
+description: "Recover from agent setup, managed runtime, Gradle import, incomplete query, or uncertain edit problems."
 icon: "life-buoy"
 sidebarTitle: "Help"
 ---
@@ -23,19 +23,21 @@ Do the same if an upgrade reports `HARNESS_REFRESH_REQUIRED`. It means the Kast 
 <span id="inspect-installation-and-activation" />
 <span id="2-inspect-the-installation-before-recovery" />
 
-## IDEA runs an old version of Kast
+<span id="idea-runs-an-old-version-of-kast" />
+
+## The workspace runs an old build
 
 ```shell
 kast status --json
 ```
 
-`installedBuild.value.version` is the build on disk. `applicationHost.value.runtimeIdentity.buildIdentity.version` is the build that IDEA has loaded.
+`installedBuild` and `product` describe installed files. `workspaces` contains scoped runtime and Host observations.
 
 1. If `unresolvedTransaction.value.records` is not empty, an update is unfinished. Follow the [recovery procedure](/reference/management#4-resolve-unfinished-recovery) before anything else.
-2. If the two versions differ, or `applicationHost` is `UNAVAILABLE`, restart IntelliJ IDEA.
-3. If that does not help, see [Load the plugin and inspect state](/reference/installation#2-load-the-plugin-and-inspect-state).
+2. If the workspace Host is stale, run `kast stop --json` from that workspace, then repeat the useful query.
+3. If product bytes are missing or incompatible, use `kast upgrade --repair` to restore the exact installed product.
 
-With a workspace container, `kast status` does not show the container's Host. Each container keeps the runtime it was created with. See [Without desktop IDEA](/reference/management#without-desktop-idea).
+Use `kast status --all --json` to inspect other workspaces. A stopped Host is not an installation failure.
 
 <span id="select-the-development-head" />
 
@@ -45,12 +47,12 @@ With a workspace container, `kast status` does not show the container's Host. Ea
 
 ```shell
 kast versions
-kast upgrade --channel main --restart-ide
+kast upgrade --channel preview
 ```
 
 The upgrade removes a pinned version. To select a specific version instead, see [Pin a published build](/reference/installation#pin-a-published-build).
 
-If the result is not `ACTIVATED` or `INSTALLED_NOT_RUNNING`, look it up in [update results](/reference/management#3-read-the-result). For `RECOVERY_REQUIRED`, keep the output before you run another install or upgrade.
+Keep the result and its recovery code. See [update results](/reference/management#3-read-the-result) before another install or upgrade.
 
 <span id="intellij-needs-your-attention" />
 
@@ -58,20 +60,21 @@ If the result is not `ACTIVATED` or `INSTALLED_NOT_RUNNING`, look it up in [upda
 
 ## The project is not ready
 
-The query output names a trust, save, Gradle import, or indexing problem.
+The query output names the failed preparation stage.
 
-- **Desktop IDEA:** resolve it in IDEA, in the same project. Then ask your question again.
-- **Workspace container or `kast-task`:** there is no IDEA window. `kast container create` or the first `kast-task` run grants trust. For a Gradle import problem, fix the build in your workspace. Then restart the Host with `kast container stop NAME` and `kast container resume NAME`, or with `"$root/bin/kast" stop --json` and another `kast-task` run.
+- **Trust:** only an explicit request for the exact workspace root grants build trust. Session hooks and status do not.
+- **Gradle import:** fix the build or credentials in that workspace. Kast uses a private Gradle home unless configuration selects an external one.
+- **Host restart:** use `kast stop --json` in the workspace, then repeat the useful query. No desktop IDEA window is required.
 - **Indexing:** wait, then ask again.
 
-See [Compatibility](/reference/compatibility) for the supported IDEA versions.
+See [Compatibility](/reference/compatibility) for complete product selection and runtime admission.
 
 ## A query does not finish
 
 The output gives the cause and a recovery step.
 
 - **Search too broad:** narrow the question to a function, package, or directory.
-- **Container `STOPPED`:** see [Manage the container](/reference/installation#3-manage-the-container).
+- **Runtime unavailable:** inspect local product evidence and use exact repair. A query does not download a runtime or fall back to desktop IDEA.
 - **Reference expired:** follow the recovery step in the output.
 - **More output to read:** the output includes a result reference or continuation. Use it to read the next page. Running the query again repeats the whole search.
 

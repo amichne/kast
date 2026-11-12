@@ -7,6 +7,7 @@ import com.github.ajalt.clikt.core.PrintHelpMessage
 import com.github.ajalt.clikt.core.PrintMessage
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.eagerOption
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
@@ -71,11 +72,8 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
     val root =
         ManagementRoot()
             .subcommands(
-                containerCommands(),
                 StatusCommand(),
                 StopCommand(),
-                ReinstallCommand(),
-                DisconnectCommand(),
                 InstallCommand(),
                 VersionsCommand(),
                 UpgradeCommand(),
@@ -85,8 +83,6 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
                 PublicQueryNamespace("source"),
                 PublicQueryNamespace("diagnostic"),
                 PublicQueryNamespace("describe"),
-                PublicQueryNamespace("hook"),
-                PublicQueryNamespace("workspace"),
             )
     var selected: ManagementCommand? = null
     return try {
@@ -121,59 +117,43 @@ internal class ManagementRoot : ManagementNode("kast") {
 
 private class StatusCommand : ManagementNode("status") {
     private val json by option("--json", help = "Print a typed JSON status document").flag()
+    private val workspace by option("--workspace", help = "Inspect one Gradle workspace.")
+    private val all by option("--all", help = "Inspect every recorded workspace, including unreadable records.").flag()
 
     override fun help(context: Context) = "Show installation and runtime status without startup."
 
-    override fun selection() = ManagementCommand.Status(json)
+    override fun selection() = ManagementCommand.Status(json, selectWorkspaceScope(workspace, all))
 }
 
 private class StopCommand : ManagementNode("stop") {
     private val json by option("--json", help = "Print the typed lifecycle outcome.").flag()
-    private val force by option("--force", help = "Terminate exactly owned tool processes instead of waiting.").flag()
+    private val workspace by option("--workspace", help = "Select one Gradle workspace.")
+    private val all by option("--all", help = "Stop every recorded workspace Host.").flag()
 
-    override fun help(context: Context) = "Disable automatic restart and verify shutdown; preserve the installation."
+    override fun help(context: Context) = "Stop owned workspace Hosts; the next semantic request may restart them."
 
-    override fun selection() =
-        ManagementCommand.Lifecycle(if (force) LifecycleOperation.STOP_FORCE else LifecycleOperation.STOP, json)
-}
-
-private class ReinstallCommand : ManagementNode("reinstall") {
-    private val json by option("--json", help = "Print the typed lifecycle outcome.").flag()
-    private val force by
-        option(
-                "--force",
-                help = "Retire scoped daemons, erase Kast without prior ownership checks, then install fresh.",
-            )
-            .flag()
-
-    override fun help(context: Context) = "Reinstall the selected release, or reset to the latest release with --force."
-
-    override fun selection() =
-        if (force) ManagementCommand.Reset(ForceResetOperation.REINSTALL, json)
-        else ManagementCommand.Lifecycle(LifecycleOperation.REINSTALL, json)
+    override fun selection() = ManagementCommand.Stop(selectWorkspaceScope(workspace, all), json)
 }
 
 private class UpgradeCommand : ManagementNode("upgrade") {
-    private val channel by option("--channel", help = "Select stable or main.")
+    private val channel by option("--channel", help = "Select stable or preview (main is a preview alias).")
     private val version by option("--version", help = "Pin an exact stable release.")
     private val commit by
         option("--commit", help = "Pin a published main revision or its displayed 12-character prefix.")
-    private val ideaHome by option("--idea-home", help = "Select the exact IDEA installation.")
+    private val repair by
+        option("--repair", help = "Reinstall the exact selected product, including its runtime.").flag()
     private val dryRun by
         option("--dry-run", help = "Admit the selected artifacts without installation effects.").flag()
-    private val restartIde by option("--restart-ide", help = "Permit a normal IDEA restart when necessary.").flag()
     private val json by option("--json", help = "Print one terminal management result.").flag()
 
     override fun help(context: Context) = "Install the latest verified release on the selected channel."
 
     override fun selection(): ManagementCommand =
-        when (val selected = admitBuildRequest(channel, version, commit)) {
+        when (val selected = admitBuildRequest(channel, version, commit, repair)) {
             is SelectionAdmission.Admitted ->
                 ManagementCommand.Upgrade(
                     request = selected.value,
-                    ideaHome = ideaHome,
                     dryRun = dryRun,
-                    restartIde = restartIde,
                     json = json,
                 )
             is SelectionAdmission.Rejected -> throw CliktError(selected.reason.name)
@@ -206,15 +186,24 @@ private class InstallCommand : ManagementNode("install") {
 }
 
 private class UninstallCommand : ManagementNode("uninstall") {
+    private val harness by argument("harness").optional()
     private val force by
-        option("--force", help = "Retire scoped daemons and erase Kast without prior ownership checks.").flag()
-    private val json by option("--json", help = "Print the typed force reset outcome; requires --force.").flag()
+        option("--force", help = "Reset legacy state; managed products require ordinary uninstall.").flag()
+    private val json by option("--json", help = "Print the force reset result.").flag()
 
-    override fun help(context: Context) = "Remove this installation and its owned registrations."
+    override fun help(context: Context) = "Remove one harness integration, or this installation when omitted."
 
     override fun selection(): ManagementCommand {
-        if (json && !force) throw CliktError("--json requires --force for uninstall")
-        return if (force) ManagementCommand.Reset(ForceResetOperation.UNINSTALL, json) else ManagementCommand.Uninstall
+        val invalidOptions = if (force) harness != null else json
+        if (invalidOptions) throw CliktError("--force [--json] requires uninstall without a harness")
+        if (force) return ManagementCommand.ForceUninstall(json)
+        return when (val selected = harness) {
+            null -> ManagementCommand.Uninstall
+            else ->
+                ManagementCommand.UninstallHarness(
+                    Harness.parse(selected) ?: throw CliktError("Select codex, copilot, or pi")
+                )
+        }
     }
 }
 

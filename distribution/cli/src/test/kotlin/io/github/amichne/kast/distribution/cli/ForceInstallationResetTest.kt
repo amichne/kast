@@ -48,7 +48,6 @@ class ForceInstallationResetTest {
             forceResetInstallation(
                 root,
                 home(),
-                emptyMap(),
                 ForceResetOperation.UNINSTALL,
                 closedExecution(root, 2),
             )
@@ -71,8 +70,7 @@ class ForceInstallationResetTest {
         Files.writeString(login, "corrupt selected login entry")
         val protected = home.resolve("Library/LaunchAgents/unrelated.plist")
         Files.writeString(protected, "keep")
-        val result =
-            forceResetInstallation(root, home, emptyMap(), ForceResetOperation.UNINSTALL, closedExecution(root, 2))
+        val result = forceResetInstallation(root, home, ForceResetOperation.UNINSTALL, closedExecution(root, 2))
         assertEquals(ForceResetOutcome.Removed(root.toString()), result)
         assertFalse(Files.exists(login), "selected login entry must not survive deletion")
         assertEquals("keep", Files.readString(protected))
@@ -84,7 +82,6 @@ class ForceInstallationResetTest {
         val runtime = ResetRuntimeScript(root, List(retirements) { closedRetirementSteps() }.flatten())
         return ForceResetExecution(
             runtime,
-            ForceReinstaller { _, _, _ -> error("unexpected installer") },
             observe = { observation ->
                 if (
                     observation ==
@@ -96,55 +93,18 @@ class ForceInstallationResetTest {
     }
 
     @Test
-    fun `force reinstall calls the fresh installer only after the entire root is absent`() {
-        val root = Files.createDirectories(temporary.toRealPath().resolve("kast"))
-        Files.writeString(root.resolve("untracked"), "remove me")
-        var calls = 0
-        val runtime = ResetRuntimeScript(root, closedRetirementSteps() + closedRetirementSteps())
-        val result =
-            forceResetInstallation(
-                root,
-                home(),
-                mapOf("PATH" to "/fixture"),
-                ForceResetOperation.REINSTALL,
-                ForceResetExecution(
-                    runtime,
-                    ForceReinstaller { erased, selectedHome, environment ->
-                        calls++
-                        assertEquals(root, erased.root)
-                        assertEquals(temporary.toRealPath().resolve("home"), selectedHome)
-                        assertEquals(mapOf("PATH" to "/fixture"), environment)
-                        assertFalse(Files.exists(root))
-                        FreshResetResult.Rejected(ForceResetFailure.INSTALLER_REJECTED)
-                    },
-                    observe = {},
-                ),
-            )
-        runtime.assertConsumed()
-        assertEquals(1, calls)
-        assertEquals(
-            ForceResetOutcome.Rejected(
-                ForceResetOperation.REINSTALL,
-                ForceResetStage.INSTALLATION,
-                ForceResetFailure.INSTALLER_REJECTED,
-            ),
-            result,
-        )
-    }
-
-    @Test
     fun `missing roots are already removed and root symlinks are unlinked without following`() {
         val root = temporary.toRealPath().resolve("kast")
         val home = home()
         assertEquals(
             ForceResetOutcome.Removed(root.toString()),
-            forceResetInstallation(root, home, emptyMap(), ForceResetOperation.UNINSTALL, closedExecution(root, 2)),
+            forceResetInstallation(root, home, ForceResetOperation.UNINSTALL, closedExecution(root, 2)),
         )
         Files.writeString(home.resolve("keep"), "protected")
         Files.createSymbolicLink(root, home)
         assertEquals(
             ForceResetOutcome.Removed(root.toString()),
-            forceResetInstallation(root, home, emptyMap(), ForceResetOperation.UNINSTALL, closedExecution(root, 2)),
+            forceResetInstallation(root, home, ForceResetOperation.UNINSTALL, closedExecution(root, 2)),
         )
         assertEquals("protected", Files.readString(home.resolve("keep")))
     }
@@ -168,7 +128,7 @@ class ForceInstallationResetTest {
                     ForceResetStage.FENCE,
                     ForceResetFailure.FENCE_REJECTED,
                 ),
-                forceResetInstallation(root, home, emptyMap(), ForceResetOperation.UNINSTALL, closedExecution(root, 0)),
+                forceResetInstallation(root, home, ForceResetOperation.UNINSTALL, closedExecution(root, 0)),
             )
             assertTrue(Files.exists(root))
         } finally {
@@ -187,7 +147,7 @@ class ForceInstallationResetTest {
                     ForceResetStage.ADMISSION,
                     ForceResetFailure.ROOT_REJECTED,
                 ),
-                forceResetInstallation(root, home, emptyMap(), ForceResetOperation.UNINSTALL, closedExecution(root, 0)),
+                forceResetInstallation(root, home, ForceResetOperation.UNINSTALL, closedExecution(root, 0)),
             )
         }
         assertTrue(Files.isDirectory(home))

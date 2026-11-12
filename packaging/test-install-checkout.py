@@ -18,7 +18,7 @@ from installer_fixture import InstallerFixture, admitted_tools
 
 
 CHECKOUT_INSTALLER = Path(__file__).with_name("install-checkout.sh").resolve()
-PUBLIC_INSTALLER = CHECKOUT_INSTALLER.parent.parent / "install.sh"
+PUBLIC_INSTALLER = CHECKOUT_INSTALLER.with_name("install-legacy.sh")
 ROOT_BUILD = CHECKOUT_INSTALLER.parent.parent / "build.gradle.kts"
 CONTROL_LIMITS = (
     CHECKOUT_INSTALLER.parent.parent
@@ -142,7 +142,7 @@ done
         (self.java_home / "release").write_text('JAVA_VERSION="25.0.1"\n')
         self.env["EXPECTED_JBR"] = str(self.java_home)
         self.env["KAST_INSTALL_IDEA_HOME"] = str(self.idea)
-        self.installer = self.checkout / "install.sh"
+        self.installer = self.checkout / "packaging/install-legacy.sh"
         self.checkout_installer = self.checkout / "packaging/install-checkout.sh"
         shutil.copy2(CHECKOUT_INSTALLER, self.checkout_installer)
         self.write_script(self.installer, '''#!/usr/bin/env bash

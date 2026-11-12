@@ -3,18 +3,20 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      bump:
-        description: Semantic version component to increment
+      source_tag:
+        description: Exact published preview tag (developer-v0.0.RUN)
         required: true
-        type: choice
-        default: patch
-        options:
-          - patch
-          - minor
-          - major
+        type: string
+      record_sha256:
+        description: SHA-256 of that immutable build-record.json
+        required: true
+        type: string
+      public_version:
+        description: Public semantic version to map to the retained build
+        required: true
+        type: string
 
 permissions:
-  actions: read
   contents: read
 
 env:
@@ -25,186 +27,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  version:
-    name: Resolve stable version
-    if: github.ref == 'refs/heads/main' && vars.KAST_MACOS_CHECKS == 'true' && vars.KAST_NATIVE_COMPILATION != 'false'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    outputs:
-      version: ${{ steps.release_version.outputs.version }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-
-      - name: Admit exact main release source
-        run: |
-          git fetch --no-tags origin main
-          test "$GITHUB_SHA" = "$(git rev-parse FETCH_HEAD)"
-          bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
-
-      - name: Resolve release version
-        id: release_version
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_BUMP: ${{ inputs.bump }}
-        run: >-
-          python3 distribution/release/resolve_version.py
-          --repository "$GITHUB_REPOSITORY"
-          --bump "$RELEASE_BUMP"
-
-  linux-runtime:
-    name: Qualify Linux x86-64 runtime
-    needs: version
-    uses: ./.github/workflows/composed-linux.yml
-    with:
-      version: ${{ needs.version.outputs.version }}
-      release_target: linux-x86_64
-
-  release:
-    name: Prepare stable release candidate
-    needs: version
-    if: github.ref == 'refs/heads/main' && vars.KAST_MACOS_CHECKS == 'true' && vars.KAST_NATIVE_COMPILATION != 'false'
-    runs-on: [self-hosted, macOS, ARM64, kast-main]
-    timeout-minutes: 60
-    env:
-      GH_TOKEN: ${{ github.token }}
-      RELEASE_VERSION: ${{ needs.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          ref: ${{ github.sha }}
-
-      - name: Admit exact main release source
-        run: |
-          git fetch --no-tags origin main
-          main_sha="$(git rev-parse origin/main)"
-          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
-            echo "release: dispatch SHA $GITHUB_SHA is not current main $main_sha" >&2
-            exit 1
-          fi
-          git checkout --detach "$GITHUB_SHA"
-
-      - name: Set up local Python
-        env:
-          UV_PYTHON_INSTALL_DIR: ${{ runner.tool_cache }}/uv-python
-        run: |
-          uv python install "$(cat .python-version)"
-          uv venv --allow-existing --seed --python "$(cat .python-version)" "$RUNNER_TOOL_CACHE/kast-ci-python"
-          echo "$RUNNER_TOOL_CACHE/kast-ci-python/bin" >> "$GITHUB_PATH"
-          "$RUNNER_TOOL_CACHE/kast-ci-python/bin/python3" -m pip install uv==0.12.9
-
-      - name: Reuse exact successful main CI candidate
-        id: ci_candidate
-        run: >-
-          python3 .github/scripts/release/ci-candidate.py reuse
-          --repository "$GITHUB_REPOSITORY"
-          --version "$RELEASE_VERSION"
-          --source-revision "$GITHUB_SHA"
-          --directory "build/release/v${RELEASE_VERSION}"
-
-      - name: Set up Liberica NIK Java 25 for a missing candidate
-        if: steps.ci_candidate.outputs.candidate == 'MISSING'
-        id: jdk25
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
-        with:
-          distribution: liberica-nik
-          java-version: '25.0.2+13'
-
-      - name: Install host protocol and semantic test tools for a missing candidate
-        if: steps.ci_candidate.outputs.candidate == 'MISSING'
-        run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
-
-      - uses: ./.github/actions/jq-oracle
-        if: steps.ci_candidate.outputs.candidate == 'MISSING'
-
-      - name: Set up documentation parser runtime for a missing candidate
-        if: steps.ci_candidate.outputs.candidate == 'MISSING'
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "24.21.0"
-
-      - name: Set up Gradle for a missing candidate
-        if: steps.ci_candidate.outputs.candidate == 'MISSING'
-        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
-        with:
-          validate-wrappers: true
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          # Task outputs for IDEA extraction already belong to caches/build-cache-1.
-          gradle-home-cache-includes: |
-            caches
-            notifications
-            native-build-tools
-            kast/topology-intellij-kotlin-plugin
-
-      - name: Build exact release candidate
-        if: steps.ci_candidate.outputs.candidate == 'MISSING'
-        env:
-          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-        run: bash .github/scripts/ci/verify.sh --version "$RELEASE_VERSION"
-
-      - name: Admit exact release candidate
-        run: >-
-          python3 .github/scripts/release/ci-candidate.py validate
-          --repository "$GITHUB_REPOSITORY"
-          --version "$RELEASE_VERSION"
-          --source-revision "$GITHUB_SHA"
-          --directory "build/release/v${RELEASE_VERSION}"
-
-      - name: Retain exact release candidate
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: release-candidate-v${{ env.RELEASE_VERSION }}-${{ github.sha }}
-          path: build/release/v${{ env.RELEASE_VERSION }}/
-          if-no-files-found: error
-          overwrite: true
-          compression-level: 0
-          retention-days: 7
-
-  mac-runtime:
-    name: Qualify Apple silicon runtime
-    needs: [version, release]
-    uses: ./.github/workflows/composed-linux.yml
-    with:
-      version: ${{ needs.version.outputs.version }}
-      release_target: macos-aarch64
-
   publish:
-    name: Publish immutable release
-    needs: [version, release, linux-runtime, mac-runtime]
+    name: Promote retained preview bytes without building
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
-      actions: read
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_VERSION: ${{ needs.version.outputs.version }}
+      SOURCE_TAG: ${{ inputs.source_tag }}
+      RECORD_SHA256: ${{ inputs.record_sha256 }}
+      PUBLIC_VERSION: ${{ inputs.public_version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
-      - name: Download exact release candidate
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: release-candidate-v${{ env.RELEASE_VERSION }}-${{ github.sha }}
-          path: build/release/v${{ env.RELEASE_VERSION }}
-
-      - name: Download qualified runtimes
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          pattern: kast-release-runtime-v${{ env.RELEASE_VERSION }}-*-${{ github.sha }}
-          path: ${{ runner.temp }}/kast-release-runtimes
-          merge-multiple: false
-
-      - name: Publish immutable GitHub release
+      # Ubuntu 24.04 supplies Python 3.12. Promotion resolves no tool or product dependencies.
+      - name: Admit published inventory and promote identical archives
         run: >-
-          bash .github/scripts/release/publish-release.sh
-          --release "v${RELEASE_VERSION}"
-          --commit "$GITHUB_SHA"
-          --assets-directory "build/release/v${RELEASE_VERSION}"
-          --runtimes-directory "$RUNNER_TEMP/kast-release-runtimes"
+          python3 .github/scripts/release/publish_developer.py stable
+          --source-tag "$SOURCE_TAG"
+          --record-sha256 "$RECORD_SHA256"
+          --public-version "$PUBLIC_VERSION"

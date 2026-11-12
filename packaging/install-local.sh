@@ -46,7 +46,7 @@ if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
 print(version)
 VERSION
 )"
-installer="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)/install.sh"
+installer="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)/install-legacy.sh"
 [[ -f "$installer" && ! -L "$installer" ]] || fail "versioned installer is unavailable"
 assets="$(mktemp -d "${TMPDIR:-/tmp}/kast-local-assets.XXXXXX")"
 cleanup() { rm -rf -- "$assets"; }

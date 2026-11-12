@@ -5,6 +5,9 @@ import io.github.amichne.kast.distribution.contract.configuration.BrokerPublicEn
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationRejection
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+import io.github.amichne.kast.distribution.managed.InstalledSavedConfigurationIngress
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngressRejection
 import io.github.amichne.kast.kernel.Refinement
 
 /** Pure owner admission retains the resolved snapshot and the canonical tool-subset proof. */

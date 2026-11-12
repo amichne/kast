@@ -6,11 +6,13 @@ import json
 import subprocess
 import tarfile
 import tempfile
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import pytest
 
 import composed_release
+from component_probe import WorkspacePaths
 from composed_bundle import BundleFailure, BundleRejected, sha256
 from composed_release import ReleaseFailure, ReleaseRejected, assemble_release, qualify_release
 from managed_headless import Failure, Rejected
@@ -315,6 +317,90 @@ def test_wrong_bundle_digest_never_creates_native_qualification(tmp_path: Path) 
     assert not (tmp_path / "r").exists()
     assert not (tmp_path / "evidence").exists()
     assert not (tmp_path / "workspace").exists()
+
+
+@dataclass(frozen=True)
+class ComponentRecordFixture:
+    type: str
+    sourceRevision: str
+    controlVersion: str = "0.1.2"
+    hostedPluginVersion: str = "0.1.2"
+
+
+@dataclass(frozen=True)
+class ComponentInspectionFixture:
+    workspaceState: str
+    runtimeHome: str
+    home: str
+    javaHome: str
+    workspaceId: str
+    type: str = "INSPECTED"
+
+
+@pytest.mark.parametrize("foreign_home", [False, True])
+def test_component_inspection_preserves_generation_and_durable_workspace_paths(
+    tmp_path: Path, foreign_home: bool
+) -> None:
+    store = tmp_path.resolve() / "store"
+    directory = store / "containers" / ("a" * 64)
+    state = directory / "generations" / "generation-one" / "state"
+    runtime = store / "runtimes" / ("b" * 64) / "host/Kast.app/Contents"
+    home = directory / "state/home" if foreign_home else state / "home"
+    raw = json.dumps(
+        asdict(
+            ComponentInspectionFixture(
+                str(state),
+                str(runtime),
+                str(home),
+                str(runtime / "jbr/Contents/Home"),
+                directory.name,
+            )
+        )
+    ).encode()
+    if foreign_home:
+        with pytest.raises(ValueError, match="private runtime ownership"):
+            _ = WorkspacePaths.read(raw, store)
+    else:
+        paths = WorkspacePaths.read(raw, store)
+        assert paths.workspaceDirectory == directory
+        assert paths.workspaceState == state
+        assert paths.home == home
+
+
+def test_missing_component_harness_rejects_before_installer_or_workspace_effects(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    archive = tmp_path / "candidate.tar.gz"
+    entries = {
+        "setup-kast/bin/setup-kast.pyz": b"never execute the legacy installer",
+        "setup-kast/assets/kast-control-release-v0.1.2.json": json.dumps(
+            asdict(ComponentRecordFixture("CONTROL_RELEASE", "a" * 40))
+        ).encode(),
+        "setup-kast/assets/kast-host-release-v0.1.2.json": json.dumps(
+            asdict(ComponentRecordFixture("HOST_RELEASE", "a" * 40))
+        ).encode(),
+    }
+    with tarfile.open(archive, "w:gz") as bundle:
+        for name, raw in entries.items():
+            item = tarfile.TarInfo(name)
+            item.size = len(raw)
+            bundle.addfile(item, io.BytesIO(raw))
+
+    def forbidden(*_arguments: object, **_keywords: object) -> None:
+        pytest.fail("missing native inputs must reject before a child process")
+
+    monkeypatch.setattr(composed_release.subprocess, "run", forbidden)
+    result = qualify_release(
+        archive=archive,
+        expected=sha256(archive),
+        version="0.1.2",
+        revision="a" * 40,
+        root=tmp_path / "r",
+        fixture=tmp_path / "workspace",
+        evidence=tmp_path / "evidence",
+    )
+    assert result == ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "native component inputs")
+    assert list(tmp_path.iterdir()) == [archive]
 
 
 @pytest.mark.parametrize("entry_count", [0, 2])

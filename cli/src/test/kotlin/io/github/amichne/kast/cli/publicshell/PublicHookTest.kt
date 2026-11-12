@@ -1,9 +1,8 @@
 package io.github.amichne.kast.cli.publicshell
 
-import io.github.amichne.kast.appserver.DaemonOperationFailure
-import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.direct.ClientInstallationFailure
+import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import java.io.ByteArrayInputStream
 import java.nio.file.Files
@@ -55,27 +54,15 @@ class PublicHookTest {
     @TempDir lateinit var directory: Path
 
     @Test
-    fun `session start prepares the settings owner once and emits only a host envelope`() {
+    fun `session start leaves a settings-owned workspace passive`() {
         Files.writeString(directory.resolve("settings.gradle.kts"), "")
         val nested = Files.createDirectories(directory.resolve("module/src"))
-        val roots = mutableListOf<Path>()
         val output =
-            preparePublicHook(listOf("hook", "session-start", "--workspace", nested.toString()), input()) { root, _ ->
-                roots.add(root.path)
-                Refinement.Refined(HookPreparation.Ready(HookWaitDocument(HookWaitMode.BOUNDED, 1000)))
+            preparePublicHook(listOf("hook", "session-start", "--workspace", nested.toString()), input()) { _, _ ->
+                error("Passive hook must not prepare or grant trust")
             }
-        assertEquals(listOf(directory.toRealPath()), roots)
         assertEquals(PublicShellExit.COMPLETE, output.exit)
-        assertEquals(
-            "ready",
-            Json.parseToJsonElement(output.text)
-                .jsonObject
-                .getValue("preparation")
-                .jsonObject
-                .getValue("type")
-                .jsonPrimitive
-                .content,
-        )
+        assertEquals(setOf("additionalContext"), Json.parseToJsonElement(output.text).jsonObject.keys)
     }
 
     @Test
@@ -102,20 +89,15 @@ class PublicHookTest {
     }
 
     @Test
-    fun `host event admits cwd and keeps the exact preparation rejection`() {
+    fun `host event admits cwd without invoking workspace preparation`() {
         Files.writeString(directory.resolve("settings.gradle"), "")
         val event = Json.encodeToString(TestHookEvent(directory.toString(), "1"))
         val output =
             preparePublicHook(listOf("hook", "session-start"), input(event)) { _, _ ->
-                Refinement.Rejected(
-                    HookPreparationFailure.Native(DaemonOperationFailure.Root(CanonicalRootFailure.START_UNAVAILABLE))
-                )
+                error("Passive event must not prepare")
             }
-        assertEquals(PublicShellExit.RUNTIME, output.exit)
-        val cause =
-            Json.parseToJsonElement(output.text).jsonObject.getValue("cause").jsonObject.getValue("failure").jsonObject
-        assertEquals("root", cause.getValue("type").jsonPrimitive.content)
-        assertEquals("START_UNAVAILABLE", cause.getValue("reason").jsonPrimitive.content)
+        assertEquals(PublicShellExit.COMPLETE, output.exit)
+        assertEquals(setOf("additionalContext"), Json.parseToJsonElement(output.text).jsonObject.keys)
     }
 
     @Test
@@ -129,7 +111,7 @@ class PublicHookTest {
         assertEquals(
             CanonicalRootFailure.INVALID_ROOT_MARKER,
             (FilesystemCanonicalRootDiscovery.discover(directory)
-                    as io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery.Rejected)
+                    as io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery.Rejected)
                 .failure,
         )
     }
@@ -144,8 +126,7 @@ class PublicHookTest {
             ) + ClientInstallationFailure.entries.map { HookPreparationFailure.Installation(it) to "installation" }
         for ((failure, expected) in cases) {
             val output =
-                preparePublicHook(listOf("hook", "session-start", "--workspace", directory.toString()), input()) { _, _
-                    ->
+                preparePublicHook(listOf("workspace", "wait", "--workspace", directory.toString()), input()) { _, _ ->
                     Refinement.Rejected(failure)
                 }
             assertEquals(PublicShellExit.RUNTIME, output.exit)
@@ -163,9 +144,9 @@ class PublicHookTest {
     private fun input(text: String = "") = ByteArrayInputStream(text.toByteArray())
 
     @Test
-    fun `background hook returns preparing context for both model hosts`() {
+    fun `both model hooks remain passive regardless of legacy wait selection`() {
         Files.writeString(directory.resolve("settings.gradle.kts"), "")
-        for (host in listOf("codex", "copilot")) {
+        for ((host, waitSetting) in listOf("codex" to "none", "copilot" to "indefinite", "codex" to "1250")) {
             val output =
                 preparePublicHook(
                     listOf(
@@ -174,28 +155,18 @@ class PublicHookTest {
                         "--workspace",
                         directory.toString(),
                         "--wait",
-                        "none",
+                        waitSetting,
                         "--host",
                         host,
                     ),
                     input(),
-                ) { _, wait ->
-                    assertEquals(HookWait.Background, wait)
-                    Refinement.Refined(
-                        HookPreparation.Preparing(
-                            "request",
-                            "host",
-                            io.github.amichne.kast.protocol.contract.IdeLifecycleStage.IMPORTING,
-                            HookWaitDocument(HookWaitMode.INDEFINITE, null),
-                        )
-                    )
+                ) { _, _ ->
+                    error("Model hook must not start a Host")
                 }
             val document = Json.parseToJsonElement(output.text).jsonObject
             val context = if (host == "codex") document.getValue("hookSpecificOutput").jsonObject else document
             val text = context.getValue("additionalContext").jsonPrimitive.content
-            org.junit.jupiter.api.Assertions.assertTrue(text.contains("being prepared (IMPORTING)"))
-            org.junit.jupiter.api.Assertions.assertTrue(text.contains("indefinite"))
-            org.junit.jupiter.api.Assertions.assertTrue(text.contains("kast workspace wait"))
+            org.junit.jupiter.api.Assertions.assertTrue(text.contains("first semantic query"))
             assertEquals(PublicShellExit.COMPLETE, output.exit)
         }
     }

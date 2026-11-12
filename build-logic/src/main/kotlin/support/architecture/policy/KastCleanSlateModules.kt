@@ -37,8 +37,10 @@ internal object KastCleanSlateModules {
                 // Container publication and private-state adapters; semantic query execution has no write authority.
                 JvmClassName("io/github/amichne/kast/distribution/cli/ContainerFilesKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ContainerStore"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/ContainerMigrationKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemovalKt"),
+                JvmClassName("io/github/amichne/kast/distribution/cli/WorkspaceReclamationKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ContainerRuntimeKt"),
-                JvmClassName("io/github/amichne/kast/distribution/cli/ContainerRuntimeDownloadKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ContainerManagementKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementInstallationKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/AdmittedCliSkill"),
@@ -66,7 +68,6 @@ internal object KastCleanSlateModules {
                 // The captured descriptor and inode scope shared socket retirement after process exit.
                 JvmClassName("io/github/amichne/kast/distribution/cli/ResetOwnedSharedSocket"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ResetDeletingVisitor"),
-                JvmClassName("io/github/amichne/kast/distribution/cli/ForceReinstallationKt"),
             )),
         ),
         target(

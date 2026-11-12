@@ -713,14 +713,14 @@ internal class CodexProtocolAdapter(
     ): Refinement<ThreadCatalogBinding, ThreadWorkspaceFailure> {
         when (
             val root =
-                io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery.discover(
+                io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery.discover(
                     binding.workspace.root.path
                 )
         ) {
-            is io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery.Discovered ->
+            is io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery.Discovered ->
                 if (root.root.path != binding.workspace.root.path)
                     return Refinement.Rejected(ThreadWorkspaceFailure.WORKSPACE_REJECTED)
-            is io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery.Rejected ->
+            is io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery.Rejected ->
                 return Refinement.Rejected(ThreadWorkspaceFailure.WORKSPACE_REJECTED)
         }
         val selected =

@@ -77,7 +77,55 @@ graalvmNative {
                 )
             }
         }
+        create("componentQualification") {
+            imageName.set("kast-component-qualification")
+            mainClass.set("io.github.amichne.kast.cli.publicshell.NativeComponentQualificationMain")
+            classpath.setFrom(sourceSets.test.get().runtimeClasspath)
+            sharedLibrary.set(false)
+            fallback.set(false)
+            buildArgs.addAll(
+                providers.fileContents(layout.projectDirectory.file("native-image.args")).asText.map {
+                    it.lines().filter(String::isNotBlank)
+                }
+            )
+            if (providers.systemProperty("os.name").get().startsWith("Mac")) {
+                buildArgs.addAll(
+                    providers.fileContents(layout.projectDirectory.file("native-image-macos.args")).asText.map {
+                        it.lines().filter(String::isNotBlank)
+                    }
+                )
+            }
+        }
     }
+}
+
+// Test-only composition: never exported through nativeExecutableElements or the Control layout.
+tasks.named<BuildNativeImageTask>("nativeComponentQualificationCompile") {
+    dependsOn(tasks.named("testClasses"))
+}
+
+abstract class ComponentQualificationArguments : CommandLineArgumentProvider {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val executable: org.gradle.api.file.RegularFileProperty
+
+    override fun asArguments(): Iterable<String> =
+        listOf("-Dkast.componentQualification=${executable.get().asFile.absolutePath}")
+}
+
+tasks.register<Test>("nativeComponentQualificationTest") {
+    group = "verification"
+    description = "Checks test-native component harness framing and passive commands, without a Host."
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("component-native") }
+    jvmArgumentProviders.add(
+        objects.newInstance<ComponentQualificationArguments>().apply {
+            executable.set(
+                tasks.named<BuildNativeImageTask>("nativeComponentQualificationCompile").flatMap { it.outputFile }
+            )
+        }
+    )
 }
 
 tasks.named<BuildNativeImageTask>("nativeCompile") {
@@ -137,6 +185,8 @@ dependencies {
     testImplementation(libs.jtoon)
     testImplementation(libs.ktoon)
     testImplementation(testFixtures(project(":app-server")))
+    testImplementation(testFixtures(project(":distribution:managed")))
+    testImplementation(testFixtures(project(":distribution:cli")))
     testImplementation(testFixtures(project(":protocol:wire")))
     testImplementation(project(":query:protocol"))
     testImplementation(testFixtures(project(":query:protocol")))
@@ -182,6 +232,7 @@ tasks.named<Test>("test") {
     useJUnitPlatform {
         excludeTags("native")
         excludeTags("public-launcher")
+        excludeTags("component-native")
     }
 }
 

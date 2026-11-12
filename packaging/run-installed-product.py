@@ -190,7 +190,7 @@ def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifact
     with candidate_asset_server(asset_root) as origin:
         result = subprocess.run(
             [str(fixture.tools["bash"]), "-c",
-             (Path(__file__).resolve().parent.parent / "install.sh").read_text(), "--",
+             Path(__file__).with_name("install-legacy.sh").read_text(), "--",
              "--idea-home", str(idea), "--stage-only", "--skip-codex-mcp", "--verbose"],
             env=environment | {"KAST_RELEASE_BASE_URL": origin},
             cwd=fixture.root / "workspace", capture_output=True, text=True, timeout=120,

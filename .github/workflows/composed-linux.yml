@@ -19,9 +19,14 @@ on:
   workflow_call:
     inputs:
       release_target:
-        description: Platform to qualify for the calling stable release
+        description: Optional legacy single-target qualification
         type: string
-        required: true
+        required: false
+        default: ''
+      complete_product:
+        description: Retain both native targets with exact CI producer evidence
+        type: boolean
+        default: false
       version:
         description: Exact numeric version for the candidates
         required: true
@@ -124,6 +129,12 @@ jobs:
             assembleRelease :runtime:hosted:headlessBootstrapPlugin \
             ${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}
 
+      - name: Compile the test-only native component harness
+        run: >-
+          mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
+          -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
+          :cli:nativeComponentQualificationCompile :cli:nativeComponentQualificationTest
+
       - name: Download pinned donor and assemble the archive
         shell: bash
         env:
@@ -196,11 +207,44 @@ jobs:
           digest=$(cut -d ' ' -f1 "${archive}.sha256")
           runtime="$PWD/build/composed-release/kast-runtime-v${BUNDLE_VERSION}-$TARGET.zip"
           runtime_digest=$(cut -d ' ' -f1 "${runtime}.sha256")
+          harness="$PWD/cli/build/native/nativeComponentQualificationCompile/kast-component-qualification"
+          harness_digest=$("$python" -c 'import hashlib,sys; print(hashlib.file_digest(open(sys.argv[1], "rb"), "sha256").hexdigest())' "$harness")
           "$python" -E -s -B packaging/composed_release.py qualify \
+            --harness "$harness" --harness-sha256 "$harness_digest" \
             --archive "$archive" --archive-sha256 "$digest" \
             --runtime-archive "$runtime" --runtime-sha256 "$runtime_digest" \
             --root "$scratch/kc" --fixture "$scratch/kw" --evidence "$PWD/build/composed-evidence" \
             --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
+
+      - name: Retain native receipt beside its exact product bytes
+        if: '!inputs.complete_product'
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cp build/composed-evidence/qualification.json "build/composed-release/qualification-${TARGET}.json"
+
+      - name: Seal native target and toolchain evidence for the exact CI attempt
+        if: inputs.complete_product
+        env:
+          TARGET: ${{ matrix.target }}
+        run: >-
+          mise exec -- python3 .github/scripts/release/product_producer.py target
+          --directory build/composed-release
+          --receipt build/composed-evidence/qualification.json
+          --java-release "$(mise where java)/release" --target "$TARGET"
+
+      - name: Retain target-local qualified product evidence
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: kast-qualified-product-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/composed-release/kast-composed-setup-v${{ inputs.version }}-${{ matrix.target }}.tar.gz
+            build/composed-release/kast-runtime-v${{ inputs.version }}-${{ matrix.target }}.zip
+            build/composed-release/kast-runtime-base-${{ matrix.target }}-*.zip
+            build/composed-release/qualification-${{ matrix.target }}.json
+            build/composed-release/target-record-${{ matrix.target }}.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
 
       - name: Retain qualified runtime for stable release
         if: inputs.release_target != ''
@@ -210,6 +254,7 @@ jobs:
           path: |
             build/composed-release/kast-runtime-v${{ inputs.version }}-${{ matrix.target }}.zip
             build/composed-release/kast-runtime-v${{ inputs.version }}-${{ matrix.target }}.zip.sha256
+            build/composed-release/kast-runtime-base-${{ matrix.target }}-*.zip
             build/composed-evidence/qualification.json
           if-no-files-found: error
           overwrite: true

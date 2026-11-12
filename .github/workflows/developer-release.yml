@@ -11,6 +11,14 @@ on:
         description: Successful main CI run whose retained bytes to publish
         required: true
         type: string
+      run_attempt:
+        description: Exact successful CI attempt
+        required: true
+        type: string
+      source_revision:
+        description: Exact source revision of the retained CI attempt (may lag main)
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -25,7 +33,7 @@ concurrency:
 
 jobs:
   publish:
-    name: Promote tested bytes to the developer channel
+    name: Publish complete retained products to preview
     if: >-
       vars.KAST_MACOS_CHECKS == 'true' &&
       vars.KAST_NATIVE_COMPILATION != 'false' &&
@@ -42,7 +50,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # Publication code is trusted main code, never a caller-selected revision.
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Set up Python
@@ -50,30 +59,23 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Set up the pinned script runner
-        run: python3 -m pip install uv==0.12.9
-
-      - name: Admit qualified candidate producer and merged source tree
+      - name: Admit complete candidate and both native target qualifications
         id: candidate
         env:
-          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || inputs.source_revision }}
           MAIN_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+          MAIN_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt || inputs.run_attempt }}
         run: >-
-          python3 .github/scripts/release/build_candidate.py promote
+          python3 .github/scripts/release/build_candidate.py promote-product
           --repository "$GITHUB_REPOSITORY" --revision "$SOURCE_SHA"
-          --run-id "$MAIN_RUN_ID" --bundle build/candidate
-          --promotion-record build/promotion.json --github-output "$GITHUB_OUTPUT"
+          --run-id "$MAIN_RUN_ID" --run-attempt "$MAIN_RUN_ATTEMPT" --bundle build/candidate
+          --github-output "$GITHUB_OUTPUT"
 
-      - name: Publish retained candidate and main-build catalog
+      - name: Publish retained complete product and existing catalog
         if: steps.candidate.outputs.publication == 'PUBLISH'
-        env:
-          BUILD_SOURCE_SHA: ${{ steps.candidate.outputs.source_revision }}
-          CANDIDATE_VERSION: ${{ steps.candidate.outputs.version }}
         run: >-
-          bash .github/scripts/release/publish-developer.sh
-          --version "$CANDIDATE_VERSION" --commit "$BUILD_SOURCE_SHA"
-          --assets-directory build/candidate/payload
-          --promotion-record build/promotion.json
+          python3 .github/scripts/release/publish_developer.py product
+          --directory build/candidate
 
       - name: Record documentation validation without publication
         if: steps.candidate.outputs.publication == 'DOCS_VALIDATED'

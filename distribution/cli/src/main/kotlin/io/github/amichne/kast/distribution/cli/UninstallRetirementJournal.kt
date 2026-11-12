@@ -31,6 +31,12 @@ internal data class UninstallRetirementJournal(
     val recoveryProof: ManagedRecoveryRemovalProof,
     val controlIdentity: InstallationFilesystemIdentity,
     val homeConfiguration: HomeConfigurationRemovalProof,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val product: InstalledProductReference? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val workspaceRemovals: List<ManagedWorkspaceRemoval> = emptyList(),
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val productRemoval: ProductRemovalProof? = null,
 )
 
 internal fun uninstallJournalPath(root: Path): Path {
@@ -53,6 +59,8 @@ internal fun requireUninstallRetirement(root: Path, receipt: ManagementReceipt) 
                 journal.recoveryProof,
                 journal.controlIdentity,
                 journal.homeConfiguration,
+                journal.workspaceRemovals,
+                journal.productRemoval,
             )
     )
         throw ManagementRejected("uninstall-retirement", "retirement proof belongs to another installation")
@@ -76,24 +84,38 @@ internal fun admittedUninstallReceipt(root: Path): ManagementReceipt =
                 UninstallRetirementType.REMOVAL_REQUESTED,
                 UninstallRetirementType.CONTROL_RETIRED ->
                     throw ManagementRejected("uninstall-retirement", "registration cleanup proof is unavailable")
-                UninstallRetirementType.EXTERNALS_CLEANED ->
-                    ManagementReceipt(
-                        2,
-                        journal.installationRoot,
-                        journal.executable,
-                        journal.executableSha256,
-                        journal.channel,
-                        emptyList(),
-                    )
+                UninstallRetirementType.EXTERNALS_CLEANED -> retiredManagementReceipt(journal)
             }
         }
+    }
+
+private fun retiredManagementReceipt(journal: UninstallRetirementJournal): ManagementReceipt =
+    when (val product = journal.product) {
+        null ->
+            ManagementReceipt(
+                2,
+                journal.installationRoot,
+                journal.executable,
+                journal.executableSha256,
+                journal.channel,
+                emptyList(),
+            )
+        else ->
+            ProductManagementReceipt(
+                    PRODUCT_MANAGEMENT_SCHEMA_VERSION,
+                    journal.installationRoot,
+                    journal.executable,
+                    journal.executableSha256,
+                    product,
+                )
+                .refine()
     }
 
 internal fun readUninstallRetirement(root: Path): UninstallRetirementJournal {
     val path = uninstallJournalPath(root)
     requireRetirementFileOwnership(path, root)
     val raw =
-        readBoundedFile(path, 65536)
+        readBoundedFile(path, MAX_UNINSTALL_JOURNAL_BYTES)
             ?: throw ManagementRejected(
                 "uninstall-retirement",
                 "retirement proof is unavailable; use verified force removal",
@@ -101,6 +123,7 @@ internal fun readUninstallRetirement(root: Path): UninstallRetirementJournal {
     val journal = decodeUninstallRetirement(raw)
     requireRetirementRecordOwnership(root, journal)
     requireRetirementRootIdentity(root, journal)
+    requireProductRemovalProof(journal)
     return journal
 }
 
@@ -157,6 +180,7 @@ internal fun persistUninstallRetirement(
         if (Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS))
             readUninstallRetirement(root).controlIdentity
         else managedRootIdentity,
+    workspaceRemovals: List<ManagedWorkspaceRemoval> = emptyList(),
 ) {
     val path = uninstallJournalPath(root)
     if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
@@ -165,21 +189,23 @@ internal fun persistUninstallRetirement(
         if (prior.type.ordinal >= type.ordinal) return
     }
     val prior = if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) readUninstallRetirement(root) else null
+    val next =
+        when (prior) {
+            null ->
+                retirementJournal(
+                    receipt,
+                    type,
+                    managedRootIdentity,
+                    recoveryProof,
+                    controlIdentity,
+                    homeConfiguration,
+                    workspaceRemovals,
+                )
+            else -> prior.copy(type = type)
+        }
     val staged = Files.createTempFile(root.parent, ".uninstall-", ".json")
     try {
-        val bytes =
-            managementJson
-                .encodeToString(
-                    retirementJournal(
-                        receipt,
-                        type,
-                        prior?.managedRootIdentity ?: managedRootIdentity,
-                        prior?.recoveryProof ?: recoveryProof,
-                        prior?.controlIdentity ?: controlIdentity,
-                        prior?.homeConfiguration ?: homeConfiguration,
-                    )
-                )
-                .toByteArray()
+        val bytes = managementJson.encodeToString(next).toByteArray()
         FileChannel.open(staged, StandardOpenOption.WRITE).use { channel ->
             val buffer = ByteBuffer.wrap(bytes)
             while (buffer.hasRemaining()) channel.write(buffer)
@@ -199,6 +225,8 @@ private fun retirementJournal(
     recoveryProof: ManagedRecoveryRemovalProof,
     controlIdentity: InstallationFilesystemIdentity,
     homeConfiguration: HomeConfigurationRemovalProof,
+    workspaceRemovals: List<ManagedWorkspaceRemoval>,
+    productRemoval: ProductRemovalProof? = null,
 ) =
     UninstallRetirementJournal(
         receipt.installationRoot,
@@ -210,4 +238,9 @@ private fun retirementJournal(
         recoveryProof,
         controlIdentity,
         homeConfiguration,
+        receipt.product,
+        workspaceRemovals,
+        productRemoval,
     )
+
+private const val MAX_UNINSTALL_JOURNAL_BYTES = 1_048_576L

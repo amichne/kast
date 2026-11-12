@@ -45,13 +45,16 @@ class PublicCliProcessTest {
     }
 
     @Test
-    fun `session hook preserves missing installation evidence`() {
+    fun `session hook does not require an installation or grant workspace trust`() {
         Files.writeString(temporary.resolve("settings.gradle.kts"), "")
         val result = children.child(listOf("hook", "session-start", "--workspace", temporary.toString()))
-        assertEquals(4, result.first)
-        val cause = Json.parseToJsonElement(result.second).jsonObject.getValue("cause").jsonObject
-        assertEquals("installation", cause.getValue("type").jsonPrimitive.content)
-        assertEquals("PAYLOAD", cause.getValue("failure").jsonPrimitive.content)
+        assertEquals(0, result.first)
+        val document = Json.parseToJsonElement(result.second).jsonObject
+        assertEquals(setOf("additionalContext"), document.keys)
+        assertTrue(
+            document.getValue("additionalContext").jsonPrimitive.content.contains("do not grant trust or start a Host")
+        )
+        assertFalse(Files.exists(temporary.resolve(".local/share/kast-workspaces")))
     }
 
     @Test

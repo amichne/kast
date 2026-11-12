@@ -1,6 +1,5 @@
 package io.github.amichne.kast.appserver
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeDescriptor
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
@@ -9,6 +8,7 @@ import io.github.amichne.kast.distribution.contract.HostedCompatibilityStatusFai
 import io.github.amichne.kast.distribution.contract.HostedCompatibilityStatusField
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.HostedServiceUnavailableFailure
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostProvenance
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
@@ -32,7 +32,7 @@ class HostedServiceStatusProjectionTest {
             capabilities = emptyList(),
         )
     private val policy = (IdeHostCompatibilityPolicy.define(baseline) as Refinement.Refined).value
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
     private val descriptor =
         ExistingIdeDescriptor(
             (HostedEndpointOwnerPid.parse("123") as Refinement.Refined).value,

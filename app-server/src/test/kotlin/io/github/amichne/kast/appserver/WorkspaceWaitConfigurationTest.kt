@@ -1,6 +1,6 @@
 package io.github.amichne.kast.appserver
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
@@ -19,7 +19,7 @@ class WorkspaceWaitConfigurationTest {
     ) {
         val root = temporary.toRealPath()
         val installation = Files.createDirectory(root.resolve("installation"))
-        val workspace = CanonicalRoot(Files.createDirectory(root.resolve("workspace")))
+        val workspace = canonicalRootFixture(Files.createDirectory(root.resolve("workspace")))
         val defaultFile = Files.createDirectories(installation.resolve("config")).resolve("environment")
         Files.writeString(defaultFile, "KAST_WORKSPACE_PREPARATION_WAIT=invalid\n")
         val selected = Files.writeString(root.resolve("selected-environment"), "KAST_WORKSPACE_PREPARATION_WAIT=41\n")
@@ -54,7 +54,7 @@ class WorkspaceWaitConfigurationTest {
         @TempDir temporary: Path
     ) {
         val installation = Files.createDirectory(temporary.resolve("installation")).toRealPath()
-        val workspace = CanonicalRoot(Files.createDirectory(temporary.resolve("workspace")).toRealPath())
+        val workspace = canonicalRootFixture(Files.createDirectory(temporary.resolve("workspace")).toRealPath())
         val identity =
             MessageDigest.getInstance("SHA-256")
                 .digest(workspace.path.toString().toByteArray(Charsets.UTF_8))

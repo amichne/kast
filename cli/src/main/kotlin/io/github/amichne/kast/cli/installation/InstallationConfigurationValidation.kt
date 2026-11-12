@@ -1,10 +1,10 @@
 package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.AdmittedAppServerConfiguration
-import io.github.amichne.kast.appserver.InstalledSavedConfigurationIngress
-import io.github.amichne.kast.appserver.SavedConfigurationIngress
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+import io.github.amichne.kast.distribution.managed.InstalledSavedConfigurationIngress
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.serialization.Serializable

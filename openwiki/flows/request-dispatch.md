@@ -84,8 +84,6 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolImpactSourceMapping.kt
   - id: openwiki-source-6699d194831006a24f8c790c
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt
-  - id: openwiki-source-473526fe1b8c21a06df3f01f
-    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/ide/HostedRequiredPolicyExchangeTest.kt
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryProtocol.kt
   - id: openwiki-source-5dda452804594b5fecb6a416
@@ -94,8 +92,8 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadTransaction.kt
 generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T10:38:11.930Z
+  - by: openwiki/0.9.0
+    at: 2026-11-12T22:38:11.044Z
 ---
 
 # Request dispatch

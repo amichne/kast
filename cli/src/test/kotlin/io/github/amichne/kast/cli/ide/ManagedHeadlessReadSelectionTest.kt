@@ -3,7 +3,7 @@ package io.github.amichne.kast.cli.ide
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
-import io.github.amichne.kast.appserver.ide.canonicalRootFixture
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

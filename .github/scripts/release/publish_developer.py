@@ -21,6 +21,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
@@ -29,6 +30,7 @@ from pathlib import Path
 
 import build_candidate
 import developer_catalog as catalog
+import product_candidate
 
 BRANCH = "developer-latest"
 MAXIMUM_API_BYTES = 262_144
@@ -56,8 +58,19 @@ class PublicationAsset:
 
 @dataclass(frozen=True, slots=True)
 class PreparedPublication:
-    build: catalog.Build
+    build: catalog.Entry
     assets: tuple[PublicationAsset, ...]
+    mapping: catalog.product.ReleaseMapping | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class IncompleteDraft:
+    missing: tuple[PublicationAsset, ...]
+
+
+class ReleaseState(StrEnum):
+    COMPLETE_DRAFT = "COMPLETE_DRAFT"
+    PUBLISHED = "PUBLISHED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,8 +191,64 @@ def prepare(
         return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_RECORD)
 
 
+def prepare_product(directory: Path) -> PreparedPublication | Rejected:
+    try:
+        record = product_candidate.admit(directory)
+        if isinstance(record, build_candidate.Failure):
+            return Rejected(Stage.QUALIFICATION, record)
+        record_path = directory / "build-record.json"
+        entry = catalog.ProductBuild(
+            record.sourceRevision, f"developer-v{record.version}", record, digest(record_path)
+        )
+        files = tuple(
+            PublicationAsset(directory / "payload" / asset.name, asset.sha256, asset.bytes)
+            for asset in (*record.assets(), *product_candidate.acceptance.assets(directory, record))
+        ) + (PublicationAsset(record_path, entry.recordSha256, record_path.stat().st_size),)
+        return PreparedPublication(entry, files)
+    except build_candidate.Rejected as failure:
+        return Rejected(Stage.QUALIFICATION, failure.failure)
+    except (OSError, ValueError):
+        return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_RECORD)
+
+
+def prepare_stable(
+    directory: Path, public_version: str, expected_digest: str
+) -> PreparedPublication | Rejected:
+    """A stable name maps to the original build record; no archive is opened for writing."""
+    record = product_candidate.read(directory, accepted=True)
+    if isinstance(record, build_candidate.Failure):
+        return Rejected(Stage.QUALIFICATION, record)
+    record_path = directory / "build-record.json"
+    if (
+        len(public_version) > 64
+        or not catalog.product.VERSION.fullmatch(public_version)
+        or digest(record_path) != expected_digest
+    ):
+        return Rejected(Stage.INPUT, build_candidate.Failure.INVALID_IDENTITY)
+    mapping = catalog.product.ReleaseMapping(1, public_version, expected_digest)
+    mapping_path = directory.parent / "release-mapping.json"
+    raw = (json.dumps(asdict(mapping), separators=(",", ":")) + "\n").encode()
+    if mapping_path.exists():
+        if mapping_path.is_symlink() or mapping_path.read_bytes() != raw:
+            return Rejected(Stage.INPUT, build_candidate.Failure.PAYLOAD_MISMATCH)
+    else:
+        with mapping_path.open("xb") as output:
+            _ = output.write(raw)
+    entry = catalog.ProductBuild(
+        record.sourceRevision, f"v{public_version}", record, expected_digest
+    )
+    files = tuple(
+        PublicationAsset(directory / "payload" / asset.name, asset.sha256, asset.bytes)
+        for asset in (*record.assets(), *product_candidate.acceptance.assets(directory, record))
+    ) + (
+        PublicationAsset(record_path, expected_digest, record_path.stat().st_size),
+        PublicationAsset(mapping_path, hashlib.sha256(raw).hexdigest(), len(raw)),
+    )
+    return PreparedPublication(entry, files, mapping)
+
+
 class RemotePublisher:
-    def __init__(self, repository: str, incoming: catalog.Build, run: Invoke = invoke):
+    def __init__(self, repository: str, incoming: catalog.Entry, run: Invoke = invoke):
         self.repository = repository
         self.incoming = incoming
         self.run = run
@@ -235,34 +304,78 @@ class RemotePublisher:
         current = self.api("GET", route)
         if current is ApiFailure.ABSENT:
             build = prepared.build
-            result = self.run(
+            self.run(
                 [
                     "gh",
                     "release",
                     "create",
                     build.releaseTag,
-                    *(str(asset.source) for asset in prepared.assets),
                     "--repo",
                     self.repository,
                     "--target",
                     build.buildRevision,
-                    "--prerelease",
+                    "--draft",
+                    "--prerelease" if prepared.mapping is None else "--prerelease=false",
                     "--latest=false",
                     "--title",
-                    f"Kast developer {build.version}",
+                    (
+                        f"Kast developer {build.version}"
+                        if prepared.mapping is None
+                        else f"Kast {prepared.mapping.publicVersion}"
+                    ),
                     "--notes",
-                    f"Tested developer build from {build.buildRevision}, "
-                    f"promoted after main {build.mainRevision}. "
-                    "Candidate and promotion records, SBOM and checksums are included.",
+                    f"Retained build {build.version} from {build.buildRevision}. "
+                    "Publication does not rebuild or change archive bytes.",
                 ],
                 None,
             )
-            if isinstance(result, catalog.Failure):
-                return result
+            # Creation may have completed even when its process response was lost.
             current = self.api("GET", route)
         if not isinstance(current, ApiDocument):
             return catalog.Failure.REMOTE_UNAVAILABLE
-        return admit_release(current.value, prepared)
+        state = inspect_release(current.value, prepared)
+        if isinstance(state, IncompleteDraft):
+            self.run(
+                [
+                    "gh",
+                    "release",
+                    "upload",
+                    prepared.build.releaseTag,
+                    *(str(asset.source) for asset in state.missing),
+                    "--repo",
+                    self.repository,
+                ],
+                None,
+            )
+            current = self.api("GET", route)
+            if not isinstance(current, ApiDocument):
+                return catalog.Failure.REMOTE_UNAVAILABLE
+            state = inspect_release(current.value, prepared)
+        if state is ReleaseState.COMPLETE_DRAFT:
+            self.run(
+                [
+                    "gh",
+                    "release",
+                    "edit",
+                    prepared.build.releaseTag,
+                    "--repo",
+                    self.repository,
+                    "--draft=false",
+                    "--latest=false" if prepared.mapping is None else "--latest=true",
+                ],
+                None,
+            )
+            current = self.api("GET", route)
+            if not isinstance(current, ApiDocument):
+                return catalog.Failure.REMOTE_UNAVAILABLE
+            state = inspect_release(current.value, prepared)
+        if isinstance(state, catalog.Failure):
+            return state
+        return (
+            catalog.CommitResult.COMMITTED
+            if state is ReleaseState.PUBLISHED
+            else catalog.Failure.REMOTE_UNAVAILABLE
+        )
 
     def snapshot(self) -> catalog.Snapshot | catalog.Failure:
         ref = self.api("GET", f"git/ref/heads/{BRANCH}")
@@ -402,15 +515,15 @@ def response_sha(result: ApiDocument | ApiFailure) -> str | catalog.Failure:
     )
 
 
-def admit_release(
+def inspect_release(
     value: object, prepared: PreparedPublication
-) -> catalog.CommitResult | catalog.Failure:
+) -> IncompleteDraft | ReleaseState | catalog.Failure:
     if not catalog.mapping(value) or value.get("target_commitish") != prepared.build.buildRevision:
         return catalog.Failure.ASSET_MISMATCH
     if (
         value.get("tag_name") != prepared.build.releaseTag
-        or value.get("draft") is not False
-        or value.get("prerelease") is not True
+        or type(value.get("draft")) is not bool
+        or value.get("prerelease") is not (prepared.mapping is None)
     ):
         return catalog.Failure.ASSET_MISMATCH
     assets = value.get("assets")
@@ -433,7 +546,12 @@ def admit_release(
     expected = {
         asset.source.name: (f"sha256:{asset.sha256}", asset.bytes) for asset in prepared.assets
     }
-    return catalog.CommitResult.COMMITTED if actual == expected else catalog.Failure.ASSET_MISMATCH
+    if any(expected.get(name) != identity for name, identity in actual.items()):
+        return catalog.Failure.ASSET_MISMATCH
+    if value["draft"] is False:
+        return ReleaseState.PUBLISHED if actual == expected else catalog.Failure.ASSET_MISMATCH
+    missing = tuple(asset for asset in prepared.assets if asset.source.name not in actual)
+    return IncompleteDraft(missing) if missing else ReleaseState.COMPLETE_DRAFT
 
 
 def publish(
@@ -442,11 +560,19 @@ def publish(
     released = remote.release(prepared)
     if isinstance(released, catalog.Failure):
         return Rejected(Stage.IMMUTABLE_RELEASE, released)
+    if prepared.mapping is not None:
+        return released
     result = catalog.publish(prepared.build, remote.snapshot, remote.history, remote.commit)
     return Rejected(Stage.CATALOG, result) if isinstance(result, catalog.Failure) else result
 
 
 def main(arguments: list[str]) -> int:
+    if arguments and arguments[0] in ("product", "stable"):
+        try:
+            return product_main(arguments)
+        except (OSError, ValueError):
+            print("publish-product: INVALID_RECORD", file=sys.stderr)
+            return 1
     if arguments == ["--self-test"]:
         suite = unittest.defaultTestLoader.discover(
             str(Path(__file__).parent), pattern="test_developer*.py"
@@ -476,7 +602,69 @@ def main(arguments: list[str]) -> int:
     if isinstance(prepared, Rejected):
         print(json.dumps(asdict(prepared)), file=sys.stderr)
         return 1
-    result = publish(prepared, RemotePublisher(repository, prepared.build))
+    # Legacy candidates remain readable for recovery, but are not complete products.
+    print("publish-developer: complete build-record.json required", file=sys.stderr)
+    return 1
+
+
+def product_main(arguments: list[str]) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    _ = parser.add_argument("action", choices=("product", "stable"))
+    _ = parser.add_argument("--directory", type=Path)
+    _ = parser.add_argument("--source-tag")
+    _ = parser.add_argument("--record-sha256")
+    _ = parser.add_argument("--public-version")
+    args = parser.parse_args(arguments)
+    repository = os.environ.get("GITHUB_REPOSITORY", "amichne/kast")
+    if repository != catalog.product.REPOSITORY or not os.environ.get("GH_TOKEN"):
+        return 1
+    with tempfile.TemporaryDirectory(prefix="kast-product-promotion-") as temporary:
+        if args.action == "product":
+            if args.directory is None:
+                return 1
+            prepared = prepare_product(args.directory)
+        else:
+            if not all((args.source_tag, args.record_sha256, args.public_version)):
+                return 1
+            directory = Path(temporary) / "candidate"
+            fetched = product_candidate.fetch_release(
+                args.source_tag, args.record_sha256, directory, catalog.product.HttpReleaseSource()
+            )
+            if isinstance(fetched, build_candidate.Failure):
+                print(f"publish-stable: {fetched.value}", file=sys.stderr)
+                return 1
+            # The immutable preview release is the trust anchor after Actions retention expires.
+            preview = PreparedPublication(
+                catalog.ProductBuild(
+                    fetched.sourceRevision, args.source_tag, fetched, args.record_sha256
+                ),
+                tuple(
+                    PublicationAsset(directory / "payload" / asset.name, asset.sha256, asset.bytes)
+                    for asset in (
+                        *fetched.assets(),
+                        *product_candidate.acceptance.assets(directory, fetched),
+                    )
+                )
+                + (
+                    PublicationAsset(
+                        directory / "build-record.json",
+                        args.record_sha256,
+                        (directory / "build-record.json").stat().st_size,
+                    ),
+                ),
+            )
+            remote = RemotePublisher(repository, preview.build)
+            observed = remote.api("GET", f"releases/tags/{args.source_tag}")
+            if (
+                not isinstance(observed, ApiDocument)
+                or inspect_release(observed.value, preview) is not ReleaseState.PUBLISHED
+            ):
+                return 1
+            prepared = prepare_stable(directory, args.public_version, args.record_sha256)
+        if isinstance(prepared, Rejected):
+            print(json.dumps(asdict(prepared)), file=sys.stderr)
+            return 1
+        result = publish(prepared, RemotePublisher(repository, prepared.build))
     if isinstance(result, Rejected):
         print(json.dumps(asdict(result)), file=sys.stderr)
         return 1

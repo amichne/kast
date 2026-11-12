@@ -1,10 +1,10 @@
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeClassName
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolRouting
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.HostedContractDocument
@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 
 /** Detached typed witnesses and a strict lifecycle effect script; no native or resource fixtures. */
 internal class WorkspaceRecoveryNativeFixture {
-    val root = CanonicalRoot(Path.of("/workspace"))
+    val root = canonicalRootFixture(Path.of("/workspace"))
     val target =
         IdeProjectTarget(
             "00000000-0000-0000-0000-000000000001",

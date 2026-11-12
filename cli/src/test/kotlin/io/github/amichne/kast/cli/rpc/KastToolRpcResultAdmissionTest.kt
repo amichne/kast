@@ -1,12 +1,12 @@
 package io.github.amichne.kast.cli.rpc
 
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.LiveReadOutputSchemaTest
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.directToolDocument
 import io.github.amichne.kast.cli.installedHostedBootstrap
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.EvidenceGeneration
@@ -60,7 +60,6 @@ class KastToolRpcResultAdmissionTest {
                             installedHostedBootstrap().tools.single { it.name == "query_symbols" }.directToolDocument()
                         ),
                     root = { FilesystemCanonicalRootDiscovery.discover(temporary) },
-                    start = { Refinement.Refined(Unit) },
                     invokePublic = { exit },
                 )
             assertEquals(
@@ -93,7 +92,6 @@ class KastToolRpcResultAdmissionTest {
                             installedHostedBootstrap().tools.single { it.name == "query_symbols" }.directToolDocument()
                         ),
                     root = { FilesystemCanonicalRootDiscovery.discover(temporary) },
-                    start = { Refinement.Refined(Unit) },
                     invokePublic = { exit },
                 )
             val result =

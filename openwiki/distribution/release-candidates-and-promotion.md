@@ -30,6 +30,10 @@ sources:
     resource: repo://.github/scripts/release/build_candidate.py
   - id: openwiki-source-939501634c56c6ffea2fec6b
     resource: repo://.github/scripts/release/developer_catalog.py
+  - id: openwiki-source-5e92c81a46b459b558f8901e
+    resource: repo://.github/scripts/release/product_candidate.py
+  - id: openwiki-source-e61ce41a823368fa4e25eb84
+    resource: repo://.github/scripts/release/product_producer.py
   - id: openwiki-source-f02c30e87f3db4d071a7be5b
     resource: repo://.github/scripts/release/publish_developer.py
   - id: openwiki-source-876d58467609bbf82c40cdc2
@@ -42,22 +46,40 @@ sources:
     resource: repo://distribution/release/component_release.py
   - id: openwiki-source-8ac360e10edcbd99c75fa338
     resource: repo://distribution/release/component-release.schema.json
+  - id: openwiki-source-eb518d021af0c0c5a9bcc85c
+    resource: repo://packaging/managed_product.py
   - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
     resource: repo://packaging/managed_release.py
-generated: { by: "codex", at: "2026-11-10T13:00:52.429Z" }
+  - id: openwiki-source-e7484ccb9a72cd71aa938a2f
+    resource: repo://packaging/product_acceptance.py
+  - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
+    resource: repo://packaging/product_lifecycle_probe.py
+generated: { by: "amp", at: "2026-11-12T22:42:07.175Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T04:56:18.579Z
+    at: 2026-11-12T22:42:07.175Z
 ---
 
 # Release candidates and promotion
 
-## One tested immutable candidate
+## Seal components before installed acceptance
 
-CI checks out the exact pull-request head for its selected product work.
-It creates and tests a candidate once, then seals its repository, source revision, source tree, run identity, toolchain, and asset inventory.
-Each asset record keeps its name, byte count, and digest.
-The candidate artifact belongs to that exact successful producer run.
+The complete-product producer runs the component-native harness before it seals each target.
+Each `COMPONENT_NATIVE` receipt binds the source, harness, Control, runtime, and bundle identities.
+The join requires both macOS ARM64 and Linux x86-64 from the exact producer attempt.
+It records source revision, source tree, toolchain inputs, and asset names, sizes, and digests without rebuilding those assets.
+
+The sealed build record then enters installed-product acceptance through normal managed admission.
+Both detached `INSTALLED_PRODUCT_NATIVE` receipts are required before publication admission.
+Joining those receipts does not rewrite the sealed build record.
+Neither schema decoding nor a successful seal alone establishes installed-product acceptance.
+
+The acceptance baseline needs sealed component qualification, not prior publication or installed acceptance.
+Its source revision may match the candidate, but each target needs a different actual bundle/runtime/Control composition.
+CI admits the exact retained baseline record, producer attempt, and successful sealing job.
+A later failed job in that baseline run does not erase its sealing evidence.
+The probe upgrades the baseline, removes it, installs the fresh candidate, and checks passive discovery before simultaneous first queries.
+It also checks both roots concurrently and protects external Gradle and foreign-profile sentinels.
 
 The required aggregate examines the jobs selected by the scope decision.
 After those checks succeed, it seals the selected plan, exact source revision, source tree, and producer run identities.
@@ -78,12 +100,14 @@ It does not assign the documentation revision to an earlier binary.
 `PRODUCT_VALIDATED` is required before the existing candidate admission.
 Missing, malformed, contradictory, or mismatched outcome evidence rejects promotion.
 
-## Reuse after merge
+## Retained component-candidate reuse
 
-`build_candidate.py` admits the merged source against the sealed candidate.
+The retained component-only candidate path in `build_candidate.py` admits a merged source against its sealed candidate.
 Tree equality permits reuse when a squash merge changes the commit identifier but preserves the tested source tree.
 The promotion record keeps the candidate producer and merged revision together.
 Downloaded assets must match the admitted inventory and digests before reuse.
+That legacy candidate is not a complete two-target private-runtime product.
+Current developer publication uses `promote-product`, the complete build record, and detached installed acceptance instead.
 
 A missing candidate and a rejected candidate are different states.
 The workflow can build a candidate when no reusable candidate exists under its policy.
@@ -99,14 +123,16 @@ The archive byte count and SHA-256 must match the record and checksum files.
 Archive admission then examines the component's expected contents.
 
 `assembleControlRelease` and `assembleHostRelease` package independent components.
-`assembleRelease` composes a fresh pair for an ordinary installation.
+`assembleRelease` composes a fresh component pair; it does not itself seal a complete product.
 Hosted contract equality and platform admission govern mixed-version compatibility.
 Matching component release numbers alone do not establish a usable pair.
 
-## Bounded published main discovery
+## Bounded published preview discovery
 
-The developer catalog contains at most five already published immutable releases.
-Each entry keeps the main revision, original build revision, source tree, platform, release tag, version, and candidate and promotion digests.
+The developer catalog contains at most five already published immutable products.
+Each product entry keeps its main revision, release tag, complete build record, and record digest.
+The record preserves build revision, source tree, both targets, and original producer identity.
+Publishing a product converts discovery to product-only entries without deleting old releases or pins.
 Main ancestry orders the entries. Job completion time and numeric version do not determine order.
 An out-of-order publication cannot replace a newer selection.
 
@@ -116,8 +142,9 @@ Conflicting identity, unproven ancestry, changed assets, and exhausted contentio
 An older main revision remains a selector only while it appears in this bounded discovery window.
 
 The management command captures one admitted selection before the installer downloads artifacts.
-`managed_release.py` admits that selection, exact component records, candidate and promotion digests, archive bytes, and hosted compatibility.
-A main selection keeps original producer provenance through reuse after merge.
+`managed_release.py` rechecks the selected build-record digest and complete two-target record.
+`managed_product.py` admits the target's exact archive bytes, native receipt, composed inventory, and component compatibility before effects.
+Legacy main component-pair selections reject. Stable selections require an exact complete-product mapping.
 It does not rerun latest selection after capture.
 
 ## Proof limits
@@ -125,6 +152,8 @@ It does not rerun latest selection after capture.
 Candidate and component gates establish source and artifact provenance under their admitted records.
 They do not establish that an installed IDEA instance loaded a Host or enrolled a specific workspace.
 Keep publication permission, artifact integrity, and installed semantic qualification as separate facts.
+Local component execution does not establish clean-source CI, Linux qualification, or either detached installed-product acceptance receipt.
+This explanation records the source contract, not a completed two-target acceptance run or publication.
 
 ## Focused tests
 
@@ -136,6 +165,10 @@ Keep publication permission, artifact integrity, and installed semantic qualific
 - [required_checks.py](../../.github/scripts/ci/required_checks.py)
 - [verify-checks.py](../../.github/scripts/ci/verify-checks.py)
 - [build_candidate.py](../../.github/scripts/release/build_candidate.py)
+- [product_producer.py](../../.github/scripts/release/product_producer.py)
+- [product_candidate.py](../../.github/scripts/release/product_candidate.py)
+- [product_lifecycle_probe.py](../../packaging/product_lifecycle_probe.py)
+- [product_acceptance.py](../../packaging/product_acceptance.py)
 - [component_release.py](../../distribution/release/component_release.py)
 - [component-release.schema.json](../../distribution/release/component-release.schema.json)
 - [`plugin-release.gradle.kts`](../../distribution/release/plugin-release.gradle.kts)

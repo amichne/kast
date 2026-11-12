@@ -14,8 +14,9 @@ class ManagedSetupCommandTest {
                 listOf("install", "skill", "--output", "custom skills", "--json"),
                 listOf("versions", "--json"),
                 listOf("upgrade", "--channel", "main", "--dry-run", "--json"),
-                listOf("upgrade", "--commit", "abcdef123456", "--restart-ide"),
-                listOf("upgrade", "--version", "1.2.3", "--idea-home", "/Applications/IDEA.app"),
+                listOf("upgrade", "--commit", "abcdef123456"),
+                listOf("upgrade", "--version", "1.2.3"),
+                listOf("upgrade", "--repair"),
             )) assertTrue(parseManagementCommand(arguments) is ManagementParsing.Selected, arguments.toString())
     }
 

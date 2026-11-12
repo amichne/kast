@@ -2,10 +2,10 @@
 
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
@@ -84,7 +84,7 @@ internal class WorkspaceAvailabilityRecoveryTest {
         reason: IdeLifecycleFailure,
         beforeInspection: suspend () -> Unit = {},
     ) {
-        val root = CanonicalRoot(Path.of("/workspace"))
+        val root = canonicalRootFixture(Path.of("/workspace"))
         val originalId = id("00000000-0000-0000-0000-000000000001")
         private val retryId = id("00000000-0000-0000-0000-000000000002")
         private val ids = ArrayDeque(listOf(originalId, retryId))

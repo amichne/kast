@@ -59,6 +59,8 @@ internal class MainSelector private constructor(val value: String) {
 internal sealed interface BuildRequest {
     data object RecordedPolicy : BuildRequest
 
+    data object Repair : BuildRequest
+
     data object Stable : BuildRequest
 
     data object Main : BuildRequest
@@ -68,12 +70,18 @@ internal sealed interface BuildRequest {
     data class Commit(val selector: MainSelector) : BuildRequest
 }
 
-internal fun admitBuildRequest(channel: String?, version: String?, commit: String?): SelectionAdmission<BuildRequest> {
-    if (listOfNotNull(channel, version, commit).size > 1)
+internal fun admitBuildRequest(
+    channel: String?,
+    version: String?,
+    commit: String?,
+    repair: Boolean = false,
+): SelectionAdmission<BuildRequest> {
+    if (listOfNotNull(channel, version, commit).size + (if (repair) 1 else 0) > 1)
         return SelectionAdmission.Rejected(BuildSelectionFailure.SELECTORS_CONFLICT)
     return when {
+        repair -> SelectionAdmission.Admitted(BuildRequest.Repair)
         channel == "stable" -> SelectionAdmission.Admitted(BuildRequest.Stable)
-        channel == "main" -> SelectionAdmission.Admitted(BuildRequest.Main)
+        channel == "preview" || channel == "main" -> SelectionAdmission.Admitted(BuildRequest.Main)
         channel != null -> SelectionAdmission.Rejected(BuildSelectionFailure.SELECTOR_INVALID)
         version != null ->
             when (val parsed = StableVersion.parse(version)) {
@@ -97,6 +105,7 @@ internal fun resolveRecordedPolicy(request: BuildRequest, policy: UpdatePolicy):
                 UpdatePolicy.TrackMain -> SelectionAdmission.Admitted(BuildRequest.Main)
                 is UpdatePolicy.PinnedBuild -> SelectionAdmission.Rejected(BuildSelectionFailure.PINNED_BUILD)
             }
+        BuildRequest.Repair,
         BuildRequest.Stable,
         BuildRequest.Main,
         is BuildRequest.Version,
@@ -109,7 +118,9 @@ internal fun updatePolicy(request: BuildRequest, identity: InstalledBuildIdentit
         BuildRequest.Main -> UpdatePolicy.TrackMain
         is BuildRequest.Version,
         is BuildRequest.Commit -> UpdatePolicy.PinnedBuild(identity)
-        BuildRequest.RecordedPolicy -> error("Resolve the recorded policy before artifact selection")
+        BuildRequest.Repair,
+        BuildRequest.RecordedPolicy ->
+            error("Resolve the recorded policy or exact installed product before artifact selection")
     }
 
 private const val MAX_VERSION_LENGTH = 64

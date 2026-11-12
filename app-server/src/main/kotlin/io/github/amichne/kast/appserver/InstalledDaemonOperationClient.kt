@@ -1,7 +1,7 @@
 package io.github.amichne.kast.appserver
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.serialization.json.JsonElement
 

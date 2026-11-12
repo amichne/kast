@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c8104a444e599df852c2fddd1818f8d4e55166c2dd53c5283ef2920729dab5ab",
+  "pageVersion": "sha256:ec2da2d74aaf384e83d2007472eb60337e64dfb7f3cc171f16050380c72f2b53",
   "claims": [
     {
       "id": "claim_33e6522130644483961b71cc571e663b",
@@ -17,8 +17,8 @@
       "statement": "Installed CLI query schemas and callable documentation project canonical serializer contracts through the existing CLI generators.",
       "evidence": [
         {
-          "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:3fdba09274f861814014570a7d58632f3dcc28e94e6938c4651a4f0d7f7c3016"
+          "resource": "repo://cli/build.gradle.kts#L403-L440",
+          "version": "repo-lines-v1:sha256:2cf0ebec36ffe03764724099217a87c7d63b63e580099a85d2248f0547fabea8:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzNmZkOTU4MzM5Y2RhNjQ3Njg4MGFiYTAyYWFiNjkwNjk1YjllZGI4ZTYzMWU4NjRjNGEyZjA2MDg0ZGU2YjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NGVhNTYwODRmMzc0NjEwMjM4ZTU2Y2YxYmViYTI3OGMyNjc1MmUwNWYyOWRlMjkwODk3ZTQyZjhmMmE1MDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0ZGViMGVhOWMwZjhkN2E4MWIyMGZlYzM5Y2NmMmVkMDQ0MGRmYTM4NzFmZjFlNjUzYWIwZjYxZGMxNTY0ZWEifQ"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/MintlifyCallableSchemaProjection.kt",
@@ -47,6 +47,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T06:30:47.924Z"
+    "at": "2026-11-12T22:37:51.261Z"
   }
 }

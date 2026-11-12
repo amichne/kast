@@ -13,8 +13,8 @@ import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from component_probe import ComponentHarness, WorkspacePaths
 from composition_platform import HostPlatform, host_platform
-from isolated_runtime import PrivateRuntime
 from managed_headless import object_fields, object_items
 
 CALLERS = frozenset({"forwardOnce", "mutualSecond", "aliasWrapper", "mutableAliasWrapper"})
@@ -102,8 +102,7 @@ class ProbeReceipt:
     callers: tuple[str, ...]
     javaReferenceContexts: tuple[str, ...]
     unknownResultRejected: bool
-    foreignWorkspaceRejected: bool
-    ordinaryQueryGrantAbsent: bool
+    passiveDiscoveryGrantAbsent: bool
     freshCaller: str
     host: HostIdentity
     restartedHost: HostIdentity
@@ -321,60 +320,32 @@ def project_gradle_inputs(root: Path, fixture: Path) -> GradleInputs:
     return GradleInputs(url[1].replace(r"\:", ":"), digest[1], markers, build, kotlin)
 
 
-def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> ProbeReceipt:
-    """Exercise the task entry, exact Host ownership, and compiler results."""
+def probe(harness: ComponentHarness, fixture: Path, evidence: Path) -> ProbeReceipt:
+    """Qualify components through a test-native entry, not installed-product admission."""
+    root = harness.root
     assert root.is_absolute() and root.resolve() == root
     assert fixture.is_absolute() and fixture.resolve() == fixture
     assert not evidence.exists() and evidence.resolve() == evidence
     target = host_platform(platform.system(), platform.machine())
     assert isinstance(target, HostPlatform)
     desktop_before = desktop_processes(root, target)
-    if sandbox is not None:
-        assert not target.is_linux and sandbox.is_file()
-        prefix = ("/usr/bin/sandbox-exec", "-f", str(sandbox))
+    if harness.sandbox is not None:
+        assert not target.is_linux and harness.sandbox.is_file()
     else:
         assert not desktop_before, "Supply a macOS sandbox when desktop IDEA runs"
-        prefix = ()
     evidence.mkdir(parents=True)
-    task, kast = str(root / "bin/kast-task"), str(root / "bin/kast")
-    environment = {
-        "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
-        "HOME": str(root / "state/home"),
-        "TMPDIR": str(root / "state/tmp"),
-    }
-
-    def run(
-        case: str, arguments: tuple[str, ...], *, output_suffix: str = ".json"
-    ) -> subprocess.CompletedProcess[bytes]:
-        command = (*prefix, *arguments)
-        result = subprocess.run(
-            command,
-            cwd=fixture,
-            env=environment,
-            capture_output=True,
-            timeout=1080,
-            start_new_session=True,
-            check=False,
-        )
-        _ = (evidence / (case + output_suffix)).write_bytes(result.stdout)
-        _ = (evidence / (case + ".stderr")).write_bytes(result.stderr)
-        _ = (evidence / (case + ".command.json")).write_text(
-            json.dumps(asdict(Invocation(command, result.returncode)), indent=2) + "\n"
-        )
-        return result
 
     def call(case: str, arguments: tuple[str, ...]) -> dict[object, object]:
-        result = run(case, (task, str(fixture), "--", kast, *arguments))
+        result = harness.run(case, fixture, arguments, evidence)
         value = fields(json.loads(result.stdout))
         assert (result.returncode == 0) == (value.get("type") == "complete"), value
         return value
 
     def stop(case: str) -> None:
-        result = run(case, (kast, "stop", "--json"))
+        result = harness.run(case, fixture, ("stop",), evidence)
         assert result.returncode == 0, result.stderr
-        assert fields(json.loads(result.stdout)).get("type") == "STOPPED", result.stdout
 
-    def compile_edited_fixture(fresh: str) -> CompilerResult:
+    def compile_edited_fixture(fresh: str, paths: WorkspacePaths) -> CompilerResult:
         kotlin_class = fixture / (
             "forwarding/build/classes/kotlin/main/fixture/staticcallbacks/forwarding/ForwardingKt.class"
         )
@@ -382,12 +353,9 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
             "invocation/build/classes/java/main/fixture/reference/usage/ReadJavaReferences.class"
         )
         assert not kotlin_class.exists() and not java_class.exists()
-        result = run(
-            "compiler-build",
+        result = subprocess.run(
             (
-                task,
-                str(fixture),
-                "--",
+                *(("/usr/bin/sandbox-exec", "-f", str(harness.sandbox)) if harness.sandbox else ()),
                 "./gradlew",
                 "--no-daemon",
                 "--max-workers=2",
@@ -397,10 +365,21 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
                 ":forwarding:compileKotlin",
                 ":invocation:compileJava",
             ),
-            output_suffix=".stdout",
+            cwd=fixture,
+            env={
+                "PATH": os.defpath,
+                "HOME": str(paths.home),
+                "JAVA_HOME": str(paths.javaHome),
+                "GRADLE_USER_HOME": str(paths.home / ".gradle"),
+            },
+            capture_output=True,
+            timeout=1080,
+            check=False,
         )
+        _ = (evidence / "compiler-build.stdout").write_bytes(result.stdout)
+        _ = (evidence / "compiler-build.stderr").write_bytes(result.stderr)
         assert result.returncode == 0, "See compiler-build output and error logs"
-        java_home = str(PrivateRuntime(root, target).java)
+        java_home = str(paths.javaHome)
         output = result.stdout.decode()
         assert f"[KOTLIN] Kotlin compilation 'jdkHome' argument: {java_home}\n" in output
         assert f"Compiling with toolchain '{java_home}'." in output
@@ -414,50 +393,21 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
             hashlib.sha256(java_bytes).hexdigest(),
         )
 
-    assert not tuple((root / "state/home").rglob("trusted-paths.xml"))
-    assert not tuple((root / "state/home/.kast").glob("*/**/endpoint.json"))
-    before_trust = run("ordinary-query-before-grant", (kast, *CALLERS_QUERY))
-    assert rejected_reason(before_trust) == "daemon-operation-lifecycle-trust-required"
-    assert not tuple((root / "state/home").rglob("trusted-paths.xml"))
-    literal = "space ; $quoted"
-    shell = run(
-        "literal-task",
-        (
-            task,
-            str(fixture),
-            "--",
-            "/bin/sh",
-            "-c",
-            'printf "%s\\n" "$PWD" "$HOME" "$GRADLE_USER_HOME" "$1"; exit 23',
-            "kast-test",
-            literal,
-        ),
-    )
-    assert shell.returncode == 23
-    assert shell.stdout.decode().splitlines() == [
-        str(fixture),
-        str(root / "state/home"),
-        str(root / "state/home/.gradle"),
-        literal,
-    ]
-    foreign = fixture / "other-workspace"
-    foreign.mkdir()
-    _ = (foreign / "settings.gradle.kts").write_text('rootProject.name = "other-workspace"\n')
-    assert run("foreign-workspace", (task, str(foreign), "--", "/bin/true")).returncode != 0
-    (grant,) = tuple((root / "state/home").rglob("trusted-paths.xml"))
+    assert not harness.store.exists()
+    discovery = harness.run("passive-discovery", fixture, ("describe", "--help"), evidence)
+    assert discovery.returncode == 0, discovery.stderr
+    assert not harness.store.exists(), "component discovery created a workspace store"
+    admitted = harness.run("admit-components", fixture, ("admit",), evidence)
+    assert admitted.returncode == 0, admitted.stderr
 
     try:
         names = caller_names(complete(call("callers", CALLERS_QUERY)), fixture)
         assert len(names) == 4 and set(names) == CALLERS, names
-        original = live_host(root, fixture, target, evidence, "host")
-        granted = grant.read_bytes()
-        nested = run(
-            "ordinary-query-nested-workspace",
-            (kast, *CALLERS_QUERY, "--workspace", str(foreign)),
+        paths = harness.inspect(fixture, evidence, "inspect")
+        state = paths.workspaceState.parent
+        original = live_host(
+            state, fixture, target, evidence, "host", runtime_home=paths.runtimeHome
         )
-        assert rejected_reason(nested) == "daemon-operation-lifecycle-trust-required"
-        assert not endpoint(root, "ide-hosted", foreign).exists()
-        assert grant.read_bytes() == granted
         contexts = java_reference_contexts(
             complete(
                 call(
@@ -497,8 +447,10 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
             )
         changed = caller_names(complete(call("external-edit", CALLERS_QUERY)), fixture)
         assert len(changed) == 5 and set(changed) == CALLERS | {fresh}, changed
-        compiler = compile_edited_fixture(fresh)
-        reused = live_host(root, fixture, target, evidence, "reused-host")
+        compiler = compile_edited_fixture(fresh, paths)
+        reused = live_host(
+            state, fixture, target, evidence, "reused-host", runtime_home=paths.runtimeHome
+        )
         assert (reused.pid, reused.started, reused.lifetime) == (
             original.pid,
             original.started,
@@ -507,18 +459,17 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
         assert reused.workspaceLifetime == original.workspaceLifetime
         stop("stop")
         for path in (
-            endpoint(root, "ide-hosted", fixture),
-            endpoint(root, "ide-lifecycle", Path(original.runtimeHome)),
+            endpoint(state, "ide-hosted", fixture),
+            endpoint(state, "ide-lifecycle", Path(original.runtimeHome)),
         ):
             assert not path.exists() and not path.with_name("host.sock").exists()
-        fenced = run("ordinary-query-stopped", (kast, *CALLERS_QUERY))
-        assert fenced.returncode != 0, fenced.stdout
-        assert not endpoint(root, "ide-hosted", fixture).exists()
         assert caller_names(complete(call("after-restart", CALLERS_QUERY)), fixture) == changed
-        restarted = live_host(root, fixture, target, evidence, "restarted-host")
+        restarted = live_host(
+            state, fixture, target, evidence, "restarted-host", runtime_home=paths.runtimeHome
+        )
         assert restarted.lifetime != original.lifetime and restarted.started > original.started
         assert restarted.workspaceLifetime != original.workspaceLifetime
-        gradle = project_gradle_inputs(root, fixture)
+        gradle = project_gradle_inputs(paths.workspaceDirectory, fixture)
     except BaseException as failure:
         try:
             stop("failure-stop")
@@ -536,7 +487,6 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
         contexts,
         True,
         True,
-        True,
         fresh,
         original,
         restarted,
@@ -551,11 +501,26 @@ def probe(root: Path, fixture: Path, evidence: Path, sandbox: Path | None) -> Pr
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("root", "fixture", "evidence"):
+    for name in ("root", "fixture", "evidence", "harness", "runtime-archive", "control"):
         _ = parser.add_argument("--" + name, type=Path, required=True)
+    _ = parser.add_argument("--runtime-sha256", required=True)
+    _ = parser.add_argument("--version", required=True)
+    _ = parser.add_argument("--control-sha256", required=True)
+    _ = parser.add_argument("--source-revision", required=True)
     _ = parser.add_argument("--sandbox", type=Path)
     args = parser.parse_args()
-    print(json.dumps(asdict(probe(args.root, args.fixture, args.evidence, args.sandbox)), indent=2))
+    harness = ComponentHarness(
+        args.harness,
+        args.root,
+        args.runtime_archive,
+        args.runtime_sha256,
+        args.version,
+        args.control,
+        args.control_sha256,
+        args.source_revision,
+        args.sandbox,
+    )
+    print(json.dumps(asdict(probe(harness, args.fixture, args.evidence)), indent=2))
 
 
 if __name__ == "__main__":

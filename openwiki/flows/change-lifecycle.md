@@ -63,8 +63,8 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedChangeApply.kt
 generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-03T06:09:31.584Z
+  - by: openwiki/0.9.0
+    at: 2026-11-12T22:38:20.129Z
 ---
 
 # Semantic change lifecycle

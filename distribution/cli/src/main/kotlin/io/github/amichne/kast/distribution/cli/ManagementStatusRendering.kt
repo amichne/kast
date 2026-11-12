@@ -8,6 +8,7 @@ internal fun InstallationStatus.asText(): String = buildList {
     add("Control installed: ${installedVersion.value ?: "unavailable"}")
     add("Control running: ${loadedVersion.value ?: "unavailable"}")
     add("Installed build: ${installedBuild.value ?: "unavailable"}")
+    addAll(productStatusLines(product))
     add("Update policy: ${updatePolicy.value ?: "unavailable"}")
     add("Unresolved transaction: ${unresolvedTransaction.value ?: "unavailable"}")
     addAll(hostedServices.value?.takeIf { it.isNotEmpty() }?.flatMap(::hostStatusLines) ?: unavailableHostLines())
@@ -15,8 +16,30 @@ internal fun InstallationStatus.asText(): String = buildList {
     add("Active workspaces: ${activeWorkspaces.value?.joinToString() ?: "unavailable"}")
     add("Live connections: ${liveConnections.value ?: "unavailable"}")
     add("One-shot requests in flight: ${oneShotRequestsInFlight.value ?: "unavailable"}")
+    addAll(workspaces.value.orEmpty().flatMap(::workspaceStatusLines))
 }
     .joinToString("\n")
+
+private fun productStatusLines(product: Observation<InstalledProductReference>): List<String> =
+    product.value
+        ?.let {
+            listOf(
+                "Product release: ${it.releaseTag}; embedded build: ${it.version}",
+                "Runtime archive: ${it.runtimeArchiveSha256}",
+            )
+        }
+        .orEmpty()
+
+private fun workspaceStatusLines(workspace: ManagedWorkspaceStatus): List<String> =
+    when (workspace) {
+        is ManagedWorkspaceStatus.Rejected -> listOf("Workspace record ${workspace.entry}: ${workspace.failure}")
+        is ManagedWorkspaceStatus.Recorded ->
+            listOf(
+                "Workspace: ${workspace.workspace}",
+                "Workspace runtime: ${workspace.runtimeArchiveSha256.value ?: workspace.runtimeArchiveSha256.reason}",
+                "Workspace Host: ${workspace.host.value ?: workspace.host.reason}",
+            )
+    }
 
 private fun hostStatusLines(host: HostedServiceStatus): List<String> =
     when (host) {

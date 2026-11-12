@@ -329,6 +329,21 @@ class ManagedComposition:
 
 
 @dataclass(frozen=True)
+class ProductReplacement:
+    """Product selector publication uses the same Control reservation and rollback slots."""
+
+    management: Union[ManagedFileAbsent, ManagedFilePresent]
+    publicExecutable: Union[ManagedFileAbsent, ManagedFilePresent]
+    selectionSha256: str
+    previousManifestSha256: Optional[str]
+    phase: ManagedPhase = ManagedPhase.PREPARED
+    fence: Optional[Identity] = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "phase", _phase(self.phase))
+
+
+@dataclass(frozen=True)
 class Replacement:
     schemaVersion: int
     stage: ReplacementStage
@@ -337,6 +352,7 @@ class Replacement:
     previous: Union[NoPrevious, PhysicalPrevious, LegacyPrevious]
     reservation: Optional[ManagedReservation] = None
     composition: Optional[ManagedComposition] = None
+    product: Optional[ProductReplacement] = None
 
 
 class ManagedControlResult(str, Enum):

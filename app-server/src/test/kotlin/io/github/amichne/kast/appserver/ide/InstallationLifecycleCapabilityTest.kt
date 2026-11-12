@@ -2,7 +2,6 @@ package io.github.amichne.kast.appserver.ide
 
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.HostedContractDocument
-import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
@@ -87,10 +86,9 @@ class InstallationLifecycleCapabilityTest {
         val server = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
         val executor = Executors.newSingleThreadExecutor()
         try {
-            val home = Files.createDirectory(root.resolve("idea"))
-            val identity = identity(home, root)
+            val fixture = ManagedDeploymentFixture(root)
             val inspected =
-                inspected(home, identity, false, false)
+                inspected(fixture.idea, fixture.identity(), false, false)
                     .copy(
                         compatibility =
                             HostedCompatibilityDocument(
@@ -103,9 +101,9 @@ class InstallationLifecycleCapabilityTest {
                     )
             val socket =
                 io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
-                        root,
+                        fixture.home,
                         io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
-                        home.toString(),
+                        fixture.idea.toString(),
                     )
                     .resolve("host.sock")
             Files.createDirectories(socket.parent)
@@ -120,7 +118,7 @@ class InstallationLifecycleCapabilityTest {
                         requestId = "request",
                     )
                 else io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.Inspect
-            val result = IdeLifecycleClient(root, home).execute(request, "test")
+            val result = IdeLifecycleClient(fixture.home, fixture.idea, fixture.deployment).execute(request, "test")
             assertEquals(
                 if (present) IdeLifecycleResult.Blocked(IdeLifecycleFailure.CAPABILITY_MISMATCH) else inspected,
                 result,
@@ -129,6 +127,7 @@ class InstallationLifecycleCapabilityTest {
         } finally {
             server.close()
             executor.shutdownNow()
+            cleanupHostedEndpointFixture(root.resolve("state/home"))
             Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
         }
     }
@@ -143,8 +142,9 @@ class InstallationLifecycleCapabilityTest {
         val server = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
         val executor = Executors.newSingleThreadExecutor()
         try {
-            val home = Files.createDirectory(root.resolve("idea"))
-            val identity = identity(home, root)
+            val fixture = ManagedDeploymentFixture(root)
+            val home = fixture.idea
+            val identity = fixture.identity()
             val inspected = inspected(home, identity, refresh, prepared)
             val response =
                 when (command) {
@@ -156,7 +156,7 @@ class InstallationLifecycleCapabilityTest {
                 }
             val socket =
                 io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
-                        root,
+                        fixture.home,
                         io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
                         home.toString(),
                     )
@@ -169,7 +169,7 @@ class InstallationLifecycleCapabilityTest {
                 else listOf(IdeLifecycleCommand.Inspect)
             val script = expected.mapIndexed { index, request -> request to if (index == 0) inspected else response }
             val serving = executor.submit { serve(server, script, json) }
-            val actual = IdeLifecycleClient(root, home).manageInstallation(command)
+            val actual = IdeLifecycleClient(fixture.home, home, fixture.deployment).manageInstallation(command)
             assertEquals(
                 if (effectExpected) response else IdeLifecycleResult.Blocked(IdeLifecycleFailure.CAPABILITY_MISMATCH),
                 actual,
@@ -178,20 +178,10 @@ class InstallationLifecycleCapabilityTest {
         } finally {
             server.close()
             executor.shutdownNow()
+            cleanupHostedEndpointFixture(root.resolve("state/home"))
             Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
         }
     }
-
-    private fun identity(home: Path, root: Path): IdeHostRuntimeIdentity =
-        IdeHostRuntimeIdentity(
-            home.toString(),
-            root.resolve("profile").toString(),
-            42,
-            100,
-            "host",
-            IdeHostBuildIdentity("1.2.3", "a".repeat(40), "b".repeat(40)),
-            io.github.amichne.kast.protocol.contract.HostAutoReload.ENABLED,
-        )
 
     private fun inspected(
         home: Path,

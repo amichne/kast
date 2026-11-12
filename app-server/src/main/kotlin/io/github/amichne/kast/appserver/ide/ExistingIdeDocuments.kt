@@ -5,6 +5,7 @@ import com.networknt.schema.Specification
 import com.networknt.schema.SpecificationVersion
 import com.networknt.schema.dialect.Dialect
 import com.networknt.schema.keyword.NonValidationKeyword
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.EvidenceBasis
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement

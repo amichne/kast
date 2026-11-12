@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from installer_fixture import InstallerFixture, admitted_tools
 
-INSTALLER = Path(__file__).resolve().parent.parent / 'install.sh'
+INSTALLER = Path(__file__).resolve().parent / 'install-legacy.sh'
 
 class InstallerRemovalTest(unittest.TestCase):
     def setUp(self):

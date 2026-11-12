@@ -59,7 +59,6 @@ class DirectCatalogArgumentsTest {
             KastDirectToolSession(
                 catalog = listOf(tool),
                 root = { error("No root effect") },
-                start = { error("No preparation effect") },
                 invokePublic = {
                     calls.incrementAndGet()
                     error("No semantic effect")
@@ -85,7 +84,6 @@ class DirectCatalogArgumentsTest {
             KastDirectToolSession(
                 catalog = emptyList(),
                 root = { error("No root effect") },
-                start = { error("No preparation effect") },
                 invokePublic = { error("No semantic effect") },
                 queryCatalog = PublicToolCatalog.COMMON,
             )

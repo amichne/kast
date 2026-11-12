@@ -11,9 +11,9 @@ The JSON source also records each term's scope, reason, and source meaning.
 
 ### workspace container
 
-A named workspace record with its own trust grant and private Host profile. Gradle state stays private by default. Containers can share verified runtime bytes.
+An internal workspace record with an exact-root trust grant and private Host profile. Gradle state stays private by default. Records can share verified runtime bytes.
 
-Example: `kast container create --name backend` creates a workspace container for the current directory.
+Example: The first explicit semantic request creates the record for its exact workspace root; no public container command is required.
 Keep distinct: This is process and profile separation, not an OS sandbox or a Kotlin declaration container.
 
 Source evidence:
@@ -50,19 +50,19 @@ Source evidence:
 
 The part of Kast that provides the native command, coordinator, and agent adapters.
 
-Example: `kast upgrade --control-only` replaces Control while a compatible Host stays in place.
-Keep distinct: Host supplies the IDEA plugin and semantic runtime. Control and Host versions can differ.
+Example: `kast upgrade --channel preview` selects a complete product containing exact Control and Host components.
+Keep distinct: Host supplies the IDEA plugin and semantic runtime. A product record selects both components; users do not mix them independently.
 
 Source evidence:
 
 - [`Recorded release pair and compatibility`](https://github.com/amichne/kast/blob/52b5599de559d9b82f990bbd16b882762dbdf402/docs/public/reference/compatibility.mdx), checked 2026-10-15.
-- `docs/public/reference/compatibility.mdx`: `Recorded release pair and compatibility`.
+- `docs/public/reference/compatibility.mdx`: `Select a development build`.
 
 ### Host
 
 The part of Kast that provides the IntelliJ IDEA plugin and semantic runtime.
 
-Example: Restart IDEA after a Host update to load the new plugin.
+Example: The first explicit semantic request prepares a private Host for the exact workspace.
 Keep distinct: Control supplies the command and agent adapters. Host runs inside IDEA.
 
 Source evidence:

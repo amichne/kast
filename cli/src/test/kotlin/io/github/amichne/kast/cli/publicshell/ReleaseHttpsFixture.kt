@@ -18,7 +18,13 @@ import javax.net.ssl.SSLSocket
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 
-internal data class ReleaseHttpReply(val authority: String, val path: String, val body: String, val status: Int = 200)
+internal data class ReleaseHttpReply(
+    val authority: String,
+    val path: String,
+    val body: String,
+    val status: Int = 200,
+    val location: String = "http://example.invalid/forbidden",
+)
 
 /** An owned CONNECT proxy terminates real TLS for the two production release URLs. */
 internal class ReleaseHttpsFixture(
@@ -102,7 +108,7 @@ internal class ReleaseHttpsFixture(
                 it.outputStream.apply {
                     write(
                         ("HTTP/1.1 ${reply.status} Fixture\r\nContent-Length: ${body.size}\r\n" +
-                                "Location: https://example.invalid/forbidden\r\nConnection: close\r\n\r\n")
+                                "Location: ${reply.location}\r\nConnection: close\r\n\r\n")
                             .toByteArray()
                     )
                     write(body)

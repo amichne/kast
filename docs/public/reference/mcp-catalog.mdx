@@ -13,6 +13,10 @@ Codex, Copilot, and Pi use the same task catalog.
 The client starts the process in the exact repository or worktree.
 The server uses the installed Tool RPC without changes to its binary or wire shapes.
 
+Registration and catalog discovery do not grant trust or start a Host.
+The first explicit semantic request trusts its exact workspace root and prepares the managed Host used by CLI and tool RPC too.
+Use a workspace whose build code you trust. No desktop IDEA, user Python, or uv setup is required.
+
 ## Catalog
 
 `tools/list` supplies each task's name, description, input schema, and effect annotations.

@@ -17,75 +17,31 @@ internal fun perform(command: ManagementCommand, output: ManagementOutput = Mana
         }
     when (command) {
         is ManagementCommand.PublicQuery -> error("Public query dispatch already returned")
-        is ManagementCommand.Container ->
-            executeContainerCommand(command.command, root, Path.of("").toAbsolutePath(), environment, output)
-        is ManagementCommand.Status -> printManagementStatus(root, command.json, output)
+        is ManagementCommand.Status -> printManagementStatus(root, command.json, output, command.scope)
+        is ManagementCommand.Stop -> executeWorkspaceStop(root, command, environment, output)
         is ManagementCommand.Install ->
             presentProvisioning(installGuidance(root, Path.of(home), command.target, environment), command.json, output)
         is ManagementCommand.Versions -> printSelectableBuilds(command.json, output)
-        is ManagementCommand.Disconnect -> {
-            val removed = disconnectHarness(root, Path.of(home), command.harness)
-            output.message(
-                if (removed) "Removed ${command.harness.publicName} registration"
-                else "${command.harness.publicName} was not registered by this installation"
-            )
-        }
-        is ManagementCommand.Lifecycle -> {
-            val outcome = executeInstallationLifecycle(root, Path.of(home), environment, command.operation)
-            if (output.structured(command.json)) output.publish(outcome.asJson())
-            else
-                when (outcome) {
-                    is LifecycleOutcome.Stopped ->
-                        println("Kast shutdown verified; automatic restart and new tool calls are disabled")
-                    is LifecycleOutcome.Reinstalled ->
-                        println("Reinstalled Kast ${outcome.version}; reconnect affected harnesses")
-                    is LifecycleOutcome.Rejected ->
-                        System.err.println(
-                            "kast: ${outcome.stage}: ${outcome.failure}; ${lifecycleRecovery(outcome.failure)}"
-                        )
-                    is LifecycleOutcome.Pending ->
-                        System.err.println(
-                            "kast: installed ${outcome.version}; ${outcome.stage}: ${outcome.failure}; " +
-                                lifecycleRecovery(outcome.failure)
-                        )
-                }
-            if (outcome is LifecycleOutcome.Rejected || outcome is LifecycleOutcome.Pending) exitProcess(1)
-        }
-        is ManagementCommand.Reset -> {
+        is ManagementCommand.Upgrade -> upgradeSelectedBuild(root, Path.of(home), command, environment, output)
+        ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home), present = output::message)
+        is ManagementCommand.ForceUninstall -> {
             val scope =
                 when (val admitted = PublicResetScope.admit(root, environment)) {
                     is PublicResetAdmission.Admitted -> admitted.scope
                     is PublicResetAdmission.Rejected -> throw ManagementRejected("public-reset", admitted.failure.name)
                 }
-            val outcome =
-                when (command.operation) {
-                    ForceResetOperation.UNINSTALL -> resetPublicInstallation(scope)
-                    ForceResetOperation.REINSTALL -> reinstallPublicInstallation(scope, environment)
-                }
-            when (presentForceReset(outcome, command.json, output)) {
+            when (presentForceReset(resetPublicInstallation(scope), command.json, output)) {
                 ForceResetExit.COMPLETE -> Unit
                 ForceResetExit.INCOMPLETE -> exitProcess(1)
             }
         }
-        is ManagementCommand.Upgrade -> upgradeSelectedBuild(root, Path.of(home), command, environment, output)
-        ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home), present = output::message)
+        is ManagementCommand.UninstallHarness ->
+            when (val removal = uninstallHarness(root, Path.of(home), command.harness, environment)) {
+                is PluginObservation.Observed -> output.message("Removed ${command.harness.publicName} integration")
+                is PluginObservation.Rejected ->
+                    throw ManagementRejected("uninstall-harness", pluginFailure(removal.failure).name)
+            }
         ManagementCommand.Version -> println(MANAGEMENT_VERSION)
         ManagementCommand.Help -> Unit
     }
 }
-
-private fun lifecycleRecovery(failure: LifecycleFailure): String =
-    when (failure) {
-        LifecycleFailure.HOST_RESTART_REQUIRED -> "quit the selected IntelliJ IDEA, then repeat this command"
-        LifecycleFailure.REGISTRATION_REPAIR_REQUIRED -> "repair the recorded harness registration with kast install"
-        LifecycleFailure.OWNERSHIP_UNPROVEN,
-        LifecycleFailure.FENCE_REJECTED,
-        LifecycleFailure.CHILD_REJECTED,
-        LifecycleFailure.CHILD_DEADLINE_EXCEEDED,
-        LifecycleFailure.REQUEST_OWNERSHIP_UNPROVEN,
-        LifecycleFailure.REQUESTS_DID_NOT_RETIRE,
-        LifecycleFailure.HOST_OBSERVATION_REJECTED,
-        LifecycleFailure.INSTALLATION_REJECTED,
-        LifecycleFailure.FILESYSTEM_REJECTED ->
-            "inspect kast status --json; shutdown fencing and recovery evidence are retained"
-    }

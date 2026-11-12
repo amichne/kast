@@ -481,7 +481,7 @@ class RecoveryTest(unittest.TestCase):
         self.assertEqual(historical, module.load(bundle / 'receipt.json').plugin)
         self.assertNotIn('IDE_RESTART_REQUIRED', report['unresolved'])
 
-    def test_public_control_removal_preserves_populated_historical_host_receipt(self):
+    def test_legacy_control_removal_preserves_populated_historical_host_receipt(self):
         module = self.recovery_module()
         root = self.home / '.local/share/kast/installation'
         (root / 'bin').mkdir(parents=True)
@@ -515,7 +515,7 @@ class RecoveryTest(unittest.TestCase):
         uname = self.bin / 'uname'
         uname.write_text('#!/bin/sh\necho Darwin\n')
         uname.chmod(0o700)
-        result = subprocess.run(['/bin/bash', str(SCRIPT.parent.parent / 'install.sh'), 'uninstall',
+        result = subprocess.run(['/bin/bash', str(SCRIPT.with_name('install-legacy.sh')), 'uninstall',
             '--managed-registrations'], env=dict(self.environment, PATH=str(self.bin) + os.pathsep + self.environment['PATH'],
             XDG_DATA_HOME=str(self.home / 'data'), NO_COLOR='1'), capture_output=True, text=True, timeout=10)
         self.assertEqual(0, result.returncode, result.stderr)

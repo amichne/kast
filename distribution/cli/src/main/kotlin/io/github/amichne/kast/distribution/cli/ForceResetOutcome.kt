@@ -6,8 +6,7 @@ import kotlinx.serialization.encodeToString
 
 @Serializable
 internal enum class ForceResetOperation {
-    @SerialName("UNINSTALL_FORCE") UNINSTALL,
-    @SerialName("REINSTALL_FORCE") REINSTALL,
+    @SerialName("UNINSTALL_FORCE") UNINSTALL
 }
 
 @Serializable
@@ -16,27 +15,19 @@ internal enum class ForceResetStage {
     FENCE,
     DAEMONS,
     CLEANUP,
-    INSTALLATION,
-    ACTIVATION,
-    RECOVERY,
     FINAL_VERIFICATION,
 }
 
 @Serializable
 internal enum class ForceResetFailure {
     ROOT_REJECTED,
+    MANAGED_STATE_REQUIRES_UNINSTALL,
     RESET_BUSY,
     FENCE_REJECTED,
     LAUNCH_JOB_REJECTED,
     PROCESS_OBSERVATION_REJECTED,
     PROCESS_RETIREMENT_REJECTED,
-    ACTIVATION_REJECTED,
-    READINESS_REJECTED,
     FILESYSTEM_REJECTED,
-    INSTALLER_UNAVAILABLE,
-    INSTALLER_REJECTED,
-    INSTALLER_DEADLINE_EXCEEDED,
-    INSTALLATION_UNVERIFIED,
 }
 
 @Serializable
@@ -48,40 +39,12 @@ internal sealed interface ForceResetOutcome {
     }
 
     @Serializable
-    @SerialName("RESET_INSTALLED")
-    data class Installed(val installation: String, val version: String, val command: String) : ForceResetOutcome {
-        val operation = ForceResetOperation.REINSTALL
-    }
-
-    @Serializable
-    @SerialName("RESET_REINSTALLATION_PENDING")
-    data class Pending(
-        val installation: String,
-        val version: String,
-        val command: String,
-        val failure: ForceResetFailure,
-    ) : ForceResetOutcome {
-        val operation = ForceResetOperation.REINSTALL
-        val stage = ForceResetStage.FINAL_VERIFICATION
-    }
-
-    @Serializable
     @SerialName("RESET_RETAINED")
     data class Retained(
         val operation: ForceResetOperation,
         val stage: ForceResetStage,
         val failure: ForceResetFailure,
         val recoveryPath: String,
-    ) : ForceResetOutcome
-
-    @Serializable
-    @SerialName("RESET_RECOVERY_REQUIRED")
-    data class RecoveryRequired(
-        val operation: ForceResetOperation,
-        val stage: ForceResetStage,
-        val failure: ForceResetFailure,
-        val recoveryFailure: ForceResetFailure,
-        val root: String,
     ) : ForceResetOutcome
 
     @Serializable

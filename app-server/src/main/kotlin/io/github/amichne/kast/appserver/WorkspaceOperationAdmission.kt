@@ -5,7 +5,7 @@ import io.github.amichne.kast.protocol.contract.QueryFromDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 
 /** Restoring issued authority must never reload the model that granted it. */
-internal enum class WorkspaceOperationAdmission {
+enum class WorkspaceOperationAdmission {
     PREPARE,
     EXISTING_AUTHORITY,
 }
@@ -17,7 +17,7 @@ internal fun DaemonOperationCall.workspaceAdmission(): WorkspaceOperationAdmissi
         is DaemonOperationCall.PublicTool -> tool.canonical.workspaceAdmission()
     }
 
-private fun PublicToolCanonical.workspaceAdmission(): WorkspaceOperationAdmission =
+fun PublicToolCanonical.workspaceAdmission(): WorkspaceOperationAdmission =
     when (this) {
         is PublicToolCanonical.Source,
         is PublicToolCanonical.Change -> WorkspaceOperationAdmission.EXISTING_AUTHORITY

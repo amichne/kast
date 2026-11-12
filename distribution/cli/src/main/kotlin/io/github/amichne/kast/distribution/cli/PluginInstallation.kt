@@ -41,6 +41,10 @@ internal sealed interface PluginInstallFailure {
 
     @Serializable @SerialName("PROCESS_EXITED") data class ProcessExited(val exitCode: Int) : PluginInstallFailure
 
+    @Serializable
+    @SerialName("MCP_PREPARATION_REJECTED")
+    data class McpPreparationRejected(val reason: McpPreparationFailure) : PluginInstallFailure
+
     @Serializable @SerialName("OBSERVATION_REJECTED") data object ObservationRejected : PluginInstallFailure
 
     @Serializable @SerialName("MARKETPLACE_CONFLICT") data object MarketplaceConflict : PluginInstallFailure
@@ -193,6 +197,7 @@ private fun installAdmittedCodexPlugin(
         is PluginObservation.Rejected ->
             return PluginInstallOutcome.Rejected(PluginInstallStage.DEPENDENCY_PREPARATION, preparation.failure)
     }
+    retainProviderRegistration(root, ProviderHarness.CODEX, codexHome)
     if (marketplace == MarketplacePresence.ADMITTED && plugin == PluginPresence.CURRENT)
         return PluginInstallOutcome.AlreadyInstalled(PluginHarness.CODEX)
     if (marketplace == MarketplacePresence.OWNED_OTHER) {

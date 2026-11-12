@@ -12,6 +12,10 @@ hideFooterPagination: true
 
 Tool RPC carries JSON through an installed process. Its working directory selects the Kotlin repository or worktree.
 
+Catalog discovery is passive. The first explicit semantic request trusts the exact workspace root and prepares its managed Host.
+Each request owns its workspace lease; an idle transport session does not hold one.
+The runtime comes from the installed product, without release-server access or desktop IDEA fallback.
+
 <a id="discover" />
 
 ## Catalog command

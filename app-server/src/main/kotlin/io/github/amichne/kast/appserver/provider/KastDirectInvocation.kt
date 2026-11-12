@@ -3,12 +3,12 @@ package io.github.amichne.kast.appserver.provider
 import io.github.amichne.kast.appserver.core.BrokerInvocationContext
 import io.github.amichne.kast.appserver.core.ProviderCall
 import io.github.amichne.kast.appserver.core.ProviderFailureCode
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.runtime.BrokerInvocationApproval
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ApprovedProjectCloseInvocation
 import io.github.amichne.kast.protocol.contract.CanonicalOperation

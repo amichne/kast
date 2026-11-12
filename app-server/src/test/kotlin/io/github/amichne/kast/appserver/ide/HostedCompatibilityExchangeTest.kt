@@ -33,7 +33,7 @@ class HostedCompatibilityExchangeTest {
 
     @Test
     fun `absent recorded process with a removed project cannot block live host admission`() {
-        fixture.exchange(listOf("DESCRIBE"), compatibility) { _, root ->
+        fixture.exchange(listOf("DESCRIBE"), compatibility) { _, root, deployment ->
             val retired = ProcessBuilder("/bin/sh", "-c", "exit 0").start()
             assertEquals(0, retired.waitFor())
             assertEquals(false, ProcessHandle.of(retired.pid()).map { it.isAlive }.orElse(false))
@@ -57,7 +57,7 @@ class HostedCompatibilityExchangeTest {
             val admitted =
                 assertInstanceOf(
                     HostedServicesObservation.Admitted::class.java,
-                    observeRunningHostedServices(root.path),
+                    observeRunningHostedServices(root.path, deployment.configuration),
                 )
             assertEquals(listOf(root), admitted.hosts.map { it.root })
         }
@@ -65,7 +65,7 @@ class HostedCompatibilityExchangeTest {
 
     @Test
     fun `unrelated endpoint family cannot consume eligible project capacity or reach parsing`() {
-        fixture.exchange(listOf("DESCRIBE"), compatibility) { _, root ->
+        fixture.exchange(listOf("DESCRIBE"), compatibility) { _, root, deployment ->
             val base =
                 io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
                     root.path,
@@ -78,7 +78,7 @@ class HostedCompatibilityExchangeTest {
             val admitted =
                 assertInstanceOf(
                     HostedServicesObservation.Admitted::class.java,
-                    observeRunningHostedServices(root.path),
+                    observeRunningHostedServices(root.path, deployment.configuration),
                 )
             assertEquals(listOf(root), admitted.hosts.map { it.root })
         }
@@ -90,11 +90,11 @@ class HostedCompatibilityExchangeTest {
             compatibility.copy(
                 hostedContract = compatibility.hostedContract.copy(wireSchemaDigest = "sha256:" + "0".repeat(64))
             )
-        fixture.exchange(listOf("DESCRIBE"), changed) { _, root ->
+        fixture.exchange(listOf("DESCRIBE"), changed) { client, root, _ ->
             val events = ArrayList<HostedAdmissionEvidence>()
             assertEquals(
                 HostedServicesObservation.Rejected(ExistingIdeFailure.COMPATIBILITY_REJECTED),
-                observeRunningHostedServices(root.path, ProcessHostedEndpointOwnerProbe, events::add),
+                observeRunningHostedServices(root.path, ProcessHostedEndpointOwnerProbe, events::add, client),
             )
             assertEquals(
                 HostedAdmissionEvidence.Rejected(
@@ -108,9 +108,9 @@ class HostedCompatibilityExchangeTest {
 
     @Test
     fun `registered host status admits live evidence after an independent one shot client query`() {
-        fixture.exchange(listOf("DESCRIBE", "DESCRIBE"), compatibility) { oneShot, root ->
+        fixture.exchange(listOf("DESCRIBE", "DESCRIBE"), compatibility) { oneShot, root, deployment ->
             assertInstanceOf(ExistingIdeExchange.Received::class.java, oneShot.query(root, ExistingIdeOperation.Status))
-            val preparation = installedPreparation(root.path)
+            val preparation = installedPreparation(root.path, deployment)
             try {
                 val status =
                     assertInstanceOf(HostedServiceStatus.Compatible::class.java, preparation.hostedServices().single())
@@ -130,8 +130,8 @@ class HostedCompatibilityExchangeTest {
             compatibility.copy(
                 hostedContract = compatibility.hostedContract.copy(wireSchemaDigest = "sha256:" + "0".repeat(64))
             )
-        fixture.exchange(listOf("DESCRIBE"), changed) { _, root ->
-            val preparation = installedPreparation(root.path)
+        fixture.exchange(listOf("DESCRIBE"), changed) { _, root, deployment ->
+            val preparation = installedPreparation(root.path, deployment)
             try {
                 val status =
                     assertInstanceOf(
@@ -157,7 +157,7 @@ class HostedCompatibilityExchangeTest {
         }
     }
 
-    private fun installedPreparation(home: Path): InstalledWorkspacePreparation {
+    private fun installedPreparation(home: Path, deployment: ManagedDeploymentFixture): InstalledWorkspacePreparation {
         val installation = Files.createDirectory(home.resolve("installation"))
         for (name in listOf("bin", "lib", "share")) Files.createDirectory(installation.resolve(name))
         val executable = Files.writeString(installation.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
@@ -165,14 +165,22 @@ class HostedCompatibilityExchangeTest {
         val registry = WorkspaceEnrollmentStore(installation.resolve("config/workspaces.json"))
         assertInstanceOf(Refinement.Refined::class.java, registry.enroll(home))
         val options =
-            (InstalledCoordinatorConfiguration.admit(executable, home, emptyMap()) as Refinement.Refined).value
+            (InstalledCoordinatorConfiguration.admit(
+                    executable,
+                    home,
+                    mapOf(
+                        "KAST_INSTALL_IDEA_HOME" to deployment.idea.toString(),
+                        "KAST_MANAGED_HEADLESS_STATE" to deployment.state.toString(),
+                    ),
+                ) as Refinement.Refined)
+                .value
         val owner = (BrokerInstallationState.admit(installation) as Refinement.Refined).value
         return InstalledWorkspacePreparation(options, owner)
     }
 
     @Test
     fun `different implementation version is retained and operation follows admitted describe`() {
-        fixture.exchange(listOf("DESCRIBE", "CLASS_LOOKUP"), compatibility) { client, root ->
+        fixture.exchange(listOf("DESCRIBE", "CLASS_LOOKUP"), compatibility) { client, root, _ ->
             assertInstanceOf(ExistingIdeExchange.HostRejected::class.java, client.query(root, classes()))
             val observed =
                 assertInstanceOf(HostedServiceObservation.Compatible::class.java, client.latestObservation(root))
@@ -187,7 +195,7 @@ class HostedCompatibilityExchangeTest {
             compatibility.copy(
                 hostedContract = compatibility.hostedContract.copy(wireSchemaDigest = "sha256:" + "0".repeat(64))
             )
-        fixture.exchange(listOf("DESCRIBE"), changed) { client, root ->
+        fixture.exchange(listOf("DESCRIBE"), changed) { client, root, _ ->
             assertEquals(
                 ExistingIdeExchange.Rejected(ExistingIdeFailure.COMPATIBILITY_REJECTED),
                 client.query(root, classes()),
@@ -209,7 +217,8 @@ class HostedCompatibilityExchangeTest {
 
     @Test
     fun `socket successor after describe cannot receive an operation under prior admission`() {
-        fixture.exchange(listOf("DESCRIBE"), compatibility, replaceSocketBeforeDescribeReply = true) { client, root ->
+        fixture.exchange(listOf("DESCRIBE"), compatibility, replaceSocketBeforeDescribeReply = true) { client, root, _
+            ->
             assertEquals(
                 ExistingIdeExchange.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED),
                 client.query(root, classes()),
@@ -220,7 +229,7 @@ class HostedCompatibilityExchangeTest {
 
     @Test
     fun `older host missing contract evidence is rejected before semantic dispatch`() {
-        fixture.exchange(listOf("DESCRIBE"), compatibility, omitEvidence = true) { client, root ->
+        fixture.exchange(listOf("DESCRIBE"), compatibility, omitEvidence = true) { client, root, _ ->
             assertEquals(
                 ExistingIdeExchange.Rejected(ExistingIdeFailure.RESPONSE_REJECTED),
                 client.query(root, classes()),

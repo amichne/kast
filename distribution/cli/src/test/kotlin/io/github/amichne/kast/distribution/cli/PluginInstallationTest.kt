@@ -14,9 +14,9 @@ class PluginInstallationTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `fresh installation verifies marketplace and installed enabled plugin without a new receipt`() {
+    fun `fresh installation retains provider routing in the existing receipt`() {
         val root = pluginFixture(temporary)
-        val before = Files.readAllBytes(receiptPath(root)).toList()
+        val before = admittedReceipt(root)
         val marketplace = root.resolve("installation/$AGENT_TOOLS_RELATIVE_PATH")
         val executor =
             PluginScript(
@@ -33,7 +33,18 @@ class PluginInstallationTest {
             installCodexPlugin(root, temporary.toRealPath().resolve("home"), executor::execute),
         )
         executor.assertConsumed()
-        assertEquals(before, Files.readAllBytes(receiptPath(root)).toList())
+        assertEquals(
+            before.copy(
+                providers =
+                    listOf(
+                        ProviderRegistration(
+                            ProviderHarness.CODEX,
+                            temporary.toRealPath().resolve("home/.codex").toString(),
+                        )
+                    )
+            ),
+            admittedReceipt(root),
+        )
     }
 
     @Test

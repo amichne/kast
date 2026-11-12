@@ -1,11 +1,11 @@
 package io.github.amichne.kast.appserver
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.HostedServiceObservation
 import io.github.amichne.kast.appserver.ide.admitObservedHostedRoot
 import io.github.amichne.kast.distribution.contract.HostedRegistryFailure
 import io.github.amichne.kast.distribution.contract.HostedServiceStatus
 import io.github.amichne.kast.distribution.contract.HostedServiceUnavailableFailure
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 

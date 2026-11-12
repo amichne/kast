@@ -14,7 +14,7 @@ code_sources:
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/AgentSessionBootstrap.kt
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/CliRemoteClientHost.kt
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/admission/CodexHostExecutable.kt
-- path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/CanonicalRoot.kt
+- path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/CanonicalRoot.kt
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/BrokerFailureDocument.kt
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/copilot/CopilotFixtureProjection.kt
@@ -108,18 +108,20 @@ code_sources:
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/execution/AdmittedProjectReadExecution.kt
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/AdmittedHostedQuery.kt
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T10:38:11.930Z
+  - by: openwiki/0.9.0
+    at: 2026-11-12T20:28:55.635Z
 sources:
   - id: openwiki-source-48edfaeb8d917960adc80600
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
+  - id: openwiki-source-8f099dc46f272100d18b0f6f
+    resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/CanonicalRoot.kt
   - id: openwiki-source-7fa48d17b46dccf82f4b3238
     resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+generated: { by: "amp", at: "2026-11-12T20:28:55.635Z" }
 ---
 
 # Functional package coverage
@@ -143,6 +145,10 @@ IntelliJ adapters establish compiler facts under the original live workspace own
 The hosted runtime composes those adapters and owns final publication.
 Transport adapters admit public requests and preserve the resulting typed evidence.
 Distribution code owns installation and process lifecycle, outside semantic execution.
+
+`distribution/managed` owns `CanonicalRoot` for both management and transport consumers.
+Discovery resolves the nearest real Gradle settings root and stops at a nested checkout boundary.
+This identity is not a project trust grant or semantic readiness proof.
 
 Live topology dependencies support sound callback reuse inside the hosted runtime.
 Historical graph storage and graph queries form a separate path.
@@ -276,7 +282,7 @@ Directory indexes belong to OpenWiki and regenerate at finalization.
 - [AgentSessionBootstrap.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/core/AgentSessionBootstrap.kt)
 - [CliRemoteClientHost.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/CliRemoteClientHost.kt)
 - [CodexHostExecutable.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/host/admission/CodexHostExecutable.kt)
-- [CanonicalRoot.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/CanonicalRoot.kt)
+- [CanonicalRoot.kt](../../distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/CanonicalRoot.kt)
 - [FileThreadCatalogStore.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt)
 - [BrokerFailureDocument.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/codex/BrokerFailureDocument.kt)
 - [CopilotFixtureProjection.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/copilot/CopilotFixtureProjection.kt)

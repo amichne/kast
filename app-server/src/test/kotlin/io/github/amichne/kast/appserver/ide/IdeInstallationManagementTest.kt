@@ -31,7 +31,10 @@ class IdeInstallationManagementTest {
             val command = IdeLifecycleCommand.ResumeHost(inspected.host, "update")
             val expected = IdeLifecycleResult.HostResumed(inspected.host, "update")
             val finished = serve(listOf(IdeLifecycleCommand.Inspect to inspected, command to expected))
-            assertEquals(expected, IdeLifecycleClient(home, idea).manageInstallation(command))
+            assertEquals(
+                expected,
+                LegacyHostCleanupClient(home, idea).execute(command),
+            )
             finished()
         }
     }
@@ -42,9 +45,22 @@ class IdeInstallationManagementTest {
             val finished = serve(listOf(IdeLifecycleCommand.Inspect to inspected))
             assertEquals(
                 IdeLifecycleResult.Blocked(IdeLifecycleFailure.WRONG_HOST),
-                IdeLifecycleClient(home, idea).manageInstallation(IdeLifecycleCommand.ResumeHost("foreign", "update")),
+                LegacyHostCleanupClient(home, idea).execute(IdeLifecycleCommand.ResumeHost("foreign", "update")),
             )
             finished()
+        }
+    }
+
+    @Test
+    fun `legacy cleanup cannot prepare a workspace or reload a desktop host`() {
+        val client = LegacyHostCleanupClient(Path.of("/unused/home"), Path.of("/unused/idea"))
+        for (command in
+            listOf(
+                IdeLifecycleCommand.Open("host", "request", "test", "/workspace"),
+                IdeLifecycleCommand.SettleHostForReload("host", "update"),
+                IdeLifecycleCommand.RefreshHostBundle("host", "update"),
+            )) {
+            assertEquals(IdeLifecycleResult.Blocked(IdeLifecycleFailure.INVALID_REQUEST), client.execute(command))
         }
     }
 
@@ -99,6 +115,7 @@ class IdeInstallationManagementTest {
         } finally {
             listener.close()
             executor.shutdownNow()
+            cleanupHostedEndpointFixture(root)
             Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
         }
     }

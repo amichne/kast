@@ -25,10 +25,10 @@ code_sources:
 sources:
   - id: openwiki-source-c58b3f38ca46d44dd30a8771
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
-  - id: openwiki-source-32409ff9180fb1de21a3dea3
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
-  - id: openwiki-source-03a0b1a7c53feb2ca69eaad8
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
+  - id: openwiki-source-59b559d53d91096a82b485a2
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
+  - id: openwiki-source-a417b163db0bdf18fd3922c0
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpTransportRejection.kt
   - id: openwiki-source-1d161f3eb7933044519fd33a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - id: openwiki-source-d69d2f9483e3ef07d3d7af62
@@ -74,7 +74,7 @@ sources:
 generated: { by: "codex", at: "2026-11-12T06:36:59.233Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T06:38:10.825Z
+    at: 2026-11-12T22:37:40.805Z
 ---
 
 # Operation outcomes

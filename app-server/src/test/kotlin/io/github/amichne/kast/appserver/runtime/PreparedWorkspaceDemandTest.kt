@@ -2,12 +2,12 @@
 
 package io.github.amichne.kast.appserver.runtime
 
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
 import io.github.amichne.kast.appserver.ide.ExistingIdeClassName
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.HostedPresemanticRecovery
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class PreparedWorkspaceDemandTest {
-    private val root = CanonicalRoot(Path.of("/workspace"))
+    private val root = canonicalRootFixture(Path.of("/workspace"))
     private val target =
         IdeProjectTarget("00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002", "/workspace")
 
@@ -168,7 +168,7 @@ class PreparedWorkspaceDemandTest {
         assertEquals(1, queries)
         assertEquals(
             Refinement.Rejected(WorkspacePreparationFailure.CAPACITY_EXCEEDED),
-            preparations.prepare(CanonicalRoot(Path.of("/other"))),
+            preparations.prepare(canonicalRootFixture(Path.of("/other"))),
         )
         preparations.close()
     }
@@ -203,6 +203,50 @@ class PreparedWorkspaceDemandTest {
         assertEquals(WorkspaceDemandResult.Native(completed), result.await())
         assertEquals(2, opens)
         assertEquals(2, queries)
+        preparations.close()
+    }
+
+    @Test
+    fun `prepared request rejects another root and retired host without preparing again`() = runTest {
+        val selected = canonicalRootFixture(Path.of("/selected"))
+        val original = target.copy(root = selected.path.toString())
+        var observed = original
+        var opens = 0
+        var queries = 0
+        val preparations =
+            WorkspacePreparations(
+                this,
+                {
+                    opens++
+                    IdeLifecycleResult.Opened(original)
+                },
+            )
+        val native = ExistingIdeExchange.Rejected(ExistingIdeFailure.TRANSPORT_REJECTED)
+        val demand =
+            PreparedWorkspaceDemand(
+                preparations,
+                { inspected(observed) },
+                { workspace, _ ->
+                    assertEquals(original, workspace.target)
+                    queries++
+                    native
+                },
+            )
+        val admission = async { demand.prepare(selected) }
+        runCurrent()
+        val ready = (admission.await() as Refinement.Refined).value
+        assertEquals(WorkspaceDemandResult.Native(native), ready.query(selected, ExistingIdeOperation.Status))
+        assertEquals(
+            WorkspaceDemandResult.Rejected(
+                WorkspaceDemandFailure.Admission(root, WorkspacePreparationFailure.ROOT_REJECTED)
+            ),
+            ready.query(root, ExistingIdeOperation.Status),
+        )
+        observed = original.copy(host = "00000000-0000-0000-0000-000000000003")
+        val rejected = ready.query(selected, ExistingIdeOperation.Status) as WorkspaceDemandResult.Rejected
+        assertEquals(WorkspaceDemandCause.HostChanged, (rejected.failure as WorkspaceDemandFailure.Operation).cause)
+        assertEquals(1, opens)
+        assertEquals(1, queries)
         preparations.close()
     }
 

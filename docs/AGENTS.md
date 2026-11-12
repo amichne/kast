@@ -67,9 +67,10 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - Keep generated diagram snippets, SVG files, and `diagram-theme.css` with their source. Edit the shared renderer for SVG layout and colors. Edit `style.css` for figure layout.
 - The value explorer and README preview share `docs/tooling/value-journey` as their source. Run `npm run build --prefix docs/tooling/value-journey`. Commit both generated files.
 - Keep Guides, Architecture, and Reference visible in navigation. Group pages by reader goal.
-- Public setup starts with the remote installer's `--developer-latest --skip-codex-plugin` options. Use `kast upgrade --channel main --restart-ide` for updates.
+- Public setup starts with the remote installer's `--channel preview` option. Use `kast upgrade --channel preview` for updates; `main` remains a compatibility alias.
 - Use `kast install` for CLI guidance. Keep MCP setup explicit with `--mcp`. Do not restore retired connection commands.
-- Replace Kast-owned assets when necessary, even if active Kast sessions end. Keep the latest qualified development build as the installation target.
+- Describe one complete managed product, private workspace state, and exact-root trust on the first explicit semantic request. Hooks stay passive; stop is temporary and scoped.
+- Keep intended product behavior separate from source checks, native acceptance, and publication. Do not require a user desktop IDEA installation, archive import, Python, or uv for product setup.
 - Use `snippets/deeper-reading.mdx` for bottom links from core pages. `sidebar-toggle.js` owns the desktop toggle for Maple.
 - After a navigation edit, examine group controls, sidebar state, keyboard access, and the native mobile menu.
 - Use the pinned Vale command and checked-in rules from the root guide.

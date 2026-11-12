@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.AdmittedIdeHostCompatibility
 import io.github.amichne.kast.protocol.contract.HostProvenance
@@ -86,13 +87,33 @@ internal fun requiredHostedCompatibilityPolicy(): Refinement<HostedCompatibility
 }
 
 /** Select recorded project owners, then admit each actual live describe. No discovery protocol is added. */
-fun observeRunningHostedServices(home: Path): HostedServicesObservation =
-    observeRunningHostedServices(home, ProcessHostedEndpointOwnerProbe, JsonLineHostedAdmissionObserver)
+fun observeRunningHostedServices(
+    home: Path,
+    configuration: io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration,
+): HostedServicesObservation =
+    when (val selected = configuredSemanticDeployment(home, configuration)) {
+        is Refinement.Rejected -> HostedServicesObservation.Rejected(selected.failure)
+        is Refinement.Refined ->
+            observeRunningHostedServices(
+                home,
+                ProcessHostedEndpointOwnerProbe,
+                JsonLineHostedAdmissionObserver,
+                ExistingIdeSocketClient(
+                    home,
+                    configuration.readLimits,
+                    HOST_ADMISSION_EXCHANGE_MILLIS,
+                    configuration.debug,
+                    selected,
+                    ::requiredHostedCompatibilityPolicy,
+                ),
+            )
+    }
 
 internal fun observeRunningHostedServices(
     home: Path,
     ownerProbe: HostedEndpointOwnerProbe,
     observer: HostedAdmissionObserver,
+    client: ExistingIdeSocketClient = ExistingIdeSocketClient(home, exchangeMillis = HOST_ADMISSION_EXCHANGE_MILLIS),
 ): HostedServicesObservation {
     val evidence = BoundedHostedAdmissionObserver(observer)
     return try {
@@ -105,7 +126,7 @@ internal fun observeRunningHostedServices(
             rejectedHostedAdmission(evidence, HostedAdmissionStage.ENTRY_FAMILY, ExistingIdeFailure.HOST_UNAVAILABLE)
         else
             Files.newDirectoryStream(directory).use { entries ->
-                observeHostedEntries(home, directory, entries, ownerProbe, evidence)
+                observeHostedEntries(home, directory, entries, ownerProbe, evidence, client)
             }
     } catch (_: java.io.IOException) {
         rejectedHostedAdmission(evidence, HostedAdmissionStage.DESCRIPTOR_OWNER, ExistingIdeFailure.HOST_UNAVAILABLE)
@@ -115,3 +136,5 @@ internal fun observeRunningHostedServices(
         rejectedHostedAdmission(evidence, HostedAdmissionStage.DESCRIPTOR_OWNER, ExistingIdeFailure.DESCRIPTOR_REJECTED)
     }
 }
+
+private const val HOST_ADMISSION_EXCHANGE_MILLIS = 2_000L

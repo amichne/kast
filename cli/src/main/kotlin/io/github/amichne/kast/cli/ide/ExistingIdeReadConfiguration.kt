@@ -1,12 +1,12 @@
 package io.github.amichne.kast.cli.ide
 
-import io.github.amichne.kast.appserver.InstalledSavedConfigurationIngress
-import io.github.amichne.kast.appserver.SavedConfigurationIngress
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+import io.github.amichne.kast.distribution.managed.InstalledSavedConfigurationIngress
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 

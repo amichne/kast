@@ -2,6 +2,12 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationSource
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+import io.github.amichne.kast.distribution.managed.InstalledSavedConfigurationIngress
+import io.github.amichne.kast.distribution.managed.InstalledWorkspaceConfigurationIngress
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngressFailure
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngressRejection
+import io.github.amichne.kast.distribution.managed.SavedConfigurationObservation
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path

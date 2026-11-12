@@ -364,7 +364,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         source = self.source("1.2.3")
         selected = release.resolve_selection(None, None, None, source)
         assert isinstance(selected, release.StableSelection)
-        admitted = release.download_composition(selected, "262", self.stage, source)
+        admitted = release.stage_component_archives(selected, "262", self.stage, source)
         assert isinstance(admitted, release.AdmittedComposition)
         self.assertEqual(release.BuildIdentity("v1.2.3", "1.2.3", BUILD, TREE), admitted.identity)
         self.assertEqual(release.TrackStable(), admitted.policy)
@@ -376,7 +376,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         _ = self.main(source)
         selected = release.resolve_selection("main", None, None, source)
         assert isinstance(selected, release.MainSelection)
-        admitted = release.download_composition(selected, "263", self.stage, source)
+        admitted = release.stage_component_archives(selected, "263", self.stage, source)
         assert isinstance(admitted, release.AdmittedComposition), admitted
         self.assertEqual("kast-ide-hosted-v0.0.123-idea-263.zip", admitted.host_archive.name)
         self.assertEqual("kast-host-release-v0.0.123-idea-263.json", admitted.host_record.name)
@@ -390,7 +390,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         selected = release.resolve_selection("main", None, None, source)
         assert isinstance(selected, release.MainSelection)
         self.assertIsInstance(
-            release.download_composition(selected, "262", self.stage, source), release.Rejected
+            release.stage_component_archives(selected, "262", self.stage, source), release.Rejected
         )
 
     def test_changed_catalog_during_download_does_not_change_selection_or_build_provenance(
@@ -401,7 +401,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         selected = release.resolve_selection("main", None, None, source)
         assert isinstance(selected, release.MainSelection)
         source.change_catalog_on_download = True
-        admitted = release.download_composition(selected, "262", self.stage, source)
+        admitted = release.stage_component_archives(selected, "262", self.stage, source)
         assert isinstance(admitted, release.AdmittedComposition), admitted
         self.assertEqual(MAIN, admitted.identity.mainRevision)
         self.assertEqual(BUILD, admitted.identity.buildRevision)
@@ -418,7 +418,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         source = self.source("1.2.3")
         selected = release.resolve_selection(None, "1.2.3", None, source)
         assert isinstance(selected, release.StableSelection)
-        admitted = release.download_composition(selected, "262", self.stage, source)
+        admitted = release.stage_component_archives(selected, "262", self.stage, source)
         assert isinstance(admitted, release.AdmittedComposition)
         self.assertEqual(release.PinnedBuild(admitted.identity), admitted.policy)
         self.assertNotIn(release.STABLE_URL, source.calls)
@@ -426,7 +426,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
     def test_single_native_control_admits_its_query_launcher_without_jvm_libraries(self) -> None:
         source = self.source("1.2.3", unified=True)
         selected = release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK)
-        admitted = release.download_composition(selected, "262", self.stage, source)
+        admitted = release.stage_component_archives(selected, "262", self.stage, source)
         self.assertIsInstance(admitted, release.AdmittedComposition)
         self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
 
@@ -438,7 +438,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
             ):
                 source = self.source("1.2.3", marker=option != "marker", native=option != "native")
                 selected = release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK)
-                result = release.download_composition(selected, "262", Path(temporary), source)
+                result = release.stage_component_archives(selected, "262", Path(temporary), source)
                 assert isinstance(result, release.Rejected)
                 self.assertEqual(
                     release.Failure.INSTALLER_CONTRACT_UNSUPPORTED
@@ -451,7 +451,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
     def test_missing_old_control_record_rejects_with_installer_contract_reason(self) -> None:
         source = self.source("1.2.3")
         _ = source.assets.pop("kast-control-release-v1.2.3.json")
-        result = release.download_composition(
+        result = release.stage_component_archives(
             release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK),
             "262",
             self.stage,
@@ -463,7 +463,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
     def test_missing_platform_archive_preserves_the_prior_installation(self) -> None:
         source = self.source("1.2.3")
         _ = source.assets.pop("kast-control-v1.2.3-macos-aarch64.tar.gz")
-        result = release.download_composition(
+        result = release.stage_component_archives(
             release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK),
             "262",
             self.stage,
@@ -478,7 +478,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         source = self.source("0.0.123", source_tree="f" * 40)
         entry = self.main(source)
         selected = release.MainSelection(entry.identity(), release.TrackMain(), entry)
-        result = release.download_composition(selected, "262", self.stage, source)
+        result = release.stage_component_archives(selected, "262", self.stage, source)
         assert isinstance(result, release.Rejected)
         self.assertEqual(release.Failure.ARTIFACT_INVALID, result.reason)
         self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
@@ -512,7 +512,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
                     ),
                 )
                 selected = release.MainSelection(entry.identity(), release.TrackMain(), entry)
-                result = release.download_composition(selected, "262", Path(temporary), source)
+                result = release.stage_component_archives(selected, "262", Path(temporary), source)
                 assert isinstance(result, release.Rejected)
                 self.assertEqual(release.Failure.ARTIFACT_INVALID, result.reason)
                 self.assertFalse((Path(temporary) / "control").exists())
@@ -520,7 +520,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
     def test_checksum_failure_never_downloads_executables(self) -> None:
         source = self.source("1.2.3")
         source.assets["kast-control-release-v1.2.3.json.sha256"] = b"different\n"
-        result = release.download_composition(
+        result = release.stage_component_archives(
             release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK),
             "262",
             self.stage,
@@ -535,7 +535,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
             self.contract, runtimeProtocolIdentity="kast.ide-hosted.runtime.v999"
         )
         source = self.source("1.2.3")
-        result = release.download_composition(
+        result = release.stage_component_archives(
             release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK),
             "262",
             self.stage,

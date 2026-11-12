@@ -157,8 +157,8 @@ class AgentOnboardingTest(unittest.TestCase):
                 "@dataclass(frozen=True)\n"
                 "class HookAccepted:\n"
                 "    pass\n"
-                "assert sys.argv[1:5] == ['hook', 'session-start', '--wait', 'none']\n"
-                "assert sys.argv[5:] in (['--host', 'codex'], ['--host', 'copilot'])\n"
+                "assert sys.argv[1:4] == ['--internal-entrypoint=query', 'hook', 'session-start']\n"
+                "assert sys.argv[4:] in (['--host', 'codex'], ['--host', 'copilot'])\n"
                 "assert json.load(sys.stdin)['cwd']\n"
                 "print(json.dumps(asdict(HookAccepted())))\n"
             )
@@ -199,7 +199,7 @@ class AgentOnboardingTest(unittest.TestCase):
         hooks = json.loads((PLUGIN / "hooks/hooks.json").read_text())["hooks"]["SessionStart"]
         self.assertEqual(1, len(hooks))
         self.assertEqual(1, len(hooks[0]["hooks"]))
-        self.assertTrue(hooks[0]["hooks"][0]["command"].endswith("kast hook session-start --wait none --host codex"))
+        self.assertTrue(hooks[0]["hooks"][0]["command"].endswith("kast --internal-entrypoint=query hook session-start --host codex"))
         self.assertLessEqual(hooks[0]["hooks"][0]["timeout"], 90)
 
 

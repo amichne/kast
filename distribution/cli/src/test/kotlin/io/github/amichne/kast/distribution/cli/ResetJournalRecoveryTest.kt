@@ -31,9 +31,8 @@ class ResetJournalRecoveryTest {
             forceResetInstallation(
                 root,
                 home(),
-                emptyMap(),
                 ForceResetOperation.UNINSTALL,
-                ForceResetExecution(runtime, forbiddenInstaller(), {}),
+                ForceResetExecution(runtime, {}),
             )
         runtime.assertConsumed()
         assertEquals(ForceResetOutcome.Removed(root.toString()), outcome)
@@ -137,41 +136,51 @@ class ResetJournalRecoveryTest {
     }
 
     @Test
-    fun `erased capability reserves staging once and cannot repeat destructive effects`() {
-        val root = root()
-        ErasedResetFixture.create(root, home()).use { fixture ->
-            var calls = 0
-            val installer = ForceReinstaller { _, _, _ ->
-                calls++
-                FreshResetResult.Rejected(ForceResetFailure.INSTALLER_REJECTED)
-            }
-            assertEquals(
-                ResetStaging.Rejected(ForceResetFailure.INSTALLER_REJECTED),
-                StagedReset.stage(fixture.erased, home(), emptyMap(), installer),
-            )
-            assertEquals(
-                ResetStaging.Rejected(ForceResetFailure.RESET_BUSY),
-                StagedReset.stage(fixture.erased, home(), emptyMap(), installer),
-            )
-            assertEquals(1, calls)
+    fun `removal rejects a replacement fence without deleting it`() {
+        ErasedResetFixture.create(root(), home()).use { fixture ->
+            val erased = fixture.erased
+            val marker = erased.fence.marker
+            val content = Files.readString(marker)
+            Files.move(marker, marker.resolveSibling("prior-marker"))
+            Files.writeString(marker, content)
+
+            assertEquals(ResetEffect.Rejected(ForceResetFailure.FENCE_REJECTED), erased.fence.liftRemoved(erased))
+            assertEquals(content, Files.readString(marker))
         }
     }
 
     @Test
-    fun `staging cannot substitute a qualified payload from another installation`() {
+    fun `consumed erasure cannot remove a recreated root or lift its fence`() {
         val root = root()
-        val foreign = temporary.toRealPath().resolve("foreign")
-        prepareFreshPayload(foreign)
-        val report = temporary.resolve("foreign-report.json")
-        writeStagedReport(report)
-        val prepared = FreshResetInstallation.admit(foreign, report) as FreshResetResult.Prepared
         ErasedResetFixture.create(root, home()).use { fixture ->
+            Files.createDirectories(root)
+            Files.writeString(root.resolve("sentinel"), "keep")
+
             assertEquals(
-                ResetStaging.Rejected(ForceResetFailure.INSTALLATION_UNVERIFIED),
-                StagedReset.stage(fixture.erased, home(), emptyMap(), ForceReinstaller { _, _, _ -> prepared }),
+                ResetErasure.Rejected(ForceResetFailure.RESET_BUSY),
+                ErasedReset.erase(fixture.erased.quiescent),
             )
-            assertTrue(Files.exists(foreign.resolve("bin/kast")))
+            assertEquals(
+                ResetEffect.Rejected(ForceResetFailure.RESET_BUSY),
+                fixture.erased.fence.liftRemoved(fixture.erased),
+            )
+            assertEquals("keep", Files.readString(root.resolve("sentinel")))
             assertTrue(Files.exists(fixture.erased.fence.marker))
+        }
+    }
+
+    @Test
+    fun `removal cannot lift another roots fence`() {
+        val foreign = temporary.toRealPath().resolve("foreign")
+        ErasedResetFixture.create(root(), home()).use { selected ->
+            ErasedResetFixture.create(foreign, home()).use { other ->
+                assertEquals(
+                    ResetEffect.Rejected(ForceResetFailure.RESET_BUSY),
+                    other.erased.fence.liftRemoved(selected.erased),
+                )
+                assertTrue(Files.exists(selected.erased.fence.marker))
+                assertTrue(Files.exists(other.erased.fence.marker))
+            }
         }
     }
 
@@ -225,6 +234,4 @@ class ResetJournalRecoveryTest {
     private fun root(): Path = temporary.toRealPath().resolve("kast")
 
     private fun selected(root: Path) = (ForceResetRoot.admit(root, home()) as ForceResetRootAdmission.Selected).root
-
-    private fun forbiddenInstaller(): ForceReinstaller = ForceReinstaller { _, _, _ -> error("unexpected installer") }
 }

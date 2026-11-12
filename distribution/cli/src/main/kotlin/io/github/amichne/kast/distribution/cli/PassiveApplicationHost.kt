@@ -111,9 +111,28 @@ internal fun readApplicationHost(
     root: Path,
     home: Path,
     observeProcess: (Long) -> ApplicationProcessObservation = ::observeApplicationProcess,
+): Observation<LoadedApplicationHost> =
+    observeSelectedApplication(home, observeProcess) {
+        readApplicationSelection(selectedInstallation(root).resolve("config/selected-ide.json"), home)
+    }
+
+internal fun readWorkspaceApplicationHost(container: AdmittedContainer): Observation<LoadedApplicationHost> {
+    val observed =
+        observeSelectedApplication(container.home, ::observeApplicationProcess) {
+            readApplicationSelection(container.profile.resolve("config/selected-ide.json"), container.home)
+        }
+    return if (observed.value?.runtimeIdentity?.mode == ApplicationHostMode.DESKTOP)
+        unavailable(ApplicationHostFailure.DESCRIPTOR_REJECTED)
+    else observed
+}
+
+private fun observeSelectedApplication(
+    home: Path,
+    observeProcess: (Long) -> ApplicationProcessObservation,
+    readSelection: () -> ApplicationSelection,
 ): Observation<LoadedApplicationHost> {
     return try {
-        when (val selection = readApplicationSelection(root, home)) {
+        when (val selection = readSelection()) {
             is ApplicationSelection.Admitted -> readApplicationAdvertisement(selection, home, observeProcess)
             is ApplicationSelection.Rejected -> unavailable(selection.reason)
         }
@@ -142,8 +161,7 @@ private sealed interface ApplicationSelection {
     data class Rejected(val reason: ApplicationHostFailure) : ApplicationSelection
 }
 
-private fun readApplicationSelection(root: Path, home: Path): ApplicationSelection {
-    val record = selectedInstallation(root).resolve("config/selected-ide.json")
+private fun readApplicationSelection(record: Path, home: Path): ApplicationSelection {
     if (!physicalFile(record)) return ApplicationSelection.Rejected(ApplicationHostFailure.SELECTION_UNAVAILABLE)
     val attributes = Files.readAttributes(record, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
     val raw =

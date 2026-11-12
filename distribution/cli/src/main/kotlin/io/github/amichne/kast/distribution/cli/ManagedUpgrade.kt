@@ -79,7 +79,11 @@ internal fun executeManagedUpgrade(
             is SelectionAdmission.Rejected -> return ManagedUpgradeOutcome.Rejected(result.reason)
         }
     val selection =
-        when (val result = resolveBuildSelection(request, execution.readRelease)) {
+        when (
+            val result =
+                if (request == BuildRequest.Repair) installedRepairSelection(root)
+                else resolveBuildSelection(request, execution.readRelease)
+        ) {
             is SelectionAdmission.Admitted -> result.value
             is SelectionAdmission.Rejected -> return ManagedUpgradeOutcome.Rejected(result.reason)
         }
@@ -92,8 +96,6 @@ internal fun executeManagedUpgrade(
         Files.writeString(captured, managementJson.encodeToString(selection))
         val options = buildList {
             addAll(listOf("--resolved-selection", captured.toString(), "--install-root", root.toString()))
-            command.ideaHome?.let { addAll(listOf("--idea-home", it)) }
-            if (command.restartIde) add("--restart-ide")
             addAll(upgradeOutputOptions(command))
         }
         invokeUpgradeInstaller(bridge, options, installation, home, environment, execution)

@@ -326,6 +326,11 @@ def compose(
         "lib/pty4j/",
         "lib/async-profiler/",
         "lib/native/",
+        "license/",
+        "licenses/",
+        "legal/",
+        "Resources/license/",
+        "Resources/licenses/",
     )
     paths.update(name for name in by_path if name.startswith(prefixes))
     chosen: list[_VerifiedFile] = []
@@ -460,7 +465,7 @@ def main() -> int:
             args.source_home,
             args.source_manifest,
             args.source_manifest_sha256,
-            Path(__file__).resolve().parent.parent / "install.sh",
+            Path(__file__).resolve().parent / "install-legacy.sh",
         )
     except (OSError, ValueError, zipfile.BadZipFile) as error:
         result = CompositionRejected(CompositionFailure.EFFECT_FAILED, type(error).__name__)

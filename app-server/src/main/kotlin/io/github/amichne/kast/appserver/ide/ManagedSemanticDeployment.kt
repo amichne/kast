@@ -11,7 +11,7 @@ internal fun configuredSemanticDeployment(
     configuration: ResolvedKastConfiguration,
 ): Refinement<SelectedLifecycleDeployment, ExistingIdeFailure> =
     when (val state = configuration.managedHeadlessState) {
-        ConfigurationPathSelection.OwnerDefault -> Refinement.Refined(SelectedLifecycleDeployment.Desktop)
+        ConfigurationPathSelection.OwnerDefault -> Refinement.Rejected(ExistingIdeFailure.CONFIGURATION_REJECTED)
         is ConfigurationPathSelection.Selected ->
             when (val idea = configuration.selectedIdeHome) {
                 ConfigurationPathSelection.OwnerDefault ->
@@ -32,7 +32,6 @@ internal fun admitSemanticDeployment(
     descriptor: ExistingIdeDescriptor,
 ): Refinement<ExistingIdeDescriptor, ExistingIdeFailure> =
     when (deployment) {
-        SelectedLifecycleDeployment.Desktop -> Refinement.Refined(descriptor)
         is SelectedLifecycleDeployment.Headless -> {
             val identity = descriptor.application?.runtimeIdentity
             if (

@@ -1,11 +1,11 @@
 package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.appserver.DaemonOperationFailure
-import io.github.amichne.kast.appserver.ide.CanonicalRoot
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.CanonicalRootFailure
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.cli.direct.ClientInstallationFailure
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleStage
@@ -92,7 +92,7 @@ private val hookJson = Json {
 }
 private const val MAX_HOOK_EVENT_BYTES = 65536
 
-/** Registration selects a host envelope and background admission; explicit waiting keeps the same lifecycle owner. */
+/** Session hooks are passive. Only explicit workspace waiting reaches the preparation owner. */
 internal fun preparePublicHook(
     argv: List<String>,
     input: InputStream,
@@ -117,7 +117,14 @@ internal fun preparePublicHook(
         }
     return when (val root = FilesystemCanonicalRootDiscovery.discover(arguments.workspace)) {
         is CanonicalRootDiscovery.Rejected -> hookRootRejected(root.failure, arguments.host, waitCommand)
-        is CanonicalRootDiscovery.Discovered -> prepareProjectHook(root.root, arguments, diagnostic, prepare)
+        is CanonicalRootDiscovery.Discovered ->
+            if (waitCommand) prepareProjectHook(root.root, arguments, diagnostic, prepare)
+            else
+                hookContext(
+                    arguments.host,
+                    "Kast defers workspace preparation to the first semantic query. " +
+                        "Session hooks do not grant trust or start a Host.",
+                )
     }
 }
 
@@ -133,7 +140,7 @@ private const val HOOK_HELP =
         "kast workspace wait [--workspace ABSOLUTE_PATH] [--wait indefinite|TIMEOUT_MS]\n" +
         "A positive timeout is in milliseconds. Indefinite waiting has no preparation deadline.\n" +
         "Omitted --wait uses KAST_WORKSPACE_PREPARATION_WAIT and saved configuration (default 1020000 ms).\n" +
-        "Hooks use --wait none to return preparation state immediately.\n" +
+        "Session hooks do not grant trust or start a Host; legacy hook --wait selections have no effect.\n" +
         "Waiting stops on cancellation, native failure, editor closure, or a changed host.\n" +
         "Without --workspace, session-start reads cwd from stdin; workspace wait uses the current directory."
 

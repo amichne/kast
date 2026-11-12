@@ -312,6 +312,7 @@ class CandidateFixture(unittest.TestCase):
 
     def test_tree_equivalent_candidate_keeps_original_build_identity(self) -> None:
         prepared = self.prepare()
+        assert isinstance(prepared.build, catalog.Build)
         self.assertEqual(BUILD, prepared.build.buildRevision)
         self.assertEqual(MAIN, prepared.build.mainRevision)
         self.assertEqual(publisher.digest(self.record), prepared.build.candidate.sha256)
@@ -366,6 +367,138 @@ class CandidateFixture(unittest.TestCase):
                         publisher.Stage.IMMUTABLE_RELEASE, catalog.Failure.ASSET_MISMATCH
                     ),
                     publisher.publish(prepared, remote),
+                )
+                script.consumed()
+
+    def test_interrupted_draft_upload_resumes_only_missing_bytes_before_publication(self) -> None:
+        prepared = self.prepare()
+        assets = tuple(
+            RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes)
+            for asset in prepared.assets
+        )
+        route = f"releases/tags/{prepared.build.releaseTag}"
+        partial = Release(prepared.build.releaseTag, BUILD, assets[:-1], draft=True)
+        complete = replace(partial, assets=assets)
+        script = Script(
+            Step("GET", route, response(partial)),
+            Step("GET", route, response(complete)),
+            Step("GET", route, response(replace(complete, draft=False))),
+        )
+        effects: list[str] = []
+
+        def run(arguments: Sequence[str], payload: bytes | None) -> publisher.ProcessResult:
+            if tuple(arguments[:3]) == ("gh", "release", "upload"):
+                self.assertEqual(
+                    [
+                        "gh",
+                        "release",
+                        "upload",
+                        prepared.build.releaseTag,
+                        str(prepared.assets[-1].source),
+                        "--repo",
+                        REPOSITORY,
+                    ],
+                    list(arguments),
+                )
+                effects.append("upload")
+                # A lost response is not proof that the upload failed.
+                return publisher.ProcessResult(1, b"")
+            if tuple(arguments[:3]) == ("gh", "release", "edit"):
+                self.assertEqual(
+                    [
+                        "gh",
+                        "release",
+                        "edit",
+                        prepared.build.releaseTag,
+                        "--repo",
+                        REPOSITORY,
+                        "--draft=false",
+                        "--latest=false",
+                    ],
+                    list(arguments),
+                )
+                effects.append("publish")
+                return publisher.ProcessResult(0, b"")
+            return script.run(arguments, payload)
+
+        before = tuple(publisher.digest(asset.source) for asset in prepared.assets)
+        result = publisher.RemotePublisher(REPOSITORY, prepared.build, run).release(prepared)
+        self.assertEqual(catalog.CommitResult.COMMITTED, result)
+        self.assertEqual(["upload", "publish"], effects)
+        self.assertEqual(before, tuple(publisher.digest(asset.source) for asset in prepared.assets))
+        script.consumed()
+
+    def test_new_release_stays_draft_when_upload_is_incomplete_and_retry_finishes(self) -> None:
+        prepared = self.prepare()
+        assets = tuple(
+            RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes)
+            for asset in prepared.assets
+        )
+        route = f"releases/tags/{prepared.build.releaseTag}"
+        empty = Release(prepared.build.releaseTag, BUILD, (), draft=True)
+        partial = replace(empty, assets=assets[:1])
+        complete = replace(empty, assets=assets)
+        script = Script(
+            Step("GET", route, publisher.ProcessResult(1, b"HTTP/2.0 404\n\n{}")),
+            Step("GET", route, response(empty)),
+            Step("GET", route, response(partial)),
+            Step("GET", route, response(partial)),
+            Step("GET", route, response(complete)),
+            Step("GET", route, response(replace(complete, draft=False))),
+            Step("GET", route, response(replace(complete, draft=False))),
+        )
+        effects: list[tuple[str, ...]] = []
+
+        def run(arguments: Sequence[str], payload: bytes | None) -> publisher.ProcessResult:
+            if tuple(arguments[:2]) == ("gh", "release"):
+                effects.append(tuple(arguments))
+                if arguments[2] == "create":
+                    self.assertIn("--draft", arguments)
+                    self.assertFalse(
+                        any(str(asset.source) in arguments for asset in prepared.assets)
+                    )
+                elif arguments[2] == "upload":
+                    self.assertNotIn("--clobber", arguments)
+                elif arguments[2] != "edit":
+                    self.fail(f"unexpected release action: {arguments}")
+                # An ambiguous process failure always requires observation, never blind replay.
+                return publisher.ProcessResult(1, b"")
+            return script.run(arguments, payload)
+
+        remote = publisher.RemotePublisher(REPOSITORY, prepared.build, run)
+        self.assertEqual(catalog.Failure.REMOTE_UNAVAILABLE, remote.release(prepared))
+        self.assertEqual(["create", "upload"], [effect[2] for effect in effects])
+        self.assertEqual(catalog.CommitResult.COMMITTED, remote.release(prepared))
+        self.assertEqual(["create", "upload", "upload", "edit"], [effect[2] for effect in effects])
+        self.assertEqual(
+            tuple(str(asset.source) for asset in prepared.assets[1:]),
+            effects[2][4:-2],
+        )
+        # A retry after publication performs no write at all.
+        self.assertEqual(catalog.CommitResult.COMMITTED, remote.release(prepared))
+        self.assertEqual(4, len(effects))
+        script.consumed()
+
+    def test_conflicting_draft_never_uploads_or_publishes(self) -> None:
+        prepared = self.prepare()
+        assets = tuple(
+            RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes)
+            for asset in prepared.assets
+        )
+        draft = Release(prepared.build.releaseTag, BUILD, assets, draft=True)
+        for rejected in (
+            replace(draft, target_commitish=MAIN),
+            replace(draft, assets=(replace(assets[0], digest="sha256:" + "f" * 64),)),
+            replace(draft, assets=(replace(assets[0], name="foreign.zip"),)),
+            replace(draft, assets=(replace(assets[0], state="new"),)),
+        ):
+            with self.subTest(rejected=rejected):
+                script = Script(Step("GET", f"releases/tags/{draft.tag_name}", response(rejected)))
+                self.assertEqual(
+                    catalog.Failure.ASSET_MISMATCH,
+                    publisher.RemotePublisher(REPOSITORY, prepared.build, script.run).release(
+                        prepared
+                    ),
                 )
                 script.consumed()
 
@@ -464,21 +597,11 @@ class CandidateFixture(unittest.TestCase):
         )
         return result, uploaded
 
-    def test_stable_upload_contains_the_complete_admitted_asset_inventory(self) -> None:
+    def test_legacy_asset_inventory_cannot_publish_a_complete_product(self) -> None:
         result, uploaded = self.run_stable_publisher()
-        self.assertEqual(0, result.returncode, result.stderr)
-        arguments = uploaded.read_text().splitlines()
-        self.assertEqual(["release", "create", f"v{VERSION}"], arguments[:3])
-        observed = {
-            Path(value.split("#", 1)[0]).name for value in arguments[3 : arguments.index("--repo")]
-        }
-        archives = {f"kast-runtime-v{VERSION}-{target}.zip" for target in RUNTIME_TARGETS}
-        self.assertEqual(
-            {asset.name for asset in self.value.assets}
-            | archives
-            | {name + ".sha256" for name in archives},
-            observed,
-        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("complete immutable build record required", result.stderr)
+        self.assertFalse(uploaded.exists())
 
     def test_unqualified_runtime_rejects_before_release_creation(self) -> None:
         for fault, reason in (

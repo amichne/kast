@@ -20,21 +20,21 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["developer_catalog.py", "publish_developer.py", "qualified_runtime_assets.py", "test_developer_catalog.py", "test_developer_publication.py"]
-extraPaths = ["../ci"]
+include = ["developer_catalog.py", "publish_developer.py", "product_candidate.py", "product_producer.py", "test_product_producer.py", "test_product_candidate.py", "qualified_runtime_assets.py", "test_developer_catalog.py", "test_developer_publication.py"]
+extraPaths = ["../ci", "../../../packaging"]
 reportMatchNotExhaustive = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["**/developer_catalog.py", "**/publish_developer.py", "**/qualified_runtime_assets.py", "**/test_developer_catalog.py", "**/test_developer_publication.py"]
+include = ["**/developer_catalog.py", "**/publish_developer.py", "**/product_candidate.py", "**/product_producer.py", "**/test_product_producer.py", "**/test_product_candidate.py", "**/qualified_runtime_assets.py", "**/test_developer_catalog.py", "**/test_developer_publication.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --import-mode=importlib -ra"
-pythonpath = [".", "../ci"]
+pythonpath = [".", "../ci", "../../../packaging"]
 testpaths = ["."]
 python_files = ["test_*.py"]

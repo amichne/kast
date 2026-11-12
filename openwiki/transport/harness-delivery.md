@@ -25,8 +25,6 @@ code_sources:
 sources:
   - id: openwiki-source-0f47b5cd95dd664d8cb6e398
     resource: repo://agent-tools/onboarding.template.md
-  - id: openwiki-source-4f236e61dfb77c185728cfd7
-    resource: repo://agent-tools/skills/kast/SKILL.md
   - id: openwiki-source-20e85ee434d9dedec13e85f7
     resource: repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - id: openwiki-source-784aad5c07345736dc67037f
@@ -37,34 +35,36 @@ sources:
     resource: repo://cli/src/main/js/query-presentation.mjs
   - id: openwiki-source-e1bc625b6dcbcb48924bf9b4
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
-  - id: openwiki-source-1ed2e320fcb442a426adfffa
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookArguments.kt
   - id: openwiki-source-80668d86bee80c4df5797fa0
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt
   - id: openwiki-source-268c7ef978bdd77cf949ddc4
     resource: repo://cli/src/main/resources/query-delivery.schema.json
-  - id: openwiki-source-d7ab95cd1102533a511cd820
-    resource: repo://cli/src/test/js/native-onboarding.test.mjs
   - id: openwiki-source-ffafcc2936c3877f4b78db93
     resource: repo://copilot/extension.mjs
+  - id: openwiki-source-fe95fd24c4ce348de98bb357
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/HarnessUninstall.kt
   - id: openwiki-source-4ea7092ecf62f475b11026f1
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt
-  - id: openwiki-source-552a7d3faff1f8e990a51c96
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt
-  - id: openwiki-source-03ffc32a0ca502ab67c54b25
-    resource: repo://install.sh
+  - id: openwiki-source-cfc838a1a4168e12e43d463d
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationDisconnection.kt
+  - id: openwiki-source-a62e12ff14ead337deede61b
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt
+  - id: openwiki-source-7391bd7fab188bde9fd1c847
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt
   - id: openwiki-source-c3a707e4531bdd548867dd23
     resource: repo://packaging/generate-public-query.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
+  - id: openwiki-source-7f5792fd36f508c6577b3562
+    resource: repo://packaging/managed_product_installation.py
   - id: openwiki-source-32e1c94e6e0a0ff71b06b0e3
     resource: repo://pi/extension.ts
   - id: openwiki-source-6b18658d32b10e2368e7dc20
     resource: repo://pi/mcp-extension.ts
-generated: { by: "codex", at: "2026-11-10T17:49:52.067Z" }
+generated: { by: "amp", at: "2026-11-12T22:16:35.341Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T06:30:47.924Z
+    at: 2026-11-12T22:16:35.341Z
 ---
 
 # Agent context and harness delivery
@@ -75,31 +75,43 @@ The canonical `skills/kast` directory supplies native CLI guidance and its local
 Codex and Copilot plugins expose that skill through their native plugin discovery.
 Pi uses its native skill directory.
 `kast install <harness>` admits only the selected manifest-owned installed bundle.
-The default generated composition includes preparation hooks without automatic MCP registration or Python scripts.
+The default generated composition includes passive session hooks without automatic MCP registration or Python scripts.
 
-`--mcp` selects the complete optional composition and prepares its Python dependency environment explicitly.
-CLI and MCP use the same persistent IDEA Host and semantic contracts.
+`--mcp` selects the complete optional composition and prepares its owned Python environment explicitly.
+The Pi registration invokes the installed private interpreter; it does not require a user `uv` command.
+CLI and MCP use the same managed workspace admission, private Host, and semantic contracts.
 A provider cache must match selected resource bytes. Equal versions alone do not establish that match.
 Control assembly stamps the skill front matter with the Control version.
-The installer refreshes owned harness guidance after Control replacement commits.
+Legacy and managed installer completion refresh owned harness guidance through the same capability-marked branch.
+`ProductInstalled` carries notices and enters that branch after activation or recovery.
+Failed or interrupted refresh preserves `HARNESS_REFRESH_REQUIRED`; success clears that notice without discarding other notices.
+Source-level refresh integration does not establish that a live provider loaded the new guidance.
 A standalone export copies the complete canonical skill directory without provider configuration.
 After setup or a core update, start a fresh agent session and obey the result's harness-refresh notice.
 
 `onboarding.template.md` owns the optional MCP brief.
 The public-query generator derives enum lists, the schema, and the example array from `tools.schema.json`.
-The generated compositions select native preparation hooks.
+The generated compositions select native passive session hooks.
 Legacy Python hook resources remain source material outside that default composition.
 
 The optional Pi extension registers Kast through native `registerMcpServer`.
-Its session-start event starts `kast hook session-start` asynchronously for the exact workspace.
-The generated hooks select `--wait none` and return a preparing, ready, or rejected state.
-Their model context reports the preparation mode and commands for bounded or indefinite waiting.
-Pi includes this state before each model request and ignores replies from an older session.
-Preparation failure emits a bounded warning.
+Its session-start event invokes `kast --internal-entrypoint=query hook session-start` asynchronously for the exact workspace.
+This path returns context without granting trust, creating workspace state, or starting a Host.
+Legacy hook wait options have no preparation effect. The explicit internal `workspace wait` path remains a distinct preparation caller.
+Pi includes the returned context before each model request and ignores replies from an older session.
+Context rejection emits a bounded warning, not a readiness result.
 It reads bounded local context directly with Node and adds that brief before model requests.
 A rejected resource produces one warning while later turns and native MCP remain available.
-Its context path starts no Python or uv process. The explicitly selected MCP server uses its separate transport process.
+Its context path starts no Python or uv process. The explicitly selected MCP server uses its separate transport process and private interpreter.
 Pi owns MCP discovery, permissions, and connection lifetime.
+
+These are source-level contracts. Generated hook fixtures do not establish live provider behavior or managed native qualification.
+Full product removal now invokes receipted Pi guidance cleanup through `IntegrationDisconnection`, preserving foreign siblings.
+The management receipt records CODEX/COPILOT routing intent before provider mutation; provider inventories still establish resource ownership.
+Ordinary uninstall removes recorded provider resources before Host retirement, and conflicts preserve the Host.
+The registration lock protects a final empty-record check through payload removal.
+Explicit harness removal forgets only the selected routing record after verified cleanup.
+These integrated source paths do not establish native provider cleanup or product qualification.
 
 ## Optional RPC adapters consume one catalog
 

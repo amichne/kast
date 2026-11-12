@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import com.github.ajalt.clikt.core.Context
+import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -9,7 +10,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import sun.misc.Signal
 
-internal val publicQueryNamespaces = setOf("query", "result", "source", "diagnostic", "describe", "hook", "workspace")
+internal val publicQueryNamespaces = setOf("query", "result", "source", "diagnostic", "describe")
 
 internal class PublicQueryNamespace(private val namespace: String) : ManagementNode(namespace) {
     override fun help(context: Context) =
@@ -34,19 +35,18 @@ internal fun runInstalledPublicQuery(
     environment: Map<String, String>,
     output: ManagementOutput = ManagementOutput(),
 ): Int =
-    routedContainerQuery(arguments, directory, environment, output)
-        ?: when (val launcher = selectPublicQueryLauncher(environment)) {
-            is PublicQueryLauncher.Admitted ->
-                try {
-                    runOwnedPublicQueryChild(listOf(launcher.path.toString()) + arguments, directory, environment)
-                } catch (_: IOException) {
-                    publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE, output)
-                } catch (_: RuntimeException) {
-                    publishPublicQueryStartupFailure(PublicQueryStartupFailure.INVOCATION_FAILED, output)
-                }
-            PublicQueryLauncher.Unavailable ->
+    when (val launcher = selectPublicQueryLauncher(environment)) {
+        is PublicQueryLauncher.Admitted ->
+            try {
+                runOwnedPublicQueryChild(listOf(launcher.path.toString()) + arguments, directory, environment)
+            } catch (_: IOException) {
                 publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE, output)
-        }
+            } catch (_: RuntimeException) {
+                publishPublicQueryStartupFailure(PublicQueryStartupFailure.INVOCATION_FAILED, output)
+            }
+        PublicQueryLauncher.Unavailable ->
+            publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE, output)
+    }
 
 internal sealed interface PublicQueryLauncher {
     class Admitted private constructor(val path: Path) : PublicQueryLauncher {
@@ -137,6 +137,8 @@ internal class OwnedChildSession {
 
     fun cancel(signal: PublicQuerySignal) = owner.cancel(signal)
 
+    fun admitContinuation(): Refinement<Unit, PublicQuerySignal> = owner.admitContinuation()
+
     fun run(
         command: List<String>,
         directory: Path,
@@ -176,6 +178,15 @@ private sealed interface PublicQueryChildState {
 
 private class PublicQueryChildOwner {
     private var state: PublicQueryChildState = PublicQueryChildState.Pending
+
+    @Synchronized
+    fun admitContinuation(): Refinement<Unit, PublicQuerySignal> =
+        when (val current = state) {
+            is PublicQueryChildState.Cancelled -> Refinement.Rejected(current.signal)
+            PublicQueryChildState.Pending,
+            PublicQueryChildState.Reaped,
+            is PublicQueryChildState.Running -> Refinement.Refined(Unit)
+        }
 
     fun run(
         output: OwnedChildOutput,

@@ -1,11 +1,10 @@
 import org.gradle.api.tasks.testing.Test
 
 plugins {
+    `java-test-fixtures`
     id("kast.runtime-serialization-app")
     id("kast.role.cli")
 }
-
-val repositoryRoot = project.isolated.rootProject.projectDirectory
 
 group = "${providers.gradleProperty("GROUP").get()}.distribution"
 
@@ -29,6 +28,9 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.jupiter.engine)
     testRuntimeOnly(libs.junit.platform.launcher)
+    testFixturesApi(project(":kernel"))
+    testFixturesApi(project(":distribution:managed"))
+    testFixturesImplementation(libs.serialization.json)
 }
 
 tasks.named<Test>("test") {
@@ -57,11 +59,3 @@ kotlin.sourceSets.main {
 }
 
 tasks.named("compileKotlin") { dependsOn(generateVersion) }
-
-// Recovery never executes an unqualified script from the installation being erased.
-tasks.named<ProcessResources>("processResources") {
-    from(repositoryRoot.file("install.sh")) {
-        into("management")
-        rename { "bootstrap-install.sh" }
-    }
-}

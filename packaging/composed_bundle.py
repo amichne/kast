@@ -516,7 +516,7 @@ def pack_bundle(
         (
             ("composition-manifest.json", receipt),
             ("bootstrap.zip", bootstrap),
-            ("install.sh", repository / "install.sh"),
+            ("install.sh", repository / "packaging/install-legacy.sh"),
         )
     )
     files.extend(

@@ -1,6 +1,9 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
+import io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.net.StandardProtocolFamily
@@ -38,7 +41,7 @@ internal class HostedSocketExchangeFixture {
         metadata: HostedCompatibilityDocument,
         omitEvidence: Boolean = false,
         replaceSocketBeforeDescribeReply: Boolean = false,
-        assert: (ExistingIdeSocketClient, CanonicalRoot) -> Unit,
+        assert: (ExistingIdeSocketClient, CanonicalRoot, ManagedDeploymentFixture) -> Unit,
     ) =
         exchange(
             script =
@@ -53,18 +56,27 @@ internal class HostedSocketExchangeFixture {
 
     fun exchange(
         script: HostedSocketExchangeScript,
-        clientFactory: (Path) -> ExistingIdeSocketClient = { ExistingIdeSocketClient(it, exchangeMillis = 2_000) },
-        assert: (ExistingIdeSocketClient, CanonicalRoot) -> Unit,
+        clientFactory: (ManagedDeploymentFixture) -> ExistingIdeSocketClient = {
+            ExistingIdeSocketClient(it.home, it.configuration)
+        },
+        assert: (ExistingIdeSocketClient, CanonicalRoot, ManagedDeploymentFixture) -> Unit,
     ) {
-        val home = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "khx-")
+        val temporary = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "khx-")
         val executor = Executors.newSingleThreadExecutor()
         val successors = ArrayList<ServerSocketChannel>()
         try {
+            val deployment = ManagedDeploymentFixture(temporary)
+            val home = deployment.home
             Files.writeString(home.resolve("settings.gradle.kts"), "")
-            val root = CanonicalRoot(home)
+            val root = canonicalRootFixture(home)
             val peer =
                 peerFixture(
                     home = home,
+                    application =
+                        IdeHostApplicationAdvertisement(
+                            deployment.identity("00000000-0000-0000-0000-000000000001"),
+                            script.describeMetadata.first(),
+                        ),
                     metadata = ArrayDeque(script.describeMetadata),
                     omitEvidence = script.omitEvidence,
                     replaceSocket = script.replaceSocketBeforeDescribeReply,
@@ -79,7 +91,7 @@ internal class HostedSocketExchangeFixture {
                         }
                     }
 
-                assert(clientFactory(home), root)
+                assert(clientFactory(deployment), root, deployment)
                 assertEquals(script.expected, worker.get(5, TimeUnit.SECONDS))
                 assertEquals(emptyList<HostedCompatibilityDocument>(), peer.metadata.toList())
                 successors.forEach { assertNull(it.accept(), "unadmitted successor received a connection") }
@@ -87,12 +99,14 @@ internal class HostedSocketExchangeFixture {
         } finally {
             executor.shutdownNow()
             successors.forEach { it.close() }
-            Files.walk(home).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+            cleanupHostedEndpointFixture(temporary.resolve("state/home"))
+            Files.walk(temporary).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
         }
     }
 
     private fun peerFixture(
         home: Path,
+        application: IdeHostApplicationAdvertisement,
         metadata: ArrayDeque<HostedCompatibilityDocument>,
         omitEvidence: Boolean,
         replaceSocket: Boolean,
@@ -112,7 +126,7 @@ internal class HostedSocketExchangeFixture {
             )
         Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
         val socket = directory.resolve("host.sock")
-        val descriptor = Descriptor(home.toString(), socket.toString())
+        val descriptor = Descriptor(home.toString(), socket.toString(), application = application)
         Files.writeString(directory.resolve("endpoint.json"), json.encodeToString(serializer<Descriptor>(), descriptor))
         return PeerFixture(
             metadata = metadata,
@@ -185,6 +199,8 @@ internal class HostedSocketExchangeFixture {
         val host: String = "00000000-0000-0000-0000-000000000002",
         val querySchema: String = "kast.query.run.v10",
         val operations: List<String> = operations(),
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val application: IdeHostApplicationAdvertisement? = null,
     )
 
     @Serializable

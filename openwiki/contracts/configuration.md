@@ -14,7 +14,9 @@ code_sources:
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
   - path: distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
-  - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt
+  - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstalledWorkspaceConfigurationIngress.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationValidation.kt
@@ -49,64 +51,40 @@ code_sources:
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/ModelInputFailure.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt
 sources:
-  - id: openwiki-source-f4cafbcbf8d6282990c24a8a
-    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt
   - id: openwiki-source-23800b7a30d62f442e3b56ae
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt
-  - id: openwiki-source-b490c970be179fe22cf68e37
-    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt
-  - id: openwiki-source-b49f63bec354bf14b4c28692
-    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt
-  - id: openwiki-source-2a9daaac1604f238ef4c63fb
-    resource: repo://build.gradle.kts
-  - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
-    resource: repo://cli/build.gradle.kts
-  - id: openwiki-source-b5958cf441728188e2493589
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
   - id: openwiki-source-0934da5590f6da4c7a9cd885
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationMigration.kt
-  - id: openwiki-source-5f9ee1677dd5352d4bd1273d
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationPublicEndpointSelection.kt
-  - id: openwiki-source-211f90f77f217ad3273b0d4f
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - id: openwiki-source-db07d240b5fb033a752d32dc
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdapter.kt
+  - id: openwiki-source-f2c689f11ca37c5559bce314
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
   - id: openwiki-source-fb61cc58d2fa4809ff4d73bb
     resource: repo://cli/src/main/native-launchers/bin/kast-mcp
+  - id: openwiki-source-ecb21af09f4a49f9e40342dd
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
   - id: openwiki-source-7cd4eb997a7878eca6390142
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
-  - id: openwiki-source-ae4b8d5875d797e7d0c59ae5
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
   - id: openwiki-source-fd4148a6ba46f590f554b6b6
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
-  - id: openwiki-source-681368e4942d2fb35f298a68
-    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - id: openwiki-source-a788214182281b80d302305d
     resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/ReadLimitConfigurationTest.kt
   - id: openwiki-source-40ab5c6f8a11b724c001ed82
     resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
+  - id: openwiki-source-d615ad8f008f0449dbc09311
+    resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstalledWorkspaceConfigurationIngress.kt
   - id: openwiki-source-821af660abbe3507ea0b79ee
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessInstallation.kt
+  - id: openwiki-source-0f233df83b3fe87ab9547161
+    resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt
   - id: openwiki-source-8677e434adb584035406f54a
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
-  - id: openwiki-source-9fc90fe80de60424a80bdcee
-    resource: repo://distribution/managed/src/test/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallationTest.kt
-  - id: openwiki-source-03ffc32a0ca502ab67c54b25
-    resource: repo://install.sh
-  - id: openwiki-source-4070dc53852de69cdff3bd47
-    resource: repo://packaging/install-checkout.sh
-  - id: openwiki-source-37ffb827b915bda4bcca9865
-    resource: repo://packaging/install-local.sh
-  - id: openwiki-source-621afc296584eb4217553339
-    resource: repo://packaging/managed_headless.py
-  - id: openwiki-source-25977fc13c4ddf2c0840d6fd
-    resource: repo://packaging/test-install-checkout.py
-generated: { by: "pi", at: "2026-11-11T10:38:11.930Z" }
+generated: { by: "amp", at: "2026-11-12T21:24:19.786Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T14:25:07.841Z
+    at: 2026-11-12T22:50:57.382Z
 ---
 
 # Installation configuration
@@ -158,7 +136,7 @@ force removal of finite variants or precise schema metadata.
 
 `ConfigurationSchemaDocument` defines the shared document. The CLI-owned `InstalledConfigurationSchema` is the sole catalogue generator and includes operational limits from protocol, broker, installation, and CLI owners.
 
-The native management command uses two derived installer inputs: `KAST_MANAGEMENT_CHANNEL` selects the installed release channel during executable publication, and `KAST_MANAGEMENT_REPORT_PATH` carries the private installer activation report to upgrade and pinned reinstall. They are owned by `:distribution:cli` and are not user configuration settings.
+The native management command uses derived installer inputs, not user configuration settings. Exact repair selects the recorded complete product through `InstalledProductSelection`; it does not cold-stage a Control-only reinstall.
 
 The generated snapshot includes the four `EXECUTION_MAX_*` ceilings for time,
 work, results and returned bytes, each defaulting to 2,147,483,646. It also
@@ -189,7 +167,7 @@ The [native qualification](../../docs/reviews/concurrent-semantic-reads.md) moti
 Saturation returns a finite admission rejection when a connection
 has reached the application; the OS backlog is a separate finite capacity.
 
-The existing `KAST_INSTALL_IDEA_HOME` selection also identifies the lifecycle host. Installation saves that home in its environment and a derived `config/selected-ide.json` receipt containing the bundle and real executable (or a finite resolution failure). These are derived observations, not independently configurable launch paths. Each explicit open examines product metadata and the executable for reviewed `262.*` and `263.*` installations. Inspection and installation never launch IDEA.
+Managed admission derives the selected IDEA home from the installed product and workspace generation. It does not discover a user's desktop installation. The launch adapter still validates product metadata and executable containment for supported `262.*` and `263.*` installations; metadata admission is not native qualification.
 
 The catalogue rejects removed isolated-runtime setup inputs as `UNKNOWN_KEY` at every source: `KAST_NETWORK_CONFIG`, `KAST_TRUST_DONOR_JAVA_HOME`, `KAST_IDE_CONFIG_HOME`, `KAST_INSTALL_RUNTIME_ARCHIVE`, `KAST_INSTALL_RUNTIME_SHA256`, `KAST_RUNTIME_BASE_URL`, `KAST_LOCAL_RUNTIME_ARCHIVE`, and `KAST_SEMANTIC_RUNTIME_ARCHIVE`. Remove these assignments from saved configuration and the calling environment. The catalogue no longer advertises indexer transport limits or derived JVM settings owned by the retired indexer and workspace importer.
 
@@ -212,45 +190,33 @@ paths keep their HOME-derived proofs in typed request values.
 The derived `KAST_INSTALL_PROFILE` accepts only persistent. Session installation
 is retired, and checkout session requests reject before Gradle or installation
 effects. `KAST_INSTALL_ROOT` and `KAST_BIN_DIR` are derived bindings, not saved
-user settings. Explicit staging qualifies the replacement payload through the existing lifecycle owner.
-Completion removes the exact owned fence without service activation. It does not create another installation.
+user settings. These legacy adapter bindings do not select another public installation.
 
-The private daemon entry point is a declared raw-environment ingress owner. It examines managed readiness inputs and the saved-configuration rejection marker before coordinator admission. Its installed launcher selects the daemon mode in the shared native executable. The installed MCP process is also a declared ingress owner. It resolves the selected installation and IDEA host from saved configuration for each session. After exact Gradle-root discovery, the first valid modern request or legacy initialization starts workspace preparation through that selected host. Direct MCP file refresh and one-call change reuse the session's selected host and exact root. The harness-neutral tool RPC uses that same direct tool composition and selected configuration. These launchers add no saved configuration setting or Codex App Server request.
+The private daemon remains a declared raw-environment ingress owner. Public CLI, MCP, and tool RPC instead share managed request admission. MCP initialization is passive: the first explicit semantic request selects the exact canonical root and its private Host state. Retained reads require an existing record instead of creating a trust grant. These launchers add no Codex App Server request.
 The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, bootstrap, or repair to the existing owners.
 
-Component selection belongs to installation ingress: `KAST_INSTALL_CONTROL_ONLY` selects a control-only upgrade and `KAST_HOST_VERSION` selects host provenance only for a paired or host installation. Local checkout routing keeps `KAST_LOCAL_COMPONENT`, `KAST_LOCAL_PROFILE`, and `KAST_LOCAL_HOST_RELEASE_RECORD`. Checkout Control-only assembly builds and forwards only the Control payload and clears any inherited `KAST_HOST_VERSION` before invoking the public installer. Host and paired checkout assembly keep their generated Host version. Control-only replacement keeps the admitted saved configuration and workspace registration; it starts fresh control state and session ownership.
-
-Exact-version reinstall cold-stages only Control with `--stage-only`, then the existing fenced lifecycle owner activates it. Staging needs no Host artifact and cannot be combined with the bounded `--control-only` upgrade, whose activation and live host checks are necessary.
-
-The native private-installer boundary removes inherited Host-version and installation selectors, retains ordinary process inputs, and supplies its owned report destination. After admitting installation ownership, install and uninstall explicitly forward that selected root; a foreign ambient root cannot redirect those effects. The recorded public command destination remains a separate publication receipt fact and never selects another installation.
-
-The local staged-product adapter delegates Java selection to the public installer,
-which derives Java from the admitted IntelliJ home. `KAST_LOCAL_JAVA_EXECUTABLE`
-and `KAST_LOCAL_JAVA_HOME` are removed from the catalogue and reject as
-`UNKNOWN_KEY` through every configuration source. `installLocal` supplies
-neither input. The assembled-product acceptance runner retains its separate
-`KAST_ACCEPTANCE_JAVA_EXECUTABLE` binding.
-
-The checkout installer admits the selected IDEA bundled JBR before Gradle and scopes Java to its children.
-Admission needs an executable and exactly one fully quoted `JAVA_VERSION` declaration with a numeric feature of at least 25.
-Duplicate declarations, missing quotes, trailing text, and incompatible runtime environments reject with repair guidance.
-Ambient Java does not select that runtime.
 Shipped Control launchers select modes in one native executable and need no JVM or bundled JVM libraries.
 The launchers pass `HOME` and `TMPDIR` as explicit native system properties when those variables contain values.
 
 ## Managed headless selection
 
-`KAST_MANAGED_HEADLESS_STATE` selects an explicit absolute directory for a managed headless Host.
-The installation and coordinator consume this sensitive setting through the existing configuration catalogue.
-Its private HOME must equal the selected directory plus `/home`.
+`ManagedWorkspaceQuery` selects the installed product locally, without release-server acquisition or desktop fallback.
+It rejects an inherited `KAST_MANAGED_HEADLESS_STATE` override. The admitted workspace generation supplies that internal setting and its private HOME.
+The private HOME must equal the selected state directory plus `/home`.
 The selected IDEA distribution, its bundled JBR, and its assembly record must pass admission before lifecycle or semantic access.
-An invalid explicit selection rejects without desktop fallback.
-The assembler creates a wrapper that supplies this setting and the private HOME.
-It does not grant project trust or workspace readiness.
+An explicit semantic request can create the exact-root trust record. Discovery, status, and session hooks cannot.
+
+`distribution/managed` owns saved configuration ingress for management and transport consumers.
+`InstalledWorkspaceConfigurationIngress` merges the selected installation file with `config/workspaces/<root-digest>/environment`.
+It checks physical roots and existing path components before bounded reads. Missing optional files mean absent configuration; unreadable or aliased files reject.
+This inspection does not register a workspace. `ContainerPreparationConfiguration` maps its failure into managed request admission.
 
 Gradle uses the private HOME's `.gradle` directory by default.
 A saved `state/gradle-home.json` can select an existing canonical directory instead.
 Malformed, aliased, or unavailable selections reject; admission does not replace them with a default.
+Workspace creation uses resolved `GRADLE_USER_HOME` when supplied. The launch environment keeps inherited credentials; private state is not an OS sandbox.
+
+These are source-level contracts. Native qualification and complete product admission remain separate gates; see [release qualification](../distribution/release-candidates-and-promotion.md).
 
 ## Imported model inputs
 

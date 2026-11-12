@@ -14,11 +14,15 @@ import sys
 import tarfile
 import tempfile
 import zipfile
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
+import composed_bundle as bundle
+import managed_product
+import managed_release as release
+from component_probe import ComponentHarness
 from composed_bundle import (
     BundleFailure,
     BundleRejected,
@@ -39,6 +43,7 @@ from managed_headless import (
     select_assembly_components,
     unpack_archive,
 )
+from managed_release import NativeCompositionEvidence
 
 if TYPE_CHECKING:
     from composed_host import CompositionRejected
@@ -131,9 +136,12 @@ class ReleasePacked:
 class QualificationReceipt:
     sourceRevision: str
     bundleSha256: str
+    harnessSha256: str
     probe: ProbeReceipt
     containers: ContainerProbeReceipt | None = None
     qualification: Literal["COMPLETE"] = "COMPLETE"
+    qualificationStage: Literal["COMPONENT_NATIVE"] = "COMPONENT_NATIVE"
+    composition: NativeCompositionEvidence | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,6 +164,12 @@ class LinuxPackage:
 class LinuxSupportPrepared:
     output: str
     sourceSuite: Literal["ubuntu-jammy"]
+    packages: tuple[LinuxPackage, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class LinuxSupportManifest:
+    sourceSuite: str
     packages: tuple[LinuxPackage, ...]
 
 
@@ -254,7 +268,7 @@ def assemble_release(
         return source
     observe(ReleaseStage.DONOR, StageOutcome.COMPLETE)
     observe(ReleaseStage.INVENTORY, StageOutcome.STARTED)
-    installer = REPOSITORY / "install.sh"
+    installer = REPOSITORY / "packaging/install-legacy.sh"
     inventory = select_assembly_components(source, admitted, installer)
     if isinstance(inventory, Rejected):
         observe(ReleaseStage.INVENTORY, StageOutcome.REJECTED)
@@ -300,6 +314,11 @@ def assemble_release(
     if isinstance(runtime, (BundleRejected, Rejected)):
         observe(ReleaseStage.BUNDLE, StageOutcome.REJECTED)
         return runtime
+    from runtime_base import split
+
+    with tempfile.TemporaryDirectory(prefix=".split-", dir=root) as temporary:
+        _ = split(Path(runtime.archive), path, target, REPOSITORY / "packaging", Path(temporary))
+    packed = PackedBundle(str(path), sha256(path), path.stat().st_size)
     result = ReleasePacked(revision, version, target, packed)
     _ = (output / "assembly.json").write_text(json.dumps(asdict(result), indent=2) + "\n")
     observe(ReleaseStage.BUNDLE, StageOutcome.COMPLETE)
@@ -340,8 +359,77 @@ def qualify_release(
     evidence: Path,
     sandbox: Path | None = None,
     runtime: RuntimeCandidate | None = None,
+    harness: Path | None = None,
+    harness_sha256: str | None = None,
 ) -> QualificationReceipt | ReleaseRejected | BundleRejected:
-    """Run the exact archive installer before native fixture effects."""
+    from runtime_base import project_native, read_reference
+
+    if runtime is None or read_reference(runtime.archive) is None:
+        return _qualify_release(
+            archive=archive,
+            expected=expected,
+            version=version,
+            revision=revision,
+            root=root,
+            fixture=fixture,
+            evidence=evidence,
+            sandbox=sandbox,
+            runtime=runtime,
+            harness=harness,
+            harness_sha256=harness_sha256,
+        )
+    if sha256(runtime.archive) != runtime.sha256 or sha256(archive) != expected:
+        return BundleRejected(BundleFailure.DIGEST_MISMATCH, "split qualification inputs")
+    with tempfile.TemporaryDirectory(prefix="kast-native-composition-") as temporary:
+        native_runtime, native_bundle, composition = project_native(
+            runtime.archive, archive, Path(temporary).resolve()
+        )
+        runtime_digest, bundle_digest = sha256(native_runtime), sha256(native_bundle)
+        result = _qualify_release(
+            archive=native_bundle,
+            expected=bundle_digest,
+            version=version,
+            revision=revision,
+            root=root,
+            fixture=fixture,
+            evidence=evidence,
+            sandbox=sandbox,
+            runtime=RuntimeCandidate(native_runtime, runtime_digest),
+            harness=harness,
+            harness_sha256=harness_sha256,
+        )
+        if not isinstance(result, QualificationReceipt):
+            return result
+        if result.containers is None or result.containers.runtimeSha256 != runtime_digest:
+            return BundleRejected(BundleFailure.DIGEST_MISMATCH, "native composition proof")
+        qualified = replace(
+            result,
+            bundleSha256=expected,
+            composition=NativeCompositionEvidence(
+                composition.base.sha256, runtime_digest, bundle_digest, runtime.sha256
+            ),
+        )
+        _ = (evidence / "qualification.json").write_text(
+            json.dumps(asdict(qualified), indent=2) + "\n"
+        )
+        return qualified
+
+
+def _qualify_release(
+    *,
+    archive: Path,
+    expected: str,
+    version: str,
+    revision: str,
+    root: Path,
+    fixture: Path,
+    evidence: Path,
+    sandbox: Path | None = None,
+    runtime: RuntimeCandidate | None = None,
+    harness: Path | None = None,
+    harness_sha256: str | None = None,
+) -> QualificationReceipt | ReleaseRejected | BundleRejected:
+    """Qualify exact components without claiming installed-product admission."""
     observe(ReleaseStage.QUALIFICATION, StageOutcome.STARTED)
     if (
         not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version)
@@ -360,36 +448,79 @@ def qualify_release(
     if isinstance(entry, BundleRejected):
         observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
         return entry
-    evidence.mkdir(parents=True)
-    with tempfile.TemporaryDirectory(prefix="kast-qualify-") as temporary:
-        work = Path(temporary).resolve()
-        bootstrap = work / "setup-kast.pyz"
-        _ = bootstrap.write_bytes(entry)
-        installed = subprocess.run(
-            [
-                sys.executable,
-                "-I",
-                str(bootstrap),
-                "--archive",
-                str(archive),
-                "--archive-sha256",
-                expected,
-                "--version",
-                version,
-                "--root",
-                str(root),
-            ],
-            cwd=work,
-            env={"PATH": os.defpath, "HOME": str(work), "TMPDIR": str(work)},
-            capture_output=True,
-            timeout=1800,
-            check=False,
-        )
-    _ = (evidence / "installation.json").write_bytes(installed.stdout)
-    _ = (evidence / "installation.stderr").write_bytes(installed.stderr)
-    if installed.returncode != 0:
+    if (
+        runtime is None
+        or harness is None
+        or harness_sha256 is None
+        or harness.is_symlink()
+        or not harness.is_file()
+        or not os.access(harness, os.X_OK)
+        or not re.fullmatch("[a-f0-9]{64}", harness_sha256)
+    ):
         observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
-        return ReleaseRejected(ReleaseFailure.INSTALLER_FAILED, str(installed.returncode))
+        return ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "native component inputs")
+    if sha256(harness) != harness_sha256 or sha256(runtime.archive) != runtime.sha256:
+        return BundleRejected(BundleFailure.DIGEST_MISMATCH, "native component inputs")
+    target = host_platform(platform.system(), platform.machine())
+    if target not in (HostPlatform.MACOS_ARM64, HostPlatform.LINUX_X86_64):
+        return ReleaseRejected(ReleaseFailure.WRONG_PLATFORM, "native component producer")
+    assert isinstance(target, HostPlatform)
+    with harness.open("rb") as stream:
+        header = stream.read(20)
+    if (
+        target.is_linux
+        and (header[:8] != b"\x7fELF\x02\x01\x01\x00" or header[18:20] != b"\x3e\x00")
+        or not target.is_linux
+        and header[:8] != b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01"
+    ):
+        return ReleaseRejected(ReleaseFailure.WRONG_PLATFORM, "native component harness")
+    evidence.mkdir(parents=True)
+    root.mkdir(mode=0o700, parents=True)
+    for directory in ("home", "tmp", "bundle", "components"):
+        (root / directory).mkdir(mode=0o700)
+    extracted = bundle.extract_bundle(archive, root / "bundle", expected)
+    if isinstance(extracted, BundleRejected):
+        return extracted
+    metadata = bundle.read_manifest((extracted.source / "manifest.json").read_bytes())
+    if isinstance(metadata, BundleRejected):
+        return metadata
+    if metadata.version != version or metadata.platform != target:
+        return ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "component bundle")
+    inventory = bundle.examine_files(extracted.source, metadata.files)
+    if isinstance(inventory, BundleRejected):
+        return inventory
+    components = release.stage_component_archives(
+        release.StableSelection(version, "v" + version, release.StablePolicy.PIN),
+        metadata.platformBuild.split(".")[0],
+        root / "components",
+        managed_product.BundledAssets(extracted.source / "assets"),
+        target=target.value,
+    )
+    if isinstance(components, release.Rejected) or components.identity.buildRevision != revision:
+        return ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "component records")
+    runtime_proof = root / "runtime-proof"
+    manifest = managed_product.extract_runtime(runtime.archive, runtime_proof, version, target)
+    if (
+        manifest.platformBuild != metadata.platformBuild
+        or manifest.distributionSha256 != metadata.sourceDistributionSha256
+    ):
+        return ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "component runtime")
+    managed_product.verify_composed_runtime(
+        extracted.source, metadata, components.host_archive, runtime_proof, manifest
+    )
+    control = components.control_root / "share/kast/libexec/kast-management"
+    discovery = subprocess.run(
+        [str(control), "--internal-entrypoint=query", "describe", "--help"],
+        cwd=root,
+        env={"PATH": os.defpath, "HOME": str(root / "home")},
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+    _ = (evidence / "control-discovery.stdout").write_bytes(discovery.stdout)
+    _ = (evidence / "control-discovery.stderr").write_bytes(discovery.stderr)
+    if discovery.returncode != 0 or any((root / "home").iterdir()):
+        return ReleaseRejected(ReleaseFailure.EFFECT_FAILED, "passive Control discovery")
     _ = shutil.copytree(
         REPOSITORY / "experiments/host-observation/static-callback-fixture", fixture
     )
@@ -400,15 +531,22 @@ def qualify_release(
     )
     _ = shutil.copytree(REPOSITORY / "gradle/wrapper", fixture / "gradle/wrapper")
     _ = shutil.copy2(REPOSITORY / "gradlew", fixture / "gradlew")
-    containers = (
-        None
-        if runtime is None
-        else probe_containers(
-            root, fixture, runtime.archive, runtime.sha256, evidence / "containers"
-        )
+    execution = ComponentHarness(
+        harness,
+        root,
+        runtime.archive,
+        runtime.sha256,
+        version,
+        control,
+        sha256(control),
+        revision,
+        sandbox,
     )
-    native = probe(root, fixture, evidence / "native", sandbox)
-    result = QualificationReceipt(revision, expected, native, containers)
+    native = probe(execution, fixture, evidence / "native")
+    containers = probe_containers(execution, fixture, control, evidence / "containers")
+    if sha256(harness) != harness_sha256:
+        return BundleRejected(BundleFailure.DIGEST_MISMATCH, "changed native harness")
+    result = QualificationReceipt(revision, expected, harness_sha256, native, containers)
     _ = (evidence / "qualification.json").write_text(json.dumps(asdict(result), indent=2) + "\n")
     observe(ReleaseStage.QUALIFICATION, StageOutcome.COMPLETE)
     return result
@@ -518,7 +656,7 @@ def prepare_linux_support(output: Path) -> LinuxSupportPrepared | ReleaseRejecte
         )
         result = LinuxSupportPrepared(str(output), "ubuntu-jammy", packages)
         _ = (files / "licenses/packages.json").write_text(
-            json.dumps(asdict(result), indent=2) + "\n"
+            json.dumps(asdict(LinuxSupportManifest(result.sourceSuite, packages)), indent=2) + "\n"
         )
         _ = files.rename(output)
     return result
@@ -678,6 +816,8 @@ def main() -> int:
     _ = qualify.add_argument("--archive-sha256", required=True)
     _ = qualify.add_argument("--runtime-archive", type=Path, required=True)
     _ = qualify.add_argument("--runtime-sha256", required=True)
+    _ = qualify.add_argument("--harness", type=Path, required=True)
+    _ = qualify.add_argument("--harness-sha256", required=True)
     _ = qualify.add_argument("--sandbox", type=Path)
     _ = assemble.add_argument("--linux-support", type=Path)
     args = parser.parse_args()
@@ -708,6 +848,8 @@ def main() -> int:
                 evidence=args.evidence,
                 sandbox=args.sandbox,
                 runtime=RuntimeCandidate(args.runtime_archive, args.runtime_sha256),
+                harness=args.harness,
+                harness_sha256=args.harness_sha256,
             )
     except (
         OSError,

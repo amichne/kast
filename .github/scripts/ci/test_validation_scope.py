@@ -485,13 +485,14 @@ class SourceInventoryTest(unittest.TestCase):
 
     def test_candidate_retention_routes_reuse_to_linux_before_fresh_mac_selection(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
-        product = workflow.split("\n  kotlin:\n", 1)[1].split("\n  source:\n", 1)[0]
+        product = workflow.split("\n  kotlin:\n", 1)[1]
+        product = re.split(r"\n  (?=\S)", product, maxsplit=1)[0]
         # Bind the workflow's explicit expression, as with the other inventory guards.
         # Hosted execution must separately establish which runner actually ran it.
         runner = next(line.strip() for line in product.splitlines() if "runs-on:" in line)
         self.assertEqual(
             "runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || "
-            "fromJSON('[\"self-hosted\", \"macOS\", \"ARM64\", \"kast-main\"]') }}",
+            'fromJSON(\'["self-hosted", "macOS", "ARM64", "kast-main"]\') }}',
             runner,
         )
         self.assertIn(
@@ -499,17 +500,23 @@ class SourceInventoryTest(unittest.TestCase):
             "(needs.native.result == 'success' && needs.assembly.result == 'success')",
             product,
         )
-        for step in ("Exercise the assembled Mac product", "Seal tested candidate identity"):
+        for step in (
+            "Exercise the assembled Mac product",
+            "Seal tested component candidate identity",
+        ):
             with self.subTest(step=step):
                 self.assertIn(
                     f"- name: {step}\n        if: needs.source-work.outputs.candidate != 'REUSED'\n",
                     product,
                 )
+        self.assertIn("name: ci-build-candidate-", product)
+        self.assertNotIn("name: ci-product-candidate-", product)
 
-    def test_native_producers_have_no_hosted_runner_fallback(self):
+    def test_self_hosted_native_producers_have_no_hosted_runner_fallback(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
-        for filename, job in (("ci.yml", "native"), ("release.yml", "release"),
-                              ("release-component.yml", "release")):
+        # The composed target matrix has its own explicit hosted runner contract below.
+        # Stable promotion consumes retained bytes and is no longer a native producer.
+        for filename, job in (("ci.yml", "native"), ("release-component.yml", "release")):
             with self.subTest(workflow=filename, job=job):
                 body = (workflows / filename).read_text().split(f"\n  {job}:\n", 1)[1]
                 body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
@@ -530,7 +537,9 @@ class SourceInventoryTest(unittest.TestCase):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
         guarded = set()
         for path in workflows.glob("*.yml"):
-            for job, body in re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", path.read_text()):
+            for job, body in re.findall(
+                r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", path.read_text()
+            ):
                 runner = re.search(r"^    runs-on: (.+)$", body, re.M)
                 if runner is None or "macos" not in runner[1].lower():
                     continue
@@ -539,9 +548,16 @@ class SourceInventoryTest(unittest.TestCase):
                     self.assertIsNotNone(condition)
                     self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", condition[1])
                 guarded.add((path.name, job))
-        self.assertEqual({("ci.yml", "native"), ("ci.yml", "kotlin"),
-                          ("release.yml", "release"),
-                          ("release-component.yml", "release")}, guarded)
+        self.assertEqual(
+            {("ci.yml", "native"), ("ci.yml", "kotlin"), ("release-component.yml", "release")},
+            guarded,
+        )
+        ci = (workflows / "ci.yml").read_text()
+        complete = ci.split("\n  composed-products:\n", 1)[1]
+        complete = re.split(r"\n  (?=\S)", complete, maxsplit=1)[0]
+        self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", complete)
+        self.assertIn("uses: ./.github/workflows/composed-linux.yml", complete)
+        self.assertIn("complete_product: true", complete)
 
     def test_isolated_candidate_matrix_gates_only_the_mac_runner(self):
         path = Path(__file__).resolve().parents[2] / "workflows/composed-linux.yml"
@@ -588,34 +604,145 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn(":runtime:hosted:headlessBootstrapPlugin", bootstrap)
         self.assertNotIn("assembleRelease", bootstrap)
 
-    def test_stable_release_consumes_qualified_runtime_artifacts_from_its_own_run(self):
+    def test_complete_two_target_qualification_precedes_preview_publication(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
-        release = (workflows / "release.yml").read_text()
-        self.assertIn("uses: ./.github/workflows/composed-linux.yml", release)
-        linux = release.split("\n  linux-runtime:\n", 1)[1].split("\n  mac-runtime:", 1)[0]
-        mac = release.split("\n  mac-runtime:\n", 1)[1].split("\n  publish:", 1)[0]
-        self.assertIn("needs: version", linux)
-        self.assertIn("release_target: linux-x86_64", linux)
-        self.assertIn("needs: [version, release]", mac)
-        self.assertIn("release_target: macos-aarch64", mac)
-        self.assertIn("needs: [version, release, linux-runtime, mac-runtime]", release)
-        self.assertIn("version: ${{ needs.version.outputs.version }}", release)
-        candidate = (workflows / "composed-linux.yml").read_text()
-        artifact = candidate.split("- name: Retain qualified runtime for stable release\n", 1)[1]
-        artifact = artifact.split("\n      - name:", 1)[0]
-        self.assertIn("if: inputs.release_target != ''", artifact)
-        self.assertNotIn("always()", artifact)
-        self.assertIn("build/composed-evidence/qualification.json", artifact)
-        self.assertNotIn("github.run_attempt", artifact)
-        self.assertLess(
-            candidate.index("Install and qualify the exact candidate"),
-            candidate.index("Retain qualified runtime for stable release"),
+        ci = (workflows / "ci.yml").read_text()
+        jobs = dict(
+            re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", ci.split("\njobs:\n", 1)[1])
         )
-        download = release.split("- name: Download qualified runtimes\n", 1)[1]
-        download = download.split("\n      - name:", 1)[0]
-        self.assertNotIn("run-id:", download)
-        self.assertIn("merge-multiple: false", download)
-        self.assertIn("--runtimes-directory", release)
+        native, joined, required = (
+            jobs[name] for name in ("composed-products", "sealed-product", "required")
+        )
+        self.assertIn("needs: [scope, source-work]", native)
+        self.assertIn("uses: ./.github/workflows/composed-linux.yml", native)
+        self.assertIn("complete_product: true", native)
+        self.assertIn("version: 0.0.${{ github.run_number }}", native)
+        self.assertNotIn("release_target:", native)
+        self.assertIn("needs: [scope, composed-products]", joined)
+        self.assertNotIn("always()", joined)
+        self.assertNotIn("run-id:", joined)
+        for target in ("linux-x86_64", "macos-aarch64"):
+            with self.subTest(target=target):
+                self.assertIn(
+                    f"name: kast-qualified-product-{target}-"
+                    "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
+                    joined,
+                )
+                self.assertIn(f"path: build/product-inputs/{target}", joined)
+        self.assertIn("product_producer.py seal", joined)
+        self.assertNotIn("name: ci-product-candidate-", joined)
+        accepted = jobs["complete-product"]
+        self.assertIn("needs: [sealed-product, installed-product]", accepted)
+        self.assertNotIn("always()", accepted)
+        self.assertIn("product_producer.py accept", accepted)
+        for target in ("linux-x86_64", "macos-aarch64"):
+            self.assertIn(
+                f"name: kast-installed-product-{target}-"
+                "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}", accepted
+            )
+        installed = jobs["installed-product"]
+        self.assertIn("needs: sealed-product", installed)
+        self.assertIn("runner: ubuntu-24.04", installed)
+        self.assertIn("runner: macos-15", installed)
+        self.assertIn("product_lifecycle_probe.py", installed)
+        self.assertIn("KAST_ACCEPTANCE_BASELINE_RECORD_SHA256", installed)
+        self.assertIn(
+            "name: ci-product-candidate-${{ github.sha }}-${{ github.run_attempt }}", accepted
+        )
+        self.assertIn(
+            "needs: [scope, source, documentation, portable, kotlin, complete-product]", required
+        )
+        self.assertIn("if: needs.scope.outputs.product == 'run'", required)
+        self.assertIn("COMPLETE_PRODUCT_RESULT: ${{ needs.complete-product.result }}", required)
+        self.assertLess(
+            required.index('test "$COMPLETE_PRODUCT_RESULT" = success'),
+            required.index("validation_outcome.py"),
+        )
+        candidate = (workflows / "composed-linux.yml").read_text()
+        artifact = candidate.split("- name: Retain target-local qualified product evidence\n", 1)[1]
+        artifact = artifact.split("\n      - name:", 1)[0]
+        self.assertNotIn("always()", artifact)
+        self.assertIn("if-no-files-found: error", artifact)
+        self.assertIn(
+            "name: kast-qualified-product-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
+            artifact,
+        )
+        for item in (
+            "kast-composed-setup-v${{ inputs.version }}-${{ matrix.target }}.tar.gz",
+            "kast-runtime-v${{ inputs.version }}-${{ matrix.target }}.zip",
+            "qualification-${{ matrix.target }}.json",
+            "target-record-${{ matrix.target }}.json",
+        ):
+            self.assertIn(f"build/composed-release/{item}", artifact)
+        self.assertIn('--version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"', candidate)
+        self.assertIn("--receipt build/composed-evidence/qualification.json", candidate)
+        self.assertLess(
+            candidate.index("packaging/composed_release.py qualify"),
+            candidate.index("product_producer.py target"),
+        )
+        self.assertLess(
+            candidate.index("product_producer.py target"),
+            candidate.index("Retain target-local qualified product evidence"),
+        )
+        preview = (workflows / "developer-release.yml").read_text()
+        self.assertIn("workflows: [CI]", preview)
+        self.assertIn("github.event.workflow_run.conclusion == 'success'", preview)
+        self.assertIn("ref: ${{ github.sha }}", preview)
+        self.assertIn(
+            "SOURCE_SHA: ${{ github.event.workflow_run.head_sha || inputs.source_revision }}",
+            preview,
+        )
+        self.assertIn("MAIN_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}", preview)
+        self.assertIn(
+            "MAIN_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt || inputs.run_attempt }}",
+            preview,
+        )
+        self.assertIn("build_candidate.py promote-product", preview)
+        self.assertIn('--revision "$SOURCE_SHA"', preview)
+        self.assertIn('--run-id "$MAIN_RUN_ID" --run-attempt "$MAIN_RUN_ATTEMPT"', preview)
+        self.assertIn("if: steps.candidate.outputs.publication == 'PUBLISH'", preview)
+        self.assertLess(
+            preview.index("build_candidate.py promote-product"),
+            preview.index("publish_developer.py product"),
+        )
+        for producer in (native, joined, candidate, required, preview):
+            self.assertNotIn("continue-on-error:", producer)
+        for consumer in (joined, preview):
+            for build_command in ("./gradlew", "assembleRelease", "composed_release.py assemble"):
+                self.assertNotIn(build_command, consumer)
+
+    def test_stable_promotion_only_maps_exact_retained_preview_bytes(self):
+        release = (Path(__file__).resolve().parents[2] / "workflows/release.yml").read_text()
+        jobs = release.split("\njobs:\n", 1)[1]
+        self.assertEqual(["publish"], re.findall(r"^  ([\w-]+):$", jobs, re.M))
+        self.assertIn("if: github.ref == 'refs/heads/main'", jobs)
+        self.assertIn("runs-on: ubuntu-24.04", jobs)
+        self.assertIn("ref: ${{ github.sha }}", jobs)
+        self.assertIn("persist-credentials: false", jobs)
+        for name in ("source_tag", "record_sha256", "public_version"):
+            declaration = release.split(f"      {name}:\n", 1)[1].split("\n\n", 1)[0]
+            declaration = re.split(r"\n      (?=\S)", declaration, maxsplit=1)[0]
+            self.assertIn("required: true", declaration)
+        for binding in (
+            "SOURCE_TAG: ${{ inputs.source_tag }}",
+            "RECORD_SHA256: ${{ inputs.record_sha256 }}",
+            "PUBLIC_VERSION: ${{ inputs.public_version }}",
+        ):
+            self.assertIn(binding, jobs)
+        # An exact step/command allowlist excludes new compilation, repackaging,
+        # reusable producers and dependency/tool resolution, not just known strings.
+        actions = re.findall(r"(?m)^\s+uses: (\S+)|^\s+- uses: (\S+)", jobs)
+        self.assertEqual(1, len(actions))
+        self.assertTrue((actions[0][0] or actions[0][1]).startswith("actions/checkout@"))
+        self.assertEqual(1, len(re.findall(r"(?m)^\s+(?:- )?run:", jobs)))
+        commands = re.findall(r"(?m)^        run: >-\n((?:          [^\n]+\n?)+)", jobs)
+        self.assertEqual(1, len(commands))
+        self.assertEqual(
+            "python3 .github/scripts/release/publish_developer.py stable "
+            '--source-tag "$SOURCE_TAG" --record-sha256 "$RECORD_SHA256" '
+            '--public-version "$PUBLIC_VERSION"',
+            " ".join(commands[0].split()),
+        )
 
     def test_validation_jobs_own_shared_cache_population(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
@@ -629,7 +756,7 @@ class SourceInventoryTest(unittest.TestCase):
         for case in ("NativeResetListenerTest", "NativeResetPeerAcceptanceTest", "ResetLaunchObservationTest"):
             self.assertIn(f"--tests '*{case}'", workflow)
 
-    def test_mac_disable_defaults_off_without_disabling_linux_or_allowing_promotion(self):
+    def test_mac_disable_preserves_linux_checks_and_blocks_new_preview_products(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
         workflow = (workflows / "ci.yml").read_text()
         self.assertIn("KAST_MACOS_CHECKS: ${{ vars.KAST_MACOS_CHECKS || 'false' }}", workflow)
@@ -639,8 +766,26 @@ class SourceInventoryTest(unittest.TestCase):
             self.assertNotIn("vars.KAST_MACOS_CHECKS", body)
         promotion = (workflows / "developer-release.yml").read_text()
         self.assertIn("vars.KAST_MACOS_CHECKS == 'true' &&", promotion)
-        for filename in ("release.yml", "release-component.yml", "developer-release.yml"):
-            self.assertIn("vars.KAST_NATIVE_COMPILATION != 'false'", (workflows / filename).read_text())
+        for filename in ("ci.yml", "release-component.yml", "developer-release.yml"):
+            self.assertIn(
+                "vars.KAST_NATIVE_COMPILATION != 'false'", (workflows / filename).read_text()
+            )
+        native = workflow.split("\n  composed-products:\n", 1)[1]
+        native = re.split(r"\n  (?=\S)", native, maxsplit=1)[0]
+        for prerequisite in (
+            "needs.scope.outputs.product == 'run'",
+            "vars.KAST_MACOS_CHECKS == 'true'",
+            "vars.KAST_NATIVE_COMPILATION != 'false'",
+            "github.ref == 'refs/heads/main'",
+            "github.event_name == 'push' || github.event_name == 'workflow_dispatch'",
+        ):
+            self.assertIn(prerequisite, native)
+        # Already qualified immutable bytes remain promotable without enabling new builds.
+        stable = (workflows / "release.yml").read_text()
+        self.assertNotIn("vars.KAST_MACOS_CHECKS", stable)
+        self.assertNotIn("vars.KAST_NATIVE_COMPILATION", stable)
+        self.assertIn("publish_developer.py stable", stable)
+        self.assertIn('--record-sha256 "$RECORD_SHA256"', stable)
 
     def test_frozen_pr1130_diff_keeps_full_checks_after_canonical_dependencies_expand(self):
         # Exact changed-path inventory for a96e7a07...d02373e8 (PR #1130).

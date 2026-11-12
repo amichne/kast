@@ -37,7 +37,6 @@ class PublicDiagnosticJqTest {
             KastDirectToolSession(
                 emptyList(),
                 { error("No root discovery") },
-                { error("No preparation") },
                 { error("No native invocation") },
             )
         val output =

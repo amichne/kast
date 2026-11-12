@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test
 
 class ContainerCommandTest {
     @Test
-    fun `container list and lifecycle are native management commands`() {
+    fun `former container list and lifecycle commands reject before effects`() {
         for (args in
             listOf(
                 listOf("container"),
@@ -14,7 +14,8 @@ class ContainerCommandTest {
                 listOf("container", "resume", "backend"),
                 listOf("container", "stop", "backend"),
             )) {
-            assertTrue(parseManagementCommand(args) is ManagementParsing.Selected, args.toString())
+            val result = parseManagementCommand(args)
+            assertTrue(result is ManagementParsing.Print && result.error, args.toString())
         }
     }
 

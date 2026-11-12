@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f98f065e5828eb2578b0d10f2ec43992e19e1eb4451f628ff209fcdf51eb302b",
+  "pageVersion": "sha256:e7749b1e69083e627220928d7199f1e2934a04d41aef498ff0913f917d7f4053",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -68,37 +68,25 @@
     },
     {
       "id": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-      "statement": "Generated default Codex and Copilot plugins select the canonical CLI skill and native preparation hooks without automatic MCP or Python scripts. Explicit MCP composition contains the complete transport. Legacy Python hooks remain outside the default composition.",
+      "statement": "Generated default Codex and Copilot compositions select CLI guidance and passive native session hooks without automatic MCP; explicit MCP uses the separate complete transport composition.",
       "evidence": [
         {
-          "resource": "repo://agent-tools/skills/kast/SKILL.md",
-          "version": "repo-file-v1:sha256:1de11a0ea918bae49362e61af90a0b0b2ef9dcf8341450bf561971916efa47cb"
-        },
-        {
           "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:bbe1bac2be06839c755904326d5c592a71c767a342a484095f01aec15917b26b"
+          "version": "repo-file-v1:sha256:05cbca22244ba9287dcc097e0f5df3c1011630f6f962a1e8abe2e1e742767089"
         },
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt#L22-L22",
-          "version": "repo-lines-v1:sha256:57b1e7d28e085e5c7e20580068fe2ed1ed34662e318e28120f4e171ddefb76eb:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTdiMWU3ZDI4ZTA4NWU1YzdlMjA1ODAwNjhmZTJlZDFlZDM0NjYyZTMxOGUyODEyMGY0ZTE3MWRkZWZiNzZlYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTdiMWU3ZDI4ZTA4NWU1YzdlMjA1ODAwNjhmZTJlZDFlZDM0NjYyZTMxOGUyODEyMGY0ZTE3MWRkZWZiNzZlYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODBlYTE2NzM4YzI0NDhlZmZhNTc0ZjFmYjQ4NGZhNGEwZTZiYjNlMGQzY2YyZGM2NTE0MjE1YTNlMjQwZGNlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjlmNjhmNDZjYmU4NmMxZGRjZGEwNTZkYmZhMDFlZGJiNjJhMTMyNjJiZGQ0YzJlZDE0NTZiNzZkODU1YTI5ZCJ9"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt#L96-L130",
+          "version": "repo-lines-v1:sha256:0f6eee9ac8cefb404d5156389f1a79d496b71dcc32f2e157135bf9062c65596c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4YjBhZTFkZGFlYmNkOGRlOTc5ZTFmN2M1MGFiMzhkYWVmNTAwZjRlYzBkNWQzNzcxM2E1NTlmYzQ1ZmE3NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwOGY3YjlkN2NjNDMxMmIwN2VkNmVlNzMzMTVlMjdhMjA4NTZmZTI3YmE3ZTRkMDFmMTBjZDdkYjExN2YzZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxZDA0ZTgzZTIyMzQyZTIzZjlmMjUyN2MyYjkzYWVjMWMxYmUzZGM2MGE2MzAzOTJkMGQ2OGU5NTE2NTNkMjgifQ"
         }
       ]
     },
     {
       "id": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-      "statement": "Explicit Pi MCP setup selects its native extension, which registers Kast, starts exact-workspace preparation asynchronously with kast hook session-start --wait none, and reads bounded context with Node. The extension adds observable preparation state before model requests, ignores stale-session replies, and keeps preparation or context warnings distinct from later MCP availability.",
+      "statement": "The Pi MCP extension registers the installed private interpreter, invokes passive internal session context asynchronously, ignores stale-session replies, and keeps context warnings separate from MCP availability.",
       "evidence": [
         {
-          "resource": "repo://cli/src/test/js/native-onboarding.test.mjs",
-          "version": "repo-file-v1:sha256:6f9ccd4e275f471fb57dced3a31973c7156d2e0d61f88fec758b55a3cbdef81a"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PiGuidanceInstallation.kt",
-          "version": "repo-file-v1:sha256:4090781d8b8f98c8a58bc118fee45bde27390f6923524c35a8b249db66c58a50"
-        },
-        {
-          "resource": "repo://pi/mcp-extension.ts",
-          "version": "repo-file-v1:sha256:b46fa1114305609438fea653635ea28175c1b78b61824b8dc8b84dde3373e382"
+          "resource": "repo://pi/mcp-extension.ts#L52-L104",
+          "version": "repo-lines-v1:sha256:917f06115146100712fd9b95b25ffd1bacca785abc5ef2a639eed39c7e648f71:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxOThhMjdlODczYWI0NTljMTFhNDhhNjcyNDYyM2YzYTAwN2ExODQ5ZGFlMTc0ODdmYWEzZDEzZDMyYzllZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0ZDdiOWFkMmRmZDdkYWFmZjAyYmM2ZDEyYzY1ZmJiZDE0Mzg1ZjA1N2Y5YjQ5NzZmMDMyMTg5N2ZlYTI1YjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -108,7 +96,7 @@
       "evidence": [
         {
           "resource": "repo://agent-tools/onboarding.template.md",
-          "version": "repo-file-v1:sha256:eade4eb8378ee754e30aa3319100ed0a28fee062a4ff191b7e597d4196e812ee"
+          "version": "repo-file-v1:sha256:4d09a8028db25c63aa02069d9094289203ca99b2fbf1e492d351a626e5867ce7"
         },
         {
           "resource": "repo://packaging/generate-public-query.py",
@@ -122,55 +110,73 @@
     },
     {
       "id": "claim_5ab459a5b80641d087b05a25d3c52ee6",
-      "statement": "Native session hooks return preparing, ready, or rejected workspace state and model context containing the selected preparation mode and explicit bounded or indefinite wait commands; background hooks return after admission rather than waiting for readiness.",
+      "statement": "Session-start hooks return passive context without trust or Host startup; legacy hook wait selections have no preparation effect, while the explicit internal workspace wait path remains a distinct preparation caller.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt",
-          "version": "repo-file-v1:sha256:2c8623924a22e80f3d35d9669e9e9a23be113a306193942d6ae9b2310e97a5b9"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt#L96-L150",
+          "version": "repo-lines-v1:sha256:b84c6a6cd2c3836e5a281a8f7ae2d2a739d334f07c3a595ebe3e2f5b3de6310e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4YjBhZTFkZGFlYmNkOGRlOTc5ZTFmN2M1MGFiMzhkYWVmNTAwZjRlYzBkNWQzNzcxM2E1NTlmYzQ1ZmE3NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyYjkyYWIwNDIyMmM3ZjM3NTA2MDk0MWJjMzZmNWEyZDhmZjcyNTMxYTE3NTQwZjY3YTg3ZjgzMTliODZlMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwOGY3YjlkN2NjNDMxMmIwN2VkNmVlNzMzMTVlMjdhMjA4NTZmZTI3YmE3ZTRkMDFmMTBjZDdkYjExN2YzZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1YmM3NDAwODJiNDg0N2QzMTIwMmM1Y2JmODNmMGQ0NzE4MzczYzFhMGIwNGE3NWJmNjg5NmY5NmE1YTRmZGUifQ"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt#L170-L170",
-          "version": "repo-lines-v1:sha256:a3df6edb9e5f07ff7c7cacbfb4b203d4f04b811579122c742a326c265d0ec168:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNkZjZlZGI5ZTVmMDdmZjdjN2NhY2JmYjRiMjAzZDRmMDRiODExNTc5MTIyYzc0MmEzMjZjMjY1ZDBlYzE2OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNkZjZlZGI5ZTVmMDdmZjdjN2NhY2JmYjRiMjAzZDRmMDRiODExNTc5MTIyYzc0MmEzMjZjMjY1ZDBlYzE2OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTllNzYzNTVjZjExOTk0ODBjM2Y5OTgzNmIxNDg2Yzg0MWQ4OTFmYWFkOTA0YzYwOGUwOTMwMjJkMzc1N2FlZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzhjMjBhMTE2NzQ2YmE2NDIwY2E5YjYzMmE2MmFmOWViN2ZhNmVhNDMwMjhkOWMzNDcwOTU4M2I2M2UzZGE3ZCJ9"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookArguments.kt",
-          "version": "repo-file-v1:sha256:a8272b053def17fdf84204d95bce3d9e6b485829a56c1e89a73c8717dbd8a75d"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt",
-          "version": "repo-file-v1:sha256:9424848e876a1ad4128943a09c7e62185a3cc918fa74fd32a9814e1703b26c07"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt#L16-L69",
+          "version": "repo-lines-v1:sha256:9234d388cd717becba93f1a978e2f89ff1a41aa648319db9b5532ccada1e1156:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiYmQ2OGZiYjgwZTJhYTVmNTMzMDA1MDU5YmViNDNiYmZhNGEzMzU4ODEwNWZlNzhjZWYwN2ZiNTk0YjRkOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzNzc2ODYyM2VlYzM0OWUwOTllODQ3NmY1YWI3MTI5OTljMzY2OTQ2M2FmNjJhNjJkZDFkNjJjNjU1NzVkNTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmNmYzYjMwOGI5MzRjYTMxOGMwMzQ2ZGNhMTE0NjJlNmIxM2I3M2NlYzg4NjY2ODA1NDYxMDZiMzJjNWVjZjgifQ"
         }
       ]
     },
     {
-      "id": "claim_710dd47d8f9143f5a683c556faa191de",
-      "statement": "Control assembly stamps both skill compositions with the Control version in front matter. The installer refreshes admitted harness guidance after Control replacement commits.",
+      "id": "claim_f78c160dfeb8442c82ea31e9d635b548",
+      "statement": "Ordinary uninstall removes recorded provider resources before Host retirement and receipted Pi guidance during cleanup. Provider inventories prove ownership; conflicts preserve the Host. The registration lock protects a final empty-record check through payload removal. Harness uninstall forgets only the selected route after verified cleanup. These source paths do not establish native qualification.",
       "evidence": [
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt",
-          "version": "repo-file-v1:sha256:bbe1bac2be06839c755904326d5c592a71c767a342a484095f01aec15917b26b"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/HarnessUninstall.kt",
+          "version": "repo-file-v1:sha256:61b4605982dae9b60e869c133f26e884d75e01f125bd41473141f8bc86512c98"
         },
         {
-          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt#L22-L22",
-          "version": "repo-lines-v1:sha256:57b1e7d28e085e5c7e20580068fe2ed1ed34662e318e28120f4e171ddefb76eb:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTdiMWU3ZDI4ZTA4NWU1YzdlMjA1ODAwNjhmZTJlZDFlZDM0NjYyZTMxOGUyODEyMGY0ZTE3MWRkZWZiNzZlYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTdiMWU3ZDI4ZTA4NWU1YzdlMjA1ODAwNjhmZTJlZDFlZDM0NjYyZTMxOGUyODEyMGY0ZTE3MWRkZWZiNzZlYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODBlYTE2NzM4YzI0NDhlZmZhNTc0ZjFmYjQ4NGZhNGEwZTZiYjNlMGQzY2YyZGM2NTE0MjE1YTNlMjQwZGNlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjlmNjhmNDZjYmU4NmMxZGRjZGEwNTZkYmZhMDFlZGJiNjJhMTMyNjJiZGQ0YzJlZDE0NTZiNzZkODU1YTI5ZCJ9"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationDisconnection.kt",
+          "version": "repo-file-v1:sha256:5086b5ad1d6f8a9172db2e23808028345b1a7a776b74ed2b7db62927e7707b17"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt",
-          "version": "repo-file-v1:sha256:52adf19f328b05a64f715b756b6d0e62c48d110cd197407529142befb2e0f7fb"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
+          "version": "repo-file-v1:sha256:271f11e2c9c1328b20fb4b6dd79dd217003ca535c3c66db9644fec11df4c0379"
         },
         {
-          "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:969ce00154f200601d7136f1d6f0f17c56c49383fedee99f5c1e5679a16bf995"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt",
+          "version": "repo-file-v1:sha256:7d2057b06673aaa3faa3446cb1ab6b8fa4b27295c8e283de7963ea7af852aafc"
+        }
+      ]
+    },
+    {
+      "id": "claim_5051de4bcab947749ef09ffd0892f786",
+      "statement": "Control assembly stamps both skill compositions with the Control version. Managed ProductInstalled and legacy installation results enter capability-marked guidance refresh after activation or recovery. Failure or interruption retains HARNESS_REFRESH_REQUIRED; success clears that notice without discarding other notices. Source integration does not establish live provider loading.",
+      "evidence": [
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt#L86-L100",
+          "version": "repo-lines-v1:sha256:ac104e5e6a20cee2a96085c1cbbbc2d85a65b07d63720d2e238c3afdd3563741:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiMjc5NjkzNzc2Y2YxN2MyOGQ5YWM5NDE4ZjVhYjg1YWJmMzlkNDc0MDM1ZTQ4NzFkYzNlN2Q0NmIwNDllN2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2OGI5MjM1NGUzZWZjOTk4MzNkOGEyZGU2ZGU3NDA5MzFiZjg2OGExNmUxZGJlMzg4MjBhYzg1OGQwYjk3MDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY2ZDA5ZjdkMjUyMDU5Mjg0NTg2YjkwZGM1NTkwZDM2NDhlN2EzYjZkN2M5MTNlNTJlNjcyNjAwMTFkMzBjMzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBmMzVhZTg0YThhZWY3ZTJiMTM3ZDM2ZmQ3MDQ2NWNjYzE4YjBlNzgxZTYyNWNiZGNiMzU3MDlkZGQ2ZTFjZGQifQ"
         },
         {
-          "resource": "repo://packaging/managed_installation.py",
-          "version": "repo-file-v1:sha256:afea347d4136370b0a1941664386641251d4222dc86417d8502ecd5a3bd47314"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt#L46-L71",
+          "version": "repo-lines-v1:sha256:d20480c52d14b060a00a51267685f4163d9dbd1dd60efc346b9d3230242e9e40:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MDg1Y2FhYWYxNTU5MDhhYTAyZmZmZjIzOTZkNWRhMzk0MjU0MmMwM2Q2YWMyMmNjYzgwNjU0NmU0MmIyYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NzlkZGFjNjg4MWU2MDY2NzIxNGMxM2I5ZjRlNjVkZDM2OTc0ZTQ5ZmNkNDA0ZjllNzExNGQxMDQ4MzU2OTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI2ZjNiODIxODA0ZTQ1NWM0NmQzMzg5ZWEwMzU1MTQ3Y2Y2ZjJiYjkwMWQ1YjUwM2I5MjZlNzM2OTY5YTNjYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlYTc1MGNhNWVlMTQ0MWVmYWE4MTIzZTc1N2QzYmQ2MzlmOGUxNWFlZmEwOTgyZWUxMGU3MWE3ZmZlNDIyZjAifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py#L2494-L2526",
+          "version": "repo-lines-v1:sha256:92d1b05dc68dfb812b73443fbaaf75308b7dd0c6b0f6adf9726793ac57912a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmNWNiY2JlNjlhYjRlNWJjN2I5YTg5ODc0Y2NhOTIyNTQzZTg0ZDhiZTFiOTY3OGY4YmZkNDFjNzAyZGJmMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjNjdjNzgyNmY2MWJhYzM5ZGViZjE3YjJjZDNmMDlhOTdmYzZjNzgzNWQ4YWEzMGJhNTY0OTRhNWJhYWMxY2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3MGRhYTgxNjVlNDgyZmFmYzM0ZDQ4NTM4ZDQ3YTQyZDU2ZmQzMTQ0ZWRiNDhkODFmODkxYjA2NmFmMGJmYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiMDBkODA0ZGUzOWRkMGYxMWYwNDNhMWE4YWE1MmM5NmEzMmE4NjM1ZTg1OTVjOTRkYWE1MDhhM2Y0NjgyNWYifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py#L2569-L2587",
+          "version": "repo-lines-v1:sha256:8e94f980bc55c394859d9ad6a1ff82f7bc4b95c2e5126c6ffdd36a7e8776e2cc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZGY4ZDBjNzNkOTdhYzAwM2VkMGM5YWZiOTk3YTQzZTczYmNjYWU4ZGQ0NTRjMGQ0YjZhOGRmMDM2NTdmZTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMTU1YTkyMjM4MDRkZWNlMDQ2NmY5YjNiODBlOGIzNDQwNTMwZTJmYjhhNjk2YTM3YzdmMTFmZjVhY2MxYWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU0ZTVmNTRjYzcxZWQxN2VhNDg5NTVhYjAxYWQ3MzQxM2QyYWYxMTY0ZTM2YTFkMDJmZmMzYWFhYTI0M2U2ZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY3MDdkOGFhZWVlMmM0NjVjZDVkYzUwNjgwOWFiMTNiN2NkNDQ1NWYwN2ExY2M2Yjc4MTJkYzdhMjM4NmUxNjYifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_installation.py#L2654-L2685",
+          "version": "repo-lines-v1:sha256:19d1adfc3bef38320f095db00664659d5ec51c9e8b30bcc45a23e7fcbce6237c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2Y2E5M2EwMGViYTA3OTFiZDAwYzdkZThlZTM5NzI0ZWM3NzE2Njg4MjBkY2NiODI2NjU0YjRkZWZiZjUwZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3MjY2YTFkYTdlZGY0M2U3NWI1NjJmNzlmMWZjNzE0NDhiYzNjNjVmZjY0NTk4MGE0ZjljNzIzOTRkOGEzMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlMWQ1M2Y0N2NmODkwZTg0OTZhZDRmMWYzNTc3OGQ2NDI4NDQyNGRlMDdiNDdiMzMzZTljZDYwYzE3ZmE5OGIifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_product_installation.py#L62-L70",
+          "version": "repo-lines-v1:sha256:7269e9a38b04b3e63615294d9ef5f1be403444247b8e52c769738b2bec62cff2:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjY5YTEzOTc1YzI1NmVjODMyMGUyMDE2MDgzYzk2ZGY2MzdjYTNkMzViZWJkZTIzMTRiZWUzYTQ3MTFiNTZjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjQ5NTkyM2UwZTljMDAyNDhiZTViYzVkNWJmNWZiZmYxODlkNGNmMTQ5OWFlMjcxMmZiNTdiOTQ0YmI4NmI5ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWVkN2QxZDUwMTNjODkxMzYwNGY2MDRmZGFkYzQ2OTc3MGQxNmJlNjRlZDFhYTIxNTk4Y2NjMzc4ZWU2OGZiNCJ9"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T06:30:47.924Z"
+    "at": "2026-11-12T22:16:35.341Z"
   }
 }

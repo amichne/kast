@@ -3,11 +3,10 @@ package io.github.amichne.kast.distribution.cli
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-internal enum class ContainerFailure(val exit: Int = 1) {
+enum class ContainerFailure(val exit: Int = 1) {
     INVALID_NAME,
     INVALID_ID,
     INVALID_WORKSPACE,
@@ -20,7 +19,11 @@ internal enum class ContainerFailure(val exit: Int = 1) {
     INVALID_RECORD,
     FOREIGN_STATE,
     FILESYSTEM_UNAVAILABLE,
+    FENCE_REJECTED,
     BUSY,
+    LEASE_CLOSED,
+    PREPARATION_WAIT_EXPIRED,
+    INVALID_CONFIGURATION,
     CAPACITY_EXCEEDED,
     STOPPED,
     RUNTIME_UNAVAILABLE,
@@ -38,8 +41,18 @@ internal enum class ContainerFailure(val exit: Int = 1) {
 internal value class ContainerId private constructor(val text: String) {
     companion object {
         fun parse(raw: String): Refinement<ContainerId, ContainerFailure> =
-            if (Regex("[a-f0-9]{32}").matches(raw)) Refinement.Refined(ContainerId(raw))
+            if (Regex("[a-f0-9]{32}|[a-f0-9]{64}").matches(raw)) Refinement.Refined(ContainerId(raw))
             else Refinement.Rejected(ContainerFailure.INVALID_ID)
+
+        /** The store validates the canonical root and compares the stored root on every lookup. */
+        fun forWorkspace(workspace: Path): ContainerId =
+            ContainerId(
+                java.util.HexFormat.of()
+                    .formatHex(
+                        java.security.MessageDigest.getInstance("SHA-256")
+                            .digest(workspace.toString().toByteArray(Charsets.UTF_8))
+                    )
+            )
     }
 }
 
@@ -58,85 +71,119 @@ internal data class ContainerRecord(
     val id: String,
     val name: String,
     val workspace: String,
+    val gradleHome: String,
+    @Required val schemaVersion: Int = 2,
+)
+
+/** Version 1 ingress remains bounded; runtime selection is not a durable workspace fact. */
+@Serializable
+internal data class LegacyContainerRecord(
+    val id: String,
+    val name: String,
+    val workspace: String,
     val runtime: String,
     val gradleHome: String,
     @Required val schemaVersion: Int = 1,
 )
 
-internal class AdmittedContainer
+@Serializable
+internal data class ContainerGenerationRecord(
+    val runtime: String,
+    val archiveSha256: String,
+    @Required val schemaVersion: Int = 1,
+    val generation: String? = null,
+)
+
+@Serializable
+internal data class ContainerGenerationRetirement(
+    val workspaceRecordSha256: String,
+    val generationRecordSha256: String,
+    @Required val schemaVersion: Int = 1,
+)
+
+internal sealed interface ContainerGenerationSource {
+    data object Current : ContainerGenerationSource
+
+    data class Legacy(val runtime: String) : ContainerGenerationSource
+}
+
+internal class AdmittedContainerCreation
 internal constructor(
     val id: ContainerId,
     val name: ContainerName,
     val workspace: Path,
     val directory: Path,
-    val runtime: AdmittedContainerRuntime,
     val gradleHome: Path,
+)
+
+internal class StagedContainerCreation
+internal constructor(
+    val creation: AdmittedContainerCreation,
+    val container: AdmittedContainer,
+    val staging: Path,
+)
+
+/** Durable ownership and exact trust survive missing or retired runtime bytes. */
+internal class AdmittedWorkspace
+internal constructor(
+    val id: ContainerId,
+    val name: ContainerName,
+    val workspace: Path,
+    val directory: Path,
+    val gradleHome: Path,
+    val generation: ContainerGenerationSource,
 ) {
+    fun record(): ContainerRecord = ContainerRecord(id.text, name.text, workspace.toString(), gradleHome.toString())
+}
+
+internal sealed interface ContainerStoreEntry {
+    data class Admitted(val workspace: AdmittedWorkspace) : ContainerStoreEntry
+
+    data class Rejected(val directory: Path, val failure: ContainerFailure) : ContainerStoreEntry
+}
+
+internal class AdmittedContainer
+internal constructor(
+    val owned: AdmittedWorkspace,
+    val runtime: AdmittedContainerRuntime,
+    val profile: Path = owned.directory,
+) {
+    val id: ContainerId
+        get() = owned.id
+
+    val name: ContainerName
+        get() = owned.name
+
+    val workspace: Path
+        get() = owned.workspace
+
+    val directory: Path
+        get() = owned.directory
+
+    val gradleHome: Path
+        get() = owned.gradleHome
+
     val state: Path
-        get() = directory.resolve("state")
+        get() = profile.resolve("state")
 
     val home: Path
         get() = state.resolve("home")
 
     val configuration: Path
-        get() = directory.resolve("config/environment")
+        get() = profile.resolve("config/environment")
 
     val stopped: Path
         get() = directory.resolve("stopped.json")
 
-    fun record(): ContainerRecord =
-        ContainerRecord(id.text, name.text, workspace.toString(), runtime.key, gradleHome.toString())
+    fun record(): ContainerRecord = owned.record()
 }
 
 @Serializable internal data class ContainerStopRecord(val id: String, @Required val schemaVersion: Int = 1)
 
 internal sealed interface ContainerCommand {
-    data class List(val json: Boolean) : ContainerCommand
-
     data class Create(val name: String?, val root: String?, val gradleHome: String?, val json: Boolean) :
         ContainerCommand
-
-    sealed interface Selected : ContainerCommand {
-        val selector: String
-    }
-
-    data class Resume(override val selector: String, val json: Boolean) : Selected
-
-    data class Stop(override val selector: String, val json: Boolean) : Selected
-
-    data class Remove(val id: ContainerId, val json: Boolean) : Selected {
-        override val selector: String
-            get() = id.text
-    }
-
-    data class ImportRuntime(val archive: String, val sha256: String, val json: Boolean) : ContainerCommand
 }
-
-@Serializable
-internal enum class ContainerDisposition {
-    CREATED,
-    RESUMED,
-    STOPPED,
-    REMOVED,
-    RUNTIME_IMPORTED,
-}
-
-@Serializable
-internal sealed interface ContainerDocument {
-    @Serializable
-    @SerialName("containers")
-    data class Listing(val containers: kotlin.collections.List<ContainerSummary>) : ContainerDocument
-
-    @Serializable
-    @SerialName("complete")
-    data class Completed(val operation: ContainerDisposition, val id: String) : ContainerDocument
-
-    @Serializable @SerialName("created") data class Created(val container: ContainerRecord) : ContainerDocument
-
-    @Serializable @SerialName("rejected") data class Rejected(val failure: ContainerFailure) : ContainerDocument
-}
-
-@Serializable internal data class ContainerSummary(val container: ContainerRecord, val state: ContainerState)
 
 @Serializable
 internal enum class ContainerState {

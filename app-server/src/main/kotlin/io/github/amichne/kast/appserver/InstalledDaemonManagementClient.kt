@@ -1,8 +1,6 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
-import io.github.amichne.kast.appserver.ide.CanonicalRootDiscovery
-import io.github.amichne.kast.appserver.ide.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.appserver.runtime.BrokerControlRoute
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnection
 import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmission
@@ -13,6 +11,8 @@ import io.github.amichne.kast.appserver.runtime.DaemonUpgradeDocument
 import io.github.amichne.kast.appserver.runtime.UpgradeCandidate
 import io.github.amichne.kast.appserver.runtime.UpgradeRequestId
 import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
+import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
+import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.coroutines.NonCancellable

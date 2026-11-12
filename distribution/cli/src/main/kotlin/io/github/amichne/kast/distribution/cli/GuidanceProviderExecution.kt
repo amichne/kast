@@ -24,13 +24,13 @@ internal fun runGuidanceProvider(
                 .start()
         try {
             if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
-                process.destroyForcibly()
+                stopGuidanceProcess(process)
                 process.waitFor(CHILD_REAP_SECONDS, TimeUnit.SECONDS)
                 ProcessObservation.Unavailable
             } else if (Files.size(output) > PROVIDER_REPLY_BYTES) ProcessObservation.Unavailable
             else ProcessObservation.Exited(process.exitValue(), Files.readString(output))
         } catch (_: InterruptedException) {
-            process.destroyForcibly()
+            stopGuidanceProcess(process)
             Thread.currentThread().interrupt()
             ProcessObservation.Unavailable
         }
@@ -39,6 +39,12 @@ internal fun runGuidanceProvider(
     } finally {
         Files.deleteIfExists(output)
     }
+}
+
+private fun stopGuidanceProcess(process: Process) {
+    val children = process.descendants().use { it.toList() }
+    process.destroyForcibly()
+    children.asReversed().forEach { it.destroyForcibly() }
 }
 
 internal class GuidanceProviderExecution(
@@ -57,6 +63,7 @@ internal class GuidanceProviderExecution(
 }
 
 private const val PROVIDER_COMMAND_SECONDS = 8L
-internal const val MCP_SETUP_SECONDS = 60L
+// The private helper bounds wheel installation and import verification to 300 seconds each.
+internal const val MCP_SETUP_SECONDS = 660L
 private const val CHILD_REAP_SECONDS = 1L
 private const val PROVIDER_REPLY_BYTES = 262_144L

@@ -53,6 +53,13 @@ private constructor(
             is ClientRetirement.Rejected -> LifecycleEffect.Rejected(retired.failure)
         }
 
+    /** Workspace leases, rather than process termination, exclude active managed requests. */
+    fun fenceManagedProduct(): Refinement<Unit, ContainerFailure> =
+        when (step(LifecycleOperation.STOP_FORCE, LifecycleStage.FENCE, ::fence)) {
+            LifecycleEffect.Completed -> Refinement.Refined(Unit)
+            is LifecycleEffect.Rejected -> Refinement.Rejected(ContainerFailure.FENCE_REJECTED)
+        }
+
     private fun retireClients(operation: LifecycleOperation): ClientRetirement {
         for ((stage, action) in
             listOf<Pair<LifecycleStage, () -> LifecycleEffect>>(
@@ -228,6 +235,31 @@ private constructor(
     }
 
     companion object {
+        fun admitProduct(
+            root: Path,
+            home: Path,
+            environment: Map<String, String>,
+            platform: ContainerPlatform,
+            execution: LifecycleExecution,
+        ): Refinement<InstallationLifecycle, ContainerFailure> = containerFiles {
+            val installation = root.resolve("installation")
+            when (val selected = InstalledProductSelection.read(installation, platform)) {
+                is Refinement.Rejected -> return@containerFiles selected
+                is Refinement.Refined -> Unit
+            }
+            val read = readBundledManifest(installation)
+            if (
+                read !is BundledManifestRead.Read ||
+                    !supportsShutdown(installation, read.manifest) ||
+                    !payloadOwned(installation, read.manifest, "share/kast/libexec/kast-service")
+            )
+                Refinement.Rejected(ContainerFailure.INVALID_RECORD)
+            else
+                Refinement.Refined(
+                    InstallationLifecycle(root, installation, home, environment, read.manifest, execution)
+                )
+        }
+
         fun admit(
             root: Path,
             home: Path,

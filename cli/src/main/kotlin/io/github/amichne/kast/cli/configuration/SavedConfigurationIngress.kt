@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli
 
-import io.github.amichne.kast.appserver.SavedConfigurationIngressRejection
+import io.github.amichne.kast.distribution.managed.SavedConfigurationIngressRejection
 
 internal class SavedConfigurationIngressCompositionFailure(val rejection: SavedConfigurationIngressRejection) :
     KastCliCompositionFailure {

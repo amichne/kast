@@ -33,9 +33,9 @@ Your agent gets the same facts that IDEA shows you: which declaration a call res
 
 ## How it works
 
-1. You install Kast. The installer adds a plugin to IntelliJ IDEA and a `kast` command. You restart IDEA.
+1. You install Kast. The installer supplies the `kast` command and its private analysis runtime.
 2. You install guidance for your agent: Codex, Copilot, or Pi.
-3. You open your project in IDEA and work with your agent as usual. When the agent needs facts about your code, it runs `kast`, and IDEA answers.
+3. You work with your agent in a trusted project. Its first explicit semantic request grants that workspace trust and starts the private Host.
 
 <span id="try-it-on-your-project" />
 <span id="choose-your-reader-track" />
@@ -43,7 +43,8 @@ Your agent gets the same facts that IDEA shows you: which declaration a call res
 
 ## Get started
 
-You need an Apple silicon Mac, a Kotlin Gradle project, IntelliJ IDEA 2026.2 or 2026.3, and Python. Set up lists every requirement.
+You need an Apple silicon Mac or Linux x86-64 machine and a Kotlin Gradle project. Kast supplies its runtime.
+The [setup guide](/start) states the implementation and native acceptance limits for this branch.
 Setup takes three steps.
 
 <Columns cols={2}>
@@ -56,8 +57,8 @@ Setup takes three steps.
   <Card title="Help" icon="life-buoy" href="/troubleshooting">
     Fix setup and query problems.
   </Card>
-  <Card title="Run without desktop IDEA" icon="container" href="/reference/installation#manage-isolated-workspaces">
-    On Linux x86-64, or with a private Host on a Mac.
+  <Card title="Manage the private runtime" icon="settings" href="/reference/management">
+    Inspect workspace Hosts, stop them, or select a complete build.
   </Card>
 </Columns>
 

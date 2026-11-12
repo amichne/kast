@@ -37,31 +37,27 @@ internal sealed interface ManagementCommand {
     /** Opaque argv. Only the JVM public command owner interprets semantic options. */
     data class PublicQuery(val arguments: List<String>) : ManagementCommand
 
-    data class Container(val command: ContainerCommand) : ManagementCommand
+    data class Status(val json: Boolean, val scope: WorkspaceScope = WorkspaceScope.Current) : ManagementCommand
 
-    data class Status(val json: Boolean) : ManagementCommand
+    data class Stop(val scope: WorkspaceScope, val json: Boolean) : ManagementCommand
 
     data object Version : ManagementCommand
-
-    data class Disconnect(val harness: Harness) : ManagementCommand
 
     data class Install(val target: ProvisionTarget, val json: Boolean) : ManagementCommand
 
     data class Versions(val json: Boolean) : ManagementCommand
 
-    data class Lifecycle(val operation: LifecycleOperation, val json: Boolean) : ManagementCommand
-
-    data class Reset(val operation: ForceResetOperation, val json: Boolean) : ManagementCommand
-
     data class Upgrade(
         val request: BuildRequest = BuildRequest.RecordedPolicy,
-        val ideaHome: String? = null,
         val dryRun: Boolean = false,
-        val restartIde: Boolean = false,
         val json: Boolean = false,
     ) : ManagementCommand
 
     data object Uninstall : ManagementCommand
+
+    data class ForceUninstall(val json: Boolean) : ManagementCommand
+
+    data class UninstallHarness(val harness: Harness) : ManagementCommand
 
     data object Help : ManagementCommand
 }

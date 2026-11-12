@@ -27,7 +27,7 @@ class RecordedRecoveryInstallerTest {
             executeManagedUpgrade(
                 fixture.root,
                 fixture.home,
-                ManagementCommand.Upgrade(json = true, restartIde = true, ideaHome = "ignored"),
+                ManagementCommand.Upgrade(json = true),
                 mapOf("EXAMPLE" to "kept"),
                 ManagedUpgradeExecution(
                     readRelease = { error("release access during recorded recovery") },

@@ -205,14 +205,10 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeSocketClient.kt
   - id: openwiki-source-235a629b1cad4fc91515f118
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt
-  - id: openwiki-source-23800b7a30d62f442e3b56ae
-    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt
   - id: openwiki-source-b490c970be179fe22cf68e37
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
-  - id: openwiki-source-96405b955de825b77efc48dd
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeReadConfiguration.kt
   - id: openwiki-source-81d5f1627e19148569f46f81
     resource: repo://gradle/libs.versions.toml
   - id: openwiki-source-a2a046e51938d2a300c9b5b4
@@ -294,7 +290,7 @@ sources:
 generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T06:30:47.924Z
+    at: 2026-11-12T22:38:01.289Z
 ---
 
 # Existing-IDE semantic query

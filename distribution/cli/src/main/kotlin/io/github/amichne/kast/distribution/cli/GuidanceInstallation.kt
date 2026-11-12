@@ -127,6 +127,7 @@ internal fun pluginFailure(failure: PluginInstallFailure): ProvisionFailure =
         PluginInstallFailure.LegacyRegistrationRejected -> ProvisionFailure.PROVIDER_CONFLICT
         PluginInstallFailure.ProcessUnavailable -> ProvisionFailure.PROVIDER_UNAVAILABLE
         PluginInstallFailure.VerificationRejected -> ProvisionFailure.RESOURCE_MISMATCH
+        is PluginInstallFailure.McpPreparationRejected -> failure.reason.provisionFailure
         PluginInstallFailure.ObservationRejected,
         PluginInstallFailure.InstallationLockUnavailable,
         is PluginInstallFailure.ProcessExited -> ProvisionFailure.PROVIDER_REJECTED
@@ -152,19 +153,9 @@ internal fun prepareOptionalMcp(
     execute: (List<String>, Map<String, String>) -> ProcessObservation = { arguments, environment ->
         runGuidanceProvider(arguments, environment, timeoutSeconds = MCP_SETUP_SECONDS)
     },
-): PluginObservation<Unit> {
-    if (bundle.composition == HarnessComposition.CliOnly) return PluginObservation.Observed(Unit)
-    val script = bundle.plugin.resolve("skills/kast/scripts/server.py")
-    return when (
-        val result =
-            pluginProcessResult(
-                execute(
-                    listOf("uv", "sync", "--locked", "--script", script.toString()),
-                    mapOf("HOME" to home.toString()),
-                )
-            )
-    ) {
-        is PluginObservation.Observed -> PluginObservation.Observed(Unit)
-        is PluginObservation.Rejected -> result
+): PluginObservation<Unit> =
+    when (val selected = bundle.mcpEnvironment) {
+        BundledMcpEnvironment.NotSelected -> PluginObservation.Observed(Unit)
+        is BundledMcpEnvironment.Selected ->
+            selected.observePreparation(execute(selected.prepareArguments(), mapOf("HOME" to home.toString())))
     }
-}
