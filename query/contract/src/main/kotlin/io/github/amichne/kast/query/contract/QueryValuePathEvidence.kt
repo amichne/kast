@@ -120,7 +120,15 @@ internal fun QueryImpactProducer.storageBytes(g: QueryImpactRetainedGraph): Long
 
 internal fun QueryImpactReadRejection.storageBytes(g: QueryImpactRetainedGraph): Long =
     g.node(this) {
-        source.storageBytes(g).saturatedAdd(domain.storageBytes(g))
+        source
+            .storageBytes(g)
+            .saturatedAdd(domain.storageBytes(g))
+            .saturatedAdd(
+                when (this) {
+                    is QueryImpactReadRejection.Native -> cause.storageBytes(g)
+                    is QueryImpactReadRejection.Contract -> 0L
+                }
+            )
     }
 
 /** Full detached checkpoint prefix charge, independent of any terminal claim. */

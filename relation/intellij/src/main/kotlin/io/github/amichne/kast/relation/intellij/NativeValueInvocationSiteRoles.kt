@@ -17,7 +17,7 @@ internal fun nativeArgumentSiteRole(
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
     val expression = element as? KtExpression ?: return roleRejected()
     val binary = expression.parent as? org.jetbrains.kotlin.psi.KtBinaryExpression
-    if (binary != null) return nativeReviewedArgumentRole(expression, binary, executionOwner, callbackContext)
+    if (binary != null) return nativeReviewedTupleRole(expression, binary, executionOwner, callbackContext)
     val argument = element.parent as? KtValueArgument ?: return roleRejected()
     return when (
         val role =
@@ -35,7 +35,7 @@ internal fun nativeArgumentSiteRole(
                 (argument.parent as? org.jetbrains.kotlin.psi.KtValueArgumentList)?.parent
                     as? org.jetbrains.kotlin.psi.KtCallExpression
             if (role.failure == ValueFlowUnsupportedCause.EXTERNAL_CALL && call != null)
-                nativeReviewedArgumentRole(
+                nativeReviewedExternalArgumentRole(
                     expression,
                     call.valueInvocationExpression() as KtExpression,
                     executionOwner,

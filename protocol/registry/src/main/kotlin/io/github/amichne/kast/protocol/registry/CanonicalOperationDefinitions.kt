@@ -128,7 +128,7 @@ object CanonicalOperationDefinitions {
             OperationScope.WORKSPACE,
             CompletenessPolicy.QUALIFIED_ALLOWED,
             HostedExposure.PUBLIC,
-            schema = schema("kast.query.run.v9"),
+            schema = schema("kast.query.run.v10"),
         )
 
     val diagnosticCheck =

@@ -40,6 +40,7 @@ private constructor(private val names: IdentityHashMap<SerialDescriptor, String>
             from(
                 CanonicalCallbackSchemaDocuments.serializers +
                     CanonicalReviewedSchemaDocuments.serializers +
+                    CanonicalNativeFailureSchemaDocuments.serializers +
                     mapOf(
                         "callbackObservation" to CanonicalQueryCliDocuments.callbackObservationSerializer,
                         "callableObservation" to CanonicalQueryCliDocuments.callableObservationSerializer,

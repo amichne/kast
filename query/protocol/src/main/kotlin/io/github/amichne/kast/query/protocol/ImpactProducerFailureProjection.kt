@@ -7,14 +7,42 @@ import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.relation.contract.ValueProducerExecutionFailure
 import io.github.amichne.kast.relation.contract.ValueProducerSeedDiagnostic
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
+import io.github.amichne.kast.relation.contract.ValueProducerSeedReadFailure
+import io.github.amichne.kast.relation.contract.ValueProducerSeedRejection
 
 internal fun ValueProducerSeedRead.Rejected.producerFailure(position: Int): Refinement.Rejected<QueryRunRejection> =
-    when (val diagnostic = diagnostic) {
-        ValueProducerSeedDiagnostic.NotAcquired -> impactFailure(cause.impactFailure(), position)
-        is ValueProducerSeedDiagnostic.InitialExecution ->
-            when (val projected = diagnostic.impactDocument(cause.impactFailure(), position)) {
-                is Refinement.Refined -> Refinement.Rejected(QueryRunRejection.ImpactSourceRejected(projected.value))
-                is Refinement.Rejected -> Refinement.Rejected(projected.failure.presentationRejection())
+    when (val cause = cause) {
+        is ValueProducerSeedReadFailure.Native ->
+            when (val diagnostic = diagnostic) {
+                ValueProducerSeedDiagnostic.NotAcquired -> cause.cause.nativeImpactFailure(position)
+                is ValueProducerSeedDiagnostic.InitialExecution ->
+                    when (
+                        val projected =
+                            diagnostic.enclosing.impactDeclaration().impactZip(diagnostic.anchor.impactDocument())
+                    ) {
+                        is Refinement.Refined ->
+                            Refinement.Rejected(
+                                QueryRunRejection.ImpactSourceRejected(
+                                    QueryImpactSourceFailureDocument.NativeProducerExecution(
+                                        failure = cause.cause.nativeDocument(),
+                                        position = queryPosition(position),
+                                        enclosing = projected.value.first,
+                                        anchor = projected.value.second,
+                                    )
+                                )
+                            )
+                        is Refinement.Rejected -> Refinement.Rejected(projected.failure.presentationRejection())
+                    }
+            }
+        is ValueProducerSeedRejection ->
+            when (val diagnostic = diagnostic) {
+                ValueProducerSeedDiagnostic.NotAcquired -> impactFailure(cause.impactFailure(), position)
+                is ValueProducerSeedDiagnostic.InitialExecution ->
+                    when (val projected = diagnostic.impactDocument(cause.impactFailure(), position)) {
+                        is Refinement.Refined ->
+                            Refinement.Rejected(QueryRunRejection.ImpactSourceRejected(projected.value))
+                        is Refinement.Rejected -> Refinement.Rejected(projected.failure.presentationRejection())
+                    }
             }
     }
 

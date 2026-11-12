@@ -52,7 +52,7 @@ If tools, readiness, or scope block a query, use ordinary reads and state the li
 
 Do not repeat discovery or failures without new evidence or changed prerequisites.
 Incomplete results and scope qualifications do not prove absence. Preserve them.
-Public tool contract: `18`. The installed schema governs.
+Public tool contract: `19`. The installed schema governs.
 
 Use `find` with a simple `name`, known `kind`, and declaration `directory` or `package`.
 Use `source_sets` for exact imported Gradle source sets. The default is `main` and `test`.

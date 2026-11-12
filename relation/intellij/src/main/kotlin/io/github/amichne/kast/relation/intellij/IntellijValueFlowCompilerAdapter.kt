@@ -19,6 +19,10 @@ import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
 import io.github.amichne.kast.relation.contract.ValueModelSiteRead
+import io.github.amichne.kast.relation.contract.ValueNativeOperation
+import io.github.amichne.kast.relation.contract.ValueNativePrerequisite
+import io.github.amichne.kast.relation.contract.ValueNativeUnexpectedFailure
+import io.github.amichne.kast.relation.contract.ValueNativeUnexpectedKind
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
 import io.github.amichne.kast.relation.contract.ValueRole
@@ -34,6 +38,7 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadStage
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFailure
+import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedKind
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
@@ -107,6 +112,7 @@ class IntellijValueFlowCompilerAdapter(
                 current,
                 enclosing.lease,
                 { ValueSiteResolution.Rejected(it) },
+                ValueNativeOperation.SITE_RESOLUTION,
             ) {
                 if (domain.subject.lease != current || !domain.subject.matchesDeclaration(enclosing))
                     return@nativeBoundary ValueSiteResolution.Rejected(ValueFlowRejection.STALE_SITE)
@@ -293,21 +299,29 @@ class IntellijValueFlowCompilerAdapter(
         return Prepared.Ready(owner, scope, projection)
     }
 
-    // Unexpected JVM/platform failures are bounded finite evidence at this effect boundary.
     @Suppress("TooGenericExceptionCaught")
     internal suspend fun <Result> nativeBoundary(
         project: Project,
         current: SemanticReadAuthority,
         requested: SemanticReadAuthority,
         rejected: (ValueFlowRejection) -> Result,
-        stage: IntellijReadStage = IntellijReadStage.VALUE_FLOW,
+        nativeOperation: ValueNativeOperation = ValueNativeOperation.FLOW_READ,
         operation: () -> Result,
     ): Result {
         if (current != requested || !current.isCurrentValueAuthority())
             return rejected(ValueFlowRejection.AUTHORITY_MOVED)
         return try {
-            if (project.isDisposed || DumbService.isDumb(project))
-                return rejected(ValueFlowRejection.NATIVE_UNAVAILABLE)
+            if (project.isDisposed)
+                return rejected(
+                    ValueFlowRejection.Native.HostUnavailable(nativeOperation, ValueNativePrerequisite.PROJECT_DISPOSED)
+                )
+            if (DumbService.isDumb(project))
+                return rejected(
+                    ValueFlowRejection.Native.HostUnavailable(
+                        nativeOperation,
+                        ValueNativePrerequisite.INDEXES_UNAVAILABLE,
+                    )
+                )
             val result = readAction { operation() }
             if (current.isCurrentValueAuthority()) result else rejected(ValueFlowRejection.AUTHORITY_MOVED)
         } catch (cancelled: ProcessCanceledException) {
@@ -315,14 +329,39 @@ class IntellijValueFlowCompilerAdapter(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: RuntimeException) {
-            observation.unexpected(IntellijReadUnexpectedFailure.capture(stage, failure, limits))
-            rejected(ValueFlowRejection.NATIVE_UNAVAILABLE)
+            rejected(unexpected(nativeOperation, failure))
         } catch (failure: LinkageError) {
-            observation.unexpected(IntellijReadUnexpectedFailure.capture(stage, failure, limits))
-            rejected(ValueFlowRejection.NATIVE_UNAVAILABLE)
+            rejected(unexpected(nativeOperation, failure))
         }
     }
+
+    private fun unexpected(operation: ValueNativeOperation, failure: Throwable): ValueFlowRejection.Native.Unexpected {
+        val diagnostic = IntellijReadUnexpectedFailure.capture(operation.readStage(), failure, limits)
+        observation.unexpected(diagnostic)
+        return ValueFlowRejection.Native.Unexpected(
+            operation,
+            ValueNativeUnexpectedFailure.fromBoundary(
+                kind =
+                    when (diagnostic.kind) {
+                        IntellijReadUnexpectedKind.RUNTIME -> ValueNativeUnexpectedKind.RUNTIME
+                        IntellijReadUnexpectedKind.LINKAGE -> ValueNativeUnexpectedKind.LINKAGE
+                    },
+                exceptionType = diagnostic.exceptionType,
+                adapterFrames = diagnostic.adapterFrames,
+                limits = limits,
+            ),
+        )
+    }
 }
+
+private fun ValueNativeOperation.readStage(): IntellijReadStage =
+    when (this) {
+        ValueNativeOperation.FLOW_READ,
+        ValueNativeOperation.SITE_RESOLUTION -> IntellijReadStage.VALUE_FLOW
+        ValueNativeOperation.PRODUCER_SEED -> IntellijReadStage.VALUE_PRODUCER_SEED
+        ValueNativeOperation.MODEL_DECLARATION -> IntellijReadStage.VALUE_MODEL_ADMISSION
+        ValueNativeOperation.MODEL_SITE -> IntellijReadStage.VALUE_MODEL_SITE_ADMISSION
+    }
 
 private fun SemanticReadAuthority.isCurrentValueAuthority(): Boolean =
     when (this) {

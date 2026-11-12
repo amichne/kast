@@ -168,6 +168,9 @@ for rejections with and without an admitted grant. The wire retains the finite
 failure and budget; projection derives the action again after decoding rather
 than accepting a separate action as authority.
 
+An operational native read rejection records a host prerequisite, an unexpected failure, a nested relation rejection, or `PORT_UNCONFIGURED`.
+A nested relation rejection keeps the received reason and its origin.
+
 A `concat` exact-reference rejection retains both the step and reference positions. It uses the same finite reference reason and recovery action as a source reference rejection. An unavailable retained row or incomplete right operand is a request correction, while an unavailable or stale retained result directs a fresh read.
 
 Query admission has distinct finite reasons for unknown projected binding names and mismatched output kinds. A retained binding-row result presented as symbols rejects rather than returning an empty symbol stream. An incomplete anti-join right input rejects before execution because absence is unproven.

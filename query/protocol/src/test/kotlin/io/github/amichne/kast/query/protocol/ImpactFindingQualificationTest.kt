@@ -20,7 +20,6 @@ import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
-import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowStepFailure
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueTransfer
@@ -177,7 +176,7 @@ class ImpactFindingQualificationTest {
     @Test
     fun `compact read rejection retains all finite native and contract causes and work receipts`() {
         val fixture = ImpactFindingModelFixture()
-        for (cause in ValueFlowRejection.entries) {
+        for ((cause, expected) in nativeRejectionCases()) {
             val rejection =
                 QueryImpactReadRejection.Native(
                     fixture.producer,
@@ -189,7 +188,7 @@ class ImpactFindingQualificationTest {
                 (QueryImpactTerminal.Unresolved.ReadRejected(rejection).findingDocument().value()
                         as ImpactFindingTerminalDocument.UnresolvedRead)
                     .rejection as ImpactReadRejectionDocument.Native
-            assertEquals(cause.name, projected.cause.name)
+            assertEquals(expected, projected.cause)
             assertEquals(3L, projected.examinedWorkUnits.value)
         }
         for (cause in ValueFlowStepFailure.entries) {

@@ -21,7 +21,7 @@ internal suspend fun revalidateImpactSite(
     val read =
         when (val observed = compiler.revalidateSite(request)) {
             is ValueModelSiteRead.Revalidated -> observed
-            is ValueModelSiteRead.Rejected -> return impactFailure(observed.cause.siteFailure(origin), position)
+            is ValueModelSiteRead.Rejected -> return observed.cause.siteFailure(origin, position)
             is ValueModelSiteRead.ContractRejected -> return impactFailure(observed.cause.impactFailure(), position)
             is ValueModelSiteRead.Unsupported -> return impactFailure(observed.cause.boundaryFailure(), position)
             is ValueModelSiteRead.Limited -> return impactFailure(observed.cause.impactFailure(), position)

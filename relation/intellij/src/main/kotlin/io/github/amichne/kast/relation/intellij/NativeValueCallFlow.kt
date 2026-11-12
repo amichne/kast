@@ -42,7 +42,12 @@ internal class NativeValueCallFlow(
             }
             is NativeValueArgumentDispatch.Implementations -> return implementationEntries(dispatch)
             is NativeValueArgumentDispatch.Unsupported -> retained.unresolved(dispatch.cause)
-            is NativeValueArgumentDispatch.Rejected -> return Refinement.Rejected(dispatch.cause.nativeFlowRejection())
+            is NativeValueArgumentDispatch.Rejected ->
+                return Refinement.Rejected(
+                    dispatch.cause.nativeFlowRejection(
+                        io.github.amichne.kast.relation.contract.ValueNativeRelationOrigin.IMPLEMENTATION_DISPATCH
+                    )
+                )
         }
         return Refinement.Refined(Unit)
     }

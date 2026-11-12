@@ -71,7 +71,6 @@ enum class QueryImpactSourceFailureCode(internal val recoveryAction: ReadRecover
     UNSUPPORTED_INVOCATION(ReadRecoveryAction.CORRECT_REQUEST),
     OWNER_MISMATCH(ReadRecoveryAction.CORRECT_REQUEST),
     AUTHORITY_MOVED(ReadRecoveryAction.REACQUIRE_AUTHORITY),
-    NATIVE_UNAVAILABLE(ReadRecoveryAction.REPORT_FAILURE),
     GRANT_TOO_SMALL(ReadRecoveryAction.ADJUST_BUDGET_OR_SCOPE),
     OUTSIDE_DOMAIN(ReadRecoveryAction.CORRECT_REQUEST),
     ACCESS_PATH_DEPTH_EXCEEDED(ReadRecoveryAction.CORRECT_REQUEST),
@@ -144,6 +143,22 @@ enum class QueryImpactSourceFailureCode(internal val recoveryAction: ReadRecover
 
 @Serializable
 sealed interface QueryImpactSourceFailureDocument {
+    @Serializable
+    @SerialName("NATIVE_READ")
+    data class NativeRead(val failure: ImpactNativeReadRejectionDocument.Operational, val position: ProtocolOffset) :
+        QueryImpactSourceFailureDocument
+
+    @Serializable
+    @SerialName("NATIVE_PRODUCER_EXECUTION")
+    data class NativeProducerExecution(
+        val failure: ImpactNativeReadRejectionDocument.Operational,
+        val position: ProtocolOffset,
+        val enclosing: ImpactDeclarationReferenceDocument,
+        val anchor: ImpactSourceRangeDocument,
+        @kotlinx.serialization.EncodeDefault
+        val stage: ImpactProducerExecutionStageDocument = ImpactProducerExecutionStageDocument.INITIAL_EXECUTION,
+    ) : QueryImpactSourceFailureDocument
+
     @Serializable
     @SerialName("PEER_PROOF")
     data class PeerProof(val cause: ImpactPeerProofFailureDocument, val position: ProtocolOffset) :

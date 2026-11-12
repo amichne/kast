@@ -64,7 +64,7 @@ sources:
 generated: { by: "codex", at: "2026-11-10T17:49:52.067Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T14:25:07.841Z
+    at: 2026-11-12T06:30:47.924Z
 ---
 
 # Agent context and harness delivery

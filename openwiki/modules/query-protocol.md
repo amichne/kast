@@ -212,8 +212,8 @@ sources:
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
 generated: { by: "codex", at: "2026-11-03T06:25:30.717Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-03T06:25:30.717Z
+  - by: openwiki/0.9.0
+    at: 2026-11-12T06:30:47.924Z
 ---
 
 # Query protocol

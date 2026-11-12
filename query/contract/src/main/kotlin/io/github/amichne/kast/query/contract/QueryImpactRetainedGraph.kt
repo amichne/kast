@@ -88,7 +88,7 @@ class QueryImpactRetainedGraph private constructor(private val parent: QueryImpa
                     is ValueFlowRead.Observed -> value.step.storageBytes(this)
                     is ValueFlowRead.Suspended ->
                         value.step.storageBytes(this).saturatedAdd(remainderStorage(value.remainder))
-                    is ValueFlowRead.Rejected,
+                    is ValueFlowRead.Rejected -> value.cause.storageBytes(this)
                     is ValueFlowRead.ContractRejected -> 0L
                 }
             }
@@ -112,6 +112,8 @@ class QueryImpactRetainedGraph private constructor(private val parent: QueryImpa
                 )
                 .saturatedAdd(collection(value.emitted) { it.storageBytes(this) })
         }
+
+    fun rejection(value: QueryImpactReadRejection): Long = value.storageBytes(this).scaledStorage()
 
     fun receipts(values: List<ValueFlowWorkReceipt>): Long = receiptStorage(values).scaledStorage()
 

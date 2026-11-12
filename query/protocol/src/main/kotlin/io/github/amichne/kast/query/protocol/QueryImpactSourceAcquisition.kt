@@ -220,7 +220,7 @@ internal class QueryImpactSourceAcquisition(
         val read =
             when (val observed = compiler.revalidate(selected, grant)) {
                 is ValueModelDeclarationRead.Revalidated -> observed
-                is ValueModelDeclarationRead.Rejected -> return impactFailure(observed.cause.impactFailure(), position)
+                is ValueModelDeclarationRead.Rejected -> return observed.cause.seedFailure(position)
             }
         if (!grant.resources.permitsWork(read.examinedWorkUnits.value))
             return impactFailure(QueryImpactSourceFailureCode.WORK_RECEIPT_EXCEEDS_GRANT, position)

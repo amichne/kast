@@ -146,7 +146,10 @@ class NativeFlowClosureTest : NativeFlowClosureFixture() {
         println("UNINVOKED anchor=${request.anchor} results=$results")
         results.forEach { result ->
             assertTrue(result is ValueProducerSeedRead.Rejected)
-            assertEquals("NESTED_EXECUTION", (result as ValueProducerSeedRead.Rejected).cause.name)
+            assertEquals(
+                io.github.amichne.kast.relation.contract.ValueProducerSeedRejection.NESTED_EXECUTION,
+                (result as ValueProducerSeedRead.Rejected).cause,
+            )
         }
     }
 

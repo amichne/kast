@@ -118,16 +118,35 @@ enum class ValueFlowStepFailure {
     MISSING_OBLIGATION,
 }
 
-enum class ValueFlowRejection {
-    STALE_SITE,
-    OUTSIDE_DOMAIN,
-    OWNER_UNAVAILABLE,
-    AUTHORITY_MOVED,
-    UNSUPPORTED_SEED,
-    UNRESOLVED_SEED,
-    NATIVE_UNAVAILABLE,
-    GRANT_TOO_SMALL,
-    NESTED_EXECUTION,
+sealed interface ValueFlowRejection {
+    data object STALE_SITE : ValueFlowRejection
+
+    data object OUTSIDE_DOMAIN : ValueFlowRejection
+
+    data object OWNER_UNAVAILABLE : ValueFlowRejection
+
+    data object AUTHORITY_MOVED : ValueFlowRejection
+
+    data object UNSUPPORTED_SEED : ValueFlowRejection
+
+    data object UNRESOLVED_SEED : ValueFlowRejection
+
+    data object GRANT_TOO_SMALL : ValueFlowRejection
+
+    data object NESTED_EXECUTION : ValueFlowRejection
+
+    /** Operational evidence belongs to this rejection, never to an incidental run-scoped log entry. */
+    sealed interface Native : ValueFlowRejection {
+        data class HostUnavailable(val operation: ValueNativeOperation, val prerequisite: ValueNativePrerequisite) :
+            Native
+
+        data class Unexpected(val operation: ValueNativeOperation, val failure: ValueNativeUnexpectedFailure) : Native
+
+        data class RelationRejected(val origin: ValueNativeRelationOrigin, val rejection: RelationCompilerRejection) :
+            Native
+
+        data class PortUnconfigured(val operation: ValueNativeOperation) : Native
+    }
 }
 
 sealed interface ValueFlowRead {

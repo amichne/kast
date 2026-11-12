@@ -134,7 +134,7 @@ class IntellijDiscoveryPageObservationTest {
                 ),
                 record.keys,
             )
-            assertEquals(16, record.getValue("schemaVersion").jsonPrimitive.int)
+            assertEquals(17, record.getValue("schemaVersion").jsonPrimitive.int)
             assertEquals(identity.value.toString(), record.getValue("readId").jsonPrimitive.content)
             assertEquals(1, record.getValue("pageOrdinal").jsonPrimitive.int)
             assertEquals("COMPLETE", record.getValue("outcome").jsonPrimitive.content)

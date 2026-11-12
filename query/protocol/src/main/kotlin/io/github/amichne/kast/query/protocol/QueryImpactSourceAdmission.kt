@@ -17,17 +17,28 @@ import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
-import io.github.amichne.kast.relation.contract.ValueProducerSeedRejection
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
 internal object UnavailableValueProducerSeeds : ValueProducerSeedCompilerPort {
     override suspend fun seed(request: ValueProducerSeedRequest): ValueProducerSeedRead =
-        ValueProducerSeedRead.Rejected(ValueProducerSeedRejection.NATIVE_UNAVAILABLE)
+        ValueProducerSeedRead.Rejected(
+            io.github.amichne.kast.relation.contract.ValueProducerSeedReadFailure.Native(
+                io.github.amichne.kast.relation.contract.ValueFlowRejection.Native.PortUnconfigured(
+                    io.github.amichne.kast.relation.contract.ValueNativeOperation.PRODUCER_SEED
+                )
+            )
+        )
 
     override suspend fun revalidate(selector: SymbolSelector, budget: RelationBudget): ValueModelDeclarationRead =
-        ValueModelDeclarationRead.Rejected(ValueProducerSeedRejection.NATIVE_UNAVAILABLE)
+        ValueModelDeclarationRead.Rejected(
+            io.github.amichne.kast.relation.contract.ValueProducerSeedReadFailure.Native(
+                io.github.amichne.kast.relation.contract.ValueFlowRejection.Native.PortUnconfigured(
+                    io.github.amichne.kast.relation.contract.ValueNativeOperation.MODEL_DECLARATION
+                )
+            )
+        )
 }
 
 internal data class QueryImpactSourceAdmission(val source: QueryImpactSource, val examinedWork: Long)

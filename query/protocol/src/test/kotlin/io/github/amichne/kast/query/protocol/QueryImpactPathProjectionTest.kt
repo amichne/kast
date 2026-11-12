@@ -41,7 +41,6 @@ import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.RepresentationRule
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
-import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowStepFailure
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
@@ -201,7 +200,7 @@ class QueryImpactPathProjectionTest {
     @Test
     fun `rejected reads preserve every native and contract cause with exact site and requested domain`() {
         val fixture = ImpactPathProjectionFixture()
-        for (cause in ValueFlowRejection.entries) {
+        for ((cause, expected) in nativeRejectionCases()) {
             val rejected =
                 QueryImpactReadRejection.Native(
                     fixture.producer,
@@ -221,7 +220,7 @@ class QueryImpactPathProjectionTest {
             val evidence = terminal.rejection as ImpactReadRejectionDocument.Native
             assertEquals(fixture.producer.impactDocument().refined(), evidence.source)
             assertEquals(ImpactRequestedBoundaryDocument.Workspace, evidence.domain)
-            assertEquals(cause.name, evidence.cause.name)
+            assertEquals(expected, evidence.cause)
             assertEquals(3L, evidence.examinedWorkUnits.value)
         }
         for (cause in ValueFlowStepFailure.entries) {

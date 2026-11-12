@@ -124,6 +124,8 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactAccountingValidation.kt
   - id: openwiki-source-d916546ee08a49976b34f8da
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactCompilerTransferDocument.kt
+  - id: openwiki-source-d7b170a0c0fb55b069847e89
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactNativeReadRejectionDocument.kt
   - id: openwiki-source-c4f2ea6fc71d7cadb12a1658
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPathDocuments.kt
   - id: openwiki-source-11f9ee447344d26046d96f7d
@@ -186,17 +188,17 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-2b629829f5e5fae7962e2e68
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt
-generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
+generated: { by: "codex", at: "2026-11-12T06:30:47.924Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-12T06:35:59.298Z
 ---
 
 # Public intent tools
 
 ## Public request grammar and scope
 
-Contract 18 gives RUN exactly one non-null `terminalStep`, tagged `EMIT` or `TRACE`.
+RUN needs one non-null `terminalStep` tagged `EMIT` or `TRACE`.
 Its optional `steps` are ordered transformations before the terminal step.
 EMIT accepts compatible output variants. TRACE accepts only symbol output and owns `expansionScope` directly.
 Omitted or null output selects symbol names and locations.
@@ -495,9 +497,8 @@ the `NORMAL_COMPLETION` condition. Raw admission rejects inconsistent transfer
 roles, owners, ranges or catch indexes. This evidence describes the supported
 static transfer, without asserting runtime path feasibility.
 
-Public contract version 18 requires this evidence and matching generated Pi and
-Copilot adapter versions. Catalog admission rejects incompatible versions before
-tool registration; clients cannot silently discard the branch proof.
+Public contract version 19 keeps this branch evidence and adds typed native read rejections.
+Pi and Copilot reject an incompatible catalog version before tool registration.
 
 Query retention has two current success shapes: `not_requested` for inline output and `retained` with an issued reference. Required storage failure returns typed completion rejection with original coverage and the finite `RETENTION_UNAVAILABLE` cause. The previous success-shaped capacity outcome has no supported variant.
 

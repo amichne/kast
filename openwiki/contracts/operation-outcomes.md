@@ -35,6 +35,8 @@ sources:
     resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt
   - id: openwiki-source-1368a6d1e2827cd0501cec50
     resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/OperationOutcome.kt
+  - id: openwiki-source-d7b170a0c0fb55b069847e89
+    resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactNativeReadRejectionDocument.kt
   - id: openwiki-source-185b35d3438d124da26fc35f
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ImpactPathClassificationDocument.kt
   - id: openwiki-source-01b72c0031ed69c6870649b2
@@ -69,10 +71,10 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringContent.kt
   - id: openwiki-source-6b9226c3dcd93a43cae28064
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringConversion.kt
-generated: { by: "codex", at: "2026-11-03T06:27:58.730Z" }
+generated: { by: "codex", at: "2026-11-12T06:36:59.233Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-12T06:38:10.825Z
 ---
 
 # Operation outcomes
@@ -218,6 +220,9 @@ Canonical query and source failures derive a closed
 for rejections with and without an admitted grant. The wire retains the finite
 failure and budget; projection derives the action again after decoding rather
 than accepting a separate action as authority.
+
+An operational native read rejection records a host prerequisite, an unexpected failure, a nested relation rejection, or `PORT_UNCONFIGURED`.
+A nested relation rejection keeps the received reason and its origin.
 
 A `concat` exact-reference rejection retains both the step and reference positions. It uses the same finite reference reason and recovery action as a source reference rejection. An unavailable retained row or incomplete right operand is a request correction, while an unavailable or stale retained result directs a fresh read.
 

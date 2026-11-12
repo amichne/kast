@@ -44,7 +44,7 @@ internal fun hostedReadDiagnostics(limits: ReadLimits = ReadLimits.Default): Hos
 internal fun HostedReadDiagnosticReceipt.encode(): String =
     diagnosticOutcomeJson.encodeToString(
         HostedReadDiagnosticDocument(
-            schemaVersion = 16,
+            schemaVersion = 17,
             limits =
                 limits.values.map {
                     HostedLimitDocument(it.parameter.name, it.value, it.parameter.unit.name, it.source.name)
@@ -171,7 +171,7 @@ internal sealed interface HostedDiagnosticOutcomeDocument {
 internal fun HostedDiscoveryPageRecord.encode(): String =
     diagnosticOutcomeJson.encodeToString(
         HostedDiscoveryPageDocument(
-            schemaVersion = 16,
+            schemaVersion = 17,
             readId = read.value.toString(),
             pageOrdinal = ordinal.value,
             outcome = measurements.outcome,

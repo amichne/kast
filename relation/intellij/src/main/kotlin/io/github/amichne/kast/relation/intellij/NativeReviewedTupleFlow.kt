@@ -4,6 +4,7 @@ package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.ReviewedCallValueBinding
+import io.github.amichne.kast.relation.contract.ReviewedCallbackValueFailure
 import io.github.amichne.kast.relation.contract.ReviewedLibraryOperation
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
@@ -26,11 +27,42 @@ internal fun nativeReviewedTupleRole(
     call: KtExpression,
     execution: ValueExecutionOwner,
     context: IntellijCallbackFlowContext,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> =
+    reviewedTupleRole(expression, call, execution, context, ReviewedCallbackValueFailure::valueFlowCause)
+
+/** Keep the established external frontier when no reviewed tuple model is available. */
+internal fun nativeReviewedExternalTupleRole(
+    expression: KtExpression,
+    call: KtExpression,
+    execution: ValueExecutionOwner,
+    context: IntellijCallbackFlowContext,
+): Refinement<ValueRole, ValueFlowUnsupportedCause> =
+    reviewedTupleRole(expression, call, execution, context) { failure ->
+        when (failure) {
+            ReviewedCallbackValueFailure.CALLABLE_MISMATCH,
+            ReviewedCallbackValueFailure.ARTIFACT_UNAVAILABLE -> ValueFlowUnsupportedCause.EXTERNAL_CALL
+            ReviewedCallbackValueFailure.ARTIFACT_CHANGED,
+            ReviewedCallbackValueFailure.ARTIFACT_MISMATCH,
+            ReviewedCallbackValueFailure.FORMAL_MISMATCH,
+            ReviewedCallbackValueFailure.OWNER_MISMATCH,
+            ReviewedCallbackValueFailure.BASIS_MISMATCH,
+            ReviewedCallbackValueFailure.RETURN_MISMATCH,
+            ReviewedCallbackValueFailure.WORK_LIMIT_REACHED,
+            ReviewedCallbackValueFailure.TIME_LIMIT_REACHED -> failure.valueFlowCause()
+        }
+    }
+
+private fun reviewedTupleRole(
+    expression: KtExpression,
+    call: KtExpression,
+    execution: ValueExecutionOwner,
+    context: IntellijCallbackFlowContext,
+    bindingFailureCause: (ReviewedCallbackValueFailure) -> ValueFlowUnsupportedCause,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
     val binding =
         when (val read = readReviewedTupleBinding(call, execution, context)) {
             is Refinement.Refined -> read.value
-            is Refinement.Rejected -> return Refinement.Rejected(read.failure.valueFlowCause())
+            is Refinement.Rejected -> return Refinement.Rejected(bindingFailureCause(read.failure))
         }
     when (val permit = reviewedPermit(context)) {
         is Refinement.Refined -> Unit

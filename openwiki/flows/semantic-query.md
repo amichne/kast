@@ -121,6 +121,8 @@ sources:
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactWitness.kt
   - id: openwiki-source-541f239f2752220a46901ef4
     resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryValuePathBasis.kt
+  - id: openwiki-source-d2d6d9e6a95f894c0efb4779
+    resource: repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryValuePathEvidence.kt
   - id: openwiki-source-8926ce517769d1756a729b0c
     resource: repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/AutomaticSymbolQueryRunner.kt
   - id: openwiki-source-dfd865ab52ce8eea1b519c4e
@@ -139,6 +141,8 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactReadResultTest.kt
   - id: openwiki-source-1263068512b14f5d3a0bde82
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/PendingImpactRetentionTest.kt
+  - id: openwiki-source-4972768d910fe0ccc6f2855e
+    resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RejectedPrefixRetentionCase.kt
   - id: openwiki-source-8bba742d3ecbc32c906815e6
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/PipelineCheckpoint.kt
   - id: openwiki-source-a0bad9b6f38ff3fd5d037242
@@ -153,10 +157,10 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt
   - id: openwiki-source-22c063698f200893b9da9c83
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+generated: { by: "codex", at: "2026-11-12T06:30:47.924Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-03T06:09:31.584Z
+  - by: openwiki/0.9.0
+    at: 2026-11-12T06:35:59.298Z
 ---
 
 # Semantic query
@@ -309,6 +313,9 @@ counts are separate from public calls and semantic result cardinality.
 ## Representation impact
 
 An admitted impact plan enters the existing pipeline as exact producer routes. `QueryImpactTasks` caches each detached native value-flow read by its exact site, queues every compiler and reviewed model arrival separately, and records rejected reads, unsupported flow, explicit scope exits, cycles and capacity cuts as typed path terminals. Native observations establish compiler transfers; reviewed models supply representation or boundary meaning. Neither the ledger nor presentation creates missing semantic facts.
+
+Each rejected native read keeps its own cause in the retained path and paged witness.
+Two rejected reads in one investigation can carry different causes.
 
 The existing checkpoint retains these tasks, reads and paths. Finalization validates seed and branch conservation before producing value-path rows. The closure requires every required obligation to be discharged; finishing task execution alone does not permit complete semantic proof. Retained witness sections derive from that same immutable ledger and existing query-state lifetime. Changing epoch requires fresh recipe admission rather than revival of old handles.
 

@@ -181,7 +181,7 @@
           "domain": {
             "type": "WORKSPACE"
           },
-          "cause": "NATIVE_UNAVAILABLE",
+          "cause": {"type": "PORT_UNCONFIGURED", "operation": "FLOW_READ"},
           "examinedWorkUnits": 3
         }
       }

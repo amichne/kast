@@ -59,7 +59,7 @@ class HostedValueFlowDiagnosticsTest {
             diagnostics.count(outcome)
             diagnostics.finish(HostedDiagnosticOutcome.Completed)
             val document = Json.parseToJsonElement(receipts.single().encode()).jsonObject
-            assertEquals("16", document.getValue("schemaVersion").jsonPrimitive.content)
+            assertEquals("17", document.getValue("schemaVersion").jsonPrimitive.content)
             val phase = document.getValue("nativePhase").jsonObject
             assertEquals(setOf("type", "phase"), phase.keys)
             assertEquals("entered", phase.getValue("type").jsonPrimitive.content)
@@ -105,7 +105,7 @@ class HostedValueFlowDiagnosticsTest {
             receipt.terminations,
         )
         val document = Json.parseToJsonElement(receipt.encode()).jsonObject
-        assertEquals("16", document.getValue("schemaVersion").jsonPrimitive.content)
+        assertEquals("17", document.getValue("schemaVersion").jsonPrimitive.content)
         val terminations = document.getValue("terminations").jsonArray
         assertEquals(
             expected.map { it.second },

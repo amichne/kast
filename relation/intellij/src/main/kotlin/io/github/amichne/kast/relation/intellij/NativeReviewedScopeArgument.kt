@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.psi.KtFunctionLiteral
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 
 /** The selected with argument supplies the anonymous receiver through its distinct block formal. */
-internal fun nativeReviewedArgumentRole(
+internal fun nativeReviewedExternalArgumentRole(
     expression: KtExpression,
     invocation: KtExpression,
     executionOwner: ValueExecutionOwner,
@@ -34,7 +34,7 @@ internal fun nativeReviewedArgumentRole(
             is Refinement.Rejected -> if (with.failure != ValueFlowUnsupportedCause.EXTERNAL_CALL) return with
         }
     }
-    return nativeReviewedTupleRole(expression, invocation, executionOwner, context)
+    return nativeReviewedExternalTupleRole(expression, invocation, executionOwner, context)
 }
 
 private fun reviewedWithArgument(

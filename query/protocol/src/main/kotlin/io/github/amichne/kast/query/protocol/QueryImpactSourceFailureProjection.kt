@@ -39,7 +39,6 @@ internal fun ValueProducerSeedRejection.impactFailure(): QueryImpactSourceFailur
             QueryImpactSourceFailureCode.CALL_CONTEXT_DEPTH_EXCEEDED
         ValueProducerSeedRejection.RECURSIVE_SOURCE_CALL -> QueryImpactSourceFailureCode.RECURSIVE_SOURCE_CALL
         ValueProducerSeedRejection.AUTHORITY_MOVED -> QueryImpactSourceFailureCode.AUTHORITY_MOVED
-        ValueProducerSeedRejection.NATIVE_UNAVAILABLE -> QueryImpactSourceFailureCode.NATIVE_UNAVAILABLE
         ValueProducerSeedRejection.GRANT_TOO_SMALL -> QueryImpactSourceFailureCode.GRANT_TOO_SMALL
         ValueProducerSeedRejection.OUTSIDE_DOMAIN -> QueryImpactSourceFailureCode.OUTSIDE_DOMAIN
         ValueProducerSeedRejection.TIME_LIMIT_REACHED -> QueryImpactSourceFailureCode.TIME_LIMIT_REACHED

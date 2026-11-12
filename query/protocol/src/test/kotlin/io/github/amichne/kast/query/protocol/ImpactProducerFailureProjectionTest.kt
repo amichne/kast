@@ -25,6 +25,36 @@ class ImpactProducerFailureProjectionTest {
     }
 
     @Test
+    fun `operational seed failures keep required evidence and any already admitted execution site`() {
+        val source = ImpactPathProjectionFixture().producer
+        for ((cause, expected) in nativeRejectionCases()) {
+            if (cause is io.github.amichne.kast.relation.contract.ValueFlowRejection.Native) {
+                val failure = io.github.amichne.kast.relation.contract.ValueProducerSeedReadFailure.Native(cause)
+                val unacquired =
+                    ValueProducerSeedRead.Rejected(failure).producerFailure(0).failure
+                        as QueryRunRejection.ImpactSourceRejected
+                assertEquals(expected, (unacquired.cause as QueryImpactSourceFailureDocument.NativeRead).failure)
+                val acquired =
+                    ValueProducerSeedRead.Rejected(
+                            failure,
+                            ValueProducerSeedDiagnostic.InitialExecution(
+                                source.enclosing,
+                                source.range,
+                                ValueProducerExecutionFailure.Native(cause),
+                            ),
+                        )
+                        .producerFailure(0)
+                        .failure as QueryRunRejection.ImpactSourceRejected
+                val detailed = acquired.cause as QueryImpactSourceFailureDocument.NativeProducerExecution
+                assertEquals(expected, detailed.failure)
+                assertEquals(source.range.startInclusive, detailed.anchor.start.value)
+                assertEquals(source.range.endExclusive, detailed.anchor.end.value)
+                assertEquals(source.enclosing.compilerIdentity.value, detailed.enclosing.compilerIdentity.value)
+            }
+        }
+    }
+
+    @Test
     fun `failed producer encodes original operation site and callback cause`() {
         val source = ImpactPathProjectionFixture().producer
         val rejected =

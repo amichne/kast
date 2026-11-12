@@ -1,0 +1,9 @@
+[
+  "NATIVE_UNAVAILABLE",
+  {"type":"NATIVE_UNAVAILABLE"},
+  {"type":"HOST_UNAVAILABLE","operation":"FLOW_READ"},
+  {"type":"UNEXPECTED_NATIVE_FAILURE","operation":"FLOW_READ","kind":"RUNTIME"},
+  {"type":"NESTED_RELATION_REJECTED","origin":"IMPLEMENTATION_DISPATCH"},
+  {"type":"PORT_UNCONFIGURED"},
+  {"type":"HOST_UNAVAILABLE","operation":"FLOW_READ","prerequisite":"UNKNOWN"}
+]

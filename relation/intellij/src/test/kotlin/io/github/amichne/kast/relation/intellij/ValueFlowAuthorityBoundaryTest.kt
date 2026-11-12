@@ -137,10 +137,13 @@ class ValueFlowAuthorityBoundaryTest {
                 .refined()
         val result =
             IntellijValueFlowCompilerAdapter(observation).revalidateSite(faulty, selector.lease, source, rejectedModel)
-        assertEquals(
-            ValueFlowRejection.NATIVE_UNAVAILABLE,
-            assertInstanceOf(ValueModelSiteRead.Rejected::class.java, result).cause,
-        )
+        val cause =
+            assertInstanceOf(
+                ValueFlowRejection.Native.Unexpected::class.java,
+                assertInstanceOf(ValueModelSiteRead.Rejected::class.java, result).cause,
+            )
+        assertEquals(io.github.amichne.kast.relation.contract.ValueNativeOperation.MODEL_SITE, cause.operation)
+        assertEquals("java.lang.IllegalStateException", cause.failure.exceptionType)
         val failure = observation.failures.single()
         assertEquals(IntellijReadStage.VALUE_MODEL_SITE_ADMISSION, failure.stage)
         assertFalse(failure.toString().contains("SOURCE_PAYLOAD_MUST_NOT_BE_RECORDED"))

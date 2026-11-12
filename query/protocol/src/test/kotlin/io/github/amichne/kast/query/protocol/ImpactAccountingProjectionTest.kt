@@ -143,7 +143,9 @@ class ImpactAccountingProjectionTest {
             QueryImpactReadRejection.Native(
                 seed,
                 RelationSearchBoundary.WORKSPACE_EXPANSION,
-                ValueFlowRejection.NATIVE_UNAVAILABLE,
+                ValueFlowRejection.Native.PortUnconfigured(
+                    io.github.amichne.kast.relation.contract.ValueNativeOperation.FLOW_READ
+                ),
                 RelationWorkCount.parse(3).refined(),
             )
         val path =

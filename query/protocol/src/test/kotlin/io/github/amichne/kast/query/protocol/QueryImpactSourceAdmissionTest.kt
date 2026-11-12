@@ -222,7 +222,15 @@ class QueryImpactSourceAdmissionTest {
                 references,
             )
         val result = protocol.executePage(request(document()), owner.lease, budget) as OperationOutcome.Rejected
-        assertEquals(QueryImpactSourceFailureCode.NATIVE_UNAVAILABLE, result.reason.admissionCode())
+        val rejected = result.reason as QueryRunRejection.ImpactSourceRejected
+        val native =
+            rejected.cause as io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument.NativeRead
+        assertEquals(
+            io.github.amichne.kast.protocol.contract.ImpactNativeReadRejectionDocument.PortUnconfigured(
+                io.github.amichne.kast.protocol.contract.ImpactNativeOperationDocument.PRODUCER_SEED
+            ),
+            native.failure,
+        )
         assertEquals(0, executions)
     }
 

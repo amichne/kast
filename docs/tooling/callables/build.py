@@ -238,7 +238,7 @@ def outputs(root: Path) -> dict[Path, str]:
         "const expectedDataSha = " + json.dumps(hashlib.sha256(data.encode()).hexdigest()) + ";\n"
     )
     compressed = io.BytesIO()
-    with gzip.GzipFile(fileobj=compressed, mode="wb", filename="", mtime=0) as stream:
+    with gzip.GzipFile(fileobj=compressed, mode="wb", filename="", mtime=0, compresslevel=9) as stream:
         stream.write(data.encode())
     snippet += (
         "const compressedGraphBase64 = "

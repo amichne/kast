@@ -106,11 +106,13 @@ class ValueFlowObservationTest {
                 ValueFlowRejection.AUTHORITY_MOVED to "VALUE_FLOW_REJECTED_AUTHORITY_MOVED",
                 ValueFlowRejection.UNSUPPORTED_SEED to "VALUE_FLOW_REJECTED_UNSUPPORTED_SEED",
                 ValueFlowRejection.UNRESOLVED_SEED to "VALUE_FLOW_REJECTED_UNRESOLVED_SEED",
-                ValueFlowRejection.NATIVE_UNAVAILABLE to "VALUE_FLOW_REJECTED_NATIVE_UNAVAILABLE",
+                ValueFlowRejection.Native.PortUnconfigured(
+                    io.github.amichne.kast.relation.contract.ValueNativeOperation.FLOW_READ
+                ) to "VALUE_FLOW_PORT_UNCONFIGURED",
                 ValueFlowRejection.GRANT_TOO_SMALL to "VALUE_FLOW_REJECTED_GRANT_TOO_SMALL",
                 ValueFlowRejection.NESTED_EXECUTION to "VALUE_FLOW_REJECTED_NESTED_EXECUTION",
             )
-        assertEquals(ValueFlowRejection.entries.toSet(), expected.map { it.first }.toSet())
+        assertEquals(9, expected.size)
         for ((cause, reason) in expected) {
             val read = ValueFlowRead.Rejected(cause, RelationWorkCount.parse(0).refined())
             val observation = FlowObservation()

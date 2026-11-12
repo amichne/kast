@@ -97,10 +97,24 @@ fun QueryRunFailure.recoveryAction(): ReadRecoveryAction =
 
 private fun QueryImpactSourceFailureDocument.recoveryAction(): ReadRecoveryAction =
     when (this) {
+        is QueryImpactSourceFailureDocument.NativeRead -> failure.nativeRecoveryAction()
+        is QueryImpactSourceFailureDocument.NativeProducerExecution -> failure.nativeRecoveryAction()
         is QueryImpactSourceFailureDocument.PeerProof -> cause.recoveryAction
         is QueryImpactSourceFailureDocument.Reference -> reason.recoveryAction()
         is QueryImpactSourceFailureDocument.Admission -> cause.recoveryAction
         is QueryImpactSourceFailureDocument.ProducerExecution -> cause.recoveryAction
+    }
+
+private fun ImpactNativeReadRejectionDocument.Operational.nativeRecoveryAction(): ReadRecoveryAction =
+    when (this) {
+        is ImpactNativeReadRejectionDocument.HostUnavailable ->
+            when (prerequisite) {
+                ImpactNativePrerequisiteDocument.INDEXES_UNAVAILABLE -> ReadRecoveryAction.WAIT_FOR_WORKSPACE
+                ImpactNativePrerequisiteDocument.PROJECT_DISPOSED -> ReadRecoveryAction.REACQUIRE_AUTHORITY
+            }
+        is ImpactNativeReadRejectionDocument.Unexpected,
+        is ImpactNativeReadRejectionDocument.RelationRejected,
+        is ImpactNativeReadRejectionDocument.PortUnconfigured -> ReadRecoveryAction.REPORT_FAILURE
     }
 
 private fun SourceReferenceFailure.recoveryAction(): ReadRecoveryAction =

@@ -206,7 +206,7 @@
       "domain": {
         "type": "WORKSPACE"
       },
-      "cause": "AUTHORITY_MOVED",
+      "cause": {"type": "AUTHORITY_MOVED"},
       "examinedWorkUnits": 3
     }
   },
