@@ -2,55 +2,55 @@
 
 **Compiler understanding for your coding agent.**
 
-Kast gives coding agents access to IntelliJ IDEA's compiler analysis for Kotlin Gradle projects.
-Your agent can resolve declarations, types, and source relationships as it works on your code.
+Kast lets your coding agent ask IntelliJ IDEA about your Kotlin Gradle project.
+The agent gets resolved declarations, callers, and IDEA diagnostics instead of text matches.
+Each answer says whether the search finished, so the agent can tell "none found" from "not fully searched".
 
 ## Get started
 
-For desktop setup, use an Apple silicon Mac and a Kotlin Gradle project.
-Use IntelliJ IDEA `262.*` or `263.*` with its bundled Kotlin plugin and Java 25 JBR.
-Use Python 3.12 or 3.13.
-For upgrades or optional MCP, install uv 0.12.9 or later.
+You need:
 
-For a private Host, see [workspace containers](https://kast.michne.com/reference/installation/#manage-isolated-workspaces).
+- An Apple silicon Mac and a Kotlin Gradle project.
+- IntelliJ IDEA 2026.2 or 2026.3 (build `262.*` or `263.*`), with its bundled Kotlin plugin and Java 25 JetBrains Runtime (JBR).
+- The Codex, Copilot, or Pi CLI.
+- Python 3.12 or 3.13, available as `python3` on your `PATH`.
+- For `kast upgrade` and the optional MCP setup: the uv Python package manager, version 0.12.9 or later.
 
-Install the latest qualified development build from a terminal:
+Setup takes three steps.
 
-```shell
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
-```
+1. Install Kast from any directory, then restart IntelliJ IDEA so that it loads Kast.
 
-You need no checkout or existing `kast` command.
-The installer replaces Kast-owned assets and can end active Kast sessions.
-Restart IntelliJ IDEA to load the installed Host.
-Run `kast status --json` to inspect the loaded Host in `applicationHost`.
-The installer flag `--skip-codex-plugin` skips optional MCP setup.
+   ```shell
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
+   ```
 
-Install CLI guidance for your agent:
+   `--skip-codex-plugin` skips the installer's Codex prompt; step 2 connects every agent, including Codex.
+   If your shell cannot find `kast`, add the directory that the installer prints to your `PATH`, then open a new terminal.
 
-```shell
-kast install codex
-```
+2. Connect your agent. Use `copilot` or `pi` instead of `codex` for those agents.
 
-Use `copilot` or `pi` instead of `codex` for another agent.
-Start a fresh agent session in the same Kotlin repository or worktree.
+   ```shell
+   kast install codex
+   ```
 
-Continue your work with the agent. The installed guidance covers Kast's native CLI; MCP is optional.
-The persistent Host in IntelliJ IDEA supplies compiler analysis for the same project.
+   Open your project in IntelliJ IDEA, and keep IDEA open while you work. Then start a new agent session in the same project.
 
-Kast results keep their source scope, completion status, and evidence limits.
-[Understand the evidence](https://kast.michne.com/explanation/) for the completion contract and its limits.
+3. Check the setup from your project root. Replace `DECLARATION_NAME` with a class or function in your project, and look for `"type": "complete"` and that declaration's file in the output.
 
-[Set up Kast](https://kast.michne.com/start/) ·
-[CLI reference](https://kast.michne.com/reference/cli/) ·
-[Help](https://kast.michne.com/troubleshooting/)
+   ```shell
+   kast query --name DECLARATION_NAME --fields name,location --json
+   ```
 
-## More
+[Set up Kast](https://kast.michne.com/start/) explains each step.
+On Linux x86-64, or to run Kast without desktop IDEA, see [Run Kast without desktop IDEA](https://kast.michne.com/reference/installation/#manage-isolated-workspaces).
 
-- [Agent capabilities](https://kast.michne.com/search/).
-- [A visual explanation of value flow](https://kast.michne.com/explanation/value-journey/).
-- [Technical reference](https://kast.michne.com/reference/).
-- [Contribute to Kast](docs/development.md).
+## Learn more
+
+- [What you can ask](https://kast.michne.com/search/)
+- [Help](https://kast.michne.com/troubleshooting/)
+- [How Kast works](https://kast.michne.com/explanation/)
+- [CLI reference](https://kast.michne.com/reference/cli/)
+- [Contribute to Kast](docs/development.md)
 
 Kast uses the [GNU General Public License v3.0 only](LICENSE).
 Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).

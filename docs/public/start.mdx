@@ -1,7 +1,7 @@
 ---
 title: "Set up Kast"
 sidebarTitle: "Set up"
-description: "Install the latest Kast development build and connect Codex, Copilot, or Pi to compiler analysis for your Kotlin Gradle project."
+description: "Install Kast, connect Codex, Copilot, or Pi, and run your first query in a Kotlin Gradle project."
 keywords:
   - "CLI"
   - "Codex"
@@ -13,7 +13,7 @@ icon: "terminal"
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Set up Kast with desktop IntelliJ IDEA so your agent can use compiler analysis in your Kotlin Gradle project.
+Setup takes three steps: install Kast, connect your agent, and run one query.
 
 ## Before you start
 
@@ -23,54 +23,52 @@ You need:
 
 - An Apple silicon Mac.
 - A Kotlin Gradle project.
-- IntelliJ IDEA `262.*` or `263.*` with its bundled Kotlin plugin and Java 25 JBR.
+- IntelliJ IDEA 2026.2 or 2026.3 (build `262.*` or `263.*`), with its bundled Kotlin plugin and Java 25 JetBrains Runtime (JBR).
 - The Codex, Copilot, or Pi CLI.
-- Python 3.12 or 3.13 available as `python3` on `PATH`.
+- Python 3.12 or 3.13, available as `python3` on your `PATH`.
+- For `kast upgrade` and the optional MCP setup: the uv Python package manager, version 0.12.9 or later.
 
-For upgrades or [optional MCP](/reference/integrations#optional-mcp), install uv 0.12.9 or later.
-
-<Note>
-  **Want a private Host?** A workspace container provides one on macOS or Linux, including Apple silicon Macs, separate from desktop IDEA. See [workspace containers](/reference/installation#manage-isolated-workspaces) for matching release assets and qualified candidate limits.
-</Note>
+<Tip>
+  On Linux x86-64, or to run Kast without desktop IDEA, see [Run Kast without desktop IDEA](/reference/installation#manage-isolated-workspaces).
+</Tip>
 
 <Steps titleSize="h2">
-  <Step title="Install or update Kast" id="1-install-or-update-kast">
+  <Step title="Install Kast" id="1-install-or-update-kast">
     <span id="1-install-kast" />
     <span id="1-select-the-development-build" />
 
-    Save your project work. Installation or an update can end active Kast sessions.
-
-    If Kast is already installed, update to the latest qualified development build:
-
-    ```shell
-    kast upgrade --channel main --restart-ide
-    ```
-
-    `--restart-ide` permits a normal IDEA restart when necessary. See [installation and updates](/reference/installation) for pins and recovery outcomes.
-    After a successful upgrade, continue to [step 2](#2-install-agent-guidance).
-
-    For a fresh installation, run:
+    Run this command from any directory. You do not need a checkout of the Kast repository.
 
     ```shell
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --developer-latest --skip-codex-plugin
     ```
 
-    This command needs no checkout or existing `kast` installation.
-    It selects the latest qualified development build and resets stale Kast state.
-    The flag `--skip-codex-plugin` skips optional MCP setup.
+    `--developer-latest` selects the latest development build. `--skip-codex-plugin` skips the installer's Codex prompt; step 2 connects every agent, including Codex.
 
-    After a fresh installation, restart IDEA to load the Kast Host.
-    If the shell cannot find `kast`, add the command directory from the installer output to `PATH`.
+    Then restart IntelliJ IDEA so that it loads Kast.
+
+    If your shell cannot find `kast`, add the directory that the installer prints to your `PATH`, then open a new terminal.
+
+    <Accordion title="Already installed? Update instead">
+      Installing or updating can end running Kast sessions. Save your work in your agent first.
+
+      ```shell
+      kast upgrade --channel main --restart-ide
+      ```
+
+      `--restart-ide` lets Kast restart IDEA when the update needs it.
+      See [Install and update Kast](/reference/installation) to pin a version or recover a failed update.
+    </Accordion>
   </Step>
 
-  <Step title="Install agent guidance" id="2-install-agent-guidance">
+  <Step title="Connect your agent" id="2-install-agent-guidance">
     <span id="choose-your-agent" />
     <span id="1-connect-your-agent" />
     <span id="2-restart-intellij-idea" />
     <span id="2-restart-your-tools" />
     <span id="3-connect-your-agent" />
 
-    Choose the tab for your existing agent.
+    Install guidance that teaches your agent when and how to run `kast`:
 
     <Tabs sync={false}>
       <Tab title="Codex">
@@ -96,41 +94,42 @@ For upgrades or [optional MCP](/reference/integrations#optional-mcp), install uv
       </Tab>
     </Tabs>
 
-    These commands install guidance for the native CLI.
-    The default setup needs no MCP registration.
+    Open your project in IntelliJ IDEA, and keep IDEA open while you work. Then start a new agent session in the same project.
 
-    Start a fresh agent session in the same Kotlin repository or worktree.
-    If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command before the fresh session.
+    You do not need MCP to ask about your code. Edits through Kast need the [optional MCP setup](/reference/integrations#optional-mcp).
   </Step>
 
   <Step title="Run your first query" id="3-run-your-first-query">
     <span id="3-continue-your-work" />
-
     <span id="3-ask-about-your-code" />
     <span id="3-ask-your-agent" />
     <span id="4-establish-readiness" />
     <span id="what-your-first-result-establishes" />
+    <span id="inspect-your-first-answer" />
 
-    Open the intended Kotlin Gradle project in IDEA. Choose the exact name of a Kotlin declaration in that project.
-    Replace `DECLARATION_NAME` with that name, then run this command from the project root.
+    Choose the name of a class or function in your project.
+    From the project root, run this command with that name in place of `DECLARATION_NAME`:
 
     ```shell
     kast query --name DECLARATION_NAME --fields name,location --json
     ```
 
-    Look for `"type": "complete"` and the expected file location in the returned rows.
-    You can also ask your agent to find that declaration and show its source location.
+    The command exits with status `0` when the search finished. In the output, look for `"type": "complete"` and the file where that declaration is.
 
-    Kast can wait for Gradle import and indexing before supplying compiler evidence.
-    If it cannot finish, the result carries the cause and recovery evidence. Use [Help](/troubleshooting) to resolve the reported problem.
-
-    <span id="inspect-your-first-answer" />
+    The first query can take several minutes while IDEA imports the Gradle project and builds its index. Let it run.
+    If `type` has another value or the command prints an error, the output gives the cause. See [Help](/troubleshooting).
   </Step>
 </Steps>
 
-[Capabilities](/search) describes the evidence available during your work.
-[Understand the evidence](/explanation) explains completion and evidence limits.
+## Next
 
-Exact reference: [Compatibility](/reference/compatibility).
+Ask your agent about your code as usual, for example:
+
+```text wrap
+Which functions call submitOrder, and where are they?
+```
+
+The agent's transcript shows the `kast` commands it runs to answer. If it searches the text instead, see [Your agent does not use Kast](/troubleshooting#your-agent-does-not-use-kast).
+For more examples, see [What you can ask](/search).
 
 <DeeperReading />

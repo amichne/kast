@@ -175,6 +175,17 @@ An unfinished search with no matches does not prove absence.
 `--max-results` limits presentation. It does not establish semantic completion.
 A complete page can still have an issued continuation.
 
+### Exit status
+
+| Status | Meaning |
+| --- | --- |
+| `0` | The search finished, and its output is available. More pages can remain; read them through the issued handle. |
+| `10` | Kast did not prove the answer complete. The result is qualified or rejected; read its cause. |
+| `11` | The search finished, but Kast did not deliver or save the remaining output. |
+| `124` | The explicit `--max-elapsed-ms` or `--wait` budget ran out. |
+| `130` or `143` | Cancelled or terminated. |
+| `1` to `9` | A command, runtime, I/O, protocol, or bootstrap failure. Examples include invalid arguments (`2`), a path outside the workspace (`3`), or a stopped installation (`4`). An output write failure (`5`) can happen after the query runs. Read the output and stderr; these codes alone do not prove whether the query ran. |
+
 If `COMPLETION_UNPROVEN` includes `UNRESOLVED_ARGUMENT_MAPPING`, Kast cannot prove the requested callback relationships.
 Keep the reported cause and original coverage with your conclusion.
 If the response supplies `nextQuery`, save that argument document as `evidence.json`:

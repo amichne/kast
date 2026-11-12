@@ -38,44 +38,27 @@
               "start",
               "search",
               "troubleshooting"
-            ],
-            "expanded": true
+            ]
           },
           {
-            "group": "Explore guides",
+            "group": "Everyday tasks",
             "pages": [
-              {
-                "group": "Task guides",
-                "pages": [
-                  "how-to",
-                  "reference/search",
-                  "how-to/inspect-diagnostics",
-                  "how-to/read-retained-evidence",
-                  "reference/query-pipelines",
-                  "reference/change",
-                  "how-to/complete-engineering-task"
-                ],
-                "expanded": false
-              },
-              {
-                "group": "Setup and maintenance",
-                "pages": [
-                  "agent-harnesses",
-                  "reference/installation",
-                  "reference/integrations",
-                  "reference/management",
-                  "reference/troubleshooting"
-                ],
-                "expanded": false
-              },
-              {
-                "group": "Tutorials",
-                "pages": [
-                  "tutorials",
-                  "tutorials/first-query"
-                ],
-                "expanded": false
-              }
+              "reference/search",
+              "how-to/inspect-diagnostics",
+              "reference/change",
+              "how-to/read-retained-evidence",
+              "reference/query-pipelines",
+              "how-to/complete-engineering-task",
+              "tutorials/first-query"
+            ]
+          },
+          {
+            "group": "Install and maintain",
+            "pages": [
+              "reference/integrations",
+              "reference/installation",
+              "reference/management",
+              "reference/troubleshooting"
             ]
           }
         ]
@@ -84,48 +67,40 @@
         "tab": "Architecture",
         "groups": [
           {
-            "group": "Understand an answer",
+            "group": "Start here",
             "pages": [
               "explanation",
               "explanation/value-journey"
             ]
           },
           {
-            "group": "Explore mechanisms",
+            "group": "What an answer proves",
             "pages": [
-              {
-                "group": "Evidence and tracing",
-                "pages": [
-                  "reference/evidence-boundaries",
-                  "reference/callbacks",
-                  "architecture/relations-and-traversal",
-                  "explanation/value-journey-evidence"
-                ],
-                "expanded": false
-              },
-              {
-                "group": "Query execution",
-                "pages": [
-                  "explanation/query-lifecycle",
-                  "architecture/query-admission",
-                  "architecture/source-reads",
-                  "architecture/query-reuse",
-                  "reference/staleness"
-                ],
-                "expanded": false
-              },
-              {
-                "group": "Runtime and ownership",
-                "pages": [
-                  "reference/internals/architecture",
-                  "architecture/topology",
-                  "reference/lifecycles",
-                  "reference/internals/background-startup",
-                  "architecture/codex-transport",
-                  "architecture/change-lifecycle"
-                ],
-                "expanded": false
-              }
+              "reference/evidence-boundaries",
+              "reference/callbacks",
+              "architecture/relations-and-traversal",
+              "explanation/value-journey-evidence"
+            ]
+          },
+          {
+            "group": "How a query runs",
+            "pages": [
+              "explanation/query-lifecycle",
+              "architecture/query-admission",
+              "architecture/source-reads",
+              "architecture/query-reuse",
+              "reference/staleness"
+            ]
+          },
+          {
+            "group": "Runtime and ownership",
+            "pages": [
+              "reference/internals/architecture",
+              "architecture/topology",
+              "reference/lifecycles",
+              "reference/internals/background-startup",
+              "architecture/codex-transport",
+              "architecture/change-lifecycle"
             ]
           }
         ]
@@ -134,7 +109,7 @@
         "tab": "Reference",
         "groups": [
           {
-            "group": "Overview and CLI",
+            "group": "Start here",
             "pages": [
               "reference",
               "reference/cli",
@@ -142,7 +117,7 @@
             ]
           },
           {
-            "group": "Query contracts",
+            "group": "Queries",
             "pages": [
               "reference/api",
               "reference/responses",
@@ -154,7 +129,7 @@
             ]
           },
           {
-            "group": "Client contracts",
+            "group": "Clients",
             "pages": [
               "reference/mcp-catalog",
               "reference/rpc-catalog",
@@ -162,46 +137,34 @@
             ]
           },
           {
-            "group": "Schemas and samples",
+            "group": "Schemas",
             "pages": [
               "reference/schemas",
               "reference/walkthrough",
               {
-                "group": "Detailed schemas",
+                "group": "Callable schemas",
                 "expanded": false,
                 "pages": [
-                  {
-                    "group": "Callable schemas",
-                    "expanded": false,
-                    "pages": [
-                      "reference/callables/query-symbols",
-                      "reference/callables/check-diagnostics",
-                      "reference/callables/add-declaration",
-                      "reference/callables/replace-body",
-                      "reference/callables/workspace-lifecycle"
-                    ]
-                  },
-                  {
-                    "group": "Transport results",
-                    "expanded": false,
-                    "pages": [
-                      "reference/models/mcp-tool-call-result",
-                      "reference/models/mcp-read-result",
-                      "reference/models/mcp-investigation-result",
-                      "reference/models/mcp-change-result",
-                      "reference/models/tool-rpc-reply"
-                    ]
-                  },
-                  {
-                    "group": "Semantic results",
-                    "expanded": false,
-                    "pages": [
-                      "reference/models/query-item",
-                      "reference/models/relation-fact",
-                      "reference/models/diagnostic",
-                      "reference/models/live-evidence"
-                    ]
-                  }
+                  "reference/callables/query-symbols",
+                  "reference/callables/check-diagnostics",
+                  "reference/callables/add-declaration",
+                  "reference/callables/replace-body",
+                  "reference/callables/workspace-lifecycle"
+                ]
+              },
+              {
+                "group": "Result models",
+                "expanded": false,
+                "pages": [
+                  "reference/models/mcp-tool-call-result",
+                  "reference/models/mcp-read-result",
+                  "reference/models/mcp-investigation-result",
+                  "reference/models/mcp-change-result",
+                  "reference/models/tool-rpc-reply",
+                  "reference/models/query-item",
+                  "reference/models/relation-fact",
+                  "reference/models/diagnostic",
+                  "reference/models/live-evidence"
                 ]
               }
             ]
@@ -246,7 +209,7 @@
             "href": "/start"
           },
           {
-            "label": "Examples",
+            "label": "What you can ask",
             "href": "/search"
           },
           {
@@ -384,6 +347,21 @@
     {
       "source": "/architecture",
       "destination": "/explanation",
+      "permanent": true
+    },
+    {
+      "source": "/how-to",
+      "destination": "/search",
+      "permanent": true
+    },
+    {
+      "source": "/tutorials",
+      "destination": "/tutorials/first-query",
+      "permanent": true
+    },
+    {
+      "source": "/agent-harnesses",
+      "destination": "/reference/integrations",
       "permanent": true
     }
   ],

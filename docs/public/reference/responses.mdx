@@ -5,17 +5,22 @@ icon: "list-checks"
 hideFooterPagination: true
 ---
 
-A query result reports facts, their coverage, and producer progress. It also states how much output the response includes.
+A query result reports facts, the scope they cover, and whether the search finished.
+Check these fields before you draw a conclusion. Paths are relative to the JSON that `kast query` prints.
 
-Read the fields in this order before you draw a conclusion:
+| Field | What it tells you |
+| --- | --- |
+| `type` | `complete`, `qualified`, or `rejected_document`. The result itself is under `document`. |
+| `document.status` | `complete`, `qualified`, or `rejected`. See [Semantic status and coverage](#semantic-status-and-coverage). |
+| `document.coverage.exhaustive` | `true` when the search covered its whole scope. |
+| `document.question` | The question as Kast ran it. For a name search, `from.scope` holds the searched `sourceSets`, `directory`, and `packageName`. |
+| `document.live.root` | The workspace that answered. |
+| `document.items` | The returned facts, each with its source evidence. |
+| `document.continuation`, `document.retention` | Handles for more output. See [Producer progress and output progress](#producer-progress-and-output-progress). |
 
-1. Read the tool-call outcome and the semantic status.
-2. Read the searched scope and completion interpretation.
-3. Examine the returned facts with their source evidence and stated limits.
-4. Use the issued handles if more rows or evidence remain.
+The CLI also sums these up in its [exit status](/reference/cli#exit-status). `0` means the search finished and its output is available. `10` means the answer is not proven complete.
 
-A full page can belong to an incomplete answer. A short preview can belong to a complete answer.
-Page size alone proves neither case.
+A full page can belong to an unfinished answer, and a short preview can belong to a complete one. Page size proves neither.
 
 <a id="interpret-coverage-before-making-a-claim" />
 

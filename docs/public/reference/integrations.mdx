@@ -1,6 +1,6 @@
 ---
 title: "Install agent guidance"
-sidebarTitle: "Integration options"
+sidebarTitle: "Agent guidance"
 description: "Give Codex, Copilot, or Pi guidance for the installed Kast CLI. Export the canonical skill or select the optional MCP composition."
 icon: "plug"
 hideFooterPagination: true
@@ -11,6 +11,8 @@ After [installing Kast](/start), add CLI guidance for your agent. Add `--mcp` on
 <a id="choose-your-agent" />
 
 <span id="1-choose-the-client-and-transport" />
+<span id="1-connect-your-agent" />
+<span id="select-your-agent" />
 
 ## 1. Install guidance for your agent
 
@@ -61,11 +63,17 @@ To return to CLI guidance, repeat your agent's command without `--mcp`. Kast rem
 <span id="2-prove-tool-and-workspace-admission" />
 
 <span id="2-ask-about-your-code" />
+<span id="2-request-a-declaration" />
+<span id="ask-a-question" />
+<span id="3-compare-the-evidence" />
 
 ## 2. Continue your work
 
 The installed guidance tells your agent how to use Kast during supported Kotlin work.
 Describe your task naturally. The agent can inspect the installed contract with `kast describe`.
+
+Session hooks start workspace preparation in the background and tell the agent while it runs.
+The agent can continue other work or [wait explicitly](/reference/cli#wait-for-the-workspace).
 See [agent capabilities](/search) for the available evidence and the [CLI reference](/reference/cli) for command forms.
 
 Each result applies to its stated worktree, source state, and scope.
@@ -98,10 +106,11 @@ An identical skill returns `ALREADY_INSTALLED` without writes. A different or in
 <span id="4-recover-a-conflicting-connection" />
 <a id="disconnect-or-upgrade" />
 <span id="5-reload-clients-after-a-lifecycle-change" />
+<span id="refresh-guidance" />
 
 ## Refresh guidance after a core change
 
-Kast refreshes the skill for each harness that it identifies as a Kast installation.
+Kast refreshes its skill in each agent tool, such as Codex, Copilot, or Pi, where it finds a Kast installation.
 The skill front matter records the installed Control version.
 If Kast reports `HARNESS_REFRESH_REQUIRED`, repeat your agent's installation command:
 

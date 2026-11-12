@@ -295,3 +295,6 @@
 .ks-facts dd { margin: 0; min-width: 0; }
 .ks-facts code { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 .ks-children { border-left: 1px solid currentColor; margin-left: .25rem; padding-left: .75rem; }
+
+/* Keep table code labels intact; the table's scroll area handles overflow. */
+.mdx-content table code { white-space: nowrap; word-break: normal; overflow-wrap: normal; }

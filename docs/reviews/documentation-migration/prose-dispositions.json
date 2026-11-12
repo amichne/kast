@@ -3,6 +3,162 @@
   "dispositions": [
     {
       "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/development/build-and-architecture.md",
+        "sourceSha256": "2b1137f4be4e80ce3e80c0dcc90dd5def88f04cdf9c9f964177863d768ba203c",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.05 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed the complete explanation after native Claims reconciliation changed only its verification metadata. The CI inventory change removes retired documentation paths; unknown paths and unavailable exact diffs still keep full validation. Keep the separate dependency, role, compiled-effect, baseline, and semantic-evidence qualifications. They explain distinct acceptance boundaries and cannot be replaced with shorter generic claims. Reader-facing prose and grade 11.05 are unchanged. This source-bound review retains the advisory without claiming grade-8 prose or measured comprehension."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/release-candidates-and-promotion.md",
+        "sourceSha256": "4832d13d50e2f4274eb1800a30bcb03cb50f9191c2e98be4556f35232ad37053",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.61 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed the complete explanation after native Claims reconciliation changed only its verification timestamp. Removing retired page paths does not change the full-validation selection for manual CI or the exact producer event and identity required for developer promotion. Preserve immutable candidate identity, byte-preserving reuse, independent component compatibility, bounded main discovery, contention rejection, and the distinction between provenance and installed semantic qualification. Reader-facing prose and grade 11.61 are unchanged. Retain the advisory for these exact bytes without treating the grade or current Claims as reader-comprehension proof."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/how-to/complete-engineering-task.mdx",
+        "sourceSha256": "21e02e66e27ade5de60994962a7ae1115be39c6ad21af7ef4e4f862a7efa1e96",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.36 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed the current five-step task, from an independent expected result through exact target selection, relationship scope, the change receipt, and the same project test. Keep the distinctions between semantic completion and output paging, freshRef and the old reference, and clean diagnostics and behavior proof. The prose already separates these actions into short sections. Preserve RUNNER_CONTROLLED, BOUNDED, compiler-identity-unavailable, and their qualifications rather than replacing precise terms to lower grade 8.36. The grade-8 target remains unmet; this review does not establish reader comprehension."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/cli.mdx",
+        "sourceSha256": "5117ca59954f77e4c1eac069430d7d2752e8a092f253d2b25cce9359d071e6dd",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 9.00 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed the current command examples, schema paging, workspace waiting, issued references, exit statuses, and embedded jq limits. Keep the corrected distinction between execution failure and a write failure after execution. Preserve JSON Pointer spelling, output-only continuations, exact decimal conversion, signed arithmetic limits, cancellation ownership, and OUTPUT_VALUE_LOSS. These are reference contracts, not optional narrative detail. Sections and examples separate the reader tasks; simplifying away these boundaries to lower grade 9 would weaken the instructions. The grade target remains unmet and reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/installation.mdx",
+        "sourceSha256": "67cb2e90702d680e904996db3a3e9385bd0c1223ca772037f719977ab6c854b3",
+        "rule": "HowTo.Reference",
+        "line": 164,
+        "message": "15 table rows. Refer to the reference for the full list of options rather than carrying it here.",
+        "severity": "suggestion"
+      },
+      "reason": "Reviewed all three tables counted by the rule: two private-Host choices, three platform choices, and four container lifecycle commands, plus their headers and separators. They are setup decision aids, not an exhaustive flag catalog. Keeping platform support beside runtime acquisition prevents Linux readers from following the Apple-only installer; keeping stop, resume, and removal together preserves the warning that rm deletes private state. Retain these bounded tables in this installation owner rather than separating prerequisites and recovery from the procedure. This accepts the table-density advisory for these exact bytes, not a general exception for reference tables in how-to pages."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/integrations.mdx",
+        "sourceSha256": "44d4e2d62ee6a4f3563a81067b5ae1a25eaaf341688a9915cb8bf81ef8be6dea",
+        "rule": "HowTo.Steps",
+        "line": 1,
+        "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed the numbered installation, continuation, and skill-export sections and the separate refresh section. Codex, Copilot, and Pi tabs are alternatives, and exporting a standalone skill is not a prerequisite for using an installed agent. A Markdown ordered list would duplicate the numbered headings or imply a sequence among alternative commands. Keep the explicit fresh-session instruction, optional --mcp selection, no-overwrite export rule, restored fragment aliases, and retention of --mcp during refresh. The existing structure supplies actions without a Markdown ol node, so retain this structural advisory."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/management.mdx",
+        "sourceSha256": "6f1b135af7c49177e09183f41a4e309cb3359e9fcfe8fb9cce78a1269ae16363",
+        "rule": "HowTo.Reference",
+        "line": 24,
+        "message": "22 table rows. Refer to the reference for the full list of options rather than carrying it here.",
+        "severity": "suggestion"
+      },
+      "reason": "Reviewed the expanded tables rather than carrying forward the earlier seven-row review. The five observed status fields, eight update outcomes or notices, and three non-desktop setups each support the adjacent check or recovery action; headers and separators bring the rule's total to 22. Keep installed versus loaded version, unavailable observations, rollback versus unfinished recovery, and the original MCP selection next to their actions. The non-desktop table also prevents treating upgrade as a container-runtime update. These are bounded decision tables, not a full command-option inventory. Retain them in the management procedure with this source-bound density review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/responses.mdx",
+        "sourceSha256": "817e3eff8d3f49a9d24a6d10feb9fab7145fa33ad0d0293f4b249395ae4b118c",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.12 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed current result fields, semantic coverage, output progress, row and evidence cursors, handle families, compact joins, and value-path qualifications. Keep the five-row/two-row illustration explicitly separate from captured behavior. Preserve the distinctions between COMPLETE_ONLY and presentation, exact identity and graph-local IDs, source relationships and executed calls, and an unavailable retained suffix and an incomplete semantic answer. These short sections and tables retain the finite wire names readers must inspect. Accept grade 8.12 without renaming those contracts or erasing qualifications; the advisory target remains unmet and comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/staleness.mdx",
+        "sourceSha256": "07a8230fc268c339a6199e6ef5c2cc1c147144ee8d0bb488e03434cb83627177",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.16 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed the generated shell and both imported concepts, model-and-freshness and live-dependencies-and-reuse. The shell's remaining prose is navigation to Query reuse, Read retained output, and Detailed recovery; it assembles diagrams and concepts rather than carrying a continuous explanation. The imported text separately explains source-issued epochs, complete content identities, current-owner admission, and bounded fact-store lifetime. Preserve those labels, owners, and evidence warnings. The rise from the earlier shell grade 10.84 to 13.16 does not measure the composed reader text, so accept this shell-level advisory without claiming that the full page meets grade 8 or that readers understand it."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/staleness.mdx",
+        "sourceSha256": "07a8230fc268c339a6199e6ef5c2cc1c147144ee8d0bb488e03434cb83627177",
+        "rule": "Reference.Examples",
+        "line": 1,
+        "message": "Reference provides examples. There is no code block on this page.",
+        "severity": "suggestion"
+      },
+      "reason": "Reviewed this source-owned projection as a conceptual retention and invalidation view, not a command reference. It supplies RetentionDiagram and IncrementalFactsDiagram, imports model and live-reuse explanations, and links to the retained-output procedure for executable commands. Its imports name SemanticDependencySnapshot, HostedReadFreshnessOwner, and focused tests; neither the diagrams nor those links claim a captured runtime result. Adding a synthetic token or command block only to satisfy this shell-level rule would not demonstrate freshness and would duplicate the procedure. Retain the no-code-block advisory for this generated composition; do not edit its generated shell directly."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/troubleshooting.mdx",
+        "sourceSha256": "a9b0b5e2ec983b18ea999855c5e034796c26f2b5bdcb283103ff81fdeff5f806",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.16 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed the three recovery stages and their linked owners. Keep the specific failure, reported stage, selected root, and installed contract before recovery; distinguish missing registration from missing workspace ownership, and an uncertain source effect from a known rejection before writing. Preserve the rule that expiry or eviction cannot be repaired with a larger budget or a reconstructed token. The symptom bullets and short recovery sections keep these different actions separate. Accept grade 8.16 for this precise recovery wording, with the grade target unmet and no claim of reader comprehension or successful native recovery."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/start.mdx",
+        "sourceSha256": "3abdabef6ffc8f0821b68a03e53c758272b6114b1ab12cb57b76a54785443e1b",
+        "rule": "HowTo.Steps",
+        "line": 1,
+        "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed the three Mintlify Step components: Install Kast, Connect your agent, and Run your first query. Each has an action, commands, and a continuation or recovery instruction; prerequisites precede the sequence. Agent tabs remain alternatives within step two, and the upgrade accordion is an alternative to a first installation. Vale's Markdown ol rule does not count these components. Keep the native Steps structure rather than adding a duplicate ordered list. Browser evidence can verify rendered structure separately; this disposition does not prove that installation or the first query succeeded."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/tutorials/first-query.mdx",
+        "sourceSha256": "3dba12fa917b0c019dc2dfffa7f9325e752963ca5d7c5044d57454764f637843",
+        "rule": "Tutorial.Steps",
+        "line": 1,
+        "message": "A tutorial walks the learner through numbered steps; there is no numbered list here.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed the five Mintlify Step components from creating the fixture through finding its function and caller, checking completed absence, and removing only the created file. The tutorial names independent expected facts and an unrelated function that must not be counted as a caller; it labels the example as optional and not a captured response. Vale's Markdown ordered-list rule does not recognize the Steps components. Preserve this single rendered sequence rather than adding a redundant list. This review accepts the structural advisory, not proof that the Kotlin fixture or integration ran."
+    },
+    {
+      "finding": {
         "stage": "reader-prose-3.25.1",
         "path": "docs/public/snippets/okf/semantics/symbol/discovery-and-identity.mdx",
         "sourceSha256": "0f829498a8ed46d132afcbe6dc87b4e503a8f341de41e9ef2e59bd611a571fba",

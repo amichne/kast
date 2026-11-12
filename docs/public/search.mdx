@@ -1,7 +1,7 @@
 ---
-title: "Capabilities"
-sidebarTitle: "Capabilities"
-description: "See how compiler-grounded declarations, source relationships, value paths, and diagnostics support your agent during Kotlin development."
+title: "What you can ask"
+sidebarTitle: "What you can ask"
+description: "Example questions for your agent, and what Kast's answers tell you about declarations, callers, value paths, and IDEA problems."
 keywords:
   - "examples"
   - "callers"
@@ -12,63 +12,77 @@ icon: "search"
 
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
-Kast gives your coding agent compiler-grounded evidence during ordinary Kotlin work.
-Describe the feature, bug, or change you want. The agent uses its installed guidance to select the supported operations.
+Ask your agent in plain language. Its installed guidance chooses the Kast commands.
+Most sections below give an example question, the answer you get, and the limit to keep in mind.
 
-## Resolve the code you mean
+## Find the right declaration
 
-Your agent can find declarations, inspect their signatures and owners, and select an exact declaration before following its relationships.
-Identical names can refer to different declarations. Kast's issued references preserve the selected identity.
-[Declarations and relationships](/reference/search) explains discovery, callers, references, and implementations.
+```text wrap
+Find submitOrder in the checkout package. Show each signature and location.
+```
+
+**You get:** each matching declaration, with its owner, signature, and file location.
+
+Two functions can have the same name. When you or the agent pick one, Kast returns an exact reference, an ID for that declaration, so follow-up questions stay on that function.
+See [Find and trace code](/reference/search).
 
 <span id="what-depends-on-this-function" />
+<span id="find-callers-and-references" />
 
-## Understand a change's source relationships
+## Find callers
 
-Caller and reference locations show where code uses the selected declaration.
-Your agent can read that source as it plans a change.
-For example, ask:
-
-```text
+```text wrap
 Which functions call submitOrder, and where are they?
 ```
 
-Select the intended declaration if the name matches more than one.
-The result identifies caller locations within the queried scope and reports completion evidence.
-A complete result can contain zero callers.
-The relationships describe the queried source state and scope. They do not establish runtime execution.
+**You get:** the resolved callers, with file locations, and whether the search finished.
+
+**Limit:** callers show where the code calls the function. They do not show that those calls run at runtime.
 
 <span id="where-does-this-value-go" />
 
-## Follow a value through supported transfers
+## Follow a value
 
-Value paths connect supported returns, arguments, and field reads.
-The result keeps the evidence for each connection and identifies unsupported transfers.
-[Program tracing](/reference/program-tracing) defines the relationships and their limits.
-The optional [value illustration](/explanation/value-journey) makes those distinctions visible.
+```text wrap
+Where does the customer returned by loadCustomer go?
+```
+
+**You get:** a path through supported steps: returns, arguments, and field reads. Each step keeps its evidence.
+
+**Limit:** the path stops where Kast does not support a step. It does not guess past that point.
+See [Program tracing](/reference/program-tracing), or try the [interactive example](/explanation/value-journey).
 
 <span id="what-problems-does-idea-report" />
 
-## Inspect problems and make supported edits
+## Check problems that IDEA reports
 
-The native CLI supports declaration and relationship queries, source reads, and IDEA file diagnostics. See [Check file diagnostics](/reference/cli#check-file-diagnostics).
-Controlled source changes are available through the [optional MCP composition](/reference/integrations#optional-mcp) and Tool RPC interfaces.
+```text wrap
+Check the checkout module for errors and warnings.
+```
 
-- [IDEA diagnostics](/how-to/inspect-diagnostics) carry source locations and reported coverage.
-- [Source changes](/reference/change) support adding a declaration to an existing file or replacing a supported function body, with a change receipt.
+**You get:** IDEA's file diagnostics, with locations, and which of the requested files IDEA checked.
 
-These operations support your project's build and tests. A change receipt records a scoped source effect. It does not establish application behavior.
+**Limit:** this reads IDEA's diagnostics. It does not run a build.
+See [Inspect IDEA diagnostics](/how-to/inspect-diagnostics).
 
 <span id="which-implementation-matters" />
 <span id="can-we-change-this-body" />
+
+## Make a supported edit
+
+Kast can add a declaration to an existing file or replace the body of a supported function.
+It checks the target first and returns a change receipt.
+
+Edits need the [optional MCP setup](/reference/integrations#optional-mcp). The guidance from `kast install` only reads code; your agent still edits files with its own tools.
+See [Make a targeted change](/reference/change).
+
 <span id="what-if-kast-cannot-finish" />
 
-## Keep the evidence with the decision
+## When a search does not finish
 
-Kast's completion status, scope, and qualifications travel with the result.
-An unfinished query or incomplete diagnostic scan cannot prove absence.
-[Understand the evidence](/explanation) explains how to interpret that evidence.
+Every answer says whether the search finished, and in what scope. [Results](/reference/responses) names the fields, and the CLI exits with status `0` only when the search finished.
+If it did not finish, an empty answer does not show that nothing exists. Narrow the question or follow the reported recovery step.
 
-Use [Help](/troubleshooting) for a reported failure and [technical reference](/reference) for command and interface details.
+[Understand the evidence](/explanation) explains this in more detail. [Help](/troubleshooting) covers failures.
 
 <DeeperReading />

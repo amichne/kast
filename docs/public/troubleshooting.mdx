@@ -1,6 +1,6 @@
 ---
 title: "Troubleshoot Kast"
-description: "Resolve build selection, Host activation, agent guidance, and query problems with the native Kast CLI."
+description: "Find your symptom and fix it: the agent does not use Kast, IDEA runs an old version, the project is not ready, a query does not finish, or an edit result is unclear."
 icon: "life-buoy"
 sidebarTitle: "Help"
 ---
@@ -8,82 +8,86 @@ sidebarTitle: "Help"
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
 <a id="inspect-or-update-the-installation" />
-
-Start with the symptom. Use the reported outcome to select the next action.
-
 <span id="1-identify-the-failed-stage" />
+
+Find your symptom below.
 
 ## Your agent does not use Kast
 
-Follow [step 2 in Set up](/start#2-install-agent-guidance) to install CLI guidance for your agent.
-Start a fresh session in the intended Kotlin repository or worktree.
+1. From your project root, run the [first query](/start#3-run-your-first-query) yourself. If it fails, fix that first with the sections below.
+2. Repeat [Connect your agent](/start#2-install-agent-guidance), for example `kast install codex`.
+3. Start a new agent session in your Kotlin project, and ask your question again.
 
-If an upgrade reports `HARNESS_REFRESH_REQUIRED`, repeat `kast install` with your agent's name before the fresh session.
-MCP registration is necessary only for the optional MCP composition.
-Then repeat your question in the fresh session.
+Do the same if an upgrade reports `HARNESS_REFRESH_REQUIRED`. It means the Kast guidance in your agent tool, such as Codex, Copilot, or Pi, is older than the new build.
 
 <span id="inspect-installation-and-activation" />
-
-## Installed build or Host does not match
-
 <span id="2-inspect-the-installation-before-recovery" />
+
+## IDEA runs an old version of Kast
 
 ```shell
 kast status --json
 ```
 
-Compare `installedBuild` with `applicationHost`, which identifies the loaded Host.
-Read `updatePolicy` and `unresolvedTransaction`.
-If a transaction remains unresolved, follow the [recovery procedure](/reference/management#4-resolve-unfinished-recovery).
-If the Host is missing or still uses the prior build, see [Load the plugin and inspect state](/reference/installation#2-load-the-plugin-and-inspect-state).
-Run a query in the project to establish workspace readiness.
+`installedBuild.value.version` is the build on disk. `applicationHost.value.runtimeIdentity.buildIdentity.version` is the build that IDEA has loaded.
+
+1. If `unresolvedTransaction.value.records` is not empty, an update is unfinished. Follow the [recovery procedure](/reference/management#4-resolve-unfinished-recovery) before anything else.
+2. If the two versions differ, or `applicationHost` is `UNAVAILABLE`, restart IntelliJ IDEA.
+3. If that does not help, see [Load the plugin and inspect state](/reference/installation#2-load-the-plugin-and-inspect-state).
+
+With a workspace container, `kast status` does not show the container's Host. Each container keeps the runtime it was created with. See [Without desktop IDEA](/reference/management#without-desktop-idea).
 
 <span id="select-the-development-head" />
 
-## The selected build is not the development head
+## You want the latest build
 
-If you want to track the latest development build, run:
+`kast versions` lists the builds you can select. `kast upgrade` moves to the latest one:
 
 ```shell
 kast versions
-kast upgrade --channel main
+kast upgrade --channel main --restart-ide
 ```
 
-This upgrade replaces a pin with the development channel. See [Pin a published build](/reference/installation#pin-a-published-build) to select a specific version or revision.
-If activation needs an IDEA restart, repeat the upgrade with `--restart-ide`.
+The upgrade removes a pinned version. To select a specific version instead, see [Pin a published build](/reference/installation#pin-a-published-build).
 
-If the result reports `RECOVERY_REQUIRED`, keep its recovery evidence.
-Use [installation outcomes](/reference/management#lifecycle-result-contract) before another lifecycle action.
+If the result is not `ACTIVATED` or `INSTALLED_NOT_RUNNING`, look it up in [update results](/reference/management#3-read-the-result). For `RECOVERY_REQUIRED`, keep the output before you run another install or upgrade.
 
-## IntelliJ needs your attention
+<span id="intellij-needs-your-attention" />
 
-In IDEA, resolve the reported trust, project import, or indexing problem.
-Then repeat your question in the same worktree.
+<span id="idea-is-not-ready" />
 
-[Platform requirements](/reference/compatibility) describe the supported IDEA and runtime.
+## The project is not ready
 
-## Kast cannot finish a query
+The query output names a trust, save, Gradle import, or indexing problem.
 
-Read the reported cause and recovery action.
-If a workspace container reports `STOPPED`, see [Manage the container](/reference/installation#3-manage-the-container).
-If the cause concerns search scope, narrow the question to a known function, package, or directory.
-An unfinished query with no matches does not prove absence.
+- **Desktop IDEA:** resolve it in IDEA, in the same project. Then ask your question again.
+- **Workspace container or `kast-task`:** there is no IDEA window. `kast container create` or the first `kast-task` run grants trust. For a Gradle import problem, fix the build in your workspace. Then restart the Host with `kast container stop NAME` and `kast container resume NAME`, or with `"$root/bin/kast" stop --json` and another `kast-task` run.
+- **Indexing:** wait, then ask again.
 
-If a source reference expires, use the reported recovery action.
-For a later output page, use the issued result reference or continuation.
-Do not repeat a query only to recover that page.
+See [Compatibility](/reference/compatibility) for the supported IDEA versions.
 
-## An edit has an uncertain outcome
+## A query does not finish
 
-Inspect the source and [change receipt](/reference/change#read-the-receipt) before another write.
+The output gives the cause and a recovery step.
+
+- **Search too broad:** narrow the question to a function, package, or directory.
+- **Container `STOPPED`:** see [Manage the container](/reference/installation#3-manage-the-container).
+- **Reference expired:** follow the recovery step in the output.
+- **More output to read:** the output includes a result reference or continuation. Use it to read the next page. Running the query again repeats the whole search.
+
+An unfinished query with no matches does not show that nothing exists.
+
+## An edit has an unclear result
+
+Before another edit, read the current source and the [change receipt](/reference/change#read-the-receipt).
 Review the diff and run your project's tests.
 
 <span id="3-repeat-the-original-operation" />
 
-## Return to your task
+## Still stuck
 
-Use the [CLI reference](/reference/cli) for command discovery and retained reads.
-The [detailed troubleshooting guide](/reference/troubleshooting) describes contract and saved-state failures.
+- [Detailed recovery](/reference/troubleshooting) covers contract errors and saved state.
+- The [CLI reference](/reference/cli) lists every command.
+- Return to [Set up](/start#3-run-your-first-query) or [What you can ask](/search).
 
-Return to [Run your first query](/start#3-run-your-first-query), [Capabilities](/search), or the interrupted [task guide](/how-to).
 <DeeperReading />

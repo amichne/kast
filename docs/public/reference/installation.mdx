@@ -13,8 +13,7 @@ Use the remote installer for an initial installation, then use `kast upgrade` fo
 The normal setup path tracks the latest published development build with `--channel main`.
 
 Use the desktop steps on this page for IntelliJ IDEA on an Apple silicon Mac.
-For a private Host, go to [workspace containers](#manage-isolated-workspaces).
-For an existing `kast-task` workflow, see the [standalone setup archive](#isolated-runtime).
+On Linux, or without desktop IDEA, see [Run Kast without desktop IDEA](#manage-isolated-workspaces).
 
 ## Desktop prerequisites
 
@@ -135,7 +134,7 @@ Compare `installedBuild` with `applicationHost` to distinguish installed files f
 <span id="coordinator-endpoint" />
 
 Use [agent setup](/reference/integrations) to install the selected agent's guidance.
-If an update reports `HARNESS_REFRESH_REQUIRED`, repeat that setup before a fresh agent session.
+If an update reports `HARNESS_REFRESH_REQUIRED`, your agent tool has older Kast guidance. Repeat that setup before a fresh agent session.
 
 <span id="3-establish-a-semantic-connection" />
 
@@ -148,118 +147,133 @@ Ask [a question about your code](/start#3-ask-about-your-code).
 Keep the returned scope and completion evidence with the answer.
 Use [Manage Kast](/reference/management) for update outcomes and recovery.
 
-Task procedures: [Agent guidance](/agent-harnesses).
+Task procedures: [Agent guidance](/reference/integrations).
 
 Exact reference: [Compatibility](/reference/compatibility).
 
 Recovery: [Help](/troubleshooting).
 
-## Manage isolated workspaces
+<span id="manage-isolated-workspaces" />
 
-A workspace container gives a trusted Kotlin Gradle project its own Host profile and Gradle home.
-Several containers can share one verified runtime for the same Kast version and platform.
-The private Host runs separately from desktop IDEA. It shares the OS permissions of your user account.
+## Run Kast without desktop IDEA
 
-### 1. Get a matching Control and runtime
+Kast can run its own private Host instead of the plugin in your desktop IDEA.
+A private Host is a headless IntelliJ analysis process with its own Java runtime, IDE profile, and Gradle home.
+It is not a Docker container. It runs as an ordinary process under your user account, with your file permissions.
 
-Check your Control version and command support.
+| Option | Use it for |
+| --- | --- |
+| Workspace container (`kast container`) | `kast query` in one or more projects, one container per workspace, without desktop IDEA. |
+| `kast-task` | One command at a time in one workspace, from a [standalone installation](#isolated-runtime). |
 
-```shell
-kast --version
-kast container --help
-```
+### Supported platforms
 
-The developer channel selects the latest qualified build. That build can lag changes on `main`.
-If `kast container --help` succeeds, use a runtime ZIP for that exact version and platform.
-Kast publishes runtime archives for Apple silicon and Linux x86-64.
+| Machine | Get `kast` from | Get the container runtime from |
+| --- | --- | --- |
+| Apple silicon Mac | The [remote installer](#install). | A download on first `create`, when your Kast version has a published runtime. Otherwise, a [candidate build](#install-from-a-candidate-build). |
+| Linux x86-64 | A [candidate build](#install-from-a-candidate-build). The remote installer has no Linux release. | The same candidate build. |
+| Intel Mac or Linux ARM | No published release. | No published runtime. |
 
-The stable release workflow qualifies each runtime archive and publishes it with its `.sha256` file.
-On a [stable release](https://github.com/amichne/kast/releases) with these files, `create` fetches the matching runtime on first use.
-If your release lacks these files, import a matching candidate before you create the container.
+### Set up a workspace container
 
-For a candidate, open a successful [Isolated runtime candidates run](https://github.com/amichne/kast/actions/workflows/composed-linux.yml).
-Download the `kast-composed-TARGET-SHA-RUN_ID-ATTEMPT` artifact for your platform.
-Use the `kast-runtime-vVERSION-TARGET.zip` file and the SHA-256 value from its `.sha256` companion.
-In the qualification artifact for that run and target, find `qualification.json`.
-Look for `"qualification": "COMPLETE"` and compare `containers.runtimeSha256` with the ZIP digest.
-Actions artifacts have a retention limit.
+<span id="2-create-a-container-and-query-your-code" />
 
-If your current Control lacks `container` or has another version, get Control from the same candidate.
-Install its `kast-composed-setup-vVERSION-TARGET.tar.gz` through the [standalone setup archive](#isolated-runtime) procedure.
-After installation, start a shell that uses the candidate Control.
-Run this command in the same terminal so `root` keeps the installation path.
+1. Check that your `kast` supports containers:
 
-```shell
-env -i HOME="$root/state/home" PATH="$root/state/home/.local/bin:/usr/bin:/bin" /bin/bash --noprofile --norc
-```
+   ```shell
+   kast --version
+   kast container --help
+   ```
 
-Run the remaining commands in that shell. Use absolute paths for the ZIP and your workspace.
+   If `kast container --help` fails, install `kast` from a [candidate build](#install-from-a-candidate-build).
 
-To import a candidate runtime, replace the path and `DIGEST` with the values from the artifact.
+2. Create a container for a workspace whose build code you trust. `create` grants that workspace trust, so the Host runs its Gradle build.
 
-```shell
-kast container import-runtime --archive /path/to/kast-runtime-vVERSION-TARGET.zip --sha256 DIGEST
-```
+   ```shell
+   cd /path/to/trusted/workspace
+   kast container create --name backend
+   ```
 
-### 2. Create a container and query your code
+   `create` uses the current directory unless you pass `--root`. It records the container without starting the Host.
+   If no runtime is available for your version, [import one](#install-from-a-candidate-build) first.
 
-Run `create` only for a workspace whose build code you trust. This command grants workspace trust.
+3. Query your code from the workspace. Replace `DECLARATION_NAME` with a class or function name:
 
-```shell
-cd /path/to/trusted/workspace
-kast container create --name backend
-```
+   ```shell
+   kast query --name DECLARATION_NAME --fields name,location --json
+   ```
 
-`create` uses the current directory unless you supply `--root`. It records the container without starting the Host.
-Replace `DECLARATION_NAME` with the exact name of a Kotlin declaration in this workspace.
+   The first query starts the private Host. Look for `"type": "complete"` and the declaration's file.
+   Any query run from the workspace or one of its subdirectories uses this container.
 
-```shell
-kast query --name DECLARATION_NAME --fields name,location --json
-```
+<Note>
+  The Host keeps its Gradle state private. `kast container create --gradle-home DIR` shares an existing Gradle home instead, which gives the Host that directory's Gradle properties, credentials, and init scripts.
+</Note>
 
-The first query starts the private Host on demand. Look for `"type": "complete"` and the expected file location in the returned rows.
-Use the [CLI reference](/reference/cli) to narrow the query if several declarations share a name.
+<span id="3-manage-the-container" />
 
-### 3. Manage the container
+### Manage containers
 
-```shell
-kast container --json
-kast container stop backend
-kast container resume backend
-```
+| Command | Effect |
+| --- | --- |
+| `kast container --json` | List containers, with each one's ID and whether it is enabled or stopped. |
+| `kast container stop backend` | Turn off on-demand start. Queries report `STOPPED`. |
+| `kast container resume backend` | Turn on-demand start back on and prepare the Host. |
+| `kast container rm ID` | Stop the container and delete its record and private state. `rm` takes the exact ID from the list, not the name. |
 
-The list reports the enabled or stopped policy. Use a complete query to prove the Host can answer for this workspace.
-`stop` disables on-demand start. `resume` enables it and tries to prepare the Host.
-A query from the workspace or its subdirectories uses the matching record. An ambiguous or missing selection rejects once the registry exists.
+`rm` keeps your repository, the shared runtime, and any external Gradle home.
+If `stop` or `rm` returns `BUSY`, repeat it after the running operation ends.
+With the default installation, container state lives under `~/.local/share/kast-workspaces`. Remove containers before you uninstall Kast if you want that state removed too.
 
-Gradle state stays private unless you supply an existing directory with `--gradle-home`.
-That option gives the Host access to the directory's Gradle properties, credentials, and init scripts.
+Once any container exists, a query outside every container's workspace, or inside more than one, is rejected.
+To query another project, create a container for it too.
+A listed container is a record. Only a complete query proves that its Host can answer.
 
-Use `kast container rm <id>` to stop and remove the record and its private state.
-Removal preserves the repository, shared runtime, and external Gradle home.
-If stop or removal returns `BUSY`, repeat the command after the active operation ends.
-For the default Control installation, container state lives under `~/.local/share/kast-workspaces`.
-Remove the records before uninstalling Control if you also want to remove their state.
+<span id="1-get-a-matching-control-and-runtime" />
+
+### Install from a candidate build
+
+Use a candidate build on Linux, or when your Kast version has no published container runtime.
+Candidates are qualified development builds. GitHub keeps their artifacts for a limited time.
+
+1. Open a successful [Isolated runtime candidates run](https://github.com/amichne/kast/actions/workflows/composed-linux.yml).
+   Download the `kast-composed-TARGET-SHA-RUN_ID-ATTEMPT` artifact for your platform.
+2. In the qualification artifact for the same run and target, open `qualification.json`.
+   Check for `"qualification": "COMPLETE"`, and check that `containers.runtimeSha256` matches the `.sha256` file of `kast-runtime-vVERSION-TARGET.zip`.
+3. Compare `kast --version` with the candidate's `VERSION`. The installed Control and imported runtime must have the same version and platform.
+   On Linux, if the versions differ, or if `kast container --help` fails, install `kast` from this candidate.
+   Use `kast-composed-setup-vVERSION-TARGET.tar.gz` with the [standalone procedure](#isolated-runtime).
+   Then, in the same terminal, start a clean shell that uses it:
+
+   ```shell
+   env -i HOME="$root/state/home" PATH="$root/state/home/.local/bin:/usr/bin:/bin" /bin/bash --noprofile --norc
+   ```
+
+   This shell's `HOME` is `$root/state/home`, so container records go there too. Run every later `kast` command, including step 4 and your queries, from a shell with this `HOME` and `PATH`.
+
+4. Import the runtime. Use absolute paths, and replace `DIGEST` with the value from its `.sha256` file:
+
+   ```shell
+   kast container import-runtime --archive /path/to/kast-runtime-vVERSION-TARGET.zip --sha256 DIGEST
+   ```
+
+Then [set up a workspace container](#set-up-a-workspace-container).
+Several containers can share one runtime for the same Kast version and platform.
 
 ## Isolated runtime
 
-Use this procedure for a standalone `kast-task` installation or to install Control from a matching candidate.
-The original standalone procedure covers macOS ARM64 and Linux x86-64.
-For a candidate archive, use the platform recorded by its build and qualification run.
-The archive includes its own Host and Java runtime.
-It keeps its Host, configuration, and Gradle state in one private installation. Your desktop IDEA stays independent.
-Use system Python 3.12 or 3.13 and the core OS facilities.
-The Host uses its bundled Java runtime. Your project supplies its own build dependencies and Gradle JVM settings.
+A standalone installation keeps its own Host, Java runtime, configuration, and Gradle state in one directory. Your desktop IDEA stays independent.
+Use it for `kast-task`, or to get `kast` from a [candidate build](#install-from-a-candidate-build).
+It needs system Python 3.12 or 3.13. Your project supplies its own build dependencies and Gradle JVM settings.
 
-Choose a new absolute root with an existing parent. Use its canonical path, with no symbolic link components.
-For example, use `/private/tmp/ki` on macOS or `/tmp/ki` on Linux for a disposable installation.
-The installed root is fixed. Install the archive again if you need a different root.
+Choose a new absolute installation root whose parent exists, with no symbolic links in the path.
+For a disposable installation, use `/private/tmp/ki` on macOS or `/tmp/ki` on Linux.
+The root is fixed. To move it, install again.
 
-1. Set `archive` to the downloaded archive path.
-2. Set `sha256` to the setup archive digest from its `.sha256` companion.
-   Set `version` to the value after `v` in the archive filename.
-3. Set `root` to the chosen installation path.
-4. Run the following command to authenticate the archive and start its installer.
+1. Set `archive` to the downloaded setup archive path.
+2. Set `sha256` to the digest from its `.sha256` file, and `version` to the value after `v` in the archive filename.
+3. Set `root` to the installation root.
+4. Run this command. It checks the archive digest, then starts the bundled installer.
 
 ```shell
 python3 -I - "$archive" "$sha256" "$version" "$root" <<'PY'
@@ -292,17 +306,14 @@ with open(archive, "rb") as source, tempfile.TemporaryDirectory() as scratch:
 PY
 ```
 
-If you need Control for a workspace container, return to [Get a matching Control and runtime](#1-get-a-matching-control-and-runtime).
-For `kast-task`, the private Host starts with no trusted workspace. Select a workspace only if you trust its build code.
-Set `workspace` to the canonical workspace path. Replace `DECLARATION_NAME` with an exact Kotlin declaration name.
+To use `kast-task`, set `workspace` to the canonical path of a workspace whose build code you trust. The first use grants that workspace trust.
+Replace `DECLARATION_NAME` with a class or function name:
 
 ```shell
 "$root/bin/kast-task" "$workspace" -- kast query --name DECLARATION_NAME --fields name,location --json
 ```
 
-Repeat the same workspace path to reuse its trust and private state. A different workspace needs its own installation root.
-The command runs in the selected workspace and keeps its arguments and exit status.
-Use the [CLI reference](/reference/cli) to choose a query for your project and examine its completion evidence.
+The command runs in the workspace and keeps its arguments and exit status.
+Repeat the same workspace path to reuse its trust and state. A different workspace needs its own installation root.
 
-To stop the private Host, run `"$root/bin/kast" stop --json`.
-To resume the private runtime, repeat `kast-task` for the same workspace.
+To stop the private Host, run `"$root/bin/kast" stop --json`. To resume it, run `kast-task` again for the same workspace.

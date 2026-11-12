@@ -31,13 +31,13 @@ The [navigation record](reviews/navigation-density/README.md) records page contr
 
 | Purpose | Routes |
 | --- | --- |
-| Site orientation | `/`, `/tutorials`, `/how-to`, `/reference`, `/explanation`. |
+| Site orientation | `/`, `/reference`, `/explanation`. |
 | First exercise | `/tutorials/first-query`. |
-| Everyday setup | `/start`, `/agent-harnesses`, `/troubleshooting`. |
-| Task selection | `/search`. |
+| Everyday setup | `/start`, `/troubleshooting`. |
+| Example questions | `/search`. |
 | Investigation | `/reference/search`, `/how-to/inspect-diagnostics`, `/how-to/read-retained-evidence`, `/reference/query-pipelines`. |
 | Source changes | `/reference/change`. |
-| Installation and maintenance | `/reference/installation`, `/reference/integrations`, `/reference/troubleshooting`, `/reference/management`. |
+| Installation and maintenance | `/reference/integrations`, `/reference/installation`, `/reference/management`, `/reference/troubleshooting`. |
 | Semantic contracts | `/reference/api`, `/reference/responses`, `/reference/symbols`, `/reference/composition`, `/reference/limits`. |
 | Tracing, state, and lifecycle contracts | `/reference/program-tracing`, `/reference/staleness`, `/reference/lifecycles`. |
 | Client contracts | `/reference/mcp-catalog`, `/reference/rpc-catalog`, `/reference/compatibility`. |
@@ -49,6 +49,10 @@ The [navigation record](reviews/navigation-density/README.md) records page contr
 Some old `/reference/...` URLs teach a task or explain how it works. Their track and Vale rules match that reader need.
 
 The Architecture track covers authority, query lifecycle, query reuse, retention and invalidation, topology and ownership, and change lifecycle. `/explanation` remains its overview route; `/architecture` redirects there. New pages use `/architecture/topology` and `/architecture/change-lifecycle`.
+
+The Guides tab has three flat groups: Get started, Everyday tasks, and Install and maintain.
+Keep navigation at most two levels deep. Do not add a hub page that only lists links; the sidebar already does that.
+`/how-to`, `/tutorials`, and `/agent-harnesses` redirect to their replacements.
 
 Do not move a page just to match a directory name. Keep its routes and heading anchors when their meaning stays the same.
 

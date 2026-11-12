@@ -7,28 +7,15 @@ hideFooterPagination: true
 ---
 
 <span id="understand-the-evidence" />
-
 <span id="work-on-kast" />
-
-Use the [native CLI](/reference/cli) to discover commands and query your Kotlin code.
-Run `kast describe` for the installed contract.
-Use [query forms](/reference/api) and [results](/reference/responses) for the underlying input and output documents.
-
-For declarations, relationships, and completion, read [how to understand a Kast answer](/explanation).
-
 <span id="understand-the-mechanisms" />
 
-[Glossary](/glossary) defines the terms used on these pages.
+Look up exact commands, inputs, and outputs here. For how-to steps, use the Guides tab.
 
-## Related architecture
-
-| Mechanism | What it describes |
-| --- | --- |
-| [Program tracing](/reference/program-tracing) | Calls, callback paths, and supported value transfers within and across source callables. Each supported hop keeps its evidence. |
-| [Staleness](/reference/staleness) | The state a read needs. Exact references can gain fresh authority. Old retained evidence can be rejected. |
-| [Lifecycles](/reference/lifecycles) | Who owns a request, connection, project setup, or daemon start and stop. |
-
-The compiler-static model does not prove that code ran or that a path can run. If proof is missing, Kast rejects the claim. It reports the cause and available evidence.
+- Start with the [CLI reference](/reference/cli). Run `kast describe` to see the contract that your installed version supports.
+- [Query forms](/reference/api) and [Results](/reference/responses) define the request and response documents.
+- The [Glossary](/glossary) defines the terms on these pages.
+- [Understand the evidence](/explanation) explains what a result proves.
 
 ## Queries and semantic evidence
 
@@ -65,4 +52,14 @@ Direct MCP and Tool RPC expose `health_check`. The hosted App Server has a disti
 
 [The source map](/reference/source-map) links source owners and tests of invalid cases. Use the tool catalog from your Kast session.
 
-Use [the source-evidence check](/tutorials/first-query) for an optional fixture or [task guides](/how-to) for commands and recovery steps.
+## Related architecture
+
+| Mechanism | What it describes |
+| --- | --- |
+| [Program tracing](/reference/program-tracing) | Calls, callback paths, and supported value transfers within and across source callables. Each supported hop keeps its evidence. |
+| [Staleness](/reference/staleness) | The state a read needs. Exact references can gain fresh authority. Old retained evidence can be rejected. |
+| [Lifecycles](/reference/lifecycles) | Who owns a request, connection, project setup, or daemon start and stop. |
+
+The compiler-static model does not prove that code ran or that a path can run. If proof is missing, Kast rejects the claim. It reports the cause and available evidence.
+
+For step-by-step procedures, start at [Find and trace code](/reference/search). To compare results with known source, use the [source-evidence check](/tutorials/first-query).

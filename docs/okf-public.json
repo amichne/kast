@@ -215,7 +215,7 @@
         "source-evidence",
         "what-can-change-the-read-state"
       ],
-      "introduction": "\n\nExplanations: [Query reuse](/architecture/query-reuse).\n\nTask procedures: [Read retained output](/how-to/read-retained-evidence).\n\nRecovery: [Contract and state recovery](/reference/troubleshooting)."
+      "introduction": "\n\nExplanations: [Query reuse](/architecture/query-reuse).\n\nTask procedures: [Read retained output](/how-to/read-retained-evidence).\n\nRecovery: [Detailed recovery](/reference/troubleshooting)."
     },
     {
       "route": "reference/symbols",
@@ -283,10 +283,6 @@
   ],
   "authored": [
     {
-      "route": "agent-harnesses",
-      "purpose": "reader-task-or-contract"
-    },
-    {
       "route": "architecture/query-reuse",
       "purpose": "reader-task-or-contract"
     },
@@ -305,10 +301,6 @@
     {
       "route": "glossary",
       "purpose": "generated-glossary"
-    },
-    {
-      "route": "how-to",
-      "purpose": "reader-navigation"
     },
     {
       "route": "how-to/complete-engineering-task",
@@ -479,10 +471,6 @@
       "purpose": "reader-task-or-contract"
     },
     {
-      "route": "tutorials",
-      "purpose": "reader-navigation"
-    },
-    {
       "route": "tutorials/first-query",
       "purpose": "reader-task-or-contract"
     }
@@ -524,13 +512,13 @@
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "Three steps keep prerequisites, install and upgrade commands, agent tabs, and the first-query result in order. The query uses a declaration from the reader’s project."
+          "reason": "Three steps keep prerequisites, the install command, agent tabs, and the first-query result in order. The update command sits in a collapsed section because most readers install once."
         }
       },
       {
         "route": "/search",
         "role": "orientation",
-        "outcome": "Understand the compiler-grounded evidence available to an agent during Kotlin development.",
+        "outcome": "See example questions for an agent and what each Kast answer establishes during Kotlin development.",
         "scope": [
           "Explain declaration identity, source relationships, value paths, diagnostics, and supported source edits.",
           "Keep interface requirements and consequential evidence boundaries beside each capability."
@@ -543,7 +531,7 @@
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
-          "reason": "One caller question shows what to ask and what the result establishes. Keep native CLI diagnostics and optional MCP or Tool RPC edits distinct."
+          "reason": "Each capability shows one example question, the returned evidence, and its consequential limit. Native CLI reads and optional MCP or Tool RPC edits stay distinct."
         }
       },
       {
@@ -563,25 +551,6 @@
         "densityDisposition": {
           "status": "ACCEPTED",
           "reason": "Keep each symptom beside its recovery action. Retained output and uncertain edits keep their distinct recovery rules. The explicit return section prevents a dependency on browser history."
-        }
-      },
-      {
-        "route": "/how-to",
-        "role": "orientation",
-        "outcome": "Find the Kast guide for the result you need.",
-        "scope": [
-          "Choose an investigation, change, or maintenance task.",
-          "Route directly to the procedure that owns it."
-        ],
-        "exclusions": "Repeated child procedures or necessary introductory reading.",
-        "sourceOwner": "docs/public/how-to.mdx",
-        "densityProfile": "index",
-        "completionEvidence": "The page links directly to the destination that serves its reader outcome.",
-        "primaryContinuation": "END",
-        "recoveryDestination": "/troubleshooting",
-        "densityDisposition": {
-          "status": "ACCEPTED",
-          "reason": "Keep the page within its declared role and scope. Its complete source footprint includes imported MDX and every static panel."
         }
       },
       {
@@ -699,25 +668,6 @@
         }
       },
       {
-        "route": "/agent-harnesses",
-        "role": "how-to",
-        "outcome": "Install CLI guidance for Codex, Copilot, or Pi after Kast exists on your machine. Refresh the guidance after a core change.",
-        "scope": [
-          "Install or refresh guidance for the chosen agent.",
-          "Continue ordinary project work with the installed guidance."
-        ],
-        "exclusions": "The full export and optional integration contract.",
-        "sourceOwner": "docs/public/agent-harnesses.mdx",
-        "densityProfile": "task",
-        "completionEvidence": "The reader compares the stated result with the procedure outcome and uses the named recovery destination after rejection.",
-        "primaryContinuation": "/search",
-        "recoveryDestination": "/troubleshooting",
-        "densityDisposition": {
-          "status": "ACCEPTED",
-          "reason": "Keep the page within its declared role and scope. Its complete source footprint includes imported MDX and every static panel."
-        }
-      },
-      {
         "route": "/reference/installation",
         "role": "how-to",
         "outcome": "Select and install a published Kast build. Load its Host through a compatible reload or an IDEA restart.",
@@ -741,8 +691,8 @@
         "role": "how-to",
         "outcome": "Give Codex, Copilot, or Pi guidance for the installed Kast CLI. Export the canonical skill or select the optional MCP composition.",
         "scope": [
-          "Configure detailed guidance and skill exports.",
-          "Select optional integrations and their prerequisites."
+          "Install or refresh guidance for the chosen agent.",
+          "Configure skill exports and optional integrations."
         ],
         "exclusions": "An obligatory step in default onboarding.",
         "sourceOwner": "docs/public/reference/integrations.mdx",
@@ -787,25 +737,6 @@
         "densityProfile": "task",
         "completionEvidence": "The reader compares the stated result with the procedure outcome and uses the named recovery destination after rejection.",
         "primaryContinuation": "END",
-        "recoveryDestination": "/troubleshooting",
-        "densityDisposition": {
-          "status": "ACCEPTED",
-          "reason": "Keep the page within its declared role and scope. Its complete source footprint includes imported MDX and every static panel."
-        }
-      },
-      {
-        "route": "/tutorials",
-        "role": "orientation",
-        "outcome": "Choose an optional fixture for checking source evidence against known Kotlin relationships.",
-        "scope": [
-          "Identify the controlled exercise.",
-          "State its starting conditions."
-        ],
-        "exclusions": "Another necessary stop before the exercise.",
-        "sourceOwner": "docs/public/tutorials.mdx",
-        "densityProfile": "index",
-        "completionEvidence": "The page links directly to the destination that serves its reader outcome.",
-        "primaryContinuation": "/tutorials/first-query",
         "recoveryDestination": "/troubleshooting",
         "densityDisposition": {
           "status": "ACCEPTED",
@@ -1743,149 +1674,6 @@
     }
   },
   "associations": [
-    {
-      "route": "agent-harnesses",
-      "content": [
-        {
-          "path": "docs/public/agent-harnesses.mdx",
-          "sha256": "94184ae3e6a115ba67fc9d6c10b651f3af1d9af43b44c86c74be0109bf7446d7"
-        },
-        {
-          "path": "docs/public/snippets/deeper-reading.mdx",
-          "sha256": "15c477e437cb19e4b40f9de8be816c37d4657f10d05f8a90a612fe883c6b27b5"
-        }
-      ],
-      "claims": [
-        {
-          "page": "openwiki/distribution/management-and-connections.md",
-          "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
-        },
-        {
-          "page": "openwiki/distribution/management-and-connections.md",
-          "claimId": "claim_8e567605e3b24c51bfe414977b3c2dab",
-          "statementSha256": "2eb3e5c105598c7ebcd5a07af23e7e9090703ef4207f102359304063a5aa295e"
-        },
-        {
-          "page": "openwiki/distribution/management-and-connections.md",
-          "claimId": "claim_4c1df02651fe4663b0201e017c830aba",
-          "statementSha256": "eac8785cb218f07917567a9b5bcb744f4455ea63c1da075669148c7c7cc9d5b7"
-        },
-        {
-          "page": "openwiki/distribution/management-and-connections.md",
-          "claimId": "claim_a99ee4b84c0c458b947eac57a3196f24",
-          "statementSha256": "10b9e0612fc81185f562fcad0643ae870b15a4e7be2140762efe1714b4dc7c32"
-        },
-        {
-          "page": "openwiki/distribution/management-and-connections.md",
-          "claimId": "claim_1ab0e4ea81f1468f992e99a1bf0e55ab",
-          "statementSha256": "da5e2c221041fcc584d2a1502747b88e02629d5d6434e2ff4b7947b91d33faba"
-        },
-        {
-          "page": "openwiki/distribution/management-and-connections.md",
-          "claimId": "claim_5d949b9c85fc4b4d92534baf50c7be0d",
-          "statementSha256": "b94ff76a54f67f30cf26c03ed14c52caadeb9772d6bceef740b78d23da59a5c6"
-        },
-        {
-          "page": "openwiki/distribution/management-and-connections.md",
-          "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
-        },
-        {
-          "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
-          "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
-        },
-        {
-          "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
-          "claimId": "claim_05307cdbcd41467ca1c4f1fbda84e2dd",
-          "statementSha256": "faf93eb511f7cfe8e0c7a441e847d30baf6fc1fd71e20239a9a54013db3bbe76"
-        },
-        {
-          "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
-          "claimId": "claim_6ff0a69637ee412b80a7178fec723a48",
-          "statementSha256": "f7aae90ccdfeed740286a7fa50db1b73520d5ef861f8c626b4d295a83ee87b05"
-        },
-        {
-          "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
-          "claimId": "claim_67b8ad2fd960498192eae7225e6c9e32",
-          "statementSha256": "a63f17f8a47696341cd55a46939356adf44802474d198681efead9f4e0897a75"
-        },
-        {
-          "page": "openwiki/transport/harness-delivery.md",
-          "claimId": "claim_a5aabd0ac08b46be89a2eef490220d68",
-          "statementSha256": "e2480cc76b94752220d4d95392512ee6d5da49408a3d90f38cc956f05e62bedb"
-        },
-        {
-          "page": "openwiki/transport/harness-delivery.md",
-          "claimId": "claim_beaf777103fa404bbc0ecd3138f871de",
-          "statementSha256": "67e9f559971b843aeddd776575ed9f58165fc8959941dc0535200aa5b8206fa4"
-        },
-        {
-          "page": "openwiki/transport/harness-delivery.md",
-          "claimId": "claim_78a64609716545669cc9c59323266ccd",
-          "statementSha256": "8f2b3955696d1330764175d730bb13939f1101cab1f1044560e155199f849a33"
-        },
-        {
-          "page": "openwiki/transport/harness-delivery.md",
-          "claimId": "claim_75e753fdf35a4d0484644740c3c9541c",
-          "statementSha256": "697c397cf2e784d7291d21ac20468e9fd98c9933e1eb63a9c940bd8631db6e11"
-        },
-        {
-          "page": "openwiki/transport/harness-delivery.md",
-          "claimId": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-          "statementSha256": "12e4476426770a8b6ab7f13673a3506760675dd67df35a46245e61a24026d915"
-        },
-        {
-          "page": "openwiki/transport/harness-delivery.md",
-          "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "17c1b1b8464280fae84b9c3bac9461b2d4580c36188de9fafe58c3df9c717cda"
-        },
-        {
-          "page": "openwiki/transport/harness-delivery.md",
-          "claimId": "claim_15cf525b6b144e00aead91770f1b3e50",
-          "statementSha256": "d20589c38902dd6435da4cc1073177c485111f99949d2bc6039629fa09749cd7"
-        },
-        {
-          "page": "openwiki/transport/harness-delivery.md",
-          "claimId": "claim_5ab459a5b80641d087b05a25d3c52ee6",
-          "statementSha256": "22ac3d0c0a6991b8f4b9ffe04a9ba544c5bf4e2f075e25cadf55cf52981c4fb0"
-        },
-        {
-          "page": "openwiki/distribution/management-and-connections.md",
-          "claimId": "claim_681636d6d0ec4662a819005740e5ab4d",
-          "statementSha256": "6d07bce48e4869f569f0615a7f124677a10367741aa95e4a9a5351552c72bacb"
-        },
-        {
-          "page": "openwiki/transport/harness-delivery.md",
-          "claimId": "claim_710dd47d8f9143f5a683c556faa191de",
-          "statementSha256": "e1db9014ff059242caf9f44c29b9a2404d96bbf7662f1e2c0a88711da123abcc"
-        }
-      ],
-      "generatedOwners": [
-        {
-          "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
-        },
-        {
-          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt",
-          "sha256": "2c8623924a22e80f3d35d9669e9e9a23be113a306193942d6ae9b2310e97a5b9"
-        },
-        {
-          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookArguments.kt",
-          "sha256": "a8272b053def17fdf84204d95bce3d9e6b485829a56c1e89a73c8717dbd8a75d"
-        },
-        {
-          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt",
-          "sha256": "9424848e876a1ad4128943a09c7e62185a3cc918fa74fd32a9814e1703b26c07"
-        },
-        {
-          "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
-        }
-      ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
-    },
     {
       "route": "architecture/change-lifecycle",
       "content": [
@@ -3205,328 +2993,11 @@
       "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
     },
     {
-      "route": "how-to",
-      "content": [
-        {
-          "path": "docs/public/how-to.mdx",
-          "sha256": "cb463a9d0e9eee0c334e80a3f8b6807e6738655dd6818bc7eb179cd522139346"
-        }
-      ],
-      "claims": [
-        {
-          "page": "openwiki/changes/planning-and-write-admission.md",
-          "claimId": "claim_ff1f6ede0c994f92bbe64a21db0bea0b",
-          "statementSha256": "d41df79065e2e90345f307308dedcb04cdc2a0b4f61e222a3955fbd6dc28518e"
-        },
-        {
-          "page": "openwiki/changes/planning-and-write-admission.md",
-          "claimId": "claim_3fdbf46103494028ab4de6c13029a442",
-          "statementSha256": "9e42f5f5d9e645192e8fdbc391d7f267ffe3ca6ef622b94a0b95509aeeeb5281"
-        },
-        {
-          "page": "openwiki/changes/planning-and-write-admission.md",
-          "claimId": "claim_3fedc63a3fb24fdb8a95089e5f6555e1",
-          "statementSha256": "0e454172123f8c1021dd64b0f942e681a08e456d8b7c71bae5732839a7dbff6b"
-        },
-        {
-          "page": "openwiki/changes/receipts-and-recovery.md",
-          "claimId": "claim_dc2d49cf58b747fc88ba662decc24659",
-          "statementSha256": "f6ce0ea21d066c44214fcec3bc020e6aacc5ba53d4b0c6a5051e1a49de3c6ddb"
-        },
-        {
-          "page": "openwiki/changes/receipts-and-recovery.md",
-          "claimId": "claim_5080f028d52a42a8a215549e2b5ff473",
-          "statementSha256": "5baa88521c6ca3844f9987fdfb3af8133e28e57078332488db6cfe0885c291fe"
-        },
-        {
-          "page": "openwiki/changes/receipts-and-recovery.md",
-          "claimId": "claim_4b7e03c805ff49edb4b21a94cde8c734",
-          "statementSha256": "04bf9195fd87111f3c97c1d88d5625ed7269593baa1a0b598fba575908221ae3"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_55bbe06398c44272b3f13d3df179d4ee",
-          "statementSha256": "c09d38971d2de16389bcb148fa16493d8e7780d7291dc687856b1938807531ce"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_172e1c17cbde47ffbe32d66a0997d250",
-          "statementSha256": "36a557b8b4bcb8aad16817f8162619a1129552ee13813b9b35f18e4eac00ef8a"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_8b10df95e6a84fc49c4d604e2e83e30c",
-          "statementSha256": "89f1eb0863d95b7843d7ce64cb47621db617f0788fa29be8f2e5186fead75bad"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_e33e1df867cd458cb285276411f1490d",
-          "statementSha256": "9d2e4a2aba89917af44dae5ba9c747c6ce1cfccf9acc6f54d60f80baef3e4620"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_a08eb2ac670c4b6ab516620eaf4a1c02",
-          "statementSha256": "45e90db19a1a30814d8b93da12c1095df038746c4570e10b873d0d9cbf4f1840"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_47becf179c554e15bc0216134e4a4848",
-          "statementSha256": "b7af2cf548a47914965454be3321b5b5491fac7d59ba9d7d50609f146f610ed1"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_ae8da1bfc7784218bfe179e3dc517496",
-          "statementSha256": "7604d89b8b98fe85d4dc8acd4749e07a4ca3a74f9622372ce43469f0e09c912a"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_6a9da81ab0b44487af6a7b5a396f6cc6",
-          "statementSha256": "1513b6c5afe88268b0650e46aef9a051f7885ab84d590c4541461ce7e4e31246"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_ec090c6dca2b4bfc866b20afe87b6671",
-          "statementSha256": "5b964a32f15cfbe9ff17acbaf3be25588a371d5896fa4a62648a42b9d72325bf"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_14261ee3b78c4757b083a54c780f88d4",
-          "statementSha256": "8b7893476b36b642bc7a919138120084384d4f0a0c0ffde08e9928002a77496d"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_bd777dbb84624bea9c2679825916066f",
-          "statementSha256": "7f5ef5509548d76da5d8080e59ceb278f073cc8bf5d7c3fc237afd54d63cfe77"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_770132c0072344e8b04bab69aea754ea",
-          "statementSha256": "ef9c536feacefdd2a41ef312b2470136c5c2512c5e4be4b58a6d7ba18b2e2538"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_30509bf0f92d42e9bc59f07f8677ea62",
-          "statementSha256": "2d4a1ff07c92454e15f3cba2c12eda7d42b9825433f10486dd4d89256375977d"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_40402a2ed108471e952bea8317b73394",
-          "statementSha256": "5754536eb67ed0f3716f2fc0c786e61e64ecccccf3d1f5e94ab45d7a5d7585fa"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_ba8e32ac6ea44054aeb88e260d10f277",
-          "statementSha256": "2ca5a80a705624db6ce35c43e8ce838cce90b5bf09615dccb2a3ec9405124854"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
-          "statementSha256": "0ed7e9c4c592a2fd137dd87b3f1e72ef6ae715d773628000bb89d75913a0971f"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_707d103225b242ab94a4dd46eada1979",
-          "statementSha256": "eeb41cfbe945f5eb59714915eb6cf0797ab19e5884b2c9973d9ae325609356ea"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_1735b1614b0444219dbc2e7ba35dcdff",
-          "statementSha256": "58802a181fbed188d98cdfeb353840ff83255ebf0c69d00e153a25c62b0b216e"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_7a210c03226443869cf129d1b6f6666a",
-          "statementSha256": "09c4aff55d4ca666ce1f078d44177a31596e500c25974bf0ddea917533e9cfe5"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_41b3f3345913464693ec3dc6ec6dbe64",
-          "statementSha256": "c339df35f8216af03bb026f03afee57ea7ee388def02a783d2d9de60ef4581dd"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_e4889d68d7e34ff9b4f78a7e306069fb",
-          "statementSha256": "36b17ad2273ed782472432a608a3e143c969be75bd61f76b80deb3959c7bb9b0"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_ca98bc2f9e85404f9c030dadfa40f1b3",
-          "statementSha256": "e3d4b9d85701d40af33593c941b59c8fc87a73658deec6b1e5b181462c9187e0"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_a3d6003f5b114baa8b90bde66348627e",
-          "statementSha256": "1d4a2befd3287f710cc3359992e294a361adac419b54e1fd7c12f73f7db9a9fd"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_a28818cc88854f0eac69f136af875068",
-          "statementSha256": "21818f8babd2c836996d8d7bdaf51f32c612301363880421b59802c9d920edfa"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_a2346b523f4044bc8b974c6d23c517fe",
-          "statementSha256": "710a0d27bedab870cd79ccdb5dddadd07f9094dd98c52edadbe05e4d0fd7d9e5"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_dd2ac8f2e08944dab7adc437b884ebeb",
-          "statementSha256": "20a93bb2c7c392af721163b9bc031f6d57806b3aa5decd0f7a1b7482c7f6fc0b"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_55b85b562afc4dd980e162077f0e5167",
-          "statementSha256": "9f71c3c18ac1b4eed1f60d6662db085099d1568d8d6a6f65baba1ec5b8d78b77"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_0dd5bc4f05794e6e9412cecd2437554f",
-          "statementSha256": "88186fe0bbd39ab368c0affd0d31c2d2f650d7a82adb0191eff9cf5d6cdb75f4"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_4c19c333f2d9445d96787d565c586235",
-          "statementSha256": "158466422c103bda5b7195d3ae992a0a21e6ecb6bfd68637425a0b3e124a596f"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_e25ca0f909dd4bf0a3b83cf35ac1a41f",
-          "statementSha256": "ae069a4f7d7542f510c715506afb500dc008edc2b9fc1b99230b2e659e761233"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_bb4e6bb53de848e986d2a9548a9ea541",
-          "statementSha256": "b6566caab1b546f92bdf97f65d4e085ae845fad1049fc3d6d4937fcba703598a"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_31a0291d73df40e9a8a6f5bd9b1985e2",
-          "statementSha256": "acf48ed910f8daebd283debb1ae817cf010321d3eb0298523df50aeb0a33c29c"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_4096dc4d27f141d8909139c7b9c738d6",
-          "statementSha256": "610c11acc7910a74ae66eb7296d505cd01383722f652223f7222a7db64b47a72"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_6f441e63b49d4bed976f7b0a46d8b227",
-          "statementSha256": "e0c4189b1d73c3309b00dd2fd04353682d7c5178b1b18504c285edb2d3b92151"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_8220dfe97101424d92a9eda7eb27e3b3",
-          "statementSha256": "fe89edddd4e4277b4d0505a554d208206027bbe39d3e75ed9ad327a298b168a7"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_77a5b000385a4e2aadaf64985466a4d8",
-          "statementSha256": "d5df92bfe28b7e834fd419513fe013dd5303a8e0997aebbc5325b6ec4b32da52"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_0acd77abaeae4fd38e9a4cffda686533",
-          "statementSha256": "fbfb2d5515cbaa0a3f6776cd185fc85b931c8a4071735da745947732073c08de"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_39f37224af4f491093effa1c758885de",
-          "statementSha256": "b58648c43976aa7272a936110c15eb49cf47ef75087ff6e9e11a715e86755765"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_7202bc682896427dbbd2accea1464caa",
-          "statementSha256": "9007b3e4a888fc60bd39de4762ab2ad99aa72416e2c58875cf220452209a9695"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_d0106323c2f94cd9a3f73699b1de682a",
-          "statementSha256": "a2608b799934b94ca2b32ef19711159be043ee7bd4eb7afc86000a3d27dad304"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_165960ce0a07410a94c6f67c15c560aa",
-          "statementSha256": "85ca73a1e9231958b0bc1bfb80ab9db1145983bf74d0ce833117bebffa580882"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_b7f827aae9f340ae985ef5bf0eb5ab82",
-          "statementSha256": "14f2b511ae7c8bc82ba44a63faacf43ed157208b90ffc9a73e7f6fe80d68ef67"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_569154d22af340b2b29ebdaa0d7d1139",
-          "statementSha256": "adb9f4551fb0c6657620962748b65aabb81cf34af7bd3476eb51afa3cb08c028"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_7e2a2a463c8f4852a2961334c0fa9d2a",
-          "statementSha256": "778272c14e0780377ca14808e1d83f07696fd521b5f0111e7854a46e0c03d223"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_e295df4c22ab403baa6a6c4ecc496fc5",
-          "statementSha256": "65158dd4102c70b187f76d86418284543105c39ce60853d41885bb654a73c68e"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_773f95f687a44f00b45ac52eedff0453",
-          "statementSha256": "ae32084d328e369bccb0e5366f846699f2bcc2e046eff9c917beb87fd3f11181"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_9202cad29e434468be035287c1dad1aa",
-          "statementSha256": "5416ccf376916f0ce080929aaf6429dfc4d0e887fd7b9c1c782f175ab1693470"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_39213c09be6c49b2901c3d21df45fcd8",
-          "statementSha256": "c4dca05dfe2ebbf72ba41c2fc7ac1bb8dce98eb1967142f4e676f29d95fd8d62"
-        },
-        {
-          "page": "openwiki/queries/retention-and-presentation.md",
-          "claimId": "claim_bb06b67472e44dc29cb85a5a8e577cda",
-          "statementSha256": "c4de798f126b329c4e9df0f26665f5c8eeef17c50670eec02e6f723b9dfae4e5"
-        },
-        {
-          "page": "openwiki/queries/retention-and-presentation.md",
-          "claimId": "claim_1c51ce3a5cfb4785a933fb6f5115d4a8",
-          "statementSha256": "830f5328264c9a4eebad012c82cd75cd5a460144815c8087e92d643f188805f7"
-        },
-        {
-          "page": "openwiki/queries/retention-and-presentation.md",
-          "claimId": "claim_0c122f79c5894ee89772574a12ccca56",
-          "statementSha256": "3c95beac2b0cf525a25a8d8bcf74f0386548c3f8a581b914ac3b6fa1e4a99bdd"
-        }
-      ],
-      "generatedOwners": [
-        {
-          "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
-        },
-        {
-          "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
-        }
-      ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
-    },
-    {
       "route": "how-to/complete-engineering-task",
       "content": [
         {
           "path": "docs/public/how-to/complete-engineering-task.mdx",
-          "sha256": "00ab554be9231bab0c1b79882cb17f34561bf878b8026df3813124fb89a9af1c"
+          "sha256": "21e02e66e27ade5de60994962a7ae1115be39c6ad21af7ef4e4f862a7efa1e96"
         }
       ],
       "claims": [
@@ -3891,14 +3362,14 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "how-to/inspect-diagnostics",
       "content": [
         {
           "path": "docs/public/how-to/inspect-diagnostics.mdx",
-          "sha256": "51c0dd4d5bd1362a4b2026214e210254f24ff688418e761bf9bd81491193c6df"
+          "sha256": "877ce7d64770cbd5c0ac76b4d5838736a90216738bc3e53363555a2b955ed6e3"
         }
       ],
       "claims": [
@@ -3928,14 +3399,14 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "how-to/read-retained-evidence",
       "content": [
         {
           "path": "docs/public/how-to/read-retained-evidence.mdx",
-          "sha256": "d47fa1dbbab8c535f26956036c2871a19404e7ff7a5dff4d67600c300d658312"
+          "sha256": "df882f0625fd8e7a163a1361cf4a92940e5c31a987e530a00c22f306a396db2a"
         }
       ],
       "claims": [
@@ -4215,14 +3686,14 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "index",
       "content": [
         {
           "path": "docs/public/index.mdx",
-          "sha256": "f6038c204b455305fe0f5beb1dfd7504252847a0bde47590d59810b08e38904b"
+          "sha256": "91a5f271d677dca68022c43944b5388f6f4a713d7769233528a7ceb2036a1484"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -4686,14 +4157,14 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference",
       "content": [
         {
           "path": "docs/public/reference.mdx",
-          "sha256": "9e463d65da4e310d53e854acb4ff5b682e4ef5c0f69d344248ba0d12380bee57"
+          "sha256": "edb007dafac08a3e3e90032b1074b9511e3db1309ecd8e1159528483d967fa76"
         }
       ],
       "claims": [
@@ -5028,7 +4499,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference/api",
@@ -5805,7 +5276,7 @@
       "content": [
         {
           "path": "docs/public/reference/change.mdx",
-          "sha256": "e0f3a7017fd9812f9bec71f3889f7ceb14ab1b958bb46f161061cf1486c86c78"
+          "sha256": "112addaf0d7ef8b7f695fa6088b583f8d83fb3a929e2df41edd1e9f36c98200e"
         }
       ],
       "claims": [
@@ -5850,14 +5321,14 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference/cli",
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "455bc50e1bb1a3709a8718eca670a9a956af862e2fd5714f9740c5005b488c0c"
+          "sha256": "5117ca59954f77e4c1eac069430d7d2752e8a092f253d2b25cce9359d071e6dd"
         }
       ],
       "claims": [
@@ -6404,7 +5875,7 @@
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference/compatibility",
@@ -6841,7 +6312,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "3a99c28715d981d697bdab1b8db27af964151903d3b241259ff63fe68f5013bf"
+          "sha256": "67cb2e90702d680e904996db3a3e9385bd0c1223ca772037f719977ab6c854b3"
         }
       ],
       "claims": [
@@ -7081,14 +6552,14 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "0e432b67cd9a0f5dafc81667ef409027f21c1ad7"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference/integrations",
       "content": [
         {
           "path": "docs/public/reference/integrations.mdx",
-          "sha256": "dfd818109256b677dceb64580193645a4124f56837eabd380ef1f0405e7d8298"
+          "sha256": "44d4e2d62ee6a4f3563a81067b5ae1a25eaaf341688a9915cb8bf81ef8be6dea"
         }
       ],
       "claims": [
@@ -7208,7 +6679,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference/internals/architecture",
@@ -7969,7 +7440,7 @@
       "content": [
         {
           "path": "docs/public/reference/management.mdx",
-          "sha256": "293a9fd464a6194dad5486219b97f3a464344ff73cbc0ef21e816753c237f4bc"
+          "sha256": "6f1b135af7c49177e09183f41a4e309cb3359e9fcfe8fb9cce78a1269ae16363"
         }
       ],
       "claims": [
@@ -8164,7 +7635,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "aa550bd1b0dff38eb492d20df0658bb62cf44512"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference/mcp-catalog",
@@ -12074,7 +11545,7 @@
       "content": [
         {
           "path": "docs/public/reference/responses.mdx",
-          "sha256": "10beb3f7f7794cde00f4fd00bdd174d7ebe9090266c64ba7e09de698f8f8ece6"
+          "sha256": "817e3eff8d3f49a9d24a6d10feb9fab7145fa33ad0d0293f4b249395ae4b118c"
         }
       ],
       "claims": [
@@ -12424,14 +11895,14 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference/rpc-catalog",
       "content": [
         {
           "path": "docs/public/reference/rpc-catalog.mdx",
-          "sha256": "c88682b06eb84da2363734914047aec912f599786bc63e333f8fa64f990ea223"
+          "sha256": "38f28196c2daa51fda38e3050100c69d70c7c742fdd50db2f76fd1ffca19d346"
         }
       ],
       "claims": [
@@ -12806,7 +12277,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "91df506023ddfb9842dc7e34f33c802fa9ae214c"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference/schemas",
@@ -14274,7 +13745,7 @@
       "content": [
         {
           "path": "docs/public/reference/staleness.mdx",
-          "sha256": "03fdb9323179f8c188f87a3feb68c680b284f1f6da090625c374b4fca34c4dc1"
+          "sha256": "07a8230fc268c339a6199e6ef5c2cc1c147144ee8d0bb488e03434cb83627177"
         },
         {
           "path": "docs/public/snippets/diagrams/incremental-facts.jsx",
@@ -14331,7 +13802,7 @@
           "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference/symbols",
@@ -14404,7 +13875,7 @@
       "content": [
         {
           "path": "docs/public/reference/troubleshooting.mdx",
-          "sha256": "63fe86a4c5515ec874043825f284675a7822930b27ca4c9b083d20e766b4489a"
+          "sha256": "a9b0b5e2ec983b18ea999855c5e034796c26f2b5bdcb283103ff81fdeff5f806"
         }
       ],
       "claims": [
@@ -14654,7 +14125,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "aa550bd1b0dff38eb492d20df0658bb62cf44512"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "reference/walkthrough",
@@ -14948,7 +14419,7 @@
       "content": [
         {
           "path": "docs/public/search.mdx",
-          "sha256": "5f8944d7c038449d11f5dc9b10c7e0a35660f9c04cbb85b50cedd7e2384b8170"
+          "sha256": "eff52a4bc7f43292f9b369daefb7f4c8e88379b22b75b7085098e963523f93eb"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -15347,7 +14818,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "start",
@@ -15358,7 +14829,7 @@
         },
         {
           "path": "docs/public/start.mdx",
-          "sha256": "8a69b575a790197880655cb930b9e4fb49f1a63705320f86ded701de49ff8740"
+          "sha256": "3abdabef6ffc8f0821b68a03e53c758272b6114b1ab12cb57b76a54785443e1b"
         }
       ],
       "claims": [
@@ -15878,7 +15349,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "troubleshooting",
@@ -15889,7 +15360,7 @@
         },
         {
           "path": "docs/public/troubleshooting.mdx",
-          "sha256": "4cd50bee8e1e6f1150e0ef2f1ff95292dcff0708777af74ffa417941b8c64b2c"
+          "sha256": "ca8e47bdbe4db8783972060900750152ad782d075ba202c0bfb3cb1a1feed835"
         }
       ],
       "claims": [
@@ -16139,294 +15610,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
-    },
-    {
-      "route": "tutorials",
-      "content": [
-        {
-          "path": "docs/public/tutorials.mdx",
-          "sha256": "a6f303faa419d55cf33695a33b06577ea9d852129c8dd87147d74dcdd27cd2ab"
-        }
-      ],
-      "claims": [
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_55bbe06398c44272b3f13d3df179d4ee",
-          "statementSha256": "c09d38971d2de16389bcb148fa16493d8e7780d7291dc687856b1938807531ce"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_172e1c17cbde47ffbe32d66a0997d250",
-          "statementSha256": "36a557b8b4bcb8aad16817f8162619a1129552ee13813b9b35f18e4eac00ef8a"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_8b10df95e6a84fc49c4d604e2e83e30c",
-          "statementSha256": "89f1eb0863d95b7843d7ce64cb47621db617f0788fa29be8f2e5186fead75bad"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_e33e1df867cd458cb285276411f1490d",
-          "statementSha256": "9d2e4a2aba89917af44dae5ba9c747c6ce1cfccf9acc6f54d60f80baef3e4620"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_a08eb2ac670c4b6ab516620eaf4a1c02",
-          "statementSha256": "45e90db19a1a30814d8b93da12c1095df038746c4570e10b873d0d9cbf4f1840"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_47becf179c554e15bc0216134e4a4848",
-          "statementSha256": "b7af2cf548a47914965454be3321b5b5491fac7d59ba9d7d50609f146f610ed1"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_ae8da1bfc7784218bfe179e3dc517496",
-          "statementSha256": "7604d89b8b98fe85d4dc8acd4749e07a4ca3a74f9622372ce43469f0e09c912a"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_6a9da81ab0b44487af6a7b5a396f6cc6",
-          "statementSha256": "1513b6c5afe88268b0650e46aef9a051f7885ab84d590c4541461ce7e4e31246"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_ec090c6dca2b4bfc866b20afe87b6671",
-          "statementSha256": "5b964a32f15cfbe9ff17acbaf3be25588a371d5896fa4a62648a42b9d72325bf"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_14261ee3b78c4757b083a54c780f88d4",
-          "statementSha256": "8b7893476b36b642bc7a919138120084384d4f0a0c0ffde08e9928002a77496d"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_bd777dbb84624bea9c2679825916066f",
-          "statementSha256": "7f5ef5509548d76da5d8080e59ceb278f073cc8bf5d7c3fc237afd54d63cfe77"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_770132c0072344e8b04bab69aea754ea",
-          "statementSha256": "ef9c536feacefdd2a41ef312b2470136c5c2512c5e4be4b58a6d7ba18b2e2538"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_30509bf0f92d42e9bc59f07f8677ea62",
-          "statementSha256": "2d4a1ff07c92454e15f3cba2c12eda7d42b9825433f10486dd4d89256375977d"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_40402a2ed108471e952bea8317b73394",
-          "statementSha256": "5754536eb67ed0f3716f2fc0c786e61e64ecccccf3d1f5e94ab45d7a5d7585fa"
-        },
-        {
-          "page": "openwiki/contracts/operation-outcomes.md",
-          "claimId": "claim_ba8e32ac6ea44054aeb88e260d10f277",
-          "statementSha256": "2ca5a80a705624db6ce35c43e8ce838cce90b5bf09615dccb2a3ec9405124854"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_d5f49799d6a64a78a95f34b3ba0fa09a",
-          "statementSha256": "0ed7e9c4c592a2fd137dd87b3f1e72ef6ae715d773628000bb89d75913a0971f"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_707d103225b242ab94a4dd46eada1979",
-          "statementSha256": "eeb41cfbe945f5eb59714915eb6cf0797ab19e5884b2c9973d9ae325609356ea"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_1735b1614b0444219dbc2e7ba35dcdff",
-          "statementSha256": "58802a181fbed188d98cdfeb353840ff83255ebf0c69d00e153a25c62b0b216e"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_7a210c03226443869cf129d1b6f6666a",
-          "statementSha256": "09c4aff55d4ca666ce1f078d44177a31596e500c25974bf0ddea917533e9cfe5"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_41b3f3345913464693ec3dc6ec6dbe64",
-          "statementSha256": "c339df35f8216af03bb026f03afee57ea7ee388def02a783d2d9de60ef4581dd"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_e4889d68d7e34ff9b4f78a7e306069fb",
-          "statementSha256": "36b17ad2273ed782472432a608a3e143c969be75bd61f76b80deb3959c7bb9b0"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_ca98bc2f9e85404f9c030dadfa40f1b3",
-          "statementSha256": "e3d4b9d85701d40af33593c941b59c8fc87a73658deec6b1e5b181462c9187e0"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_a3d6003f5b114baa8b90bde66348627e",
-          "statementSha256": "1d4a2befd3287f710cc3359992e294a361adac419b54e1fd7c12f73f7db9a9fd"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_a28818cc88854f0eac69f136af875068",
-          "statementSha256": "21818f8babd2c836996d8d7bdaf51f32c612301363880421b59802c9d920edfa"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_a2346b523f4044bc8b974c6d23c517fe",
-          "statementSha256": "710a0d27bedab870cd79ccdb5dddadd07f9094dd98c52edadbe05e4d0fd7d9e5"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_dd2ac8f2e08944dab7adc437b884ebeb",
-          "statementSha256": "20a93bb2c7c392af721163b9bc031f6d57806b3aa5decd0f7a1b7482c7f6fc0b"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_9631e8c5a90e442f94b16206c07b3094",
-          "statementSha256": "c7937fc091429d70217aa6a9354e5e9b7c281e8c3f0558b4e52ea7564a9e984e"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_55b85b562afc4dd980e162077f0e5167",
-          "statementSha256": "9f71c3c18ac1b4eed1f60d6662db085099d1568d8d6a6f65baba1ec5b8d78b77"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_0dd5bc4f05794e6e9412cecd2437554f",
-          "statementSha256": "88186fe0bbd39ab368c0affd0d31c2d2f650d7a82adb0191eff9cf5d6cdb75f4"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_4c19c333f2d9445d96787d565c586235",
-          "statementSha256": "158466422c103bda5b7195d3ae992a0a21e6ecb6bfd68637425a0b3e124a596f"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_e25ca0f909dd4bf0a3b83cf35ac1a41f",
-          "statementSha256": "ae069a4f7d7542f510c715506afb500dc008edc2b9fc1b99230b2e659e761233"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_bb4e6bb53de848e986d2a9548a9ea541",
-          "statementSha256": "b6566caab1b546f92bdf97f65d4e085ae845fad1049fc3d6d4937fcba703598a"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_31a0291d73df40e9a8a6f5bd9b1985e2",
-          "statementSha256": "acf48ed910f8daebd283debb1ae817cf010321d3eb0298523df50aeb0a33c29c"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_4096dc4d27f141d8909139c7b9c738d6",
-          "statementSha256": "610c11acc7910a74ae66eb7296d505cd01383722f652223f7222a7db64b47a72"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_6f441e63b49d4bed976f7b0a46d8b227",
-          "statementSha256": "e0c4189b1d73c3309b00dd2fd04353682d7c5178b1b18504c285edb2d3b92151"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_8220dfe97101424d92a9eda7eb27e3b3",
-          "statementSha256": "fe89edddd4e4277b4d0505a554d208206027bbe39d3e75ed9ad327a298b168a7"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_77a5b000385a4e2aadaf64985466a4d8",
-          "statementSha256": "d5df92bfe28b7e834fd419513fe013dd5303a8e0997aebbc5325b6ec4b32da52"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_0acd77abaeae4fd38e9a4cffda686533",
-          "statementSha256": "fbfb2d5515cbaa0a3f6776cd185fc85b931c8a4071735da745947732073c08de"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_2882712e6d974207b2b4d13b9387d926",
-          "statementSha256": "80a696df4e1273a413c4b69df90fce7c5465a5a3ce3cb8fedf7506b3a539d078"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_39f37224af4f491093effa1c758885de",
-          "statementSha256": "b58648c43976aa7272a936110c15eb49cf47ef75087ff6e9e11a715e86755765"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_7202bc682896427dbbd2accea1464caa",
-          "statementSha256": "9007b3e4a888fc60bd39de4762ab2ad99aa72416e2c58875cf220452209a9695"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_d0106323c2f94cd9a3f73699b1de682a",
-          "statementSha256": "a2608b799934b94ca2b32ef19711159be043ee7bd4eb7afc86000a3d27dad304"
-        },
-        {
-          "page": "openwiki/contracts/public-tools.md",
-          "claimId": "claim_165960ce0a07410a94c6f67c15c560aa",
-          "statementSha256": "85ca73a1e9231958b0bc1bfb80ab9db1145983bf74d0ce833117bebffa580882"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_b7f827aae9f340ae985ef5bf0eb5ab82",
-          "statementSha256": "14f2b511ae7c8bc82ba44a63faacf43ed157208b90ffc9a73e7f6fe80d68ef67"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_569154d22af340b2b29ebdaa0d7d1139",
-          "statementSha256": "adb9f4551fb0c6657620962748b65aabb81cf34af7bd3476eb51afa3cb08c028"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_7e2a2a463c8f4852a2961334c0fa9d2a",
-          "statementSha256": "778272c14e0780377ca14808e1d83f07696fd521b5f0111e7854a46e0c03d223"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_e295df4c22ab403baa6a6c4ecc496fc5",
-          "statementSha256": "65158dd4102c70b187f76d86418284543105c39ce60853d41885bb654a73c68e"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_773f95f687a44f00b45ac52eedff0453",
-          "statementSha256": "ae32084d328e369bccb0e5366f846699f2bcc2e046eff9c917beb87fd3f11181"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_9202cad29e434468be035287c1dad1aa",
-          "statementSha256": "5416ccf376916f0ce080929aaf6429dfc4d0e887fd7b9c1c782f175ab1693470"
-        },
-        {
-          "page": "openwiki/queries/execution-and-composition.md",
-          "claimId": "claim_39213c09be6c49b2901c3d21df45fcd8",
-          "statementSha256": "c4dca05dfe2ebbf72ba41c2fc7ac1bb8dce98eb1967142f4e676f29d95fd8d62"
-        },
-        {
-          "page": "openwiki/queries/retention-and-presentation.md",
-          "claimId": "claim_bb06b67472e44dc29cb85a5a8e577cda",
-          "statementSha256": "c4de798f126b329c4e9df0f26665f5c8eeef17c50670eec02e6f723b9dfae4e5"
-        },
-        {
-          "page": "openwiki/queries/retention-and-presentation.md",
-          "claimId": "claim_1c51ce3a5cfb4785a933fb6f5115d4a8",
-          "statementSha256": "830f5328264c9a4eebad012c82cd75cd5a460144815c8087e92d643f188805f7"
-        },
-        {
-          "page": "openwiki/queries/retention-and-presentation.md",
-          "claimId": "claim_0c122f79c5894ee89772574a12ccca56",
-          "statementSha256": "3c95beac2b0cf525a25a8d8bcf74f0386548c3f8a581b914ac3b6fa1e4a99bdd"
-        }
-      ],
-      "generatedOwners": [
-        {
-          "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
-          "sha256": "d97753d3b07cae31d206084e8a9d97a5ab8628ab5c2ee163889ca9d28806bfc4"
-        },
-        {
-          "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
-        }
-      ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     },
     {
       "route": "tutorials/first-query",
@@ -16437,7 +15621,7 @@
         },
         {
           "path": "docs/public/tutorials/first-query.mdx",
-          "sha256": "3121e2c6f37fddd1d1b40cbcb8655f4fad34639d01cf7f718af0f3322ab180ca"
+          "sha256": "3dba12fa917b0c019dc2dfffa7f9325e752963ca5d7c5044d57454764f637843"
         }
       ],
       "claims": [
@@ -16772,7 +15956,7 @@
           "sha256": "3844affc5d8ab1c1da9a57fd11b2c58cb6e7590a224798ec1ab785029833f7ab"
         }
       ],
-      "reviewedSourceRevision": "38eb20ca8a4b504d46eec434e21098d2b028cdb6"
+      "reviewedSourceRevision": "42addfaaef25f9f0d839bf0fa78e98ac6c9672b3"
     }
   ]
 }

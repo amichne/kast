@@ -1,7 +1,7 @@
 ---
 title: "Compiler understanding for your coding agent"
 sidebarTitle: "Overview"
-description: "Give your coding agent compiler-grounded declarations, types, and source relationships for everyday work in Kotlin Gradle projects."
+description: "Kast lets your coding agent ask IntelliJ IDEA about your Kotlin code, so it works from resolved declarations instead of text matches."
 keywords:
   - "Kotlin"
   - "coding agents"
@@ -13,50 +13,52 @@ icon: "scan-search"
 import DeeperReading from "/snippets/deeper-reading.mdx"
 
 <span id="what-kast-adds" />
-
-Kast connects your coding agent to IntelliJ IDEA's understanding of your Kotlin project.
-
 <span id="use-the-agent-you-already-use" />
 <span id="ask-about-your-code" />
 
-Your agent uses installed guidance to ask Kast about your code as it works.
-
-<span id="try-it-on-your-project" />
-<span id="choose-your-reader-track" />
-
-<Columns cols={2}>
-  <Card title="Set up with IntelliJ IDEA" icon="monitor" href="/start">
-    Install Kast and connect Codex, Copilot, or Pi.
-  </Card>
-  <Card title="Run a private Host" icon="container" href="/reference/installation#manage-isolated-workspaces">
-    Use a workspace container on macOS or Linux.
-  </Card>
-  <Card title="Capabilities" icon="search" href="/search">
-    Explore declarations, relationships, value paths, and diagnostics.
-  </Card>
-  <Card title="Help" icon="life-buoy" href="/troubleshooting">
-    Resolve installation and agent problems.
-  </Card>
-</Columns>
-
-<span id="is-kast-for-you" />
-
-The desktop setup supports Apple silicon Macs and IntelliJ IDEA `262.*` or `263.*` for Kotlin Gradle projects. See [setup requirements](/start#before-you-start).
-
-If the release lacks a runtime for your private Host, use a qualified candidate.
+Your agent gets the same facts that IDEA shows you: which declaration a call resolves to, which code calls it, and which problems IDEA reports.
 
 <span id="a-name-match-does-not-explain-a-value-path" />
-
 <span id="start-with-one-function" />
 
-## Code has meaning beyond its text
+## What changes for your agent
 
-Kast gives your agent compiler-resolved declarations, types, and source relationships with locations it can inspect.
+| Question | Text search | Kast |
+| --- | --- | --- |
+| Which `send` does this call use? | Every function named `send`. | The one declaration that IDEA resolves. |
+| Who calls `submitOrder`? | Lines that contain the name. | Resolved callers, with file locations. |
+| Are there no callers? | An empty search proves nothing. | The answer says if the search finished, and in what scope. A finished search can return zero callers. |
 
 <span id="use-the-evidence-for-your-next-decision" />
 
-## Evidence you can act on
+## How it works
 
-A complete result applies to the declared scope and semantic model. Incomplete evidence cannot establish that a result is absent. See [what a Kast answer proves](/explanation).
+1. You install Kast. The installer adds a plugin to IntelliJ IDEA and a `kast` command. You restart IDEA.
+2. You install guidance for your agent: Codex, Copilot, or Pi.
+3. You open your project in IDEA and work with your agent as usual. When the agent needs facts about your code, it runs `kast`, and IDEA answers.
+
+<span id="try-it-on-your-project" />
+<span id="choose-your-reader-track" />
+<span id="is-kast-for-you" />
+
+## Get started
+
+You need an Apple silicon Mac, a Kotlin Gradle project, IntelliJ IDEA 2026.2 or 2026.3, and Python. Set up lists every requirement.
+Setup takes three steps.
+
+<Columns cols={2}>
+  <Card title="Set up Kast" icon="terminal" href="/start">
+    Install Kast and connect your agent.
+  </Card>
+  <Card title="What you can ask" icon="search" href="/search">
+    Example questions and what each answer tells you.
+  </Card>
+  <Card title="Help" icon="life-buoy" href="/troubleshooting">
+    Fix setup and query problems.
+  </Card>
+  <Card title="Run without desktop IDEA" icon="container" href="/reference/installation#manage-isolated-workspaces">
+    On Linux x86-64, or with a private Host on a Mac.
+  </Card>
+</Columns>
 
 <DeeperReading />

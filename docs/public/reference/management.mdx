@@ -1,119 +1,132 @@
 ---
 title: "Manage Kast"
-description: "Inspect installed and loaded builds, update from the main channel, and interpret installation and recovery outcomes."
+description: "Check which Kast build is installed and loaded, update it, and act on each update result and recovery code."
 icon: "folder-open"
 hideFooterPagination: true
 ---
 
-Use the installed `kast` CLI to inspect and update Kast.
-Save project work before an update. Start fresh agent sessions after a successful update.
+Use the installed `kast` command to check and update Kast.
+Save your work in your agent before an update. Start new agent sessions after it.
+
+This page covers a desktop IDEA installation on an Apple silicon Mac. For containers, Linux, or `kast-task`, see [Without desktop IDEA](#without-desktop-idea).
 
 <a id="inspect-the-installation" />
 
-## 1. Inspect the installation
+## 1. Check the installation
 
 ```shell
 kast status --json
 ```
 
-Status keeps the installed build, loaded Host, update policy, and unfinished transaction separate.
-It reads passive runtime evidence without starting Java or a Host lifecycle action.
-An unavailable loaded identity does not prove that no Host runs.
+`status` only reads saved state. It does not start Java or change anything.
+Each field is an observation with a `state` of `VERIFIED` or `UNAVAILABLE`, and a `value` or a `reason`.
 
-Installed files do not prove that IDEA loaded them.
-Host activation does not prove project readiness or semantic completion.
+| Field | What it tells you |
+| --- | --- |
+| `installedBuild.value.version` | The Kast build on disk. |
+| `applicationHost.value.runtimeIdentity.buildIdentity.version` | The build that the running Host has loaded. `UNAVAILABLE` when no running Host advertises a loaded Kast. |
+| `applicationHost.value.runtimeIdentity.mode` | `DESKTOP` for your IDEA, or `MANAGED_HEADLESS` for the private Host of a standalone installation. |
+| `updatePolicy` | Whether `kast upgrade` follows a channel or a pinned build. |
+| `unresolvedTransaction.value.records` | An unfinished install or update. An empty list means none. |
+
+If the two versions differ, restart IDEA. If `records` is not empty, [resolve the unfinished update](#4-resolve-unfinished-recovery) first.
+
+An `UNAVAILABLE` loaded build does not prove that no Host runs. A loaded Host does not prove that your project is ready; a complete query does.
 
 <a id="upgrade" />
 
-## 2. Upgrade a compatible installation
+## 2. Update
 
-List selectable builds and preview the latest development build:
+List the builds you can select, and preview the update without changing anything:
 
 ```shell
 kast versions
 kast upgrade --channel main --dry-run
 ```
 
-A successful preview returns `PLANNED`. It makes no installation changes and does not restart IDEA.
-
-Apply the latest development build and permit a normal IDEA restart when necessary:
+A preview returns `PLANNED`. Then apply the update:
 
 ```shell
 kast upgrade --channel main --restart-ide
 ```
 
-Active Kast sessions can end during replacement. Start fresh sessions after the update.
-If you omit `--restart-ide`, a necessary restart returns `RESTART_REQUIRED` before installation changes.
-Kast admits the selected artifacts before replacement.
-A compatible running Host can use reload instead of a normal restart.
+- `--channel main` selects the latest development build. It replaces a pinned build.
+- `--restart-ide` lets Kast restart IDEA normally when needed. A compatible running Host can reload instead.
+- Running Kast sessions can end during the update.
+- For another IDEA installation, add `--idea-home` with the exact app path.
+- To pin a version or commit instead, see [Pin a published build](/reference/installation#pin-a-published-build).
 
-For another IDEA installation, add `--idea-home` with the exact app path.
-Use the [selection reference](/reference/installation#pin-a-published-build) for exact version and commit pins.
+Add `--json` for one structured result on stdout. Progress goes to stderr.
 
 <a id="stop-and-reinstall" />
 <span id="3-stop-and-reinstall-a-recorded-version" />
+<span id="lifecycle-result-contract" />
+<span id="workspace-recovery-after-replacement" />
 
-## 3. Read the update outcome
+## 3. Read the result
 
-### Lifecycle result contract
+The result's `type` says what happened. A rejection names its cause in `reason`. A successful update can also list `notices`.
 
-Add `--json` to get one structured terminal result.
-Stage evidence goes to stderr.
-
-| Outcome | Meaning | Exit |
+| Result | Meaning | What to do |
 | --- | --- | --- |
-| `ACTIVATED` | Selected files and each affected running Host match the selected build and contract. | Zero |
-| `INSTALLED_NOT_RUNNING` | The planned stopped-IDE path completed. No affected IDEA instance runs. | Zero |
-| `REJECTED` | Preparation rejected before retirement or active installation changes. | Nonzero |
-| `ROLLED_BACK` | The exact prior installation or prior absence returned with the necessary runtime and profile facts. | Nonzero |
-| `RECOVERY_REQUIRED` | Settlement, activation, or restoration remains unproved. Kast keeps its fence and recovery evidence. | Nonzero |
+| `ACTIVATED` | The new build is installed, and every affected running IDEA loaded it. | Start new agent sessions. |
+| `INSTALLED_NOT_RUNNING` | The new build is installed. IDEA was not running. | Start IDEA, then start new agent sessions. |
+| `REJECTED` | Kast stopped before changing the installation. | Fix the `reason`, then repeat the update. |
+| `REJECTED` with `reason: RESTART_REQUIRED` | The update needs an IDEA restart that you did not permit. | Repeat with `--restart-ide`. |
+| `ROLLED_BACK` | The update failed, and Kast restored the previous installation. `failure` names the cause. | Fix the cause, then repeat the update. |
+| `RECOVERY_REQUIRED` | Kast cannot prove that the update finished or was undone. | Keep the output, and [resolve it](#4-resolve-unfinished-recovery) before another update. |
+| `REJECTED` with `reason: PINNED_BUILD` | `kast upgrade` without a selector found a pinned build. | Add `--channel main`, or select a version explicitly. |
+| Notice `HARNESS_REFRESH_REQUIRED` | The Kast guidance in your agent tool, such as Codex, Copilot, or Pi, is older than the new build. | Repeat your original [agent installation command](/reference/integrations#refresh-guidance-after-a-core-change), keeping `--mcp` if you used it, then start a new session. |
 
-A failed promised reload or restart cannot become `INSTALLED_NOT_RUNNING` merely because IDEA stopped.
-A successful file replacement alone does not prove `ACTIVATED`.
+Exit status is zero for `ACTIVATED` and `INSTALLED_NOT_RUNNING`, and nonzero otherwise.
+Installed files alone do not mean `ACTIVATED`, and a stopped IDEA after a failed restart does not mean `INSTALLED_NOT_RUNNING`.
 
-### Workspace recovery after replacement
-
-For `INSTALLED_NOT_RUNNING`, start IDEA before a fresh agent session.
-For `ACTIVATED`, start a fresh agent session in the intended repository or worktree.
-
-An update does not replay an interrupted source change.
-Inspect the source and change record before another write.
+An update does not replay an interrupted source change. Check the source and its [change receipt](/reference/change#read-the-receipt) before another edit.
 
 <a id="force-reset" />
 <span id="4-reset-only-after-ownership-recovery-fails" />
 
 ## 4. Resolve unfinished recovery
 
-If the result is `RECOVERY_REQUIRED`, keep the reported recovery evidence.
-Resolve the named failure before another update.
+Use this after `RECOVERY_REQUIRED`, or when `unresolvedTransaction.value.records` is not empty.
 
-```shell
-kast status --json
-kast upgrade --channel main --restart-ide --json
-```
+1. Keep the recovery output. Fix the failure it names.
+2. Run the update again:
 
-When an unfinished transaction exists, the next upgrade recovers its recorded build selection.
-That recovery does not resolve a newer build.
-Unknown or corrupt recovery evidence blocks the update.
-After recovery succeeds, repeat the update command to select the latest development build.
-A restored prior build does not complete that update.
+   ```shell
+   kast status --json
+   kast upgrade --channel main --restart-ide --json
+   ```
+
+   This run first finishes or undoes the unfinished update, using the build that update selected.
+3. When that succeeds, run the update once more to reach the latest build.
+
+Unknown or damaged recovery records block the update.
 
 <span id="reset-outcomes" />
 
-A rollback restores the prior update policy.
-Interrupted agent sessions stay stopped after restoration.
-Neither restored files nor removal of temporary files proves that the prior Host runs again.
+A rollback restores the previous update policy. Agent sessions that the update ended stay stopped.
+Restored files do not prove that the previous Host runs again. Check with `kast status --json`.
+
+## Without desktop IDEA
+
+`kast status` reports your installation and its own Host. It does not report container Hosts.
+
+| Setup | Check | Update |
+| --- | --- | --- |
+| Workspace container | `kast container --json`. Each entry shows its `state`, `ENABLED` or `STOPPED`, and `container.runtime`, the runtime version it uses. | A container keeps the runtime it was created with, and `kast upgrade` does not change it. After an update, run `kast container rm ID`, then `kast container create --name NAME` from the workspace. |
+| Linux | The same as a workspace container. | `kast upgrade` installs Apple silicon builds only. Install a newer [candidate build](/reference/installation#install-from-a-candidate-build) in a new root, import its runtime, and create your containers again. |
+| `kast-task` | `"$root/bin/kast" status --json`. `mode` is `MANAGED_HEADLESS`. | Install a newer build in a new root with the [standalone procedure](/reference/installation#isolated-runtime). |
+
+`rm` deletes the container's private state, so its next query prepares the Host again.
 
 ## Change agents
 
-Use [agent setup](/reference/integrations) to install guidance for the selected agent.
-If the update reports `HARNESS_REFRESH_REQUIRED`, repeat that setup before a fresh session.
+Use [Agent guidance](/reference/integrations) to install guidance for another agent.
 
 <span id="uninstall" />
 <span id="explicit-workspace-control-in-the-hosted-app-server" />
 
-See [Lifecycles](/reference/lifecycles) for project admission and request completion.
+See [Lifecycles](/reference/lifecycles) for project setup and request completion.
 
-Task procedures: [Agent guidance](/agent-harnesses).
-
-Recovery: [Contract and state recovery](/reference/troubleshooting), [Help](/troubleshooting).
+Recovery: [Detailed recovery](/reference/troubleshooting), [Help](/troubleshooting).

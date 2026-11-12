@@ -19,10 +19,8 @@ SHA = re.compile(r"[0-9a-f]{40}\Z")
 # The source-inventory regression rejects new references to these narrow inputs.
 DOCUMENTATION_PATHS = frozenset(
     {
-        "docs/public/agent-harnesses.mdx",
         "docs/public/explanation.mdx",
         "docs/public/explanation/query-lifecycle.mdx",
-        "docs/public/how-to.mdx",
         "docs/public/how-to/complete-engineering-task.mdx",
         "docs/public/how-to/inspect-diagnostics.mdx",
         "docs/public/how-to/read-retained-evidence.mdx",
@@ -54,7 +52,6 @@ DOCUMENTATION_PATHS = frozenset(
         "docs/public/reference/troubleshooting.mdx",
         "docs/public/reference/walkthrough.mdx",
         "docs/public/troubleshooting.mdx",
-        "docs/public/tutorials.mdx",
         "docs/public/tutorials/first-query.mdx",
     }
 )

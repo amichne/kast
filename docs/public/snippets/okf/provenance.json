@@ -2126,10 +2126,6 @@
   ],
   "authored": [
     {
-      "route": "agent-harnesses",
-      "purpose": "reader-task-or-contract"
-    },
-    {
       "route": "architecture/query-reuse",
       "purpose": "reader-task-or-contract"
     },
@@ -2148,10 +2144,6 @@
     {
       "route": "glossary",
       "purpose": "generated-glossary"
-    },
-    {
-      "route": "how-to",
-      "purpose": "reader-navigation"
     },
     {
       "route": "how-to/complete-engineering-task",
@@ -2320,10 +2312,6 @@
     {
       "route": "troubleshooting",
       "purpose": "reader-task-or-contract"
-    },
-    {
-      "route": "tutorials",
-      "purpose": "reader-navigation"
     },
     {
       "route": "tutorials/first-query",
