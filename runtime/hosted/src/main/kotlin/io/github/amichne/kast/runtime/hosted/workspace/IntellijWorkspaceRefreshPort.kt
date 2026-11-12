@@ -5,7 +5,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
-import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil
 import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMode
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
@@ -25,20 +24,16 @@ import io.github.amichne.kast.runtime.hosted.saveProjectDocuments
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import io.github.amichne.kast.workspace.contract.WorkspaceCapabilityReadiness
 import io.github.amichne.kast.workspace.intellij.read.hosted.HostedQueryService
+import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.jetbrains.plugins.gradle.properties.GradleLocalPropertiesFile
-import org.jetbrains.plugins.gradle.properties.GradlePropertiesFile
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmHelper
 import org.jetbrains.plugins.gradle.service.project.open.setupGradleSettings
 import org.jetbrains.plugins.gradle.settings.GradleDefaultProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleSettings
-import org.jetbrains.plugins.gradle.util.JavaHomeValidationStatus
-import org.jetbrains.plugins.gradle.util.USE_GRADLE_JAVA_HOME
-import org.jetbrains.plugins.gradle.util.USE_GRADLE_LOCAL_JAVA_HOME
 import org.jetbrains.plugins.gradle.util.validateGradleJavaHome
 
 /** Effect boundary for exactly the existing project's linked root; never opens or links a project. */
@@ -89,23 +84,34 @@ internal class IntellijWorkspaceRefreshPort(
     ): Refinement<GradleProjectSettings, PublicFailure> {
         GradleSettings.getInstance(project).setupGradleSettings()
         val settings = GradleDefaultProjectSettings.createProjectSettings(root.toString())
-        val version =
-            GradleInstallationManager.guessGradleVersion(settings)
-                ?: return Refinement.Rejected(PublicFailure.EFFECT_FAILED)
-        if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(root, version)) return Refinement.Refined(settings)
-
-        val declared = GradlePropertiesFile.getProperties(project, root).javaHomeProperty
-        val local = GradleLocalPropertiesFile.getProperties(root).javaHomeProperty
-        val javaHome = declared?.value ?: local?.value ?: headless.environment.javaHome.toString()
-        if (validateGradleJavaHome(project, version, javaHome) !is JavaHomeValidationStatus.Success)
-            return Refinement.Rejected(PublicFailure.EFFECT_FAILED)
-        settings.gradleJvm =
-            when {
-                declared != null -> USE_GRADLE_JAVA_HOME
-                local != null -> USE_GRADLE_LOCAL_JAVA_HOME
-                else -> ExternalSystemJdkUtil.USE_PROJECT_JDK
+        val version = GradleInstallationManager.guessGradleVersion(settings)
+        if (version == null)
+            return rejectPrivateGradleJvmSettings(PrivateGradleJvmFailure.GRADLE_DISTRIBUTION_UNAVAILABLE)
+        if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(root, version)) {
+            recordPrivateGradleJvm(PrivateGradleJvmObservation.DaemonCriteria)
+            return Refinement.Refined(settings)
+        }
+        val declaration = privateGradleJvmDeclaration(project, root)
+        val bundledHome = headless.environment.javaHome.toString()
+        val observations = linkedMapOf<String, GradleJavaHomeCompatibility>()
+        for (home in privateGradleJvmHomes(declaration, bundledHome) { discoverPrivateGradleJvms(project) }) {
+            val compatibility =
+                try {
+                    validateGradleJavaHome(project, version, home).privateGradleCompatibility()
+                } catch (_: InvalidPathException) {
+                    GradleJavaHomeCompatibility.INVALID_HOME
+                }
+            observations[home] = compatibility
+            if (compatibility == GradleJavaHomeCompatibility.COMPATIBLE) break
+        }
+        return when (val binding = privateGradleJvmBinding(declaration, bundledHome, observations)) {
+            is Refinement.Rejected -> rejectPrivateGradleJvmSettings(binding.failure)
+            is Refinement.Refined -> {
+                settings.gradleJvm = binding.value.sdkReference
+                recordPrivateGradleJvm(PrivateGradleJvmObservation.Selected(binding.value.authority))
+                Refinement.Refined(settings)
             }
-        return Refinement.Refined(settings)
+        }
     }
 
     fun admission(): Refinement<Unit, PublicFailure> {
