@@ -32,6 +32,7 @@ internal object KastCleanSlateModules {
             ModuleId.DISTRIBUTION_MANAGED,
             ModuleId.DISTRIBUTION_OUTPUT,
             ModuleId.EVIDENCE_SQLITE,
+            ModuleId.PROTOCOL_REGISTRY,
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(ForbiddenEffect.FILESYSTEM_WRITE to setOf(
                 // Container publication and private-state adapters; semantic query execution has no write authority.

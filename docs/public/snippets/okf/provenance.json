@@ -562,8 +562,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "649f3a8e924daeb677a28767b515f5273f35c6174988cfafdd3998cb3ddd1e87",
-      "claimsSha256": "2ab929126d902df193c99460551ba159bae00f1785cde76871b03bc1589ff6a0",
+      "sha256": "22dfe849707dd71f218904da6ceb59ccb0b5ed596f0a4103f5ab0faad789a09a",
+      "claimsSha256": "8e60abdc125dcc8cc415881d8dc5c00d0027b629be3d9ff96845683838a2bd14",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -583,7 +583,7 @@
           "claim": "claim_8fbe8cf0364241bd9c44e5851da8c409",
           "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L3",
           "recordedVersion": "repo-lines-v1:sha256:903c81dc02bcd6dc5a04ddb10984408b5c823595e6ab789ed39c0d866651b5f6:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTAzYzgxZGMwMmJjZDZkYzVhMDRkZGIxMDk4NDQwOGI1YzgyMzU5NWU2YWI3ODllZDM5YzBkODY2NjUxYjVmNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTAzYzgxZGMwMmJjZDZkYzVhMDRkZGIxMDk4NDQwOGI1YzgyMzU5NWU2YWI3ODllZDM5YzBkODY2NjUxYjVmNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWNlN2ViODUyNjM3ZmNkZmQwMjBiMGZmZWVmODRiY2Y0NjBhNmI2NTQ4YjMzMDNjZjM5M2Q0MWNkZjE2NzM2OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjJhN2RlZTc3MzVkNzAzMzVkMDQ2Zjc5NTU3YjdkNjNjOWRjZjEwZmIzNGEzZDUxZGM5YmRkYWU5ZDM0MTU5ZSJ9",
-          "currentVersion": "repo-file-v1:sha256:83924999dce521dda583c54d39afbadb241c1a34f58f4996c2bd33de85fae662",
+          "currentVersion": "repo-file-v1:sha256:b3daf91daef9b9926e0e2e556acb56cfda7554d942776da2ba31316f499656e3",
           "status": "NOT_ASSESSED"
         },
         {
@@ -653,7 +653,7 @@
           "claim": "claim_54f2a2e4c8df43fdae34c80ce389e8c6",
           "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L3-L3",
           "recordedVersion": "repo-lines-v1:sha256:903c81dc02bcd6dc5a04ddb10984408b5c823595e6ab789ed39c0d866651b5f6:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTAzYzgxZGMwMmJjZDZkYzVhMDRkZGIxMDk4NDQwOGI1YzgyMzU5NWU2YWI3ODllZDM5YzBkODY2NjUxYjVmNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTAzYzgxZGMwMmJjZDZkYzVhMDRkZGIxMDk4NDQwOGI1YzgyMzU5NWU2YWI3ODllZDM5YzBkODY2NjUxYjVmNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWNlN2ViODUyNjM3ZmNkZmQwMjBiMGZmZWVmODRiY2Y0NjBhNmI2NTQ4YjMzMDNjZjM5M2Q0MWNkZjE2NzM2OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjJhN2RlZTc3MzVkNzAzMzVkMDQ2Zjc5NTU3YjdkNjNjOWRjZjEwZmIzNGEzZDUxZGM5YmRkYWU5ZDM0MTU5ZSJ9",
-          "currentVersion": "repo-file-v1:sha256:83924999dce521dda583c54d39afbadb241c1a34f58f4996c2bd33de85fae662",
+          "currentVersion": "repo-file-v1:sha256:b3daf91daef9b9926e0e2e556acb56cfda7554d942776da2ba31316f499656e3",
           "status": "NOT_ASSESSED"
         },
         {
@@ -679,9 +679,9 @@
         },
         {
           "claim": "claim_80ac4fa29f9f455b8b4ac1ee06966cfa",
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L473-L484",
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L474-L485",
           "recordedVersion": "repo-lines-v1:sha256:9672c50fc74cc1b6c84a3de8ad95c6c7c4140044f613ce063dc76b50d2d75db3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZDlmNzM0YmU1YWEwMzkzNWM0OTliNzE0MTEzNTVjZWZhYzJhMmJmNTc5ODllMTI0NmQzNWE3MzUyYzdlOWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMjNlZDEwMjlmYTE4YTc1Zjg5M2ZiNDFmZTYxOWE0MmZkNjI3ODk2M2QxMjM4NTUxYThiMGMzZTEwOTNiOGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzOGVhYzMzZmQzODU2YWUwN2UzZGUwZmUzNjQ2ZGY0YzQ5M2RmMTI0MGEwNDc5Mzg5ODJiMTI4MjM5MGE1YTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA2YzRmNWI2ZDcyM2I4ODkyMmM1ZmFmZjUzNGU1NWY1Y2Y1YjkwZTc0MzMyZmZhM2VkZjBlOTZkZWFiNTgwOGYifQ",
-          "currentVersion": "repo-file-v1:sha256:83924999dce521dda583c54d39afbadb241c1a34f58f4996c2bd33de85fae662",
+          "currentVersion": "repo-file-v1:sha256:b3daf91daef9b9926e0e2e556acb56cfda7554d942776da2ba31316f499656e3",
           "status": "NOT_ASSESSED"
         },
         {
@@ -693,9 +693,9 @@
         },
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
-          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L26-L35",
-          "recordedVersion": "repo-lines-v1:sha256:cd22be51d93cffa5ed628effb7d5050dc46995216f05b507b634949b50049112:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiZmNiOTk1MDI3YjkzNWMwY2ExMjcyZTFmOGNkMzFjNGExMzE4Y2JkOTM1Nzg3NDQyODNhNmUyNTQyMTdlZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjOTVmYjZiZDFjNDliMTdhNmFkY2FiYTAwZDZkZmI4ZTFhZWI5MWQ1MWQwY2NkNDgwMTI2ZTdjNDc0NGVlZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmYTdiZDBjNTQyNWQyMTFmZmY1MjJlYzg5YzQxNjg5ZTZlODE1ODZkYjY1MGRiNzEwMzg4YTEwODgwYTNhZDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2ZDJhNTRmZWFiZjIzYzYwNTU2YzllNzcwZTk4ZDk3NTM5NjNjYWM3OWZjZWQ2Yzc3YzVlMzg4ZDA2MjVjOWYifQ",
-          "currentVersion": "repo-file-v1:sha256:83924999dce521dda583c54d39afbadb241c1a34f58f4996c2bd33de85fae662",
+          "resource": "repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt#L26-L36",
+          "recordedVersion": "repo-lines-v1:sha256:abe6108e68cd9171a69eeb4727c41115d935600e1e9e95a69d772c31d71c4b4e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRiZmNiOTk1MDI3YjkzNWMwY2ExMjcyZTFmOGNkMzFjNGExMzE4Y2JkOTM1Nzg3NDQyODNhNmUyNTQyMTdlZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjOTVmYjZiZDFjNDliMTdhNmFkY2FiYTAwZDZkZmI4ZTFhZWI5MWQ1MWQwY2NkNDgwMTI2ZTdjNDc0NGVlZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmYTdiZDBjNTQyNWQyMTFmZmY1MjJlYzg5YzQxNjg5ZTZlODE1ODZkYjY1MGRiNzEwMzg4YTEwODgwYTNhZDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2ZDJhNTRmZWFiZjIzYzYwNTU2YzllNzcwZTk4ZDk3NTM5NjNjYWM3OWZjZWQ2Yzc3YzVlMzg4ZDA2MjVjOWYifQ",
+          "currentVersion": "repo-file-v1:sha256:b3daf91daef9b9926e0e2e556acb56cfda7554d942776da2ba31316f499656e3",
           "status": "NOT_ASSESSED"
         },
         {
@@ -728,9 +728,9 @@
         },
         {
           "claim": "claim_d723a29a3a964b60aae3ae3dc3f45a55",
-          "resource": "repo://distribution/cli/build.gradle.kts#L20-L34",
-          "recordedVersion": "repo-lines-v1:sha256:29da102fdbc9acddc32709a15e4a24ad15a76dd325979c39beaa43a2517fc374:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiYTMxNDVhZWUwZGEwNTkyNGQzYWQwYjFlZWI0YWRlNzc2MWI2NjdkOGE5NjE0NmRlZWYzOWFiZDFjZTQ4Y2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0ZTE4OGZlZmIwN2VhZWRkY2IwYWExNDgxYTcyOWE3ZDU0YTNmM2Y5ZWFlOGI3NGU4ZmFkNzhhM2ZkMzMwYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhMzY4YmU1MTYyNmI2NTkxZjdhMWMyZDVmNTI1MDBhZDY0YzA4ODQyNWE4ODQ4ODUwN2YyM2JlZGU1NDI0MGUifQ",
-          "currentVersion": "repo-file-v1:sha256:f1b2f67e58868ebb14af6075a1e20274a79d39c65c46867e2c7e6665fd9bca24",
+          "resource": "repo://distribution/cli/build.gradle.kts#L20-L35",
+          "recordedVersion": "repo-lines-v1:sha256:666a9ff36d0ff213d2740bec5517e4e97f664ebf05d9129d64e99522e348a0c7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiYTMxNDVhZWUwZGEwNTkyNGQzYWQwYjFlZWI0YWRlNzc2MWI2NjdkOGE5NjE0NmRlZWYzOWFiZDFjZTQ4Y2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0ZTE4OGZlZmIwN2VhZWRkY2IwYWExNDgxYTcyOWE3ZDU0YTNmM2Y5ZWFlOGI3NGU4ZmFkNzhhM2ZkMzMwYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdhMzY4YmU1MTYyNmI2NTkxZjdhMWMyZDVmNTI1MDBhZDY0YzA4ODQyNWE4ODQ4ODUwN2YyM2JlZGU1NDI0MGUifQ",
+          "currentVersion": "repo-file-v1:sha256:c17407d5380fc6ac94784238444c54e7ca1a5aa75470fdbe1f27b091545673da",
           "status": "NOT_ASSESSED"
         },
         {

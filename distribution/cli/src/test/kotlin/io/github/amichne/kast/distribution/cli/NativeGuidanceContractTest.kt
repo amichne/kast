@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
@@ -15,7 +16,7 @@ import org.junit.jupiter.api.io.TempDir
 @Serializable
 private data class NativeTestInventory(
     val schema: String = "kast.cli.describe.v1",
-    @SerialName("public_contract_version") val contract: Int = 18,
+    @SerialName("public_contract_version") val contract: Int = PUBLIC_TOOL_CONTRACT_VERSION,
     val catalog: String = "COMPLETE",
     val section: String = "inventory",
     val content: List<NativeTestCommand> =
@@ -71,7 +72,8 @@ class NativeGuidanceContractTest {
         for (document in
             listOf(
                 accepted.copy(schema = "different"),
-                accepted.copy(contract = 17),
+                accepted.copy(contract = PUBLIC_TOOL_CONTRACT_VERSION - 1),
+                accepted.copy(contract = PUBLIC_TOOL_CONTRACT_VERSION + 1),
                 accepted.copy(content = accepted.content.dropLast(1)),
                 accepted.copy(section = "input"),
             )) assertEquals(

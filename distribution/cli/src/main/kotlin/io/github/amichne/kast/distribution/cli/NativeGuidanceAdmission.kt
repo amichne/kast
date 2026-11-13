@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.protocol.registry.PUBLIC_TOOL_CONTRACT_VERSION
 import java.nio.file.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -64,7 +65,7 @@ internal fun inspectGuidanceCommand(root: Path, home: Path, environment: Map<Str
 
 private fun validNativeHeader(inventory: NativeCliInventory): Boolean =
     inventory.schema == "kast.cli.describe.v1" &&
-        inventory.contract == NATIVE_PUBLIC_CONTRACT &&
+        inventory.contract == PUBLIC_TOOL_CONTRACT_VERSION &&
         inventory.catalog == "COMPLETE"
 
 private fun validNativeCommands(inventory: NativeCliInventory, commands: List<String>): Boolean =
@@ -73,5 +74,3 @@ private fun validNativeCommands(inventory: NativeCliInventory, commands: List<St
         commands
             .toSet()
             .containsAll(setOf("query", "query.plan", "result.read", "result.resume", "source.read", "describe"))
-
-private const val NATIVE_PUBLIC_CONTRACT = 18

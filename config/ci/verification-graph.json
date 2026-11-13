@@ -234,7 +234,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-            "sha256": "83924999dce521dda583c54d39afbadb241c1a34f58f4996c2bd33de85fae662"
+            "sha256": "b3daf91daef9b9926e0e2e556acb56cfda7554d942776da2ba31316f499656e3"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt",
@@ -410,7 +410,7 @@
         },
         {
             "path": "distribution/cli/build.gradle.kts",
-            "sha256": "f1b2f67e58868ebb14af6075a1e20274a79d39c65c46867e2c7e6665fd9bca24"
+            "sha256": "c17407d5380fc6ac94784238444c54e7ca1a5aa75470fdbe1f27b091545673da"
         },
         {
             "path": "distribution/contract/build.gradle.kts",
@@ -1002,6 +1002,7 @@
                 ":change:protocol",
                 ":cli",
                 ":diagnostic:intellij",
+                ":distribution:cli",
                 ":protocol:contract",
                 ":protocol:registry",
                 ":protocol:wire",
@@ -1027,6 +1028,7 @@
             "affected": [
                 ":app-server",
                 ":cli",
+                ":distribution:cli",
                 ":protocol:registry",
                 ":protocol:wire",
                 ":query:protocol",

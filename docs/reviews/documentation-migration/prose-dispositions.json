@@ -14244,6 +14244,42 @@
         "severity": "suggestion"
       },
       "reason": "The paragraph has one topic: WorkspaceOperationAdmission and PreparedWorkspaceDemand's safe preparation/retry boundary. Its sentences distinguish fresh discovery from issued authority, pre-dispatch Host replacement from the single post-dispatch readiness retry, typed model reload or exact FRESHNESS_REJECTED/MOVED stages for reads, presemantic-only plan retry, and no mutation/status replay. It preserves the same request lease and captured Host/project, exposes the second rejection, and excludes ambiguous effects. These adjacent qualifications prevent a general retry interpretation; the matching WorkspaceDemand.kt branches were inspected. Retain the dense contract and visible paragraph advisory without claiming reader comprehension or native execution."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/architecture/functional-packages.md",
+        "sourceSha256": "d560f89d88b9c24f5694e8ba6726a4cda16b979a653f00628643edff13189f13",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 18.98 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the exact package inventory and CanonicalRoot ownership distinctions in this source-coverage reference. The native lifecycle refreshed architecture evidence after guidance admission adopted the canonical registry version. The complete body is byte-identical to origin/main at 8e66b6d; only verification frontmatter changed. Preserve the existing grade advisory without claiming reader comprehension."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/architecture.md",
+        "sourceSha256": "22dfe849707dd71f218904da6ceb59ccb0b5ed596f0a4103f5ab0faad789a09a",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.95 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep project runtime closure, external library selection, module roles, and independent release ownership distinct. Native review confirmed that the registry contract dependency does not add semantic implementation authority. The complete body is byte-identical to origin/main at 8e66b6d; only verification frontmatter changed. Retain the existing grade advisory without claiming reader comprehension."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/architecture.md",
+        "sourceSha256": "22dfe849707dd71f218904da6ceb59ccb0b5ed596f0a4103f5ab0faad789a09a",
+        "rule": "Slopsentral.LongSentence",
+        "line": 126,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the aggregate type-resolved detekt and distinct production/test file-length checks attached to module check dependencies. This sentence and the complete body are byte-identical to origin/main at 8e66b6d. Only native verification frontmatter changed. Bind the existing sentence-length review to these exact bytes while keeping the advisory visible."
     }
   ]
 }

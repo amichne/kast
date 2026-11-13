@@ -23,6 +23,7 @@ dependencies {
     implementation(project(":distribution:contract"))
     implementation(project(":distribution:managed"))
     implementation(project(":evidence:sqlite"))
+    implementation(project(":protocol:registry"))
     implementation(libs.clikt.core)
     testImplementation(libs.json.schema.validator)
     testImplementation(libs.junit.jupiter)
