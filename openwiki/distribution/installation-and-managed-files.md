@@ -9,12 +9,20 @@ sources:
     resource: repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
   - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
     resource: repo://cli/build.gradle.kts
+  - id: openwiki-source-a3af3d4f4fd16f9ce429f3c5
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationManifest.kt
   - id: openwiki-source-5f9ee1677dd5352d4bd1273d
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationPublicEndpointSelection.kt
   - id: openwiki-source-8f4d86f42434fcc1ce269879
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
   - id: openwiki-source-f2c689f11ca37c5559bce314
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
+  - id: openwiki-source-c4c5adde2b0966463aa6381b
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/OneShotInvocationRecord.kt
+  - id: openwiki-source-689991f3a476668d88b8c28b
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicQueryDispatch.kt
+  - id: openwiki-source-d1f8b0a2ac011ef2d36005a5
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
   - id: openwiki-source-03ffc32a0ca502ab67c54b25
@@ -23,26 +31,36 @@ sources:
     resource: repo://packaging/host_directory_exchange.py
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
+  - id: openwiki-source-ab52e7c01cf17ee137f833e7
+    resource: repo://packaging/immutable_store.py
   - id: openwiki-source-fd4b4980f80cb901046d8f0e
     resource: repo://packaging/installation-lifecycle.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
   - id: openwiki-source-7f5792fd36f508c6577b3562
     resource: repo://packaging/managed_product_installation.py
+  - id: openwiki-source-0bc40485351c24e0087737b7
+    resource: repo://packaging/managed_product_removal.py
   - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
     resource: repo://packaging/managed_release.py
   - id: openwiki-source-b1af9cf4e2649975cc7bdf86
     resource: repo://packaging/managed_update_journal.py
+  - id: openwiki-source-608c1b34f50deb259c322e04
+    resource: repo://packaging/product_mcp_removal.py
+  - id: openwiki-source-a0c37a49715759f5ea160f59
+    resource: repo://packaging/product_removal_recovery.py
   - id: openwiki-source-2a77c42fb15d42188a60711b
     resource: repo://packaging/test-host-installation.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
+  - id: openwiki-source-b3ca2d66028c874ac7b10e77
+    resource: repo://packaging/test-managed-build-record.py
   - id: openwiki-source-988817829b83f3eaab1d41af
     resource: repo://packaging/test-managed-installation.py
-generated: { by: "amp", at: "2026-11-12T22:41:01.968Z" }
+generated: { by: "amp", at: "2026-11-13T02:07:25.535Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:41:01.968Z
+    at: 2026-11-13T03:20:11.225Z
 ---
 
 
@@ -96,6 +114,38 @@ Recovery admits the recorded selection and retires the prior installation before
 The replacement receipt preserves provider registrations and recorded guidance.
 `ProductInstalled` reports `NOT_STARTED`; payload activation does not prove a loaded Host or workspace readiness.
 The coordinator then refreshes installed guidance and retains finite refresh notices.
+
+The installation manifest includes `codexHome` as the selected HOME's `.codex` path.
+The Kotlin client requires that field; an installer-only manifest check cannot prove client admission.
+
+Product activation also writes the `-complete` client launchers and the pinned `config/environment` file before recording the payload inventory.
+The launchers preserve arguments and select the raw native launchers.
+Fresh configuration uses catalogue defaults; replacement preserves the saved bytes.
+Configuration remains mutable owner input outside the immutable payload inventory.
+Recovery execution retains only the immutable import tree and manifest, not configuration or invocation state.
+Unexpected configuration entries and linked files reject removal.
+
+Successful native calls leave empty directories under `state/run/one-shot` or `state/run/tool-sessions`.
+Replacement and uninstall admit those exact empty directories, but reject surviving invocation records and unknown directory names.
+Removal rechecks directory identities and uses empty-directory deletion, never record deletion, for this bookkeeping.
+Bounded `kast-invocation-state` observations distinguish admitted state from unknown directories and unsettled invocations.
+
+Control staging cleanup retains the directory identity before extraction.
+A failed preparation deletes only that allocation, while no replacement journal owns it.
+Runtime and base publication stages retain original evidence before copying payload bytes.
+Control, unpublished journal, runtime, and base stages live outside the managed root and stores.
+A crash before receipt creation therefore cannot obstruct uninstall.
+Interrupted exterior stages can remain on disk; uninstall does not infer ownership from their names or sweep them.
+Recovery of older in-store stages checks surviving files, links, and directory identities before cleanup.
+Unknown legacy contents or an incomplete archive without an independently verified replacement remain protected.
+
+Repair stages verified replacement bytes before retirement, without modifying a damaged selected runtime or base.
+The existing replacement journal binds those bytes to the damaged directory identity and original qualification.
+After exact Host retirement and fence admission, repair deletes that owned directory and publishes the replacement.
+Interrupted deletion or publication resumes through the same journal.
+Foreign additions, changed links, and replaced directory identities block deletion.
+Workspace roots and external Gradle homes remain outside this reset.
+Journal staging and the destination store must share a filesystem; repair rejects a mismatch before retirement or deletion.
 
 The retained composition recovery path coordinates the existing Control and Host effect owners under the selected management lock.
 The bootstrap disables Python bytecode writes before importing its installed helpers.
@@ -188,5 +238,8 @@ Read native lifecycle evidence before a claim about loaded components or workspa
 
 `ControlDistributionLimits` supplies shared entry, payload, and manifest limits across installation and runtime admission.
 A limit does not prove archive ownership or content identity.
+Archive admission permits at most 16,384 entries.
+Installed payload admission permits at most 32,768 entries because the pinned private interpreter adds files after archive extraction.
+Payload-byte and manifest-byte bounds remain separate from those entry budgets.
 `InstalledEndpointAlias` admits a physical directory and exact alias identities.
 Its receipt keeps both target and alias identity so later consumers do not trust a fresh symbolic-link lookup.

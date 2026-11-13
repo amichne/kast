@@ -21,11 +21,43 @@ internal fun uninstallWorkspaceStore(root: Path): ContainerStore =
 internal fun prepareProductWorkspaceRemoval(
     root: Path,
     home: Path,
+    environment: Map<String, String>,
     observe: (UninstallCleanupObservation) -> Unit,
+    persist: (List<ManagedWorkspaceRemoval>) -> Unit,
 ): List<ManagedWorkspaceRemoval> {
     if (Files.exists(uninstallJournalPath(root), NOFOLLOW_LINKS)) return readUninstallRetirement(root).workspaceRemovals
-    requireWorkspaceRemoval(retireManagedProduct(root, home, System.getenv()))
-    return captureWorkspaceRemovals(uninstallWorkspaceStore(root), observe)
+    val store = uninstallWorkspaceStore(root)
+    val selectedEnvironment = environment + mapOf("KAST_INSTALL_ROOT" to root.toString(), "HOME" to home.toString())
+    val lifecycle =
+        requireWorkspaceRemoval(
+            InstallationLifecycle.admitProduct(root, home, selectedEnvironment, store.platform, LifecycleExecution())
+        )
+    val session = OwnedChildSession()
+    return lifecycle.duringUninstallPreparation {
+        // The exterior store-removal lease excludes new admission. Prove rejected entries
+        // inactive before fencing or retiring any admitted neighbor.
+        for (entry in requireWorkspaceRemoval(store.enumerate())) {
+            if (entry is ContainerStoreEntry.Rejected) captureRejectedWorkspaceRemoval(store, entry, observe)
+        }
+        requireWorkspaceRemoval(
+            retireSelectedWorkspaces(
+                store,
+                {
+                    when (val entries = store.enumerate()) {
+                        is Refinement.Rejected -> entries
+                        is Refinement.Refined ->
+                            Refinement.Refined(entries.value.filterIsInstance<ContainerStoreEntry.Admitted>())
+                    }
+                },
+                lifecycle::fenceManagedProduct,
+            ) {
+                shutdownContainerHost(it, selectedEnvironment, session)
+            }
+        )
+        val removals = captureWorkspaceRemovals(store, observe)
+        persist(removals)
+        removals
+    }
 }
 
 /** Immutable payload removal has already emptied runtimes; only known empty locks remain here. */
@@ -80,12 +112,11 @@ internal fun captureWorkspaceRemovals(
     val entries = requireWorkspaceRemoval(store.enumerate())
     val removals = mutableListOf<ManagedWorkspaceRemoval>()
     for (entry in entries) {
-        val workspace =
+        removals +=
             when (entry) {
-                is ContainerStoreEntry.Admitted -> entry.workspace
-                is ContainerStoreEntry.Rejected -> throw ManagementRejected("uninstall-workspaces", entry.failure.name)
+                is ContainerStoreEntry.Admitted -> captureRetiredWorkspaceRemoval(store, entry.workspace, observe)
+                is ContainerStoreEntry.Rejected -> captureRejectedWorkspaceRemoval(store, entry, observe)
             }
-        removals += captureRetiredWorkspaceRemoval(store, workspace, observe)
     }
     return removals
 }
@@ -105,7 +136,7 @@ internal fun captureRetiredWorkspaceRemoval(
     )
 }
 
-private fun workspaceProfileHomes(directory: Path): List<Path> {
+internal fun workspaceProfileHomes(directory: Path): List<Path> {
     val homes = mutableListOf(directory.resolve("state/home"))
     val generations = directory.resolve("generations")
     if (Files.notExists(generations, NOFOLLOW_LINKS)) return homes
@@ -133,10 +164,21 @@ internal fun removeWorkspaceProfiles(store: ContainerStore, proofs: List<Managed
     requireWorkspaceRemoval(admitPrivateContainerDirectory(store.containers))
     val expected = proofs.map { it.id }.toSet()
     Files.newDirectoryStream(store.containers).use { entries ->
-        if (entries.any { it.fileName.toString() !in expected })
+        if (entries.any { it.fileName.toString() !in expected && !containerFinderMetadata(it) })
             throw ManagementRejected("uninstall-workspaces", ContainerFailure.FOREIGN_STATE.name)
     }
-    for (proof in proofs) removeWorkspaceProfile(store.containers.resolve(proof.id), proof)
+    for (proof in proofs) {
+        val id = requireWorkspaceRemoval(ContainerId.parse(proof.id))
+        requireWorkspaceRemoval(
+            ContainerQueryLease.whileReclaiming(store, id) {
+                val directory = store.containers.resolve(proof.id)
+                if (Files.notExists(directory, NOFOLLOW_LINKS)) Refinement.Refined(Unit)
+                else withWorkspaceRemovalLock(directory) { removeWorkspaceProfile(directory, proof) }
+            }
+        )
+    }
+    val metadata = store.containers.resolve(".DS_Store")
+    if (containerFinderMetadata(metadata)) Files.delete(metadata)
     Files.delete(store.containers)
 }
 
@@ -182,11 +224,11 @@ private fun requireWorkspaceIdentity(directory: Path, proof: ManagedWorkspaceRem
         throw ManagementRejected("uninstall-workspaces", ContainerFailure.FOREIGN_STATE.name)
 }
 
-private fun <T> requireWorkspaceRemoval(result: Refinement<T, ContainerFailure>): T =
+internal fun <T> requireWorkspaceRemoval(result: Refinement<T, ContainerFailure>): T =
     when (result) {
         is Refinement.Refined -> result.value
         is Refinement.Rejected -> throw ManagementRejected("uninstall-workspaces", result.failure.name)
     }
 
 private const val MAXIMUM_PROFILE_GENERATIONS = 1024
-private const val MAXIMUM_PROFILE_FILES = 250_000L
+internal const val MAXIMUM_PROFILE_FILES = 250_000L

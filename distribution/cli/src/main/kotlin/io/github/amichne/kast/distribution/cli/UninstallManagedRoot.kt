@@ -328,8 +328,8 @@ private fun addRetainedEvidence(bundle: Path, proof: ProductRemovalProof, expect
 
 private fun removalPaths(directory: Path): List<Path> {
     val paths =
-        Files.walk(directory).use { it.limit(ControlDistributionLimits.maximumEntryCount.toLong() + 1).toList() }
-    requireRemoval(paths.size <= ControlDistributionLimits.maximumEntryCount)
+        Files.walk(directory).use { it.limit(ControlDistributionLimits.maximumTraversedEntries.toLong() + 1).toList() }
+    requireRemoval(paths.size <= ControlDistributionLimits.maximumTraversedEntries)
     return paths
 }
 

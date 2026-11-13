@@ -20,6 +20,8 @@ code_sources:
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceReclamation.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt
+- path: distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ProductRemovalRecoveryTest.kt
+- path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
 sources:
   - id: openwiki-source-977a0730acc279a32f98ae18
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
@@ -29,6 +31,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
   - id: openwiki-source-6f0b647814adafaaa5d5c5f2
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceLifecycleStates.kt
+  - id: openwiki-source-4a775e59f7cd3b1cc2d7cc10
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt
   - id: openwiki-source-cfc838a1a4168e12e43d463d
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/IntegrationDisconnection.kt
   - id: openwiki-source-b30c7b16cf2f49971ca55950
@@ -47,18 +51,40 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt
   - id: openwiki-source-3ca2bb7453e21d39c96827be
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstaller.kt
+  - id: openwiki-source-e62300b4b70eef650b59f1db
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RejectedWorkspaceRemoval.kt
   - id: openwiki-source-d258f44cd873e00e544ca7ed
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt
   - id: openwiki-source-d9ace9189c53b7c82c5ed60c
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceReclamation.kt
+  - id: openwiki-source-8a98987a84aecf7454a62390
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ProductRemovalRecoveryTest.kt
+  - id: openwiki-source-a683fe18522ef2e7acd1dca0
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstallerTest.kt
+  - id: openwiki-source-d1f8b0a2ac011ef2d36005a5
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
+  - id: openwiki-source-ab52e7c01cf17ee137f833e7
+    resource: repo://packaging/immutable_store.py
+  - id: openwiki-source-fd4b4980f80cb901046d8f0e
+    resource: repo://packaging/installation-lifecycle.py
   - id: openwiki-source-5a685931788e905bc230c148
     resource: repo://packaging/installation-recovery.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
+  - id: openwiki-source-7f5792fd36f508c6577b3562
+    resource: repo://packaging/managed_product_installation.py
   - id: openwiki-source-5e407ffc0053b191a3e609bc
     resource: repo://packaging/managed_update_contract.py
+  - id: openwiki-source-608c1b34f50deb259c322e04
+    resource: repo://packaging/product_mcp_removal.py
+  - id: openwiki-source-a0c37a49715759f5ea160f59
+    resource: repo://packaging/product_removal_recovery.py
+  - id: openwiki-source-4e34cb0ddcdfb8190eaa8290
+    resource: repo://packaging/test-installation-recovery.py
+  - id: openwiki-source-b3ca2d66028c874ac7b10e77
+    resource: repo://packaging/test-managed-build-record.py
   - id: openwiki-source-988817829b83f3eaab1d41af
     resource: repo://packaging/test-managed-installation.py
   - id: openwiki-source-8fae9d27fc5ee242f935c4cf
@@ -71,10 +97,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleStop.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
-generated: { by: "amp", at: "2026-11-12T22:31:48.032Z" }
+generated: { by: "amp", at: "2026-11-13T02:31:12.884Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:50:57.382Z
+    at: 2026-11-13T03:20:11.225Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -86,6 +112,16 @@ Public upgrade selects one complete product; exact repair reuses its recorded se
 Each successful retirement records the exact generation. Busy or unreadable state rejects before unproved retirement effects.
 Ordinary scoped `stop` uses the same generation retirement without a product fence or persistent disablement.
 
+Uninstall checks rejected workspace entries before fencing neighboring Hosts.
+Its preparation scope removes only the exact fence created by that attempt when no uninstall journal was published.
+An existing fence, a changed fence, or a committed journal prevents that cleanup.
+Inactive rejected records have a separate uninstall admission under exclusive entry access; uncertain live state still rejects removal.
+
+Exact repair stages verified runtime and base bytes in the existing replacement journal.
+Only recorded Host retirement and the unchanged shutdown fence permit deletion of a damaged owned runtime directory.
+The same journal resumes an interrupted reset before Control replacement.
+Foreign files, changed links, and replacement directory identities remain protected.
+
 After product retirement, and during preparation admission, `WorkspaceReclamation` inspects vanished roots.
 Cleanup requires proven root absence, no query lease, exact retired generation evidence, and settled private `.kast` state.
 The owner atomically detaches the private profile and retains an exterior `.removing-ID.json` receipt until deletion completes.
@@ -94,6 +130,12 @@ Repository content, shared runtime bytes, and external Gradle homes are outside 
 
 Full product removal retains its recovery interpreter and payload inventory under `recovery/installation/product-removal`.
 `UninstallManagedRoot` admits that complete import tree before recovery execution and checks remaining files before cleanup.
+Retained recovery traversal uses the 32,768-entry installed-tree budget, including the private interpreter.
+The separate archive-admission budget remains 16,384 entries.
+The retained import tree excludes saved configuration and mutable invocation state.
+Completed native calls may leave empty `state/run/one-shot` and `state/run/tool-sessions` directories.
+Replacement admits that empty bookkeeping, and removal deletes it with identity checks and empty-directory operations.
+Surviving invocation records, unknown directory names, and linked directories still reject before payload removal.
 These source contracts do not establish native removal qualification.
 Full removal now delegates receipted Pi guidance cleanup to `IntegrationDisconnection`, preserving foreign siblings.
 It removes recorded CODEX/COPILOT resources before Host retirement, using provider inventories rather than routing records as ownership proof.
@@ -132,6 +174,10 @@ Installation recovery preserves the failure stage and the result of restoration.
 A failed payload completion keeps the shutdown fence and its exact failure evidence.
 Uncertain retirement or retained storage remains visible for the next recovery decision.
 
+Detached Control admission emits bounded payload-admission evidence for acceptance or rejection.
+A payload limit rejection retains `CONTROL_LIMIT_EXCEEDED` and its resource budget instead of becoming an ownership failure.
+The replacement adapter preserves that rejection as `CONTROL_REJECTED` with `CONTROL_LIMIT`.
+
 ## Recovery precedes release selection
 
 `ManagedUpgrade` examines pending replacement records and the shutdown fence before policy or release resolution.
@@ -139,6 +185,7 @@ A pending transaction invokes the admitted installed bridge with `--recover-only
 If installed admission fails, `RecordedRecoveryInstaller` admits only the candidate identity from the replacement receipt.
 Admission binds canonical paths, the current owner, manifest digest, exact payload inventory, file modes, and installer capability.
 The candidate can occupy its recorded stage, the installation directory, or the journal quarantine.
+New exterior staging must match the recorded transaction UUID exactly; legacy interior staging remains admitted.
 Legacy version directories never supply this recovery capability.
 This capability invokes only `--recover-only` without release access or fresh selection.
 Rejected admission returns finite `RECOVERY_REQUIRED` without a child.

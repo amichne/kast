@@ -944,8 +944,12 @@ def managed_payload(path, expected_root, identity, reservation=None):
     specification.loader.exec_module(lifecycle)
     try:
         lifecycle.verify_payload(path, document)
-    except lifecycle.Rejected:
+    except lifecycle.Rejected as problem:
+        lifecycle.observe_admission(lifecycle.LifecycleRejection(problem.failure, problem.limit, problem.retirement))
+        if problem.failure is lifecycle.Failure.CONTROL_LIMIT_EXCEEDED:
+            raise Rejected(Failure.CONTROL_LIMIT) from None
         raise Rejected(Failure.OWNERSHIP) from None
+    lifecycle.observe_admission(lifecycle.AdmissionAccepted(lifecycle.AdmissionType.PAYLOAD_ADMITTED))
     return managed_tree(path)
 
 

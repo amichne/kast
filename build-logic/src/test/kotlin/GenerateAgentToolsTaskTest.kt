@@ -63,7 +63,7 @@ class GenerateAgentToolsTaskTest {
         val server = mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject
         assertEquals("3780", server.getValue("tool_timeout_sec").jsonPrimitive.content)
         assertEquals("3780000", server.getValue("timeout").jsonPrimitive.content)
-        assertEquals(listOf("-c", "PATH=\"\${HOME}/.local/bin:\${PATH}\" exec uv run --locked --script \"\${PLUGIN_ROOT:-\${COPILOT_PLUGIN_ROOT:-\${HOME}/.local/share/kast/installation/share/kast/agent-tools/compositions/mcp/plugins/kast}}/skills/kast/scripts/server.py\""),
+        assertEquals(listOf("-c", "I=\"\${KAST_INSTALL_ROOT:-\${HOME}/.local/share/kast}/installation\"; exec \"\$I/share/kast/private-python/bin/python3.12\" -I -S -B \"\$I/share/kast/mcp_environment.py\" serve --install-root \"\$I\""),
             mcp.getValue("mcpServers").jsonObject.getValue("kast").jsonObject.getValue("args").jsonArray.map {
                 it.jsonPrimitive.content
             })

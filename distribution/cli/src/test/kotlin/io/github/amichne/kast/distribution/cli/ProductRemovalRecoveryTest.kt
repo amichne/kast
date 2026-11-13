@@ -9,11 +9,14 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 class ProductRemovalRecoveryTest {
-    @Test
-    fun `partial self-removal resumes with admitted retained bytes`(@TempDir temporary: Path) {
-        val fixture = interrupted(temporary)
+    @ParameterizedTest
+    @ValueSource(ints = [0, 16_384])
+    fun `partial self-removal resumes with admitted retained bytes`(payloadFiles: Int, @TempDir temporary: Path) {
+        val fixture = interrupted(temporary, payloadFiles)
         val root = fixture.installation.parent
         val retained = root.resolve("recovery/installation/product-removal/control")
         var invoked = false
@@ -121,13 +124,13 @@ class ProductRemovalRecoveryTest {
         assertTrue(Files.exists(productRemovalDirectory(root).resolve("control/installation.json")))
     }
 
-    private fun interrupted(temporary: Path): InstalledRuntimeFixture {
+    private fun interrupted(temporary: Path, payloadFiles: Int = 0): InstalledRuntimeFixture {
         val fixture = productFixture(temporary)
         writeProductRemovalFixture(fixture)
         val root = fixture.installation.parent
         val executable = Files.writeString(temporary.resolve("control"), "fixture Control")
         Files.writeString(temporary.resolve("foreign"), "protected")
-        addInterpreter(fixture.installation)
+        addInterpreter(fixture.installation, payloadFiles)
         writeProductManagement(fixture.installation, executable, fixture.reference)
         val receipt = admittedUninstallReceipt(root)
         persistUninstallRetirement(root, receipt, controlIdentity = uninstallFilesystemIdentity(fixture.installation))
@@ -159,11 +162,22 @@ class ProductRemovalRecoveryTest {
         return fixture
     }
 
-    private fun addInterpreter(installation: Path) {
+    private fun addInterpreter(installation: Path, payloadFiles: Int) {
         val interpreter =
             Files.createDirectories(installation.resolve("share/kast/private-python/bin")).resolve("python3.12")
         Files.writeString(interpreter, "fixture interpreter")
         Files.setPosixFilePermissions(interpreter, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
+        val library = installation.resolve("share/kast/private-python/lib")
+        if (payloadFiles > 0) Files.createDirectories(library)
+        val payload =
+            (0 until payloadFiles).map { number ->
+                val file = Files.writeString(library.resolve("module-$number.py"), "fixture module")
+                Files.setPosixFilePermissions(
+                    file,
+                    java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"),
+                )
+                BundledPayload(installation.relativize(file).toString(), "sha256:${sha256(file)}", 384)
+            }
         val original = (readBundledManifest(installation) as BundledManifestRead.Read).manifest
         Files.writeString(
             installation.resolve("installation.json"),
@@ -175,7 +189,8 @@ class ProductRemovalRecoveryTest {
                                 "share/kast/private-python/bin/python3.12",
                                 "sha256:${sha256(interpreter)}",
                                 448,
-                            )
+                            ) +
+                            payload
                 )
             ),
         )

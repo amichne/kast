@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a27ff45405777c14df54f5e37ce8c1b2e053b2e1140dc72d79f7fca09789f824",
+  "pageVersion": "sha256:97e1c1fe10b53d7fc59c72a394dc904fbc5f4f85f9eb24305b7576c03aea2041",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -133,7 +133,7 @@
       "statement": "Managed request admission reads the installed product locally, rejects inherited private-state overrides, and creates workspace state only for preparation access rather than retained reads.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L160-L205",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L165-L210",
           "version": "repo-lines-v1:sha256:fe54899323afe2e516f965e308c4f6989ee26700ce2c16c8ff6b9df06ee01cd9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExM2M5ZjgzM2M3MDdkMWJkYmE3NWYwY2I4MmFiMWI0NDNkMWY1YjI1ZGVlNWRkODBmMzE2MTE4MGIxOTg4M2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZjljOWFjMWY4ZmZmNzMwYzRlNTU3YzczOTUzNzAxODYwZGUwODIzOTYyYWFlN2EwZDI1NmFjMGMwNTA5NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMzQwNzEwYjJmZDU5NGRiYzRjN2U2YzZlMTgzM2ZiMTVlM2Q1YjUwYzAyOGNhODllNWJlYTM2MzgyMjIzNTEifQ"
         },
         {
@@ -141,10 +141,28 @@
           "version": "repo-lines-v1:sha256:a60705e73905b0a5f5df693553d3e91d9399814c6b88cf4025e2f51a5df07f67:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZWU0MmVmNWQ0YmVlOTA0MmMxYzRmYzNjMTgyZmFjZWM5OGRiZDc4NGJjMGRkMmJhNzk5NzE0N2U3N2U4ODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyZjIzZDE1YmQ1MmY1Y2NmNTA3MGE5YTc2ZTgzZWIyMGZkZDI1ZDUwZjc2ODk4NTE1YzE1ODk4ZTBmY2Q3MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlZmMwNjQ1MzlmZGE5NzAyYjQzNTgzZDViNzM1ODQxYTk1OWM0YmJkYjhmNDgxNTNiYzljNTZjNGRiYTI4NmIifQ"
         }
       ]
+    },
+    {
+      "id": "claim_15f34306e99c4d809af43bdb07e75e12",
+      "statement": "Durable workspace admission retains the normalized external Gradle path independently of directory availability; managed launch rejects a missing or aliased home as INVALID_GRADLE_HOME, without revoking lifecycle ownership.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStateAdmission.kt",
+          "version": "repo-file-v1:sha256:2c5577f988ffd56eb0f3e96a90d3a742284e7cca5a70947337b2dcf0b66bd556"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt",
+          "version": "repo-file-v1:sha256:98378f6dc46502e01e93c85be530954ca750d20459372fba8922fcc711be6fb9"
+        },
+        {
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntimeTest.kt",
+          "version": "repo-file-v1:sha256:0e14d02381c5160abfe2dbc8c981760b992386b55884c17dfcd944234368d36b"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T22:50:57.382Z"
+    "at": "2026-11-13T03:20:11.225Z"
   }
 }

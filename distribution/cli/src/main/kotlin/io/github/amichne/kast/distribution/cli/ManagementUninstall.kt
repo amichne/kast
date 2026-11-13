@@ -16,7 +16,7 @@ internal fun uninstallInstallation(
     observe: (UninstallCleanupObservation) -> Unit = { System.err.println(managementJson.encodeToString(it)) },
     executeHost: (List<String>) -> HostRemovalProcessObservation = ::executeHostRemoval,
     present: (String) -> Unit = ::println,
-    environment: Map<String, String> = System.getenv(),
+    environment: Map<String, String> = emptyMap(),
     executeProvider: (Map<String, String>, List<String>) -> ProcessObservation = { selected, arguments ->
         runGuidanceProvider(arguments, selected)
     },
@@ -25,7 +25,7 @@ internal fun uninstallInstallation(
     val remove = {
         admitUninstallPayload(root, receipt)
         if (receipt.providers.isNotEmpty()) removeInstallationProviders(root, home, environment, executeProvider)
-        removeInstallation(root, home, receipt, executeInstaller, observe, executeHost, present)
+        removeInstallation(root, home, receipt, executeInstaller, observe, executeHost, present, environment)
         Refinement.Refined(Unit)
     }
     when (
@@ -46,9 +46,10 @@ private fun removeInstallation(
     observe: (UninstallCleanupObservation) -> Unit,
     executeHost: (List<String>) -> HostRemovalProcessObservation,
     present: (String) -> Unit,
+    environment: Map<String, String>,
 ) {
     cleanupUninstalledUserState(home, observe) {
-        retireUninstallPayload(root, home, receipt, executeInstaller, executeHost, observe)
+        retireUninstallPayload(root, home, receipt, executeInstaller, executeHost, observe, environment)
     }
     val journal = readUninstallRetirement(root)
     journal.productRemoval?.let { requireProductRuntimeStore(root, it) }
@@ -83,11 +84,12 @@ private fun retireUninstallPayload(
     executeInstaller: (Path, List<String>) -> Int,
     executeHost: (List<String>) -> HostRemovalProcessObservation,
     observe: (UninstallCleanupObservation) -> Unit,
+    environment: Map<String, String>,
 ) {
     val payload = root.resolve("installation")
     observe(UninstallCleanupObservation.Started(UninstallArtifact.CONTROL_PAYLOAD))
     if (Files.exists(payload, LinkOption.NOFOLLOW_LINKS)) {
-        val script = prepareUninstallPayload(root, home, receipt, executeHost, observe)
+        val script = prepareUninstallPayload(root, home, receipt, executeHost, observe, environment)
         val args =
             (if (receipt.product == null) listOf("uninstall", "--managed-registrations")
             else listOf("--remove-product")) +
@@ -125,6 +127,7 @@ private fun prepareUninstallPayload(
     receipt: ManagementReceipt,
     executeHost: (List<String>) -> HostRemovalProcessObservation,
     observe: (UninstallCleanupObservation) -> Unit,
+    environment: Map<String, String>,
 ): Path {
     val payload = root.resolve("installation")
     if (receipt.product != null && Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS)) {
@@ -153,21 +156,24 @@ private fun prepareUninstallPayload(
         }
     val configuration = captureUninstallHomeConfiguration(home, observe)
     requireRetainedUninstallInventory(root, recoveryProof, configuration, observe)
+    val persist: (List<ManagedWorkspaceRemoval>) -> Unit = { workspaces ->
+        persistUninstallRetirement(
+            root,
+            receipt,
+            UninstallRetirementType.REMOVAL_REQUESTED,
+            rootIdentity,
+            recoveryProof,
+            homeConfiguration = configuration,
+            controlIdentity = uninstallFilesystemIdentity(payload),
+            workspaceRemovals = workspaces,
+        )
+    }
     val workspaces =
         if (receipt.product == null) {
             removeConfiguredUninstallHost(payload, home, observe, executeHost)
+            persist(emptyList())
             emptyList()
-        } else prepareProductWorkspaceRemoval(root, home, observe)
-    persistUninstallRetirement(
-        root,
-        receipt,
-        UninstallRetirementType.REMOVAL_REQUESTED,
-        rootIdentity,
-        recoveryProof,
-        homeConfiguration = configuration,
-        controlIdentity = uninstallFilesystemIdentity(payload),
-        workspaceRemovals = workspaces,
-    )
+        } else prepareProductWorkspaceRemoval(root, home, environment, observe, persist)
     if (receipt.product != null) removeWorkspaceProfiles(uninstallWorkspaceStore(root), workspaces)
     return script
 }

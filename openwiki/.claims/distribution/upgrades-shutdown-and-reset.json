@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dbf36da42a58a5692bb51d412cbefc79a22e26c8561da774229d816a5024958f",
+  "pageVersion": "sha256:e333ab7079d07ea2cfb5fd560384e511707e3568cd93a17749a9c46f8b40a9ce",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -32,7 +32,7 @@
     },
     {
       "id": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-      "statement": "Pending recovery precedes policy and release resolution. An admitted installed bridge or exact recorded candidate receives recover-only. Recorded admission binds canonical paths, owner, identity, manifest, inventory, modes, and capability. Legacy directories are rejected. Uncertain child invocation never retries. The wrapper preserves terminal results without fresh selection.",
+      "statement": "Pending recovery precedes policy and release resolution. An admitted installed bridge or exact recorded candidate receives recover-only. Recorded admission binds canonical paths, owner, identity, manifest, inventory, modes, and capability. Exterior staging must match the recorded transaction exactly; legacy interior staging remains supported, but version directories are rejected. Uncertain child invocation never retries. The wrapper preserves terminal results without fresh selection.",
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
@@ -40,11 +40,15 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstaller.kt",
-          "version": "repo-file-v1:sha256:c901213eea2a67df35029e4e0b6b44f4077944f5b395e4d74048fada28086857"
+          "version": "repo-file-v1:sha256:3372aa3fc83b9ca80965ee175f5c5055f7882aeb7e885ca46e1ac2373a31b35c"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstaller.kt#L24-L24",
           "version": "repo-lines-v1:sha256:23375dbdb3c57b199eae2559c04b698aa96d0af029004e5cd2deab6da30ce8b3:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjMzNzVkYmRiM2M1N2IxOTllYWUyNTU5YzA0YjY5OGFhOTZkMGFmMDI5MDA0ZTVjZDJkZWFiNmRhMzBjZThiMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjMzNzVkYmRiM2M1N2IxOTllYWUyNTU5YzA0YjY5OGFhOTZkMGFmMDI5MDA0ZTVjZDJkZWFiNmRhMzBjZThiMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzk0MDE1ODc3N2RjMDcxODkzZDM3NjM0OGU3NmRiMGFkMmZmMGIzMWRhNTdiYzhlZTZmNjIzZGUzZWE5NTBlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjgwZDNjOWViMGRjYjlkNmFiMDAwZmZhYmJjNWMzYTQ2MzFmZWIyZDA1YjI2NTQzN2EyMjJlNjllMDEyNTMyZiJ9"
+        },
+        {
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/RecordedRecoveryInstallerTest.kt",
+          "version": "repo-file-v1:sha256:e610dc9a24214adb4b9844ecc22d9afd9539759f18ca3cc7ea2c02388a16bbde"
         }
       ]
     },
@@ -62,7 +66,7 @@
         },
         {
           "resource": "repo://packaging/installation-recovery.py",
-          "version": "repo-file-v1:sha256:5ea964ab4e1824c47cbe0731f4e591bdd03f4892525d2a34610dad79a2186b62"
+          "version": "repo-file-v1:sha256:92e98cb286e47491cb99e912a02d930789ac1bdf70755ff69a8a8b44145239cc"
         },
         {
           "resource": "repo://packaging/managed_installation.py#L1883-L1899",
@@ -193,8 +197,8 @@
       "statement": "Managed product retirement admits every workspace generation and takes exclusive idle query leases before the product fence or Host retirement; successful retirement records each exact generation.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRetirement.kt#L34-L98",
-          "version": "repo-lines-v1:sha256:14da8cb6b61b49a9f6b92116ef0ebac655c6499be883901342f52f30d44a2aee:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU0OGJmOGMzOWZjMWVkZjBjZmU3YmNhOWEwMDVlMjQxMTc5NmM0OTE1YTZkOTA2NjM1NjQzN2Q3YjJkNDExZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkZGQ1MTcyZTk2ODE4ZDQzMGZhNzQ5OWFkNTUxZjY2ZGQ1MGRkNGU1MjdjMDFmNGQzMjQxMzExNjBlODc1ZjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkYzc4OTMzNTc5ODQ3ZDQxY2ZhNjAzZTRmNWM3NDE1MmI0NzM1YmE0YjYyYjczZDU0ZGQ1ZDcwYjk3NmJmYWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5ZWUxNTI0ZTVkMzdiYjk4NDFhYjMwYmY4ODRhNjA1Y2QxYTZmYTk0Y2ZlOTU2NGM4NTRkZDE5Yjg4MjYwMmYifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRetirement.kt",
+          "version": "repo-file-v1:sha256:595a6c7767f474d048da354e6b01efdf1f11702f63d037a57f6db580bee32953"
         }
       ]
     },
@@ -203,12 +207,8 @@
       "statement": "Vanished-root reclamation requires root absence, exclusive request access, exact generation retirement and settled private evidence, and retains an exterior removal receipt until detached profile deletion finishes.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt#L148-L187",
-          "version": "repo-lines-v1:sha256:f626088e02bcebdd8203c9ab147b6692373c58fec4a9483554473d0340f4cf4c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0MTFkMGRhNmU2NjA1OTU2ODcwNzgxZTVhNjEzOGQ4M2E3NGZmYmY2YTE1YWQ1NGNjNDcxMDFhZjhmZDNjMzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2MmQ2ZjRkYTM2ZmE1YzIzNDQ2Mjg3NjM4M2JjMTMyODUyYmVlMDRjZDE2NTQ2ZDdiMmEwMmY2YmFlYjk4MmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0Y2U3YWU3NTc1MWZiZDczNDIxNzU1MmM2ODI1OTQ5ZGVmY2JiZDRjNzBkMzk2NWVlNzRmMWRmNDY4OTIzNWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI5ZTY4MGFhYWQzYTI1NTFlY2RmMzk4ODY5OTY1Y2I0YTY1MDQzMzliNjM4ODZjMjVmYjA0M2JlZjlmYTQzM2QifQ"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt#L95-L112",
-          "version": "repo-lines-v1:sha256:ddba2e8cab0ac41060296ba07e3d5c9a33473981bb24b2ed1c8671c7db967216:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyNWI4YTUzY2FhODA4OTEwZmE0MzFjMTYyNjU0ZTAyM2Q5YTJmOGRiYzViNDJhY2MzNzk5Y2JmM2YzN2ZiNDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlNDJiZjZjYTg2Y2JjMTg4OGI2YzMxMGIxNTAyZmRjNzQzMWI5Y2UxMDkwNzlkZTY0MmNlMGZkNWRhNGFkZDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkNmM3NmI5MzE5Y2Y4MTdiNjc2NjkwODc0OGM2NzI4OTI5NjAxMDA0OTFlYWM3ZjI0YTg1NWI0OGJhNTUyYjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0Yzk2MDdiY2EwZWFiNTgzZDNmYTJjOWY5NGIxMzQ2NTAyMjkyYjRhNzBmZDIxNDBmMjdlYjkxNDBiODJmOTkifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt",
+          "version": "repo-file-v1:sha256:b62e5821cfb0467b33251f6106fda901225c7557dd2bca5084046334f545f9e4"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceReclamation.kt#L35-L134",
@@ -255,16 +255,16 @@
           "version": "repo-lines-v1:sha256:36cf7f41621ee9b8378776e2880cd9b7872aa3c51349970c202b3bc587360eab:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5NTlkZTEwODNjMTM4YWZlMzJmYzcxOTY0ZWRmNTExOTlhM2ExZWMzMDMxZDhiZDUxMjRmNTRhZTMzNzhhNzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5NmY4Y2IwODNmYTgwMGE0ZGNkMjk2OTcyMmQ3YjkyNjg2YWRkOWViZTM2NTU0OTJmYTY3MmIxYTdjZWQyNDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt#L12-L63",
-          "version": "repo-lines-v1:sha256:3ff014c1eb5d3e641e58742dfa6ab6f894d0daaf0b63897945ed4ba1a1060e4c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjMzUxMjBlMTI1ZTUxMTZjNTM2MmExYjQ4OTA2ZmIzOWZlYjc0NjQ5MzgwNzFjZTAwNmM0NWNkMWIyOGFkZDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNkZjlmNmU2MWY4MzNjNDc0NGEwNmU5Njk0MTQ4MWU0NDljMTNhYjEyZmZjODFhNTdhZmViNGRjYzBlMDRjODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5MjgyOGZhYjkyNjFlYjI0YzU5M2EzN2E3MzU3Y2JhZjBmMTcyMDdkYzAyOWEwNjZlNDMxMGYxMjhkNWI1ZTAifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt#L12-L64",
+          "version": "repo-lines-v1:sha256:d1cbdc2a6a764af41952c3522752b8be75b0c7d9227ff68a564da05c3f2a074a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjMzUxMjBlMTI1ZTUxMTZjNTM2MmExYjQ4OTA2ZmIzOWZlYjc0NjQ5MzgwNzFjZTAwNmM0NWNkMWIyOGFkZDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNkZjlmNmU2MWY4MzNjNDc0NGEwNmU5Njk0MTQ4MWU0NDljMTNhYjEyZmZjODFhNTdhZmViNGRjYzBlMDRjODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5MjgyOGZhYjkyNjFlYjI0YzU5M2EzN2E3MzU3Y2JhZjBmMTcyMDdkYzAyOWEwNjZlNDMxMGYxMjhkNWI1ZTAifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt#L251-L284",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt#L257-L290",
           "version": "repo-lines-v1:sha256:3927b735d9edd4382346b47c42078b02a69d728f614795da829937599c1ecd1e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NDJmM2U3ZDQ1Nzk3MDMyNGE1YTNmZjQ2MDAzNWQ3YzZhMmZkYTBiZmU3OTYyOTcyOTM2OWM3MGJiOTNlZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5NjNmZDU3MDBiNGNmYWRiY2RjMmJjYzc4MzdlNjU3Mjk2MzVhYzQwMmEwMjVkNDlmNjk5MDZkMjFmMWFjZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJiOWRhZmRmNjZmMWUxNjk2ODBlY2I5OTg0NGZjYmRlOWE3NTBmYTA5ZjlhY2IzNGIzMTZmMDViYWZkNzc5NTQifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt#L79-L120",
-          "version": "repo-lines-v1:sha256:a7843eb50b0a798e253a0c79b0bd6a6fd55ada82d1d04b0760cb2e3401c183c7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiMTAwNzEwNmJlMmE0YWMzMzU0NzE1NWUyZjczOTY4YjIzYTA2MGIyMTZiMzA4Y2UxMTc4NTRjZTQ3MGNkYTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjViODkwOTIyNzUxNDMwMWI5MWI3MTliMzQ2MzU0YzQyZTkzZjEyNGJkZDZlOWUzY2U5MzEzZDc3NmI3OGMxMzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjczOTVlODgxNTA4YjNiOTgwMTVkNjZmNTczMjI4NmE3NjRkNDM4MTU1YWRmMzcwZDIyNDM5YTBhOWU0Mjc3Y2IifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt#L79-L124",
+          "version": "repo-lines-v1:sha256:b3b550ac964412779d3f55dc18382106d6c8bf7178ecebe7dc98666427bd1492:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2MzFiNGIxNmExNzdmOTM3MWUzZDhmOGM5MTg3YjY1ZmE0MmY0YjFiNDUzZDc5YmVmZDVlNmM0Njk5Yjk2MTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2MTkyMjUwODE1NjZkN2E2OWU5OTVhYzA0M2EwZThmYjU0YjhmYjQzMzUxOWM1Zjc3YTJjNjAzMjkzM2VkMTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5MzQ2MGU2MzYyNDkyYWE1OTY4Yzk5OWMxMmQ5MTAyYTI2Y2UzODMzMzJmMDVmMWIwZWYxNDY2YmYwYmM0OTUifQ"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt#L51-L89",
@@ -275,10 +275,112 @@
           "version": "repo-lines-v1:sha256:d017fc15842fb47b682d30b6d75693fd40967534e23a0f3cc20583763098c162:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4NGFlOWIzNjA2OWY5ZjVmMWEyMWQ4M2RmYzg4YmNiZjBiMGVlNzFmYjFlYzcwYjhkYzY1OTRmNjcyNGU4ZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1Nzk1OGI2OWNiYWViZjE4YTY2OWFmNDAxOGNlZjY2ZDYyMGRkZjMzMjllZmNhZjBlNmVlMjVhOGUzMTgwMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_a55480048320498198c8ceaa55e131ef",
+      "statement": "Uninstall preflights rejected workspace entries before fencing neighbors and removes only its own unchanged fence when no uninstall journal was committed. Existing or changed fences and journal-owned retirement remain protected. Inactive rejected workspace removal requires exclusive entry access and bounded private-state admission.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstallationLifecycle.kt",
+          "version": "repo-file-v1:sha256:41105cd3654fdcf641a2575ba65891e835a8c0de6f5a4e45dde60f1c9a6bc5d9"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt",
+          "version": "repo-file-v1:sha256:b62e5821cfb0467b33251f6106fda901225c7557dd2bca5084046334f545f9e4"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
+          "version": "repo-file-v1:sha256:715b68d1babd943b78c7978f5a5fececd16c6ef970e4234ae727a71645a07309"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RejectedWorkspaceRemoval.kt",
+          "version": "repo-file-v1:sha256:669f45129427d5be229c39c415fe0bc60b04e568723dbe9ab8a313f1592bf946"
+        }
+      ]
+    },
+    {
+      "id": "claim_03ec0689bc8f40a7aed0163b6f216918",
+      "statement": "Exact repair retains verified replacement runtime/base bytes in the existing replacement journal. Damaged owned bytes are reset only after recorded Host retirement and unchanged fence admission, and interrupted reset resumes before Control replacement. Foreign entries, changed links and replaced directory identities reject deletion.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/immutable_store.py",
+          "version": "repo-file-v1:sha256:34961b3a52f8b7396c55d044d9e487ff4f1067dbc09cdbce7852b08e20aeef32"
+        },
+        {
+          "resource": "repo://packaging/managed_product_installation.py",
+          "version": "repo-file-v1:sha256:59a65c98ff09663b668dc495549cae6cf805b591a872141a49ef95148c240320"
+        },
+        {
+          "resource": "repo://packaging/test-managed-build-record.py",
+          "version": "repo-file-v1:sha256:41f6377edfa813436c688a47542c4c5b390c983ce412cde6eee3f6b21869a295"
+        }
+      ]
+    },
+    {
+      "id": "claim_3f1ebeac667d479eb6d5b5ed7cb43c24",
+      "statement": "Detached Control payload admission emits bounded accepted or rejected evidence. A budget violation retains CONTROL_LIMIT_EXCEEDED and its resource, maximum and observed lower bound; recovery maps it to CONTROL_LIMIT and product replacement reports CONTROL_REJECTED with that adapter code instead of ownership failure.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/installation-lifecycle.py#L36-L70",
+          "version": "repo-lines-v1:sha256:11bce7ec1b8d23ea86fcdd923fdfe3dadfc1b7b0eb661f38bee1b394f9a4ba10:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0OTUzZGQyNDY2ZWJmMDU1MGZiNWE3Mjg1NzViZWJjNmZhYzA1N2Q1MTk3MmNmYmJjNjhkZmFkZGQzMTliNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjZWZlOTg0ODExNDJjN2UxM2U3ZjI5MzE4Y2ZiMmEyZTFmNjhkYTc3Mzk1MjZhNDQ4YmU3ZWJmOTQ5NWE4ZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmMGMxNmZhN2ZlMjkyNzA0ZTRhMmUzZWZjZGQ4ZGZhODBmMTBkNGI3MzYyNTZlZTYyMmMwNGU0Y2U3YTNmZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIwMDkwNjdjYjNlNjgyNjljYTZjNzA2ZjMwODJiMjFkMDQ5MDcwMzljMWJiOGJlMTQ2NGU4OTA0YzFhN2ZjMzYifQ"
+        },
+        {
+          "resource": "repo://packaging/installation-recovery.py#L916-L953",
+          "version": "repo-lines-v1:sha256:c21e9249c16759a847b293e231148477c8fca12b67414b509a9948adc0afe393:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyODJmNmQ0YWUxN2Q1YWMyYjExYTMxNTBmZDg4ZWJiYWMzYWM5ODRiNTdlMjc4YzM3YzBjMzU1YTYzNWMyM2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1OTFlYjIwZTViMDRmNTliYmY0MzA0MjU3OGMwMTVhYzBlMTY4ZGE4YTQwMWM4MjgxODMxM2EwMGFjMmE4ZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyODVmYzY3YzA0YWI5MDFlNjEwZTJiY2M5NDc3MmRjNzNlZGExZjhjOTUwZTc1NjVmOTI0MDA3NmQ5YzAwZjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkwMTgzOTdmMWNmMDNlNjYzOGRhNzk2MDFkZTYzMDQ0YmU3MzM3NmRkZjVmM2Y2NThlOGY1MmUzNWU4MTQwMzEifQ"
+        },
+        {
+          "resource": "repo://packaging/managed_product_installation.py#L671-L693",
+          "version": "repo-lines-v1:sha256:fb1d2c9c2ba278032faa06bb66cec644950700a340163bd840f2137afdd1f305:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1ZjVkNTk1OGRkOTc0MTE2NzBiMGQ4MjQ1ODg1NGE2MTFiYTY3NzlmNzM0MWNiOWRjODY0MTBhNGQ2MzZjNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5MTA5ZmY3ZWVkNDFkY2FiZTQyMzgxNjdmODkyNDUxMWJjZmY2OGRiMGZiMDZiZGQ1NDE5NThmMDM5MThmNDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5ZWUxOTMyODRlODJmYjc2YWY0ZjRmNTgzZTQzZjA1MDdiNWYxMzJiMTY0ZTZkMzUyM2JhZmI5NGMwYzdiMWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZlMmNhZGI1NzM1ZDZmNmJhYzU5MzU3NmM0YzY3YjBhMjcwZDcxZWY1NDhiNjk5NmQxYzk1Nzg3MGUzNGZiYTQifQ"
+        },
+        {
+          "resource": "repo://packaging/test-installation-recovery.py",
+          "version": "repo-file-v1:sha256:ef037e89b480db96340a8fe2e628269b1850482f2e5b713875bb8b90f533ffcc"
+        }
+      ]
+    },
+    {
+      "id": "claim_9a3f48a0b6a943b8ba8a130a49ce7081",
+      "statement": "Retained removal execution copies only immutable payload and manifest, excluding configuration and invocation state. Replacement and removal admit exact empty one-shot/tool-session bookkeeping; surviving records, unknown names and linked directories reject. Empty-directory deletion rechecks captured identities.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_product_installation.py",
+          "version": "repo-file-v1:sha256:59a65c98ff09663b668dc495549cae6cf805b591a872141a49ef95148c240320"
+        },
+        {
+          "resource": "repo://packaging/product_mcp_removal.py",
+          "version": "repo-file-v1:sha256:f363e9a91a009ea474b0320bed22334900c061250f9c0929c5b1f146ce0df65e"
+        },
+        {
+          "resource": "repo://packaging/product_removal_recovery.py",
+          "version": "repo-file-v1:sha256:67b3943a3dbd98fc88bf53eb0f1fae25bfbe29902ca5a8b11c4593551354f231"
+        },
+        {
+          "resource": "repo://packaging/test-managed-build-record.py",
+          "version": "repo-file-v1:sha256:41f6377edfa813436c688a47542c4c5b390c983ce412cde6eee3f6b21869a295"
+        }
+      ]
+    },
+    {
+      "id": "claim_51727c20fe41440c9f5552b604a298f0",
+      "statement": "Retained product-removal recovery uses the 32,768-entry installed traversal budget including the private interpreter. Archive admission retains its separate 16,384-member limit.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt#L329-L334",
+          "version": "repo-lines-v1:sha256:0f636a7d74e707d07ce019918fc417b8c5cb5616823734bcd373211c4aa27121:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTQzOGQ2YWI0ZjgyMjNkMWJjODZiZjEwYjZmYWMzODI3MWM2ZWQ5ZWI1ZjM0OWVkN2Y5ZTMwYmQ5MDExZTY2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTJjNWEwZmEzY2JlYTFjMGNkNGIxOWMwOWRmOWE5OWYxZmQyOTVkMTAyY2UwMTQ2ZjFjMmI4ODZlY2VmYjg4ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjdhZTI0ZmZjY2I4NGYyYTVkOGUwMWZlNzA0NmY3ZDZhZWU2Yjg1YTE0MWM2YmM2YTE2MTVlNWNiYWUxOWViMyJ9"
+        },
+        {
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ProductRemovalRecoveryTest.kt",
+          "version": "repo-file-v1:sha256:499ad523d1941aae300aa04a47e1e0eaf360406aa974dc88cf3ea74031d8c174"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt",
+          "version": "repo-file-v1:sha256:4aabd3e0557288d6f798a533c000e2d698fe6a72a92d3a2d68f8815671bd9fda"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T22:50:57.382Z"
+    "at": "2026-11-13T03:20:11.225Z"
   }
 }

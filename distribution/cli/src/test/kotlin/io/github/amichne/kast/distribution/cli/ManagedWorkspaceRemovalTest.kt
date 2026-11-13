@@ -13,6 +13,56 @@ import org.junit.jupiter.api.io.TempDir
 
 class ManagedWorkspaceRemovalTest {
     @Test
+    fun `deleted external Gradle home does not revoke workspace retirement or removal`(@TempDir temporary: Path) {
+        val (store, container) = removalWorkspace(temporary)
+        Files.delete(container.gradleHome)
+        assertTrue(store.workspace(container.workspace) is Refinement.Refined)
+        assertEquals(
+            Refinement.Refined(listOf(container.workspace.toString())),
+            stopManagedWorkspaces(store, WorkspaceScope.All, container.workspace) { Refinement.Refined(Unit) },
+        )
+        val proofs = captureWorkspaceRemovals(store) {}
+        removeWorkspaceProfiles(store, proofs)
+        assertFalse(Files.exists(store.containers))
+        assertTrue(Files.isDirectory(container.workspace))
+    }
+
+    @Test
+    fun `uninstall recovers an inactive owned profile with a malformed record`(@TempDir temporary: Path) {
+        val (store, container) = removalWorkspace(temporary)
+        Files.writeString(container.directory.resolve("container.json"), "invalid")
+        val proofs = captureWorkspaceRemovals(store) {}
+        removeWorkspaceProfiles(store, proofs)
+        assertFalse(Files.exists(store.containers))
+        assertTrue(Files.isDirectory(container.workspace))
+        assertTrue(Files.isDirectory(container.gradleHome))
+    }
+
+    @Test
+    fun `rejected profile recovery refuses an active profile and a held query lease`(@TempDir temporary: Path) {
+        val (store, container) = removalWorkspace(temporary)
+        val lease = (ContainerQueryLease.acquire(container) as Refinement.Refined).value
+        Files.writeString(container.directory.resolve("container.json"), "invalid")
+        lease.use { assertThrows(ManagementRejected::class.java) { captureWorkspaceRemovals(store) {} } }
+        val lock = Files.writeString(container.home.resolve(".lock"), "active")
+        assertThrows(ManagementRejected::class.java) { captureWorkspaceRemovals(store) {} }
+        assertEquals("active", Files.readString(lock))
+        assertTrue(Files.exists(container.directory.resolve("container.json")))
+    }
+
+    @Test
+    fun `Finder metadata does not poison global lifecycle operations`(@TempDir temporary: Path) {
+        val (store, container) = removalWorkspace(temporary)
+        Files.writeString(store.containers.resolve(".DS_Store"), "Finder metadata")
+        assertEquals(
+            Refinement.Refined(listOf(container.workspace.toString())),
+            stopManagedWorkspaces(store, WorkspaceScope.All, container.workspace) { Refinement.Refined(Unit) },
+        )
+        removeWorkspaceProfiles(store, captureWorkspaceRemovals(store) {})
+        assertFalse(Files.exists(store.containers))
+    }
+
+    @Test
     fun `removal requires retirement and preserves repository and external Gradle home`(@TempDir temporary: Path) {
         val (store, container) = removalWorkspace(temporary)
         assertThrows(ManagementRejected::class.java) { captureWorkspaceRemovals(store) {} }

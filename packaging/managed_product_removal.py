@@ -25,6 +25,7 @@ import product_removal_recovery as recovery
 class Failure(StrEnum):
     ADMISSION = "REMOVAL_ADMISSION_REJECTED"
     FILESYSTEM = "REMOVAL_FILESYSTEM_REJECTED"
+    PUBLICATION_RETRY = "PUBLICATION_INTERRUPTED_RETRY_SAME_SELECTION"
 
 
 class Stage(StrEnum):
@@ -50,7 +51,8 @@ class Rejected:
 def payload_directories(root: Path, document: object, *, owned_state: bool = False) -> None:
     if not release.mapping(document) or not release.sequence(files := document.get("payloadFiles")):
         raise ValueError("payload inventory")
-    directories: set[Path] = set()
+    activation.verify_client_configuration(root, partial=True)
+    directories: set[Path] = {Path("config")}
     for item in files:
         if not release.mapping(item) or not isinstance(name := item.get("path"), str):
             raise ValueError("payload entry")
@@ -118,7 +120,7 @@ def remove(root: Path, path: Path) -> Removed | Rejected:
                 or document.get("schemaVersion") != 3
                 or document.get("externalAnchors") != []
                 or {entry.name for entry in payload.iterdir()}
-                - {"bin", "lib", "share", "installation.json", "state"}
+                - {"bin", "lib", "share", "config", "installation.json", "state"}
             ):
                 raise ValueError("product payload identity")
             # State is independently admitted below, before recovery capture or deletion.
@@ -158,7 +160,7 @@ def remove(root: Path, path: Path) -> Removed | Rejected:
             str(payload), retired_product=admitted[0]
         )
         installation.revalidate()
-        for directory in ("bin", "lib", "share"):
+        for directory in ("bin", "lib", "share", "config"):
             child = payload / directory
             if child.exists():
                 install.LIFECYCLE.delete_tree(child)
@@ -168,6 +170,10 @@ def remove(root: Path, path: Path) -> Removed | Rejected:
         payload.rmdir()
         install.RECOVERY.sync(root)
         return Removed(str(root))
+    except install.StageRejected as problem:
+        if problem.failure.adapterCode == immutable_store.RecoveryAction.PUBLICATION_INTERRUPTED:
+            return Rejected(Failure.PUBLICATION_RETRY, stage)
+        raise
     except OSError:
         return Rejected(Failure.FILESYSTEM, stage)
     except (

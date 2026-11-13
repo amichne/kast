@@ -59,7 +59,7 @@ def render() -> bytes:
         ("LINUX_SHA", linux.sha256),
         ("DEPENDENCY_URL", DEPENDENCY_URL),
         ("DEPENDENCY_SHA", DEPENDENCY_SHA256),
-        ("ENGINE", base64.encodebytes(compressed).decode().rstrip()),
+        ("ENGINE", base64.b85encode(compressed).decode()),
         ("ENGINE_SHA", hashlib.sha256(compressed).hexdigest()),
     ):
         text = text.replace("@" + name + "@", value)

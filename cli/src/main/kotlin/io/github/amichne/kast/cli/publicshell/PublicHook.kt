@@ -72,6 +72,10 @@ internal sealed interface HookPreparationFailure {
     @Serializable @SerialName("native") data class Native(val failure: DaemonOperationFailure) : HookPreparationFailure
 
     @Serializable
+    @SerialName("managed")
+    data class Managed(val failure: io.github.amichne.kast.distribution.cli.ContainerFailure) : HookPreparationFailure
+
+    @Serializable
     @SerialName("lifecycle")
     data class Lifecycle(val result: io.github.amichne.kast.protocol.contract.IdeLifecycleResult.Blocked) :
         HookPreparationFailure
@@ -228,6 +232,8 @@ private fun HookPreparationFailure.isPreparationTimeout(): Boolean =
             }
         is HookPreparationFailure.Lifecycle ->
             result.reason == io.github.amichne.kast.protocol.contract.IdeLifecycleFailure.DEADLINE_EXCEEDED
+        is HookPreparationFailure.Managed ->
+            failure == io.github.amichne.kast.distribution.cli.ContainerFailure.PREPARATION_WAIT_EXPIRED
         is HookPreparationFailure.Installation,
         HookPreparationFailure.Stopped,
         HookPreparationFailure.Unproven -> false

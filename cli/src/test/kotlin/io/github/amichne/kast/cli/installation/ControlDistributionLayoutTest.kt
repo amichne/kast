@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.installation
 
+import io.github.amichne.kast.distribution.managed.ControlInventoryResource
+import io.github.amichne.kast.distribution.managed.ControlLimitExceeded
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.encodeToString
@@ -31,7 +33,7 @@ class ControlDistributionLayoutTest {
     }
 
     @Test
-    fun `control verification reports layout rejection above the file limit`(@TempDir temporary: Path) {
+    fun `control verification reports layout rejection above the installed traversal limit`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val outcome =
             executeFixtureInstallation(
@@ -42,15 +44,17 @@ class ControlDistributionLayoutTest {
                     Files.createDirectory(root.resolve("home")),
                     Files.createDirectory(root.resolve("codex-home")),
                     "1.2.3",
-                    controlFileCount = 16_385,
+                    controlFileCount = 32_769,
                     mode = InstallationMode.PLAN,
                 )
             )
 
         val rejected = assertInstanceOf(InstallationOutcome.Rejected::class.java, outcome)
         assertEquals(InstallationFailure.CONTROL_LIMIT_EXCEEDED, rejected.failure)
-        assertEquals(16_384L, rejected.limit?.maximum)
-        assertEquals(16_385L, rejected.limit?.observedAtLeast)
+        assertEquals(
+            ControlLimitExceeded(ControlInventoryResource.TRAVERSED_ENTRIES, 32_768L, 32_769L),
+            rejected.limit,
+        )
     }
 
     @Test

@@ -207,6 +207,7 @@ def assemble_release(
     version: str,
     revision: str,
     linux_support: Path | None = None,
+    split_runtime: bool = True,
 ) -> AssemblyResult:
     """The workflow admits the exact clean source before building these inputs."""
     from composed_host import CompositionRejected, compose
@@ -314,10 +315,13 @@ def assemble_release(
     if isinstance(runtime, (BundleRejected, Rejected)):
         observe(ReleaseStage.BUNDLE, StageOutcome.REJECTED)
         return runtime
-    from runtime_base import split
+    if split_runtime:
+        from runtime_base import split
 
-    with tempfile.TemporaryDirectory(prefix=".split-", dir=root) as temporary:
-        _ = split(Path(runtime.archive), path, target, REPOSITORY / "packaging", Path(temporary))
+        with tempfile.TemporaryDirectory(prefix=".split-", dir=root) as temporary:
+            _ = split(
+                Path(runtime.archive), path, target, REPOSITORY / "packaging", Path(temporary)
+            )
     packed = PackedBundle(str(path), sha256(path), path.stat().st_size)
     result = ReleasePacked(revision, version, target, packed)
     _ = (output / "assembly.json").write_text(json.dumps(asdict(result), indent=2) + "\n")
@@ -508,6 +512,8 @@ def _qualify_release(
     managed_product.verify_composed_runtime(
         extracted.source, metadata, components.host_archive, runtime_proof, manifest
     )
+    # Comparisons are complete; native execution uses the independent archives.
+    _ = discard_assembly_inputs(root / "bundle", runtime_proof)
     control = components.control_root / "share/kast/libexec/kast-management"
     discovery = subprocess.run(
         [str(control), "--internal-entrypoint=query", "describe", "--help"],
@@ -820,6 +826,11 @@ def main() -> int:
     _ = qualify.add_argument("--harness-sha256", required=True)
     _ = qualify.add_argument("--sandbox", type=Path)
     _ = assemble.add_argument("--linux-support", type=Path)
+    _ = assemble.add_argument(
+        "--full-native-archives",
+        action="store_true",
+        help="Keep full native archives for local acceptance instead of splitting a shared base",
+    )
     args = parser.parse_args()
     try:
         if args.command == "linux-support":
@@ -836,6 +847,7 @@ def main() -> int:
                 version=args.version,
                 revision=args.source_revision,
                 linux_support=args.linux_support,
+                split_runtime=not args.full_native_archives,
             )
         else:
             result = qualify_release(

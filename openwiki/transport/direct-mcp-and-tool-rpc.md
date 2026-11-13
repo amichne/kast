@@ -44,18 +44,22 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt
   - id: openwiki-source-59b559d53d91096a82b485a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
+  - id: openwiki-source-80668d86bee80c4df5797fa0
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt
   - id: openwiki-source-1d161f3eb7933044519fd33a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - id: openwiki-source-021e60454b473f51dc29603a
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
   - id: openwiki-source-210e5a1fdf9d35bc022594a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
+  - id: openwiki-source-ed6011399144254764b19542
+    resource: repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookManagedPreparationTest.kt
   - id: openwiki-source-ecb21af09f4a49f9e40342dd
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
-generated: { by: "amp", at: "2026-11-12T21:32:17.187Z" }
+generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T21:32:17.187Z
+    at: 2026-11-13T00:20:29.143Z
 ---
 
 # Direct MCP and tool RPC
@@ -76,6 +80,8 @@ Issued source and retained-reference reads use existing authority without an eag
 `ManagedToolInvocation` opens the shared `ManagedWorkspaceQuery` lease for each request, not for the lifetime of the transport session.
 It rechecks Control admission after acquiring the lease, binds the private HOME and generation, and closes request-owned preparation jobs after execution.
 The first explicit preparation request can create the exact-root trust record; retained reads require that record already to exist.
+Explicit internal `workspace wait` uses this same preparation admission and lease, including inherited-state rejection.
+Its typed preparation failures remain distinct from semantic CLI output, and session-start hooks remain passive.
 Installed product and runtime selection is local. Missing runtime bytes reject rather than downloading a release or using desktop IDEA.
 MCP and harness-neutral RPC choose different client protocols around that same session.
 Neither transport creates another semantic implementation.

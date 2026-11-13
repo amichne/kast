@@ -63,10 +63,14 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
   - id: openwiki-source-fb61cc58d2fa4809ff4d73bb
     resource: repo://cli/src/main/native-launchers/bin/kast-mcp
+  - id: openwiki-source-22e272ee16fcff0c22f636ab
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStateAdmission.kt
   - id: openwiki-source-ecb21af09f4a49f9e40342dd
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
   - id: openwiki-source-7cd4eb997a7878eca6390142
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
+  - id: openwiki-source-5ec7d945181fa4fe6a508e08
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntimeTest.kt
   - id: openwiki-source-fd4148a6ba46f590f554b6b6
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
   - id: openwiki-source-a788214182281b80d302305d
@@ -81,10 +85,10 @@ sources:
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt
   - id: openwiki-source-8677e434adb584035406f54a
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
-generated: { by: "amp", at: "2026-11-12T21:24:19.786Z" }
+generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:50:57.382Z
+    at: 2026-11-13T03:20:11.225Z
 ---
 
 # Installation configuration
@@ -215,6 +219,11 @@ Gradle uses the private HOME's `.gradle` directory by default.
 A saved `state/gradle-home.json` can select an existing canonical directory instead.
 Malformed, aliased, or unavailable selections reject; admission does not replace them with a default.
 Workspace creation uses resolved `GRADLE_USER_HOME` when supplied. The launch environment keeps inherited credentials; private state is not an OS sandbox.
+
+Durable workspace records retain an absolute, normalized external Gradle path even when that directory disappears.
+Managed launch checks its current availability and rejects with `INVALID_GRADLE_HOME` before starting a Host.
+Deleting a cache therefore does not revoke workspace ownership or block retirement and uninstall.
+Recreating the same canonical directory restores launch eligibility without rewriting the workspace record.
 
 These are source-level contracts. Native qualification and complete product admission remain separate gates; see [release qualification](../distribution/release-candidates-and-promotion.md).
 

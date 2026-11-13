@@ -20,6 +20,7 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from threading import Barrier
 from typing import override
 
 import managed_installation as installation
@@ -162,6 +163,7 @@ class Probe:
     dependency: Path
     environment: dict[str, str]
     completed: set[acceptance.Case] = field(default_factory=lambda: set[acceptance.Case]())
+    sandbox: Path | None = None
 
     @property
     def control(self) -> Path:
@@ -170,8 +172,11 @@ class Probe:
     def run(
         self, case: str, workspace: Path, arguments: tuple[str, ...], raw: bytes | None = None
     ) -> bytes:
+        prefix = (
+            ["/usr/bin/sandbox-exec", "-f", str(self.sandbox)] if self.sandbox is not None else []
+        )
         result = subprocess.run(
-            [str(self.home / ".local/bin/kast"), *arguments],
+            [*prefix, str(self.home / ".local/bin/kast"), *arguments],
             cwd=workspace,
             env=self.environment,
             input=raw,
@@ -207,6 +212,27 @@ class Probe:
             name,
             expected_file,
         )
+
+    def parallel_first_queries(self, workspace: Path) -> str:
+        try:
+            _ = (self.root.parent / "kast-workspaces/containers").lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            raise ValueError("parallel first queries require cold workspace state")
+        gate = Barrier(3, timeout=60)
+
+        def cold_query(index: int) -> str:
+            _ = gate.wait()
+            return self.query(f"parallel-first-{index}", workspace)
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [executor.submit(cold_query, index) for index in range(3)]
+            first_hosts = [future.result() for future in futures]
+        current_host = self.query("repeated", workspace)
+        if any(host != current_host for host in first_hosts):
+            raise ValueError("parallel first queries did not share one compiler lifetime")
+        return current_host
 
     def install(self, directory: Path, record: product.ProductRecord) -> None:
         selection = product.ProductSelection(
@@ -415,15 +441,7 @@ def execute(
                 if containers.exists():
                     raise ValueError(f"passive {case} created semantic workspace state")
             probe.completed.add(acceptance.Case.PASSIVE)
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                futures = [
-                    executor.submit(probe.query, f"parallel-first-{index}", roots[0])
-                    for index in range(2)
-                ]
-                first_hosts = [future.result() for future in futures]
-            current_host = probe.query("repeated", roots[0])
-            if any(host != current_host for host in first_hosts):
-                raise ValueError("parallel first queries did not share one compiler lifetime")
+            current_host = probe.parallel_first_queries(roots[0])
             probe.completed.update(
                 (acceptance.Case.FRESH, acceptance.Case.CLI, acceptance.Case.PARALLEL)
             )

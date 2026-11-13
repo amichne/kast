@@ -54,7 +54,11 @@ Issued source and retained-reference operations use existing authority without a
 They still need current Host and reference admission.
 `PreparedWorkspaceDemand` waits for terminal preparation and inspects the current host and exact target before dispatch of an operation that needs preparation.
 A changed host permits one fresh preparation because no semantic operation reached the former target.
-Model-reload recovery also needs an explicit presemantic recovery result and an eligible operation.
+After dispatch, readiness recovery permits at most one retry under the same managed request lease.
+Read operations admit typed model reload or exact `FRESHNESS_REJECTED` / `MOVED` at `MODEL_CAPTURE` or `CONTENT_REVALIDATION`.
+Plan operations admit only presemantic model reload; mutations and status do not replay.
+The retry must keep the captured Host and project target, or the request rejects with `HostChanged`.
+The second rejection remains visible without another retry.
 Ambiguous semantic effects cannot become an automatic retry.
 
 <a id="okf-transport-coordinator-and-workspace-preparation-one-semantic-permit-per-workspace" />

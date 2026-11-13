@@ -13,6 +13,7 @@ code_sources:
 - path: runtime/hosted/native/README.md
 - path: packaging/run-portable-tests.py
 - path: packaging/run-portable-tests-container.sh
+- path: packaging/local_product_probe.py
 - path: .github/workflows/ci.yml
 - path: experiments/host-observation/ACCEPTANCE.md
 sources:
@@ -20,16 +21,20 @@ sources:
     resource: repo://docs/development.md
   - id: openwiki-source-553a1d23cddbdd6ecdb69f5d
     resource: repo://experiments/host-observation/ACCEPTANCE.md
+  - id: openwiki-source-3deebc58c79bb1db9c1f934e
+    resource: repo://packaging/local_product_probe.py
+  - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
+    resource: repo://packaging/product_lifecycle_probe.py
   - id: openwiki-source-af8d30969eca7e840eedf039
     resource: repo://packaging/run-portable-tests.py
   - id: openwiki-source-a1bf1d8cd4e32016c6593087
     resource: repo://runtime/hosted/NATIVE_FIXTURES.md
   - id: openwiki-source-af72e3368d1f0c22109e4ecf
     resource: repo://runtime/hosted/native/README.md
-generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
+generated: { by: "amp", at: "2026-11-13T02:46:27.789Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-10T13:00:52.429Z
+  - by: openwiki/0.9.0
+    at: 2026-11-13T03:00:18.421Z
 ---
 
 # Tests and native qualification
@@ -71,6 +76,25 @@ The portable packaging runner enumerates the checked-in offline Python suites un
 Its container form adds a read-only checkout and disabled network access.
 The runner rejects unexpected skips and records the permitted platform-specific count.
 A Linux container pass does not qualify macOS IDEA or launchd behavior.
+
+## Disposable local installed acceptance
+
+`local_product_probe.py` accepts exact component-qualified macOS ARM64 archives, pinned interpreter inputs, and an explicit isolation sandbox.
+It installs through the packaged coordinator into an owned temporary HOME.
+The coordinator uses Python's `-I -B` flags so imports cannot write bytecode into the installed payload.
+Its observation records the interpreter, module paths, isolation, and disabled bytecode writes before product admission.
+Each trial releases three shipped public cold queries together and compares their compiler lifetime with a warm query.
+Uninstall separates the trials; every trial must establish a fresh Host lifetime.
+
+The last trial damages an owned runtime file under a live Host.
+Repair must preserve the damaged bytes through actual native retirement, restore the original digest, and start a fresh Host.
+Protected workspace, profile, and external Gradle files must survive the lifecycle.
+Final uninstall must leave neither managed state nor a live Host.
+
+Only release acquisition uses a local schema fixture; the other target has no payload and its CI producer identity is not real evidence.
+The report records `LOCAL_INSTALLED_ACCEPTANCE` and `releaseQualification=NOT_ESTABLISHED`.
+This path does not replace the sealed two-target release gate or prove public network repair selection.
+The [development guide](../../docs/development.md#disposable-local-installed-acceptance) owns the command and its input requirements.
 
 ## Report the proven layer
 

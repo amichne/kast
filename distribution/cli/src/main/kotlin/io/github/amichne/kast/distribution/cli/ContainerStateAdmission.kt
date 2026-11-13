@@ -150,9 +150,8 @@ private fun ContainerStore.admitRecord(
     val gradle = Path.of(record.gradleHome)
     if (!validWorkspace(workspace)) return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
     val privateGradle = directory.resolve("state/home/.gradle")
-    if (gradle != privateGradle && !validExternalGradle(gradle))
-        return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-    if (!Files.isDirectory(gradle) || gradle.toRealPath() != gradle)
+    // Availability is a launch fact, not durable ownership of this private workspace.
+    if (gradle != privateGradle && !validExternalGradlePath(gradle))
         return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
     return Refinement.Refined(AdmittedWorkspace(id, name, workspace, directory, gradle, generation))
 }
@@ -164,7 +163,11 @@ internal fun ContainerStore.validWorkspace(path: Path): Boolean {
 }
 
 internal fun ContainerStore.validExternalGradle(path: Path): Boolean {
-    val canonical = path.isAbsolute && path.toRealPath() == path && Files.isDirectory(path)
+    return validExternalGradlePath(path) && Files.isDirectory(path) && path.toRealPath() == path
+}
+
+private fun ContainerStore.validExternalGradlePath(path: Path): Boolean {
+    val canonical = path.isAbsolute && path.normalize() == path
     val disjoint = !path.startsWith(root) && !root.startsWith(path)
     return canonical && disjoint && path.toString().none { it in "\r\n" }
 }

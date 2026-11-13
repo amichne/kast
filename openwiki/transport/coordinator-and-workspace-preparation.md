@@ -34,14 +34,18 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
   - id: openwiki-source-eee64eb8ca3aa3550601ed99
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt
+  - id: openwiki-source-4cdc8af582793c9a08b75f75
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/PreparedWorkspaceReadinessRetryTest.kt
+  - id: openwiki-source-e2eb0f864f441066834169f4
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt
   - id: openwiki-source-ecb21af09f4a49f9e40342dd
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
   - id: openwiki-source-8f099dc46f272100d18b0f6f
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/CanonicalRoot.kt
-generated: { by: "amp", at: "2026-11-12T21:31:26.144Z" }
+generated: { by: "amp", at: "2026-11-13T00:41:13.770Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:50:57.382Z
+    at: 2026-11-13T00:41:13.770Z
 ---
 
 # Coordinator and workspace preparation
@@ -84,7 +88,11 @@ Issued source and retained-reference operations use existing authority without a
 They still need current Host and reference admission.
 `PreparedWorkspaceDemand` waits for terminal preparation and inspects the current host and exact target before dispatch of an operation that needs preparation.
 A changed host permits one fresh preparation because no semantic operation reached the former target.
-Model-reload recovery also needs an explicit presemantic recovery result and an eligible operation.
+After dispatch, readiness recovery permits at most one retry under the same managed request lease.
+Read operations admit typed model reload or exact `FRESHNESS_REJECTED` / `MOVED` at `MODEL_CAPTURE` or `CONTENT_REVALIDATION`.
+Plan operations admit only presemantic model reload; mutations and status do not replay.
+The retry must keep the captured Host and project target, or the request rejects with `HostChanged`.
+The second rejection remains visible without another retry.
 Ambiguous semantic effects cannot become an automatic retry.
 
 ## One semantic permit per workspace

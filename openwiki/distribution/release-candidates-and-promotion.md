@@ -54,10 +54,12 @@ sources:
     resource: repo://packaging/product_acceptance.py
   - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
     resource: repo://packaging/product_lifecycle_probe.py
-generated: { by: "amp", at: "2026-11-12T22:42:07.175Z" }
+  - id: openwiki-source-fbdf7de26cc8b3b5b59b53a6
+    resource: repo://packaging/test_product_acceptance.py
+generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:42:07.175Z
+    at: 2026-11-13T01:44:31.229Z
 ---
 
 # Release candidates and promotion
@@ -79,6 +81,8 @@ Its source revision may match the candidate, but each target needs a different a
 CI admits the exact retained baseline record, producer attempt, and successful sealing job.
 A later failed job in that baseline run does not erase its sealing evidence.
 The probe upgrades the baseline, removes it, installs the fresh candidate, and checks passive discovery before simultaneous first queries.
+Three shipped public `kast query` callers start together from absent workspace state.
+Every response must succeed, and a later warm query must retain their compiler Host identity.
 It also checks both roots concurrently and protects external Gradle and foreign-profile sentinels.
 
 The required aggregate examines the jobs selected by the scope decision.

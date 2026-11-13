@@ -60,6 +60,32 @@ private constructor(
             is LifecycleEffect.Rejected -> Refinement.Rejected(ContainerFailure.FENCE_REJECTED)
         }
 
+    /** Only a committed removal journal may retain a fence created by this uninstall attempt. */
+    fun <T> duringUninstallPreparation(action: () -> T): T {
+        val absent = Files.notExists(root.resolve(SHUTDOWN_FENCE), NOFOLLOW_LINKS)
+        return try {
+            action()
+        } finally {
+            if (
+                absent &&
+                    fenceIdentity is FenceAttributes.Read &&
+                    Files.notExists(uninstallJournalPath(root), NOFOLLOW_LINKS)
+            ) {
+                when (val resumed = resume()) {
+                    LifecycleEffect.Completed -> Unit
+                    is LifecycleEffect.Rejected ->
+                        execution.observe(
+                            LifecycleObservation.rejected(
+                                LifecycleOperation.STOP_FORCE,
+                                LifecycleStage.FENCE,
+                                resumed.failure,
+                            )
+                        )
+                }
+            }
+        }
+    }
+
     private fun retireClients(operation: LifecycleOperation): ClientRetirement {
         for ((stage, action) in
             listOf<Pair<LifecycleStage, () -> LifecycleEffect>>(
@@ -89,6 +115,10 @@ private constructor(
         val current = attributes(path)
         if (current !is FenceAttributes.Read || current != fenceIdentity)
             return LifecycleEffect.Rejected(LifecycleFailure.FENCE_REJECTED)
+        when (val admitted = admitExistingFence()) {
+            LifecycleEffect.Completed -> Unit
+            is LifecycleEffect.Rejected -> return admitted
+        }
         return try {
             Files.delete(path)
             LifecycleEffect.Completed

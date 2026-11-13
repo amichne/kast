@@ -9,6 +9,7 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from unittest.mock import patch
 
+import local_product_probe as local
 import managed_release as product
 import product_acceptance as acceptance
 import product_lifecycle_probe as probe
@@ -56,6 +57,23 @@ class Reply:
     type: str = "complete"
 
 
+@dataclass(frozen=True)
+class ComponentBindings:
+    runtimeSha256: str
+    controlSha256: str
+
+
+@dataclass(frozen=True)
+class ComponentReceiptFixture:
+    bundleSha256: str
+    containers: ComponentBindings
+    probe: Coverage = Coverage()
+    qualification: str = "COMPLETE"
+    qualificationStage: str = "COMPONENT_NATIVE"
+    sourceRevision: str = "a" * 40
+    harnessSha256: str = "9" * 64
+
+
 def record() -> product.ProductRecord:
     targets = tuple(
         product.ProductTarget(
@@ -85,6 +103,107 @@ def record() -> product.ProductRecord:
 
 
 class AcceptanceTest(unittest.TestCase):
+    def test_local_fixture_keeps_real_native_binding_but_has_no_other_target_payload(self) -> None:
+        native = record().targets[1]
+        receipt = ComponentReceiptFixture(
+            native.bundle.sha256,
+            ComponentBindings(native.runtime.sha256, native.qualification.controlSha256),
+        )
+        # Existing generic fixtures have noncanonical asset names; local setup must
+        # produce the production record's canonical names, not weaken its decoder.
+        native = replace(
+            native,
+            bundle=replace(native.bundle, name="kast-composed-setup-v0.0.123-macos-aarch64.tar.gz"),
+            runtime=replace(native.runtime, name="kast-runtime-v0.0.123-macos-aarch64.zip"),
+            qualification=replace(
+                native.qualification,
+                receipt=replace(
+                    native.qualification.receipt, name="qualification-macos-aarch64.json"
+                ),
+            ),
+        )
+        fixture = local.fixture_record("0.0.123", "a" * 40, "b" * 40, native, asdict(receipt))
+        self.assertEqual(native, fixture.targets[1])
+        self.assertEqual(
+            fixture, product.decode_product_record(json.dumps(asdict(fixture)).encode())
+        )
+        self.assertEqual("0" * 64, fixture.targets[0].runtime.sha256)
+        with self.assertRaisesRegex(ValueError, "component qualification"):
+            _ = local.fixture_record(
+                "0.0.123",
+                "a" * 40,
+                "b" * 40,
+                native,
+                asdict(replace(receipt, qualificationStage="SCRIPTED")),
+            )
+        wrong = asdict(
+            replace(receipt, containers=replace(receipt.containers, runtimeSha256="f" * 64))
+        )
+        with self.assertRaisesRegex(ValueError, "component qualification"):
+            _ = local.fixture_record("0.0.123", "a" * 40, "b" * 40, native, wrong)
+
+    def test_three_cold_queries_and_warm_control_use_the_public_shipped_command(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / "workspace"
+            document = Semantic(
+                (Row("invokeCallback", Location(str(workspace / probe.INVOCATION_FILE))),)
+            )
+            runner = probe.Probe(
+                root / "kast/installation-owner",
+                root / "home",
+                root / "evidence",
+                root / "python.tar.gz",
+                root / "dependency.whl",
+                {},
+            )
+            with patch.object(
+                probe.Probe, "run", return_value=json.dumps(asdict(Reply(document))).encode()
+            ) as run:
+                self.assertEqual("compiler-workspace-one", runner.parallel_first_queries(workspace))
+                self.assertCountEqual(
+                    ["parallel-first-0", "parallel-first-1", "parallel-first-2", "repeated"],
+                    [call.args[0] for call in run.call_args_list],
+                )
+                for call in run.call_args_list:
+                    self.assertEqual(
+                        (
+                            workspace,
+                            ("query", "--name", "invokeCallback", "--kind", "function", "--json"),
+                        ),
+                        call.args[1:],
+                    )
+            self.assertEqual(set[acceptance.Case](), runner.completed)
+
+    def test_parallel_first_query_case_rejects_warm_state_before_any_query(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "kast-workspaces/containers").mkdir(parents=True)
+            runner = probe.Probe(root / "kast", root, root, root, root, {})
+            with patch.object(probe.Probe, "query") as query:
+                with self.assertRaisesRegex(ValueError, "cold"):
+                    _ = runner.parallel_first_queries(root / "workspace")
+                query.assert_not_called()
+            self.assertEqual(set[acceptance.Case](), runner.completed)
+
+    def test_parallel_first_query_case_rejects_mismatched_host_or_failed_caller(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runner = probe.Probe(root / "kast", root, root, root, root, {})
+            workspace = root / "workspace"
+
+            def observed(case: str, selected: Path) -> str:
+                self.assertEqual(workspace, selected)
+                return "different-host" if case == "parallel-first-2" else "one-host"
+
+            with patch.object(probe.Probe, "query", side_effect=observed):
+                with self.assertRaisesRegex(ValueError, "compiler lifetime"):
+                    _ = runner.parallel_first_queries(workspace)
+            with patch.object(probe.Probe, "query", side_effect=ValueError("caller rejected")):
+                with self.assertRaisesRegex(ValueError, "caller rejected"):
+                    _ = runner.parallel_first_queries(workspace)
+            self.assertEqual(set[acceptance.Case](), runner.completed)
+
     def test_public_dispatch_and_exact_semantic_root_are_required(self) -> None:
         workspace = Path("/owned/first")
         document = Semantic(

@@ -41,16 +41,17 @@ class ControlPayloadInventoryTest {
     fun `exact traversal boundary succeeds and next file gives a bounded typed failure`(@TempDir root: Path) {
         val physical = root.toRealPath()
         listOf("bin", "lib", "share").forEach { Files.createDirectory(physical.resolve(it)) }
-        repeat(ControlDistributionLimits.maximumTraversedEntries - 3) {
+        // Installed Control adds the pinned interpreter to the original archive.
+        repeat(32_768 - 3) {
             Files.createFile(physical.resolve("share/f-$it"))
         }
         val admitted = ControlPayloadInventory.admit(physical) as ControlInventoryAdmission.Admitted
-        assertEquals(ControlDistributionLimits.maximumTraversedEntries, admitted.traversedEntries)
+        assertEquals(32_768, admitted.traversedEntries)
         Files.createFile(physical.resolve("bin/overflow"))
         val rejected = ControlPayloadInventory.admit(physical) as ControlInventoryAdmission.Rejected
         assertEquals(ControlInventoryFailure.LIMIT_EXCEEDED, rejected.failure)
         assertEquals(ControlInventoryResource.TRAVERSED_ENTRIES, rejected.limit?.resource)
-        assertEquals(16_385L, rejected.limit?.observedAtLeast)
+        assertEquals(32_769L, rejected.limit?.observedAtLeast)
         val encoded =
             Json.encodeToString(
                 ControlInventoryObservation.serializer(),
@@ -63,7 +64,7 @@ class ControlPayloadInventoryTest {
         val document = Json.parseToJsonElement(encoded).jsonObject
         assertEquals(setOf("boundary", "failure", "limit"), document.keys)
         assertEquals("LIMIT_EXCEEDED", document.getValue("failure").jsonPrimitive.content)
-        assertEquals("16384", document.getValue("limit").jsonObject.getValue("maximum").jsonPrimitive.content)
+        assertEquals("32768", document.getValue("limit").jsonObject.getValue("maximum").jsonPrimitive.content)
         assertFalse(encoded.contains(root.toString()))
     }
 

@@ -14,13 +14,16 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 class RecordedRecoveryInstallerTest {
     @TempDir lateinit var temporary: Path
 
-    @Test
-    fun `recorded staged installer remains reachable without an active installation`() {
-        val fixture = fixture()
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `recorded staged installer remains reachable without an active installation`(exterior: Boolean) {
+        val fixture = fixture(exterior)
         val before = Files.readAllBytes(fixture.receipt)
         var calls = 0
         val result =
@@ -157,6 +160,20 @@ class RecordedRecoveryInstallerTest {
         assertEquals("payload", Files.readString(legacy.resolve("lib/kast.jar")))
     }
 
+    @Test
+    fun `an exterior stage for another transaction cannot become the recovery candidate`() {
+        val fixture = fixture(exterior = true)
+        Files.writeString(
+            fixture.receipt,
+            managementJson.encodeToString(
+                fixture.record.copy(
+                    reservation = fixture.reservation.copy(transaction = "12345678-1234-1234-1234-123456789def")
+                )
+            ),
+        )
+        assertRejected(fixture)
+    }
+
     private fun assertRejected(fixture: Fixture) {
         val before = Files.readAllBytes(fixture.receipt)
         val result =
@@ -174,10 +191,14 @@ class RecordedRecoveryInstallerTest {
         assertEquals(before.toList(), Files.readAllBytes(fixture.receipt).toList())
     }
 
-    private fun fixture(): Fixture {
+    private fun fixture(exterior: Boolean = false): Fixture {
         val root = Files.createDirectory(temporary.toRealPath().resolve("kast"))
         val home = Files.createDirectory(temporary.toRealPath().resolve("home"))
-        val staged = Files.createDirectory(root.resolve(".install-selected"))
+        val staged =
+            Files.createDirectory(
+                if (exterior) root.parent.resolve(".kast-install-12345678-1234-1234-1234-123456789abc")
+                else root.resolve(".install-selected")
+            )
         val files =
             listOf(
                 file(staged, "bin/kast-complete", "payload", "rwxr-xr-x", 493),

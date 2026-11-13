@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:aa2e8550e96f7d76c6e64b3c923e8ee9fdd456521ee10340def60b27d070a2c3",
+  "pageVersion": "sha256:d7ec43428cd3da1f3c7e941c1dab9af2a0c53c4550df999784566113c9e371e9",
   "claims": [
     {
       "id": "claim_ff079a4bad1c49b29e631747df0a01a1",
-      "statement": "KastDirectToolSession shares compiled registration and managed invocation across CLI and direct transports. Each request owns a ManagedWorkspaceQuery lease and its preparation jobs; retained-reference operations require existing state without another preparation effect.",
+      "statement": "KastDirectToolSession shares compiled registration and managed invocation across CLI and direct transports. Each request owns a ManagedWorkspaceQuery lease and its preparation jobs; retained-reference operations require existing state. Explicit internal workspace wait shares PREPARE admission, inherited-state rejection and lease lifetime while preserving typed preparation failures.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt",
@@ -15,8 +15,16 @@
           "version": "repo-lines-v1:sha256:b01be96069c69f3453244258b5689662c5be7120d8cf7055ec19daca88e34b3a:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0MTdlOTk2ZmEyNDQ5MTYwZGZhMTEyOGIwYmY0MWI5MTVlNTg1YTdkMmRkNjVhNWVkZGExMzg2YjkwOWMyZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExYTNjYmZjYmE3ZGRiYjZkMDNlY2EwNmU0ZGM1NTYzZmUwMDFiZDJiYTFiM2UxYzY4YzNiYmM3YjRiYWI0MGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhMWFkYjNiNzY3YjJjNDI2ZDA3OWNkMmM3MjcxMGUyMDhjOWQ2MWMwZDM5NWFmNmJjMjAwMDA2NzFmZWEzMTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1M2EyZWE2MjkwZTRmM2EwM2Q4OWEyNzYwMTdkZWM1ZTc4Nzg3MmQ3YWE4ZTJhNGVhNzVkN2Y5NTczNmEwYTkifQ"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt#L26-L123",
-          "version": "repo-lines-v1:sha256:3563b83fb0792da7a6d35ece69c6f84c76413a529b3ef877128e2e3160225667:eyJzZWxlY3RlZExpbmVDb3VudCI6OTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5NWRjOGU2YzgzMDUyMzVmZTE0OGM1ZjE1N2JlZjQ4MzU1NTU3NmVjYmU1NjNkNGNmODkzM2I0Y2U4MzE5MjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlZmNiN2RjOGFmOGUwNTdlZGEwZGJhOWNhYzAzNGRlNWFkNjg1YTMzOWZlNTdkOTYxMzc5ODliYTZiMmYzODcifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt",
+          "version": "repo-file-v1:sha256:4c2479c312f796c1b92b9310bb281ecda855d2554823d29b224e911b461969b6"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt",
+          "version": "repo-file-v1:sha256:ea56f739af557d0d001289a2208e751805a15b9f487823b326bdd870330c63b5"
+        },
+        {
+          "resource": "repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookManagedPreparationTest.kt",
+          "version": "repo-file-v1:sha256:630fda427f32fc5c3116a8990beff1bae432377ab83a6d07443a2463f9bd7259"
         }
       ]
     },
@@ -71,7 +79,7 @@
       "statement": "Managed semantic selection reads installed product and runtime locally; preparation may grant exact-root trust, while retained reads reject missing state rather than creating it.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L160-L205",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L165-L210",
           "version": "repo-lines-v1:sha256:fe54899323afe2e516f965e308c4f6989ee26700ce2c16c8ff6b9df06ee01cd9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExM2M5ZjgzM2M3MDdkMWJkYmE3NWYwY2I4MmFiMWI0NDNkMWY1YjI1ZGVlNWRkODBmMzE2MTE4MGIxOTg4M2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZjljOWFjMWY4ZmZmNzMwYzRlNTU3YzczOTUzNzAxODYwZGUwODIzOTYyYWFlN2EwZDI1NmFjMGMwNTA5NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMzQwNzEwYjJmZDU5NGRiYzRjN2U2YzZlMTgzM2ZiMTVlM2Q1YjUwYzAyOGNhODllNWJlYTM2MzgyMjIzNTEifQ"
         },
         {
@@ -83,6 +91,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T21:32:17.187Z"
+    "at": "2026-11-13T00:20:29.143Z"
   }
 }

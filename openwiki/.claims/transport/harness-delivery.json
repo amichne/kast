@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e7749b1e69083e627220928d7199f1e2934a04d41aef498ff0913f917d7f4053",
+  "pageVersion": "sha256:c3247febefc7607bff6fa78b86bdfe161bd149e5af90fb6a5ebeafe604eed06e",
   "claims": [
     {
       "id": "claim_a5aabd0ac08b46be89a2eef490220d68",
@@ -75,7 +75,7 @@
           "version": "repo-file-v1:sha256:05cbca22244ba9287dcc097e0f5df3c1011630f6f962a1e8abe2e1e742767089"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt#L96-L130",
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt#L100-L134",
           "version": "repo-lines-v1:sha256:0f6eee9ac8cefb404d5156389f1a79d496b71dcc32f2e157135bf9062c65596c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4YjBhZTFkZGFlYmNkOGRlOTc5ZTFmN2M1MGFiMzhkYWVmNTAwZjRlYzBkNWQzNzcxM2E1NTlmYzQ1ZmE3NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwOGY3YjlkN2NjNDMxMmIwN2VkNmVlNzMzMTVlMjdhMjA4NTZmZTI3YmE3ZTRkMDFmMTBjZDdkYjExN2YzZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxZDA0ZTgzZTIyMzQyZTIzZjlmMjUyN2MyYjkzYWVjMWMxYmUzZGM2MGE2MzAzOTJkMGQ2OGU5NTE2NTNkMjgifQ"
         }
       ]
@@ -110,15 +110,23 @@
     },
     {
       "id": "claim_5ab459a5b80641d087b05a25d3c52ee6",
-      "statement": "Session-start hooks return passive context without trust or Host startup; legacy hook wait selections have no preparation effect, while the explicit internal workspace wait path remains a distinct preparation caller.",
+      "statement": "Session-start hooks remain passive without trust or Host startup. Explicit internal workspace wait uses shared managed PREPARE admission, installed-product checks, inherited-state rejection and a request-owned lease, rather than the old unleased lifecycle path.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt#L96-L150",
-          "version": "repo-lines-v1:sha256:b84c6a6cd2c3836e5a281a8f7ae2d2a739d334f07c3a595ebe3e2f5b3de6310e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4YjBhZTFkZGFlYmNkOGRlOTc5ZTFmN2M1MGFiMzhkYWVmNTAwZjRlYzBkNWQzNzcxM2E1NTlmYzQ1ZmE3NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyYjkyYWIwNDIyMmM3ZjM3NTA2MDk0MWJjMzZmNWEyZDhmZjcyNTMxYTE3NTQwZjY3YTg3ZjgzMTliODZlMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwOGY3YjlkN2NjNDMxMmIwN2VkNmVlNzMzMTVlMjdhMjA4NTZmZTI3YmE3ZTRkMDFmMTBjZDdkYjExN2YzZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1YmM3NDAwODJiNDg0N2QzMTIwMmM1Y2JmODNmMGQ0NzE4MzczYzFhMGIwNGE3NWJmNjg5NmY5NmE1YTRmZGUifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt",
+          "version": "repo-file-v1:sha256:4c2479c312f796c1b92b9310bb281ecda855d2554823d29b224e911b461969b6"
         },
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt#L16-L69",
-          "version": "repo-lines-v1:sha256:9234d388cd717becba93f1a978e2f89ff1a41aa648319db9b5532ccada1e1156:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiYmQ2OGZiYjgwZTJhYTVmNTMzMDA1MDU5YmViNDNiYmZhNGEzMzU4ODEwNWZlNzhjZWYwN2ZiNTk0YjRkOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMzNzc2ODYyM2VlYzM0OWUwOTllODQ3NmY1YWI3MTI5OTljMzY2OTQ2M2FmNjJhNjJkZDFkNjJjNjU1NzVkNTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmNmYzYjMwOGI5MzRjYTMxOGMwMzQ2ZGNhMTE0NjJlNmIxM2I3M2NlYzg4NjY2ODA1NDYxMDZiMzJjNWVjZjgifQ"
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt",
+          "version": "repo-file-v1:sha256:145176431cf37286bb0a8788a99fc3415e423d9f17f2ad5cd7b5f72bebf9e524"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt",
+          "version": "repo-file-v1:sha256:ea56f739af557d0d001289a2208e751805a15b9f487823b326bdd870330c63b5"
+        },
+        {
+          "resource": "repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookManagedPreparationTest.kt",
+          "version": "repo-file-v1:sha256:630fda427f32fc5c3116a8990beff1bae432377ab83a6d07443a2463f9bd7259"
         }
       ]
     },
@@ -136,7 +144,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
-          "version": "repo-file-v1:sha256:271f11e2c9c1328b20fb4b6dd79dd217003ca535c3c66db9644fec11df4c0379"
+          "version": "repo-file-v1:sha256:715b68d1babd943b78c7978f5a5fececd16c6ef970e4234ae727a71645a07309"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt",
@@ -169,7 +177,7 @@
           "version": "repo-lines-v1:sha256:19d1adfc3bef38320f095db00664659d5ec51c9e8b30bcc45a23e7fcbce6237c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2Y2E5M2EwMGViYTA3OTFiZDAwYzdkZThlZTM5NzI0ZWM3NzE2Njg4MjBkY2NiODI2NjU0YjRkZWZiZjUwZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3MjY2YTFkYTdlZGY0M2U3NWI1NjJmNzlmMWZjNzE0NDhiYzNjNjVmZjY0NTk4MGE0ZjljNzIzOTRkOGEzMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlMWQ1M2Y0N2NmODkwZTg0OTZhZDRmMWYzNTc3OGQ2NDI4NDQyNGRlMDdiNDdiMzMzZTljZDYwYzE3ZmE5OGIifQ"
         },
         {
-          "resource": "repo://packaging/managed_product_installation.py#L62-L70",
+          "resource": "repo://packaging/managed_product_installation.py#L65-L73",
           "version": "repo-lines-v1:sha256:7269e9a38b04b3e63615294d9ef5f1be403444247b8e52c769738b2bec62cff2:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjY5YTEzOTc1YzI1NmVjODMyMGUyMDE2MDgzYzk2ZGY2MzdjYTNkMzViZWJkZTIzMTRiZWUzYTQ3MTFiNTZjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjQ5NTkyM2UwZTljMDAyNDhiZTViYzVkNWJmNWZiZmYxODlkNGNmMTQ5OWFlMjcxMmZiNTdiOTQ0YmI4NmI5ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWVkN2QxZDUwMTNjODkxMzYwNGY2MDRmZGFkYzQ2OTc3MGQxNmJlNjRlZDFhYTIxNTk4Y2NjMzc4ZWU2OGZiNCJ9"
         }
       ]
@@ -177,6 +185,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T22:16:35.341Z"
+    "at": "2026-11-13T03:20:11.225Z"
   }
 }

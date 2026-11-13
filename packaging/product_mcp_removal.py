@@ -1,7 +1,11 @@
 """Admit optional MCP state before capture; erase only journal-bound survivors."""
 
 import os
+import sys
+from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 
 import immutable_store as store
 import managed_installation as install
@@ -10,13 +14,67 @@ import managed_update_journal as journal
 import mcp_environment as mcp
 
 
+class InvocationStateFailure(StrEnum):
+    UNKNOWN_DIRECTORY = "UNKNOWN_DIRECTORY"
+    UNSETTLED_INVOCATIONS = "UNSETTLED_INVOCATIONS"
+
+
+@dataclass(frozen=True)
+class InvocationStateAdmitted:
+    outcome: Literal["ADMITTED"] = "ADMITTED"
+    component: Literal["kast-invocation-state"] = "kast-invocation-state"
+
+
+@dataclass(frozen=True)
+class InvocationStateRejected:
+    reason: InvocationStateFailure
+    outcome: Literal["REJECTED"] = "REJECTED"
+    component: Literal["kast-invocation-state"] = "kast-invocation-state"
+
+
+def reject_invocation_state(reason: InvocationStateFailure) -> None:
+    print(
+        install.encoded(InvocationStateRejected(reason)).decode(),
+        end="",
+        file=sys.stderr,
+    )
+    raise ValueError(reason.value)
+
+
+def empty_invocation_directories(payload: Path) -> tuple[tuple[Path, journal.Identity], ...]:
+    """Only the exact empty native bookkeeping directories are removable, never records."""
+    state = payload / "state"
+    if not os.path.lexists(state):
+        return ()
+    store.physical(state)
+    run = state / "run"
+    if not os.path.lexists(run):
+        return ()
+    store.physical(run)
+    if {child.name for child in run.iterdir()} - {"one-shot", "tool-sessions"}:
+        reject_invocation_state(InvocationStateFailure.UNKNOWN_DIRECTORY)
+    directories: list[tuple[Path, journal.Identity]] = []
+    for child in run.iterdir():
+        store.physical(child)
+        identity = journal.Identity.observe(child)
+        if any(child.iterdir()):
+            reject_invocation_state(InvocationStateFailure.UNSETTLED_INVOCATIONS)
+        directories.append((child, identity))
+    directories.append((run, journal.Identity.observe(run)))
+    print(install.encoded(InvocationStateAdmitted()).decode(), end="", file=sys.stderr)
+    return tuple(directories)
+
+
 def capture(payload: Path) -> store.McpRemoval | None:
     state = payload / "state"
     if not os.path.lexists(state):
         return None
     store.physical(state)
-    if {child.name for child in state.iterdir()} != {"mcp"}:
+    if {child.name for child in state.iterdir()} - {"mcp", "run"}:
         raise ValueError("unowned installation state")
+    _ = empty_invocation_directories(payload)
+    if not os.path.lexists(state / "mcp"):
+        return None
     installation = mcp.admit_installation(payload)
     if isinstance(installation, mcp.Rejected):
         raise ValueError("MCP installation rejected")
@@ -73,8 +131,9 @@ def inventory(raw: bytes, payload: Path, proof: store.ProductRemoval) -> mcp.Inv
 
 def verify(root: Path, bundle: Path, proof: store.ProductRemoval) -> None:
     state = root / "installation/state"
+    _ = empty_invocation_directories(root / "installation")
     if proof.mcp is None:
-        if os.path.lexists(state):
+        if os.path.lexists(state) and {child.name for child in state.iterdir()} - {"run"}:
             raise ValueError("unrecorded installation state")
         return
     raw = install.read_record(bundle / "mcp-receipt.json", mcp.MAX_RECORD)
@@ -84,7 +143,7 @@ def verify(root: Path, bundle: Path, proof: store.ProductRemoval) -> None:
     store.physical(state)
     if journal.Identity.observe(state) != proof.mcp.stateIdentity:
         raise ValueError("MCP state replaced")
-    if {child.name for child in state.iterdir()} - {"mcp"}:
+    if {child.name for child in state.iterdir()} - {"mcp", "run"}:
         raise ValueError("foreign installation state")
     destination = state / "mcp"
     if not os.path.lexists(destination):
@@ -110,10 +169,17 @@ def verify(root: Path, bundle: Path, proof: store.ProductRemoval) -> None:
 
 def erase(root: Path, bundle: Path, proof: store.ProductRemoval) -> None:
     verify(root, bundle, proof)
-    if proof.mcp is None:
-        return
     state = root / "installation/state"
     if not os.path.lexists(state):
+        return
+    for directory, identity in empty_invocation_directories(root / "installation"):
+        store.physical(directory)
+        if journal.Identity.observe(directory) != identity:
+            raise ValueError("invocation directory replaced")
+        directory.rmdir()
+    if proof.mcp is None:
+        state.rmdir()
+        install.RECOVERY.sync(state.parent)
         return
     destination = state / "mcp"
     if os.path.lexists(destination):

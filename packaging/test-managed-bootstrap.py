@@ -64,7 +64,7 @@ class BootstrapTest(unittest.TestCase):
                 tools, home = root / "tools", root / "home"
                 tools.mkdir()
                 home.mkdir()
-                for name in ("tar", "base64", "mktemp", "mkdir", "rm"):
+                for name in ("tar", "mktemp", "mkdir", "rm"):
                     tool = shutil.which(name, path=os.defpath)
                     assert tool is not None
                     (tools / name).symlink_to(tool)
@@ -135,6 +135,26 @@ class BootstrapTest(unittest.TestCase):
                     [pins[0 if system == "Darwin" else 1].url, private.DEPENDENCY_URL],
                     log.read_text().splitlines(),
                 )
+                self.assertEqual([], list(home.iterdir()))
+                self.assertFalse(list(root.glob("kast-bootstrap.*")))
+                # Valid encoding is not integrity evidence. Reject changed engine bytes
+                # before extracting or running the installer, even after admitted downloads.
+                prefix, separator, body = bootstrap.read_text().partition("<<'KAST_ENGINE'\n")
+                self.assertTrue(separator)
+                bad_engine = root / "bad-engine.sh"
+                changed = ("0" if body[0] != "0" else "1") + body[1:]
+                _ = bad_engine.write_text(prefix + separator + changed)
+                log.unlink()
+                corrupt_engine = subprocess.run(
+                    ["/bin/bash", str(bad_engine), "--recover-only", "--json"],
+                    env={"HOME": str(home), "PATH": str(tools), "TMPDIR": str(root)},
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                self.assertEqual(1, corrupt_engine.returncode)
+                self.assertIn("bootstrap engine digest mismatch", corrupt_engine.stderr)
+                self.assertEqual("", corrupt_engine.stdout)
                 self.assertEqual([], list(home.iterdir()))
                 self.assertFalse(list(root.glob("kast-bootstrap.*")))
                 # A transfer can return bytes successfully without returning admitted bytes.

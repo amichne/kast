@@ -30,31 +30,54 @@ internal fun invokeManagedTool(
     directory: Path,
     admission: WorkspaceOperationAdmission,
     execute: (CanonicalRoot, ExistingIdeCliCapabilities) -> CliExit,
-): CliExit {
+): CliExit = invokeManagedTool(context, directory, admission, context.environment, ::managedToolRejected, execute)
+
+internal sealed interface ManagedToolFailure {
+    data class Workspace(val reason: ContainerFailure) : ManagedToolFailure
+
+    data class Preparation(val reason: DaemonOperationFailure) : ManagedToolFailure
+
+    data object Stopped : ManagedToolFailure
+
+    data object Unproven : ManagedToolFailure
+}
+
+/** Explicit preparation and semantic invocation share admission, typed failures, and lease lifetime. */
+internal fun <Result> invokeManagedTool(
+    context: InstalledClientContext,
+    directory: Path,
+    admission: WorkspaceOperationAdmission,
+    environment: Map<String, String>,
+    reject: (ManagedToolFailure) -> Result,
+    execute: (CanonicalRoot, ExistingIdeCliCapabilities) -> Result,
+): Result {
     val root =
         when (val discovered = FilesystemCanonicalRootDiscovery.discover(directory)) {
-            is CanonicalRootDiscovery.Rejected -> return managedWorkspaceRejected(ContainerFailure.INVALID_WORKSPACE)
+            is CanonicalRootDiscovery.Rejected ->
+                return reject(ManagedToolFailure.Workspace(ContainerFailure.INVALID_WORKSPACE))
             is CanonicalRootDiscovery.Discovered -> discovered.root
         }
     val opened =
         when (admission) {
-            WorkspaceOperationAdmission.PREPARE ->
-                ManagedWorkspaceQuery.open(context.installation, root, context.environment)
+            WorkspaceOperationAdmission.PREPARE -> ManagedWorkspaceQuery.open(context.installation, root, environment)
             WorkspaceOperationAdmission.EXISTING_AUTHORITY ->
-                ManagedWorkspaceQuery.openExisting(context.installation, root, context.environment)
+                ManagedWorkspaceQuery.openExisting(context.installation, root, environment)
         }
     val workspace =
         when (opened) {
-            is Refinement.Rejected -> return managedWorkspaceRejected(opened.failure)
+            is Refinement.Rejected -> return reject(ManagedToolFailure.Workspace(opened.failure))
             is Refinement.Refined -> opened.value
         }
     return workspace.use {
         // The shared workspace lease now excludes retirement. Recheck the Control after acquiring it.
-        if (context.observe() != InstalledToolAdmission.AVAILABLE)
-            return@use io.github.amichne.kast.cli.boundaryExit(CliBoundaryExitStatus.RUNTIME, "installation-shutdown")
+        when (context.observe()) {
+            InstalledToolAdmission.AVAILABLE -> Unit
+            InstalledToolAdmission.STOPPED -> return@use reject(ManagedToolFailure.Stopped)
+            InstalledToolAdmission.UNPROVEN -> return@use reject(ManagedToolFailure.Unproven)
+        }
         val client =
             when (val selected = ManagedToolClient.admit(root, workspace, admission)) {
-                is Refinement.Rejected -> return@use selected.failure
+                is Refinement.Rejected -> return@use reject(selected.failure)
                 is Refinement.Refined -> selected.value
             }
         client.use { execute(root, it.capabilities) }
@@ -73,7 +96,7 @@ private constructor(
             root: CanonicalRoot,
             workspace: ManagedWorkspaceQuery,
             admission: WorkspaceOperationAdmission,
-        ): Refinement<ManagedToolClient, CliExit.BoundaryRejected> =
+        ): Refinement<ManagedToolClient, ManagedToolFailure> =
             when (admission) {
                 WorkspaceOperationAdmission.EXISTING_AUTHORITY ->
                     Refinement.Refined(existing(workspace.home, workspace.environment))
@@ -83,7 +106,7 @@ private constructor(
                             prepare(root, workspace.home, workspace.environment, remaining)
                         }
                     ) {
-                        is Refinement.Rejected -> Refinement.Rejected(managedWorkspaceRejected(prepared.failure))
+                        is Refinement.Rejected -> Refinement.Rejected(ManagedToolFailure.Workspace(prepared.failure))
                         is Refinement.Refined -> prepared.value
                     }
             }
@@ -98,7 +121,7 @@ private constructor(
             home: Path,
             environment: Map<String, String>,
             remaining: ElapsedTimeAllowance,
-        ): Refinement<ManagedToolClient, CliExit.BoundaryRejected> {
+        ): Refinement<ManagedToolClient, ManagedToolFailure> {
             val bounded =
                 environment +
                     ("KAST_WORKSPACE_PREPARATION_WAIT" to
@@ -110,7 +133,7 @@ private constructor(
             var transferred = false
             try {
                 return when (val prepared = runBlocking { owner.prepared(root) }) {
-                    is Refinement.Rejected -> Refinement.Rejected(managedPreparationRejected(prepared.failure))
+                    is Refinement.Rejected -> Refinement.Rejected(ManagedToolFailure.Preparation(prepared.failure))
                     is Refinement.Refined -> {
                         val client = compose(owner, prepared.value, home, bounded)
                         transferred = true
@@ -138,6 +161,15 @@ private constructor(
             )
     }
 }
+
+private fun managedToolRejected(failure: ManagedToolFailure): CliExit.BoundaryRejected =
+    when (failure) {
+        is ManagedToolFailure.Workspace -> managedWorkspaceRejected(failure.reason)
+        is ManagedToolFailure.Preparation -> managedPreparationRejected(failure.reason)
+        ManagedToolFailure.Stopped,
+        ManagedToolFailure.Unproven ->
+            io.github.amichne.kast.cli.boundaryExit(CliBoundaryExitStatus.RUNTIME, "installation-shutdown")
+    }
 
 private fun managedWorkspaceRejected(failure: ContainerFailure): CliExit.BoundaryRejected =
     CliExit.BoundaryRejected(

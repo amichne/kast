@@ -1,10 +1,19 @@
 import unittest
 import json
+from dataclasses import asdict, dataclass
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 from configuration_ingress import Failure, violations
+
+@dataclass(frozen=True)
+class EmptyCatalogue:
+    parameters: tuple[str, ...] = ()
+
+@dataclass(frozen=True)
+class EmptyIngressPolicy:
+    ingressOwners: tuple[str, ...] = ()
 
 class ConfigurationIngressTest(unittest.TestCase):
     def test_operational_projection_drift_is_rejected_by_snapshot_check(self):
@@ -53,6 +62,28 @@ class ConfigurationIngressTest(unittest.TestCase):
     def test_undeclared_kast_input_is_rejected_at_named_ingress(self):
         result = violations('cli/Ingress.kt', 'System.getenv("KAST_UNDECLARED")', {'KAST_INDEXER_MAX_HEAP'}, {'cli/Ingress.kt'})
         self.assertEqual([(Failure.UNDECLARED_KEY, 'KAST_UNDECLARED')], result)
+
+    def test_test_only_inputs_are_excluded_but_production_inputs_still_reject(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packaging = root / 'packaging'
+            packaging.mkdir()
+            for name in ('test-fixture.py', 'test_fixture.py'):
+                (packaging / name).write_text('os.environ.get("KAST_TEST_ONLY")')
+            for name in ('generated.json', 'snapshot.json'):
+                (root / name).write_text(json.dumps(asdict(EmptyCatalogue())))
+            (root / 'policy.json').write_text(json.dumps(asdict(EmptyIngressPolicy())))
+            command = [sys.executable, str(Path(__file__).with_name('configuration_ingress.py')),
+                       '--root', str(root), '--schema', str(root / 'generated.json'),
+                       '--snapshot', str(root / 'snapshot.json'), '--policy', str(root / 'policy.json')]
+            tests_only = subprocess.run(command, capture_output=True, text=True, timeout=10)
+            self.assertEqual(0, tests_only.returncode, tests_only.stdout + tests_only.stderr)
+            (packaging / 'fixture.py').write_text('os.environ.get("KAST_UNDECLARED")')
+            production = subprocess.run(command, capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(0, production.returncode)
+            findings = json.loads(production.stdout)['findings']
+            self.assertEqual({'UNDECLARED_KEY', 'UNOWNED_INGRESS'}, {item['condition'] for item in findings})
+            self.assertEqual({'packaging/fixture.py'}, {item['file'] for item in findings})
 
     def test_declared_input_cannot_add_an_ambient_reader_outside_named_ingress(self):
         result = violations('core/Pure.kt', 'System.getenv("KAST_INDEXER_MAX_HEAP")', {'KAST_INDEXER_MAX_HEAP'}, {'cli/Ingress.kt'})

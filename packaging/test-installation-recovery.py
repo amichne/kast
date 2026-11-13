@@ -941,6 +941,25 @@ class ManagedControlRecoveryTest(unittest.TestCase):
             semanticVersion=version, payloadIdentity='sha256:' + control_digest, controlSha256='sha256:' + control_digest)
         (path / 'installation.json').write_text(json.dumps(asdict(manifest)))
 
+    def test_installed_inventory_limit_retains_typed_failure_and_bounded_evidence(self):
+        r = self.recovery
+        self.payload(self.stage, '2.0.0', 'selected', 'b' * 64)
+        manifest_path = self.stage / 'installation.json'
+        manifest = ManagedControlManifestFixture(str(self.root), str(self.root / 'state'),
+            str(self.root / 'config/environment'), str(self.root / 'config/workspaces.json'),
+            (PayloadFileFixture('bin/kast-complete', 'sha256:' + 'b' * 64, 420),) * 32769)
+        manifest_path.write_text(json.dumps(asdict(manifest)))
+        before = manifest_path.read_bytes()
+        evidence = io.StringIO()
+        with contextlib.redirect_stderr(evidence), self.assertRaises(r.Rejected) as rejected:
+            r.managed_payload(self.stage, self.root, r.Identity.observe(self.stage))
+        self.assertEqual('CONTROL_LIMIT_EXCEEDED', rejected.exception.failure.value)
+        self.assertEqual({'failure': 'CONTROL_LIMIT_EXCEEDED',
+            'limit': {'resource': 'PAYLOAD_FILES', 'maximum': 32768, 'observedAtLeast': 32769},
+            'retirement': None, 'status': 'rejected'}, json.loads(evidence.getvalue()))
+        self.assertEqual(before, manifest_path.read_bytes())
+        self.assertEqual('selected', (self.stage / 'bin/kast-complete').read_text())
+
     def test_canonical_types_keep_runtime_identity_and_reject_unknown_phases_and_tags(self):
         import managed_update_journal as journal
         r = self.recovery
@@ -1368,11 +1387,12 @@ class ManagedControlRecoveryTest(unittest.TestCase):
                 self.assertEqual(r.ManagedControlResult.SEALED, r.seal_managed_control(self.root, receipt))
             except SystemExit:
                 self.assertIs(SystemExit, interruption)
+        observations = [json.loads(line) for line in output.getvalue().splitlines()]
         if interruption is OSError:
             self.assertEqual({'event': 'kast_managed_storage_cleanup', 'outcome': 'FAILED',
-                              'reason': r.Failure.FILESYSTEM.value}, json.loads(output.getvalue()))
-        else:
-            self.assertEqual('', output.getvalue())
+                              'reason': r.Failure.FILESYSTEM.value}, observations.pop())
+        self.assertTrue(observations)
+        self.assertTrue(all(item == {'type': 'PAYLOAD_ADMITTED'} for item in observations))
         self.assertEqual(1, len(calls))
         self.assertNotEqual(self.transaction / 'payload', calls[0])
         self.assertFalse((self.transaction / 'payload').exists())

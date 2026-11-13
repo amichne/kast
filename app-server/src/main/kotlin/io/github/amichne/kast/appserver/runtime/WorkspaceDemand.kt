@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runInterruptible
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 
 internal fun interface WorkspaceDemand {
     suspend fun query(root: CanonicalRoot, operation: ExistingIdeOperation): WorkspaceDemandResult
@@ -59,25 +61,44 @@ internal class PreparedWorkspaceDemand(
     private val invoke: suspend (PreparedWorkspace, ExistingIdeOperation) -> ExistingIdeExchange,
 ) : WorkspaceDemand {
     override suspend fun query(root: CanonicalRoot, operation: ExistingIdeOperation): WorkspaceDemandResult {
-        val first = queryOnce(root, operation)
+        val ready =
+            when (val prepared = prepareReady(root)) {
+                is Refinement.Rejected -> return WorkspaceDemandResult.Rejected(prepared.failure)
+                is Refinement.Refined -> prepared.value
+            }
+        val first = queryReady(ready.entry, ready.workspace, operation)
         val failure = (first as? WorkspaceDemandResult.Rejected)?.failure as? WorkspaceDemandFailure.Operation
         // No semantic operation was sent when identity inspection detected a changed host.
-        val modelReload = (first as? WorkspaceDemandResult.Native)?.exchange as? ExistingIdeExchange.HostRejected
-        val retryableModelChange =
-            modelReload?.recovery == HostedPresemanticRecovery.ModelReload && operation.canRetryAfterModelReload()
-        return if (failure?.cause == WorkspaceDemandCause.HostChanged || retryableModelChange)
+        return if (failure?.cause == WorkspaceDemandCause.HostChanged && operation !is ExistingIdeOperation.Mutation)
             queryOnce(root, operation)
-        else first
+        else retryPrepared(ready, operation, first)
     }
 
     private suspend fun queryOnce(root: CanonicalRoot, operation: ExistingIdeOperation): WorkspaceDemandResult =
-        when (val ready = prepare(root)) {
+        when (val ready = prepareReady(root)) {
             is Refinement.Rejected -> WorkspaceDemandResult.Rejected(ready.failure)
-            is Refinement.Refined -> ready.value.query(root, operation)
+            is Refinement.Refined -> queryReady(ready.value.entry, ready.value.workspace, operation)
         }
 
-    /** Captures one prepared incarnation; using it never starts or substitutes another Host. */
-    suspend fun prepare(root: CanonicalRoot): Refinement<WorkspaceDemand, WorkspaceDemandFailure> {
+    /** Captures exact authority. Readiness recovery cannot substitute a different Host or project. */
+    suspend fun prepare(root: CanonicalRoot): Refinement<WorkspaceDemand, WorkspaceDemandFailure> =
+        when (val ready = prepareReady(root)) {
+            is Refinement.Rejected -> ready
+            is Refinement.Refined ->
+                Refinement.Refined(
+                    WorkspaceDemand { selected, operation ->
+                        if (selected != root)
+                            WorkspaceDemandResult.Rejected(
+                                WorkspaceDemandFailure.Admission(selected, WorkspacePreparationFailure.ROOT_REJECTED)
+                            )
+                        else queryPrepared(ready.value, operation)
+                    }
+                )
+        }
+
+    private data class Ready(val entry: WorkspacePreparation, val workspace: PreparedWorkspace)
+
+    private suspend fun prepareReady(root: CanonicalRoot): Refinement<Ready, WorkspaceDemandFailure> {
         val entry =
             when (val admitted = preparations.prepareForDemand(root)) {
                 is Refinement.Refined -> admitted.value
@@ -85,16 +106,7 @@ internal class PreparedWorkspaceDemand(
                     return Refinement.Rejected(WorkspaceDemandFailure.Admission(root, admitted.failure))
             }
         return when (val outcome = entry.state.filterIsInstance<WorkspacePreparationOutcome.Terminal>().first()) {
-            is WorkspacePreparationOutcome.Complete ->
-                Refinement.Refined(
-                    WorkspaceDemand { selected, operation ->
-                        if (selected != root)
-                            WorkspaceDemandResult.Rejected(
-                                WorkspaceDemandFailure.Admission(selected, WorkspacePreparationFailure.ROOT_REJECTED)
-                            )
-                        else queryReady(entry, outcome.workspace, operation)
-                    }
-                )
+            is WorkspacePreparationOutcome.Complete -> Refinement.Refined(Ready(entry, outcome.workspace))
             is WorkspacePreparationOutcome.Rejected ->
                 Refinement.Rejected(
                     WorkspaceDemandFailure.Operation(entry.id, root, WorkspaceDemandCause.Preparation(outcome.failure))
@@ -104,6 +116,28 @@ internal class PreparedWorkspaceDemand(
                     WorkspaceDemandFailure.Operation(entry.id, root, WorkspaceDemandCause.Lifecycle(outcome.reason))
                 )
         }
+    }
+
+    private suspend fun queryPrepared(ready: Ready, operation: ExistingIdeOperation): WorkspaceDemandResult =
+        retryPrepared(ready, operation, queryReady(ready.entry, ready.workspace, operation))
+
+    private suspend fun retryPrepared(
+        ready: Ready,
+        operation: ExistingIdeOperation,
+        first: WorkspaceDemandResult,
+    ): WorkspaceDemandResult {
+        val exchange = (first as? WorkspaceDemandResult.Native)?.exchange
+        return if (exchange is ExistingIdeExchange.HostRejected && exchange.canRetryReadiness(operation)) {
+            preparations.invalidate(ready.entry.id, ready.workspace)
+            when (val refreshed = prepareReady(ready.workspace.root)) {
+                is Refinement.Rejected -> WorkspaceDemandResult.Rejected(refreshed.failure)
+                is Refinement.Refined ->
+                    if (refreshed.value.workspace.target == ready.workspace.target)
+                        // Deliberately call the non-retrying path: at most two semantic attempts per request.
+                        queryReady(refreshed.value.entry, refreshed.value.workspace, operation)
+                    else rejected(ready.entry, WorkspaceDemandCause.HostChanged)
+            }
+        } else first
     }
 
     private suspend fun queryReady(
@@ -135,12 +169,42 @@ internal class PreparedWorkspaceDemand(
         WorkspaceDemandResult.Rejected(WorkspaceDemandFailure.Operation(entry.id, entry.root, cause))
 }
 
-private fun ExistingIdeOperation.canRetryAfterModelReload(): Boolean =
-    when (this) {
+private fun ExistingIdeExchange.HostRejected.canRetryReadiness(operation: ExistingIdeOperation): Boolean =
+    when (operation) {
         is ExistingIdeOperation.Read,
         is ExistingIdeOperation.Classes,
-        is ExistingIdeOperation.Supertype,
-        is ExistingIdeOperation.Plan,
-        is ExistingIdeOperation.Mutation -> true
+        is ExistingIdeOperation.Supertype -> recovery == HostedPresemanticRecovery.ModelReload || isMovedRead()
+        is ExistingIdeOperation.Plan -> recovery == HostedPresemanticRecovery.ModelReload
+        is ExistingIdeOperation.Mutation,
         ExistingIdeOperation.Status -> false
     }
+
+/** Refine only the exact schema-admitted read rejection, not text or generic semantic failures. */
+private fun ExistingIdeExchange.HostRejected.isMovedRead(): Boolean =
+    try {
+        readinessJson.decodeFromString<MovedRead>(document.value)
+        true
+    } catch (_: SerializationException) {
+        false
+    }
+
+@Serializable
+private data class MovedRead(val failure: MovedReadFailure, val detail: MovedReadDetail, val stage: MovedReadStage)
+
+@Serializable
+private enum class MovedReadFailure {
+    FRESHNESS_REJECTED
+}
+
+@Serializable
+private enum class MovedReadDetail {
+    MOVED
+}
+
+@Serializable
+private enum class MovedReadStage {
+    MODEL_CAPTURE,
+    CONTENT_REVALIDATION,
+}
+
+private val readinessJson = Json { ignoreUnknownKeys = true }

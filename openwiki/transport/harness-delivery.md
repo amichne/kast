@@ -33,12 +33,16 @@ sources:
     resource: repo://cli/src/main/js/query-delivery.mjs
   - id: openwiki-source-777e160a643777b302b4cc98
     resource: repo://cli/src/main/js/query-presentation.mjs
+  - id: openwiki-source-e2eb0f864f441066834169f4
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt
   - id: openwiki-source-e1bc625b6dcbcb48924bf9b4
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
   - id: openwiki-source-80668d86bee80c4df5797fa0
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt
   - id: openwiki-source-268c7ef978bdd77cf949ddc4
     resource: repo://cli/src/main/resources/query-delivery.schema.json
+  - id: openwiki-source-ed6011399144254764b19542
+    resource: repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookManagedPreparationTest.kt
   - id: openwiki-source-ffafcc2936c3877f4b78db93
     resource: repo://copilot/extension.mjs
   - id: openwiki-source-fe95fd24c4ce348de98bb357
@@ -61,10 +65,10 @@ sources:
     resource: repo://pi/extension.ts
   - id: openwiki-source-6b18658d32b10e2368e7dc20
     resource: repo://pi/mcp-extension.ts
-generated: { by: "amp", at: "2026-11-12T22:16:35.341Z" }
+generated: { by: "amp", at: "2026-11-13T00:41:13.770Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:16:35.341Z
+    at: 2026-11-13T03:20:11.225Z
 ---
 
 # Agent context and harness delivery
@@ -97,7 +101,9 @@ Legacy Python hook resources remain source material outside that default composi
 The optional Pi extension registers Kast through native `registerMcpServer`.
 Its session-start event invokes `kast --internal-entrypoint=query hook session-start` asynchronously for the exact workspace.
 This path returns context without granting trust, creating workspace state, or starting a Host.
-Legacy hook wait options have no preparation effect. The explicit internal `workspace wait` path remains a distinct preparation caller.
+Legacy hook wait options have no preparation effect.
+Explicit internal `workspace wait` enters shared managed preparation with installed-product checks and a request-owned lease.
+Inherited managed-state overrides reject there; the caller cannot prepare a Host without a lease through the old direct lifecycle path.
 Pi includes the returned context before each model request and ignores replies from an older session.
 Context rejection emits a bounded warning, not a readiness result.
 It reads bounded local context directly with Node and adds that brief before model requests.

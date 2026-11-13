@@ -144,6 +144,27 @@ class PublicHookTest {
     private fun input(text: String = "") = ByteArrayInputStream(text.toByteArray())
 
     @Test
+    fun `managed admission preserves finite failures and separates preparation expiry`() {
+        Files.writeString(directory.resolve("settings.gradle.kts"), "")
+        for ((failure, exit) in
+            listOf(
+                io.github.amichne.kast.distribution.cli.ContainerFailure.FOREIGN_STATE to PublicShellExit.RUNTIME,
+                io.github.amichne.kast.distribution.cli.ContainerFailure.FENCE_REJECTED to PublicShellExit.RUNTIME,
+                io.github.amichne.kast.distribution.cli.ContainerFailure.PREPARATION_WAIT_EXPIRED to
+                    PublicShellExit.ELAPSED,
+            )) {
+            val output =
+                preparePublicHook(listOf("workspace", "wait", "--workspace", directory.toString()), input()) { _, _ ->
+                    Refinement.Rejected(HookPreparationFailure.Managed(failure))
+                }
+            assertEquals(exit, output.exit)
+            val cause = Json.parseToJsonElement(output.text).jsonObject.getValue("cause").jsonObject
+            assertEquals("managed", cause.getValue("type").jsonPrimitive.content)
+            assertEquals(failure.name, cause.getValue("failure").jsonPrimitive.content)
+        }
+    }
+
+    @Test
     fun `both model hooks remain passive regardless of legacy wait selection`() {
         Files.writeString(directory.resolve("settings.gradle.kts"), "")
         for ((host, waitSetting) in listOf("codex" to "none", "copilot" to "indefinite", "codex" to "1250")) {

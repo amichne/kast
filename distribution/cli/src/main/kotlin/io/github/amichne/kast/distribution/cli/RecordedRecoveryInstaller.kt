@@ -100,10 +100,10 @@ private constructor(private val root: Path, private val home: Path, private val 
             reservation: ManagedControlReservation,
         ): RecordedRecoveryInstallerAdmission {
             val staged = Path.of(reservation.staged)
+            if (staged.normalize() != staged) return rejectedRecordedInstaller()
             if (
-                staged.parent != root ||
-                    staged.normalize() != staged ||
-                    !staged.fileName.toString().startsWith(".install-")
+                !(staged.parent == root && staged.fileName.toString().startsWith(".install-") ||
+                    staged == root.parent.resolve(".kast-install-${reservation.transaction}"))
             )
                 return rejectedRecordedInstaller()
             val candidates =

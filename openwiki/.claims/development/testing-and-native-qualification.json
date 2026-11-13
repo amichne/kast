@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3aabc7768cbace0a25ceed9211d34c45cbefb9710bb310b7083148070489cc80",
+  "pageVersion": "sha256:067a361a1796c2eb0979e9e161ffc3dc29dc3ccb34f0c0290c3b30d890528e48",
   "claims": [
     {
       "id": "claim_b360f4c00a974d9fa3febbb40e81500c",
@@ -8,7 +8,7 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:5ab4803607f7ac7ca2f1fc007b435ef245af51c22688601a8fa848f819e9eddc"
+          "version": "repo-file-v1:sha256:11dec8549e5165daa64aab7e03122ae78fb8cc5e8a8838cd03375d33ee6ef5e6"
         }
       ]
     },
@@ -39,10 +39,62 @@
           "version": "repo-file-v1:sha256:fc247d569820f8ba286481b22f0f0e20ed0a4e775d1b891a51250eaa1ec189c9"
         }
       ]
+    },
+    {
+      "id": "claim_e4a051695c0d4e83b54d1dc0d2f4c5bf",
+      "statement": "The local macOS installed probe requires exact component-native qualification, pinned private interpreter inputs and an explicit isolation sandbox. Its acquisition-only schema fixture is not a complete two-target candidate, and the report explicitly withholds release qualification.",
+      "evidence": [
+        {
+          "resource": "repo://docs/development.md#L276-L312",
+          "version": "repo-lines-v1:sha256:fa9c3e32ffa150c108b055cf58e476174fcc56f9113b30e76256d349deb88a28:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJhZTE3OTZiZWUyNDVlODg5MGVjNGIyZjE0NDhmZmJiZGIxOTRiNGU0NDUwYTdhNDQ4ZmQ0YzQ5Njc3M2ZjYzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyNjM1NWE3MTJhNmZlZDNmNWI1OGQ3ZGVjYTFmYTE2N2UwMzIwZDZlMjNkYTZhNThjYmJhOTFkYTcwYTI1YmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRkYWI3YzEwMGU2NmE2YzU2MzI4NGUwOWI5YmE5NGY3OThkNTNhOWE3MjRmYWJlYjNhNGM1NGJiODU2ZTVmZTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEzMTkyM2M3MjExYjJkY2Y5NDFlZWFkMzI0YzVhMTdiYzZlNzE3NGNiNTM4ODI1MmQwNDI2N2JhNmNhNTRlODEifQ"
+        },
+        {
+          "resource": "repo://packaging/local_product_probe.py",
+          "version": "repo-file-v1:sha256:1e1118ea1b21e8958825d560f434a2312df98005571bfc14397bc47f0dc49255"
+        }
+      ]
+    },
+    {
+      "id": "claim_5387fce5b67e4e7db58bc8729558943d",
+      "statement": "Each local installed trial releases three shipped public cold queries concurrently and compares their shared compiler lifetime with a warm query. Uninstall separates the trials, and a repeated Host lifetime rejects the run.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/local_product_probe.py#L433-L461",
+          "version": "repo-lines-v1:sha256:e2bfb2654edbc89b8e922af519854832516bf5eaeed5fb7c8ed5a867ae3e0f68:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkM2Y0NjI3MGFmNGI4YzI2ZTYwODVmZDc3MmUyZTNlZTRjMjczZjdlMjFmMjdhMzFhMjA1OGQxYmI1ZGMyYTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlmZjA2MzFjNWJlYzM0YWM2ZDA4NTJiYzQ1YmY4N2M3N2RlMjgxYTFhZWNmZmI1MmY3OGQxNTQwNDA3NDcxZWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzMTIxYTI4YjRlMDczZDAyMjRjYTk5MDgyNDc3YzAzMjk5ODc3MTdjNTAzMGQ3OTgxYzViMTZkODJiMTk5NDciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmZTBhZDFmYzkwOGIzMDQxYzYwMzEwMmM5ZjkxZmFhYzA1ODdkMTQ1MDIyMDViZWEwYjViZjg2MWQ1ZmY2MDIifQ"
+        },
+        {
+          "resource": "repo://packaging/product_lifecycle_probe.py#L216-L235",
+          "version": "repo-lines-v1:sha256:e98bf230fbabee88faec7617600079ad35634f0fdcb074afdf9bb7adbc62e213:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1MWZhZDI1YjgxMzJlNzAyYzIyNGEwOGMxNGY0Y2Q0OTQ5YmVmYjQwZjk0ZTRlMTBmMmZjZjJhNDQwNmRjMjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjMDRkNjNlNTU5N2QwNDlhZGYyZDdhZmE4MjRmYWE5ZTk3MzE4MGFjZDQzNWEzODYyMDVjOWYwOWI5YTc2N2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwZmJhYTg2ZWU2MmEzNjlmMjBiOWI0NWJhMTJiNDVmMDFkODc4ODM3ZGQ2YTkyZTA1YTI2ZThlZDdlZDZlMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlNmQ0YTY2ZGM3MmU5OTY1MjIxYTg1MTYwNjU4ZjVhNDVkZjBkYWMzNTRjZDhkN2E4MzcyYzA1OWEzYjMxMzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ef749deac69b413d86739c960e4999bd",
+      "statement": "The local repair scenario damages an owned runtime file under a live Host, verifies unchanged damaged bytes through actual native retirement, then requires the original digest and a fresh compiler Host. It checks protected files and final uninstall, not public network repair selection.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/local_product_probe.py#L256-L310",
+          "version": "repo-lines-v1:sha256:0f474e84073413cc0f12e79dff10444f9c02864be15e297c396d45ffbef627a6:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlM2U3YjRlZTg2YTY5NzQyM2FmYTRkZjBlMTNkYTQ1Zjk1MTg0ZTk0Yjg4N2U3ZDllOWVhN2JiODBiMTcyYzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU1MjQ2MzY1ZWRhZmUzODA1MDljZjNkZWUyOTQzNDIzNWY0N2VmNDYwMzM2NjFmOTBjOTY1NDYyMzlkYzVhYjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlMGVmMmU0NTdkZThmN2I4MDAyN2NhZDhjYzQ3OGYzYWExZGZhZWEzMzBjNmNkNzFkYmE1OTYwOTU5NDQwMWUifQ"
+        },
+        {
+          "resource": "repo://packaging/local_product_probe.py#L462-L520",
+          "version": "repo-lines-v1:sha256:47f476ece8ab7492812d989aefd1dd0a8f43d7fcd258e213911debed4a2f411c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwOTY2MGEwMzQwNWVkMmI0YjQwZjQ3YTJmOWM5ZDZlMjk4YjAwZTdmOWVjYWMxODNiYmU4NjNhMTI3M2Y4ZWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhYWE3ZTAzYTM5OGZjNGMzZjMxNTQ5OWFiNWEwMjcxYzk1YzQyNDg3ZjQ5ZjEzNmM5OTRhOGY5ZTk0NjMyZTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyNjIxODhmYTMxYzUyNzYxMTk3OGEzMmNmMzMwYTcwNTU0ZDJlNzhiMzZkYTAxYzcwMDNhNTk3N2Q4NTA0M2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjZTE2NDZjYzY3OWU4ZDc2MmE2NDUyM2JhOTMwYjVhMzkxNzNiMDA3YzJmZmY0NmNhMTdjYzA1N2I2MzA1MzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3d4f63c2927f4f4fbde54bd0f16a093f",
+      "statement": "The local installed probe invokes the packaged coordinator with isolated Python and disabled bytecode writes. It records interpreter identity, shipped module paths and both interpreter settings, rejecting an invocation that lacks isolation or permits bytecode writes before product admission.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/local_product_probe.py",
+          "version": "repo-file-v1:sha256:1e1118ea1b21e8958825d560f434a2312df98005571bfc14397bc47f0dc49255"
+        }
+      ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-10T13:00:52.429Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-13T03:00:18.421Z"
   }
 }

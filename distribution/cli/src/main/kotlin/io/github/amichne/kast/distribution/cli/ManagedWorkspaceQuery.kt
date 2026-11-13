@@ -131,6 +131,11 @@ private constructor(
                     }
                 if (container.runtime.archiveSha256 != product.runtime.archiveSha256)
                     return Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
+                if (
+                    !java.nio.file.Files.isDirectory(container.gradleHome) ||
+                        container.gradleHome.toRealPath() != container.gradleHome
+                )
+                    return Refinement.Rejected(ContainerFailure.INVALID_GRADLE_HOME)
                 val environment =
                     configuration.launchEnvironment().variables.filterKeys {
                         it !in setOf("KAST_INSTALL_IDEA_HOME", "KAST_CONFIGURATION_FILE", "KAST_MANAGED_HEADLESS_STATE")

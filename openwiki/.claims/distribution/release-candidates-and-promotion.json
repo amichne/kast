@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8b7c62f5adad62fb7aba61ba94b48f6e7f30f8f1439a4b7d7833aaca11e5ec10",
+  "pageVersion": "sha256:336323e3e455c6c8dc2c11d4ace4037715d53e140636c05fb51b251f075fa4b6",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -155,32 +155,32 @@
           "version": "repo-lines-v1:sha256:5320d2ba9a87329b2378c1e0f7129e456152230a9a0ef122e9f3b56d26014a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNDBkMzVhMTI4ZTYyMjE5NjcxZTQ0OTE0N2Y5ZTFlNjQ2MTBiNzI2NGQyMmRmYWQ1Njg4YWMzMGQzMmIwMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5N2M3NTQxMjk2NmE4ODZiNjM1YzA3YWI3MjhkOWY3M2VlYjM4ODYzZmEwYmFmMGNmMjcwNmFkYzgwZWZiMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwY2I3M2UyMzg2ZWM2NDFhYjY2YTcxYTViMjRmNzJiNWJlNzRjMjVkMTlkOTQyZDRmNDk3MDdiZWQ3NmI3ZTAifQ"
         },
         {
-          "resource": "repo://packaging/product_lifecycle_probe.py#L307-L319",
+          "resource": "repo://packaging/product_lifecycle_probe.py#L333-L345",
           "version": "repo-lines-v1:sha256:1f2fc2991f535dab21d02226f9b089f4fd6c2cb0c06f967cc5852d2289f89f55:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmZjg2ZTUzY2I3OThlN2ZjNTlhNjUzNDY4MTZmZDcyOTVhYzA3MjYzMGI4ZmMwMzVkMDkzMWJmMmMyYjk5ZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxMTEzYmNmZTE3YTE2ZjFmNzA2ODJjNjVlMjA0M2NmYjViODQzZjhiNTY2NWQ4ZWI3MTQ4OGVkMmE3ZWUxYjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5Y2JmZjEwODVlYmEwMjdhYjBkYmRmMGQ1ZmI4ODllOGQxYmU0N2JmN2FhODUxZGI0YTJlNDg5NjhjYmUyYWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiMzliZWI2NzRjMGUyNjUxNzQ4YWY3MTJkZDlmN2Y5NDIzMWYwNDI5M2UwMTNmNzdkNGE0ODZhMTE2N2VkYTUifQ"
         }
       ]
     },
     {
       "id": "claim_6b6d0e8741004313a92d5dcbed450fb6",
-      "statement": "The installed-product probe upgrades a baseline, removes that installation, installs the fresh candidate, and verifies passive discovery before simultaneous same-root first queries. Its case inventory also requires two roots and protected deletion sentinels; source and receipt admission do not establish that these native scenarios have run.",
+      "statement": "The installed-product probe upgrades a baseline, removes it, installs the fresh candidate, and verifies passive discovery before three simultaneous shipped public same-root first queries. Every response must succeed and share the compiler Host identity of a later warm query. Its inventory also requires two roots and protected deletion sentinels; source and receipt admission do not establish that native scenarios have run.",
       "evidence": [
         {
           "resource": "repo://packaging/product_acceptance.py#L15-L45",
           "version": "repo-lines-v1:sha256:41e79b64a5218a183674a1700da2ce4396c2fc36b16edd42a88a637139eda8fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyZTlkODk5ZTQyZDMyNzkxZjBiNTExZjM0NmQ0N2M0ZjNjMzcyZGJkMjE1NmM5MjM4YjY1NmM0NjhmZjg1ZDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyZjllMjk5NGExYTc5N2FjYWI5M2I5MjAwMTAwYjBlMGMwZTlhNGU5Mzg4M2ZkNjc0MGJlZGNmZWNhYjI2OTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYzQwOGU2OWZmZjk2NzA4YmY1NTZiODJhM2I1NTE4NGQ0YzRhY2ZkMGFjY2NhMDg1MWU4Zjc2Yjc3Y2U4ODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk3YzBlZWFmYTFjZTFlZGZjZTRiOTdiMmFhMzE3ZGI2OTI5MTVjMTc1YjVlOTVlOWY2YjY3M2I3ZDZhNzBmMzkifQ"
         },
         {
-          "resource": "repo://packaging/product_lifecycle_probe.py#L364-L429",
-          "version": "repo-lines-v1:sha256:98e7fe406b5cfb21cf5e2cd36d02355f5ab7c02f19630a567d3c26e41da17234:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhNTk1ZWRjOGQwNjA0ZmJlZDYxNjdhZjI1MTI0MjhkNWIxNWIzOTU4MWYwOTljYjQyZDBiMGYzNjYwMzhiYWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMThlMmNlMmIwZmQwNzJiZjI4NTA1ZjJkY2I5MGRhZTYzNzk2MjdiN2E3YTJjMTkzNjRlMDE4MWRkMGY0NDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFkOWI3YWZmOWE5N2E0MTlmMTJjYmI5MDM3OGUzNTU0ZDk2ODc2NmZkMTlkNmU5NDQ0NGYzYWZiMjcyOTQ5NmQifQ"
+          "resource": "repo://packaging/product_lifecycle_probe.py",
+          "version": "repo-file-v1:sha256:1cdd65aa5dff65b2b303589ee523f449892259e8ee70f32f19511f2525a9cd1b"
         },
         {
-          "resource": "repo://packaging/product_lifecycle_probe.py#L447-L468",
-          "version": "repo-lines-v1:sha256:8478949add9d17d0b0ecccdad5ce5f35cd02afcd45978d0d7a3ef2ef37f9ac02:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ZmNlYzJkMmI5MjBkZGM5NjZhYjY2MGM2NzJlMDliMDM1YzFhYmNhYTc1MzE5OTU3OTViNTQ0ZDc4YzY0OTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0MTc5ZDczYjU1NDZhYjlmMGNhZTM3YmI3ZTI1NjBkNDA3MzBlN2Y2YzkxOTU2ZmI3ZDMzZmYxMDAwZGJkZWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5NGU4ZDM2NTI1YzI4NDg0YTNlNmU5NTEzYTI3ZDM1ZDYyYzI5YjYxMjg3MDgxZTM1Y2I0ZmVmOTlkOGJmMWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMzMzhjOTkxZTQ1NjMxYmNkMjhkNDI5MjM5ZDE1YjEyZjgxZTE3YWZlODJmZjcwMWQzMjJlMzJlMGU0MGUyMDIifQ"
+          "resource": "repo://packaging/test_product_acceptance.py",
+          "version": "repo-file-v1:sha256:4d7d783f11a64a790ac30cecda320891b2c8ada354df60f62f28251911e8f680"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T22:42:07.175Z"
+    "at": "2026-11-13T01:44:31.229Z"
   }
 }

@@ -36,19 +36,31 @@ internal fun retireManagedWorkspaces(
     store: ContainerStore,
     fence: () -> Refinement<Unit, ContainerFailure>,
     retire: (AdmittedContainer) -> Refinement<Unit, ContainerFailure>,
+): Refinement<Unit, ContainerFailure> = retireSelectedWorkspaces(store, store::enumerate, fence, retire)
+
+internal fun retireSelectedWorkspaces(
+    store: ContainerStore,
+    select: () -> Refinement<List<ContainerStoreEntry>, ContainerFailure>,
+    fence: () -> Refinement<Unit, ContainerFailure>,
+    retire: (AdmittedContainer) -> Refinement<Unit, ContainerFailure>,
 ): Refinement<Unit, ContainerFailure> {
     val entries =
-        when (val enumerated = store.enumerate()) {
-            is Refinement.Rejected -> return enumerated
-            is Refinement.Refined -> enumerated.value
+        when (val selected = select()) {
+            is Refinement.Rejected -> return selected
+            is Refinement.Refined -> selected.value
         }
     when (val migrated = migrateWorkspaceEntries(store, entries)) {
         is Refinement.Rejected -> return migrated
         is Refinement.Refined -> Unit
     }
     return withContainerLock(store.root) {
+        val current =
+            when (val selected = select()) {
+                is Refinement.Rejected -> return@withContainerLock selected
+                is Refinement.Refined -> selected.value
+            }
         val containers =
-            when (val admitted = retirementGenerations(store)) {
+            when (val admitted = admitWorkspaceGenerations(store, current)) {
                 is Refinement.Rejected -> return@withContainerLock admitted
                 is Refinement.Refined -> admitted.value
             }
@@ -67,7 +79,7 @@ internal fun migrateWorkspaceEntries(
 ): Refinement<List<ContainerStoreEntry>, ContainerFailure> {
     val current = mutableListOf<ContainerStoreEntry>()
     for (entry in entries) when (entry) {
-        is ContainerStoreEntry.Rejected -> return Refinement.Rejected(entry.failure)
+        is ContainerStoreEntry.Rejected -> return rejectWorkspaceEntry(entry.directory, entry.failure)
         is ContainerStoreEntry.Admitted ->
             when (val migrated = migrateLegacyWorkspace(store, entry.workspace)) {
                 is Refinement.Rejected -> return migrated
@@ -95,15 +107,6 @@ internal fun retireGenerations(
     return Refinement.Refined(Unit)
 }
 
-private fun retirementGenerations(store: ContainerStore): Refinement<List<AdmittedContainer>, ContainerFailure> {
-    val entries =
-        when (val enumerated = store.enumerate()) {
-            is Refinement.Rejected -> return enumerated
-            is Refinement.Refined -> enumerated.value
-        }
-    return admitWorkspaceGenerations(store, entries)
-}
-
 internal fun admitWorkspaceGenerations(
     store: ContainerStore,
     entries: List<ContainerStoreEntry>,
@@ -111,10 +114,10 @@ internal fun admitWorkspaceGenerations(
     val containers = mutableListOf<AdmittedContainer>()
     for (entry in entries) {
         when (entry) {
-            is ContainerStoreEntry.Rejected -> return Refinement.Rejected(entry.failure)
+            is ContainerStoreEntry.Rejected -> return rejectWorkspaceEntry(entry.directory, entry.failure)
             is ContainerStoreEntry.Admitted ->
                 when (val generation = store.admitGeneration(entry.workspace)) {
-                    is Refinement.Rejected -> return generation
+                    is Refinement.Rejected -> return rejectWorkspaceEntry(entry.workspace.directory, generation.failure)
                     is Refinement.Refined -> containers += generation.value
                 }
         }

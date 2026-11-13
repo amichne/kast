@@ -273,6 +273,44 @@ The product gate needs a clean committed checkout and uses version `0.0.0`.
 Its receipt identifies the source revision and tree. Release candidates use
 their own explicit version and qualification.
 
+### Disposable local installed acceptance
+
+On macOS ARM64, use `packaging/local_product_probe.py` to exercise the installed
+product without a published two-target release candidate. This contributor path
+does not change release admission or grant release qualification.
+
+Build a positive candidate version such as `0.0.1`. Assemble its matching Control
+and Host with `packaging/composed_release.py assemble --full-native-archives`.
+Keep the other required assembly arguments. This option retains a full runtime
+archive instead of splitting a shared base; the default release path is unchanged.
+Run `packaging/composed_release.py qualify` with those exact archives and a native
+component harness. Supply `--sandbox` when a desktop IDEA process is running.
+Qualification verifies the archive comparison before discarding its expanded copies.
+
+Supply the resulting component receipt, pinned interpreter inputs, and an explicit
+macOS sandbox profile to the local probe. Use a fresh evidence directory.
+
+```shell
+mise exec -- uv run --locked --project packaging python packaging/local_product_probe.py \
+  --bundle "$BUNDLE" --runtime "$RUNTIME" --qualification "$QUALIFICATION" \
+  --private-python-archive "$PRIVATE_PYTHON_ARCHIVE" \
+  --private-dependency "$PRIVATE_DEPENDENCY" --sandbox "$SANDBOX" \
+  --trials 4 --evidence "$EVIDENCE"
+```
+
+Each trial installs into an owned temporary HOME, releases three cold queries
+concurrently, and checks a shared compiler lifetime with a warm query.
+Uninstall separates the trials. The final trial damages an owned runtime file
+while its Host is live. Repair uses the packaged coordinator and real retirement
+child, then checks restored bytes and a fresh Host. The probe checks protected
+files and desktop process identities before final removal.
+
+Local acquisition uses a schema fixture with no Linux payload or real CI producer.
+Its report explicitly records `releaseQualification=NOT_ESTABLISHED`. It does not
+prove public network acquisition, `kast upgrade --repair` selection, a different-build
+upgrade, Linux behavior, or complete product qualification. Failure retains the
+disposable root named in `disposable-root.txt`; inspect it before cleanup.
+
 ## CI candidates and developer publication
 
 CI selects its plan from the exact diff.

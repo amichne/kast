@@ -18,7 +18,9 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /** Inert vendor files plus production workspace admission; the peer supplies transport observations only. */
-internal class NativeManagedWorkspaceFixture(fixture: NativePublicFixture) {
+internal class NativeManagedWorkspaceFixture(installation: Path, workspace: Path) {
+    constructor(fixture: NativePublicFixture) : this(fixture.installation, fixture.workspace)
+
     val deployment: ManagedHeadlessInstallation
 
     init {
@@ -26,7 +28,7 @@ internal class NativeManagedWorkspaceFixture(fixture: NativePublicFixture) {
         val record = NativeProductRecord()
         val mac = System.getProperty("os.name").startsWith("Mac")
         val target = record.targets.single { it.target == if (mac) "macos-aarch64" else "linux-x86_64" }
-        val store = fixture.installation.parent.resolveSibling("kast-workspaces")
+        val store = installation.parent.resolveSibling("kast-workspaces")
         Files.createDirectories(
             store,
             PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")),
@@ -59,8 +61,9 @@ internal class NativeManagedWorkspaceFixture(fixture: NativePublicFixture) {
                 )
             ),
         )
-        val recordPath = fixture.installation.resolve("share/kast/build-record.json")
-        val selectionPath = fixture.installation.resolve("share/kast/product-selection.json")
+        val recordPath = installation.resolve("share/kast/build-record.json")
+        val selectionPath = installation.resolve("share/kast/product-selection.json")
+        Files.createDirectories(recordPath.parent)
         Files.writeString(recordPath, json.encodeToString(record))
         Files.writeString(
             selectionPath,
@@ -73,7 +76,7 @@ internal class NativeManagedWorkspaceFixture(fixture: NativePublicFixture) {
                 )
             ),
         )
-        val manifestPath = fixture.installation.resolve("installation.json")
+        val manifestPath = installation.resolve("installation.json")
         val manifest = json.decodeFromString<InstallationManifest>(Files.readString(manifestPath))
         Files.writeString(
             manifestPath,
@@ -84,7 +87,7 @@ internal class NativeManagedWorkspaceFixture(fixture: NativePublicFixture) {
                             listOf(recordPath, selectionPath).map {
                                 Files.setPosixFilePermissions(it, PosixFilePermissions.fromString("rw-r--r--"))
                                 PayloadFile(
-                                    fixture.installation.relativize(it).toString(),
+                                    installation.relativize(it).toString(),
                                     "sha256:${nativeDigest(it)}",
                                     420,
                                 )
@@ -92,9 +95,8 @@ internal class NativeManagedWorkspaceFixture(fixture: NativePublicFixture) {
                 )
             ),
         )
-        val root =
-            (FilesystemCanonicalRootDiscovery.discover(fixture.workspace) as CanonicalRootDiscovery.Discovered).root
-        val admitted = ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap())
+        val root = (FilesystemCanonicalRootDiscovery.discover(workspace) as CanonicalRootDiscovery.Discovered).root
+        val admitted = ManagedWorkspaceQuery.open(installation, root, emptyMap())
         check(admitted is Refinement.Refined) { "Managed fixture admission failed: $admitted" }
         admitted.value.use { query ->
             val launch = SelectedIdeInstallation.resolve(idea)

@@ -23,7 +23,8 @@ internal fun perform(command: ManagementCommand, output: ManagementOutput = Mana
             presentProvisioning(installGuidance(root, Path.of(home), command.target, environment), command.json, output)
         is ManagementCommand.Versions -> printSelectableBuilds(command.json, output)
         is ManagementCommand.Upgrade -> upgradeSelectedBuild(root, Path.of(home), command, environment, output)
-        ManagementCommand.Uninstall -> uninstallInstallation(root, Path.of(home), present = output::message)
+        ManagementCommand.Uninstall ->
+            uninstallInstallation(root, Path.of(home), present = output::message, environment = environment)
         is ManagementCommand.ForceUninstall -> {
             val scope =
                 when (val admitted = PublicResetScope.admit(root, environment)) {

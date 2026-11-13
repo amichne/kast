@@ -27,7 +27,9 @@ class RetirementConfiguration(Enum):
     CURRENT = 'current'
     LEGACY_ENABLED_OWNER = 'legacy-enabled-owner'
 
-CONTROL_MAXIMUM_ENTRIES = 16384
+# Installed inventory includes the separately admitted pinned interpreter.
+# The original Control archive retains its independent 16,384-member bound.
+CONTROL_MAXIMUM_ENTRIES = 32768
 CONTROL_MANIFEST_MAXIMUM_BYTES = 67108864
 UNINSTALL_JOURNAL_MAXIMUM_BYTES = 1048576
 

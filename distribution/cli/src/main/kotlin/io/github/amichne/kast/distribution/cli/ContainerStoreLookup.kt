@@ -23,7 +23,8 @@ private fun ContainerStore.readEntries(
     var count = 0
     for (directory in entries) {
         val name = directory.fileName.toString()
-        if (name.startsWith(".creating-") || name.startsWith(".removing-")) continue
+        if (name.startsWith(".creating-") || name.startsWith(".removing-") || containerFinderMetadata(directory))
+            continue
         count += 1
         if (count > MAXIMUM_CONTAINER_ENTRIES) return Refinement.Rejected(ContainerFailure.CAPACITY_EXCEEDED)
         result +=
@@ -34,6 +35,11 @@ private fun ContainerStore.readEntries(
     }
     return Refinement.Refined(result)
 }
+
+internal fun containerFinderMetadata(path: Path): Boolean =
+    path.fileName.toString() == ".DS_Store" &&
+        Files.isRegularFile(path, NOFOLLOW_LINKS) &&
+        Files.getOwner(path, NOFOLLOW_LINKS) == Files.getOwner(path.parent, NOFOLLOW_LINKS)
 
 /** Read-only workspace selection never publishes records or repairs their generations. */
 internal fun ContainerStore.select(selector: String): Refinement<AdmittedContainer, ContainerFailure> = containerFiles {

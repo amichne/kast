@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import uuid
 import zipfile
+from contextlib import ExitStack
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
@@ -20,6 +21,7 @@ import managed_product as product
 import managed_release as release
 import managed_update_contract as contract
 import managed_update_journal as journal
+import product_mcp_removal
 import runtime_base
 from composition_platform import HostPlatform
 from managed_headless import AssemblyRecord
@@ -39,6 +41,7 @@ class InstallationManifest:
     stateRoot: str
     configuration: str
     workspaceRegistry: str
+    codexHome: str
     payloadFiles: tuple[PayloadFile, ...]
     controlSha256: str
     payloadIdentity: str
@@ -106,6 +109,7 @@ def runtime_metadata(
 
 def read_runtime(reference: product.ProductReference) -> None:
     root = Path(reference.runtimeRoot)
+    _ = immutable_store.reusable(root, "RUNTIME", reference.runtimeArchiveSha256)
     raw = install.read_record(root / "manifest.json", product.MAXIMUM_MANIFEST_BYTES)
     if hashlib.sha256(raw).hexdigest() != reference.runtimeManifestSha256:
         raise ValueError("runtime manifest changed")
@@ -120,10 +124,17 @@ def read_runtime(reference: product.ProductReference) -> None:
     if install.read_record(assembly) != runtime_metadata(reference, manifest):
         raise ValueError("runtime assembly changed")
     product.verify_runtime(root, manifest, assembly=prefix + "/kast-headless.json")
-    _ = immutable_store.admit(root, "RUNTIME", reference.runtimeArchiveSha256)
 
 
 def publish_runtime(admitted: product.AdmittedProduct, reference: product.ProductReference) -> None:
+    _ = prepare_runtime(admitted, reference, immutable_store.RepairPolicy.REJECT)
+
+
+def prepare_runtime(
+    admitted: product.AdmittedProduct,
+    reference: product.ProductReference,
+    policy: immutable_store.RepairPolicy,
+) -> tuple[immutable_store.DamagedEntry, ...]:
     destination = Path(reference.runtimeRoot)
     archive = admitted.runtime.parent / admitted.target.runtime.name
     if release.file_digest(archive) != reference.runtimeArchiveSha256:
@@ -132,15 +143,24 @@ def publish_runtime(admitted: product.AdmittedProduct, reference: product.Produc
         if incoming.read("manifest.json") != (admitted.runtime / "manifest.json").read_bytes():
             raise ValueError("runtime manifest changed after admission")
     product.verify_runtime(admitted.runtime, admitted.manifest)
+    damaged: tuple[immutable_store.DamagedEntry, ...] = ()
     if admitted.base is not None:
-        publish_base(admitted, destination.parent.parent.with_name("kast-runtime-bases"))
+        damaged = prepare_base(
+            admitted, destination.parent.parent.with_name("kast-runtime-bases"), policy
+        )
     private_directory(destination.parent)
+    immutable_store.recover_publications(
+        destination.parent, "RUNTIME", source=archive, target=admitted.target.target
+    )
     if os.path.lexists(destination):
-        read_runtime(reference)
-        return
+        pending = immutable_store.deferred_reuse(
+            destination, "RUNTIME", reference.runtimeArchiveSha256, policy, source=archive
+        )
+        if not pending:
+            read_runtime(reference)
+        return damaged + pending
     # Only a fully populated private directory may become the digest-addressed runtime.
-    with tempfile.TemporaryDirectory(prefix=".runtime-", dir=destination.parent) as temporary:
-        staged = Path(temporary) / "payload"
+    with immutable_store.publication(destination.parent, admitted, "RUNTIME") as staged:
         _ = shutil.copytree(admitted.runtime, staged, symlinks=True)
         product.verify_runtime(staged, admitted.manifest)
         prefix = "host" if admitted.manifest.platform.is_linux else "host/Kast.app/Contents"
@@ -172,20 +192,44 @@ def publish_runtime(admitted: product.AdmittedProduct, reference: product.Produc
         install.rename_file_no_replace(staged, destination)
         install.RECOVERY.sync(destination.parent)
     read_runtime(reference)
+    return damaged
 
 
 def publish_base(admitted: product.AdmittedProduct, parent: Path) -> None:
+    _ = prepare_base(admitted, parent, immutable_store.RepairPolicy.REJECT)
+
+
+def prepare_base(
+    admitted: product.AdmittedProduct, parent: Path, policy: immutable_store.RepairPolicy
+) -> tuple[immutable_store.DamagedEntry, ...]:
     assert admitted.base is not None
     source, metadata, composition = admitted.base
     private_directory(parent)
     destination = parent / composition.base.sha256
+    immutable_store.recover_publications(
+        parent,
+        "BASE",
+        source=admitted.runtime.parent / composition.base.name,
+        target=admitted.target.target,
+    )
     if os.path.lexists(destination):
-        retained = immutable_store.admit(destination, "BASE", composition.base.sha256)
+        pending = immutable_store.deferred_reuse(
+            destination,
+            "BASE",
+            composition.base.sha256,
+            policy,
+            source=admitted.runtime.parent / composition.base.name,
+        )
+        retained = immutable_store.original_entry(
+            destination,
+            "BASE",
+            composition.base.sha256,
+            source=admitted.runtime.parent / composition.base.name,
+        )
         if retained.manifest != (source / runtime_base.BASE_MANIFEST).read_bytes():
             raise ValueError("base changed after admission")
-        return
-    with tempfile.TemporaryDirectory(prefix=".base-", dir=parent) as temporary:
-        staged = Path(temporary) / "payload"
+        return pending
+    with immutable_store.publication(parent, admitted, "BASE") as staged:
         verified = runtime_base.extract_base(
             admitted.runtime.parent / composition.base.name, composition, staged
         )
@@ -202,6 +246,7 @@ def publish_base(admitted: product.AdmittedProduct, parent: Path) -> None:
         install.rename_file_no_replace(staged, destination)
         install.RECOVERY.sync(parent)
     _ = immutable_store.admit(destination, "BASE", composition.base.sha256)
+    return ()
 
 
 def reference_at(control: Path, root: Path) -> product.ProductReference:
@@ -252,8 +297,16 @@ def admit_prior(root: Path) -> journal.NoPrevious | journal.PhysicalPrevious:
     _ = install.LIFECYCLE.Installation.admit(str(active))
     _ = reference_at(active, root)
     # A legacy runtime/state requires its lifecycle owner's retirement proof, not a guess.
-    if {path.name for path in active.iterdir()} - {"bin", "lib", "share", "installation.json"}:
+    if {path.name for path in active.iterdir()} - {
+        "bin",
+        "lib",
+        "share",
+        "config",
+        "state",
+        "installation.json",
+    }:
         raise ValueError("legacy or live installation state requires retirement")
+    verify_replacement_state(active)
     slot = root / "recovery/replacement"
     return journal.PhysicalPrevious(
         "PHYSICAL",
@@ -262,6 +315,58 @@ def admit_prior(root: Path) -> journal.NoPrevious | journal.PhysicalPrevious:
         str(slot / "payload"),
         str(slot / "recovery"),
     )
+
+
+def verify_client_configuration(control: Path, *, partial: bool = False) -> None:
+    configuration = control / "config"
+    if not os.path.lexists(configuration):
+        return
+    immutable_store.physical(configuration)
+    entries = {path.name for path in configuration.iterdir()}
+    if entries != {"environment"} and not (partial and not entries):
+        raise ValueError("unrecognized installation configuration")
+    if entries:
+        _ = install.read_record(configuration / "environment", 262_144)
+
+
+def verify_replacement_state(control: Path) -> None:
+    verify_client_configuration(control)
+    _ = product_mcp_removal.empty_invocation_directories(control)
+    state = control / "state"
+    if os.path.lexists(state) and {child.name for child in state.iterdir()} - {"run"}:
+        raise ValueError("unrecognized replacement state")
+
+
+def materialize_client_entries(stage: Path, active: Path) -> None:
+    """Complete the installed facade contract before recording immutable payload bytes."""
+    configuration = stage / "config/environment"
+    configuration.parent.mkdir(mode=0o700)
+    prior = active / "config/environment"
+    content = (
+        install.read_record(prior, 262_144)
+        if os.path.lexists(prior)
+        else b"# Kast runtime configuration. Values are literal; shell syntax is not evaluated.\n"
+    )
+    with configuration.open("xb") as output:
+        _ = output.write(content)
+    configuration.chmod(0o600)
+    # These are host-interface adapters, not a second semantic dispatch owner.
+    # Raw launchers retain their internal entrypoint and native-image arguments.
+    for executable in ("kast", "kast-query", "kast-mcp", "kast-tool-rpc", "kast-codex"):
+        launcher = stage / "bin" / (executable + "-complete")
+        with launcher.open("x") as output:
+            _ = output.write(
+                "#!/bin/sh\nset -eu\n"
+                '[ ! -L "$0" ] || exit 1\n'
+                'script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)\n'
+                'installation_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)\n'
+                'if [ -z "${KAST_CONFIGURATION_FILE+x}" ]; then\n'
+                '  export KAST_CONFIGURATION_FILE="$installation_root/config/environment"\n'
+                "fi\nunset KAST_SESSION_ROOT\n"
+                '[ ! -e "$installation_root/.recovery-detached" ] || exit 1\n'
+                f'exec "$script_dir/{executable}" "$@"\n'
+            )
+        launcher.chmod(0o755)
 
 
 def require_empty_workspaces(root: Path) -> None:
@@ -405,7 +510,11 @@ def activate(
     if dry_run:
         return ProductPlanned(reference)
     try:
-        with install.management_lock(root), install.RECOVERY.managed_control_lock(root):
+        with (
+            install.management_lock(root),
+            install.RECOVERY.managed_control_lock(root),
+            ExitStack() as preparation,
+        ):
             install.emit(contract.Stage.PREPARATION, "STARTED")
             if os.path.lexists(root / "recovery/replacement") or os.path.lexists(
                 root / "shutdown.json"
@@ -420,13 +529,25 @@ def activate(
                 != admitted.components.control_digest
             ):
                 raise ValueError("Control archive changed")
-            publish_runtime(admitted, reference)
+            damaged = prepare_runtime(admitted, reference, immutable_store.RepairPolicy.PREPARE)
             token = str(uuid.uuid4())
-            stage = root / (".install-" + token)
+            immutable_store.physical(root.parent)
+            stage = root.parent / (".kast-install-" + token)
+            stage.mkdir(mode=0o700)
+            _ = preparation.callback(
+                clean_control_stage, root, stage, journal.Identity.observe(stage)
+            )
+            if stage.stat().st_dev != root.stat().st_dev:
+                raise ValueError("Control staging crosses filesystem")
+            extracted = stage / "payload"
             if isinstance(
-                release.extract_control(admitted.components.control_archive, stage), release.Failure
+                release.extract_control(admitted.components.control_archive, extracted),
+                release.Failure,
             ):
                 raise ValueError("Control restaging")
+            for child in extracted.iterdir():
+                install.rename_file_no_replace(child, stage / child.name)
+            extracted.rmdir()
             metadata = stage / "share/kast"
             if interpreter is not None:
                 if interpreter.pin.target != admitted.target.target:
@@ -436,6 +557,8 @@ def activate(
                 _ = output.write(admitted.record)
             with (metadata / "product-selection.json").open("xb") as output:
                 _ = output.write(install.encoded(reference))
+            active = root / "installation"
+            materialize_client_entries(stage, active)
             files = tuple(
                 PayloadFile(
                     path.relative_to(stage).as_posix(),
@@ -443,14 +566,14 @@ def activate(
                     stat.S_IMODE(path.stat().st_mode),
                 )
                 for path in sorted(stage.rglob("*"))
-                if path.is_file()
+                if path.is_file() and path.relative_to(stage).parts[0] in ("bin", "lib", "share")
             )
-            active = root / "installation"
             manifest = InstallationManifest(
                 str(active),
                 str(active / "state"),
                 str(active / "config/environment"),
                 str(active / "config/workspaces.json"),
+                str(home / ".codex"),
                 files,
                 "sha256:" + admitted.components.control_digest,
                 "sha256:" + reference.buildRecordSha256,
@@ -462,7 +585,7 @@ def activate(
             private_directory(command.parent)
             # Publish the existing journal only after every receipt/preimage is durable.
             # A failed preparation cannot leave an unresumable canonical journal slot.
-            with tempfile.TemporaryDirectory(prefix=".prepare-", dir=slot.parent) as temporary:
+            with tempfile.TemporaryDirectory(prefix=".kast-prepare-", dir=root.parent) as temporary:
                 prepared = Path(temporary)
                 preimage = prepared_preimage(
                     root / "management.json", prepared, slot, "management-preimage"
@@ -479,6 +602,7 @@ def activate(
                     )
                     if not install.file_matches(command, old.executableSha256, 0o755):
                         raise ValueError("previous product management")
+                immutable_store.prepare_resets(prepared, admitted, damaged, token)
                 record = journal.Replacement(
                     1,
                     journal.ReplacementStage.PREPARED,
@@ -508,6 +632,7 @@ def activate(
                 install.RECOVERY.save(prepared / "receipt.json", record)
                 install.rename_file_no_replace(prepared, slot)
                 install.RECOVERY.sync(slot.parent)
+                install.RECOVERY.sync(root.parent)
             return resume_locked(root, home, record, runner)
     except (
         OSError,
@@ -519,6 +644,18 @@ def activate(
         KeyboardInterrupt,
     ) as problem:
         return failed(root, problem)
+
+
+def clean_control_stage(root: Path, stage: Path, witness: journal.Identity) -> None:
+    # A published journal takes ownership, including an uncertain journal rename.
+    # Before that transition only this call's fresh allocation may be removed.
+    if os.path.lexists(root / "recovery/replacement") or not os.path.lexists(stage):
+        return
+    immutable_store.physical(stage)
+    if journal.Identity.observe(stage) != witness:
+        raise ValueError("Control staging directory replaced")
+    install.LIFECYCLE.delete_tree(stage)
+    install.RECOVERY.sync(stage.parent)
 
 
 def prepared_preimage(
@@ -535,6 +672,13 @@ def failed(root: Path, problem: BaseException) -> contract.Rejected | contract.R
     failure = (
         problem.failure
         if isinstance(problem, install.StageRejected)
+        else contract.Rejected(
+            contract.Stage.PREPARATION,
+            contract.Failure.CONTROL_REJECTED,
+            journal.Failure.CONTROL_LIMIT.value,
+        )
+        if isinstance(problem, journal.Rejected)
+        and problem.failure is journal.Failure.CONTROL_LIMIT
         else contract.Rejected(
             contract.Stage.PREPARATION,
             contract.Failure.CANCELLED
@@ -586,7 +730,11 @@ def resume_locked(
         or record.installation != str(active)
         or record.schemaVersion != 1
         or str(uuid.UUID(reservation.transaction)) != reservation.transaction
-        or reservation.staged != str(root / (".install-" + reservation.transaction))
+        or reservation.staged
+        not in (
+            str(root.parent / (".kast-install-" + reservation.transaction)),
+            str(root / (".install-" + reservation.transaction)),
+        )
         or selected.management.destination != str(root / "management.json")
         or selected.publicExecutable.destination != str(home / ".local/bin/kast")
         or selected.phase
@@ -614,7 +762,9 @@ def resume_locked(
         current, active, record.installationIdentity, reservation
     )
     reference = reference_at(current, root)
-    read_runtime(reference)
+    resets = immutable_store.reset_preflight(root, current, reference, record)
+    if not any(item.proof.kind == "RUNTIME" for item, _ in resets):
+        read_runtime(reference)
     if (
         release.file_digest(current / "share/kast/product-selection.json")
         != selected.selectionSha256
@@ -653,6 +803,8 @@ def resume_locked(
         selected = record.product
         assert selected is not None
     require_fence(root, selected)
+    immutable_store.finish_resets(root, current, reference, record)
+    read_runtime(reference)
     if isinstance(previous, journal.PhysicalPrevious):
         prior = install.RECOVERY.managed_previous(active, slot, previous)
         if prior is None:
@@ -798,9 +950,11 @@ def verify_previous(path: Path, manifest_sha256: str | None) -> None:
     if (
         manifest_sha256 is None
         or release.file_digest(path / "installation.json") != manifest_sha256
-        or {entry.name for entry in path.iterdir()} - {"bin", "lib", "share", "installation.json"}
+        or {entry.name for entry in path.iterdir()}
+        - {"bin", "lib", "share", "config", "state", "installation.json"}
     ):
         raise ValueError("previous payload changed")
+    verify_replacement_state(path)
     install.LIFECYCLE.verify_payload(
         path, release.document(install.read_record(path / "installation.json", 67_108_864))
     )

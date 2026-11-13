@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:13a74d3e0fa10384e989145a197fc4be085f1263b7c09435cf0210b221aa5b59",
+  "pageVersion": "sha256:822c3aceafa3c6a9dd5e481f5948a1026585c721bc27f59b60460222907ab64f",
   "claims": [
     {
       "id": "claim_9afc4ce3301b4badb9651eeb2f54f674",
@@ -18,15 +18,19 @@
     },
     {
       "id": "claim_e26a437aa26b41068e118b49725d068c",
-      "statement": "PreparedWorkspaceDemand inspects exact current host identity before dispatch and limits recovery to explicit presemantic cases.",
+      "statement": "PreparedWorkspaceDemand inspects exact Host/project identity before dispatch. Readiness recovery retries once inside the managed lease for typed model reload or exact admitted read freshness movement at MODEL_CAPTURE or CONTENT_REVALIDATION. Plans retry only presemantic model reload; mutations and status never replay. Repreparation cannot replace the captured Host/project, and retry exhaustion preserves the second rejection.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt",
-          "version": "repo-file-v1:sha256:fb7546edb36fa61ced081321127ab8d8c054c34e6fbf4f877c57ff37048565b8"
+          "version": "repo-file-v1:sha256:20184f3abeb573cdef78d710a91a3bcb37f671edf2bf1179c8ae9919d54ae269"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt#L19-L19",
-          "version": "repo-lines-v1:sha256:cb4a27a0aa7807c3bdea018950aef58556531af78d1cf629db990b35c17a8555:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I0YTI3YTBhYTc4MDdjM2JkZWEwMTg5NTBhZWY1ODU1NjUzMWFmNzhkMWNmNjI5ZGI5OTBiMzVjMTdhODU1NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I0YTI3YTBhYTc4MDdjM2JkZWEwMTg5NTBhZWY1ODU1NjUzMWFmNzhkMWNmNjI5ZGI5OTBiMzVjMTdhODU1NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDhmYmVhYzlkYWY3ZjU4M2ExZWMzNzhjZGNhY2YyZjRhODE1OWEzYzNkODBkMmY3NGQxNGY1N2RjNDkzNDczMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmIyZjZkMWEzMDNhNjk5NDJlZDEzNzIzYWFjMjk1ODQ5YzBiZjg5NDc5Y2UyN2NhYzQ3NjE2YzIzZTg5YjJjMiJ9"
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/PreparedWorkspaceReadinessRetryTest.kt",
+          "version": "repo-file-v1:sha256:c24800e9630b0efa6b94e7a881913fe9492a6d6ae170775d8a9d42cabd0b8707"
+        },
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt",
+          "version": "repo-file-v1:sha256:4c2479c312f796c1b92b9310bb281ecda855d2554823d29b224e911b461969b6"
         }
       ]
     },
@@ -73,7 +77,7 @@
       "statement": "Managed request admission selects locally installed runtime and private workspace state per request; preparation may create exact-root trust, while retained reads require existing state.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L160-L205",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L165-L210",
           "version": "repo-lines-v1:sha256:fe54899323afe2e516f965e308c4f6989ee26700ce2c16c8ff6b9df06ee01cd9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExM2M5ZjgzM2M3MDdkMWJkYmE3NWYwY2I4MmFiMWI0NDNkMWY1YjI1ZGVlNWRkODBmMzE2MTE4MGIxOTg4M2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZjljOWFjMWY4ZmZmNzMwYzRlNTU3YzczOTUzNzAxODYwZGUwODIzOTYyYWFlN2EwZDI1NmFjMGMwNTA5NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMzQwNzEwYjJmZDU5NGRiYzRjN2U2YzZlMTgzM2ZiMTVlM2Q1YjUwYzAyOGNhODllNWJlYTM2MzgyMjIzNTEifQ"
         },
         {
@@ -85,6 +89,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T22:50:57.382Z"
+    "at": "2026-11-13T00:41:13.770Z"
   }
 }

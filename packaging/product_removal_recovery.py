@@ -35,6 +35,7 @@ def capture(
             continue
         store.physical(parent)
         identities.append(journal.Identity.observe(parent))
+        store.recover_publications(parent, kind, target=reference.target)
         for child in sorted(parent.iterdir()):
             if len(proofs) >= 1024:
                 raise ValueError("immutable entry limit")
@@ -180,7 +181,9 @@ def prepare(root: Path, path: Path) -> store.ProductRemoval:
         control = bundle / "control"
         private(control)
         for entry in sorted(payload.rglob("*")):
-            if entry.relative_to(payload).parts[0] == "state":
+            # Recovery execution needs the immutable import tree, not saved owner
+            # input or native invocation state. Kotlin admits this same inventory.
+            if entry.relative_to(payload).parts[0] in {"state", "config"}:
                 continue
             if entry.is_symlink():
                 raise ValueError("linked original payload")

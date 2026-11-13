@@ -327,6 +327,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt
   - id: openwiki-source-dfb88490277ececa651be1f8
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt
+  - id: openwiki-source-e62300b4b70eef650b59f1db
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RejectedWorkspaceRemoval.kt
   - id: openwiki-source-d258f44cd873e00e544ca7ed
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt
   - id: openwiki-source-d6537b8c3c1d3e623334d7d1
@@ -349,8 +351,8 @@ sources:
     resource: repo://distribution/release/test_run_product_gate.py
   - id: openwiki-source-81d5f1627e19148569f46f81
     resource: repo://gradle/libs.versions.toml
-  - id: openwiki-source-03ffc32a0ca502ab67c54b25
-    resource: repo://install.sh
+  - id: openwiki-source-74a7088da9d18da2237d9186
+    resource: repo://packaging/bootstrap.sh.in
   - id: openwiki-source-245e3f9878cb2ef01a1fcbd1
     resource: repo://packaging/component_probe.py
   - id: openwiki-source-d53edde1666c585216ff3c8d
@@ -365,6 +367,8 @@ sources:
     resource: repo://packaging/container_probe.py
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
+  - id: openwiki-source-ab52e7c01cf17ee137f833e7
+    resource: repo://packaging/immutable_store.py
   - id: openwiki-source-4070dc53852de69cdff3bd47
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-1fb25dc686d01d69495da290
@@ -391,6 +395,8 @@ sources:
     resource: repo://packaging/runtime_archive.py
   - id: openwiki-source-0b3a81cf548ab371bc04037e
     resource: repo://packaging/runtime_base.py
+  - id: openwiki-source-fbdf7de26cc8b3b5b59b53a6
+    resource: repo://packaging/test_product_acceptance.py
   - id: openwiki-source-7fa48d17b46dccf82f4b3238
     resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-d124e13c6fde72403a229a1e
@@ -403,10 +409,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "amp", at: "2026-11-12T22:30:36.769Z" }
+generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:50:57.382Z
+    at: 2026-11-13T03:20:11.225Z
 ---
 
 # Distribution and packaging
@@ -423,6 +429,11 @@ The first explicit semantic request creates trust for one exact canonical Gradle
 CLI, MCP, and RPC share that request owner; session hooks and MCP initialization remain passive.
 Scoped stop is temporary. Upgrade retirement first acquires exclusive query leases, then fences and retires exact generations.
 Vanished-root reclamation requires settled private evidence and retains an exterior receipt after interrupted deletion.
+
+Uninstall removes its own unchanged preparation fence when no removal journal was committed.
+Inactive rejected workspace records need exclusive access and private-state admission before removal.
+Repair stages verified runtime/base replacements in the existing journal and resets damaged owned bytes only after Host retirement.
+Interrupted reset resumes from retained bytes without deleting repositories, workspace profiles, or external Gradle homes.
 
 Native qualification is not complete. Component qualification now precedes sealed-product admission and detached installed-product acceptance.
 The stages below replace the earlier circular setup route without claiming successful native Host execution.
@@ -477,7 +488,7 @@ The installed probe first upgrades the baseline to the candidate and checks a ch
 It then uninstalls that product and installs the candidate again without retained managed workspace state.
 Before any semantic request, it checks help, status, description help, query planning, and the RPC catalog.
 These passive calls must not create semantic workspace state.
-Two simultaneous first queries to one root must share the lifetime observed by a later query.
+Three simultaneous shipped public first queries to one root must all succeed and share the compiler Host identity observed by a later query.
 This is a fresh-install check, not merely parallel requests to a warm Host.
 
 The probe also checks CLI, MCP, RPC, stop/restart, simultaneous requests across two roots, and edits.

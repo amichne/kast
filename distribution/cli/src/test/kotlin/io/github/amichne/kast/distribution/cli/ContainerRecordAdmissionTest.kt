@@ -17,6 +17,22 @@ class ContainerRecordAdmissionTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `workspace rejection diagnostics preserve the exact entry and finite cause`() {
+        val encoded =
+            containerJson.encodeToString(WorkspaceEntryRejection("bad-entry", ContainerFailure.INVALID_RECORD))
+        val document = containerJson.parseToJsonElement(encoded).jsonObject
+        assertEquals(
+            setOf("entry", "failure", "stage", "outcome", "recovery"),
+            document.keys,
+        )
+        assertEquals("bad-entry", document.getValue("entry").jsonPrimitive.content)
+        assertEquals("INVALID_RECORD", document.getValue("failure").jsonPrimitive.content)
+        assertEquals("SHUTDOWN", document.getValue("stage").jsonPrimitive.content)
+        assertEquals("REJECTED", document.getValue("outcome").jsonPrimitive.content)
+        assertEquals("kast uninstall", document.getValue("recovery").jsonPrimitive.content)
+    }
+
+    @Test
     fun `a leased workspace prevents every upgrade fence and Host retirement`() {
         val store =
             ContainerStore(

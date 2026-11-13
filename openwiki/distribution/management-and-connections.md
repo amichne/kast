@@ -39,6 +39,10 @@ sources:
     resource: repo://cli/src/main/native-launchers/bin/kast-mcp
   - id: openwiki-source-75e91bf709db8b5e164b1b31
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
+  - id: openwiki-source-97c3915cf78feeb35ecec04a
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerProgress.kt
+  - id: openwiki-source-22e272ee16fcff0c22f636ab
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStateAdmission.kt
   - id: openwiki-source-5640c4be5bb8760f0f77a90d
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/CopilotPluginInstallation.kt
   - id: openwiki-source-b6ffac113b6a09198425b019
@@ -59,6 +63,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceLifecycle.kt
   - id: openwiki-source-ecb21af09f4a49f9e40342dd
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
+  - id: openwiki-source-7cea1ff036129ab5e1cebfe3
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt
   - id: openwiki-source-1d4cdf342ee112e0d9d87924
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementReceiptAdmission.kt
   - id: openwiki-source-a62e12ff14ead337deede61b
@@ -75,6 +81,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProviderRegistration.kt
   - id: openwiki-source-dfb88490277ececa651be1f8
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt
+  - id: openwiki-source-e62300b4b70eef650b59f1db
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RejectedWorkspaceRemoval.kt
   - id: openwiki-source-656a2bd4859ff8a64d431829
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt
   - id: openwiki-source-d9ace9189c53b7c82c5ed60c
@@ -97,10 +105,10 @@ sources:
     resource: repo://packaging/product_acceptance.py
   - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
     resource: repo://packaging/product_lifecycle_probe.py
-generated: { by: "amp", at: "2026-11-12T22:22:29.747Z" }
+generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:22:29.747Z
+    at: 2026-11-13T03:20:11.225Z
 ---
 
 # Native management and harness connections
@@ -127,6 +135,13 @@ Overlapping roots reject. Retained reads require an existing record; discovery a
 The `kast-workspaces` sibling of the Control management root stores profiles outside the replaceable installation.
 Each generation has private settings, indexes, logs, HOME, and default Gradle state.
 Saved configuration can select an existing external Gradle home. Inherited credentials remain available; this is not an OS sandbox.
+
+Durable record admission preserves the configured Gradle path even if that directory disappears.
+Launch binding checks its current availability and physical identity, returning `INVALID_GRADLE_HOME` when those facts cannot be established.
+An ordinary user-owned `.DS_Store` does not count as a workspace entry; linked or foreign entries still reject admission.
+Global lifecycle rejection names the workspace entry and its finite cause.
+Explicit uninstall can remove an inactive rejected record under its exclusive lease after private-state and mutation checks.
+That recovery does not permit retirement of an unproven live Host or deletion outside the private profile.
 
 A request owns its reader lease, rather than an entire MCP or RPC session.
 Installed product identity is rechecked before generation publication and binding.

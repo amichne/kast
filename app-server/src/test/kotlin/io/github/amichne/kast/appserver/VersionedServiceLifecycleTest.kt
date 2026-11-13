@@ -123,10 +123,14 @@ class VersionedServiceLifecycleTest {
     @Test
     fun `traversal budget applies across all payload trees`(@TempDir root: Path) {
         val installation = product(root.resolve("product"))
+        // Each tree fits individually; their combined entries exceed the installed traversal budget.
         for (tree in listOf("bin", "lib", "share")) {
-            repeat(5_500) { Files.createDirectory(installation.resolve("$tree/d-$it")) }
+            repeat(11_000) { Files.createDirectory(installation.resolve("$tree/d-$it")) }
         }
-        assertTrue(BrokerInstallationState.admit(installation) is Refinement.Rejected)
+        assertEquals(
+            Refinement.Rejected(InstallationStateFailure.PAYLOAD_LIMIT_EXCEEDED),
+            BrokerInstallationState.admit(installation),
+        )
         assertFalse(Files.exists(installation.resolve("state")))
     }
 

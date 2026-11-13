@@ -6,6 +6,7 @@ import io
 import json
 import os
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
@@ -13,6 +14,7 @@ import tarfile
 import tempfile
 import unittest
 import zipfile
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import cast
@@ -21,6 +23,7 @@ from unittest.mock import patch
 import bootstrap_entry
 import composed_bundle
 import generate_bootstrap
+import immutable_store
 import managed_installation as install
 import managed_product as staging
 import managed_product_installation as activation
@@ -514,6 +517,24 @@ class ProductActivationTest(unittest.TestCase):
             ).read_bytes()
         self.source.values[f"{release.RELEASE_URL}/v1.2.3/build-record.json"] = self.raw
         admitted = self.admitted()
+        base_parent = self.home / "kast-runtime-bases"
+        activation.private_directory(base_parent)
+        with (
+            patch.object(immutable_store, "clean_publication", return_value=None),
+            immutable_store.publication(base_parent, admitted, "BASE") as payload,
+        ):
+            _ = runtime_base.extract_base(
+                admitted.runtime.parent / selected.base.name, selected, payload
+            )
+            immutable_store.publish(payload, admitted, "BASE")
+            java = payload / "host/Kast.app/Contents/jbr/Contents/Home/bin/java"
+            java.chmod(0o700)
+            _ = java.write_bytes(b"native ")
+        # Older publishers staged inside the digest-only store.
+        payload = payload.parent.rename(base_parent / (".base-" + payload.parent.name)) / "payload"
+        proofs, _, _ = product_removal_recovery.capture(self.root, admitted.reference(self.root))
+        self.assertEqual([], proofs)
+        self.assertEqual([], list(base_parent.iterdir()))
         with patch.object(install, "replace_file", side_effect=KeyboardInterrupt):
             self.assertIsInstance(
                 activation.activate(self.root, self.home, admitted), contract.RecoveryRequired
@@ -531,14 +552,32 @@ class ProductActivationTest(unittest.TestCase):
         composed = Path(admitted.reference(self.root).runtimeRoot)
         self.assertNotEqual((base / vendor).stat().st_ino, (composed / vendor).stat().st_ino)
         self.assertEqual(b"native fixture", (base / vendor).read_bytes())
-        (base / vendor).chmod(0o700)
-        _ = (base / vendor).write_bytes(b"foreign replacement")
-        self.assertIsInstance(
-            activation.activate(self.root, self.home, admitted), contract.Rejected
+        with (
+            patch.object(immutable_store, "clean_publication", return_value=None),
+            immutable_store.publication(composed.parent, admitted, "RUNTIME") as payload,
+        ):
+            _ = shutil.copytree(admitted.runtime, payload)
+            immutable_store.publish(payload, admitted, "RUNTIME")
+            (payload / vendor).chmod(0o700)
+            _ = (payload / vendor).write_bytes(b"native ")
+        payload = (
+            payload.parent.rename(composed.parent / (".runtime-" + payload.parent.name)) / "payload"
         )
+        proofs, _, _ = product_removal_recovery.capture(self.root, admitted.reference(self.root))
+        self.assertEqual({"RUNTIME", "BASE"}, {proof.kind for proof in proofs})
+        self.assertFalse(payload.parent.exists())
+        (base / vendor).chmod(0o700)
+        _ = (base / vendor).write_bytes(b"damaged owned base")
+        (composed / vendor).chmod(0o700)
+        _ = (composed / vendor).write_bytes(b"damaged owned runtime")
+        original = (base / "provenance/provenance.json").read_bytes()
+        repaired = activation.activate(self.root, self.home, admitted, runner=self.retire)
+        assert isinstance(repaired, activation.ProductInstalled)
+        installed = repaired
+        self.assertEqual(b"native fixture", (base / vendor).read_bytes())
+        self.assertEqual(b"native fixture", (composed / vendor).read_bytes())
+        self.assertEqual(original, (base / "provenance/provenance.json").read_bytes())
         self.assertFalse((self.root / "recovery/replacement").exists())
-        _ = (base / vendor).write_bytes(b"native fixture")
-        (base / vendor).chmod(0o555)
         path, _ = self.removal_journal(installed)
         self.assertEqual(0, self.remove_product(path))
         self.assertFalse(base.exists())
@@ -585,6 +624,29 @@ class ProductActivationTest(unittest.TestCase):
         self.assertEqual("1.2.3", result.product.publicVersion)
         self.assertEqual("0.0.123", result.product.version)
         self.assertEqual("NOT_STARTED", result.hostState)
+        manifest = json.loads((self.root / "installation/installation.json").read_bytes())
+        self.assertEqual(str(self.home / ".codex"), manifest.get("codexHome"))
+        active = self.root / "installation"
+        self.assertEqual(
+            b"# Kast runtime configuration. Values are literal; shell syntax is not evaluated.\n",
+            (active / "config/environment").read_bytes(),
+        )
+        self.assertEqual(0o600, stat.S_IMODE((active / "config/environment").stat().st_mode))
+        inventory = {item["path"] for item in manifest["payloadFiles"]}
+        self.assertNotIn("config/environment", inventory)
+        for executable in ("kast", "kast-query", "kast-mcp", "kast-tool-rpc", "kast-codex"):
+            relative = f"bin/{executable}-complete"
+            self.assertIn(relative, inventory)
+            self.assertTrue(os.access(active / relative, os.X_OK))
+        # Saved installation values are mutable owner input, not Control payload.
+        configuration = active / "config/environment"
+        saved = b"KAST_APP_SERVER_PUBLIC_ENDPOINT=private\n"
+        _ = configuration.write_bytes(saved)
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted, runner=self.retire),
+            activation.ProductInstalled,
+        )
+        self.assertEqual(saved, configuration.read_bytes())
         management = json.loads((self.root / "management.json").read_bytes())
         self.assertEqual([], management["registrations"])
         self.assertEqual([], management["guidance"])
@@ -670,6 +732,7 @@ class ProductActivationTest(unittest.TestCase):
             str(payload / "state"),
             str(payload / "config/environment"),
             str(payload / "config/workspaces.json"),
+            str(self.home / ".codex"),
             files,
             str(prior["controlSha256"]),
             str(prior["payloadIdentity"]),
@@ -894,6 +957,8 @@ class ProductActivationTest(unittest.TestCase):
     def test_optional_mcp_state_is_admitted_and_partial_removal_resumes(self) -> None:
         path, record = self.removal_journal()
         environment = self.mcp_fixture()
+        for name in ("one-shot", "tool-sessions"):
+            (self.root / "installation/state/run" / name).mkdir(parents=True, mode=0o700)
         raw = (environment / "receipt.json").read_bytes()
         original = Path.unlink
 
@@ -913,10 +978,73 @@ class ProductActivationTest(unittest.TestCase):
         self.assertEqual(0, self.remove_product(path))
         self.assertFalse(environment.exists())
 
+    def test_completed_native_invocations_allow_repair_and_removal_but_survivors_do_not(
+        self,
+    ) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        records = self.root / "installation/state/run/one-shot"
+        records.mkdir(parents=True, mode=0o700)
+        survivor = records / "unsettled.json"
+        _ = survivor.write_bytes(b"unsettled invocation")
+        observations = io.StringIO()
+        with contextlib.redirect_stderr(observations):
+            self.assertIsInstance(
+                activation.activate(self.root, self.home, admitted, runner=self.retire),
+                contract.Rejected,
+            )
+        self.assertIn(
+            {
+                "outcome": "REJECTED",
+                "reason": "UNSETTLED_INVOCATIONS",
+                "component": "kast-invocation-state",
+            },
+            [json.loads(line) for line in observations.getvalue().splitlines()],
+        )
+        self.assertEqual(b"unsettled invocation", survivor.read_bytes())
+        survivor.unlink()
+        observations = io.StringIO()
+        with contextlib.redirect_stderr(observations):
+            installed = activation.activate(self.root, self.home, admitted, runner=self.retire)
+        self.assertIsInstance(installed, activation.ProductInstalled)
+        assert isinstance(installed, activation.ProductInstalled)
+        self.assertIn(
+            {"outcome": "ADMITTED", "component": "kast-invocation-state"},
+            [json.loads(line) for line in observations.getvalue().splitlines()],
+        )
+        records.mkdir(parents=True, mode=0o700)
+        path, record = self.removal_journal(installed)
+        _ = survivor.write_bytes(b"unsettled invocation")
+        self.assertEqual(1, self.remove_product(path))
+        self.assertTrue(Path(record.product.runtimeRoot).exists())
+        self.assertEqual(b"unsettled invocation", survivor.read_bytes())
+        survivor.unlink()
+        self.assertEqual(0, self.remove_product(path))
+        self.assertFalse((self.root / "installation").exists())
+
     def test_unknown_or_altered_optional_state_is_preserved_before_any_removal(self) -> None:
         path, record = self.removal_journal()
         environment = self.mcp_fixture()
         raw_journal = path.read_bytes()
+        configuration = self.root / "installation/config"
+        foreign_configuration = configuration / "foreign"
+        _ = foreign_configuration.write_bytes(b"preserve configuration neighbor")
+        self.assertEqual(1, self.remove_product(path))
+        self.assertEqual(raw_journal, path.read_bytes())
+        self.assertEqual(b"preserve configuration neighbor", foreign_configuration.read_bytes())
+        self.assertTrue(Path(record.product.runtimeRoot).exists())
+        foreign_configuration.unlink()
+        saved = configuration / "environment"
+        content = saved.read_bytes()
+        saved.unlink()
+        saved.symlink_to(self.home / "foreign-environment")
+        self.assertEqual(1, self.remove_product(path))
+        self.assertEqual(raw_journal, path.read_bytes())
+        self.assertTrue(saved.is_symlink())
+        saved.unlink()
+        _ = saved.write_bytes(content)
         extra = environment / "site-packages/foreign"
         _ = extra.write_bytes(b"preserve")
         self.assertEqual(1, self.remove_product(path))
@@ -1469,9 +1597,531 @@ class ProductActivationTest(unittest.TestCase):
         self.assertIsInstance(result, contract.Rejected)
         self.assertFalse((self.root / "recovery/replacement").exists())
         self.assertFalse((self.root / "installation").exists())
+        self.assertEqual([], list(self.root.parent.glob(".kast-install-*")))
         self.assertIsInstance(
             activation.activate(self.root, self.home, admitted), activation.ProductInstalled
         )
+
+    def test_failed_update_preparation_does_not_prevent_product_removal(self) -> None:
+        admitted = self.admitted()
+        installed = activation.activate(self.root, self.home, admitted)
+        assert isinstance(installed, activation.ProductInstalled)
+        prior = journal.Identity.observe(self.root / "installation")
+        with patch.object(install, "saved_file", side_effect=OSError("preimage unavailable")):
+            self.assertIsInstance(
+                activation.activate(self.root, self.home, admitted), contract.Rejected
+            )
+        self.assertEqual([], list(self.root.parent.glob(".kast-install-*")))
+        self.assertEqual(prior, journal.Identity.observe(self.root / "installation"))
+        path, _ = self.removal_journal(installed)
+        self.assertEqual(0, self.remove_product(path))
+        self.assertFalse((self.root / "installation").exists())
+
+    def test_partial_control_extraction_is_cleaned_without_removing_foreign_stages(self) -> None:
+        admitted = self.admitted()
+        self.root.mkdir()
+        foreign = self.root / ".install-foreign"
+        foreign.mkdir()
+        _ = (foreign / "keep").write_bytes(b"not this transaction")
+        extract = release.extract_control
+
+        def partial(archive: Path, stage: Path) -> release.Failure | release.Admission:
+            self.assertEqual(release.Admission.ADMITTED, extract(archive, stage))
+            return release.Failure.ARTIFACT_INVALID
+
+        with patch.object(release, "extract_control", side_effect=partial):
+            self.assertIsInstance(
+                activation.activate(self.root, self.home, admitted), contract.Rejected
+            )
+        self.assertEqual([foreign], list(self.root.glob(".install-*")))
+        self.assertEqual([], list(self.root.parent.glob(".kast-install-*")))
+        self.assertEqual(b"not this transaction", (foreign / "keep").read_bytes())
+
+    def test_control_stage_name_collision_preserves_the_foreign_directory(self) -> None:
+        admitted = self.admitted()
+        self.root.mkdir()
+        token = "12345678-1234-1234-1234-123456789abc"
+        foreign = self.root.parent / (".kast-install-" + token)
+        foreign.mkdir()
+        _ = (foreign / "keep").write_bytes(b"foreign allocation")
+        with patch.object(activation.uuid, "uuid4", return_value=activation.uuid.UUID(token)):
+            self.assertIsInstance(
+                activation.activate(self.root, self.home, admitted), contract.Rejected
+            )
+        self.assertEqual(b"foreign allocation", (foreign / "keep").read_bytes())
+        self.assertFalse((self.root / "recovery/replacement").exists())
+
+    def test_crashed_control_preparation_cannot_strand_product_removal(self) -> None:
+        admitted = self.admitted()
+        installed = activation.activate(self.root, self.home, admitted)
+        assert isinstance(installed, activation.ProductInstalled), installed
+        prior = journal.Identity.observe(self.root / "installation")
+        stages: list[Path] = []
+
+        class Crash(BaseException):
+            pass
+
+        def interrupted(archive: Path, extracted: Path) -> release.Admission:
+            stages.append(extracted.parent)
+            extracted.mkdir()
+            _ = (extracted / "partial").write_bytes(b"interrupted Control extraction")
+            raise Crash()
+
+        with (
+            patch.object(release, "extract_control", side_effect=interrupted),
+            patch.object(activation, "clean_control_stage", return_value=None),
+            self.assertRaises(Crash),
+        ):
+            _ = activation.activate(self.root, self.home, admitted)
+        self.assertEqual(1, len(stages))
+        self.assertFalse(stages[0].is_relative_to(self.root))
+        self.assertFalse((self.root / "recovery/replacement").exists())
+        self.assertEqual(prior, journal.Identity.observe(self.root / "installation"))
+        path, _ = self.removal_journal(installed)
+        self.assertEqual(0, self.remove_product(path))
+        self.assertTrue(stages[0].is_dir())
+
+    def test_crashed_publication_stage_stays_outside_managed_stores(self) -> None:
+        admitted = self.admitted()
+        rename = install.rename_file_no_replace
+        stages: list[Path] = []
+
+        class Crash(BaseException):
+            pass
+
+        def crash(source: Path, destination: Path) -> None:
+            if destination == Path(admitted.reference(self.root).runtimeRoot):
+                stages.append(source.parent)
+                raise Crash()
+            rename(source, destination)
+
+        with (
+            patch.object(install, "rename_file_no_replace", side_effect=crash),
+            patch.object(immutable_store, "clean_publication", side_effect=Crash),
+            self.assertRaises(Crash),
+        ):
+            activation.publish_runtime(admitted, admitted.reference(self.root))
+        self.assertEqual(1, len(stages))
+        self.assertTrue(stages[0].is_dir())
+        runtime = Path(admitted.reference(self.root).runtimeRoot)
+        self.assertFalse(stages[0].is_relative_to(runtime.parent.parent))
+        self.assertFalse(stages[0].is_relative_to(self.root))
+        proofs, _, _ = product_removal_recovery.capture(self.root, admitted.reference(self.root))
+        self.assertEqual([], proofs)
+        self.assertTrue(stages[0].exists())
+        # Even loss of the receipt cannot poison digest-only capture or require
+        # guessing that a now-unreceipted directory is owned.
+        (stages[0] / "publication.json").unlink()
+        proofs, _, _ = product_removal_recovery.capture(self.root, admitted.reference(self.root))
+        self.assertEqual([], proofs)
+        self.assertTrue(stages[0].is_dir())
+
+    def test_partial_publication_with_original_archive_is_removable_offline(self) -> None:
+        admitted = self.admitted()
+        parent = Path(admitted.reference(self.root).runtimeRoot).parent
+        activation.private_directory(parent)
+        with (
+            patch.object(immutable_store, "clean_publication", return_value=None),
+            immutable_store.publication(parent, admitted, "RUNTIME") as payload,
+        ):
+            _ = shutil.copytree(admitted.runtime, payload)
+            immutable_store.publish(payload, admitted, "RUNTIME")
+            java = payload / "host/Kast.app/Contents/jbr/Contents/Home/bin/java"
+            java.chmod(0o700)
+            _ = java.write_bytes(b"native ")
+        payload = payload.parent.rename(parent / (".runtime-" + payload.parent.name)) / "payload"
+        proofs, _, _ = product_removal_recovery.capture(self.root, admitted.reference(self.root))
+        self.assertEqual([], proofs)
+        self.assertEqual([], list(parent.iterdir()))
+
+    def test_partial_publication_archive_requires_same_selection_then_recovers(self) -> None:
+        admitted = self.admitted()
+        parent = Path(admitted.reference(self.root).runtimeRoot).parent
+        activation.private_directory(parent)
+        original = admitted.runtime.parent / admitted.target.runtime.name
+        with (
+            patch.object(immutable_store, "clean_publication", return_value=None),
+            immutable_store.publication(parent, admitted, "RUNTIME") as payload,
+        ):
+            (payload / "provenance").mkdir(parents=True, mode=0o700)
+            _ = (payload / "provenance/archive.zip").write_bytes(original.read_bytes()[:32])
+        payload = payload.parent.rename(parent / (".runtime-" + payload.parent.name)) / "payload"
+        with self.assertRaises(install.StageRejected) as rejection:
+            _ = product_removal_recovery.capture(self.root, admitted.reference(self.root))
+        self.assertEqual(
+            "PUBLICATION_INTERRUPTED_RETRY_SAME_SELECTION", rejection.exception.failure.adapterCode
+        )
+        self.assertTrue(payload.parent.exists())
+        activation.publish_runtime(admitted, admitted.reference(self.root))
+        self.assertFalse(payload.parent.exists())
+        activation.read_runtime(admitted.reference(self.root))
+
+    def test_removal_reports_incomplete_publication_archive_without_erasing_payload(self) -> None:
+        admitted = self.admitted()
+        installed = activation.activate(self.root, self.home, admitted)
+        assert isinstance(installed, activation.ProductInstalled)
+        path, _ = self.removal_journal(installed)
+        parent = Path(admitted.reference(self.root).runtimeRoot).parent
+        archive = admitted.runtime.parent / admitted.target.runtime.name
+        with (
+            patch.object(immutable_store, "clean_publication", return_value=None),
+            immutable_store.publication(parent, admitted, "RUNTIME") as payload,
+        ):
+            (payload / "provenance").mkdir(parents=True, mode=0o700)
+            _ = (payload / "provenance/archive.zip").write_bytes(archive.read_bytes()[:32])
+        payload = payload.parent.rename(parent / (".runtime-" + payload.parent.name)) / "payload"
+        result = removal.remove(self.root, path)
+        self.assertEqual(
+            {
+                "failure": "PUBLICATION_INTERRUPTED_RETRY_SAME_SELECTION",
+                "stage": "RETAIN_EXECUTION",
+                "status": "REMOVAL_REJECTED",
+            },
+            json.loads(install.encoded(result)),
+        )
+        self.assertTrue((self.root / "installation").exists())
+        self.assertTrue(Path(installed.product.runtimeRoot).exists())
+        self.assertTrue(payload.parent.exists())
+
+    def test_publication_recovery_preserves_unknown_files_and_replaced_stage_identity(self) -> None:
+        admitted = self.admitted()
+        parent = Path(admitted.reference(self.root).runtimeRoot).parent
+        activation.private_directory(parent)
+        with (
+            patch.object(immutable_store, "clean_publication", return_value=None),
+            immutable_store.publication(parent, admitted, "RUNTIME") as payload,
+        ):
+            payload.mkdir(mode=0o700)
+            unknown = payload / "keep"
+            _ = unknown.write_bytes(b"foreign")
+        payload = payload.parent.rename(parent / (".runtime-" + payload.parent.name)) / "payload"
+        unknown = payload / "keep"
+        with self.assertRaises(ValueError):
+            _ = product_removal_recovery.capture(self.root, admitted.reference(self.root))
+        self.assertEqual(b"foreign", unknown.read_bytes())
+        unknown.unlink()
+        old = payload.parent.rename(self.home / "old-stage")
+        payload.parent.mkdir(mode=0o700)
+        _ = shutil.copyfile(old / "publication.json", payload.parent / "publication.json")
+        with self.assertRaises(ValueError):
+            _ = product_removal_recovery.capture(self.root, admitted.reference(self.root))
+        self.assertTrue(payload.parent.is_dir())
+
+    def test_legacy_complete_publication_is_admitted_but_unrecorded_foreign_stage_is_not(
+        self,
+    ) -> None:
+        admitted = self.admitted()
+        reference = admitted.reference(self.root)
+        activation.publish_runtime(admitted, reference)
+        runtime = Path(reference.runtimeRoot)
+        legacy = runtime.parent / ".runtime-legacy"
+        legacy.mkdir(mode=0o700)
+        _ = runtime.rename(legacy / "payload")
+        proofs, _, _ = product_removal_recovery.capture(self.root, reference)
+        self.assertEqual([], proofs)
+        self.assertFalse(legacy.exists())
+        foreign = runtime.parent / ".runtime-foreign"
+        foreign.mkdir(mode=0o700)
+        _ = (foreign / "keep").write_bytes(b"not an owned stage")
+        with self.assertRaises(OSError):
+            _ = product_removal_recovery.capture(self.root, reference)
+        self.assertEqual(b"not an owned stage", (foreign / "keep").read_bytes())
+
+    def test_damaged_owned_runtime_repairs_only_after_exact_retirement(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        runtime = Path(admitted.reference(self.root).runtimeRoot)
+        runtime_identity = journal.Identity.observe(runtime)
+        java = runtime / "host/Kast.app/Contents/jbr/Contents/Home/bin/java"
+        java.chmod(0o700)
+        _ = java.write_bytes(b"damaged owned executable")
+
+        def retired(
+            arguments: list[str], environment: dict[str, str], timeout: float
+        ) -> subprocess.CompletedProcess[bytes]:
+            self.assertEqual(b"damaged owned executable", java.read_bytes())
+            result = self.retire(arguments, environment, timeout)
+            pending = install.journal_types_record(
+                install.RECOVERY.load(
+                    self.root / "recovery/replacement/receipt.json", journal.Replacement
+                )
+            )
+            assert pending.reservation is not None
+            with self.assertRaises(install.StageRejected):
+                immutable_store.finish_resets(
+                    self.root,
+                    Path(pending.reservation.staged),
+                    admitted.reference(self.root),
+                    pending,
+                )
+            self.assertEqual(b"damaged owned executable", java.read_bytes())
+            return result
+
+        result = activation.activate(self.root, self.home, admitted, runner=retired)
+        self.assertIsInstance(result, activation.ProductInstalled)
+        self.assertEqual(b"native fixture", java.read_bytes())
+        self.assertNotEqual(runtime_identity, journal.Identity.observe(runtime))
+        activation.read_runtime(admitted.reference(self.root))
+        self.assertFalse((self.root / "recovery/replacement").exists())
+        self.assertFalse((self.root / "shutdown.json").exists())
+
+    def test_reset_rebuilds_corrupt_retained_archive_from_exact_admitted_archive(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        runtime = Path(admitted.reference(self.root).runtimeRoot)
+        archive = runtime / "provenance/archive.zip"
+        original_record = (runtime / "provenance/build-record.json").read_bytes()
+        archive.chmod(0o600)
+        _ = archive.write_bytes(b"damaged retained archive")
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted, runner=self.retire),
+            activation.ProductInstalled,
+        )
+        self.assertEqual(admitted.target.runtime.sha256, release.file_digest(archive))
+        self.assertEqual(original_record, (runtime / "provenance/build-record.json").read_bytes())
+        activation.read_runtime(admitted.reference(self.root))
+
+    def test_reset_rejects_cross_filesystem_publication_before_retirement_and_deletion(
+        self,
+    ) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        runtime = Path(admitted.reference(self.root).runtimeRoot)
+        java = runtime / "host/Kast.app/Contents/jbr/Contents/Home/bin/java"
+        java.chmod(0o700)
+        _ = java.write_bytes(b"damaged")
+        observe = journal.Identity.observe
+
+        def other_device(path: Path) -> journal.Identity:
+            observed = observe(path)
+            return (
+                replace(observed, device=observed.device + 1)
+                if path == runtime.parent
+                else observed
+            )
+
+        with (
+            patch.object(journal.Identity, "observe", side_effect=other_device),
+            patch.object(install, "run_child", side_effect=AssertionError("no retirement")),
+        ):
+            result = activation.activate(self.root, self.home, admitted)
+        assert isinstance(result, contract.RecoveryRequired)
+        self.assertEqual("IMMUTABLE_RESET_REQUIRES_SAME_FILESYSTEM", result.failure.adapterCode)
+        self.assertEqual(b"damaged", java.read_bytes())
+        self.assertFalse((self.root / "shutdown.json").exists())
+        self.assertIsInstance(
+            activation.resume(self.root, self.home, runner=self.retire), activation.ProductInstalled
+        )
+        self.assertEqual(b"native fixture", java.read_bytes())
+
+    def test_damaged_runtime_failed_retirement_preserves_bytes_and_resumes_repair(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        prior = journal.Identity.observe(self.root / "installation")
+        management = (self.root / "management.json").read_bytes()
+        runtime = Path(admitted.reference(self.root).runtimeRoot)
+        java = runtime / "host/Kast.app/Contents/jbr/Contents/Home/bin/java"
+        java.chmod(0o700)
+        _ = java.write_bytes(b"damaged owned executable")
+
+        def busy(
+            arguments: list[str], environment: dict[str, str], timeout: float
+        ) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.CompletedProcess(arguments, 1, b"", b"workspace busy")
+
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted, runner=busy),
+            contract.RecoveryRequired,
+        )
+        self.assertEqual(b"damaged owned executable", java.read_bytes())
+        self.assertEqual(prior, journal.Identity.observe(self.root / "installation"))
+        self.assertEqual(management, (self.root / "management.json").read_bytes())
+        self.assertTrue((self.root / "recovery/replacement/receipt.json").is_file())
+        self.assertIsInstance(
+            activation.resume(self.root, self.home, runner=self.retire), activation.ProductInstalled
+        )
+        self.assertEqual(b"native fixture", java.read_bytes())
+
+    def test_reset_resumes_partial_deletion_and_publication_without_incoming_archive(self) -> None:
+        for boundary in ("PARTIAL_DELETE", "DELETED", "DELETED_LINKED_PARENT", "PUBLISHED"):
+            with (
+                self.subTest(boundary=boundary),
+                tempfile.TemporaryDirectory(dir=self.home) as temporary,
+                patch.object(self, "home", Path(temporary)),
+                patch.object(self, "root", Path(temporary) / "managed"),
+            ):
+                admitted = self.admitted()
+                self.assertIsInstance(
+                    activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+                )
+                reference = admitted.reference(self.root)
+                runtime = Path(reference.runtimeRoot)
+                java = runtime / "host/Kast.app/Contents/jbr/Contents/Home/bin/java"
+                java.chmod(0o700)
+                _ = java.write_bytes(b"damaged")
+                prior = journal.Identity.observe(self.root / "installation")
+                markers = (
+                    self.home / "repository/source.kt",
+                    self.home / ".gradle/caches/keep",
+                    runtime.parent.parent / "containers/kept/record.json",
+                    runtime.parent.parent / "containers/kept/profile/keep",
+                )
+                for marker in markers:
+                    marker.parent.mkdir(parents=True, exist_ok=True)
+                    _ = marker.write_bytes(b"protected")
+                rename, unlink = install.rename_file_no_replace, Path.unlink
+
+                def interrupted_unlink(
+                    path: Path,
+                    missing_ok: bool = False,
+                    *,
+                    native: Callable[[Path, bool], None] = unlink,
+                    boundary: str = boundary,
+                    java: Path = java,
+                ) -> None:
+                    native(path, missing_ok)
+                    if boundary == "PARTIAL_DELETE" and path == java:
+                        raise KeyboardInterrupt
+
+                def interrupted_publish(
+                    source: Path,
+                    destination: Path,
+                    *,
+                    native: Callable[[Path, Path], None] = rename,
+                    boundary: str = boundary,
+                ) -> None:
+                    resetting = source.parent.name == "immutable-reset"
+                    if resetting and boundary.startswith("DELETED"):
+                        raise KeyboardInterrupt
+                    native(source, destination)
+                    if resetting and boundary == "PUBLISHED":
+                        raise KeyboardInterrupt
+
+                with (
+                    patch.object(Path, "unlink", new=interrupted_unlink),
+                    patch.object(
+                        install, "rename_file_no_replace", side_effect=interrupted_publish
+                    ),
+                ):
+                    result = activation.activate(self.root, self.home, admitted, runner=self.retire)
+                self.assertIsInstance(result, contract.RecoveryRequired)
+                self.assertEqual(prior, journal.Identity.observe(self.root / "installation"))
+                receipt = json.loads((self.root / "recovery/replacement/receipt.json").read_bytes())
+                self.assertEqual("SETTLED", receipt["product"]["phase"])
+                self.assertEqual(not boundary.startswith("DELETED"), runtime.exists())
+                shutil.rmtree(admitted.runtime.parent)
+                if boundary == "DELETED_LINKED_PARENT":
+                    retained = runtime.parent.rename(self.home / "foreign-store")
+                    runtime.parent.symlink_to(retained, target_is_directory=True)
+                    with patch.object(install, "run_child", side_effect=AssertionError("no child")):
+                        self.assertIsInstance(
+                            activation.resume(self.root, self.home), contract.RecoveryRequired
+                        )
+                    self.assertFalse((retained / runtime.name).exists())
+                    runtime.parent.unlink()
+                    _ = retained.rename(runtime.parent)
+                with patch.object(
+                    install, "run_child", side_effect=AssertionError("already retired")
+                ):
+                    self.assertIsInstance(
+                        activation.resume(self.root, self.home), activation.ProductInstalled
+                    )
+                self.assertEqual(b"native fixture", java.read_bytes())
+                activation.read_runtime(reference)
+                for marker in markers:
+                    self.assertEqual(b"protected", marker.read_bytes())
+                self.assertFalse((self.root / "recovery/replacement").exists())
+                self.assertFalse((self.root / "shutdown.json").exists())
+
+    def test_reset_refuses_foreign_additions_links_and_replaced_roots_after_retirement(
+        self,
+    ) -> None:
+        for change in ("ADDITION", "SYMLINK", "HARDLINK", "ROOT", "STAGED_ADDITION"):
+            with (
+                self.subTest(change=change),
+                tempfile.TemporaryDirectory(dir=self.home) as temporary,
+                patch.object(self, "home", Path(temporary)),
+                patch.object(self, "root", Path(temporary) / "managed"),
+            ):
+                admitted = self.admitted()
+                self.assertIsInstance(
+                    activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+                )
+                runtime = Path(admitted.reference(self.root).runtimeRoot)
+                java = runtime / "host/Kast.app/Contents/jbr/Contents/Home/bin/java"
+                java.chmod(0o700)
+                _ = java.write_bytes(b"damaged")
+                protected = self.home / "foreign"
+                _ = protected.write_bytes(b"do not remove")
+                prior = journal.Identity.observe(self.root / "installation")
+
+                def changed(
+                    arguments: list[str],
+                    environment: dict[str, str],
+                    timeout: float,
+                    *,
+                    change: str = change,
+                    runtime: Path = runtime,
+                    java: Path = java,
+                    protected: Path = protected,
+                    admitted: staging.AdmittedProduct = admitted,
+                ) -> subprocess.CompletedProcess[bytes]:
+                    result = self.retire(arguments, environment, timeout)
+                    if change == "ADDITION":
+                        _ = (runtime / "keep").write_bytes(b"foreign")
+                    elif change in ("SYMLINK", "HARDLINK"):
+                        java.parent.chmod(0o700)
+                        java.unlink()
+                        if change == "SYMLINK":
+                            java.symlink_to(protected)
+                        else:
+                            os.link(protected, java)
+                    elif change == "ROOT":
+                        old = runtime.rename(self.home / "old-runtime")
+                        _ = shutil.copytree(old, runtime, symlinks=True)
+                    else:
+                        ready = (
+                            self.root
+                            / "recovery/replacement/immutable-reset"
+                            / ("RUNTIME-" + admitted.target.runtime.sha256)
+                        )
+                        _ = (ready / "keep").write_bytes(b"foreign")
+                    return result
+
+                result = activation.activate(self.root, self.home, admitted, runner=changed)
+                self.assertIsInstance(result, contract.RecoveryRequired)
+                self.assertEqual(prior, journal.Identity.observe(self.root / "installation"))
+                self.assertEqual(b"do not remove", protected.read_bytes())
+                if change not in ("SYMLINK", "HARDLINK"):
+                    self.assertEqual(b"damaged", java.read_bytes())
+                if change == "SYMLINK":
+                    self.assertTrue(java.is_symlink())
+                if change == "HARDLINK":
+                    self.assertEqual(2, java.stat().st_nlink)
+                self.assertTrue((self.root / "recovery/replacement/receipt.json").exists())
+
+    def test_foreign_runtime_addition_is_not_reported_as_owned_byte_damage(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        runtime = Path(admitted.reference(self.root).runtimeRoot)
+        unknown = runtime / "keep"
+        _ = unknown.write_bytes(b"foreign payload")
+        result = activation.activate(self.root, self.home, admitted)
+        assert isinstance(result, contract.Rejected)
+        self.assertEqual(contract.Failure.OWNERSHIP_UNPROVEN, result.reason)
+        self.assertIsNone(result.adapterCode)
+        self.assertEqual(b"foreign payload", unknown.read_bytes())
+        self.assertFalse((self.root / "recovery/replacement").exists())
 
     def test_interrupted_finalization_revalidates_before_cleanup(self) -> None:
         admitted = self.admitted()
@@ -1578,8 +2228,9 @@ class ProductActivationTest(unittest.TestCase):
         marker = Path(reference.runtimeRoot) / "runtime.json"
         marker.chmod(0o600)
         _ = marker.write_bytes(b"foreign")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(install.StageRejected) as rejected:
             activation.publish_runtime(admitted, reference)
+        self.assertEqual(contract.Failure.RECOVERY_UNPROVEN, rejected.exception.failure.reason)
         self.assertEqual(b"foreign", marker.read_bytes())
         self.assertFalse(self.root.exists())
 

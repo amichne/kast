@@ -30,6 +30,7 @@
     "install.sh",
     "packaging/installer_fixture.py",
     "packaging/install-checkout.sh",
+    "packaging/install-legacy.sh",
     "packaging/install-local.sh",
     "packaging/installation-lifecycle.py",
     "packaging/test-installer-fixture.py",

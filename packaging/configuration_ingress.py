@@ -97,7 +97,7 @@ def source_files(root):
         if not path.is_file() or any(part in {'build', '.git', '.gradle', '.idea', '__pycache__'} for part in relative.parts):
             continue
         name = relative.as_posix()
-        if '/src/test/' in name or name == 'packaging/test-configuration-ingress.py':
+        if '/src/test/' in name or (relative.parent == Path('packaging') and path.name.startswith(('test-', 'test_'))):
             continue
         if (path.suffix in {'.kt', '.kts'} and ('/src/main/' in name or '/src/gradleTooling/' in name or len(relative.parts) == 1)) or name == 'install.sh' or '/src/main/scripts/' in name or (name.startswith('packaging/') and path.suffix in {'.sh', '.py'}):
             yield name, path

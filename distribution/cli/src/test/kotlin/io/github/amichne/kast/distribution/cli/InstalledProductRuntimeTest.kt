@@ -248,6 +248,35 @@ class InstalledWorkspaceAdmissionTest {
     @TempDir lateinit var temporary: Path
 
     @Test
+    fun `missing recorded Gradle home rejects semantic launch without revoking lifecycle ownership`() {
+        val fixture = productFixture(temporary)
+        val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
+        Files.writeString(workspace.resolve("settings.gradle.kts"), "")
+        val root = (FilesystemCanonicalRootDiscovery.discover(workspace) as CanonicalRootDiscovery.Discovered).root
+        val gradle = Files.createDirectory(temporary.resolve("external-gradle")).toRealPath()
+        val store = ContainerStore(fixture.runtime.root.parent.parent, fixture.runtime.manifest.platform)
+        val container =
+            (store.create(
+                    ContainerCommand.Create("owned", null, gradle.toString(), false),
+                    workspace,
+                    fixture.runtime,
+                ) as Refinement.Refined)
+                .value
+        Files.delete(gradle)
+        assertEquals(
+            Refinement.Rejected(ContainerFailure.INVALID_GRADLE_HOME),
+            ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()),
+        )
+        assertTrue(store.workspace(workspace) is Refinement.Refined)
+        assertEquals(
+            Refinement.Refined(Unit),
+            ContainerQueryLease.whileIdle(container) { Refinement.Refined(Unit) },
+        )
+        Files.createDirectory(gradle)
+        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()) as Refinement.Refined).value.close()
+    }
+
+    @Test
     fun `store removal excludes first admission before any workspace exists`() {
         val fixture = productFixture(temporary)
         val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
