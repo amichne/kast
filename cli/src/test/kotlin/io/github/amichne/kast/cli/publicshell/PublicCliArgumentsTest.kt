@@ -170,6 +170,9 @@ class PublicCliArgumentsTest {
                 listOf("query", "--name", "A", "--catalog", "COMPLETE"),
                 listOf("source", "read", "--ref", "R", "--max-elapsed-ms", "1"),
                 listOf("result", "read", "--ref", "R", "--ref", "S"),
+                listOf("result", "read", "--ref", "R", "--detail", "{"),
+                listOf("result", "read", "--ref", "R", "--detail", "7"),
+                listOf("query", "--name", "A", "--detail", "x"),
                 listOf("result", "resume", "--request", "x.json"),
                 listOf("describe", "--workspace", "."),
                 listOf("describe", "--section", "input"),
@@ -274,9 +277,8 @@ class PublicCliArgumentsTest {
     }
 
     /**
-     * Red baseline: a deferred evidence entry is deliverable only through its detail selector, which `result read`
-     * cannot carry. The selector copied verbatim from `deferred_evidence[].selector` must lower to the same canonical
-     * detail read that the public tool admits for that selector.
+     * A deferred evidence entry is deliverable only through its detail selector. The selector copied verbatim from
+     * `deferred_evidence[].selector` lowers to the same canonical detail read that the public tool admits for it.
      */
     @Test
     fun `result read carries a deferred evidence detail selector`() {

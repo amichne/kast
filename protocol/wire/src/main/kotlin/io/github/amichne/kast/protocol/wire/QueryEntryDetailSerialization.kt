@@ -5,6 +5,7 @@ import io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocumen
 import io.github.amichne.kast.protocol.contract.QueryEntryDetailKind
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
 import io.github.amichne.kast.protocol.contract.QueryItemFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryRelationObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryWalkFailureDocument
@@ -104,7 +105,7 @@ object QueryEntryDetailSerialization {
                     QueryRelationObservationWireDocument.serializer(),
                     result.relationObservations.values[index].toWireDocument(),
                     QueryEntryDetailKind.RELATION_OBSERVATION,
-                    "Relation observation",
+                    result.relationObservations.values[index].detailMeaning(),
                 )
             )
         return rejected()
@@ -144,3 +145,24 @@ private fun String.detailLabel(): String =
     substring(0, offsetByCodePoints(0, minOf(MAX_DETAIL_LABEL_CODE_POINTS, codePointCount(0, length))))
 
 private const val MAX_DETAIL_LABEL_CODE_POINTS = 96
+
+/** Deferred summaries schema-limit their meaning to this many characters. */
+private const val DETAIL_MEANING_CHARACTERS = 256
+
+/**
+ * A callback observation can be a complete callers answer's only caller evidence, so a deferred summary names its
+ * lexical owners. Names stay a bounded hint: the selector's canonical entry keeps their exact compiler identities.
+ */
+private fun QueryRelationObservationDocument.detailMeaning(): String {
+    val owners = callbackObservations.values.map { it.lexicalOwner.compilerTarget.name.value }.distinct()
+    if (owners.isEmpty()) return "Relation observation"
+    val prefix = "Relation observation; callback callers: "
+    var shown = 0
+    fun meaning(count: Int): String {
+        val hidden = owners.size - count
+        val names = owners.take(count) + if (hidden > 0) listOf("+$hidden more") else emptyList()
+        return prefix + names.joinToString(", ")
+    }
+    while (shown < owners.size && meaning(shown + 1).length <= DETAIL_MEANING_CHARACTERS) shown++
+    return meaning(shown)
+}

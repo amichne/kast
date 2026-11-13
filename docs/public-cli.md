@@ -122,6 +122,7 @@ The examples here need tokens from a prior response:
 ```sh
 kast query --ref "$SYMBOL_REF" --relation callers --fields name,location
 kast result read --ref "$RESULT_REF" --cursor 100 --evidence-cursor 0
+kast result read --ref "$RESULT_REF" --detail "$DETAIL_SELECTOR"
 kast result resume --continuation "$OUTPUT_TOKEN"
 kast source read --ref "$SYMBOL_REF" --region callable-body --text complete
 ```
@@ -130,6 +131,7 @@ Keep each issued token unchanged.
 A result reference belongs to its workspace, semantic basis, and lifetime.
 An expired or foreign reference rejects without a new name search or query producer.
 The `result resume` command accepts only an issued output continuation.
+The `--detail` value is an issued deferred-entry selector, passed unchanged.
 
 The CLI emits one page and never drains successors implicitly.
 A successor cursor means that more output remains.

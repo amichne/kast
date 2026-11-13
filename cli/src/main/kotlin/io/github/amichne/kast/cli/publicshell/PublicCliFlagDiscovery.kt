@@ -51,6 +51,7 @@ private fun queryFlagSchema(flag: PublicCliFlag, input: JsonObject, catalog: Pub
         PublicCliFlag.EVIDENCE_CURSOR ->
             definitions["EvidenceCursor"] as? JsonObject
                 ?: property("ReadResultAction", "ReadResultAction", "evidence_cursor")
+        PublicCliFlag.DETAIL -> property("ReadResultAction", "ReadResultAction", "detail")
         PublicCliFlag.REGION -> property("ReadSourceAction", "ReadSource", "region")
         PublicCliFlag.FILE -> property("LocationSource", "LocationSource", "file")
         PublicCliFlag.OFFSET -> property("LocationSource", "LocationSource", "offset")

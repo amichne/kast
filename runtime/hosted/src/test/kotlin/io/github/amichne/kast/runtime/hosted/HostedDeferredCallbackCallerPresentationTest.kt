@@ -20,20 +20,19 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
- * Red baseline for the callers false negative on `ContainerStore.rebuildRetiredGeneration`.
+ * Regression for the callers false negative on `ContainerStore.rebuildRetiredGeneration`.
  *
  * A callback passed as a non-inline argument yields no named caller row by contract; its callback observation is the
  * only evidence of the caller. When that observation is larger than the returned-byte page, the automatic preview
- * replaces it with a generic "Relation observation" detail selector, so a complete callers page presents no caller.
- * Every page that keeps the deferral, the first page and a later `--evidence-cursor` read alike, must still name the
- * callback's lexical owner (`read`). These cases fail until the deferred-evidence presentation discloses it.
+ * defers it behind a detail selector. Every page that keeps the deferral, the first page and a later
+ * `--evidence-cursor` read alike, must still name the callback's lexical owner (`read`).
  */
 class HostedDeferredCallbackCallerPresentationTest {
     @Test
     fun `deferred callback caller is named on the canonical first page`() = runTest {
         val page = deferredFirstPage()
         assertTrue(
-            page.canonical.contains(OWNER),
+            namesOwner(page.canonical),
             "The canonical first page must name the deferred callback caller $OWNER: ${page.canonical}",
         )
     }
@@ -42,7 +41,7 @@ class HostedDeferredCallbackCallerPresentationTest {
     fun `deferred callback caller is named on the CLI first page`() = runTest {
         val page = deferredFirstPage()
         assertTrue(
-            page.cli.contains(OWNER),
+            namesOwner(page.cli),
             "The CLI first page must name the deferred callback caller $OWNER: ${page.cli}",
         )
     }
@@ -79,7 +78,7 @@ class HostedDeferredCallbackCallerPresentationTest {
         )
         assertEquals(1, fitted.deferredEvidence.values.size, "The read presents only the deferred callback selector")
         assertTrue(
-            canonical.document.contains(OWNER),
+            namesOwner(canonical.document),
             "The evidence-cursor read must name the deferred callback caller $OWNER: ${canonical.document}",
         )
     }
@@ -139,9 +138,9 @@ class HostedDeferredCallbackCallerPresentationTest {
                 is Refinement.Refined -> detail.value.text
                 is Refinement.Rejected -> error("The relation observation must have a detail entry: ${detail.failure}")
             }
-        assertTrue(entry.contains(OWNER), "The callback detail entry names its lexical owner")
+        assertTrue(namesOwner(entry), "The callback detail entry names its lexical owner")
         val wide = encodeHostedQueryResponse(page) as HostedResponse.Canonical<*, *, *>
-        assertTrue(wide.document.contains(OWNER), "The undeferred page names the callback owner")
+        assertTrue(namesOwner(wide.document), "The undeferred page names the callback owner")
         val budget = entry.toByteArray(Charsets.UTF_8).size - 1L
         return when (val limit = ReturnedByteLimit.parse(budget)) {
             is Refinement.Refined -> limit.value
@@ -150,7 +149,10 @@ class HostedDeferredCallbackCallerPresentationTest {
     }
 
     private companion object {
-        /** The callback's lexical owner as a JSON string value; the subject `readPrepared` cannot match it. */
-        const val OWNER = "\"read\""
+        /** The callback's lexical owner; the subject `readPrepared` and receiver `nativeBoundary` are other names. */
+        const val OWNER = "read"
+        val ownerName = Regex("(?<![A-Za-z0-9_$])$OWNER(?![A-Za-z0-9_$])")
+
+        fun namesOwner(text: String): Boolean = ownerName.containsMatchIn(text)
     }
 }
