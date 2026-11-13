@@ -40,12 +40,14 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleProjectOpen.kt
   - id: openwiki-source-903d531c5eecaec62a353b32
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochObservation.kt
+  - id: openwiki-source-d7a75676401a9fcbe00c8e6f
+    resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochVfsListener.kt
   - id: openwiki-source-26adf1e57264a6d43e0f22c1
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
-generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
+generated: { by: "amp", at: "2026-11-13T18:27:10.865Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-06T22:26:46.446Z
+  - by: openwiki/0.9.0
+    at: 2026-11-13T18:27:10.865Z
 ---
 
 # Workspace
@@ -78,7 +80,7 @@ Before evaluation, HostedReadDeadline derives a positive HostedSemanticTimeAllow
 
 Before semantic admission, `HostedReadPublicationAdmission` verifies that typed containment failures carrying the candidate execution report fit the hard hosted-frame cap. Capacity rejection retains the candidate only in diagnostic evidence and publishes no admitted report. Once admitted, the executor retains the actual report through timeout, cancellation and final freshness failures; this does not grant permission to evaluate after the request deadline.
 
-A bounded VFS batch proven outside the root preserves the invalidation signal. A root-touching batch advances it. An oversized batch has unknown relevance and advances conservatively without traversing events; it does not poison a healthy observer or confer fresh read authority. Subsequent reads still require ordinary model, saved-content, PSI, smart-mode and final freshness admission. Malformed bounded paths and exhausted counters remain terminal failures; no reset revives earlier evidence.
+The VFS listener retains prior ownership for moves, renames and deletions, then checks every affected endpoint after the batch. A bounded batch preserves the invalidation signal only when every endpoint is irrelevant. An endpoint outside the admitted root is irrelevant unless it contains that root. An in-root endpoint is irrelevant only for a regular file proven outside imported source and library roots. Changes to the root, its ancestors or imported files advance the signal. Unknown ownership and oversized batches invalidate conservatively. Oversized batches advance without traversing events; they do not poison a healthy observer or confer fresh read authority. Subsequent reads still require ordinary model, saved-content, PSI, smart-mode and final freshness admission. Malformed bounded paths and exhausted counters remain terminal failures; no reset revives earlier evidence.
 
 The hosted workspace lifecycle boundary retains file refresh and Gradle model reload for the authorized open, trusted project and its already linked root. The public agent lifecycle request no longer selects either effect. Native effects run asynchronously; status reports completion only after the effect callback and fresh existing admission. Pending status is bounded independently of semantic budgets. Exact request IDs are idempotent, equivalent work coalesces, newer requests queue, and disposal is terminal. Project-owned unsaved documents are saved on the EDT before an effect; a failed save rejects. Semantic dispatch and lifecycle opening save project-owned documents and wait for native incremental recursive VFS refresh. Explicit file refresh retains forced dirty marking for external writes. Watcher events advance invalidation but do not establish complete disk reconciliation.
 

@@ -1,14 +1,22 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:48488c2a1888896739e6c7f04a3d60831564f54a143c58793e4dd39e158a32aa",
+  "pageVersion": "sha256:7709d7d18d399ca20273311a1d40c0ac4fe1557f787141a03786e29af7d2203a",
   "claims": [
     {
       "id": "claim_55dc24a64b404afb9e68deda45662bd9",
-      "statement": "Live epoch observation combines model/root/import, PSI, root-filtered VFS and indexing signals; bounded VFS relevance distinguishes outside-root, touching-root, unknown-capacity and malformed-path outcomes.",
+      "statement": "Live epoch observation combines model/root/import, PSI, VFS and indexing signals. Bounded VFS relevance preserves prior and resulting endpoints and imported ownership; only wholly irrelevant batches retain the VFS signal, while root/ancestor/imported-owner changes, unknown ownership and oversized batches invalidate conservatively. Malformed bounded paths reject observation.",
       "evidence": [
         {
-          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochObservation.kt#L12-L51",
-          "version": "repo-lines-v1:sha256:3609fb1f29e8e29ee2aa3a7d3987c9d6711f54a0d6fca0bd4b528c12359265e9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjOTVlNjYyMzg3ZmExZjc1NzYyYTU5ODkwYmVkMDMzMDNkZDA2MDE5NzczNDFiMTQ1MzMwNWZmOWNiYTZhMDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkOTU3YjI4YWNlNDFiZjUyYjM2NzNmOTY3YWNjZGNhNmQyMjQ0ZGVjYzY1OGJmZDMxYzM3YzU5Nzc2M2I4M2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk2OThmZTE4M2UxNmY4MzQxYThhMjQyOTczYzNlMDI1OTQ4NzYyYTIxMmQ2Y2ZmYTQzOWJmZTlkZDA2ZjU1YTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY0YzRhNGE0YzliZmI5MDI1MWMxODQ0MjljNDAzZTc3MWZkZGYxMTQ0NGU1OTliMGUwZDk3Njg0MTgxMjE4YWYifQ"
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochObservation.kt#L12-L62",
+          "version": "repo-lines-v1:sha256:6eca67229df6368b533cdbc10d0dfb2b0dedc530fa2a4f13d3a4a723050cedf7:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjOTVlNjYyMzg3ZmExZjc1NzYyYTU5ODkwYmVkMDMzMDNkZDA2MDE5NzczNDFiMTQ1MzMwNWZmOWNiYTZhMDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkOTU3YjI4YWNlNDFiZjUyYjM2NzNmOTY3YWNjZGNhNmQyMjQ0ZGVjYzY1OGJmZDMxYzM3YzU5Nzc2M2I4M2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk2OThmZTE4M2UxNmY4MzQxYThhMjQyOTczYzNlMDI1OTQ4NzYyYTIxMmQ2Y2ZmYTQzOWJmZTlkZDA2ZjU1YTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY0YzRhNGE0YzliZmI5MDI1MWMxODQ0MjljNDAzZTc3MWZkZGYxMTQ0NGU1OTliMGUwZDk3Njg0MTgxMjE4YWYifQ"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochObservation.kt#L158-L200",
+          "version": "repo-lines-v1:sha256:bbcdd6e54567df956fc5e4341d87f5ae2427df7ba37337dd4d8ba32ae430355d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhZjIyY2YwNzMyNTkyYzI0NzE0MWNiZTYxZWZhMTEwMTI2MTJmNWEzMTIyYjlhZjliYmFmNTJmNTcyNGQxOTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1MDFiYWUwODE3NzFiODdmMmQyZmEzMDk5ZDg1ZWJiYTM0OTU5MGExYmM2NjMyZGVjYzJhODE2ZWQzNDE1MjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlMmVmNGY4ZDA4ZmNlODdiOThkZTIwNGY0NDRhZGZmOTYwMzAwMDhhMzQxYzE2YTM2OTcxMGY0YTIwYjZkOTkifQ"
+        },
+        {
+          "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochVfsListener.kt#L29-L148",
+          "version": "repo-lines-v1:sha256:e9409d0871bc821289ce4fb5fad72666c5bedd1470758886344c7516fb7a97e3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlYWYyMmNmMDczMjU5MmMyNDcxNDFjYmU2MWVmYTExMDEyNjEyZjVhMzEyMmI5YWY5YmJhZjUyZjU3MjRkMTk0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxOWU3NjM1NWNmMTE5OTQ4MGMzZjk5ODM2YjE0ODZjODQxZDg5MWZhYWQ5MDRjNjA4ZTA5MzAyMmQzNzU3YWVlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         }
       ]
     },
@@ -27,7 +35,7 @@
       "statement": "The existing native project opener admits private project storage and omits a frame for managed headless mode. Desktop mode keeps normal new-frame opening.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L232-L246",
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L238-L252",
           "version": "repo-lines-v1:sha256:ec2890a73471ab51cfebbd8d2ad0fccf33e01c4fd3d99802cfb2734de63d7da5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1NGJmOTU1ODk0NmZhNzI4NjE4OGY5YzE0ZTRjZjMyNjEwODI1MDJlNjFkMDRhNTI3ZDZiNTIwNDZhMTExNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiZjJkNzc3ODg4NTcxZjQ1NzM0ZTFlNTk5N2UyODEzNGM0OGNiN2FhNGY5YTg4MTk5NmQ1YjhiYTA5ZDBmYzcifQ"
         },
         {
@@ -38,7 +46,7 @@
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-06T22:26:46.446Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-13T18:27:10.865Z"
   }
 }

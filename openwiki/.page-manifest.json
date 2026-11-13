@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "pages": {
     "/openwiki/architecture/functional-packages.md": {
+      "gitHead": "8e66b6d4d53fdb942e49aac6e9c54b2e96cb1ae2",
+      "sourceFingerprint": "sha256:5e9e94ab3905ff63357a5562734f72c086ddb71db2b4dc40fbdf5fd558c688de",
       "pageVersion": "sha256:d560f89d88b9c24f5694e8ba6726a4cda16b979a653f00628643edff13189f13",
       "completedBy": "amp",
-      "completedRunId": "9b133eda-6c9e-4456-9fa9-a897f705300a",
-      "gitHead": "8e66b6d4d53fdb942e49aac6e9c54b2e96cb1ae2",
-      "sourceFingerprint": "sha256:5e9e94ab3905ff63357a5562734f72c086ddb71db2b4dc40fbdf5fd558c688de"
+      "completedRunId": "9b133eda-6c9e-4456-9fa9-a897f705300a"
     },
     "/openwiki/changes/planning-and-write-admission.md": {
       "gitHead": "8e72170cfead603d15de95be0a9ddea8516cb061",
@@ -205,11 +205,11 @@
       "completedRunId": "65868f14-c145-448c-ae1b-12454483e89e"
     },
     "/openwiki/modules/architecture.md": {
+      "gitHead": "8e66b6d4d53fdb942e49aac6e9c54b2e96cb1ae2",
+      "sourceFingerprint": "sha256:5e9e94ab3905ff63357a5562734f72c086ddb71db2b4dc40fbdf5fd558c688de",
       "pageVersion": "sha256:22dfe849707dd71f218904da6ceb59ccb0b5ed596f0a4103f5ab0faad789a09a",
       "completedBy": "amp",
-      "completedRunId": "9b133eda-6c9e-4456-9fa9-a897f705300a",
-      "gitHead": "8e66b6d4d53fdb942e49aac6e9c54b2e96cb1ae2",
-      "sourceFingerprint": "sha256:5e9e94ab3905ff63357a5562734f72c086ddb71db2b4dc40fbdf5fd558c688de"
+      "completedRunId": "9b133eda-6c9e-4456-9fa9-a897f705300a"
     },
     "/openwiki/modules/change.md": {
       "gitHead": "8e72170cfead603d15de95be0a9ddea8516cb061",
@@ -268,11 +268,11 @@
       "completedRunId": "26f7e018-a2f3-444c-95cc-e2a9d7540bc2"
     },
     "/openwiki/modules/workspace.md": {
-      "gitHead": "9a3be4465f5543a044cd172760850094af13a80c",
-      "sourceFingerprint": "sha256:9dda6ec183b5f77dcbadb8f3cc85e231258a61364f815e2c3710c11436dea23b",
-      "pageVersion": "sha256:48488c2a1888896739e6c7f04a3d60831564f54a143c58793e4dd39e158a32aa",
-      "completedBy": "codex",
-      "completedRunId": "6b10f164-dc46-4d54-bf4d-d47b945554b4"
+      "pageVersion": "sha256:7709d7d18d399ca20273311a1d40c0ac4fe1557f787141a03786e29af7d2203a",
+      "completedBy": "amp",
+      "completedRunId": "79f4415a-310d-4491-8b32-1c0e9e370540",
+      "gitHead": "32ffb8eb7eb435eb2d568db3dcbab4cde6130e26",
+      "sourceFingerprint": "sha256:7357e20736ec54913336d1dd5cb96a5e3de4f8869cc5043ade95e4c455d26618"
     },
     "/openwiki/queries/execution-and-composition.md": {
       "gitHead": "33a94a228871bb19480a116711fd634b3496a16f",
