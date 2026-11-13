@@ -6677,10 +6677,10 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/workspace.md",
-        "sourceSha256": "48488c2a1888896739e6c7f04a3d60831564f54a143c58793e4dd39e158a32aa",
+        "sourceSha256": "7709d7d18d399ca20273311a1d40c0ac4fe1557f787141a03786e29af7d2203a",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 12.69 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 12.67 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
       "reason": "Keep exact workspace ownership, live epochs, lifecycle recovery, and private project storage distinct. The grade target remains unmet and does not establish reader comprehension."
@@ -6689,9 +6689,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/workspace.md",
-        "sourceSha256": "48488c2a1888896739e6c7f04a3d60831564f54a143c58793e4dd39e158a32aa",
+        "sourceSha256": "7709d7d18d399ca20273311a1d40c0ac4fe1557f787141a03786e29af7d2203a",
         "rule": "Slopsentral.LongSentence",
-        "line": 79,
+        "line": 81,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
@@ -6701,21 +6701,21 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/workspace.md",
-        "sourceSha256": "48488c2a1888896739e6c7f04a3d60831564f54a143c58793e4dd39e158a32aa",
+        "sourceSha256": "7709d7d18d399ca20273311a1d40c0ac4fe1557f787141a03786e29af7d2203a",
         "rule": "Slopsentral.Claims",
-        "line": 94,
+        "line": 96,
         "message": "Avoid the unverifiable claim 'best'.",
         "severity": "warning"
       },
-      "reason": "At line 94, best effort limits background presentation. Trust and unsaved-document blockers remain. The phrase makes no comparative product claim and promises no guaranteed presentation."
+      "reason": "At line 96, best effort limits background presentation. Trust and unsaved-document blockers remain. The phrase makes no comparative product claim and promises no guaranteed presentation."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/workspace.md",
-        "sourceSha256": "48488c2a1888896739e6c7f04a3d60831564f54a143c58793e4dd39e158a32aa",
+        "sourceSha256": "7709d7d18d399ca20273311a1d40c0ac4fe1557f787141a03786e29af7d2203a",
         "rule": "Slopsentral.LongSentence",
-        "line": 96,
+        "line": 98,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
