@@ -64,7 +64,7 @@ class BootstrapTest(unittest.TestCase):
                 tools, home = root / "tools", root / "home"
                 tools.mkdir()
                 home.mkdir()
-                for name in ("tar", "mktemp", "mkdir", "rm"):
+                for name in ("tar", "gzip", "mktemp", "mkdir", "rm"):
                     tool = shutil.which(name, path=os.defpath)
                     assert tool is not None
                     (tools / name).symlink_to(tool)
