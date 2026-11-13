@@ -13205,10 +13205,10 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/release-candidates-and-promotion.md",
-        "sourceSha256": "336323e3e455c6c8dc2c11d4ace4037715d53e140636c05fb51b251f075fa4b6",
+        "sourceSha256": "549a624cb185dd5f6e165510784300227c480e8a66edc0a2040404debe15d8f0",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 11.50 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 11.40 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
       "reason": "Keep component-native qualification, immutable two-target sealing, detached installed-product acceptance, and publication permission as separate stages. Baseline admission requires sealing evidence and a genuinely different target composition, while fresh parallel-query identity and protected sentinels define later acceptance. Legacy component reuse is explicitly not complete-product evidence. Accept the updated grade without implying that these gates ran or that readers understood them."
@@ -13217,9 +13217,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/release-candidates-and-promotion.md",
-        "sourceSha256": "336323e3e455c6c8dc2c11d4ace4037715d53e140636c05fb51b251f075fa4b6",
+        "sourceSha256": "549a624cb185dd5f6e165510784300227c480e8a66edc0a2040404debe15d8f0",
         "rule": "Slopsentral.Modals",
-        "line": 80,
+        "line": 94,
         "message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
         "severity": "warning"
       },
@@ -13229,9 +13229,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/release-candidates-and-promotion.md",
-        "sourceSha256": "336323e3e455c6c8dc2c11d4ace4037715d53e140636c05fb51b251f075fa4b6",
+        "sourceSha256": "549a624cb185dd5f6e165510784300227c480e8a66edc0a2040404debe15d8f0",
         "rule": "Slopsentral.Diction",
-        "line": 85,
+        "line": 99,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
         "severity": "warning"
       },
@@ -13769,10 +13769,10 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 12.63 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 12.61 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
       "reason": "Keep complete-product selection, component-native sealing, detached installed acceptance, immutable vendor bases, and request-owned workspace state distinct. New sections explicitly separate retained component installers and archive assembly from the public managed route, and retain exact retirement, provider ownership, and recovery-journal requirements. This reference inventory needs those names and qualifications; accepting its updated grade establishes neither native product qualification nor reader comprehension."
@@ -13781,9 +13781,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.LongSentence",
-        "line": 462,
+        "line": 466,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
@@ -13793,9 +13793,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.Diction",
-        "line": 464,
+        "line": 468,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
         "severity": "warning"
       },
@@ -13805,9 +13805,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.Diction",
-        "line": 478,
+        "line": 482,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
         "severity": "warning"
       },
@@ -13817,9 +13817,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.Diction",
-        "line": 512,
+        "line": 516,
         "message": "Use 'more' instead of 'additional'. Keep the source meaning.",
         "severity": "warning"
       },
@@ -13829,9 +13829,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.LongSentence",
-        "line": 695,
+        "line": 709,
         "message": "Long sentence: 27 words.",
         "severity": "warning"
       },
@@ -13841,9 +13841,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.LongSentence",
-        "line": 697,
+        "line": 711,
         "message": "Long sentence: 29 words.",
         "severity": "warning"
       },
@@ -13853,9 +13853,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.LongSentence",
-        "line": 711,
+        "line": 725,
         "message": "Long sentence: 37 words.",
         "severity": "warning"
       },
@@ -13865,9 +13865,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.LongSentence",
-        "line": 714,
+        "line": 728,
         "message": "Long sentence: 39 words.",
         "severity": "warning"
       },
@@ -13877,9 +13877,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.LongSentence",
-        "line": 784,
+        "line": 798,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
@@ -13889,9 +13889,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.LongSentence",
-        "line": 798,
+        "line": 812,
         "message": "Long sentence: 35 words.",
         "severity": "warning"
       },
@@ -13901,9 +13901,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.LongSentence",
-        "line": 822,
+        "line": 836,
         "message": "Long sentence: 35 words.",
         "severity": "warning"
       },
@@ -13913,9 +13913,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.LongSentence",
-        "line": 837,
+        "line": 851,
         "message": "Long sentence: 32 words.",
         "severity": "warning"
       },
@@ -13925,9 +13925,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.Diction",
-        "line": 859,
+        "line": 873,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
         "severity": "warning"
       },
@@ -13937,9 +13937,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
         "rule": "Slopsentral.LongSentence",
-        "line": 868,
+        "line": 882,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
