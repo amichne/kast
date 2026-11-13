@@ -1,0 +1,169 @@
+#!/usr/bin/env -S uv run --locked --script
+# /// script
+# requires-python = ">=3.12,<3.14"
+# dependencies = []
+# [tool.uv]
+# no-build = true
+# [[tool.uv.index]]
+# name = "pypi"
+# url = "https://pypi.org/simple"
+# default = true
+# ///
+"""Build an exact-build experimental SDK copy; never modify the input installation."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import zipfile
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
+SOURCES = Path(__file__).resolve().parent
+
+
+@dataclass(frozen=True)
+class PatchedArchive:
+    name: str
+    original_sha256: str
+    patched_sha256: str
+    entries: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class PrototypeReceipt:
+    kind: str
+    source_home: str
+    output_home: str
+    archives: tuple[PatchedArchive, ...]
+
+
+def digest(path: Path) -> str:
+    with path.open("rb") as source:
+        return hashlib.file_digest(source, "sha256").hexdigest()
+
+
+def replace_archive(source: Path, target: Path, changes: dict[str, Path]) -> PatchedArchive:
+    """Preserve every unrelated entry and refuse duplicate member identities."""
+    if any(parent.is_symlink() for parent in target.parents):
+        raise ValueError(f"symlinked archive write parent: {target}")
+    with zipfile.ZipFile(source) as original:
+        names = original.namelist()
+        if len(names) != len(set(names)):
+            raise ValueError(f"duplicate archive entries: {source}")
+        with zipfile.ZipFile(target, "x") as changed:
+            changed.comment = original.comment
+            for info in original.infolist():
+                data = (
+                    changes[info.filename].read_bytes()
+                    if info.filename in changes
+                    else original.read(info)
+                )
+                changed.writestr(info, data)
+            for name in sorted(changes.keys() - set(names)):
+                changed.write(changes[name], name)
+    return PatchedArchive(source.name, digest(source), digest(target), tuple(sorted(changes)))
+
+
+def build(home: Path, output: Path, workspace_jar: Path) -> PrototypeReceipt:
+    home = home.resolve(strict=True)
+    workspace_jar = workspace_jar.resolve(strict=True)
+    requested_output = output
+    output = output.resolve()
+    if output == home or home.is_relative_to(output) or output.is_relative_to(home):
+        raise ValueError("input and output must be disjoint")
+    if requested_output.is_symlink():
+        raise FileExistsError(f"output already exists as a symlink: {requested_output}")
+    if (home / "lib").is_symlink():
+        raise ValueError("symlinked SDK lib would retain an input write parent")
+    # Refuse reuse, global installation mutation, and ambiguous partially built output.
+    output.mkdir(parents=True, exist_ok=False)
+    (output / "LOCAL_PROVENANCE_PROTOTYPE_V1").write_text("not-a-release\n")
+    patcher = output / "patcher"
+    classes = output / "classes"
+    classpath = os.pathsep.join(str(p) for p in sorted((home / "lib").glob("*.jar")))
+    subprocess.run(
+        ["javac", "-cp", classpath, "-d", str(patcher), str(SOURCES / "ProvenancePatch.java")],
+        check=True,
+    )
+    runtime_classpath = os.pathsep.join((str(patcher), classpath))
+    with (output / "platform-inputs.txt").open("w") as log:
+        subprocess.run(
+            ["java", "-cp", runtime_classpath, "ProvenancePatch", str(home), str(classes)],
+            stdout=log,
+            check=True,
+        )
+    subprocess.run(
+        [
+            "javac",
+            "--release",
+            "21",
+            "-cp",
+            os.pathsep.join((str(classes), classpath)),
+            "-d",
+            str(classes),
+            str(SOURCES / "PsiContentProvenance.java"),
+        ],
+        check=True,
+    )
+    copied = output / "idea"
+    shutil.copytree(home, copied, symlinks=True)
+    (copied / "lib").chmod((copied / "lib").stat().st_mode | 0o200)
+    remaining = {p.relative_to(classes).as_posix(): p for p in classes.rglob("*.class")}
+    archives: list[PatchedArchive] = []
+    for source in sorted((home / "lib").glob("*.jar")):
+        with zipfile.ZipFile(source) as archive:
+            selected = set(archive.namelist()) & remaining.keys()
+        if source.name == "intellij.platform.core.impl.jar":
+            selected |= {
+                name
+                for name in remaining
+                if name.startswith("com/intellij/psi/impl/PsiContentProvenance")
+            }
+        if selected:
+            target = copied / "lib" / source.name
+            stage = target.with_suffix(".staging")
+            archives.append(
+                replace_archive(source, stage, {name: remaining.pop(name) for name in selected})
+            )
+            stage.replace(target)
+    if remaining:
+        raise ValueError(f"unassigned platform classes: {sorted(remaining)}")
+    adapter = output / "adapter"
+    subprocess.run(
+        [
+            "java",
+            "-cp",
+            runtime_classpath,
+            "ProvenancePatch",
+            "--adapter",
+            str(workspace_jar),
+            str(adapter),
+        ],
+        check=True,
+    )
+    changes = {p.relative_to(adapter).as_posix(): p for p in adapter.rglob("*.class")}
+    archives.append(replace_archive(workspace_jar, output / "workspace-intellij-read.jar", changes))
+    receipt = PrototypeReceipt(
+        "LOCAL_PROVENANCE_PROTOTYPE_V1", str(home), str(copied), tuple(archives)
+    )
+    (output / "receipt.json").write_text(json.dumps(asdict(receipt), indent=2) + "\n")
+    return receipt
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--idea-home", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--workspace-jar", type=Path, required=True)
+    args = parser.parse_args()
+    receipt = build(args.idea_home, args.output, args.workspace_jar)
+    print(json.dumps(asdict(receipt), indent=2))
+
+
+if __name__ == "__main__":
+    main()

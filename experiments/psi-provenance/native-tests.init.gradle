@@ -1,0 +1,35 @@
+// Local experiment only: align the fixture and its test-framework dependencies to the real Host build.
+settingsEvaluated { settings ->
+    if (settings.rootProject.name == 'kast') {
+        settings.dependencyResolutionManagement.versionCatalogs.maybeCreate('libs')
+            .version('idea-platform-build', '262.10315.125')
+    }
+}
+gradle.beforeProject { project ->
+    if (project.path == ':runtime:hosted') {
+        project.afterEvaluate {
+            project.extensions.getByType(org.gradle.api.tasks.SourceSetContainer)
+                .getByName('nativeTest').java.srcDir(new File(project.rootDir, 'experiments/psi-provenance/test'))
+            // Main's compile-only Platform dependencies otherwise precede the experimental SDK.
+            def patched = project.files(['core', 'core.impl', 'ide.impl', 'lang.impl'].collect {
+                new File(project.providers.gradleProperty('nativeFixtureIdeaHome').get(), "lib/intellij.platform.${it}.jar")
+            })
+            project.tasks.named('compileNativeTestJava') { classpath = patched + classpath }
+            project.tasks.named('nativeFixtureTest') {
+                // Test-framework transitives are split Maven modules with extra plugin descriptors.
+                // Use the complete SDK for Platform classes and keep only its separate test support.
+                def support = classpath.filter {
+                    !it.path.contains('/com.jetbrains.intellij.') || it.name.startsWith('test-')
+                }
+                def descriptors = project.fileTree(new File(project.providers.gradleProperty('nativeFixtureIdeaHome').get(), 'lib')) {
+                    include 'intellij.libraries.kotlinx.serialization.*.jar', 'intellij.libraries.ktor.utils.jar'
+                }
+                classpath = patched + support + descriptors
+                jvmArgumentProviders.findAll { it.class.name.contains('NativeFixtureJvmArguments') }.each {
+                    it.productInfo.set(new File(project.providers.gradleProperty('nativeFixtureIdeaHome').get(),
+                        'Resources/product-info.json'))
+                }
+            }
+        }
+    }
+}

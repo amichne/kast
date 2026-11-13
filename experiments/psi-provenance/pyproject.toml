@@ -1,0 +1,19 @@
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = ["prototype", "test_prototype.py"]
+reportMatchNotExhaustive = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+include = ["prototype", "test_prototype.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers --import-mode=importlib -ra"
+testpaths = ["."]
+python_files = ["test_prototype.py"]
