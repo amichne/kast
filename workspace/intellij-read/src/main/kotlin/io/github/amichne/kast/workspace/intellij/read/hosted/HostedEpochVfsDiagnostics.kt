@@ -12,6 +12,7 @@ import com.intellij.openapi.vfs.newvfs.events.VFileDeleteEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
+import com.intellij.psi.PsiManager
 import io.github.amichne.kast.kernel.ReadLimitParameter
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -40,6 +41,8 @@ internal class HostedEpochVfsDiagnostics(
                 project.messageBus
                     .connect(owner)
                     .subscribe(VirtualFileManager.VFS_CHANGES, HostedVfsDiagnosticListener(root, host, limits))
+                PsiManager.getInstance(project)
+                    .addPsiTreeChangeListenerBackgroundable(HostedPsiDiagnosticListener(host, ::publish), owner)
                 binding = Binding.Bound(root)
             }
             is Binding.Bound ->

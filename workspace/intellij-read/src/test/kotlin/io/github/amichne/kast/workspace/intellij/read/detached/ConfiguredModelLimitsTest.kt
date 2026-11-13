@@ -24,11 +24,11 @@ class ConfiguredModelLimitsTest {
         assertEquals(TextFailure.TOO_LONG, (refineIdentity("module", limits) as Refinement.Rejected).failure)
         val events =
             listOf(
-                ProjectReadEpochVfsEvent.Change("/workspace/kast/a"),
-                ProjectReadEpochVfsEvent.Change("/workspace/kast/b"),
+                epochVfsChange("/workspace/kast/a"),
+                epochVfsChange("/workspace/kast/b"),
             )
         assertEquals(
-            ProjectReadEpochVfsBatchObservation.TouchesRoot,
+            ProjectReadEpochVfsBatchObservation.Relevant,
             observeProjectReadEpochVfsBatch(ProjectReadEpochVfsRoot.from(FIXTURE_ROOT), events),
         )
         assertEquals(

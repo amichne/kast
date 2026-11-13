@@ -365,3 +365,20 @@ internal class RecordingProjectReadEpochExecution(
         return read()
     }
 }
+
+/** One-endpoint VFS projection; the default models a change inside an admitted source root. */
+internal fun epochVfsChange(
+    path: String,
+    ownership: ProjectReadEpochVfsOwnership = ProjectReadEpochVfsOwnership.ADMITTED,
+) = ProjectReadEpochVfsEvent(listOf(ProjectReadEpochVfsEndpoint(path, ownership)))
+
+/** Move or rename projection with independently observed prior and resulting ownership. */
+internal fun epochVfsRelocation(
+    oldPath: String,
+    newPath: String,
+    prior: ProjectReadEpochVfsOwnership = ProjectReadEpochVfsOwnership.ADMITTED,
+    resulting: ProjectReadEpochVfsOwnership = ProjectReadEpochVfsOwnership.ADMITTED,
+) =
+    ProjectReadEpochVfsEvent(
+        listOf(ProjectReadEpochVfsEndpoint(oldPath, prior), ProjectReadEpochVfsEndpoint(newPath, resulting))
+    )

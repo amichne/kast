@@ -30,22 +30,33 @@ internal sealed interface ProjectReadEpochSignalSample {
     data class Rejected(val failure: ProjectReadEpochObservationFailure) : ProjectReadEpochSignalSample
 }
 
-/** Adapter-local projection of the bounded paths carried by one VFS event. */
-internal sealed interface ProjectReadEpochVfsEvent {
-    data class Change(val path: String) : ProjectReadEpochVfsEvent
-
-    data class Move(val oldPath: String, val newPath: String) : ProjectReadEpochVfsEvent
-
-    data class Rename(val oldPath: String, val newPath: String) : ProjectReadEpochVfsEvent
+/**
+ * Imported-model ownership of one VFS event endpoint, observed by the IntelliJ adapter under platform read access.
+ *
+ * Only [UNOWNED] can make an endpoint irrelevant. It requires an existing regular file that the live project file index
+ * places outside every source, generated, resource, test, and library root.
+ */
+internal enum class ProjectReadEpochVfsOwnership {
+    UNOWNED,
+    ADMITTED,
+    /** Directory, missing, invalid, or unobservable endpoint; never proof of irrelevance. */
+    UNKNOWN,
 }
 
-/** Closed pure result of refining one bounded VFS batch against the admitted root. */
+/** One bounded event endpoint; [ownership] is observed only when the endpoint lies inside the admitted root. */
+internal class ProjectReadEpochVfsEndpoint(val path: String, val ownership: ProjectReadEpochVfsOwnership)
+
+/** Adapter-local projection of one VFS event: every prior and resulting endpoint it can affect. */
+internal class ProjectReadEpochVfsEvent(val endpoints: List<ProjectReadEpochVfsEndpoint>)
+
+/** Closed pure result of refining one bounded VFS batch against the admitted root and imported ownership. */
 internal sealed interface ProjectReadEpochVfsBatchObservation {
-    data object OutsideRoot : ProjectReadEpochVfsBatchObservation
+    /** Every endpoint is outside the admitted root or an [ProjectReadEpochVfsOwnership.UNOWNED] file. */
+    data object Irrelevant : ProjectReadEpochVfsBatchObservation
 
-    data object TouchesRoot : ProjectReadEpochVfsBatchObservation
+    data object Relevant : ProjectReadEpochVfsBatchObservation
 
-    /** Batch capacity prevents classification; this is neither root relevance nor exhaustive observation proof. */
+    /** Capacity or ownership evidence prevents classification; this is not relevance or irrelevance proof. */
     data object RelevanceUnknown : ProjectReadEpochVfsBatchObservation
 
     data class Rejected(val failure: ProjectReadEpochObservationFailure) : ProjectReadEpochVfsBatchObservation
@@ -54,6 +65,15 @@ internal sealed interface ProjectReadEpochVfsBatchObservation {
 /** Exact canonical-root capability consumed by pure VFS containment checks. */
 internal class ProjectReadEpochVfsRoot private constructor(private val path: Path) {
     fun contains(candidate: ProjectReadEpochVfsPath): Boolean = candidate.isWithin(path)
+
+    fun hasAncestor(candidate: ProjectReadEpochVfsPath): Boolean = candidate.isAncestorOf(path)
+
+    /** True only for a well-formed bounded path inside this root; malformed paths are rejected by batch refinement. */
+    fun admits(raw: String, limits: ReadLimits = ReadLimits.Default): Boolean =
+        when (val refined = ProjectReadEpochVfsPath.admit(raw, limits)) {
+            is Refinement.Refined -> contains(refined.value)
+            is Refinement.Rejected -> false
+        }
 
     companion object {
         /**
@@ -67,6 +87,8 @@ internal class ProjectReadEpochVfsRoot private constructor(private val path: Pat
 /** Bounded absolute-normalized VFS event path consumed only by root containment. */
 internal class ProjectReadEpochVfsPath private constructor(private val path: Path) {
     internal fun isWithin(root: Path): Boolean = path.startsWith(root)
+
+    internal fun isAncestorOf(root: Path): Boolean = root.startsWith(path)
 
     companion object {
         /**
@@ -136,9 +158,11 @@ internal class ProjectReadEpochMetadataCounter {
 /**
  * Proof transition: `(ProjectReadEpochVfsRoot, List<ProjectReadEpochVfsEvent>) -> ProjectReadEpochVfsBatchObservation`.
  *
- * Establishes whether at least one bounded event path is within the exact admitted root. An oversized batch retains
- * unknown relevance and requires conservative invalidation; a malformed bounded path is a closed rejection. Raw event
- * strings may be extracted only by the IntelliJ VFS listener; this projection performs no effect or semantic work.
+ * Establishes [ProjectReadEpochVfsBatchObservation.Irrelevant] only when every bounded endpoint is outside the exact
+ * admitted root or an observed unowned file. The adapter observes ownership only for in-root endpoints. Changes to an
+ * ancestor of the workspace remain relevant; every path is admitted, so a malformed suffix remains a closed rejection.
+ * An oversized batch or unknown ownership retains unknown relevance and requires conservative invalidation. Raw event
+ * strings may be extracted only by the IntelliJ VFS listener; this projection performs no semantic work.
  */
 internal fun observeProjectReadEpochVfsBatch(
     root: ProjectReadEpochVfsRoot,
@@ -148,23 +172,30 @@ internal fun observeProjectReadEpochVfsBatch(
     if (events.size > limits[ReadLimitParameter.EPOCH_VFS_EVENTS].value) {
         return ProjectReadEpochVfsBatchObservation.RelevanceUnknown
     }
-    var touchesRoot = false
+    var relevant = false
+    var unknown = false
     for (event in events) {
-        val rawPaths =
-            when (event) {
-                is ProjectReadEpochVfsEvent.Change -> listOf(event.path)
-                is ProjectReadEpochVfsEvent.Move -> listOf(event.oldPath, event.newPath)
-                is ProjectReadEpochVfsEvent.Rename -> listOf(event.oldPath, event.newPath)
+        if (event.endpoints.isEmpty()) unknown = true
+        for (endpoint in event.endpoints) {
+            when (val refined = ProjectReadEpochVfsPath.admit(endpoint.path, limits)) {
+                is Refinement.Rejected -> return ProjectReadEpochVfsBatchObservation.Rejected(refined.failure)
+                is Refinement.Refined ->
+                    if (root.hasAncestor(refined.value)) {
+                        relevant = true
+                    } else if (root.contains(refined.value)) {
+                        when (endpoint.ownership) {
+                            ProjectReadEpochVfsOwnership.UNOWNED -> Unit
+                            ProjectReadEpochVfsOwnership.ADMITTED -> relevant = true
+                            ProjectReadEpochVfsOwnership.UNKNOWN -> unknown = true
+                        }
+                    }
             }
-        for (raw in rawPaths) when (val refined = ProjectReadEpochVfsPath.admit(raw, limits)) {
-            is Refinement.Refined -> if (root.contains(refined.value)) touchesRoot = true
-            is Refinement.Rejected -> return ProjectReadEpochVfsBatchObservation.Rejected(refined.failure)
         }
     }
-    return if (touchesRoot) {
-        ProjectReadEpochVfsBatchObservation.TouchesRoot
-    } else {
-        ProjectReadEpochVfsBatchObservation.OutsideRoot
+    return when {
+        relevant -> ProjectReadEpochVfsBatchObservation.Relevant
+        unknown -> ProjectReadEpochVfsBatchObservation.RelevanceUnknown
+        else -> ProjectReadEpochVfsBatchObservation.Irrelevant
     }
 }
 

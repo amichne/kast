@@ -270,13 +270,13 @@ class IdeProjectReadEpochTest {
     fun `root-filtered production counter advances once per bounded VFS batch`() {
         assertEquals(
             signal(0),
-            observeVfsBatch(listOf(ProjectReadEpochVfsEvent.Change("/workspace/kast-other/A.kt"))),
+            observeVfsBatch(listOf(epochVfsChange("/workspace/kast-other/A.kt"))),
         )
         assertEquals(
             signal(1),
             observeVfsBatch(
                 listOf(
-                    ProjectReadEpochVfsEvent.Move(
+                    epochVfsRelocation(
                         "/workspace/other/A.kt",
                         "/workspace/kast/src/A.kt",
                     )
@@ -287,7 +287,7 @@ class IdeProjectReadEpochTest {
             signal(1),
             observeVfsBatch(
                 listOf(
-                    ProjectReadEpochVfsEvent.Rename(
+                    epochVfsRelocation(
                         "/workspace/kast/src/A.kt",
                         "/workspace/other/A.kt",
                     )
@@ -298,7 +298,7 @@ class IdeProjectReadEpochTest {
             signal(1),
             observeVfsBatch(
                 List(1_000) { index ->
-                    ProjectReadEpochVfsEvent.Change("/workspace/kast/src/Event$index.kt")
+                    epochVfsChange("/workspace/kast/src/Event$index.kt")
                 }
             ),
         )
@@ -306,14 +306,14 @@ class IdeProjectReadEpochTest {
             signal(1),
             observeVfsBatch(
                 List(PROJECT_READ_EPOCH_MAX_VFS_EVENTS_PER_BATCH + 1) {
-                    ProjectReadEpochVfsEvent.Change("/workspace/kast/src/A.kt")
+                    epochVfsChange("/workspace/kast/src/A.kt")
                 }
             ),
         )
         listOf("relative/A.kt", "/" + "a".repeat(4_096), "/" + "€".repeat(2_731)).forEach { raw ->
             assertEquals(
                 ProjectReadEpochSignalSample.Rejected(ProjectReadEpochObservationFailure.VfsPathMalformed),
-                observeVfsBatch(listOf(ProjectReadEpochVfsEvent.Change(raw))),
+                observeVfsBatch(listOf(epochVfsChange(raw))),
             )
         }
     }
@@ -337,8 +337,8 @@ class IdeProjectReadEpochTest {
         val counter = ProjectReadEpochMetadataCounter()
         val root = ProjectReadEpochVfsRoot.from(FIXTURE_ROOT)
         when (val result = observeProjectReadEpochVfsBatch(root, events)) {
-            ProjectReadEpochVfsBatchObservation.OutsideRoot -> Unit
-            ProjectReadEpochVfsBatchObservation.TouchesRoot,
+            ProjectReadEpochVfsBatchObservation.Irrelevant -> Unit
+            ProjectReadEpochVfsBatchObservation.Relevant,
             ProjectReadEpochVfsBatchObservation.RelevanceUnknown -> counter.advance()
             is ProjectReadEpochVfsBatchObservation.Rejected -> counter.reject(result.failure)
         }

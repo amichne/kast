@@ -55,6 +55,7 @@ internal object LiveProjectReadEpochSourceFactory : ExistingProjectReadEpochSour
         }
         val projectModelCounter = ProjectReadEpochMetadataCounter()
         val vfsCounter = ProjectReadEpochMetadataCounter()
+        val ownership = LiveProjectReadEpochOwnership(project)
         val rootIdentity = ProjectReadEpochVfsRoot.from(root)
         return try {
             val connection = project.messageBus.connect(owner)
@@ -68,7 +69,7 @@ internal object LiveProjectReadEpochSourceFactory : ExistingProjectReadEpochSour
             )
             connection.subscribe(
                 VirtualFileManager.VFS_CHANGES,
-                RootFilteredProjectEpochVfsListener(rootIdentity, vfsCounter, limits),
+                RootFilteredProjectEpochVfsListener(rootIdentity, vfsCounter, limits, ownership),
             )
             if (project.isDisposed) {
                 Refinement.Rejected(ExistingProjectReadEpochSourceInstallationFailure.ProjectDisposed)

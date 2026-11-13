@@ -290,13 +290,29 @@ internal object EpochSignalClassContract {
                 setOf(member("com/intellij/platform/backend/workspace/WorkspaceModelChangeListener", "beforeChanged")),
             PRODUCTION_VFS_LISTENER_RESOURCE to
                 setOf(
+                    member(VFS_EVENT, "getPath"),
+                    member(VFS_EVENT, "getFile"),
+                    member(VFS_DELETE_EVENT, "getPath"),
                     member(VFS_MOVE_EVENT, "getOldPath"),
                     member(VFS_MOVE_EVENT, "getNewPath"),
+                    member(VFS_MOVE_EVENT, "getFile"),
                     member(VFS_PROPERTY_EVENT, "isRename"),
                     member(VFS_PROPERTY_EVENT, "getOldPath"),
                     member(VFS_PROPERTY_EVENT, "getNewPath"),
                     member(VFS_PROPERTY_EVENT, "getPath"),
-                    member(VFS_EVENT, "getPath"),
+                    member(VFS_PROPERTY_EVENT, "getFile"),
+                    member(VFS_COPY_EVENT, "getPath"),
+                    member(VFS_COPY_EVENT, "findCreatedFile"),
+                ),
+            // Ownership is a constant-time index lookup: no traversal, refresh, or content read.
+            PRODUCTION_OWNERSHIP_RESOURCE to
+                setOf(
+                    member("com/intellij/openapi/roots/ProjectFileIndex", "getInstance"),
+                    member("com/intellij/openapi/roots/ProjectFileIndex", "isInSourceContent"),
+                    member("com/intellij/openapi/roots/ProjectFileIndex", "isInLibrary"),
+                    member("com/intellij/openapi/project/Project", "isDisposed"),
+                    member("com/intellij/openapi/vfs/VirtualFile", "isValid"),
+                    member("com/intellij/openapi/vfs/VirtualFile", "isDirectory"),
                 ),
         )
 
@@ -309,6 +325,8 @@ internal object EpochSignalClassContract {
     private const val VFS_EVENT = "com/intellij/openapi/vfs/newvfs/events/VFileEvent"
     private const val VFS_MOVE_EVENT = "com/intellij/openapi/vfs/newvfs/events/VFileMoveEvent"
     private const val VFS_PROPERTY_EVENT = "com/intellij/openapi/vfs/newvfs/events/VFilePropertyChangeEvent"
+    private const val VFS_DELETE_EVENT = "com/intellij/openapi/vfs/newvfs/events/VFileDeleteEvent"
+    private const val VFS_COPY_EVENT = "com/intellij/openapi/vfs/newvfs/events/VFileCopyEvent"
     private const val WORKSPACE_LISTENER_DESCRIPTOR =
         "Lcom/intellij/platform/backend/workspace/WorkspaceModelChangeListener;"
     private const val CONTRACT_RESOURCE = LOCAL + "EpochSignalApiContract.class"
@@ -319,6 +337,7 @@ internal object EpochSignalClassContract {
     private const val PRODUCTION_WORKSPACE_LISTENER_RESOURCE =
         LOCAL + "LiveProjectReadEpochSourceFactory\$createOwned\$2.class"
     private const val PRODUCTION_VFS_LISTENER_RESOURCE = LOCAL + "RootFilteredProjectEpochVfsListener.class"
+    private const val PRODUCTION_OWNERSHIP_RESOURCE = LOCAL + "LiveProjectReadEpochOwnership.class"
     private val RESOURCES =
         listOf(
             CONTRACT_RESOURCE,

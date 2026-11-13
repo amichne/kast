@@ -58,6 +58,66 @@ class ProjectReadEpochVfsOverflowTest {
     }
 
     @Test
+    fun `only complete unowned membership proves in-root irrelevance`() {
+        val root = ProjectReadEpochVfsRoot.from(FIXTURE_ROOT)
+        val unowned = ProjectReadEpochVfsOwnership.UNOWNED
+        val unknown = ProjectReadEpochVfsOwnership.UNKNOWN
+        val irrelevant = listOf(epochVfsChange("/workspace/kast/README.md", unowned))
+        assertEquals(
+            ProjectReadEpochVfsBatchObservation.Irrelevant,
+            observeProjectReadEpochVfsBatch(root, irrelevant, limits),
+        )
+        for (path in listOf("custom/kotlin/A.kt", "build/generated/A.kt", "src/main/resources/value.txt")) {
+            assertEquals(
+                ProjectReadEpochVfsBatchObservation.Relevant,
+                observeProjectReadEpochVfsBatch(root, irrelevant + epochVfsChange("/workspace/kast/$path"), limits),
+            )
+        }
+        assertEquals(
+            ProjectReadEpochVfsBatchObservation.RelevanceUnknown,
+            observeProjectReadEpochVfsBatch(
+                root,
+                irrelevant + epochVfsChange("/workspace/kast/missing", unknown),
+                limits,
+            ),
+        )
+        assertEquals(
+            ProjectReadEpochVfsBatchObservation.RelevanceUnknown,
+            observeProjectReadEpochVfsBatch(root, List(3) { irrelevant.single() }, limits),
+        )
+    }
+
+    @Test
+    fun `prior and resulting ownership cannot erase membership or unknown evidence`() {
+        val root = ProjectReadEpochVfsRoot.from(FIXTURE_ROOT)
+        val old = "/workspace/kast/custom/A.kt"
+        val new = "/workspace/kast/reports/A.kt"
+        val unowned = ProjectReadEpochVfsOwnership.UNOWNED
+        val admitted = ProjectReadEpochVfsOwnership.ADMITTED
+        val unknown = ProjectReadEpochVfsOwnership.UNKNOWN
+        for ((prior, resulting) in listOf(admitted to unowned, unowned to admitted, unknown to admitted)) {
+            assertEquals(
+                ProjectReadEpochVfsBatchObservation.Relevant,
+                observeProjectReadEpochVfsBatch(root, listOf(epochVfsRelocation(old, new, prior, resulting))),
+            )
+        }
+        for ((prior, resulting) in listOf(unknown to unowned, unowned to unknown)) {
+            assertEquals(
+                ProjectReadEpochVfsBatchObservation.RelevanceUnknown,
+                observeProjectReadEpochVfsBatch(root, listOf(epochVfsRelocation(old, new, prior, resulting))),
+            )
+        }
+        assertEquals(
+            ProjectReadEpochVfsBatchObservation.Irrelevant,
+            observeProjectReadEpochVfsBatch(root, listOf(epochVfsRelocation(old, new, unowned, unowned))),
+        )
+        assertEquals(
+            ProjectReadEpochVfsBatchObservation.Relevant,
+            observeProjectReadEpochVfsBatch(root, listOf(epochVfsChange("/workspace", unowned))),
+        )
+    }
+
+    @Test
     fun `oversized relevant foreign and mixed batches retain unknown relevance`() {
         val root = ProjectReadEpochVfsRoot.from(FIXTURE_ROOT)
         for (paths in
@@ -68,7 +128,7 @@ class ProjectReadEpochVfsOverflowTest {
             )) {
             assertEquals(
                 ProjectReadEpochVfsBatchObservation.RelevanceUnknown,
-                observeProjectReadEpochVfsBatch(root, paths.map(ProjectReadEpochVfsEvent::Change), limits),
+                observeProjectReadEpochVfsBatch(root, paths.map(::epochVfsChange), limits),
             )
             val counter = ProjectReadEpochMetadataCounter()
             RootFilteredProjectEpochVfsListener(root, counter, limits).after(paths.map(::event))
@@ -108,20 +168,18 @@ class ProjectReadEpochVfsOverflowTest {
         val outside = "/workspace/other/a"
         for (event in
             listOf(
-                ProjectReadEpochVfsEvent.Move(inside, outside),
-                ProjectReadEpochVfsEvent.Move(outside, inside),
-                ProjectReadEpochVfsEvent.Rename(inside, outside),
-                ProjectReadEpochVfsEvent.Rename(outside, inside),
+                epochVfsRelocation(inside, outside),
+                epochVfsRelocation(outside, inside),
             )) {
             assertEquals(
-                ProjectReadEpochVfsBatchObservation.TouchesRoot,
+                ProjectReadEpochVfsBatchObservation.Relevant,
                 observeProjectReadEpochVfsBatch(root, listOf(event), limits),
             )
             assertEquals(
                 ProjectReadEpochVfsBatchObservation.Rejected(ProjectReadEpochObservationFailure.VfsPathMalformed),
                 observeProjectReadEpochVfsBatch(
                     root,
-                    listOf(event, ProjectReadEpochVfsEvent.Change("relative")),
+                    listOf(event, epochVfsChange("relative")),
                     limits,
                 ),
             )
