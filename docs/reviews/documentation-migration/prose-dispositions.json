@@ -14280,6 +14280,18 @@
         "severity": "warning"
       },
       "reason": "Keep the aggregate type-resolved detekt and distinct production/test file-length checks attached to module check dependencies. This sentence and the complete body are byte-identical to origin/main at 8e66b6d. Only native verification frontmatter changed. Bind the existing sentence-length review to these exact bytes while keeping the advisory visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/cli.mdx",
+        "sourceSha256": "a4e1fae60139f3687a1e3d647629805230bea2439f285f8bb425d8da796bdf70",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.89 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "The deferred-entry paragraph uses short sentences and lowers the page grade from 9.04. It keeps the exact --detail selector contract that PublicCliLowering and the public read tool admit: pass the issued selector unchanged and continue with offset set to end. The remaining page keeps its reviewed command examples and limits. The grade-8 advisory remains unmet and does not establish reader comprehension."
     }
   ]
 }
