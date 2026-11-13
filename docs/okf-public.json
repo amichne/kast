@@ -2919,7 +2919,7 @@
       "content": [
         {
           "path": "docs/public/glossary.mdx",
-          "sha256": "528b53d1d65f587a2be6a9c0b63922d17da565b1a4c24dd59423aa9a9f4aebf2"
+          "sha256": "e1024133ba2c7a8ddb73587d4bdcdaa6863b9589ab08e1829583ad187ad42f4b"
         }
       ],
       "claims": [
@@ -2987,10 +2987,10 @@
       "generatedOwners": [
         {
           "path": "docs/glossary.json",
-          "sha256": "8307a353135b2a65ca643db88b902f327fbebb7f44613846d7346e54bb50d979"
+          "sha256": "2a37711cc354caa8170da03db39d59c9b63bc4e6e9c325b99644c634c665013c"
         }
       ],
-      "reviewedSourceRevision": "74bf7a23ca0be30e6db377039298c9c17f828f48"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "how-to/complete-engineering-task",
@@ -3693,7 +3693,7 @@
       "content": [
         {
           "path": "docs/public/index.mdx",
-          "sha256": "91a5f271d677dca68022c43944b5388f6f4a713d7769233528a7ceb2036a1484"
+          "sha256": "f3b42778e6765d2076245a9a8425710b5cf8ff2f6d17367bcaaeb217a73ef1c9"
         },
         {
           "path": "docs/public/snippets/deeper-reading.mdx",
@@ -3734,7 +3734,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0e6b248ee4c144668de24a3109dca31c",
-          "statementSha256": "4095a3d415f2efd01d6142aa69ac695b67113f01248de4938f6b434c28a1415d"
+          "statementSha256": "6de948626047388717e13ea5332ed1b28f834d40ab8264920fc7e5612fdaf0da"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -3749,7 +3749,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0645aca128944a82a9153ba627038211",
-          "statementSha256": "266dc47bc7fbcbcfb6da61f21be0623fb1932bd68a4d55027ee697e15dfa42e7"
+          "statementSha256": "d121755852018a058f4b4ee019b31b53a2766be1f66901e0b44c3f83be87e506"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -4004,7 +4004,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_41fc68777f5c43989b02b4e0d1839807",
-          "statementSha256": "45f92b692e3d4edec0fd8e1065ced004cdc8513f241391f2ecc46db5eb90bcb1"
+          "statementSha256": "9f1dd93c06c97966aca50e61dc6ca828af123cafd49d00374b23fef553a708eb"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -4024,7 +4024,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -4054,7 +4054,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -4074,7 +4074,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "02c0cdfdd7283880aa2f60315412e5ddf318af695b031406e34b96dee6bd64f9"
+          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -4157,7 +4157,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference",
@@ -5328,7 +5328,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "5117ca59954f77e4c1eac069430d7d2752e8a092f253d2b25cce9359d071e6dd"
+          "sha256": "be09805b5b5fbd22ce502abeedacde2eb962e29fb374d159c473ffad9b546fd6"
         }
       ],
       "claims": [
@@ -5550,7 +5550,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -5580,7 +5580,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/queries/execution-and-composition.md",
@@ -5635,12 +5635,12 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
+          "statementSha256": "1a298986d075bc2de4d59d9034a887a25fcd27f509a43880ce629b69ae5e4653"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_05307cdbcd41467ca1c4f1fbda84e2dd",
-          "statementSha256": "faf93eb511f7cfe8e0c7a441e847d30baf6fc1fd71e20239a9a54013db3bbe76"
+          "statementSha256": "25ca38af9e32d44526b5d7fac391a455b967d447898f5fee1be7fb111b11a4aa"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -5675,12 +5675,12 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-          "statementSha256": "12e4476426770a8b6ab7f13673a3506760675dd67df35a46245e61a24026d915"
+          "statementSha256": "c14cafd25dd78ad09c4ff0fc803d600340a7663bca8c33445ac0aa676519ed02"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "17c1b1b8464280fae84b9c3bac9461b2d4580c36188de9fafe58c3df9c717cda"
+          "statementSha256": "44cbf0c0a6337db523053fbda189255189a439b5cb3ed1f440d008ae83aea257"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -5690,21 +5690,21 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5ab459a5b80641d087b05a25d3c52ee6",
-          "statementSha256": "22ac3d0c0a6991b8f4b9ffe04a9ba544c5bf4e2f075e25cadf55cf52981c4fb0"
+          "statementSha256": "9bbb44f32ee06510ccf78310011ab3ce9dc5150a59509b1046b0fefea6889c65"
         }
       ],
       "generatedOwners": [
         {
-          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspaceConfigurationIngress.kt",
-          "sha256": "43ceffd48e1e635a3fbb31480d375b532b55f6947c5d8806fbed487b1a6501a0"
+          "path": "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstalledWorkspaceConfigurationIngress.kt",
+          "sha256": "8b51b36ca25b4776a5401de0cc5181209edbc6654ef49392d03f4b3910855325"
         },
         {
           "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
-          "sha256": "b2f824d9c2d4c5bd84bb06bc9c7b4bc18ba9a0bc8fcf9ff9d7f1927c2acabb8a"
+          "sha256": "0dad44453e18a82a07c16dfb71c5b190f131ec06323329802f7269d2e72b1674"
         },
         {
-          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt",
-          "sha256": "be87f942c936f52b2ca057094fca390590458a90da087fb5a9ada6ad45889788"
+          "path": "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt",
+          "sha256": "f5a28aceeb866a9db87ce32bf5bc0fe2a9dd09ba1b69f5e261ced193faeb44ce"
         },
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
@@ -5712,7 +5712,7 @@
         },
         {
           "path": "cli/build.gradle.kts",
-          "sha256": "3fdba09274f861814014570a7d58632f3dcc28e94e6938c4651a4f0d7f7c3016"
+          "sha256": "fced37f2407b186ceadfe06528c3db7109a4a7a3d323970b2a3c50c734c98bb8"
         },
         {
           "path": "cli/native-image.args",
@@ -5724,7 +5724,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt",
-          "sha256": "d4a7015ce96f002f6887fc0d694360f6737d5f8464df60bf41c43fa7e9fea295"
+          "sha256": "b2dada7471da3868d43a420640cb91603d8b2bc99298461da128cea635453508"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt",
@@ -5768,7 +5768,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt",
-          "sha256": "2c8623924a22e80f3d35d9669e9e9a23be113a306193942d6ae9b2310e97a5b9"
+          "sha256": "145176431cf37286bb0a8788a99fc3415e423d9f17f2ad5cd7b5f72bebf9e524"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookArguments.kt",
@@ -5776,7 +5776,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt",
-          "sha256": "9424848e876a1ad4128943a09c7e62185a3cc918fa74fd32a9814e1703b26c07"
+          "sha256": "ea56f739af557d0d001289a2208e751805a15b9f487823b326bdd870330c63b5"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqEngine.kt",
@@ -5816,11 +5816,11 @@
         },
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",
-          "sha256": "0494672526ca28d49c9ea17f28f7feae7f6632a559f037096cdb138712101a10"
+          "sha256": "34f51ddfb7f9468cb8cdc45177aa6cd024664f0451ed85e46def2b0d192c2bfc"
         },
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt",
-          "sha256": "695021b6d21c6319ced70b9829cb7bde0da97e2f708de7140d6516468470ccc5"
+          "sha256": "e691e3fa424b5f5fa7c4732a9d53edf40d170b1359851935c91667bcc9b4330d"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/NativeControlInvocation.kt",
@@ -5875,14 +5875,14 @@
           "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/compatibility",
       "content": [
         {
           "path": "docs/public/reference/compatibility.mdx",
-          "sha256": "dc523fe000a078043d54c75ccc14545046b6c83903e97913ca3ba41e0d283a8c"
+          "sha256": "1a4dd0454db50eaa8ef6f3fff7fec5a1ce471fc0c89bdcfc532423bd7a2bb9bd"
         }
       ],
       "claims": [
@@ -5919,7 +5919,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0e6b248ee4c144668de24a3109dca31c",
-          "statementSha256": "4095a3d415f2efd01d6142aa69ac695b67113f01248de4938f6b434c28a1415d"
+          "statementSha256": "6de948626047388717e13ea5332ed1b28f834d40ab8264920fc7e5612fdaf0da"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -5934,7 +5934,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0645aca128944a82a9153ba627038211",
-          "statementSha256": "266dc47bc7fbcbcfb6da61f21be0623fb1932bd68a4d55027ee697e15dfa42e7"
+          "statementSha256": "d121755852018a058f4b4ee019b31b53a2766be1f66901e0b44c3f83be87e506"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -5999,7 +5999,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_41fc68777f5c43989b02b4e0d1839807",
-          "statementSha256": "45f92b692e3d4edec0fd8e1065ced004cdc8513f241391f2ecc46db5eb90bcb1"
+          "statementSha256": "9f1dd93c06c97966aca50e61dc6ca828af123cafd49d00374b23fef553a708eb"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -6019,7 +6019,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -6049,7 +6049,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -6069,7 +6069,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "02c0cdfdd7283880aa2f60315412e5ddf318af695b031406e34b96dee6bd64f9"
+          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -6132,7 +6132,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/composition",
@@ -6317,7 +6317,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "67cb2e90702d680e904996db3a3e9385bd0c1223ca772037f719977ab6c854b3"
+          "sha256": "de7b81aa89d40c8dcf7ebc16a1f0f4ed49312aa4a1d02f7c225ab9158519b7d9"
         }
       ],
       "claims": [
@@ -6354,7 +6354,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0e6b248ee4c144668de24a3109dca31c",
-          "statementSha256": "4095a3d415f2efd01d6142aa69ac695b67113f01248de4938f6b434c28a1415d"
+          "statementSha256": "6de948626047388717e13ea5332ed1b28f834d40ab8264920fc7e5612fdaf0da"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -6369,7 +6369,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0645aca128944a82a9153ba627038211",
-          "statementSha256": "266dc47bc7fbcbcfb6da61f21be0623fb1932bd68a4d55027ee697e15dfa42e7"
+          "statementSha256": "d121755852018a058f4b4ee019b31b53a2766be1f66901e0b44c3f83be87e506"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -6409,7 +6409,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_41fc68777f5c43989b02b4e0d1839807",
-          "statementSha256": "45f92b692e3d4edec0fd8e1065ced004cdc8513f241391f2ecc46db5eb90bcb1"
+          "statementSha256": "9f1dd93c06c97966aca50e61dc6ca828af123cafd49d00374b23fef553a708eb"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -6429,7 +6429,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -6459,7 +6459,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -6479,7 +6479,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "02c0cdfdd7283880aa2f60315412e5ddf318af695b031406e34b96dee6bd64f9"
+          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -6509,7 +6509,7 @@
         {
           "page": "openwiki/modules/distribution.md",
           "claimId": "claim_62b31492f84b4a84a50c056fff0156c3",
-          "statementSha256": "c463ee4f3826b731b9005c0bb96a9458b97bff885917abff2b8dfdbc974ccf01"
+          "statementSha256": "557af0ad5e8bede66e0ca2d6a1e872ff46b8bdfffc208ca85a8a50d0eba59347"
         },
         {
           "page": "openwiki/modules/distribution.md",
@@ -6519,7 +6519,7 @@
         {
           "page": "openwiki/modules/distribution.md",
           "claimId": "claim_9eaa2539bec849d78a5a206e77c0cb63",
-          "statementSha256": "7b4239e2d331222aeb1147f6b0b24aaf9bd82d4aedb818aff0c51c7a3e4646a0"
+          "statementSha256": "29770958c82b4baf3be8f3297839b3d318807829033e2261bbf93e65e09daa23"
         },
         {
           "page": "openwiki/modules/runtime-hosts.md",
@@ -6557,21 +6557,21 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/integrations",
       "content": [
         {
           "path": "docs/public/reference/integrations.mdx",
-          "sha256": "44d4e2d62ee6a4f3563a81067b5ae1a25eaaf341688a9915cb8bf81ef8be6dea"
+          "sha256": "afefa450290c0a45463c70d57a20e2a5105fe445333192962e78a2a5a98c69bb"
         }
       ],
       "claims": [
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -6601,17 +6601,17 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
+          "statementSha256": "1a298986d075bc2de4d59d9034a887a25fcd27f509a43880ce629b69ae5e4653"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_05307cdbcd41467ca1c4f1fbda84e2dd",
-          "statementSha256": "faf93eb511f7cfe8e0c7a441e847d30baf6fc1fd71e20239a9a54013db3bbe76"
+          "statementSha256": "25ca38af9e32d44526b5d7fac391a455b967d447898f5fee1be7fb111b11a4aa"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -6646,12 +6646,12 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-          "statementSha256": "12e4476426770a8b6ab7f13673a3506760675dd67df35a46245e61a24026d915"
+          "statementSha256": "c14cafd25dd78ad09c4ff0fc803d600340a7663bca8c33445ac0aa676519ed02"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "17c1b1b8464280fae84b9c3bac9461b2d4580c36188de9fafe58c3df9c717cda"
+          "statementSha256": "44cbf0c0a6337db523053fbda189255189a439b5cb3ed1f440d008ae83aea257"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -6661,7 +6661,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5ab459a5b80641d087b05a25d3c52ee6",
-          "statementSha256": "22ac3d0c0a6991b8f4b9ffe04a9ba544c5bf4e2f075e25cadf55cf52981c4fb0"
+          "statementSha256": "9bbb44f32ee06510ccf78310011ab3ce9dc5150a59509b1046b0fefea6889c65"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -6684,7 +6684,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/internals/architecture",
@@ -6732,7 +6732,7 @@
       "content": [
         {
           "path": "docs/public/reference/internals/background-startup.mdx",
-          "sha256": "cf54181f5a1ba6e50d33a02855e460ee8fc09315ce8e179c9bdd1eccebb29312"
+          "sha256": "4333e0514d0e0d67754fc8659a6d1b6c457e2dac59063026772d54a537746ef9"
         },
         {
           "path": "docs/public/snippets/diagrams/background-preparation.jsx",
@@ -6744,7 +6744,7 @@
         },
         {
           "path": "docs/public/snippets/okf/transport/coordinator-and-workspace-preparation.mdx",
-          "sha256": "0147eefe75cbc1d96a7da6ba84d97eea7d51ae5cb4487486f8974b28c1070301"
+          "sha256": "41105006129556a268f8fc62cffd85814a969cf1f474e3a93dcfd5c19cf33ee7"
         }
       ],
       "claims": [
@@ -6756,7 +6756,7 @@
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
           "claimId": "claim_e26a437aa26b41068e118b49725d068c",
-          "statementSha256": "ef9fbacad70a0600351b7cc9bc83ffd50edd4e5d29b109fbf0b422b5d91b2887"
+          "statementSha256": "7f17d563443c6509f51d6fd52693f6051bb767f40070187c658763bbbda548a8"
         },
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
@@ -6810,14 +6810,14 @@
           "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/lifecycles",
       "content": [
         {
           "path": "docs/public/reference/lifecycles.mdx",
-          "sha256": "141756cf0d891a8369509e8ef4592aefcccb87a07c4acaeee822889ac7c2b2f4"
+          "sha256": "f18c979e577e283c14fedf385726add3e6e261ba2e225c7e60fb6d65b09c1eed"
         },
         {
           "path": "docs/public/snippets/diagrams/request-lifecycle.jsx",
@@ -6843,7 +6843,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "02c0cdfdd7283880aa2f60315412e5ddf318af695b031406e34b96dee6bd64f9"
+          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -6908,7 +6908,7 @@
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
           "claimId": "claim_e26a437aa26b41068e118b49725d068c",
-          "statementSha256": "ef9fbacad70a0600351b7cc9bc83ffd50edd4e5d29b109fbf0b422b5d91b2887"
+          "statementSha256": "7f17d563443c6509f51d6fd52693f6051bb767f40070187c658763bbbda548a8"
         },
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
@@ -6943,16 +6943,16 @@
       ],
       "generatedOwners": [
         {
-          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspaceConfigurationIngress.kt",
-          "sha256": "43ceffd48e1e635a3fbb31480d375b532b55f6947c5d8806fbed487b1a6501a0"
+          "path": "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstalledWorkspaceConfigurationIngress.kt",
+          "sha256": "8b51b36ca25b4776a5401de0cc5181209edbc6654ef49392d03f4b3910855325"
         },
         {
           "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
-          "sha256": "b2f824d9c2d4c5bd84bb06bc9c7b4bc18ba9a0bc8fcf9ff9d7f1927c2acabb8a"
+          "sha256": "0dad44453e18a82a07c16dfb71c5b190f131ec06323329802f7269d2e72b1674"
         },
         {
-          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/SavedConfigurationIngress.kt",
-          "sha256": "be87f942c936f52b2ca057094fca390590458a90da087fb5a9ada6ad45889788"
+          "path": "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt",
+          "sha256": "f5a28aceeb866a9db87ce32bf5bc0fe2a9dd09ba1b69f5e261ced193faeb44ce"
         },
         {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
@@ -6971,7 +6971,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/limits",
@@ -7015,7 +7015,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0e6b248ee4c144668de24a3109dca31c",
-          "statementSha256": "4095a3d415f2efd01d6142aa69ac695b67113f01248de4938f6b434c28a1415d"
+          "statementSha256": "6de948626047388717e13ea5332ed1b28f834d40ab8264920fc7e5612fdaf0da"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -7030,7 +7030,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0645aca128944a82a9153ba627038211",
-          "statementSha256": "266dc47bc7fbcbcfb6da61f21be0623fb1932bd68a4d55027ee697e15dfa42e7"
+          "statementSha256": "d121755852018a058f4b4ee019b31b53a2766be1f66901e0b44c3f83be87e506"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -7285,7 +7285,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_41fc68777f5c43989b02b4e0d1839807",
-          "statementSha256": "45f92b692e3d4edec0fd8e1065ced004cdc8513f241391f2ecc46db5eb90bcb1"
+          "statementSha256": "9f1dd93c06c97966aca50e61dc6ca828af123cafd49d00374b23fef553a708eb"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -7305,7 +7305,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -7335,7 +7335,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -7355,7 +7355,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "02c0cdfdd7283880aa2f60315412e5ddf318af695b031406e34b96dee6bd64f9"
+          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -7438,14 +7438,14 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/management",
       "content": [
         {
           "path": "docs/public/reference/management.mdx",
-          "sha256": "6f1b135af7c49177e09183f41a4e309cb3359e9fcfe8fb9cce78a1269ae16363"
+          "sha256": "788bce6381fca0c46cedac8194d64f7da28573316b218487d004fb921473c8f8"
         }
       ],
       "claims": [
@@ -7482,7 +7482,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0e6b248ee4c144668de24a3109dca31c",
-          "statementSha256": "4095a3d415f2efd01d6142aa69ac695b67113f01248de4938f6b434c28a1415d"
+          "statementSha256": "6de948626047388717e13ea5332ed1b28f834d40ab8264920fc7e5612fdaf0da"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -7497,7 +7497,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0645aca128944a82a9153ba627038211",
-          "statementSha256": "266dc47bc7fbcbcfb6da61f21be0623fb1932bd68a4d55027ee697e15dfa42e7"
+          "statementSha256": "d121755852018a058f4b4ee019b31b53a2766be1f66901e0b44c3f83be87e506"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -7537,7 +7537,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_41fc68777f5c43989b02b4e0d1839807",
-          "statementSha256": "45f92b692e3d4edec0fd8e1065ced004cdc8513f241391f2ecc46db5eb90bcb1"
+          "statementSha256": "9f1dd93c06c97966aca50e61dc6ca828af123cafd49d00374b23fef553a708eb"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -7557,7 +7557,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -7587,7 +7587,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -7607,7 +7607,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "02c0cdfdd7283880aa2f60315412e5ddf318af695b031406e34b96dee6bd64f9"
+          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -7640,14 +7640,14 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/mcp-catalog",
       "content": [
         {
           "path": "docs/public/reference/mcp-catalog.mdx",
-          "sha256": "7e4a873a290dc6920628f4767f363a82151999e967a225be5412c21a58e36d09"
+          "sha256": "ad8a905fee3a325c533fb37ce0401c331eb4e05396655290cfd6d5b681c9a033"
         }
       ],
       "claims": [
@@ -7869,7 +7869,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -7899,7 +7899,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/queries/execution-and-composition.md",
@@ -7954,12 +7954,12 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
+          "statementSha256": "1a298986d075bc2de4d59d9034a887a25fcd27f509a43880ce629b69ae5e4653"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_05307cdbcd41467ca1c4f1fbda84e2dd",
-          "statementSha256": "faf93eb511f7cfe8e0c7a441e847d30baf6fc1fd71e20239a9a54013db3bbe76"
+          "statementSha256": "25ca38af9e32d44526b5d7fac391a455b967d447898f5fee1be7fb111b11a4aa"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -7994,12 +7994,12 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-          "statementSha256": "12e4476426770a8b6ab7f13673a3506760675dd67df35a46245e61a24026d915"
+          "statementSha256": "c14cafd25dd78ad09c4ff0fc803d600340a7663bca8c33445ac0aa676519ed02"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "17c1b1b8464280fae84b9c3bac9461b2d4580c36188de9fafe58c3df9c717cda"
+          "statementSha256": "44cbf0c0a6337db523053fbda189255189a439b5cb3ed1f440d008ae83aea257"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -8009,7 +8009,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5ab459a5b80641d087b05a25d3c52ee6",
-          "statementSha256": "22ac3d0c0a6991b8f4b9ffe04a9ba544c5bf4e2f075e25cadf55cf52981c4fb0"
+          "statementSha256": "9bbb44f32ee06510ccf78310011ab3ce9dc5150a59509b1046b0fefea6889c65"
         }
       ],
       "generatedOwners": [
@@ -8022,7 +8022,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/models/diagnostic",
@@ -11907,7 +11907,7 @@
       "content": [
         {
           "path": "docs/public/reference/rpc-catalog.mdx",
-          "sha256": "a11c6b32d37cac714b2ac7d2586a4fc0340691b0be7084fdb20112343da8a381"
+          "sha256": "79395b2f64fecb75711dd3763fdec57b9466e5e98c41c40201f7b90736be9212"
         }
       ],
       "claims": [
@@ -12129,7 +12129,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -12159,7 +12159,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/queries/execution-and-composition.md",
@@ -12214,12 +12214,12 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
+          "statementSha256": "1a298986d075bc2de4d59d9034a887a25fcd27f509a43880ce629b69ae5e4653"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_05307cdbcd41467ca1c4f1fbda84e2dd",
-          "statementSha256": "faf93eb511f7cfe8e0c7a441e847d30baf6fc1fd71e20239a9a54013db3bbe76"
+          "statementSha256": "25ca38af9e32d44526b5d7fac391a455b967d447898f5fee1be7fb111b11a4aa"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -12254,12 +12254,12 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-          "statementSha256": "12e4476426770a8b6ab7f13673a3506760675dd67df35a46245e61a24026d915"
+          "statementSha256": "c14cafd25dd78ad09c4ff0fc803d600340a7663bca8c33445ac0aa676519ed02"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "17c1b1b8464280fae84b9c3bac9461b2d4580c36188de9fafe58c3df9c717cda"
+          "statementSha256": "44cbf0c0a6337db523053fbda189255189a439b5cb3ed1f440d008ae83aea257"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -12269,7 +12269,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5ab459a5b80641d087b05a25d3c52ee6",
-          "statementSha256": "22ac3d0c0a6991b8f4b9ffe04a9ba544c5bf4e2f075e25cadf55cf52981c4fb0"
+          "statementSha256": "9bbb44f32ee06510ccf78310011ab3ce9dc5150a59509b1046b0fefea6889c65"
         }
       ],
       "generatedOwners": [
@@ -12282,7 +12282,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/schemas",
@@ -12985,7 +12985,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0e6b248ee4c144668de24a3109dca31c",
-          "statementSha256": "4095a3d415f2efd01d6142aa69ac695b67113f01248de4938f6b434c28a1415d"
+          "statementSha256": "6de948626047388717e13ea5332ed1b28f834d40ab8264920fc7e5612fdaf0da"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -13000,7 +13000,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0645aca128944a82a9153ba627038211",
-          "statementSha256": "266dc47bc7fbcbcfb6da61f21be0623fb1932bd68a4d55027ee697e15dfa42e7"
+          "statementSha256": "d121755852018a058f4b4ee019b31b53a2766be1f66901e0b44c3f83be87e506"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -13280,7 +13280,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_41fc68777f5c43989b02b4e0d1839807",
-          "statementSha256": "45f92b692e3d4edec0fd8e1065ced004cdc8513f241391f2ecc46db5eb90bcb1"
+          "statementSha256": "9f1dd93c06c97966aca50e61dc6ca828af123cafd49d00374b23fef553a708eb"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -13300,7 +13300,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -13330,7 +13330,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -13350,7 +13350,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "02c0cdfdd7283880aa2f60315412e5ddf318af695b031406e34b96dee6bd64f9"
+          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -13640,7 +13640,7 @@
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
           "claimId": "claim_e26a437aa26b41068e118b49725d068c",
-          "statementSha256": "ef9fbacad70a0600351b7cc9bc83ffd50edd4e5d29b109fbf0b422b5d91b2887"
+          "statementSha256": "7f17d563443c6509f51d6fd52693f6051bb767f40070187c658763bbbda548a8"
         },
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
@@ -13650,12 +13650,12 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
+          "statementSha256": "1a298986d075bc2de4d59d9034a887a25fcd27f509a43880ce629b69ae5e4653"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_05307cdbcd41467ca1c4f1fbda84e2dd",
-          "statementSha256": "faf93eb511f7cfe8e0c7a441e847d30baf6fc1fd71e20239a9a54013db3bbe76"
+          "statementSha256": "25ca38af9e32d44526b5d7fac391a455b967d447898f5fee1be7fb111b11a4aa"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -13690,12 +13690,12 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-          "statementSha256": "12e4476426770a8b6ab7f13673a3506760675dd67df35a46245e61a24026d915"
+          "statementSha256": "c14cafd25dd78ad09c4ff0fc803d600340a7663bca8c33445ac0aa676519ed02"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "17c1b1b8464280fae84b9c3bac9461b2d4580c36188de9fafe58c3df9c717cda"
+          "statementSha256": "44cbf0c0a6337db523053fbda189255189a439b5cb3ed1f440d008ae83aea257"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -13730,7 +13730,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5ab459a5b80641d087b05a25d3c52ee6",
-          "statementSha256": "22ac3d0c0a6991b8f4b9ffe04a9ba544c5bf4e2f075e25cadf55cf52981c4fb0"
+          "statementSha256": "9bbb44f32ee06510ccf78310011ab3ce9dc5150a59509b1046b0fefea6889c65"
         }
       ],
       "generatedOwners": [
@@ -13743,7 +13743,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/staleness",
@@ -13880,7 +13880,7 @@
       "content": [
         {
           "path": "docs/public/reference/troubleshooting.mdx",
-          "sha256": "a9b0b5e2ec983b18ea999855c5e034796c26f2b5bdcb283103ff81fdeff5f806"
+          "sha256": "9ab754c2ad65cc893222bcf8e307ee28e1c841e83f83e6fed704b83f6881a468"
         }
       ],
       "claims": [
@@ -13917,7 +13917,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0e6b248ee4c144668de24a3109dca31c",
-          "statementSha256": "4095a3d415f2efd01d6142aa69ac695b67113f01248de4938f6b434c28a1415d"
+          "statementSha256": "6de948626047388717e13ea5332ed1b28f834d40ab8264920fc7e5612fdaf0da"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -13932,7 +13932,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0645aca128944a82a9153ba627038211",
-          "statementSha256": "266dc47bc7fbcbcfb6da61f21be0623fb1932bd68a4d55027ee697e15dfa42e7"
+          "statementSha256": "d121755852018a058f4b4ee019b31b53a2766be1f66901e0b44c3f83be87e506"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -13997,7 +13997,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_41fc68777f5c43989b02b4e0d1839807",
-          "statementSha256": "45f92b692e3d4edec0fd8e1065ced004cdc8513f241391f2ecc46db5eb90bcb1"
+          "statementSha256": "9f1dd93c06c97966aca50e61dc6ca828af123cafd49d00374b23fef553a708eb"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -14017,7 +14017,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -14047,7 +14047,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -14067,7 +14067,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "02c0cdfdd7283880aa2f60315412e5ddf318af695b031406e34b96dee6bd64f9"
+          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -14130,7 +14130,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "reference/walkthrough",
@@ -14650,7 +14650,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -14680,7 +14680,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/queries/execution-and-composition.md",
@@ -14750,12 +14750,12 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
+          "statementSha256": "1a298986d075bc2de4d59d9034a887a25fcd27f509a43880ce629b69ae5e4653"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_05307cdbcd41467ca1c4f1fbda84e2dd",
-          "statementSha256": "faf93eb511f7cfe8e0c7a441e847d30baf6fc1fd71e20239a9a54013db3bbe76"
+          "statementSha256": "25ca38af9e32d44526b5d7fac391a455b967d447898f5fee1be7fb111b11a4aa"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -14790,12 +14790,12 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-          "statementSha256": "12e4476426770a8b6ab7f13673a3506760675dd67df35a46245e61a24026d915"
+          "statementSha256": "c14cafd25dd78ad09c4ff0fc803d600340a7663bca8c33445ac0aa676519ed02"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "17c1b1b8464280fae84b9c3bac9461b2d4580c36188de9fafe58c3df9c717cda"
+          "statementSha256": "44cbf0c0a6337db523053fbda189255189a439b5cb3ed1f440d008ae83aea257"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -14810,7 +14810,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5ab459a5b80641d087b05a25d3c52ee6",
-          "statementSha256": "22ac3d0c0a6991b8f4b9ffe04a9ba544c5bf4e2f075e25cadf55cf52981c4fb0"
+          "statementSha256": "9bbb44f32ee06510ccf78310011ab3ce9dc5150a59509b1046b0fefea6889c65"
         }
       ],
       "generatedOwners": [
@@ -14823,7 +14823,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "start",
@@ -14834,7 +14834,7 @@
         },
         {
           "path": "docs/public/start.mdx",
-          "sha256": "3abdabef6ffc8f0821b68a03e53c758272b6114b1ab12cb57b76a54785443e1b"
+          "sha256": "bb71e86769b6049e04a108cddadee0eb3eccd504f787fa89903b65bb0f98fde6"
         }
       ],
       "claims": [
@@ -14871,7 +14871,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0e6b248ee4c144668de24a3109dca31c",
-          "statementSha256": "4095a3d415f2efd01d6142aa69ac695b67113f01248de4938f6b434c28a1415d"
+          "statementSha256": "6de948626047388717e13ea5332ed1b28f834d40ab8264920fc7e5612fdaf0da"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -14886,7 +14886,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0645aca128944a82a9153ba627038211",
-          "statementSha256": "266dc47bc7fbcbcfb6da61f21be0623fb1932bd68a4d55027ee697e15dfa42e7"
+          "statementSha256": "d121755852018a058f4b4ee019b31b53a2766be1f66901e0b44c3f83be87e506"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -15141,7 +15141,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_41fc68777f5c43989b02b4e0d1839807",
-          "statementSha256": "45f92b692e3d4edec0fd8e1065ced004cdc8513f241391f2ecc46db5eb90bcb1"
+          "statementSha256": "9f1dd93c06c97966aca50e61dc6ca828af123cafd49d00374b23fef553a708eb"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -15161,7 +15161,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -15191,7 +15191,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -15211,7 +15211,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "02c0cdfdd7283880aa2f60315412e5ddf318af695b031406e34b96dee6bd64f9"
+          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -15286,12 +15286,12 @@
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_ff079a4bad1c49b29e631747df0a01a1",
-          "statementSha256": "67c6c94bda536a16f99a6b45b343b1321e211afcdcec802a44d22dac36384ae2"
+          "statementSha256": "1a298986d075bc2de4d59d9034a887a25fcd27f509a43880ce629b69ae5e4653"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
           "claimId": "claim_05307cdbcd41467ca1c4f1fbda84e2dd",
-          "statementSha256": "faf93eb511f7cfe8e0c7a441e847d30baf6fc1fd71e20239a9a54013db3bbe76"
+          "statementSha256": "25ca38af9e32d44526b5d7fac391a455b967d447898f5fee1be7fb111b11a4aa"
         },
         {
           "page": "openwiki/transport/direct-mcp-and-tool-rpc.md",
@@ -15326,12 +15326,12 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_62e9689fb94d439cb56fc70a8129fcb6",
-          "statementSha256": "12e4476426770a8b6ab7f13673a3506760675dd67df35a46245e61a24026d915"
+          "statementSha256": "c14cafd25dd78ad09c4ff0fc803d600340a7663bca8c33445ac0aa676519ed02"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5564e7cf80574a1b8c498fe560f82e2c",
-          "statementSha256": "17c1b1b8464280fae84b9c3bac9461b2d4580c36188de9fafe58c3df9c717cda"
+          "statementSha256": "44cbf0c0a6337db523053fbda189255189a439b5cb3ed1f440d008ae83aea257"
         },
         {
           "page": "openwiki/transport/harness-delivery.md",
@@ -15341,7 +15341,7 @@
         {
           "page": "openwiki/transport/harness-delivery.md",
           "claimId": "claim_5ab459a5b80641d087b05a25d3c52ee6",
-          "statementSha256": "22ac3d0c0a6991b8f4b9ffe04a9ba544c5bf4e2f075e25cadf55cf52981c4fb0"
+          "statementSha256": "9bbb44f32ee06510ccf78310011ab3ce9dc5150a59509b1046b0fefea6889c65"
         }
       ],
       "generatedOwners": [
@@ -15354,7 +15354,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "troubleshooting",
@@ -15365,7 +15365,7 @@
         },
         {
           "path": "docs/public/troubleshooting.mdx",
-          "sha256": "ca8e47bdbe4db8783972060900750152ad782d075ba202c0bfb3cb1a1feed835"
+          "sha256": "822d7ee61c17726a0b169d8876f5060f437dc049a57b6839de766306ee7f6427"
         }
       ],
       "claims": [
@@ -15402,7 +15402,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0e6b248ee4c144668de24a3109dca31c",
-          "statementSha256": "4095a3d415f2efd01d6142aa69ac695b67113f01248de4938f6b434c28a1415d"
+          "statementSha256": "6de948626047388717e13ea5332ed1b28f834d40ab8264920fc7e5612fdaf0da"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -15417,7 +15417,7 @@
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_0645aca128944a82a9153ba627038211",
-          "statementSha256": "266dc47bc7fbcbcfb6da61f21be0623fb1932bd68a4d55027ee697e15dfa42e7"
+          "statementSha256": "d121755852018a058f4b4ee019b31b53a2766be1f66901e0b44c3f83be87e506"
         },
         {
           "page": "openwiki/contracts/configuration.md",
@@ -15482,7 +15482,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_41fc68777f5c43989b02b4e0d1839807",
-          "statementSha256": "45f92b692e3d4edec0fd8e1065ced004cdc8513f241391f2ecc46db5eb90bcb1"
+          "statementSha256": "9f1dd93c06c97966aca50e61dc6ca828af123cafd49d00374b23fef553a708eb"
         },
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
@@ -15502,7 +15502,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_d60c4b147f224d3ea584e14dde77d04e",
-          "statementSha256": "d5861f9af83fd2f717c8f1c850462f17ba6ea8ad3d6ca4a8abe203b7fc32410e"
+          "statementSha256": "f0e74b902ec696ea0022b6a04f5a5e94626a6d157b6066dd20631c5510159cf8"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -15532,7 +15532,7 @@
         {
           "page": "openwiki/distribution/management-and-connections.md",
           "claimId": "claim_7c6ef35acd50437ba4f6d279003bad9d",
-          "statementSha256": "e4dea8fa43c4aa9a6e857c03d8e39b7277cf8db4fb37a8df75a779945a4a37fa"
+          "statementSha256": "963bfaf16964c553b96f7a8917ec1d2b21e1100c38379a363c5190ad28f383ac"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -15552,7 +15552,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "02c0cdfdd7283880aa2f60315412e5ddf318af695b031406e34b96dee6bd64f9"
+          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -15615,7 +15615,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     },
     {
       "route": "tutorials/first-query",
@@ -15626,7 +15626,7 @@
         },
         {
           "path": "docs/public/tutorials/first-query.mdx",
-          "sha256": "3dba12fa917b0c019dc2dfffa7f9325e752963ca5d7c5044d57454764f637843"
+          "sha256": "4a9a2f602ee2e0af003db877f451d178e20aad9e372d50bac184835f0f885ab1"
         }
       ],
       "claims": [
@@ -15961,7 +15961,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
     }
   ]
 }
