@@ -148,8 +148,9 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
         into("share/kast/libexec")
         rename { "kast-management" }
     }
-    from("install.sh") {
+    from("packaging/install-legacy.sh") {
         into("share/kast")
+        rename { "install.sh" }
     }
     from("distribution/cli/lifecycle-fence-v1") { into("share/kast") }
     from("distribution/cli/public-reset-v1") { into("share/kast") }
@@ -315,7 +316,7 @@ tasks.register<Exec>("installLocal") {
     inputs.dir(controlProductDirectory)
     inputs.file(localHostedPluginArchive)
     inputs.file(selectedHostReleaseRecord)
-    inputs.files("packaging/install-local.sh", "install.sh")
+    inputs.files("packaging/install-local.sh", "packaging/install-legacy.sh")
     inputs.property("localInstallPrefix", localInstallPrefix.map { it.absolutePath })
     environment("KAST_LOCAL_PREFIX", localInstallPrefix.get().absolutePath)
     environment("KAST_LOCAL_CONTROL_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
@@ -334,7 +335,7 @@ val installedProductTest = tasks.register<Exec>("installedProductTest") {
     inputs.file(hostedPluginArchive)
     val hostRecord = selectedHostReleaseRecord
     inputs.file(hostRecord)
-    inputs.files("install.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py", "packaging/pyproject.toml", "packaging/uv.lock")
+    inputs.files("packaging/install-legacy.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py", "packaging/pyproject.toml", "packaging/uv.lock")
     inputs.files(
         "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt",
         "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryDatabase.kt",

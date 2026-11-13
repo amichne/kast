@@ -267,6 +267,8 @@ sources:
     resource: repo://.github/scripts/release/publish_developer.py
   - id: openwiki-source-164e2da859b5277df81c7d94
     resource: repo://.github/workflows/ci.yml
+  - id: openwiki-source-09ee21d9fc32593e7f00c78d
+    resource: repo://.github/workflows/composed-linux.yml
   - id: openwiki-source-804f227d6f0416062f3436fe
     resource: repo://.github/workflows/developer-release.yml
   - id: openwiki-source-4d1d392666be6dfdd7a91a2e
@@ -351,6 +353,8 @@ sources:
     resource: repo://distribution/release/test_run_product_gate.py
   - id: openwiki-source-81d5f1627e19148569f46f81
     resource: repo://gradle/libs.versions.toml
+  - id: openwiki-source-03ffc32a0ca502ab67c54b25
+    resource: repo://install.sh
   - id: openwiki-source-74a7088da9d18da2237d9186
     resource: repo://packaging/bootstrap.sh.in
   - id: openwiki-source-245e3f9878cb2ef01a1fcbd1
@@ -409,10 +413,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
+generated: { by: "amp", at: "2026-11-13T19:40:08.615Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-13T03:20:11.225Z
+    at: 2026-11-13T19:40:08.615Z
 ---
 
 # Distribution and packaging
@@ -600,6 +604,13 @@ These controls do not serialize separate checkouts or establish synchronous daem
 
 The legacy component candidate retains exact commit, tree, producer, platform, toolchain, and payload digests. Its same-repository PR reuse requires matching trees and successful producer evidence. That candidate is not a complete product. The complete-product lane instead joins retained native inputs from both targets for the exact producer attempt without rebuilding. Missing target evidence rejects; retention is 30 days.
 
+Linux complete-product composition starts after scope selection.
+Fresh Mac composition restores the exact same-attempt release from the existing native and assembly jobs rather than compiling Control twice.
+Admission retains source revision, tree, version, archive digest, platform, and compiler checks.
+The reused PR candidate path keeps independent compilation because it has no same-attempt native release.
+Both native component harnesses and target qualification remain required.
+Sealing joins successful source work and both qualified targets before installed acceptance.
+
 Successful main push CI requests developer promotion.
 The publisher first admits the validation outcome from that exact successful source, run, and attempt.
 Missing, malformed, contradictory, or mismatched outcome evidence rejects promotion.
@@ -631,6 +642,9 @@ Stable product release maps a public version to the exact retained preview tag a
 
 The remaining component installer, checkout, and desktop lifecycle owners support legacy development and recovery contracts.
 They are not prerequisites or alternate public setup instructions for the managed product.
+Control stages `packaging/install-legacy.sh` as its private `share/kast/install.sh` lifecycle adapter.
+Native component uninstall uses that adapter, not the public bootstrap parser.
+The root `install.sh` remains the public managed-product entry point.
 The legacy installer reports the selected IDEA version and build before it fetches release-line-specific plugin bytes.
 An absent matching plugin rejects before installation effects.
 Paired installation offers the Codex plugin and defaults to that choice without a terminal.

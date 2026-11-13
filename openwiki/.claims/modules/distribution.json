@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+  "pageVersion": "sha256:84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -63,7 +63,7 @@
           "version": "repo-lines-v1:sha256:1f809cbe56fb43c60678bb4eae7c28529eb3d35c334884cafdf85acb755f73c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNGU0NWUyOWRhNjc2ZGM0MDVkODNiN2Q2MDVjMjE0MmRjYTZhZjU0N2NmNDVhMzZkM2JlY2NlNDE2NDQ0MTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOTgwZTUxYjM3MTQzYjdmMjhlN2M1ZmVkMzIxYzcxYjhiNjIyYzdiZjc4ZmFiMWUzMzg3NWNmMWVkZjU2OTUifQ"
         },
         {
-          "resource": "repo://build.gradle.kts#L232-L270",
+          "resource": "repo://build.gradle.kts#L233-L271",
           "version": "repo-lines-v1:sha256:64d31b63bafcae0d3882982679ca4a806d4b79df6159b4913d0e93046927a286:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZThlNDk0NDUxZmQ4OTQ2YWZhNDU2NWVmNmYwYjJkYjQ4MzU1MjYyNjA2N2Y3NDdhYjlkMDJhMTA3ZmQ3MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxOWQyZTA0ZGIwYzViYWUyMjVlYzllOGY0MDgzN2U3OGQwZmIxYmQ2YzViMmQ0ZGQxOTkxNDAzN2I1Mzk3OGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhZjU1Y2ExMjEzYzlmNzQxYzc4ODNiNTJmMDhhNmExYTZkYjFhM2Y3YWNlMGY2MmZkOThlZjU3Y2RlODQzMTMifQ"
         },
         {
@@ -279,8 +279,8 @@
           "version": "repo-file-v1:sha256:bf2b4a5eaa35320422e9ef01db590af625f7bd3296de84fd9dadfefccb1c525c"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L433-L602",
-          "version": "repo-lines-v1:sha256:3eeb7f0e63adb3e260828c4890f5369fa5b8ca92a57c21b2ffdd4dd35dcbb446:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI2ZTMzMDNkMjU4OGFlYjNiZDI1ZTUyMjA3ZDgwM2Y2OTY0YWQ4ZDJmNGYzYWM1YzMwZjdkNzk5M2M2NjRmNjIyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI4ZDMyYWMyMDgwYTEzNDVjNjQ2OGQwZTBlMDlhNDkzMjAxNTE3Njc0M2Y5MmE1MjUzNTVjZmRmZDU4OTdjZmQzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI4M2VhNTI4MTg1Mjc5ZmJhZGYzMTA2MDRjYmY3ZmExYWVkODY4ZWQ1MjA5YWFhZDY5Y2JmN2JmMmMzZDI4ZGMxIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4ZGI4MWI4N2Y5ZGQ1YTUyMDk2ZDU5YjA5M2RmNzdjMjE2OTVjYjBkNWIyN2ZmOWFkZmI2MzQ3NTAzOTUwMTU3In0"
+          "resource": "repo://.github/workflows/ci.yml#L432-L620",
+          "version": "repo-lines-v1:sha256:8e50e33a768ceed9dd2a297672bb014a92bb44778a9dc8f7e7db2cc780e076e9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTg5LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjODYzNDJkOTVkYzI5YjYzYzIyOTI4OGM3NGYxZGU2NmM0MjA3YTU5NmQ4OWY3OWM1YTFkMTQ1YmZjZjBiZTIwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI4ZDMyYWMyMDgwYTEzNDVjNjQ2OGQwZTBlMDlhNDkzMjAxNTE3Njc0M2Y5MmE1MjUzNTVjZmRmZDU4OTdjZmQzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI5NzAzNWQyODU2YTIyMGI3YzdlNmQxOWU0YTQyNWNmNDY5MDI0ZjY3NmFlM2EzZjJiZTlhYjhiOTZkMTdkYjBlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4ZGI4MWI4N2Y5ZGQ1YTUyMDk2ZDU5YjA5M2RmNzdjMjE2OTVjYjBkNWIyN2ZmOWFkZmI2MzQ3NTAzOTUwMTU3In0"
         }
       ]
     },
@@ -308,11 +308,11 @@
         },
         {
           "resource": "repo://.github/scripts/ci/native_handoff.py",
-          "version": "repo-file-v1:sha256:89cc86c4e5bc7abf75894d626e9e21ff871665e2794dbf761adf7bb04a769e7c"
+          "version": "repo-file-v1:sha256:7ba390b1bf6b91931725421e505eb535b1bfe7f76fef171b0b66923945226cfe"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:0f3423e1969884280396aa3f81bcdc0af6e99d633a5dcd26ddeffa6b145b7da6"
+          "version": "repo-file-v1:sha256:fbaac6f24e7888b950ee3c80abbb7b4742dc28b4eca7e9222be112d58562347f"
         },
         {
           "resource": "repo://cli/native-image.args",
@@ -330,7 +330,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:0f3423e1969884280396aa3f81bcdc0af6e99d633a5dcd26ddeffa6b145b7da6"
+          "version": "repo-file-v1:sha256:fbaac6f24e7888b950ee3c80abbb7b4742dc28b4eca7e9222be112d58562347f"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
@@ -408,11 +408,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/native_handoff.py",
-          "version": "repo-file-v1:sha256:89cc86c4e5bc7abf75894d626e9e21ff871665e2794dbf761adf7bb04a769e7c"
+          "version": "repo-file-v1:sha256:7ba390b1bf6b91931725421e505eb535b1bfe7f76fef171b0b66923945226cfe"
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:0f3423e1969884280396aa3f81bcdc0af6e99d633a5dcd26ddeffa6b145b7da6"
+          "version": "repo-file-v1:sha256:fbaac6f24e7888b950ee3c80abbb7b4742dc28b4eca7e9222be112d58562347f"
         },
         {
           "resource": "repo://build.gradle.kts#L67-L88",
@@ -803,7 +803,7 @@
           "version": "repo-lines-v1:sha256:5320d2ba9a87329b2378c1e0f7129e456152230a9a0ef122e9f3b56d26014a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNDBkMzVhMTI4ZTYyMjE5NjcxZTQ0OTE0N2Y5ZTFlNjQ2MTBiNzI2NGQyMmRmYWQ1Njg4YWMzMGQzMmIwMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5N2M3NTQxMjk2NmE4ODZiNjM1YzA3YWI3MjhkOWY3M2VlYjM4ODYzZmEwYmFmMGNmMjcwNmFkYzgwZWZiMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwY2I3M2UyMzg2ZWM2NDFhYjY2YTcxYTViMjRmNzJiNWJlNzRjMjVkMTlkOTQyZDRmNDk3MDdiZWQ3NmI3ZTAifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L504-L544",
+          "resource": "repo://.github/workflows/ci.yml#L522-L562",
           "version": "repo-lines-v1:sha256:2771c08ea8e7542006be8a206002531ccf0f6653805cf7035da74ed534184a87:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiMDc4NDhhNDM2NjY1NmIyYmE2MTk3YmUwMmI5MjA4MTQ1NDZmOWQ5YWQwYjUzMzllNGMyNmEyYzk0NjUxMTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUzMDFhZTU0ODEwNjVlZThmMzA5Y2JjMzhiYmJiZDMyZTViMzQyMjE1MWExODk5MTAwYTg4NDkyNTg2NDE1OGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFlMDU0NTZhNjg3YmEzN2FjNTNiZTQ5YmNiNDE2ZDM2MDc4ZjE2ZmQzOGNlMjk3YTc2ZjFmYTEyZGQyY2IzY2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlMTYxOTg2Y2I5MDg0YjQ2OWU5M2M2Zjc4Zjg1NGJlOTU2ZWQ4MDlmNzc2MDBmNjJhMWRjNTM4ZDdkOTVmM2EifQ"
         },
         {
@@ -851,12 +851,12 @@
           "version": "repo-lines-v1:sha256:0d29e28feb5defa37afc99368b16b11ec8203ab10bc0154b9bd4315d8a1f4539:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2NTQwOTAxNzY1MWFjYzA2YjQzOWU0Mzg1ZmQwOWU3YWZjY2NmYzI3N2Q5M2FmYTk2ZTExOGMxNjA5ZWRmOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjczYzY0ZTQxOGM0MmVkNzhlYmJiY2JlNzJkMTgwNzhkN2EwYWNhMjk4NmFhOWUxYTQ0NmFhM2ZmZTE4YjM2NTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0OGQ3NDgzZDA2MGYxNzIyZTI0NTM2ODg4MzM0MjU2YjU0OTBlOGJiZTg2OTgyMDY3NmNhOWVhZjM1MDljYzkifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L445-L489",
-          "version": "repo-lines-v1:sha256:252a7486ecd34e9c0e7f55519f0766d4196766083ec87168d0fdf7be91ac97cc:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwYWVmMmM1MmI0MmFjZmVlZjM3NDQ0MTA3YTBlODQ1MDA0NTY4YmE0NGM3MTg0ZDAyYTlhOThjNTcxZDllMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwNDRlOTk3NGMzMjc5OGIzODg3YWYwNzJiMjQ3OGQzYTMzMDIwOWI3YWM4NzJlZGU3ZTVhZmJjMWRiNTljOGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjExYmFiNDk5Mzc0NzJlNWMwNGQ4YmFkODlhMTMwYWQ2ODkxNzQzMjBjODcwMDQ2MTVmYWI2YzEzMzU4NTQ1MTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3YTA2NzNjOGIwNWMzNDA4NzVhZmVmNmRhOGZjNjVjNDA3YzQxODgzOTU2NjNiZTg0YjhhYjNjODkwZjljZTgifQ"
+          "resource": "repo://.github/workflows/ci.yml#L463-L507",
+          "version": "repo-lines-v1:sha256:df02ac31d84eddc6704bbec0409528d5ba24aecd6ffb2711b45874bc69b284ba:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwYWVmMmM1MmI0MmFjZmVlZjM3NDQ0MTA3YTBlODQ1MDA0NTY4YmE0NGM3MTg0ZDAyYTlhOThjNTcxZDllMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwNDRlOTk3NGMzMjc5OGIzODg3YWYwNzJiMjQ3OGQzYTMzMDIwOWI3YWM4NzJlZGU3ZTVhZmJjMWRiNTljOGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3NjBhMjJlMmMzOTBhOTBmNzEwNmExOTAyMTNkMzkwNTFkYmUwYzRlNTc2ZjYzYmI1YWI5ZDY2ZDM4ZDg5YzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3YTA2NzNjOGIwNWMzNDA4NzVhZmVmNmRhOGZjNjVjNDA3YzQxODgzOTU2NjNiZTg0YjhhYjNjODkwZjljZTgifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L548-L609",
-          "version": "repo-lines-v1:sha256:031fe9be559fd3011a15805b4c7e6beca7b92d7c2d0354fee12989c5ee675f4d:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2NjAxODkyNDY3ZmVlYmE0MTNlMWM5ZjNjZTMwOTZjYmNjY2VhNDQ1ZGQxNDg1YTBhZjk1NzZmOTJlODdmNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5MjNjOGU5NzIxYTc0MGU4YThmZWIwMmU1N2VkYTQ5NTE4YzEwZDYyOTNlZmIxYWRkYzQ3MGE4NzE1YTI4OGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlMTYxOTg2Y2I5MDg0YjQ2OWU5M2M2Zjc4Zjg1NGJlOTU2ZWQ4MDlmNzc2MDBmNjJhMWRjNTM4ZDdkOTVmM2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3YTA2NzNjOGIwNWMzNDA4NzVhZmVmNmRhOGZjNjVjNDA3YzQxODgzOTU2NjNiZTg0YjhhYjNjODkwZjljZTgifQ"
+          "resource": "repo://.github/workflows/ci.yml#L589-L620",
+          "version": "repo-lines-v1:sha256:293230c1879a4f4d36f5efd6c89bf0a722fbd5d469ba55c99f53d816f3bb4aa0:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjNmQ2ZDExMDg3ZjdhYmVmZWFlOTgzZGE0ZmQyODVhYWViZTJkOTQ5ZDYzZTIyMjhjMWJmNDM2MTAyYjllOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMzJhYzIwODBhMTM0NWM2NDY4ZDBlMGUwOWE0OTMyMDE1MTc2NzQzZjkyYTUyNTM1NWNmZGZkNTg5N2NmZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NDQ5NDlkZTc3NGZiZTgyNWI4Y2ViODNmNjFmYzlkODZhMTcyYTQyOGNkODc1MWQ3MmNmMGVhOWRjZTQ4ODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkYjgxYjg3ZjlkZDVhNTIwOTZkNTliMDkzZGY3N2MyMTY5NWNiMGQ1YjI3ZmY5YWRmYjYzNDc1MDM5NTAxNTcifQ"
         }
       ]
     },
@@ -899,10 +899,50 @@
           "version": "repo-file-v1:sha256:59a65c98ff09663b668dc495549cae6cf805b591a872141a49ef95148c240320"
         }
       ]
+    },
+    {
+      "id": "claim_eb0ff87439bf40539b47af5df3afdba9",
+      "statement": "Control stages packaging/install-legacy.sh as its private share/kast/install.sh lifecycle adapter for native component uninstall, separately from the root public managed-product bootstrap.",
+      "evidence": [
+        {
+          "resource": "repo://build.gradle.kts#L147-L154",
+          "version": "repo-lines-v1:sha256:fcb0fd905c15a730c8fcfd973567f31a6871a9fce7cbe6e6d1f64777ea6cab99:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTM0MGQwNTU1MDE0ZmQ4ZGYwYzU3OWYxZTYxNTAyZGU1NjYzNjg3YWEzM2UzNzgxYTM4ZjdhMDlkNmQxYjU3MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWE0NWYwNTIzMzQ3ZDUwYTU3NWZlMzQxM2MwNjE2OTRhNzEwODAzOWYxZTM0NjYwZWVjNmNkZGE0NTNiMzk4YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWQyYTJmNTMyM2RjOTYyOWExNmFhMDkwNDdhYzA0YTVlNGUwOWRhNDg5ZTRlZmE4YmI1YTBiNWM5ZDU3MjQxZiJ9"
+        },
+        {
+          "resource": "repo://install.sh",
+          "version": "repo-file-v1:sha256:117faa9507391280b4b655e900cce14d2888e657c273d268aacb4188ccf55d60"
+        },
+        {
+          "resource": "repo://packaging/install-legacy.sh",
+          "version": "repo-file-v1:sha256:026e401ee9880e53ddd88cce73cfc72f0e10042bdfd6bb4fb0555542dd48742d"
+        }
+      ]
+    },
+    {
+      "id": "claim_535f84f7dc6d455da996308020453c90",
+      "statement": "Fresh Mac complete-product composition restores the same-attempt native release with source, tree, version, digest, platform, and toolchain admission instead of compiling Control twice. The reused PR candidate path explicitly keeps independent compilation, and source success plus both qualified targets remain prerequisites of sealing.",
+      "evidence": [
+        {
+          "resource": "repo://.github/scripts/ci/native_handoff.py#L135-L156",
+          "version": "repo-lines-v1:sha256:57b867b7aa51fef2bfa6c1b0005b8ff591092aa4bcc9f81839e77933e7f76fad:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkNGFjYzkzZGViNjE3ZWI1NzE5OWU2YmRmOTRkZjhkYWEwMDQ1ODRjZTEyOTU4MDdkNzNlYjdjNzgwNjNmNTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyYmI2ZGUzMmMyM2M2NWEzMTYxMzVlMTU0ZjFjZDUzNDZhM2I2ODc3MTlhMDQ1MTg5ZWY1NjQ4MzU2NjdmYWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3MjIzMTA2ZmQ4NzQyYjcwZWEyMzNmOWRjMzU5ZjRiMDJiYmIwNjliNzI4M2VlZjc2MjQ5OTUxNmJkN2I5YzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFmZmMxNTNmNzk0MTEwMzdkOWI3YTJiNzRiNGM0Y2Q2ZTQ3ZWQxYzM2ZTRjZDdjOGQ2ZjFjYjgzMzkxYjUzZWYifQ"
+        },
+        {
+          "resource": "repo://.github/scripts/ci/native_handoff.py#L414-L425",
+          "version": "repo-lines-v1:sha256:ee9a950f4012eee08baacf359787526de62cbb2aeb82c8fea3e30d1ae4ffd398:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1NTYwMGVjYTg4OTRhZWM3MjdkZmI3ZjE3NDcyZDc0OTlhYTZiYjhiNTYxMWJjNzEzNWIxYjI3NGM0OWFjYjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllNmVjMmI2YTFiNWRmNWQ0ZmJlMDIyNThkM2ZjOTMzZDM1NGE3MDI5ZTYwMWIzM2I1ZTZhN2FiNjNkYWJjN2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyZmFhMmJkM2E4NGQ2NDMzZTdmZjVkNzViNzZhMDdlZTNhYzViN2M0ZjdkOWFkOGZkMzM5ZDU5MzQ3OWUzN2UifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/ci.yml#L432-L465",
+          "version": "repo-lines-v1:sha256:7ff5971390264d1d91bbd29daf9e08afe67a4b64a674cb32d90d127227ce55b8:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4NjM0MmQ5NWRjMjliNjNjMjI5Mjg4Yzc0ZjFkZTY2YzQyMDdhNTk2ZDg5Zjc5YzVhMWQxNDViZmNmMGJlMjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzMWFlMmI5OWNjOGRkM2EyYTg1MzM4MWFhZjJiZDRiNWUyZDBkMTYxNmViN2FjNGIzMjQzYWJiNWU5OTlmYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3MDM1ZDI4NTZhMjIwYjdjN2U2ZDE5ZTRhNDI1Y2Y0NjkwMjRmNjc2YWUzYTNmMmJlOWFiOGI5NmQxN2RiMGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU3NzJkNjkwY2Q4MjhiMjhiYzRmMDdlNzM0ZWVmOGIwOGI5YTRhNjRmNWJjZDhkMDA0NjM5ZDhkOTI4OGI1MWMifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/composed-linux.yml#L119-L150",
+          "version": "repo-lines-v1:sha256:254127986b4c6c2568a2f1cbbd1e82a143f3cbd146ef1303ca05c108aab29d31:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4Nzk5YzY1MTU3ZDBiYmE3ZjkzYmUwMjM0NzY1NWI3MjJlMjcxNmUzYjM0MjM0MDMzMjUwMzI1NzUxOWU1MGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0Njc1YjEyZDJhYmNhNDYxOWNmNDZiY2I3OGI4MWE3MTQ2Y2NjZGQ5NzRlOGM5OTI0MDhjNzg5ZTQxNDZmMTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5YWE4OGI3MzVjZGU3NDg0ZTk5NDE5YzgwODM0OWY4NWZkMGRiNGRkMTVhZWY5NWJjOWVhMzdlN2IwZTNlZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YzFmNDVjMDQ4ZThkODRhZDFiYTY2NjhkYjA5MjRjZGE5ZWNlNjYyZmViNmM4NGE2MmY3ZmUxN2FhMzFmODIifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-13T03:20:11.225Z"
+    "at": "2026-11-13T19:40:08.615Z"
   }
 }

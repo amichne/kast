@@ -593,7 +593,10 @@ class SourceInventoryTest(unittest.TestCase):
         ).read_text()
         assembly = workflow.split("- name: Assemble matching Control, Host, and bootstrap\n", 1)[1]
         assembly = assembly.split("\n      - name:", 1)[0]
-        self.assertIn("if: inputs.release_target != 'macos-aarch64'", assembly)
+        self.assertIn(
+            "if: inputs.release_target != 'macos-aarch64' || (inputs.complete_product && !inputs.reuse_ci_release)",
+            assembly,
+        )
         self.assertIn("assembleRelease :runtime:hosted:headlessBootstrapPlugin", assembly)
         self.assertIn(
             "${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}",
@@ -601,6 +604,7 @@ class SourceInventoryTest(unittest.TestCase):
         )
         bootstrap = workflow.split("- name: Assemble bootstrap for the reused candidate\n", 1)[1]
         bootstrap = bootstrap.split("\n      - name:", 1)[0]
+        self.assertIn("(!inputs.complete_product || inputs.reuse_ci_release)", bootstrap)
         self.assertIn(":runtime:hosted:headlessBootstrapPlugin", bootstrap)
         self.assertNotIn("assembleRelease", bootstrap)
 
@@ -613,12 +617,24 @@ class SourceInventoryTest(unittest.TestCase):
         native, joined, required = (
             jobs[name] for name in ("composed-products", "sealed-product", "required")
         )
-        self.assertIn("needs: [scope, source-work]", native)
+        self.assertIn("needs: scope", native)
         self.assertIn("uses: ./.github/workflows/composed-linux.yml", native)
         self.assertIn("complete_product: true", native)
         self.assertIn("version: 0.0.${{ github.run_number }}", native)
-        self.assertNotIn("release_target:", native)
-        self.assertIn("needs: [scope, composed-products]", joined)
+        self.assertIn("release_target: linux-x86_64", native)
+        mac = jobs["composed-macos"]
+        self.assertIn("needs: [scope, source-work, assembly]", mac)
+        self.assertIn("!cancelled()", mac)
+        self.assertIn("needs.source-work.result == 'success'", mac)
+        self.assertIn(
+            "(needs.source-work.outputs.candidate == 'REUSED' || needs.assembly.result == 'success')",
+            mac,
+        )
+        self.assertIn("reuse_ci_release: ${{ needs.source-work.outputs.candidate != 'REUSED' }}", mac)
+        self.assertIn("uses: ./.github/workflows/composed-linux.yml", mac)
+        self.assertIn("complete_product: true", mac)
+        self.assertIn("release_target: macos-aarch64", mac)
+        self.assertIn("needs: [scope, source-work, composed-products, composed-macos]", joined)
         self.assertNotIn("always()", joined)
         self.assertNotIn("run-id:", joined)
         for target in ("linux-x86_64", "macos-aarch64"):
@@ -659,6 +675,17 @@ class SourceInventoryTest(unittest.TestCase):
             required.index("validation_outcome.py"),
         )
         candidate = (workflows / "composed-linux.yml").read_text()
+        reused = candidate.split("- name: Download the exact CI release\n", 1)[1]
+        reused = reused.split("- name: Assemble bootstrap", 1)[0]
+        self.assertIn("inputs.reuse_ci_release && inputs.release_target == 'macos-aarch64'", reused)
+        self.assertIn("name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}", reused)
+        self.assertNotIn("run-id:", reused)
+        self.assertIn("native_handoff.py restore --version", reused)
+        self.assertIn("if: inputs.release_target != '' && !inputs.complete_product", candidate)
+        assembled = candidate.split("- name: Retain the assembled candidate\n", 1)[1]
+        assembled = assembled.split("\n      - name:", 1)[0]
+        self.assertIn("if: inputs.release_target == '' || inputs.complete_product", assembled)
+        self.assertIn("if-no-files-found: error", assembled)
         artifact = candidate.split("- name: Retain target-local qualified product evidence\n", 1)[1]
         artifact = artifact.split("\n      - name:", 1)[0]
         self.assertNotIn("always()", artifact)

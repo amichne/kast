@@ -19,12 +19,16 @@ on:
   workflow_call:
     inputs:
       release_target:
-        description: Optional legacy single-target qualification
+        description: Qualify one native target, or both when omitted
         type: string
         required: false
         default: ''
       complete_product:
-        description: Retain both native targets with exact CI producer evidence
+        description: Retain qualified targets with exact CI producer evidence
+        type: boolean
+        default: false
+      reuse_ci_release:
+        description: Admit the same-attempt assembled macOS release instead of rebuilding it
         type: boolean
         default: false
       version:
@@ -106,21 +110,33 @@ jobs:
         run: mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test_runtime_archive.py packaging/test-managed-headless.py -q
 
       - name: Download exact macOS release candidate
-        if: inputs.release_target == 'macos-aarch64'
+        if: inputs.release_target == 'macos-aarch64' && !inputs.complete_product
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: release-candidate-v${{ inputs.version }}-${{ github.sha }}
           path: build/release/v${{ inputs.version }}
 
+      - name: Download the exact CI release
+        if: inputs.reuse_ci_release && inputs.release_target == 'macos-aarch64'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/handoff-input/
+
+      - name: Admit retained CI release identity and bytes
+        if: inputs.reuse_ci_release && inputs.release_target == 'macos-aarch64'
+        run: >-
+          mise exec -- uv run --locked --script .github/scripts/ci/native_handoff.py restore --version "$BUNDLE_VERSION"
+
       - name: Assemble bootstrap for the reused candidate
-        if: inputs.release_target == 'macos-aarch64'
+        if: inputs.release_target == 'macos-aarch64' && (!inputs.complete_product || inputs.reuse_ci_release)
         run: >-
           mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
           -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
           :runtime:hosted:headlessBootstrapPlugin
 
       - name: Assemble matching Control, Host, and bootstrap
-        if: inputs.release_target != 'macos-aarch64'
+        if: inputs.release_target != 'macos-aarch64' || (inputs.complete_product && !inputs.reuse_ci_release)
         run: |
           mkdir -p build/reports/native
           mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2 \
@@ -159,7 +175,7 @@ jobs:
         run: bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
 
       - name: Retain the assembled candidate
-        if: inputs.release_target == ''
+        if: inputs.release_target == '' || inputs.complete_product
         id: candidate-artifact
         uses: actions/upload-artifact@v7.0.2
         with:
@@ -247,7 +263,7 @@ jobs:
           retention-days: 30
 
       - name: Retain qualified runtime for stable release
-        if: inputs.release_target != ''
+        if: inputs.release_target != '' && !inputs.complete_product
         uses: actions/upload-artifact@v7.0.2
         with:
           name: kast-release-runtime-v${{ inputs.version }}-${{ matrix.target }}-${{ github.sha }}

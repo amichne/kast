@@ -411,7 +411,7 @@ def assemble(payload: Admitted, destination: Path) -> None:
     )
 
 
-def qualify(payload: Admitted) -> None:
+def restore_release(payload: Admitted) -> Path:
     if (platform.system(), platform.machine()) != ("Darwin", "arm64"):
         raise SystemExit(Failure.WRONG_PLATFORM.value)
     if payload.record.toolchainReleaseSha256 != digest(Path(os.environ["JAVA_HOME"]) / "release"):
@@ -422,6 +422,12 @@ def qualify(payload: Admitted) -> None:
     failure = unpack(payload, release)
     if isinstance(failure, Failure):
         raise SystemExit(failure.value)
+    return release
+
+
+def qualify(payload: Admitted) -> None:
+    release = restore_release(payload)
+    identity = payload.record.identity
     control = release / f"kast-control-v{identity.version}-macos-aarch64.tar.gz"
     plugins = sorted(release.glob(f"kast-ide-hosted-v{identity.version}-idea-*.zip"))
     if len(plugins) not in (1, 2) or len(plugins) == 2 and {path.name for path in plugins} != {
@@ -459,7 +465,7 @@ def qualify(payload: Admitted) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    _ = parser.add_argument("stage", choices=("inputs", "native", "assemble", "qualify"))
+    _ = parser.add_argument("stage", choices=("inputs", "native", "assemble", "restore", "qualify"))
     _ = parser.add_argument("--version", required=True)
     _ = parser.add_argument("--input", type=Path, default=ROOT / "build/handoff-input")
     _ = parser.add_argument("--output", type=Path, default=ROOT / "build/handoff-output")
@@ -468,7 +474,7 @@ def main() -> None:
     if args.stage == "inputs":
         stage_inputs(identity, args.output)
     else:
-        kind = {"native": Kind.INPUTS, "assemble": Kind.NATIVE, "qualify": Kind.RELEASE}[args.stage]
+        kind = {"native": Kind.INPUTS, "assemble": Kind.NATIVE, "restore": Kind.RELEASE, "qualify": Kind.RELEASE}[args.stage]
         payload = admit(args.input, identity, kind)
         if isinstance(payload, Failure):
             raise SystemExit(payload.value)
@@ -476,6 +482,8 @@ def main() -> None:
             native(payload, args.output)
         elif args.stage == "assemble":
             assemble(payload, args.output)
+        elif args.stage == "restore":
+            restore_release(payload)
         else:
             qualify(payload)
     if current_identity(args.version) != identity:

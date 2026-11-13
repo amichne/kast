@@ -20,8 +20,12 @@ code_sources:
 - path: .github/workflows/release-component.yml
 - path: .github/scripts/release/test_build_candidate.py
 sources:
+  - id: openwiki-source-782f88ea0a8c13260d76dfa4
+    resource: repo://.github/scripts/ci/native_handoff.py
   - id: openwiki-source-0475f74ce9e8867a7d899c7d
     resource: repo://.github/scripts/ci/test_validation_outcome.py
+  - id: openwiki-source-8af2d4c0154aab4f1e556475
+    resource: repo://.github/scripts/ci/test_validation_scope.py
   - id: openwiki-source-43d206677342592403ab5f63
     resource: repo://.github/scripts/ci/validation_outcome.py
   - id: openwiki-source-3da7270665885f2d3fdf6d53
@@ -40,6 +44,8 @@ sources:
     resource: repo://.github/scripts/release/test_build_candidate.py
   - id: openwiki-source-164e2da859b5277df81c7d94
     resource: repo://.github/workflows/ci.yml
+  - id: openwiki-source-09ee21d9fc32593e7f00c78d
+    resource: repo://.github/workflows/composed-linux.yml
   - id: openwiki-source-804f227d6f0416062f3436fe
     resource: repo://.github/workflows/developer-release.yml
   - id: openwiki-source-b0e51d5f05a72ea5b0fff73c
@@ -56,10 +62,10 @@ sources:
     resource: repo://packaging/product_lifecycle_probe.py
   - id: openwiki-source-fbdf7de26cc8b3b5b59b53a6
     resource: repo://packaging/test_product_acceptance.py
-generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
+generated: { by: "amp", at: "2026-11-13T19:40:08.615Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-13T01:44:31.229Z
+    at: 2026-11-13T19:40:08.615Z
 ---
 
 # Release candidates and promotion
@@ -70,6 +76,14 @@ The complete-product producer runs the component-native harness before it seals 
 Each `COMPONENT_NATIVE` receipt binds the source, harness, Control, runtime, and bundle identities.
 The join requires both macOS ARM64 and Linux x86-64 from the exact producer attempt.
 It records source revision, source tree, toolchain inputs, and asset names, sizes, and digests without rebuilding those assets.
+
+Linux composition starts after scope selection, alongside source validation.
+Fresh Mac composition admits the same-attempt release assembled from the existing native producer.
+It checks the source revision, source tree, version, archive digest, platform, and compiler toolchain before extraction.
+A missing or rejected archive stops the job; it does not trigger a replacement build.
+The reused PR candidate path has no same-attempt native release and keeps its independent complete-product compilation.
+Both targets still build their native component harness and run qualification.
+Source success joins both qualified targets at sealing, so early Linux work cannot bypass a failed source check.
 
 The sealed build record then enters installed-product acceptance through normal managed admission.
 Both detached `INSTALLED_PRODUCT_NATIVE` receipts are required before publication admission.

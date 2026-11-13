@@ -430,8 +430,8 @@ jobs:
           retention-days: 30
 
   composed-products:
-    name: Native complete-product qualification
-    needs: [scope, source-work]
+    name: Linux complete-product qualification
+    needs: scope
     if: >-
       needs.scope.outputs.product == 'run' && vars.KAST_MACOS_CHECKS == 'true' &&
       vars.KAST_NATIVE_COMPILATION != 'false' && github.ref == 'refs/heads/main' &&
@@ -441,10 +441,28 @@ jobs:
     with:
       version: 0.0.${{ github.run_number }}
       complete_product: true
+      release_target: linux-x86_64
+
+  composed-macos:
+    name: macOS complete-product qualification
+    needs: [scope, source-work, assembly]
+    if: >-
+      !cancelled() && needs.source-work.result == 'success' &&
+      (needs.source-work.outputs.candidate == 'REUSED' || needs.assembly.result == 'success') &&
+      needs.scope.outputs.product == 'run' && vars.KAST_MACOS_CHECKS == 'true' &&
+      vars.KAST_NATIVE_COMPILATION != 'false' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (inputs.rollout == '' || inputs.rollout == 'none')
+    uses: ./.github/workflows/composed-linux.yml
+    with:
+      version: 0.0.${{ github.run_number }}
+      complete_product: true
+      release_target: macos-aarch64
+      reuse_ci_release: ${{ needs.source-work.outputs.candidate != 'REUSED' }}
 
   sealed-product:
     name: Seal both native targets without rebuilding
-    needs: [scope, composed-products]
+    needs: [scope, source-work, composed-products, composed-macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

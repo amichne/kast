@@ -473,13 +473,18 @@ class ProductProducerTest(unittest.TestCase):
             re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", ci.split("\njobs:\n", 1)[1])
         )
         native = jobs["composed-products"]
-        self.assertIn("needs: [scope, source-work]", native)
+        self.assertIn("needs: scope", native)
         self.assertIn("uses: ./.github/workflows/composed-linux.yml", native)
         self.assertIn("complete_product: true", native)
+        self.assertIn("release_target: linux-x86_64", native)
         self.assertIn("github.ref == 'refs/heads/main'", native)
         self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", native)
+        mac = jobs["composed-macos"]
+        self.assertIn("needs: [scope, source-work, assembly]", mac)
+        self.assertIn("complete_product: true", mac)
+        self.assertIn("release_target: macos-aarch64", mac)
         join = jobs["sealed-product"]
-        self.assertIn("needs: [scope, composed-products]", join)
+        self.assertIn("needs: [scope, source-work, composed-products, composed-macos]", join)
         for target in ("linux-x86_64", "macos-aarch64"):
             self.assertIn(
                 f"name: kast-qualified-product-{target}-"

@@ -184,6 +184,29 @@ With `KAST_MACOS_CHECKS=true`, an unavailable self-hosted Mac leaves these jobs 
 Leave the switch off to keep validation on Linux until that runner returns.
 The reused-candidate Linux route remains unchanged.
 
+## Compile once and join qualification late
+
+Complete-product Linux composition starts after scope selection, alongside source validation.
+For a fresh main build, Mac composition waits for the existing native and release assembly jobs.
+It restores their exact release instead of compiling Control again on the smaller hosted Mac.
+The restore checks the source revision, source tree, version, archive digest, target platform, and compiler toolchain.
+Artifact selection stays within the same workflow run and attempt.
+A missing or rejected archive fails the job; it never triggers a replacement build.
+When source validation admits a reused PR candidate, no same-attempt native release exists.
+That path keeps its independent complete-product compilation; it does not borrow another attempt's release.
+
+Each target still builds its separate native component harness and runs native qualification.
+The two workflow calls execute one target each, so splitting their dependencies adds no target executions.
+Sealing waits for source validation and both qualified targets.
+Installed acceptance and the required-check aggregate keep their existing proofs and publication limits.
+Linux work can continue when source validation later fails, but that failure still blocks sealing.
+This trades some failed-run work for shorter turnaround.
+
+Run `43453960426` took 2 hours 20 minutes before these changes.
+Its hosted Mac spent almost 44 minutes generating Control a second time.
+That is measured duplicate work, not a promised wall-time saving.
+The changed graph still needs a remote timing measurement.
+
 The runner service keeps its checkout under its own work directory.
 Final product qualification consumes release archives and runs native launcher cases through Gradle against the assembled executable.
 Local Python uses the version in `.python-version` through uv and a runner-owned virtual environment.

@@ -114,11 +114,11 @@
       "completedRunId": "888979aa-f47e-44da-a913-81ebaec60be7"
     },
     "/openwiki/distribution/release-candidates-and-promotion.md": {
-      "gitHead": "2d0fddd357966296ab7b0ce4106f4b4b72084cd9",
-      "sourceFingerprint": "sha256:7dfa7a2ddc6d61df0009df4eead400d2a6ca7d6472680c4afffe5697631766c2",
-      "pageVersion": "sha256:336323e3e455c6c8dc2c11d4ace4037715d53e140636c05fb51b251f075fa4b6",
+      "pageVersion": "sha256:549a624cb185dd5f6e165510784300227c480e8a66edc0a2040404debe15d8f0",
       "completedBy": "amp",
-      "completedRunId": "b389980d-c91c-413f-a096-646a57793007"
+      "completedRunId": "5bc5aa2e-11f6-486c-af1f-e4672ac5b49a",
+      "gitHead": "a185f125d1666cf53ae8235031017c70acd0737c",
+      "sourceFingerprint": "sha256:0c65965666c01a0102e104e240167e51924a449d9e9067d085898cf1e3abe83e"
     },
     "/openwiki/distribution/upgrades-shutdown-and-reset.md": {
       "gitHead": "ecfb3dcb622da5d629504de0eb3337ba243bb697",
@@ -219,11 +219,11 @@
       "completedRunId": "bb7d762b-e640-426b-bae8-f8fa41505944"
     },
     "/openwiki/modules/distribution.md": {
-      "gitHead": "ecfb3dcb622da5d629504de0eb3337ba243bb697",
-      "sourceFingerprint": "sha256:7f8f55f68e4ae199133876d490f338dec9c768dab5f397c094d48f895d1ec64b",
-      "pageVersion": "sha256:07add7a5ec87fb9da10abcc47ab65d0072369892184eb22a0a5b3a3fc40e46f0",
+      "pageVersion": "sha256:84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
       "completedBy": "amp",
-      "completedRunId": "888979aa-f47e-44da-a913-81ebaec60be7"
+      "completedRunId": "5bc5aa2e-11f6-486c-af1f-e4672ac5b49a",
+      "gitHead": "a185f125d1666cf53ae8235031017c70acd0737c",
+      "sourceFingerprint": "sha256:0c65965666c01a0102e104e240167e51924a449d9e9067d085898cf1e3abe83e"
     },
     "/openwiki/modules/kernel.md": {
       "gitHead": "c00f3bfa71dd40e9897d714e378b21eacf673073",
@@ -268,11 +268,11 @@
       "completedRunId": "26f7e018-a2f3-444c-95cc-e2a9d7540bc2"
     },
     "/openwiki/modules/workspace.md": {
+      "gitHead": "32ffb8eb7eb435eb2d568db3dcbab4cde6130e26",
+      "sourceFingerprint": "sha256:7357e20736ec54913336d1dd5cb96a5e3de4f8869cc5043ade95e4c455d26618",
       "pageVersion": "sha256:7709d7d18d399ca20273311a1d40c0ac4fe1557f787141a03786e29af7d2203a",
       "completedBy": "amp",
-      "completedRunId": "79f4415a-310d-4491-8b32-1c0e9e370540",
-      "gitHead": "32ffb8eb7eb435eb2d568db3dcbab4cde6130e26",
-      "sourceFingerprint": "sha256:7357e20736ec54913336d1dd5cb96a5e3de4f8869cc5043ade95e4c455d26618"
+      "completedRunId": "79f4415a-310d-4491-8b32-1c0e9e370540"
     },
     "/openwiki/queries/execution-and-composition.md": {
       "gitHead": "33a94a228871bb19480a116711fd634b3496a16f",

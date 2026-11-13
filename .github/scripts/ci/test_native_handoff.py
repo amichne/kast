@@ -132,6 +132,38 @@ class NativeHandoffTest(unittest.TestCase):
                         native.assert_called_once()
                         self.assertEqual(["product", "product", "native"] if paired else ["product", "native"], effects)
 
+    def test_restore_preserves_release_bytes_and_rejects_a_different_toolchain(self):
+        identity = Identity("a" * 40, "b" * 40, "0.0.7")
+        for matches in (True, False):
+            with self.subTest(matches=matches), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                java = root / "java"
+                java.mkdir()
+                (java / "release").write_bytes(b"qualified toolchain")
+                source = root / "source"
+                source.mkdir()
+                name = f"kast-control-v{identity.version}-macos-aarch64.tar.gz"
+                (source / name).write_bytes(b"exact retained Control archive")
+                toolchain = hashlib.sha256(b"qualified toolchain" if matches else b"other").hexdigest()
+                pack(source, root / "bundle", identity, Kind.RELEASE, toolchain)
+                payload = admit(root / "bundle", identity, Kind.RELEASE)
+                if not isinstance(payload, Admitted):
+                    self.fail("matching release rejected")
+                with (
+                    patch.object(native_handoff, "ROOT", root),
+                    patch.dict(native_handoff.os.environ, {"JAVA_HOME": str(java)}),
+                    patch.object(native_handoff.platform, "system", return_value="Darwin"),
+                    patch.object(native_handoff.platform, "machine", return_value="arm64"),
+                ):
+                    release = root / f"build/release/v{identity.version}"
+                    if matches:
+                        self.assertEqual(release, native_handoff.restore_release(payload))
+                        self.assertEqual((source / name).read_bytes(), (release / name).read_bytes())
+                    else:
+                        with self.assertRaisesRegex(SystemExit, "TOOLCHAIN_MISMATCH"):
+                            native_handoff.restore_release(payload)
+                        self.assertFalse(release.exists())
+
     def test_inputs_and_native_stage_preserve_the_single_executable_identity(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
         classes = {
