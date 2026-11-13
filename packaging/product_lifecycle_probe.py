@@ -170,13 +170,20 @@ class Probe:
         return self.root / "installation/share/kast/libexec/kast-management"
 
     def run(
-        self, case: str, workspace: Path, arguments: tuple[str, ...], raw: bytes | None = None
+        self,
+        case: str,
+        workspace: Path,
+        arguments: tuple[str, ...],
+        raw: bytes | None = None,
+        *,
+        launcher: Path | None = None,
     ) -> bytes:
         prefix = (
             ["/usr/bin/sandbox-exec", "-f", str(self.sandbox)] if self.sandbox is not None else []
         )
+        executable = launcher if launcher is not None else self.home / ".local/bin/kast"
         result = subprocess.run(
-            [*prefix, str(self.home / ".local/bin/kast"), *arguments],
+            [*prefix, str(executable), *arguments],
             cwd=workspace,
             env=self.environment,
             input=raw,
@@ -189,6 +196,32 @@ class Probe:
         if result.returncode:
             raise ValueError(f"native case failed: {case}")
         return result.stdout
+
+    def catalog(self, workspace: Path) -> None:
+        raw = self.run(
+            "passive-catalog",
+            workspace,
+            ("--catalog=COMPLETE", "catalog"),
+            launcher=self.root / "installation/bin/kast-tool-rpc",
+        )
+        value = product.document(raw)
+        if not product.mapping(value) or value.get("type") != "catalog":
+            raise ValueError("RPC catalog rejected")
+        catalog = value.get("catalog")
+        if not product.mapping(catalog):
+            raise ValueError("RPC catalog absent")
+        tools = catalog.get("tools")
+        if (
+            not product.sequence(tools)
+            or not tools
+            or any(
+                not product.mapping(tool) or not isinstance(tool.get("name"), str) for tool in tools
+            )
+            or not any(
+                product.mapping(tool) and tool.get("name") == "query_symbols" for tool in tools
+            )
+        ):
+            raise ValueError("RPC catalog tools incomplete")
 
     def query(self, case: str, workspace: Path, name: str = "invokeCallback") -> str:
         expected_file = workspace / (
@@ -435,11 +468,13 @@ def execute(
                 ("status", ("status", "--json")),
                 ("describe", ("describe", "--help")),
                 ("plan", ("query", "plan", "--name", "invokeCallback", "--json")),
-                ("catalog", ("--internal-entrypoint=rpc", "--catalog=COMPLETE", "catalog")),
             ):
                 _ = probe.run(f"passive-{case}", roots[0], arguments)
                 if containers.exists():
                     raise ValueError(f"passive {case} created semantic workspace state")
+            probe.catalog(roots[0])
+            if containers.exists():
+                raise ValueError("passive catalog created semantic workspace state")
             probe.completed.add(acceptance.Case.PASSIVE)
             current_host = probe.parallel_first_queries(roots[0])
             probe.completed.update(
@@ -449,8 +484,9 @@ def execute(
                 probe.run(
                     "rpc",
                     roots[0],
-                    ("--internal-entrypoint=rpc", "--catalog=COMPLETE", "call", "query_symbols"),
+                    ("--catalog=COMPLETE", "call", "query_symbols"),
                     encoded(Arguments(Query(Source("invokeCallback")))),
+                    launcher=root / "installation/bin/kast-tool-rpc",
                 ),
                 "invokeCallback",
                 roots[0] / INVOCATION_FILE,

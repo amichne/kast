@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from dataclasses import asdict, dataclass, replace
@@ -58,6 +59,28 @@ class Reply:
 
 
 @dataclass(frozen=True)
+class CatalogTool:
+    name: str
+
+
+@dataclass(frozen=True)
+class Catalog:
+    tools: tuple[CatalogTool, ...]
+
+
+@dataclass(frozen=True)
+class CatalogReply:
+    catalog: Catalog
+    type: str = "catalog"
+
+
+@dataclass(frozen=True)
+class RejectedReply:
+    failure: str = "CATALOG_UNAVAILABLE"
+    type: str = "rejected"
+
+
+@dataclass(frozen=True)
 class ComponentBindings:
     runtimeSha256: str
     controlSha256: str
@@ -103,6 +126,57 @@ def record() -> product.ProductRecord:
 
 
 class AcceptanceTest(unittest.TestCase):
+    def test_rpc_catalog_uses_installed_launcher_and_rejects_unsuccessful_documents(self) -> None:
+        # A real child is needed here: the selected launcher, not a scripted
+        # semantic adapter, must produce the document that acceptance checks.
+        catalog = CatalogReply(
+            Catalog(
+                tuple(
+                    CatalogTool(name)
+                    for name in (
+                        "add_declaration",
+                        "check_diagnostics",
+                        "health_check",
+                        "query_symbols",
+                        "replace_body",
+                    )
+                )
+            )
+        )
+        with tempfile.TemporaryDirectory(prefix="rpc probe ") as temporary:
+            root = Path(temporary)
+            evidence = root / "evidence"
+            evidence.mkdir()
+            runner = probe.Probe(root / "kast", root / "home", evidence, root, root, {})
+            public = runner.home / ".local/bin/kast"
+            rpc = runner.root / "installation/bin/kast-tool-rpc"
+            for launcher in (public, rpc):
+                launcher.parent.mkdir(parents=True)
+            for reply in (
+                catalog,
+                RejectedReply(),
+                replace(catalog, type="complete"),
+                CatalogReply(Catalog(())),
+                CatalogReply(Catalog((CatalogTool("health_check"),))),
+            ):
+                with self.subTest(reply=reply):
+                    raw = json.dumps(asdict(reply)).encode()
+                    for launcher, output in (
+                        (public, json.dumps(asdict(RejectedReply())).encode()),
+                        (rpc, raw),
+                    ):
+                        _ = launcher.write_text(
+                            f"#!{sys.executable}\nimport sys\nsys.stdout.buffer.write({output!r})\n"
+                        )
+                        launcher.chmod(0o755)
+                    if reply == catalog:
+                        runner.catalog(root)
+                    else:
+                        with self.assertRaisesRegex(ValueError, "RPC catalog"):
+                            runner.catalog(root)
+                    self.assertEqual(raw, (evidence / "passive-catalog.stdout").read_bytes())
+                    self.assertEqual(set[acceptance.Case](), runner.completed)
+
     def test_local_fixture_keeps_real_native_binding_but_has_no_other_target_payload(self) -> None:
         native = record().targets[1]
         receipt = ComponentReceiptFixture(

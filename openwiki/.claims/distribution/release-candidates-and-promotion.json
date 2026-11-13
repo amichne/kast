@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:549a624cb185dd5f6e165510784300227c480e8a66edc0a2040404debe15d8f0",
+  "pageVersion": "sha256:6c2156b93e80465b2432686334b46c64ceb76d9db6a735fe9a4ccf67e314b723",
   "claims": [
     {
       "id": "claim_0fe7af4106b045dd82c65489eb808ff3",
@@ -155,7 +155,7 @@
           "version": "repo-lines-v1:sha256:5320d2ba9a87329b2378c1e0f7129e456152230a9a0ef122e9f3b56d26014a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNDBkMzVhMTI4ZTYyMjE5NjcxZTQ0OTE0N2Y5ZTFlNjQ2MTBiNzI2NGQyMmRmYWQ1Njg4YWMzMGQzMmIwMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5N2M3NTQxMjk2NmE4ODZiNjM1YzA3YWI3MjhkOWY3M2VlYjM4ODYzZmEwYmFmMGNmMjcwNmFkYzgwZWZiMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwY2I3M2UyMzg2ZWM2NDFhYjY2YTcxYTViMjRmNzJiNWJlNzRjMjVkMTlkOTQyZDRmNDk3MDdiZWQ3NmI3ZTAifQ"
         },
         {
-          "resource": "repo://packaging/product_lifecycle_probe.py#L333-L345",
+          "resource": "repo://packaging/product_lifecycle_probe.py#L366-L378",
           "version": "repo-lines-v1:sha256:1f2fc2991f535dab21d02226f9b089f4fd6c2cb0c06f967cc5852d2289f89f55:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmZjg2ZTUzY2I3OThlN2ZjNTlhNjUzNDY4MTZmZDcyOTVhYzA3MjYzMGI4ZmMwMzVkMDkzMWJmMmMyYjk5ZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxMTEzYmNmZTE3YTE2ZjFmNzA2ODJjNjVlMjA0M2NmYjViODQzZjhiNTY2NWQ4ZWI3MTQ4OGVkMmE3ZWUxYjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5Y2JmZjEwODVlYmEwMjdhYjBkYmRmMGQ1ZmI4ODllOGQxYmU0N2JmN2FhODUxZGI0YTJlNDg5NjhjYmUyYWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiMzliZWI2NzRjMGUyNjUxNzQ4YWY3MTJkZDlmN2Y5NDIzMWYwNDI5M2UwMTNmNzdkNGE0ODZhMTE2N2VkYTUifQ"
         }
       ]
@@ -170,11 +170,11 @@
         },
         {
           "resource": "repo://packaging/product_lifecycle_probe.py",
-          "version": "repo-file-v1:sha256:1cdd65aa5dff65b2b303589ee523f449892259e8ee70f32f19511f2525a9cd1b"
+          "version": "repo-file-v1:sha256:b689ed5e199487d12aa7e829af17b5cfb37fcded9afd91793b180ec85e2d3f4f"
         },
         {
           "resource": "repo://packaging/test_product_acceptance.py",
-          "version": "repo-file-v1:sha256:4d7d783f11a64a790ac30cecda320891b2c8ada354df60f62f28251911e8f680"
+          "version": "repo-file-v1:sha256:c9984d35aa14b5b95827a2c7177e084987ea5224931764c78c7fed7fa8174dc2"
         }
       ]
     },
@@ -221,6 +221,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-13T19:40:08.615Z"
+    "at": "2026-11-13T21:54:15.364Z"
   }
 }

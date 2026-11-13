@@ -13205,7 +13205,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/release-candidates-and-promotion.md",
-        "sourceSha256": "549a624cb185dd5f6e165510784300227c480e8a66edc0a2040404debe15d8f0",
+        "sourceSha256": "6c2156b93e80465b2432686334b46c64ceb76d9db6a735fe9a4ccf67e314b723",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 11.40 exceeds the shared advisory target of 8.",
@@ -13217,7 +13217,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/release-candidates-and-promotion.md",
-        "sourceSha256": "549a624cb185dd5f6e165510784300227c480e8a66edc0a2040404debe15d8f0",
+        "sourceSha256": "6c2156b93e80465b2432686334b46c64ceb76d9db6a735fe9a4ccf67e314b723",
         "rule": "Slopsentral.Modals",
         "line": 94,
         "message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
@@ -13229,7 +13229,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/release-candidates-and-promotion.md",
-        "sourceSha256": "549a624cb185dd5f6e165510784300227c480e8a66edc0a2040404debe15d8f0",
+        "sourceSha256": "6c2156b93e80465b2432686334b46c64ceb76d9db6a735fe9a4ccf67e314b723",
         "rule": "Slopsentral.Diction",
         "line": 99,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
@@ -13769,7 +13769,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.61 exceeds the shared advisory target of 8.",
@@ -13781,7 +13781,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.LongSentence",
         "line": 466,
         "message": "Long sentence: 26 words.",
@@ -13793,7 +13793,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.Diction",
         "line": 468,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
@@ -13805,7 +13805,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.Diction",
         "line": 482,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
@@ -13817,7 +13817,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.Diction",
         "line": 516,
         "message": "Use 'more' instead of 'additional'. Keep the source meaning.",
@@ -13829,7 +13829,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.LongSentence",
         "line": 709,
         "message": "Long sentence: 27 words.",
@@ -13841,7 +13841,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.LongSentence",
         "line": 711,
         "message": "Long sentence: 29 words.",
@@ -13853,7 +13853,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.LongSentence",
         "line": 725,
         "message": "Long sentence: 37 words.",
@@ -13865,7 +13865,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.LongSentence",
         "line": 728,
         "message": "Long sentence: 39 words.",
@@ -13877,7 +13877,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.LongSentence",
         "line": 798,
         "message": "Long sentence: 26 words.",
@@ -13889,7 +13889,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.LongSentence",
         "line": 812,
         "message": "Long sentence: 35 words.",
@@ -13901,7 +13901,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.LongSentence",
         "line": 836,
         "message": "Long sentence: 35 words.",
@@ -13913,7 +13913,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.LongSentence",
         "line": 851,
         "message": "Long sentence: 32 words.",
@@ -13925,7 +13925,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.Diction",
         "line": 873,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
@@ -13937,7 +13937,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/distribution.md",
-        "sourceSha256": "84d5537d2c907b1dc791b2aee6830c1eea78bc8c690bf0f9075b70c5bc04c847",
+        "sourceSha256": "52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
         "rule": "Slopsentral.LongSentence",
         "line": 882,
         "message": "Long sentence: 26 words.",
