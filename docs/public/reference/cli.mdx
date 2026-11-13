@@ -132,10 +132,15 @@ Use the result reference and cursors from the response:
 
 ```shell
 kast result read --ref "$RESULT_REF" --cursor 100 --evidence-cursor 0
+kast result read --ref "$RESULT_REF" --detail "$DETAIL_SELECTOR"
 kast result resume --continuation "$OUTPUT_TOKEN"
 ```
 
 The cursor values are examples. Replace them with both issued cursors from your response.
+A deferred entry is too large for the page. Its `meaning` names what it holds, and its selector reads it.
+Pass that selector object unchanged with `--detail`.
+Each detail read returns one chunk with `end` and `total`.
+To read the next chunk, set the selector `offset` to `end`.
 Use `result resume` only with an issued output continuation.
 The CLI returns one page. It does not drain later pages or repeat the semantic query.
 

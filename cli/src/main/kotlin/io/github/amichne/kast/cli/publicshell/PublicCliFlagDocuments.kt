@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.publicshell
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 // These DTOs only encode flag ingress. They establish no semantic validity or authority.
 @Serializable internal data class CliEnvelope(val request: CliAction, val verbose: Boolean = false)
@@ -36,6 +37,8 @@ internal sealed interface CliAction {
         @SerialName("evidence_cursor") val evidenceCursor: Long?,
         val output: CliOutput?,
         val executionBudget: CliBudget?,
+        /** An issued detail selector, copied unchanged; public tool admission owns its schema and authority. */
+        val detail: JsonObject? = null,
     ) : CliAction
 
     @Serializable

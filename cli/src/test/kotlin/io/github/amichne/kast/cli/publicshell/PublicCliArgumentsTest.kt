@@ -3,6 +3,14 @@ package io.github.amichne.kast.cli.publicshell
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.direct.selectDirectCatalog
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ProtocolOffset
+import io.github.amichne.kast.protocol.contract.ProtocolText
+import io.github.amichne.kast.protocol.contract.QueryEntryDetailKind
+import io.github.amichne.kast.protocol.contract.QueryEntryDetailSection
+import io.github.amichne.kast.protocol.contract.QueryEntryDetailSelectorDocument
+import io.github.amichne.kast.protocol.contract.QueryEntryDetailTarget
+import io.github.amichne.kast.protocol.contract.QueryResultCursor
+import io.github.amichne.kast.protocol.contract.QueryResultReference
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.Serializable
@@ -162,6 +170,9 @@ class PublicCliArgumentsTest {
                 listOf("query", "--name", "A", "--catalog", "COMPLETE"),
                 listOf("source", "read", "--ref", "R", "--max-elapsed-ms", "1"),
                 listOf("result", "read", "--ref", "R", "--ref", "S"),
+                listOf("result", "read", "--ref", "R", "--detail", "{"),
+                listOf("result", "read", "--ref", "R", "--detail", "7"),
+                listOf("query", "--name", "A", "--detail", "x"),
                 listOf("result", "resume", "--request", "x.json"),
                 listOf("describe", "--workspace", "."),
                 listOf("describe", "--section", "input"),
@@ -265,6 +276,21 @@ class PublicCliArgumentsTest {
         assertTrue(admission(source) is Refinement.Refined)
     }
 
+    /**
+     * A deferred evidence entry is deliverable only through its detail selector. The selector copied verbatim from
+     * `deferred_evidence[].selector` lowers to the same canonical detail read that the public tool admits for it.
+     */
+    @Test
+    fun `result read carries a deferred evidence detail selector`() {
+        val selector = deferredRelationSelector()
+        val expected = canonical(oracleJson.encodeToJsonElement(OracleDetailEnvelope(OracleDetailRead(selector))))
+        val copied = oracleJson.encodeToString(QueryEntryDetailSelectorDocument.serializer(), selector)
+        val argv = listOf("result", "read", "--ref", RESULT_REFERENCE, "--detail", copied)
+        val parsed = parsePublicCliArguments(argv)
+        assertTrue(parsed is Refinement.Refined, "result read must accept a detail selector: $parsed")
+        assertEquals(expected, canonical(arguments(query(*argv.toTypedArray()))))
+    }
+
     @Test
     fun `baseline admission preserves caller elapsed grant and minimum output allowance`() {
         val identity = PublicToolIdentity.QUERY_SYMBOLS
@@ -330,6 +356,28 @@ private fun fields(input: kotlinx.serialization.json.JsonObject) =
         .map { it.jsonPrimitive.content }
 
 @Serializable private data class OracleEnvelope(val request: OracleRun)
+
+@Serializable private data class OracleDetailEnvelope(val request: OracleDetailRead)
+
+@Serializable
+private data class OracleDetailRead(
+    val detail: QueryEntryDetailSelectorDocument,
+    val type: String = "READ_RESULT",
+    val result: String = RESULT_REFERENCE,
+)
+
+private fun deferredRelationSelector(): QueryEntryDetailSelectorDocument {
+    fun <T> Refinement<T, *>.value(): T = (this as Refinement.Refined).value
+    return QueryEntryDetailSelectorDocument(
+        QueryResultReference.parse(RESULT_REFERENCE).value(),
+        QueryEntryDetailSection.CANONICAL_ENTRY_JSON,
+        QueryEntryDetailTarget.EVIDENCE,
+        QueryResultCursor.parse(0).value(),
+        QueryEntryDetailKind.RELATION_OBSERVATION,
+        ProtocolText.parse("a".repeat(64)).value(),
+        ProtocolOffset.parse(0).value(),
+    )
+}
 
 @Serializable
 private data class OracleRun(

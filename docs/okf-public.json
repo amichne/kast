@@ -5328,7 +5328,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "be09805b5b5fbd22ce502abeedacde2eb962e29fb374d159c473ffad9b546fd6"
+          "sha256": "a4e1fae60139f3687a1e3d647629805230bea2439f285f8bb425d8da796bdf70"
         }
       ],
       "claims": [
@@ -5740,7 +5740,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliFlagDiscovery.kt",
-          "sha256": "ee3bbe9c94f61a083aaaa51efd746cfbb762c95a336fdeeafc5a36f3e5567bc1"
+          "sha256": "2b34699a25daa0f4eea223d3eb3601f32f4e98990b3d7ea53a1ab31dd6694bac"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliHelp.kt",
@@ -5752,11 +5752,11 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliLowering.kt",
-          "sha256": "893aee8606651662cf5960fde7e7ac9b259e8378251ee1a3800ae091070f9c66"
+          "sha256": "09b26b57b251ab7fb278d2f87e14b71de1f462b146a511e01865e4ec23369e2d"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliOptions.kt",
-          "sha256": "4912d5e6e6dc3a007339d2134e3e316104f5532c7b6df0b76af000e176e1dc97"
+          "sha256": "c918d579b649c032d16970d7244431a0efe80f97c0de7701d7b87a193d9aecd3"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliProjectionContract.kt",

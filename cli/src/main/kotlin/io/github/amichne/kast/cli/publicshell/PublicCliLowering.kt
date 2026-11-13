@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -145,6 +146,11 @@ private fun lowerReadResult(
     budget: CliBudget?,
 ): Refinement<CliAction, PublicCliArgumentFailure> {
     val reference = arguments[PublicCliFlag.REF] ?: return Refinement.Rejected(PublicCliArgumentFailure.MISSING_VALUE)
+    val detail =
+        when (val raw = arguments[PublicCliFlag.DETAIL]) {
+            null -> null
+            else -> parseDetailSelector(raw) ?: return Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)
+        }
     return Refinement.Refined(
         CliAction.ReadResult(
             reference,
@@ -152,9 +158,18 @@ private fun lowerReadResult(
             arguments[PublicCliFlag.EVIDENCE_CURSOR]?.toLong(),
             output,
             budget,
+            detail,
         )
     )
 }
+
+/** Only JSON syntax is checked here; a malformed document is the one finite ingress failure. */
+private fun parseDetailSelector(raw: String): JsonObject? =
+    try {
+        flagJson.parseToJsonElement(raw) as? JsonObject
+    } catch (_: SerializationException) {
+        null
+    }
 
 private fun lowerReadSource(
     arguments: LexicalArguments,

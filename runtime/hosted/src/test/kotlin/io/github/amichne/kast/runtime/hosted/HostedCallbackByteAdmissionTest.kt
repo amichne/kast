@@ -26,6 +26,7 @@ import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryPresentationExecution
 import io.github.amichne.kast.query.contract.QueryRelationObservation
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
+import io.github.amichne.kast.query.protocol.QueryStateStore
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.query.protocol.executeQueryPage
 import io.github.amichne.kast.query.service.QueryNanoClock
@@ -36,6 +37,7 @@ import io.github.amichne.kast.relation.contract.CallbackExclusionReason
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlow
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowRead
+import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackNamedCallPolicy
 import io.github.amichne.kast.relation.contract.CallbackParameterInvocation
 import io.github.amichne.kast.relation.contract.CallbackResultMembership
@@ -163,13 +165,22 @@ class HostedCallbackByteAdmissionTest {
     }
 }
 
-private class CallbackByteFixture {
+/** How the receiver invokes the callback; only a direct named invocation proves the graph for complete-only runs. */
+internal enum class CallbackByteFlow {
+    NESTED_UNRESOLVED,
+    DIRECT_PROVEN,
+}
+
+internal class CallbackByteFixture(private val shape: CallbackByteFlow = CallbackByteFlow.NESTED_UNRESOLVED) {
     val symbols = RelationPagingFixture(RelationPagingFixture.live().authority, "readPrepared")
     val budget = QueryBudget(symbols.budget.resources.boundedFixture(), QueryByteLimit.parse(65536).callbackValue())
     var relationCalls = 0
     var projectedBytes = 0L
     private val read = evidence("read", 10, 1000, emptyList())
     private val receiver = evidence("nativeBoundary", 100, 200, List(6) { "() -> kotlin.String" })
+
+    /** One store per fixture, so a retained read reaches the result its earlier invocation issued. */
+    private val state = QueryStateStore()
 
     fun protocol(owner: QueryPresentationExecution?): CanonicalQueryProtocol =
         CanonicalQueryProtocol(
@@ -198,6 +209,7 @@ private class CallbackByteFixture {
                 presentation = owner,
             ),
             symbols.references,
+            state = state,
         )
 
     private fun relation(request: RelationRequest): RelationReadResult {
@@ -252,13 +264,24 @@ private class CallbackByteFixture {
                 symbols.authority.identity,
                 anonymous(20, 80),
                 CallbackBindingEvidence.Bound(binding),
-                listOf(
-                    CallbackParameterInvocation.fromCompiler(occurrence(120, 125), anonymous(120, 130)).callbackValue()
-                ),
-                setOf(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION),
+                listOf(CallbackParameterInvocation.fromCompiler(occurrence(120, 125), invoker()).callbackValue()),
+                when (shape) {
+                    CallbackByteFlow.NESTED_UNRESOLVED -> setOf(CallbackInvocationFlowCause.NESTED_CALLBACK_EXECUTION)
+                    CallbackByteFlow.DIRECT_PROVEN -> emptySet()
+                },
+                when (shape) {
+                    CallbackByteFlow.NESTED_UNRESOLVED -> CallbackInvocationScan.INCOMPLETE
+                    CallbackByteFlow.DIRECT_PROVEN -> CallbackInvocationScan.EXHAUSTIVE
+                },
             )
             .callbackValue()
     }
+
+    private fun invoker(): RelationCallableBody =
+        when (shape) {
+            CallbackByteFlow.NESTED_UNRESOLVED -> anonymous(120, 130)
+            CallbackByteFlow.DIRECT_PROVEN -> RelationCallableBody.Named.fromCompiler(receiver).callbackValue()
+        }
 
     private fun evidence(name: String, start: Int, end: Int, parameters: List<String>) =
         CompilerGroundedSymbolEvidence.fromBoundary(
