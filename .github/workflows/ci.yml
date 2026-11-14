@@ -31,7 +31,7 @@ env:
 
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ inputs.rollout_case && inputs.rollout_case != 'all' && format('-{0}', inputs.rollout_case) || '' }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   scope:
@@ -227,7 +227,7 @@ jobs:
   native:
     name: Compile macOS native executable
     needs: [scope, source-work]
-    if: vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.outputs.candidate != 'REUSED'
+    if: github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.outputs.candidate != 'REUSED'
     runs-on: [self-hosted, macOS, ARM64, kast-main]
     timeout-minutes: 45
     steps:
@@ -344,7 +344,7 @@ jobs:
   kotlin:
     name: Kotlin product
     needs: [scope, source-work, native, assembly]
-    if: always() && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && (needs.source-work.outputs.candidate == 'REUSED' || (needs.native.result == 'success' && needs.assembly.result == 'success')) && (inputs.rollout == '' || inputs.rollout == 'none')
+    if: always() && github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && (needs.source-work.outputs.candidate == 'REUSED' || (needs.native.result == 'success' && needs.assembly.result == 'success')) && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || fromJSON('["self-hosted", "macOS", "ARM64", "kast-main"]') }}
     timeout-minutes: 30
     steps:
