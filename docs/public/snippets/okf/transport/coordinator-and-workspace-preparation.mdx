@@ -53,7 +53,12 @@ Management preparation accepts the exact supplied canonical root and rejects an 
 Issued source and retained-reference operations use existing authority without another preparation effect.
 They still need current Host and reference admission.
 `PreparedWorkspaceDemand` waits for terminal preparation and inspects the current host and exact target before dispatch of an operation that needs preparation.
-A changed host permits one fresh preparation because no semantic operation reached the former target.
+Inspection of a changed Host or `Blocked(HOST_UNAVAILABLE)` invalidates only the matching ready preparation.
+An unpinned, non-mutating demand then prepares once more because no semantic operation reached the former target.
+This preparation can launch a replacement Host after an idle stop without restarting the coordinator.
+A mutation rejects rather than switching Hosts; the next request can recover through the invalidated preparation.
+Demands returned by `prepare(root)` keep their captured Host and project target and never substitute a replacement.
+
 After dispatch, readiness recovery permits at most one retry under the same managed request lease.
 Read operations admit typed model reload or exact `FRESHNESS_REJECTED` / `MOVED` at `MODEL_CAPTURE` or `CONTENT_REVALIDATION`.
 Plan operations admit only presemantic model reload; mutations and status do not replay.

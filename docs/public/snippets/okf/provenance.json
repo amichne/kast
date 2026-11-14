@@ -2053,8 +2053,8 @@
     },
     {
       "path": "openwiki/transport/coordinator-and-workspace-preparation.md",
-      "sha256": "822c3aceafa3c6a9dd5e481f5948a1026585c721bc27f59b60460222907ab64f",
-      "claimsSha256": "b7852b618ae56c9d7ddb358c4bbd5aac6ba21228dde79abe408727920386d171",
+      "sha256": "79906a49a4de532eb0f4a5358e3f47ddb95e8f8b837f95f2611e884d462425f2",
+      "claimsSha256": "08d581e478b33e6f7742bbbe96ecf91a1fddf6c2ba0e7508015a0d7afe95fd67",
       "evidence": [
         {
           "claim": "claim_9afc4ce3301b4badb9651eeb2f54f674",
@@ -2073,8 +2073,15 @@
         {
           "claim": "claim_e26a437aa26b41068e118b49725d068c",
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt",
-          "recordedVersion": "repo-file-v1:sha256:20184f3abeb573cdef78d710a91a3bcb37f671edf2bf1179c8ae9919d54ae269",
-          "currentVersion": "repo-file-v1:sha256:20184f3abeb573cdef78d710a91a3bcb37f671edf2bf1179c8ae9919d54ae269",
+          "recordedVersion": "repo-file-v1:sha256:d583a27ff261f83cece6d652b62475af02115c79bd90343421fdc0b12e71ebfc",
+          "currentVersion": "repo-file-v1:sha256:d583a27ff261f83cece6d652b62475af02115c79bd90343421fdc0b12e71ebfc",
+          "status": "MATCHED"
+        },
+        {
+          "claim": "claim_e26a437aa26b41068e118b49725d068c",
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/PreparedWorkspaceDemandTest.kt",
+          "recordedVersion": "repo-file-v1:sha256:d6c9447c544849ce8514d0cceab70bf0e08342b28865d8cab6723d2e2da194dd",
+          "currentVersion": "repo-file-v1:sha256:d6c9447c544849ce8514d0cceab70bf0e08342b28865d8cab6723d2e2da194dd",
           "status": "MATCHED"
         },
         {

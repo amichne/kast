@@ -34,6 +34,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspacePreparations.kt
   - id: openwiki-source-eee64eb8ca3aa3550601ed99
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt
+  - id: openwiki-source-e9f60343d8e37228e682a386
+    resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/PreparedWorkspaceDemandTest.kt
   - id: openwiki-source-4cdc8af582793c9a08b75f75
     resource: repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/PreparedWorkspaceReadinessRetryTest.kt
   - id: openwiki-source-e2eb0f864f441066834169f4
@@ -42,10 +44,10 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
   - id: openwiki-source-8f099dc46f272100d18b0f6f
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/CanonicalRoot.kt
-generated: { by: "amp", at: "2026-11-13T00:41:13.770Z" }
+generated: { by: "amp", at: "2026-11-14T22:19:18.487Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-13T00:41:13.770Z
+    at: 2026-11-14T22:19:18.487Z
 ---
 
 # Coordinator and workspace preparation
@@ -87,7 +89,12 @@ Management preparation accepts the exact supplied canonical root and rejects an 
 Issued source and retained-reference operations use existing authority without another preparation effect.
 They still need current Host and reference admission.
 `PreparedWorkspaceDemand` waits for terminal preparation and inspects the current host and exact target before dispatch of an operation that needs preparation.
-A changed host permits one fresh preparation because no semantic operation reached the former target.
+Inspection of a changed Host or `Blocked(HOST_UNAVAILABLE)` invalidates only the matching ready preparation.
+An unpinned, non-mutating demand then prepares once more because no semantic operation reached the former target.
+This preparation can launch a replacement Host after an idle stop without restarting the coordinator.
+A mutation rejects rather than switching Hosts; the next request can recover through the invalidated preparation.
+Demands returned by `prepare(root)` keep their captured Host and project target and never substitute a replacement.
+
 After dispatch, readiness recovery permits at most one retry under the same managed request lease.
 Read operations admit typed model reload or exact `FRESHNESS_REJECTED` / `MOVED` at `MODEL_CAPTURE` or `CONTENT_REVALIDATION`.
 Plan operations admit only presemantic model reload; mutations and status do not replay.
