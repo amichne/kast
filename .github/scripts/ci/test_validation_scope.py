@@ -532,6 +532,18 @@ class SourceInventoryTest(unittest.TestCase):
             "(vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}",
             workflow,
         )
+        for job in ("native", "kotlin"):
+            with self.subTest(job=job):
+                body = workflow.split(f"\n  {job}:\n", 1)[1]
+                body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
+                condition = next(line.strip() for line in body.splitlines() if "if:" in line)
+                self.assertIn("github.event_name != 'pull_request' &&", condition)
+
+    def test_ci_preserves_running_main_runs_and_cancels_superseded_pr_runs(self):
+        workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
+        concurrency = workflow.split("\nconcurrency:\n", 1)[1].split("\njobs:\n", 1)[0]
+        self.assertIn("cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}", concurrency)
+        self.assertIn("github.event.pull_request.number || github.ref", concurrency)
 
     def test_every_mac_runner_requires_explicit_platform_opt_in(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"

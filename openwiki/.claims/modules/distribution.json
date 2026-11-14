@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
+  "pageVersion": "sha256:d0ed96fd995749308eca607d47bf50bbff60d29153e48128fd483d453c9f7f4b",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -312,7 +312,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:fbaac6f24e7888b950ee3c80abbb7b4742dc28b4eca7e9222be112d58562347f"
+          "version": "repo-file-v1:sha256:d5aa4708de3e2e7ee871e7f6080a3ce1dcf0e469bd91a37cbf3b514c67b98dcf"
         },
         {
           "resource": "repo://cli/native-image.args",
@@ -330,7 +330,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:fbaac6f24e7888b950ee3c80abbb7b4742dc28b4eca7e9222be112d58562347f"
+          "version": "repo-file-v1:sha256:d5aa4708de3e2e7ee871e7f6080a3ce1dcf0e469bd91a37cbf3b514c67b98dcf"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt",
@@ -412,7 +412,7 @@
         },
         {
           "resource": "repo://.github/workflows/ci.yml",
-          "version": "repo-file-v1:sha256:fbaac6f24e7888b950ee3c80abbb7b4742dc28b4eca7e9222be112d58562347f"
+          "version": "repo-file-v1:sha256:d5aa4708de3e2e7ee871e7f6080a3ce1dcf0e469bd91a37cbf3b514c67b98dcf"
         },
         {
           "resource": "repo://build.gradle.kts#L67-L88",
@@ -943,6 +943,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-13T21:54:15.364Z"
+    "at": "2026-11-14T00:13:45.182Z"
   }
 }
