@@ -114,11 +114,11 @@
       "completedRunId": "888979aa-f47e-44da-a913-81ebaec60be7"
     },
     "/openwiki/distribution/release-candidates-and-promotion.md": {
+      "gitHead": "c93a77721cedaac7311eb3f57493953cc589774a",
+      "sourceFingerprint": "sha256:8d51a7c522a318839189174d32826d85c32d9ecbe4591e3ff5fb136bf0693e9d",
       "pageVersion": "sha256:6c2156b93e80465b2432686334b46c64ceb76d9db6a735fe9a4ccf67e314b723",
       "completedBy": "amp",
-      "completedRunId": "c9f69d63-e807-4e99-a679-158de0c7878c",
-      "gitHead": "c93a77721cedaac7311eb3f57493953cc589774a",
-      "sourceFingerprint": "sha256:8d51a7c522a318839189174d32826d85c32d9ecbe4591e3ff5fb136bf0693e9d"
+      "completedRunId": "c9f69d63-e807-4e99-a679-158de0c7878c"
     },
     "/openwiki/distribution/upgrades-shutdown-and-reset.md": {
       "gitHead": "ecfb3dcb622da5d629504de0eb3337ba243bb697",
@@ -219,11 +219,11 @@
       "completedRunId": "bb7d762b-e640-426b-bae8-f8fa41505944"
     },
     "/openwiki/modules/distribution.md": {
-      "pageVersion": "sha256:52678c19e19bcc11e13f62d51637c99a6e2a10ba8d8c5db8ba042b186612d82d",
+      "pageVersion": "sha256:d0ed96fd995749308eca607d47bf50bbff60d29153e48128fd483d453c9f7f4b",
       "completedBy": "amp",
-      "completedRunId": "c9f69d63-e807-4e99-a679-158de0c7878c",
-      "gitHead": "c93a77721cedaac7311eb3f57493953cc589774a",
-      "sourceFingerprint": "sha256:8d51a7c522a318839189174d32826d85c32d9ecbe4591e3ff5fb136bf0693e9d"
+      "completedRunId": "d9b62313-0fcc-4eb2-b926-65e512210117",
+      "gitHead": "0f6eacef6d49fe8afabe061f2eb9388b9684337a",
+      "sourceFingerprint": "sha256:39b95ad97e67c08a8e66c85661cc3b43540c5ddeb6e746b3ca11bd1185c70d8d"
     },
     "/openwiki/modules/kernel.md": {
       "gitHead": "c00f3bfa71dd40e9897d714e378b21eacf673073",
