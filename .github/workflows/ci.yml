@@ -125,7 +125,7 @@ jobs:
       - name: Set up Liberica NIK Java 25
         if: steps.reuse.outputs.candidate != 'REUSED'
         id: jdk25
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: liberica-nik
           java-version: '25.0.2+13'
@@ -237,7 +237,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Check workspace and scratch free space
         run: python3 .github/scripts/ci/build_storage.py check --minimum-bytes 12884901888 "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: liberica-nik
           java-version: '25.0.2+13'
@@ -303,7 +303,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Check workspace and scratch free space
         run: python3 .github/scripts/ci/build_storage.py check --minimum-bytes 8589934592 "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: liberica-nik
           java-version: '25.0.2+13'
@@ -357,7 +357,7 @@ jobs:
         with:
           name: reused-candidate-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/candidate/
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         if: needs.source-work.outputs.candidate != 'REUSED'
         with:
           distribution: liberica-nik
@@ -513,7 +513,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}
@@ -708,7 +708,7 @@ jobs:
 
       - name: Set up Liberica NIK Java 25
         id: jdk25
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: liberica-nik
           java-version: '25.0.2+13'

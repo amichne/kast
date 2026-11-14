@@ -36,7 +36,7 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check uv==0.12.9
 
       - name: Install declared tools and separate reader Vale
-        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           install_args: java node vale@3.24.0 vale@3.25.1
 
