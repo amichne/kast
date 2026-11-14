@@ -68,8 +68,9 @@ internal class PreparedWorkspaceDemand(
             }
         val first = queryReady(ready.entry, ready.workspace, operation)
         val failure = (first as? WorkspaceDemandResult.Rejected)?.failure as? WorkspaceDemandFailure.Operation
-        // No semantic operation was sent when identity inspection detected a changed host.
-        return if (failure?.cause == WorkspaceDemandCause.HostChanged && operation !is ExistingIdeOperation.Mutation)
+        // No semantic operation was sent when inspection found a changed or exited host, so a fresh preparation may
+        // launch or select its replacement. A mutation is never replayed against another Host incarnation.
+        return if (failure?.cause in REPREPARABLE && operation !is ExistingIdeOperation.Mutation)
             queryOnce(root, operation)
         else retryPrepared(ready, operation, first)
     }
@@ -161,12 +162,25 @@ internal class PreparedWorkspaceDemand(
                     rejected(entry, WorkspaceDemandCause.HostChanged)
                 }
             }
-            is IdeLifecycleResult.Blocked -> rejected(entry, WorkspaceDemandCause.Lifecycle(observed.reason))
+            is IdeLifecycleResult.Blocked -> {
+                // An exited Host, such as one stopped by idle shutdown, never answers this preparation again.
+                if (observed.reason == IdeLifecycleFailure.HOST_UNAVAILABLE)
+                    preparations.invalidate(entry.id, workspace)
+                rejected(entry, WorkspaceDemandCause.Lifecycle(observed.reason))
+            }
             else -> rejected(entry, WorkspaceDemandCause.Preparation(WorkspacePreparationFailure.RESPONSE_REJECTED))
         }
 
     private fun rejected(entry: WorkspacePreparation, cause: WorkspaceDemandCause) =
         WorkspaceDemandResult.Rejected(WorkspaceDemandFailure.Operation(entry.id, entry.root, cause))
+
+    private companion object {
+        val REPREPARABLE: Set<WorkspaceDemandCause> =
+            setOf(
+                WorkspaceDemandCause.HostChanged,
+                WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE),
+            )
+    }
 }
 
 private fun ExistingIdeExchange.HostRejected.canRetryReadiness(operation: ExistingIdeOperation): Boolean =
