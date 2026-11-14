@@ -64,7 +64,10 @@ class LinuxIdeLifecycleTest {
                 LifecycleExchangeTimer.Native,
                 System::nanoTime,
                 platform,
-                IdeLifecycleDeployment.Headless(root.resolve("missing")),
+                IdeLifecycleDeployment.Headless(
+                    root.resolve("missing"),
+                    io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+                ),
             )
         assertEquals(
             IdeLifecycleResult.Blocked(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE),

@@ -2919,7 +2919,7 @@
       "content": [
         {
           "path": "docs/public/glossary.mdx",
-          "sha256": "e1024133ba2c7a8ddb73587d4bdcdaa6863b9589ab08e1829583ad187ad42f4b"
+          "sha256": "1e30618db0c00be5e8a94d47518d8069f819c43c24bf7c2343f6e041063572a5"
         }
       ],
       "claims": [
@@ -2987,7 +2987,7 @@
       "generatedOwners": [
         {
           "path": "docs/glossary.json",
-          "sha256": "2a37711cc354caa8170da03db39d59c9b63bc4e6e9c325b99644c634c665013c"
+          "sha256": "f82d7494b240c1e3f5dffc7a7de442c5d4b276adbd72eb912e3c2addd1bf4792"
         }
       ],
       "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
@@ -5700,7 +5700,7 @@
         },
         {
           "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
-          "sha256": "0dad44453e18a82a07c16dfb71c5b190f131ec06323329802f7269d2e72b1674"
+          "sha256": "f21345d0e031235ed6cd1aec5cce948006bef0c20d319666516e209638c3d588"
         },
         {
           "path": "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt",
@@ -5832,15 +5832,15 @@
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationParameterDeclaration.kt",
-          "sha256": "e7934a20020cfa601f0b6f442cb1ee3bebb9480acf82ce87f315f6560396c7bf"
+          "sha256": "ec9acc164acfe58763e79686922e8013e2b4ff34ff7294ea60c6ccedcfd92af0"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "sha256": "dcb69ccad11f9350e7e20fca0c2b5b0be30f83001ea577d96109025f59035d05"
+          "sha256": "66aa2d8ddfd10f7901d5af40993a7ae2991f4cd655169603e09537e92d83ba4d"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
-          "sha256": "c3f640e58c9094a2375e2376d429bdeeb985c557bfbc72771a2dba186502f393"
+          "sha256": "3e890804d664af8841c442b0b3735379e95f5779b2ed8cea53ac4c734dfe212d"
         },
         {
           "path": "distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/CliOutput.kt",
@@ -5872,7 +5872,7 @@
         },
         {
           "path": "packaging/configuration-schema.json",
-          "sha256": "3aab44c6e8ffbddf57a83c39c38a2b6ce05f31c72dbadaf04a2462db20457efc"
+          "sha256": "bee38228eadc45feb077f85b49cc2b391c4ca538dd888f95951d0717859aa243"
         }
       ],
       "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
@@ -6317,10 +6317,25 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "de7b81aa89d40c8dcf7ebc16a1f0f4ed49312aa4a1d02f7c225ab9158519b7d9"
+          "sha256": "be3a06a651f556bdbfcf4c2bca62c50f035c8a4482416dab755b7aa9bb0c0a37"
         }
       ],
       "claims": [
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_68237dc364944b9abe0e30e3b2acb303",
+          "statementSha256": "8aae79fb4d69bd936cc661b370596fdd0fcc1cfd228b6523345ac825edf1abda"
+        },
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_0d0a72516bcf4791babbe65056312043",
+          "statementSha256": "c6a2569dfc61d43efb6762469c9af7cf93af3afb207f00f0df8f4aee813864c8"
+        },
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_215bc2fe454f4596981bdb2d7eafc545",
+          "statementSha256": "846e5e1e4203dc0208c6544388947463e510e7f6ba2d821405dc3a2e93c192fd"
+        },
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -6744,7 +6759,7 @@
         },
         {
           "path": "docs/public/snippets/okf/transport/coordinator-and-workspace-preparation.mdx",
-          "sha256": "41105006129556a268f8fc62cffd85814a969cf1f474e3a93dcfd5c19cf33ee7"
+          "sha256": "0cf532925f6fdc24ea01c87c2ea5bf62d3472816a5853f28990ba651a3d72d92"
         }
       ],
       "claims": [
@@ -6756,7 +6771,7 @@
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
           "claimId": "claim_e26a437aa26b41068e118b49725d068c",
-          "statementSha256": "7f17d563443c6509f51d6fd52693f6051bb767f40070187c658763bbbda548a8"
+          "statementSha256": "6282491758b08cc0698f8e7ce08f21220dcf1c8ea0227f450755e0e5798c45fc"
         },
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
@@ -6817,7 +6832,7 @@
       "content": [
         {
           "path": "docs/public/reference/lifecycles.mdx",
-          "sha256": "f18c979e577e283c14fedf385726add3e6e261ba2e225c7e60fb6d65b09c1eed"
+          "sha256": "9e7ba215bee13bd2d1a6b490bd5d86cf879fc229e11eeadd857af336371ce14a"
         },
         {
           "path": "docs/public/snippets/diagrams/request-lifecycle.jsx",
@@ -6825,6 +6840,21 @@
         }
       ],
       "claims": [
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_68237dc364944b9abe0e30e3b2acb303",
+          "statementSha256": "8aae79fb4d69bd936cc661b370596fdd0fcc1cfd228b6523345ac825edf1abda"
+        },
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_0d0a72516bcf4791babbe65056312043",
+          "statementSha256": "c6a2569dfc61d43efb6762469c9af7cf93af3afb207f00f0df8f4aee813864c8"
+        },
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_215bc2fe454f4596981bdb2d7eafc545",
+          "statementSha256": "846e5e1e4203dc0208c6544388947463e510e7f6ba2d821405dc3a2e93c192fd"
+        },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_4418145e0e48413589ccb805f87f8741",
@@ -6908,7 +6938,7 @@
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
           "claimId": "claim_e26a437aa26b41068e118b49725d068c",
-          "statementSha256": "7f17d563443c6509f51d6fd52693f6051bb767f40070187c658763bbbda548a8"
+          "statementSha256": "6282491758b08cc0698f8e7ce08f21220dcf1c8ea0227f450755e0e5798c45fc"
         },
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
@@ -6948,7 +6978,7 @@
         },
         {
           "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/McpWorkspaceOperationClient.kt",
-          "sha256": "0dad44453e18a82a07c16dfb71c5b190f131ec06323329802f7269d2e72b1674"
+          "sha256": "f21345d0e031235ed6cd1aec5cce948006bef0c20d319666516e209638c3d588"
         },
         {
           "path": "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt",
@@ -6960,11 +6990,11 @@
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "sha256": "dcb69ccad11f9350e7e20fca0c2b5b0be30f83001ea577d96109025f59035d05"
+          "sha256": "66aa2d8ddfd10f7901d5af40993a7ae2991f4cd655169603e09537e92d83ba4d"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
-          "sha256": "c3f640e58c9094a2375e2376d429bdeeb985c557bfbc72771a2dba186502f393"
+          "sha256": "3e890804d664af8841c442b0b3735379e95f5779b2ed8cea53ac4c734dfe212d"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
@@ -13640,7 +13670,7 @@
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",
           "claimId": "claim_e26a437aa26b41068e118b49725d068c",
-          "statementSha256": "7f17d563443c6509f51d6fd52693f6051bb767f40070187c658763bbbda548a8"
+          "statementSha256": "6282491758b08cc0698f8e7ce08f21220dcf1c8ea0227f450755e0e5798c45fc"
         },
         {
           "page": "openwiki/transport/coordinator-and-workspace-preparation.md",

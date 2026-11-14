@@ -9,6 +9,32 @@ The JSON source also records each term's scope, reason, and source meaning.
 
 ## Terms
 
+### idle shutdown
+
+An opt-in managed Host stop after a configured period without admitted requests or observed native work. It uses the existing settlement and normal exit path.
+
+Example: KAST_HOST_IDLE_SHUTDOWN=30 selects idle shutdown after 30 minutes; the default off leaves it disabled.
+Keep distinct: Idle shutdown ends a Host lifetime, not a client session, trust grant, or installation. An explicit stop does not depend on the idle clock.
+
+Source evidence:
+
+- [`HostIdleShutdown`](https://github.com/amichne/kast/blob/ba7bddc2eb89752d04e532e9aea8eef36ec9b515/distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/HostIdleShutdown.kt), checked 2026-11-14.
+- `distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/HostIdleShutdown.kt`: `HostIdleShutdown`.
+- `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostIdleShutdownMonitor.kt`: `HostIdleShutdownMonitor`.
+
+### Host exit record
+
+A private host-exit.json record that identifies a managed Host's settled stop and requested exit. It preserves the reason, index state, Host lifetime, and schema version.
+
+Example: An idle stop writes reason IDLE; an explicit settled stop writes SETTLED. Control deletes the record before the next launch.
+Keep distinct: The record does not prove completed process exit or flushed indexes. It is retracted when admission resumes and is not an index snapshot.
+
+Source evidence:
+
+- [`HostExitRecord`](https://github.com/amichne/kast/blob/ba7bddc2eb89752d04e532e9aea8eef36ec9b515/distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecord.kt), checked 2026-11-14.
+- `distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecord.kt`: `HostExitRecord`.
+- `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostExitRecords.kt`: `HostExitRecords`.
+
 ### workspace container
 
 An internal workspace record with an exact-root trust grant and private Host profile. Gradle state stays private by default. Records can share verified runtime bytes.

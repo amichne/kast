@@ -178,6 +178,9 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
             }
         }
 
+    private val exit =
+        HostExitControl.start(scope, admission, settlement, runtimeIdentity, native::hasActivePreparation)
+
     init {
         ApplicationManager.getApplication()
             .messageBus
@@ -207,8 +210,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
                 applicationHostRefreshReply(command, settlement, scope)
             } else {
                 val result = submit(command)
-                if (result is IdeLifecycleResult.HostStopRequested)
-                    LifecycleReply.afterAcknowledgment(result, ::requestSettledHostExit)
+                if (result is IdeLifecycleResult.HostStopRequested) exit.stopReply(result)
                 else LifecycleReply.immediate(result)
             }
         }
@@ -219,7 +221,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
             return inspectApplicationHost(runtimeIdentity, native.inspectProjects(), hostRefresh)
         if (received is IdeLifecycleCommand.SettleHost) return settlement.settle(received)
         if (received is IdeLifecycleCommand.SettleHostForReload) return settlement.settleForReload(received)
-        if (received is IdeLifecycleCommand.ResumeHost) return settlement.resume(received)
+        if (received is IdeLifecycleCommand.ResumeHost) return exit.resumed(settlement.resume(received))
         if (received is IdeLifecycleCommand.StopHost) return settlement.stop(received)
         if (received is IdeLifecycleCommand.Status) {
             if (received.host != state.host.toString())
@@ -345,6 +347,7 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
 
     override fun dispose() {
         state.shutdown()
+        exit.idle?.cancel()
         job.cancel()
     }
 

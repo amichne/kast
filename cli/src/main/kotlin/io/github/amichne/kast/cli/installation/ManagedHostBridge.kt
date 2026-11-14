@@ -25,12 +25,14 @@ internal fun executeManagedHost(
     home: Path,
     managedHeadlessState: io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection =
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault,
+    idleShutdown: io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown =
+        io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
     processes: (SelectedIdeLaunch.Resolved) -> ManagedProcessInventory = ::observeManagedIdeProcesses,
     exchange: (Path, IdeLifecycleCommand) -> IdeLifecycleResult = { idea, command ->
         exchangeSelectedHost(home, idea, managedHeadlessState, command)
     },
     start: (SelectedIdeLaunch.Resolved) -> ManagedIdeLaunchOutcome = { launch ->
-        startSelectedManagedHost(launch, home, managedHeadlessState)
+        startSelectedManagedHost(launch, home, managedHeadlessState, idleShutdown)
     },
     inspectLegacy: (SelectedIdeLaunch.Resolved, ManagedIdeProcess) -> LegacyProfileRead = ::inspectLegacyHostProfile,
     stopLegacy: (SelectedIdeLaunch.Resolved, ManagedIdeProcess) -> LegacyQuitOutcome = ::stopLegacyHostNormally,
@@ -295,7 +297,16 @@ private fun exchangeSelectedHost(
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault ->
             LegacyHostCleanupClient(home, idea).execute(command)
         is io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.Selected ->
-            IdeLifecycleClient(home, idea, deployment = IdeLifecycleDeployment.Headless(selection.path))
+            // Management exchanges inspect, settle and stop; they never launch a Host.
+            IdeLifecycleClient(
+                    home,
+                    idea,
+                    deployment =
+                        IdeLifecycleDeployment.Headless(
+                            selection.path,
+                            io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+                        ),
+                )
                 .manageInstallation(command)
     }
 
@@ -303,13 +314,18 @@ private fun startSelectedManagedHost(
     launch: SelectedIdeLaunch.Resolved,
     home: Path,
     selection: io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection,
+    idleShutdown: io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown,
 ): ManagedIdeLaunchOutcome =
     when (selection) {
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault ->
             ManagedIdeLaunchOutcome.REJECTED
         is io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.Selected -> {
             val result =
-                IdeLifecycleClient(home, Path.of(launch.home), IdeLifecycleDeployment.Headless(selection.path))
+                IdeLifecycleClient(
+                        home,
+                        Path.of(launch.home),
+                        IdeLifecycleDeployment.Headless(selection.path, idleShutdown),
+                    )
                     .startInstallation()
             if (result is IdeLifecycleResult.Inspected) ManagedIdeLaunchOutcome.REQUESTED
             else ManagedIdeLaunchOutcome.REJECTED

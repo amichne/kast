@@ -6,15 +6,21 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeClassName
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostedMutationOperation
+import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
 import io.github.amichne.kast.appserver.ide.HostedPresemanticRecovery
 import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectDescription
 import io.github.amichne.kast.protocol.contract.IdeProjectOwnership
 import io.github.amichne.kast.protocol.contract.IdeProjectTarget
+import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
+import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Path
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -248,6 +254,75 @@ class PreparedWorkspaceDemandTest {
         assertEquals(1, opens)
         assertEquals(1, queries)
         preparations.close()
+    }
+
+    @Test
+    fun `a Host that exited after preparation is reopened for the next read but a mutation is not replayed`() =
+        runTest {
+            var opens = 0
+            var alive = true
+            var queries = 0
+            val preparations =
+                WorkspacePreparations(
+                    this,
+                    {
+                        opens++
+                        alive = true
+                        IdeLifecycleResult.Opened(target)
+                    },
+                )
+            val native = ExistingIdeExchange.Rejected(ExistingIdeFailure.TRANSPORT_REJECTED)
+            val demand =
+                PreparedWorkspaceDemand(
+                    preparations,
+                    {
+                        if (alive) inspected(target)
+                        else IdeLifecycleResult.Blocked(IdeLifecycleFailure.HOST_UNAVAILABLE)
+                    },
+                    { _, _ ->
+                        queries++
+                        native
+                    },
+                )
+            suspend fun send(operation: ExistingIdeOperation): WorkspaceDemandResult {
+                val result = async { demand.query(root, operation) }
+                runCurrent()
+                return result.await()
+            }
+            assertEquals(WorkspaceDemandResult.Native(native), send(ExistingIdeOperation.Status))
+            alive = false
+            assertEquals(WorkspaceDemandResult.Native(native), send(ExistingIdeOperation.Status))
+            assertEquals(2, opens)
+            assertEquals(2, queries)
+            alive = false
+            val mutation = mutationFixture()
+            val rejected = send(mutation) as WorkspaceDemandResult.Rejected
+            assertEquals(
+                WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE),
+                (rejected.failure as WorkspaceDemandFailure.Operation).cause,
+            )
+            assertEquals(2, opens)
+            assertEquals(2, queries)
+            assertEquals(WorkspaceDemandResult.Native(native), send(ExistingIdeOperation.Status))
+            assertEquals(3, opens)
+            assertEquals(3, queries)
+            preparations.close()
+        }
+
+    private fun mutationFixture(): ExistingIdeOperation.Mutation {
+        val identity = "plan:" + "a".repeat(64)
+        val request =
+            (canonicalCliRequestPreparers()
+                    .changeApply
+                    .prepare(ChangeApplyRequest((ProtocolText.parse(identity) as Refinement.Refined).value))
+                    as OperationPreparation.Prepared)
+                .request
+        return (ExistingIdeOperation.Mutation.admit(
+                request,
+                HostedMutationOperation.CHANGE_APPLY,
+                (HostedPlanIdentity.parse(identity) as Refinement.Refined).value,
+            ) as Refinement.Refined)
+            .value
     }
 
     @Serializable

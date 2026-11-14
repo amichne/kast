@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:822c3aceafa3c6a9dd5e481f5948a1026585c721bc27f59b60460222907ab64f",
+  "pageVersion": "sha256:79906a49a4de532eb0f4a5358e3f47ddb95e8f8b837f95f2611e884d462425f2",
   "claims": [
     {
       "id": "claim_9afc4ce3301b4badb9651eeb2f54f674",
@@ -18,11 +18,15 @@
     },
     {
       "id": "claim_e26a437aa26b41068e118b49725d068c",
-      "statement": "PreparedWorkspaceDemand inspects exact Host/project identity before dispatch. Readiness recovery retries once inside the managed lease for typed model reload or exact admitted read freshness movement at MODEL_CAPTURE or CONTENT_REVALIDATION. Plans retry only presemantic model reload; mutations and status never replay. Repreparation cannot replace the captured Host/project, and retry exhaustion preserves the second rejection.",
+      "statement": "PreparedWorkspaceDemand inspects exact Host/project identity before dispatch and invalidates the matching ready preparation when the Host changed or inspection returns HOST_UNAVAILABLE. An unpinned non-mutating demand prepares once more before dispatch and can launch a replacement Host; mutations reject and leave later demands to recover. Demands captured by prepare(root) never switch Hosts. After dispatch, readiness recovery retries once inside the managed lease for typed model reload or exact admitted read freshness movement at MODEL_CAPTURE or CONTENT_REVALIDATION. Plans retry only presemantic model reload; mutations and status never replay. This retry cannot replace the captured Host/project, and exhaustion preserves the second rejection.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/WorkspaceDemand.kt",
-          "version": "repo-file-v1:sha256:20184f3abeb573cdef78d710a91a3bcb37f671edf2bf1179c8ae9919d54ae269"
+          "version": "repo-file-v1:sha256:d583a27ff261f83cece6d652b62475af02115c79bd90343421fdc0b12e71ebfc"
+        },
+        {
+          "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/PreparedWorkspaceDemandTest.kt",
+          "version": "repo-file-v1:sha256:d6c9447c544849ce8514d0cceab70bf0e08342b28865d8cab6723d2e2da194dd"
         },
         {
           "resource": "repo://app-server/src/test/kotlin/io/github/amichne/kast/appserver/runtime/PreparedWorkspaceReadinessRetryTest.kt",
@@ -89,6 +93,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-13T00:41:13.770Z"
+    "at": "2026-11-14T22:19:18.487Z"
   }
 }

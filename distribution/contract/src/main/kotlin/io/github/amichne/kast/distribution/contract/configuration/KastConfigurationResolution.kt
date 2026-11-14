@@ -105,6 +105,7 @@ private constructor(
     val debug: ConfigurationSwitch,
     val readLimits: ReadLimits,
     val workspacePreparationWait: io.github.amichne.kast.kernel.ElapsedTimeAllowance,
+    val hostIdleShutdown: HostIdleShutdown,
     private val delegatedEnvironment: GradleImportEnvironment,
 ) {
     val selectedIdeHome: ConfigurationPathSelection
@@ -301,6 +302,20 @@ private constructor(
                             ConfigurationFailure.INVALID_VALUE,
                         )
                 }
+            val idleShutdown =
+                when (
+                    val parsed =
+                        HostIdleShutdown.parseSetting(
+                            byKey.getValue(ConfigurationParameter.HOST_IDLE_SHUTDOWN).value.boundaryValue()
+                        )
+                ) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return rejected(
+                            ConfigurationParameter.HOST_IDLE_SHUTDOWN.key,
+                            ConfigurationFailure.INVALID_VALUE,
+                        )
+                }
             val rawNames = byKey.getValue(ConfigurationParameter.GRADLE_IMPORT_VARIABLES).value.boundaryValue()
             val gradleHome = byKey[ConfigurationParameter.GRADLE_USER_HOME]?.value?.boundaryValue()
             val names =
@@ -340,6 +355,7 @@ private constructor(
                     debug,
                     readLimits,
                     preparationWait,
+                    idleShutdown,
                     delegated,
                 )
             )

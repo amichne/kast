@@ -59,7 +59,7 @@ sources:
 generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:39:43.618Z
+    at: 2026-11-14T21:34:35.265Z
 ---
 
 # IDEA lifecycle and explicit refresh

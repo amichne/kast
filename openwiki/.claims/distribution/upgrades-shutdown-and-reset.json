@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e333ab7079d07ea2cfb5fd560384e511707e3568cd93a17749a9c46f8b40a9ce",
+  "pageVersion": "sha256:74f933ddab85f2df9364ec7dbfe2a34ec17b45f1453a99a10281aea1e48db1ee",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -130,7 +130,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt",
-          "version": "repo-file-v1:sha256:87cb8e04d3454165974289e7a333ac1d8e53ae20f1502383074a04867273e4f7"
+          "version": "repo-file-v1:sha256:ff7e84ab8d9c88f6961a4df1286d2a9ce5240e8f47a9d4a45ce812c596cf8570"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt#L17-L17",
@@ -184,7 +184,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt",
-          "version": "repo-file-v1:sha256:8ff92cdeefa2a594cf259a2de84e87bab28291ba26f8050b37a1b2d886b5c9f7"
+          "version": "repo-file-v1:sha256:60f3edc8945603feee2e34a61176a2a1fb5f65a92d8e4d1a22501719d2781bb0"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleStop.kt",
@@ -381,6 +381,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-13T03:20:11.225Z"
+    "at": "2026-11-14T21:34:35.265Z"
   }
 }

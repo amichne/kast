@@ -114,10 +114,22 @@ internal class HostedApplicationSettlement(
     }
 
     @Synchronized
-    fun resume(command: IdeLifecycleCommand.ResumeHost): IdeLifecycleResult {
+    fun resume(command: IdeLifecycleCommand.ResumeHost): IdeLifecycleResult = resume(command, admitBusy = false)
+
+    /**
+     * Reopens the idle monitor's own fence. Native work ran with admission open before that fence, so it does not keep
+     * the Host fenced; unresolved mutation evidence still does.
+     */
+    @Synchronized
+    fun resumeIdleFence(command: IdeLifecycleCommand.ResumeHost): IdeLifecycleResult = resume(command, admitBusy = true)
+
+    /** The same native and durable-mutation inspection that settlement uses, for a decision made before any fence. */
+    fun inspectNative(): HostNativeSettlement = inspect()
+
+    private fun resume(command: IdeLifecycleCommand.ResumeHost, admitBusy: Boolean): IdeLifecycleResult {
         if (command.host != identity.hostLifetime) return blocked(IdeLifecycleFailure.WRONG_HOST)
         when (inspect()) {
-            HostNativeSettlement.Busy -> return blocked(IdeLifecycleFailure.PROJECT_BUSY)
+            HostNativeSettlement.Busy -> if (!admitBusy) return blocked(IdeLifecycleFailure.PROJECT_BUSY)
             HostNativeSettlement.UnresolvedMutation -> return blocked(IdeLifecycleFailure.MUTATION_RECOVERY_REQUIRED)
             HostNativeSettlement.Settled -> Unit
         }

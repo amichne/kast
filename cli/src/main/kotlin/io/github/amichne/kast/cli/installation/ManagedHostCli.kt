@@ -46,11 +46,15 @@ private fun executeSelectedManagedHost(
     home: Path,
     environment: Map<String, String>,
 ): ManagedHostResponse {
-    val key =
-        io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter.MANAGED_HEADLESS_STATE.key
+    val keys =
+        setOf(
+            io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter.MANAGED_HEADLESS_STATE
+                .key,
+            io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter.HOST_IDLE_SHUTDOWN.key,
+        )
     val sources =
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources(
-            environment = environment.filterKeys { it == key }
+            environment = environment.filterKeys { it in keys }
         )
     return when (
         val configuration =
@@ -59,7 +63,12 @@ private fun executeSelectedManagedHost(
         is io.github.amichne.kast.kernel.Refinement.Rejected ->
             ManagedHostResponse.Rejected(ManagedHostFailure.INVALID_REQUEST)
         is io.github.amichne.kast.kernel.Refinement.Refined ->
-            executeManagedHost(request, home, configuration.value.managedHeadlessState)
+            executeManagedHost(
+                request,
+                home,
+                configuration.value.managedHeadlessState,
+                configuration.value.hostIdleShutdown,
+            )
     }
 }
 

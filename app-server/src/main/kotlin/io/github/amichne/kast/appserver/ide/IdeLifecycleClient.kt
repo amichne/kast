@@ -221,7 +221,7 @@ internal constructor(
                 val trust = selectedDeployment.installation.config.resolve("options/trusted-paths.xml")
                 if (requireWorkspaceTrust && !Files.isRegularFile(trust, java.nio.file.LinkOption.NOFOLLOW_LINKS))
                     Refinement.Rejected(IdeLifecycleFailure.TRUST_REQUIRED)
-                else launchManagedHeadless(selectedDeployment.installation, platform)
+                else launchManagedHeadless(selectedDeployment, platform)
             }
         }
 

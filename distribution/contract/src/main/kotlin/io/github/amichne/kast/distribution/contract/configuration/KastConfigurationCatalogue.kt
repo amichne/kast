@@ -330,6 +330,14 @@ enum class ConfigurationParameter(
         defaultValue = "1020000",
         children = setOf(ConfigurationChild.BROKER),
     ),
+    HOST_IDLE_SHUTDOWN(
+        "KAST_HOST_IDLE_SHUTDOWN",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.WORKSPACE,
+        ":app-server",
+        defaultValue = HostIdleShutdown.DISABLED_SETTING,
+        children = setOf(ConfigurationChild.BROKER),
+    ),
     DEBUG(
         "KAST_DEBUG",
         ConfigurationSyntax.SWITCH,
@@ -490,6 +498,16 @@ enum class ConfigurationParameter(
 
     fun declaration(): ConfigurationDeclaration {
         val base = baseDeclaration()
+        if (this == HOST_IDLE_SHUTDOWN)
+            return base.copy(
+                admittedRange =
+                    ConfigurationAdmittedRange(
+                        minimum = HostIdleShutdown.MINIMUM_MINUTES.toLong(),
+                        maximum = HostIdleShutdown.MAXIMUM_MINUTES.toLong(),
+                        finiteValues = listOf(HostIdleShutdown.DISABLED_SETTING),
+                        ownerAdmission = "HostIdleShutdown.parseSetting; whole minutes from 5 to 1440 or off",
+                    )
+            )
         if (this == WORKSPACE_PREPARATION_WAIT)
             return base.copy(
                 admittedRange =

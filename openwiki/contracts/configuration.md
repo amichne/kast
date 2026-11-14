@@ -73,6 +73,12 @@ sources:
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntimeTest.kt
   - id: openwiki-source-fd4148a6ba46f590f554b6b6
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
+  - id: openwiki-source-e6c1742713e79102193033b8
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/HostIdleShutdown.kt
+  - id: openwiki-source-681368e4942d2fb35f298a68
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
+  - id: openwiki-source-e1b836dcfc56d72f6b2f511f
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecord.kt
   - id: openwiki-source-a788214182281b80d302305d
     resource: repo://distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/ReadLimitConfigurationTest.kt
   - id: openwiki-source-40ab5c6f8a11b724c001ed82
@@ -81,14 +87,28 @@ sources:
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstalledWorkspaceConfigurationIngress.kt
   - id: openwiki-source-821af660abbe3507ea0b79ee
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessInstallation.kt
+  - id: openwiki-source-43f4d74073df5cccb1204723
+    resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessLaunch.kt
   - id: openwiki-source-0f233df83b3fe87ab9547161
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt
   - id: openwiki-source-8677e434adb584035406f54a
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
-generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
+  - id: openwiki-source-f1b91cff1056c87a66c81c26
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationAdmission.kt
+  - id: openwiki-source-5bce5e00d8d37b48b461a27e
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt
+  - id: openwiki-source-80ea4c3464517da1f4ecb391
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostExitRecords.kt
+  - id: openwiki-source-d6931a4ac472aa48522b4583
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostIdleShutdownMonitor.kt
+  - id: openwiki-source-64703967945cd84894f27ab4
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt
+  - id: openwiki-source-b063b188a00b030d97a5f66b
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt
+generated: { by: "amp", at: "2026-11-14T21:38:41.615Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-13T03:20:11.225Z
+    at: 2026-11-14T21:41:04.802Z
 ---
 
 # Installation configuration
@@ -226,6 +246,27 @@ Deleting a cache therefore does not revoke workspace ownership or block retireme
 Recreating the same canonical directory restores launch eligibility without rewriting the workspace record.
 
 These are source-level contracts. Native qualification and complete product admission remain separate gates; see [release qualification](../distribution/release-candidates-and-promotion.md).
+
+## Managed Host idle shutdown
+
+`KAST_HOST_IDLE_SHUTDOWN` defaults to `off`. It accepts `off` or whole minutes from 5 through 1440.
+Saved installation and workspace configuration can select the policy. Control passes a finite limit through `kast.host.idle_shutdown_minutes` only when launching a Host.
+A running Host keeps its launch policy. Invalid settings reject configuration; a malformed launch property rejects Host startup with `INVALID_IDLE_SHUTDOWN`.
+
+The idle clock starts again after the last admitted request finishes or native work is observed.
+Pending preparation, unsafe progress, and indexing prevent idle shutdown. The monitor checks every 30 seconds.
+After the limit, it checks native settlement and unresolved mutation evidence before fencing admission under the idle clock's lock.
+It then uses the existing `SettleHost` and `StopHost` path and requests normal IntelliJ exit, which can be vetoed.
+Late requests receive `HOST_FENCED`. A vetoed exit reopens admission through settlement on a later check; refused reopening is retried.
+Unresolved mutation evidence prevents an idle fence or keeps an existing fence until recovery permits reopening.
+
+Both managed stop paths write `state/host-exit.json` atomically. The Host exit record contains `reason` (`IDLE` or `SETTLED`), `index` (`SMART` or `DUMB`), `hostLifetime`, and `schemaVersion` (1).
+The idle path writes just before requesting exit. An explicit stop writes after its acknowledgment reaches Control.
+The record proves a settled stop requested exit, not completed process exit or flushed indexes.
+Resumed admission retracts it. Control deletes it before every launch; failure to delete blocks launch with `LAUNCH_FAILED`.
+A record write failure does not prevent exit. No consumer uses the record for index seeding yet.
+
+Source owners: [policy parser](../../distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/HostIdleShutdown.kt), [idle monitor](../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostIdleShutdownMonitor.kt), [exit record](../../distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecord.kt), and [record writer](../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostExitRecords.kt).
 
 ## Imported model inputs
 
