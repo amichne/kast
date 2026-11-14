@@ -212,7 +212,7 @@ internal class IntellijWorkspaceRefreshPort(
         )
     }
 
-    /** Automatic read admission waits for native recursive refresh without forcing every descendant dirty. */
+    /** Automatic read admission waits for an imported-scope refresh without forcing every descendant dirty. */
     override fun startIncremental(complete: (WorkspaceRefreshEffectResult) -> Unit) {
         ApplicationManager.getApplication().invokeLater {
             val boundary = WorkspaceRefreshStartBoundary()
@@ -239,15 +239,12 @@ internal class IntellijWorkspaceRefreshPort(
             complete(WorkspaceRefreshEffectResult.ROOT_UNAVAILABLE)
             return
         }
-        // Native incremental refresh retains recursive coverage and reports completion through its callback.
+        val sessions = importedRefreshSessions(project, root, directory)
+        val pending = java.util.concurrent.atomic.AtomicInteger(sessions.size)
+        val settled = Runnable { if (pending.decrementAndGet() == 0) completeFileRefresh(complete) }
         val queue = RefreshQueue.getInstance()
         boundary.mayHaveStarted()
-        queue.refresh(
-            true,
-            true,
-            { completeFileRefresh(complete) },
-            directory,
-        )
+        for (session in sessions) queue.refresh(true, session.recursive, settled, *session.roots.toTypedArray())
     }
 
     private fun completeFileRefresh(complete: (WorkspaceRefreshEffectResult) -> Unit) {
