@@ -295,16 +295,26 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessProjectStore.kt
   - id: openwiki-source-eed0394918ec9e3d4c1a1c51
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/RegisteredPeerRead.kt
+  - id: openwiki-source-51ae3f05868141e4abf0b0ef
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt
+  - id: openwiki-source-0272a3ddd46fa2ebe2918453
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshScope.kt
+  - id: openwiki-source-64600940b0005f8522858e57
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshScope.kt
+  - id: openwiki-source-90acef2c033e1847cabc529e
+    resource: repo://runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeProjectRefreshTest.kt
+  - id: openwiki-source-33148f7629d4743e447a438a
+    resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshScopeTest.kt
   - id: openwiki-source-738d50046b5f0d1312b7fcb7
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnostics.kt
   - id: openwiki-source-08d8bbce5989f3afa7c532a7
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "codex", at: "2026-11-11T02:08:52.690Z" }
+generated: { by: "openwiki/0.9.0", at: "2026-11-14T06:20:24.272Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:40:35.936Z
+    at: 2026-11-14T06:20:24.272Z
 ---
 
 # Runtime and process hosts
@@ -418,7 +428,7 @@ inferring IDEA authority. Installed transport acceptance does not qualify stock
 interactive CLI or Desktop tool exposure; the explicit CLI route and Desktop
 façade remain pending those gates.
 
-The hosted endpoint also composes a workspace refresh owner outside `workspace:intellij-read`. Its internal socket retains file refresh, Gradle model reload, bounded status and one task-success rule per project. Public `workspace_lifecycle` requests do not select refresh effects. The direct refresh request remains for disposable native acceptance and requires an already linked project. Initial linking is admitted only through application lifecycle opening; semantic request admission saves project-owned documents and waits for native incremental recursive VFS refresh before entering the passive compiler read. Explicit file refresh retains forced dirty marking for external writes. Gradle-aware VFS events mark the imported model stale; a read returns a typed presemantic blocker, and the coordinator reopens and retries one safe read after native import.
+The hosted endpoint also composes a workspace refresh owner outside `workspace:intellij-read`. Its internal socket retains file refresh, Gradle model reload, bounded status and one task-success rule per project. Public `workspace_lifecycle` requests do not select refresh effects. The direct refresh request remains for disposable native acceptance and requires an already linked project. Initial linking is admitted only through application lifecycle opening; semantic request admission saves project-owned documents and waits for native incremental VFS refresh before entering the passive compiler read. For this automatic read-preparation refresh, the hosted IDEA adapter derives scope from imported inputs: recursive refresh covers existing source and local-library roots, while flat refresh lists directories needed to detect missing declared source roots and relevant Gradle model inputs. Both scopes are bounded to the workspace root; when no in-root imported source root is known, it falls back to recursive whole-workspace coverage. This avoids forcing every descendant dirty while still re-listing the read-relevant imported inputs. Explicit `FILE_REFRESH` remains a separate forced reconciliation: it recursively marks the workspace root dirty and requests a recursive VFS refresh, so it can discover external writes even without a prior watcher notification. Gradle-aware VFS events mark the imported model stale; a read returns a typed presemantic blocker, and the coordinator reopens and retries one safe read after native import. `WorkspaceRefreshScopeTest` exercises imported and whole-workspace planning, and `NativeProjectRefreshTest` checks imported input delivery and exclusion of unowned trees.
 
 Fresh semantic reads additionally use `ReacquiringQueryReferences`, backed by the
 separate detached exact-locator store. Its request-local accounting charges

@@ -277,6 +277,12 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservation.kt
   - id: openwiki-source-0e5288eaa02fcf3a6d2748f0
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedTraversalOperations.kt
+  - id: openwiki-source-51ae3f05868141e4abf0b0ef
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt
+  - id: openwiki-source-0272a3ddd46fa2ebe2918453
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshScope.kt
+  - id: openwiki-source-64600940b0005f8522858e57
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshScope.kt
   - id: openwiki-source-2e10c2532130cf6b4c6e6cc2
     resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryResultRetentionObservationTest.kt
   - id: openwiki-source-931b927626ea234f44ea20df
@@ -287,10 +293,10 @@ sources:
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt
   - id: openwiki-source-63abd5c24e7d947c619c1a6e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadValueSiteCounterTest.kt
-generated: { by: "codex", at: "2026-11-06T20:52:34.571Z" }
+generated: { by: "amp", at: "2026-11-14T06:28:38.719Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:38:01.289Z
+    at: 2026-11-14T06:28:38.719Z
 ---
 
 # Existing-IDE semantic query
@@ -809,7 +815,11 @@ candidate prefix, including its local selection table and retained-output cursor
 An indivisible source text that prevents any prefix fitting becomes explicitly
 withheld with text-byte qualification; source bytes are never truncated.
 
-The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads over the owned socket. The public `workspace_lifecycle` input no longer selects a refresh effect or task-success rule. The hosted endpoint saves project-owned editor buffers and waits for native incremental recursive VFS refresh before ordinary semantic dispatch and lifecycle opening; failures are finite and observed at that boundary. Explicit file refresh keeps forced dirty marking for external writes. Native lifecycle admission preserves host, project and request identities; pending results remain qualified and failures remain rejections. The [workspace lifecycle owner](../modules/workspace.md) describes its asynchronous effects and internal task rule.
+The `WORKSPACE_REFRESH` control request is dispatched separately from semantic reads over the owned socket. The public `workspace_lifecycle` input no longer selects a refresh effect or task-success rule. Before ordinary semantic dispatch and lifecycle opening, the hosted endpoint saves project-owned documents and waits for scoped native VFS refresh.
+
+The adapter derives scope from declared source, test and resource roots, local library roots, linked Gradle module directories and Gradle settings inputs. All refresh roots stay within the canonical workspace root. Existing source and library roots refresh recursively; directories needed to detect Gradle inputs and missing declared sources refresh non-recursively. Each non-empty session must settle before PSI document preparation in a later EDT turn completes the operation. Only the absence of any declared in-workspace source root selects recursive whole-workspace refresh. A missing declared source root still selects imported scope. The [workspace lifecycle owner](../modules/workspace.md#refresh-before-imported-input-reads) details root selection and its tests.
+
+Explicit file refresh still force-marks the canonical workspace root dirty before recursive refresh, so it does not depend on watcher notifications. Native lifecycle admission preserves host, project and request identities; pending results remain qualified and failures remain rejections.
 
 Fresh exact-symbol reads use the request-local acquisition wrapper described in
 [query protocol](../modules/query-protocol.md#automatic-acquisition-for-fresh-reads).

@@ -1,7 +1,7 @@
 ---
 type: Kotlin Module Group
 title: Workspace
-description: Workspace contracts distinguish published leases from original-owner live IDE reads and preserve their separate admission effects.
+description: Workspace contracts distinguish published leases from original-owner live IDE reads and preserve their separate admission effects. Hosted read preparation refreshes imported inputs through bounded recursive and flat VFS sessions before document preparation, while explicit file refresh force-marks only the workspace root.
 resource: file://workspace
 tags: [kotlin, workspace, lifecycle, intellij]
 code_sources:
@@ -38,16 +38,26 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt
   - id: openwiki-source-30ec45e5d5abc40f250cc287
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleProjectOpen.kt
+  - id: openwiki-source-51ae3f05868141e4abf0b0ef
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt
+  - id: openwiki-source-0272a3ddd46fa2ebe2918453
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshScope.kt
+  - id: openwiki-source-64600940b0005f8522858e57
+    resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshScope.kt
+  - id: openwiki-source-90acef2c033e1847cabc529e
+    resource: repo://runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeProjectRefreshTest.kt
+  - id: openwiki-source-33148f7629d4743e447a438a
+    resource: repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshScopeTest.kt
   - id: openwiki-source-903d531c5eecaec62a353b32
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochObservation.kt
   - id: openwiki-source-d7a75676401a9fcbe00c8e6f
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/epoch/ProjectReadEpochVfsListener.kt
   - id: openwiki-source-26adf1e57264a6d43e0f22c1
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadFreshnessOwner.kt
-generated: { by: "amp", at: "2026-11-13T18:27:10.865Z" }
+generated: { by: "amp", at: "2026-11-14T06:28:38.719Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-13T18:27:10.865Z
+    at: 2026-11-14T06:28:38.719Z
 ---
 
 # Workspace
@@ -82,7 +92,20 @@ Before semantic admission, `HostedReadPublicationAdmission` verifies that typed 
 
 The VFS listener retains prior ownership for moves, renames and deletions, then checks every affected endpoint after the batch. A bounded batch preserves the invalidation signal only when every endpoint is irrelevant. An endpoint outside the admitted root is irrelevant unless it contains that root. An in-root endpoint is irrelevant only for a regular file proven outside imported source and library roots. Changes to the root, its ancestors or imported files advance the signal. Unknown ownership and oversized batches invalidate conservatively. Oversized batches advance without traversing events; they do not poison a healthy observer or confer fresh read authority. Subsequent reads still require ordinary model, saved-content, PSI, smart-mode and final freshness admission. Malformed bounded paths and exhausted counters remain terminal failures; no reset revives earlier evidence.
 
-The hosted workspace lifecycle boundary retains file refresh and Gradle model reload for the authorized open, trusted project and its already linked root. The public agent lifecycle request no longer selects either effect. Native effects run asynchronously; status reports completion only after the effect callback and fresh existing admission. Pending status is bounded independently of semantic budgets. Exact request IDs are idempotent, equivalent work coalesces, newer requests queue, and disposal is terminal. Project-owned unsaved documents are saved on the EDT before an effect; a failed save rejects. Semantic dispatch and lifecycle opening save project-owned documents and wait for native incremental recursive VFS refresh. Explicit file refresh retains forced dirty marking for external writes. Watcher events advance invalidation but do not establish complete disk reconciliation.
+## Refresh before imported-input reads
+
+Automatic read preparation refreshes imported inputs within the canonical workspace root. It derives scope from declared source, test and resource roots, local library roots, linked Gradle module directories and Gradle settings inputs. Only the absence of any declared in-workspace source root selects recursive whole-workspace refresh. A declared but missing source root still selects imported scope.
+
+Imported scope uses two kinds of refresh roots:
+
+- Recursive roots cover existing declared source, test and resource trees and in-workspace library roots. Descendants already covered by an ancestor are removed.
+- Flat roots refresh one directory level: the workspace root, linked Gradle module directories, parents of Gradle settings inputs, and nearest VFS-existing ancestors of missing declared sources. Flat roots already covered recursively are removed.
+
+The adapter launches each non-empty session and waits for all callbacks. A later EDT turn prepares project documents before read preparation completes. Explicit `FILE_REFRESH` instead force-marks the single canonical workspace root dirty and refreshes it recursively, independently of watcher notifications.
+
+`WorkspaceRefreshScopeTest` checks root selection and fallback. `WorkspaceRefreshVfsOrderTest` checks session and document-preparation ordering. The native `NativeProjectRefreshTest` case checks source edits, new source files, Gradle input edits and newly created declared roots through the real refresh queue. It also checks that an unowned tree is skipped until an explicit whole-root refresh.
+
+The hosted workspace lifecycle boundary retains file refresh and Gradle model reload for the authorized open, trusted project and its already linked root. The public agent lifecycle request no longer selects either effect. Native effects run asynchronously; status reports completion only after the effect callback and fresh existing admission. Pending status is bounded independently of semantic budgets. Exact request IDs are idempotent, equivalent work coalesces, newer requests queue, and disposal is terminal. Project-owned unsaved documents are saved on the EDT before an effect; a failed save rejects. Semantic dispatch and lifecycle opening save project-owned documents and wait for read-preparation refresh sessions and document preparation to complete. Explicit file refresh retains forced dirty marking for external writes. Watcher events advance invalidation but do not establish complete disk reconciliation.
 
 The internal per-host task rule maps one exact IDE-observed successful single-task Gradle invocation to the same lifecycle service. New hosts default off; imports, unsuccessful tasks, other roots and other projects cannot trigger it. Gradle callbacks schedule the request without waiting for readiness. Existing epoch listeners remain the semantic freshness authority.
 

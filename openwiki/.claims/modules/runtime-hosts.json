@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:523d49abe3a94d685396d417b5f4949bdca1f257b5542ef0399f19b3d2267943",
+  "pageVersion": "sha256:efc161dc2219861a478ddf506bee27748892db7c3228d165178159aa8dd40915",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -421,10 +421,52 @@
           "version": "repo-lines-v1:sha256:c60756a270829a47c866c045914928b45f73276304a453cc3aa3d21d97124e0c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4NjNhNTkzNWUzNWUxOWI4MWJjNThhZmI3NWVlMmI1MGE5MmMxZWQ1ZTI0MjVjMmVlYjQzZjg0MTkzOTMxNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzMTFhNjY3ODRiMDg1MzA3ODE5YjA1YjQ4MmU0ZGJjZGUzNjc5NDQ1Y2QwNDRmOTdhNDIxYmFkMTkxODIxOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5ZjhhYzAzMmJhN2RkOWQyZTA4YTM5OWNkZjZhMjEzYWNhMjg1ZTQwODUyODViN2Y4ZTk0MWE5MDlkMGEwMTMifQ"
         }
       ]
+    },
+    {
+      "id": "claim_00e8e33182e04849959bd60c9fce6be4",
+      "statement": "Automatic hosted read-preparation VFS refresh scopes are derived from imported project inputs: existing in-root source and local-library roots are recursively refreshed, while flat refresh covers directories needed for declared missing source roots and Gradle model inputs; absent an in-root imported source root, the scope falls back to recursive whole-workspace refresh.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshScope.kt",
+          "version": "repo-file-v1:sha256:4fd255c1527c58fdcfc56fbd06eb8385022836472ed6b64ed67ce9de1650c4fb"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshScope.kt",
+          "version": "repo-file-v1:sha256:aee6e28fb0183f8265adb13c454913fc647affcfcfe999b64439d666b569d73f"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshScopeTest.kt",
+          "version": "repo-file-v1:sha256:1bd22dfe7274da25be37f82df34b3526b731b695dc4edec8e92981fa6a2a0a43"
+        }
+      ]
+    },
+    {
+      "id": "claim_d410ae6ac2214ce7b3579f7304ed7c78",
+      "statement": "Explicit hosted FILE_REFRESH remains distinct from automatic scoped read preparation: it force-marks the workspace root dirty and requests recursive VFS refresh, enabling reconciliation of external writes independently of watcher notification.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt",
+          "version": "repo-file-v1:sha256:38bc0dbc4ec0d669f3b9443ca5c1efa69e1f061ce571238266a5c63a52343b3d"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeProjectRefreshTest.kt",
+          "version": "repo-file-v1:sha256:f409b5714cdd1df83301f5b9418d5202ef9e958fe0580c4df89696fa32366d06"
+        }
+      ]
+    },
+    {
+      "id": "claim_808468ff957f417eb7c911560473dfba",
+      "statement": "Native hosted tests verify automatic refresh delivers changes to imported read inputs while skipping unowned trees, and refresh completion observes updated document/PSI state.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeProjectRefreshTest.kt",
+          "version": "repo-file-v1:sha256:f409b5714cdd1df83301f5b9418d5202ef9e958fe0580c4df89696fa32366d06"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T22:40:35.936Z"
+    "at": "2026-11-14T06:20:24.272Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7709d7d18d399ca20273311a1d40c0ac4fe1557f787141a03786e29af7d2203a",
+  "pageVersion": "sha256:cb1477fc244e836047f396c6161abf4c745f99468c8d35b111ae9e365b35b4a1",
   "claims": [
     {
       "id": "claim_55dc24a64b404afb9e68deda45662bd9",
@@ -43,10 +43,62 @@
           "version": "repo-file-v1:sha256:fb446dce5485481b7a7cc89cabd26a1aecf3780789fa0b77141c45dba0f57ef9"
         }
       ]
+    },
+    {
+      "id": "claim_b9d7a2adbe5e4047aab7da7702989ccb",
+      "statement": "Read preparation selects recursive whole-workspace refresh only when no declared source root lies within the canonical workspace root. A declared but missing in-workspace source root still selects imported scope.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshScope.kt#L37-L69",
+          "version": "repo-lines-v1:sha256:f96d26e66a0fbdc2d82af3ac298b39f501bbfc01d8e766091717f5b0feb18f54:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4MTA1OTQ5YTM0ZGI5NzczNzBiZjYzM2M1OGZiNTJjMTJlMDcwZDgzZjkzMTdhY2UwZjA3YjhmMDFhOWE1ZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiNWI2MjgyYWI4ZGEwYmI2ZWE1MmMzYWQ4ZjkwNjkyOTczNWY5Y2I0ZDI5NGYyYzgwN2UyM2Y5YTE4MzJiMWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxMmM3YTI1NmFjNjBkYmI2MWI3YmM2NTQ0MGZkOWIwOTRjNjFmMjVjMDU3NzRkODUxODY4NTUwYzRjOTdkZDUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_03c8f73d4e46454c80ea894d8b283267",
+      "statement": "In imported read-preparation scope, present declared source/test/resource roots and in-workspace library roots refresh recursively with descendant roots covered by ancestors pruned. The workspace root, linked Gradle module directories, parent directories of Gradle settings inputs, and nearest existing ancestors of missing declared sources refresh non-recursively; flat roots under recursive roots are removed.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshScope.kt#L51-L80",
+          "version": "repo-lines-v1:sha256:86ccd96fcf4b72ea295ce244d3096656cfb7c9d15900b431b3094d775fa4e996:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3ZTQzZjk5NmM0ODU2Yjc3MWU5ODA5MmNlYzFjYWRlMGI3OWEzY2Y1M2FmYjRlNjlmMDAyNjQ5OGFkYjQ0NjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiNjM2YTEzMTEyYTI1MDg5MDU4NTc0YTNhYWVlMWZlNGE0YzU2ZTU5OThkMTAyOTlmNzMzYmQ0YjkzMWY4YzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshScope.kt#L40-L68",
+          "version": "repo-lines-v1:sha256:a8c680807b79950c465aa4d0f9f31cb6c02a440963e3729505dc62aa652f5a36:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmNWU1YTZiNzhiZGExMmJkYzJkMmEyNGU1ZDFjNDkwMDQ3MzI1NzJiNDFlZGEwNmM0YWQ1Zjk4ODlmNjkzNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllODJjOTg3Y2Q0MTk1ODRlMzA2MjZhYzA2OTQ3NGFlMGYxOWE0ZWQyNDJhMmVjYjQ0ZjBkOGVkODM0NGRkOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVlOTBmNjQ2NDVlMzAwMjI2NmM1YjI4NjYyOTNkYTBjODU3MWQ0M2RkN2I0NjVlOTJhNWMwMWEwNjFmN2ZhNjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkZmNkOGFjYzBjMjkzMDQ1MjNmOGI2ZTdhYmE5MjM4MDI3YTMyOTJhZTJmODhiZWUyN2ZlMDc4MzQxMmI5M2QifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/test/kotlin/io/github/amichne/kast/runtime/hosted/workspace/WorkspaceRefreshScopeTest.kt",
+          "version": "repo-file-v1:sha256:1bd22dfe7274da25be37f82df34b3526b731b695dc4edec8e92981fa6a2a0a43"
+        }
+      ]
+    },
+    {
+      "id": "claim_f4a66800b645429dac31072d4015f5e5",
+      "statement": "Read preparation waits for every non-empty flat and recursive VFS refresh session before preparing project documents in a later EDT turn. Explicit FILE_REFRESH instead force-marks and recursively refreshes the single canonical workspace root.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt#L194-L265",
+          "version": "repo-lines-v1:sha256:ed740387bf4d7c834972a98744e90cf6ded29764b0bd24ba563039450a239a51:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlYWUzYmM3YzRkYzc5Zjc1ZDk1Nzk0YTU4ZDI0MGY5YTI2OWMyOGE4MTg3ODQ5NDZhYjJmZDdhMGMwNWE2NjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmZTlhODU3ZGNkNjZiNDdjMTA4ZWEwZTI4NDI0Y2QwNTZkNDNiMzcyNjk2ZWY3NDRjM2ExY2I5MzU1ZWU2NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyZGExNjRjMDA3M2ZkYzQ3M2FjOWU5ZDFiNzAxNzg3MWI4NThkZTBhNGFkMzAwM2M1NjBhOTcyZGVmNmY4Y2MifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshScope.kt#L31-L46",
+          "version": "repo-lines-v1:sha256:45b8d27c96bb0de1db0ed31f8a9c4a9c0f3d9905058e18800a39dfeb8242a169:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwZmNhZThkMmMxMzYyZGJjYTExMDA0ODE1NDQwMWY4YjU3NWFlNzNkNmZhZmViN2FjYjg5YzUzNmVkZGQwZDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5ZTcxYjFmNGQwMzE0ZDNiZWY1OWY0M2Y3ODZmMjQzNWE2ODMyMjBlYjAxNDZhZGU0YWIzOTY4MGMxODE3YTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d785c3e9bb0d43429c2aef7745a47f21",
+      "statement": "The imported-scope native refresh test checks delivery of source edits, new source files, Gradle input edits and newly created declared roots, while an unowned tree is skipped until whole-root refresh.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/nativeTest/kotlin/io/github/amichne/kast/runtime/hosted/NativeProjectRefreshTest.kt#L87-L129",
+          "version": "repo-lines-v1:sha256:8e41ee820d5be7d5937c5d5aa8bec9eeb1029ed011ab61762991e0c55ee23b98:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkZWIwMWI1YTJiYjFlYmQwYTg3NmNlNDQyZDUzNzMyYmJhMmEwZTllNDM3MTNiYzg1ZjEwZTIxN2RlNWE1NGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk1NDAzNDc3ZDY1MWM1MDY5NWRhMmU5YmIzNDEwYWJjMDc3YjRhNzI1ZjBjMTkyNzIwNTI0M2U5NGQzZTJkNzEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-13T18:27:10.865Z"
+    "at": "2026-11-14T06:28:38.719Z"
   }
 }

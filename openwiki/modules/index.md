@@ -9,4 +9,4 @@
 - [Runtime and process hosts](runtime-hosts.md) - The existing IDEA plugin owns semantic execution; CLI and App Server own installation, transport, sessions and canonical native mutation admission.
 - [Semantic read domains](semantic-reads.md) - Domain contracts refine discovery into exact compiler identity and compose source, relation, traversal, diagnostics, and queries without erasing evidence.
 - [Durable change evidence and retained topology](topology-evidence.md) - Shipped mutation evidence and separately retained topology extraction, graph services and SQLite snapshots.
-- [Workspace](workspace.md) - Workspace contracts distinguish published leases from original-owner live IDE reads and preserve their separate admission effects.
+- [Workspace](workspace.md) - Workspace contracts distinguish published leases from original-owner live IDE reads and preserve their separate admission effects. Hosted read preparation refreshes imported inputs through bounded recursive and flat VFS sessions before document preparation, while explicit file refresh force-marks only the workspace root.
