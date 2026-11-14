@@ -11,6 +11,7 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
@@ -32,16 +33,44 @@ class HostIdleShutdownMonitorTest {
     private val limit = (HostIdleShutdown.parseSetting("5") as Refinement.Refined).value as HostIdleShutdown.After
     private val limitNanos = 5 * 60_000_000_000L
 
-    /** Each settlement inspection consumes the next scripted observation; the last one repeats. */
-    private inner class Case(vararg script: HostNativeSettlement) {
-        private val natives = ArrayDeque(script.toList().ifEmpty { listOf(HostNativeSettlement.Settled) })
+    private val cases = mutableListOf<Case>()
 
+    /** Every case must consume its whole script and make no inspection beyond it. */
+    @AfterEach
+    fun scriptsWereConsumedExactly() {
+        for (case in cases) {
+            assertEquals(0, case.excessInspections, "unexpected settlement inspections")
+            assertEquals(emptyList<HostNativeSettlement>(), case.remaining(), "unconsumed settlement observations")
+        }
+    }
+
+    /**
+     * Each settlement inspection consumes exactly one scripted observation, in order. An inspection beyond the script
+     * is recorded and fails the case even if the product catches the exception.
+     */
+    private inner class Case(vararg script: HostNativeSettlement) {
+        private val natives = ArrayDeque(script.toList())
+        var excessInspections = 0
+            private set
+
+        init {
+            cases += this
+        }
+
+        fun remaining(): List<HostNativeSettlement> = natives.toList()
+
+        /** Replaces the script only after the previous one was fully consumed. */
         fun native(vararg next: HostNativeSettlement) {
-            natives.clear()
+            assertEquals(emptyList<HostNativeSettlement>(), remaining(), "unconsumed settlement observations")
             natives.addAll(next)
         }
 
-        private fun inspect(): HostNativeSettlement = if (natives.size > 1) natives.removeFirst() else natives.first()
+        private fun inspect(): HostNativeSettlement =
+            natives.removeFirstOrNull()
+                ?: run {
+                    excessInspections++
+                    throw AssertionError("unexpected settlement inspection")
+                }
 
         var now = 0L
         var nativeWork = false
@@ -71,7 +100,7 @@ class HostIdleShutdownMonitorTest {
 
     @Test
     fun `an idle Host requests exit once, only after the full limit`() {
-        val case = Case()
+        val case = Case(HostNativeSettlement.Settled, HostNativeSettlement.Settled, HostNativeSettlement.Settled)
         case.now = limitNanos - 1
         case.monitor.tick()
         assertEquals(0, case.exits)
@@ -100,7 +129,7 @@ class HostIdleShutdownMonitorTest {
 
     @Test
     fun `an admitted request blocks the decision until it completes`() {
-        val case = Case()
+        val case = Case(HostNativeSettlement.Settled, HostNativeSettlement.Settled, HostNativeSettlement.Settled)
         val lease = (case.admission.enter() as HostedApplicationAdmission.Admission.Admitted).lease
         case.now = limitNanos * 10
         case.monitor.tick()
@@ -115,7 +144,7 @@ class HostIdleShutdownMonitorTest {
 
     @Test
     fun `busy native work found during settlement reopens admission without exiting`() {
-        val case = Case(HostNativeSettlement.Settled, HostNativeSettlement.Busy)
+        val case = Case(HostNativeSettlement.Settled, HostNativeSettlement.Busy, HostNativeSettlement.Busy)
         case.now = limitNanos
         case.monitor.tick()
         assertEquals(0, case.exits)
@@ -147,7 +176,13 @@ class HostIdleShutdownMonitorTest {
 
     @Test
     fun `unresolved mutation evidence found under the fence keeps it until recovery settles`() {
-        val case = Case(HostNativeSettlement.Settled, HostNativeSettlement.UnresolvedMutation)
+        val case =
+            Case(
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.UnresolvedMutation,
+                HostNativeSettlement.UnresolvedMutation,
+                HostNativeSettlement.UnresolvedMutation,
+            )
         case.now = limitNanos
         case.monitor.tick()
         case.monitor.tick()
@@ -161,7 +196,13 @@ class HostIdleShutdownMonitorTest {
 
     @Test
     fun `native work that starts before the stop reopens admission at once`() {
-        val case = Case(HostNativeSettlement.Settled, HostNativeSettlement.Settled, HostNativeSettlement.Busy)
+        val case =
+            Case(
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.Busy,
+                HostNativeSettlement.Busy,
+            )
         case.now = limitNanos
         case.monitor.tick()
         assertEquals(listOf(HostIdleOutcome.REJECTED), case.outcomes())
@@ -174,10 +215,16 @@ class HostIdleShutdownMonitorTest {
     fun `a refused reopening is retried until the Host can exit after another full limit`() {
         val case =
             Case(
+                // First attempt: idle precheck, settlement, stop refused, reopening refused.
                 HostNativeSettlement.Settled,
                 HostNativeSettlement.Settled,
                 HostNativeSettlement.UnresolvedMutation,
                 HostNativeSettlement.UnresolvedMutation,
+                // Retried reopening succeeds.
+                HostNativeSettlement.Settled,
+                // After another full limit: idle precheck, settlement, stop.
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.Settled,
                 HostNativeSettlement.Settled,
             )
         case.now = limitNanos
@@ -199,7 +246,17 @@ class HostIdleShutdownMonitorTest {
 
     @Test
     fun `a vetoed exit reopens admission on the next tick and restarts the clock`() {
-        val case = Case()
+        // Exit, veto reopening, then a second exit after another full limit.
+        val case =
+            Case(
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.Settled,
+            )
         case.now = limitNanos
         case.monitor.tick()
         case.now = limitNanos + 1
