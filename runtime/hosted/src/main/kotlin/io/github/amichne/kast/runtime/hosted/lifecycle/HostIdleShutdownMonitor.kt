@@ -22,9 +22,9 @@ internal enum class HostIdleOutcome {
     EXIT_REQUESTED,
     /** Native work started between the idle decision and settlement; admission reopened. */
     BUSY,
-    /** Durable mutation evidence is unresolved; the Host keeps running. */
+    /** Durable mutation evidence is unresolved; the Host stays open, or stays fenced if it was already fenced. */
     MUTATION_RECOVERY_REQUIRED,
-    /** Settlement or stop refused for another finite reason; admission reopened. */
+    /** Settlement or stop refused for another finite reason; admission reopens through settlement. */
     REJECTED,
     /** The requested exit did not happen; admission reopened. */
     VETOED,
@@ -39,7 +39,8 @@ internal data class HostIdleObservation(
 
 /**
  * Stops an idle managed Host through the same settlement fence and stop acknowledgment that explicit `kast stop` uses.
- * Each [tick] is one bounded decision; the caller owns scheduling.
+ * Each [tick] is one bounded decision; the caller owns scheduling. A fence this monitor set stays until settlement
+ * reopens it, so a refused reopening is retried on later ticks instead of leaving the Host fenced without an exit.
  */
 internal class HostIdleShutdownMonitor(
     private val policy: HostIdleShutdown.After,
@@ -51,24 +52,48 @@ internal class HostIdleShutdownMonitor(
     private val requestExit: () -> Unit,
     private val observe: (HostIdleObservation) -> Unit,
 ) {
+    private enum class Phase {
+        RUNNING,
+        /** The fence is held and must be reopened through settlement. */
+        REOPENING,
+        /** Exit was requested; a later tick in this process means it was vetoed. */
+        EXIT_REQUESTED,
+    }
+
     private val transaction = "idle-v1:$host"
     private val limitNanos = policy.millis * NANOS_PER_MILLI
-    private var exitRequested = false
+    private var phase = Phase.RUNNING
 
     fun tick() {
-        if (exitRequested) {
-            // A previous tick requested exit and this process is still running, so IntelliJ vetoed or ignored it.
-            val resumed = settlement.resume(IdeLifecycleCommand.ResumeHost(host, transaction))
-            if (resumed is IdeLifecycleResult.HostResumed) {
-                exitRequested = false
-                evidence.retract()
-                report(HostIdleOutcome.VETOED)
-            }
-            return
+        when (phase) {
+            Phase.EXIT_REQUESTED ->
+                if (reopened()) {
+                    evidence.retract()
+                    report(HostIdleOutcome.VETOED)
+                }
+            Phase.REOPENING -> reopened()
+            Phase.RUNNING -> decide()
         }
+    }
+
+    private fun decide() {
         if (nativeWorkObserved()) {
             admission.observeNativeWork()
             return
+        }
+        if (!admission.idleFor(limitNanos)) return
+        // Change recovery is an admitted request, so fencing a Host with unresolved mutation evidence would strand it.
+        when (settlement.inspectNative()) {
+            HostNativeSettlement.Busy -> {
+                admission.observeNativeWork()
+                return
+            }
+            HostNativeSettlement.UnresolvedMutation -> {
+                admission.observeNativeWork()
+                report(HostIdleOutcome.MUTATION_RECOVERY_REQUIRED, IdeLifecycleFailure.MUTATION_RECOVERY_REQUIRED)
+                return
+            }
+            HostNativeSettlement.Settled -> Unit
         }
         when (admission.fenceIfIdle(transaction, limitNanos)) {
             HostedApplicationAdmission.IdleFence.NotDue,
@@ -93,21 +118,27 @@ internal class HostIdleShutdownMonitor(
     private fun stop() {
         when (val stopped = settlement.stop(IdeLifecycleCommand.StopHost(host, transaction))) {
             is IdeLifecycleResult.HostStopRequested -> {
-                exitRequested = true
+                phase = Phase.EXIT_REQUESTED
                 report(HostIdleOutcome.EXIT_REQUESTED)
                 evidence.record(HostExitReason.IDLE)
                 requestExit()
             }
-            else -> {
-                settlement.resume(IdeLifecycleCommand.ResumeHost(host, transaction))
-                report(HostIdleOutcome.REJECTED, (stopped as? IdeLifecycleResult.Blocked)?.reason)
-            }
+            else -> reopen(HostIdleOutcome.REJECTED, (stopped as? IdeLifecycleResult.Blocked)?.reason)
         }
     }
 
     private fun reopen(outcome: HostIdleOutcome, failure: IdeLifecycleFailure? = null) {
-        admission.resume(transaction)
         report(outcome, failure)
+        phase = Phase.REOPENING
+        reopened()
+    }
+
+    /** Unresolved mutation evidence keeps the fence; the next tick tries again. */
+    private fun reopened(): Boolean {
+        val resumed = settlement.resumeIdleFence(IdeLifecycleCommand.ResumeHost(host, transaction))
+        if (resumed !is IdeLifecycleResult.HostResumed) return false
+        phase = Phase.RUNNING
+        return true
     }
 
     private fun report(outcome: HostIdleOutcome, failure: IdeLifecycleFailure? = null) =

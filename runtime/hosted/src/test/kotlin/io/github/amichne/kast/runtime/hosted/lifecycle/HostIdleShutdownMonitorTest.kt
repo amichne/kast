@@ -32,7 +32,17 @@ class HostIdleShutdownMonitorTest {
     private val limit = (HostIdleShutdown.parseSetting("5") as Refinement.Refined).value as HostIdleShutdown.After
     private val limitNanos = 5 * 60_000_000_000L
 
-    private inner class Case(var native: HostNativeSettlement = HostNativeSettlement.Settled) {
+    /** Each settlement inspection consumes the next scripted observation; the last one repeats. */
+    private inner class Case(vararg script: HostNativeSettlement) {
+        private val natives = ArrayDeque(script.toList().ifEmpty { listOf(HostNativeSettlement.Settled) })
+
+        fun native(vararg next: HostNativeSettlement) {
+            natives.clear()
+            natives.addAll(next)
+        }
+
+        private fun inspect(): HostNativeSettlement = if (natives.size > 1) natives.removeFirst() else natives.first()
+
         var now = 0L
         var nativeWork = false
         var exits = 0
@@ -43,7 +53,7 @@ class HostIdleShutdownMonitorTest {
             HostIdleShutdownMonitor(
                 limit,
                 admission,
-                HostedApplicationSettlement(admission, identity, { native }, { false }),
+                HostedApplicationSettlement(admission, identity, ::inspect, { false }),
                 "host",
                 { nativeWork },
                 HostExitRecords(state, "host", { false }) { records += it.outcome },
@@ -105,7 +115,7 @@ class HostIdleShutdownMonitorTest {
 
     @Test
     fun `busy native work found during settlement reopens admission without exiting`() {
-        val case = Case(HostNativeSettlement.Busy)
+        val case = Case(HostNativeSettlement.Settled, HostNativeSettlement.Busy)
         case.now = limitNanos
         case.monitor.tick()
         assertEquals(0, case.exits)
@@ -132,6 +142,59 @@ class HostIdleShutdownMonitorTest {
             ),
             case.observations,
         )
+        assertInstanceOf(HostedApplicationAdmission.Admission.Admitted::class.java, case.admission.enter())
+    }
+
+    @Test
+    fun `unresolved mutation evidence found under the fence keeps it until recovery settles`() {
+        val case = Case(HostNativeSettlement.Settled, HostNativeSettlement.UnresolvedMutation)
+        case.now = limitNanos
+        case.monitor.tick()
+        case.monitor.tick()
+        assertEquals(listOf(HostIdleOutcome.MUTATION_RECOVERY_REQUIRED), case.outcomes())
+        assertEquals(HostedApplicationAdmission.Admission.Fenced, case.admission.enter())
+        case.native(HostNativeSettlement.Settled)
+        case.monitor.tick()
+        assertEquals(0, case.exits)
+        assertInstanceOf(HostedApplicationAdmission.Admission.Admitted::class.java, case.admission.enter())
+    }
+
+    @Test
+    fun `native work that starts before the stop reopens admission at once`() {
+        val case = Case(HostNativeSettlement.Settled, HostNativeSettlement.Settled, HostNativeSettlement.Busy)
+        case.now = limitNanos
+        case.monitor.tick()
+        assertEquals(listOf(HostIdleOutcome.REJECTED), case.outcomes())
+        assertEquals(0, case.exits)
+        assertEquals(null, case.recorded())
+        assertInstanceOf(HostedApplicationAdmission.Admission.Admitted::class.java, case.admission.enter())
+    }
+
+    @Test
+    fun `a refused reopening is retried until the Host can exit after another full limit`() {
+        val case =
+            Case(
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.Settled,
+                HostNativeSettlement.UnresolvedMutation,
+                HostNativeSettlement.UnresolvedMutation,
+                HostNativeSettlement.Settled,
+            )
+        case.now = limitNanos
+        case.monitor.tick()
+        assertEquals(HostedApplicationAdmission.Admission.Fenced, case.admission.enter())
+        case.now = limitNanos + 1
+        case.monitor.tick()
+        assertInstanceOf(HostedApplicationAdmission.Admission.Admitted::class.java, case.admission.enter())
+            .lease
+            .close()
+        case.now = limitNanos * 2
+        case.monitor.tick()
+        assertEquals(0, case.exits)
+        case.now = limitNanos * 2 + 1
+        case.monitor.tick()
+        assertEquals(1, case.exits)
+        assertEquals(listOf(HostIdleOutcome.REJECTED, HostIdleOutcome.EXIT_REQUESTED), case.outcomes())
     }
 
     @Test

@@ -58,6 +58,11 @@ internal class HostedApplicationAdmission(private val nanoTime: () -> Long = Sys
         if (state == State.Open && active.isEmpty()) idleSinceNanos = nanoTime()
     }
 
+    /** Whether [fenceIfIdle] would fence now; it decides nothing, so the caller can inspect before fencing. */
+    @Synchronized
+    fun idleFor(limitNanos: Long): Boolean =
+        state == State.Open && active.isEmpty() && nanoTime() - idleSinceNanos >= limitNanos
+
     /**
      * Fences admission for [transaction] only when the Host has been idle for at least [limitNanos]. The decision and
      * the fence happen under one lock, so no request can be admitted after an idle decision.
