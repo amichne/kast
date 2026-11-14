@@ -105,4 +105,23 @@ class ManagedHeadlessHostTest {
             assertNull(host.projectStore(Path.of(excluded)))
         }
     }
+
+    @Test
+    fun `launch idle input is refined at admission and malformed input stops startup`() {
+        val environment = environment()
+        assertEquals(
+            io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+            (ManagedHeadlessHost.admit(environment) as Refinement.Refined).value.idleShutdown,
+        )
+        assertEquals(
+            30,
+            ((ManagedHeadlessHost.admit(environment.copy(idleShutdown = "30")) as Refinement.Refined).value.idleShutdown
+                    as io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.After)
+                .minutes,
+        )
+        for (raw in listOf("off", "0", "abc")) assertEquals(
+            Refinement.Rejected(HeadlessHostFailure.INVALID_IDLE_SHUTDOWN),
+            ManagedHeadlessHost.admit(environment.copy(idleShutdown = raw)),
+        )
+    }
 }

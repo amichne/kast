@@ -466,6 +466,8 @@ internal object KastCleanSlateModules {
                 JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint"),
                 JvmClassName("io/github/amichne/kast/runtime/hosted/DeadHostedEndpoint"),
                 JvmClassName("io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint\$Companion"),
+                // The managed Host's exit evidence, written only into its admitted private state directory.
+                JvmClassName("io/github/amichne/kast/runtime/hosted/lifecycle/HostExitRecords"),
             ),
                 // Reads are confined to endpoint ownership; the digest names the canonical root.
                 ForbiddenEffect.PHYSICAL_SOURCE_READ to setOf(

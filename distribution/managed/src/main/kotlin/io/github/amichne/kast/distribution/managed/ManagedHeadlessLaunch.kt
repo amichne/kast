@@ -1,5 +1,7 @@
 package io.github.amichne.kast.distribution.managed
 
+import io.github.amichne.kast.distribution.contract.HostExitRecord
+import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
@@ -51,7 +53,8 @@ private constructor(
 
         fun prepare(
             runtime: ManagedHeadlessInstallation,
-            executablePath: String? = null,
+            executablePath: String?,
+            idleShutdown: HostIdleShutdown,
         ): Refinement<ManagedHeadlessLaunch, ManagedHeadlessLaunchFailure> {
             val search =
                 when (
@@ -64,7 +67,7 @@ private constructor(
                 val path =
                     vendorOptions(runtime) ?: return Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
                 val vendor = Files.readAllLines(path).filterNot { it.startsWith("-Xmx") || it.startsWith("-Xms") }
-                val lines = vendor + overrides(runtime)
+                val lines = vendor + overrides(runtime) + HostIdleShutdown.jvmOptions(idleShutdown)
                 if (lines.any { it.contains('\n') || it.contains('\r') })
                     Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
                 else
@@ -134,7 +137,10 @@ enum class ManagedHeadlessLaunchFailure {
     WRITE_FAILED,
 }
 
-/** The filesystem owner writes only the selected private launch input. */
+/**
+ * The filesystem owner writes only the selected private launch input. It also deletes the previous Host's exit record,
+ * so a record that survives belongs to the launch it follows; a record that cannot be deleted blocks the launch.
+ */
 object ManagedHeadlessLaunchFiles {
     fun write(specification: ManagedHeadlessLaunch): Refinement<Unit, ManagedHeadlessLaunchFailure> =
         try {
@@ -146,6 +152,7 @@ object ManagedHeadlessLaunchFiles {
                 java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
                 java.nio.file.LinkOption.NOFOLLOW_LINKS,
             )
+            Files.deleteIfExists(HostExitRecord.path(specification.installation.state))
             Refinement.Refined(Unit)
         } catch (_: java.io.IOException) {
             Refinement.Rejected(ManagedHeadlessLaunchFailure.WRITE_FAILED)

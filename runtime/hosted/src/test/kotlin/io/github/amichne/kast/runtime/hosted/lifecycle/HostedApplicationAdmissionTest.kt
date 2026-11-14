@@ -35,6 +35,49 @@ class HostedApplicationAdmissionTest {
     }
 
     @Test
+    fun `the idle fence waits for the full limit after the last lease and then rejects new work`() {
+        var now = 0L
+        val owner = HostedApplicationAdmission { now }
+        val query = (owner.enter() as HostedApplicationAdmission.Admission.Admitted).lease
+        now = 1_000
+        assertEquals(HostedApplicationAdmission.IdleFence.Active, owner.fenceIfIdle("idle", 100))
+        query.close()
+        now = 1_099
+        assertEquals(HostedApplicationAdmission.IdleFence.NotDue, owner.fenceIfIdle("idle", 100))
+        now = 1_100
+        assertEquals(HostedApplicationAdmission.IdleFence.Fenced, owner.fenceIfIdle("idle", 100))
+        assertEquals(HostedApplicationAdmission.Admission.Fenced, owner.enter())
+        assertEquals(HostedApplicationAdmission.IdleFence.AlreadyFenced, owner.fenceIfIdle("idle", 100))
+        assertEquals(HostedApplicationAdmission.Settlement.Conflict, owner.settle("explicit"))
+    }
+
+    @Test
+    fun `native work and resumption restart the idle clock`() {
+        var now = 0L
+        val owner = HostedApplicationAdmission { now }
+        now = 90
+        owner.observeNativeWork()
+        now = 189
+        assertEquals(HostedApplicationAdmission.IdleFence.NotDue, owner.fenceIfIdle("idle", 100))
+        now = 190
+        assertEquals(HostedApplicationAdmission.IdleFence.Fenced, owner.fenceIfIdle("idle", 100))
+        now = 10_000
+        assertEquals(HostedApplicationAdmission.Resumption.Resumed, owner.resume("idle"))
+        now = 10_099
+        assertEquals(HostedApplicationAdmission.IdleFence.NotDue, owner.fenceIfIdle("idle", 100))
+    }
+
+    @Test
+    fun `an explicit settlement fence is never taken over by the idle clock`() {
+        var now = 0L
+        val owner = HostedApplicationAdmission { now }
+        assertEquals(HostedApplicationAdmission.Settlement.Idle, owner.settle("explicit"))
+        now = 1_000_000
+        assertEquals(HostedApplicationAdmission.IdleFence.AlreadyFenced, owner.fenceIfIdle("idle", 100))
+        assertEquals(HostedApplicationAdmission.Resumption.Resumed, owner.resume("explicit"))
+    }
+
+    @Test
     fun `a reused lease cannot manufacture Host settlement`() {
         val owner = HostedApplicationAdmission()
         val first = (owner.enter() as HostedApplicationAdmission.Admission.Admitted).lease

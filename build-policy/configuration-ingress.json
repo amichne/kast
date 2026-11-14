@@ -38,6 +38,7 @@
     "packaging/test-installer-entrypoint.py",
     "packaging/run-installed-product.py",
     "settings.gradle.kts",
-    "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt"
+    "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt",
+    "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt"
   ]
 }

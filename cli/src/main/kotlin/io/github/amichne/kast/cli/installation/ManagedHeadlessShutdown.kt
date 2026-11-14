@@ -60,7 +60,16 @@ internal fun shutdownManagedHeadless(installation: Path, home: Path, state: Path
         return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.ADMISSION_REJECTED)
     val selection = configuration.value.managedHeadlessState
     val client =
-        IdeLifecycleClient(home, Path.of(runtime.launch.home), deployment = IdeLifecycleDeployment.Headless(state))
+        IdeLifecycleClient(
+            home,
+            Path.of(runtime.launch.home),
+            // Shutdown inspects and stops an existing Host; it never launches one.
+            deployment =
+                IdeLifecycleDeployment.Headless(
+                    state,
+                    io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+                ),
+        )
     val execute: (ManagedHostRequest) -> ManagedHostResponse = {
         executeManagedHost(it, home, selection, processes = { observeOwnedHeadlessProcess(runtime, client) })
     }

@@ -19,7 +19,11 @@ internal fun configuredSemanticDeployment(
                 is ConfigurationPathSelection.Selected ->
                     when (
                         val selected =
-                            selectLifecycleDeployment(IdeLifecycleDeployment.Headless(state.path), home, idea.path)
+                            selectLifecycleDeployment(
+                                IdeLifecycleDeployment.Headless(state.path, configuration.hostIdleShutdown),
+                                home,
+                                idea.path,
+                            )
                     ) {
                         is Refinement.Rejected -> Refinement.Rejected(ExistingIdeFailure.CONFIGURATION_REJECTED)
                         is Refinement.Refined -> selected

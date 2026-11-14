@@ -162,7 +162,7 @@ private fun configuredMcpWorkspaceOperationClient(
             is Refinement.Refined -> resolved.value
             is Refinement.Rejected -> return rejectedMcpConfiguration()
         }
-    val lifecycle = installedWorkspaceLifecycleClient(home, config.selectedIdeHome, config.managedHeadlessState)
+    val lifecycle = installedWorkspaceLifecycleClient(home, config)
     val native = ExistingIdeSocketClient(home, config)
     val dispatcher = Dispatchers.IO
     val preparations =

@@ -32,3 +32,15 @@ internal fun inspectHostNativeSettlement(hasPreparation: () -> Boolean): HostNat
     }
     return HostNativeSettlement.Settled
 }
+
+/** Cheap idle-clock observation; settlement repeats the full native and mutation inspection under the fence. */
+internal fun observeHostNativeWork(hasPreparation: () -> Boolean): Boolean =
+    hasPreparation() ||
+        com.intellij.openapi.progress.ProgressManager.getInstance().hasUnsafeProgressIndicator() ||
+        observeHostIndexing()
+
+/** Whether any open project is in dumb mode; exit evidence records this so a later reader knows how complete it was. */
+internal fun observeHostIndexing(): Boolean =
+    ProjectManager.getInstance().openProjects.any {
+        !it.isDisposed && com.intellij.openapi.project.DumbService.isDumb(it)
+    }

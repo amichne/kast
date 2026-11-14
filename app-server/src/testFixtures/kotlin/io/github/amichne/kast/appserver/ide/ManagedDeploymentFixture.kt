@@ -22,7 +22,11 @@ class ManagedDeploymentFixture(root: Path) {
     val idea: Path = Files.createDirectory(root.resolve("idea"))
     val state: Path = Files.createDirectory(root.resolve("state"))
     val home: Path = Files.createDirectory(state.resolve("home"))
-    internal val deployment = IdeLifecycleDeployment.Headless(state)
+    internal val deployment =
+        IdeLifecycleDeployment.Headless(
+            state,
+            io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+        )
     val configuration: ResolvedKastConfiguration
     internal val selected: SelectedLifecycleDeployment.Headless
 

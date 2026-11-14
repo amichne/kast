@@ -26,10 +26,7 @@ class ManagedDeploymentRequiredTest {
             ) as Refinement.Refined
         assertEquals(
             WorkspaceLifecycleClient.Unavailable,
-            installedWorkspaceLifecycleClient(
-                Path.of("/unused/home"),
-                configuration.value.selectedIdeHome,
-            ),
+            installedWorkspaceLifecycleClient(Path.of("/unused/home"), configuration.value),
         )
         assertEquals(
             Refinement.Rejected(ExistingIdeFailure.CONFIGURATION_REJECTED),

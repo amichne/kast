@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModernApplicationStarter
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.util.Key
+import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 
@@ -13,6 +14,7 @@ internal enum class HeadlessHostFailure {
     INVALID_PATH,
     SHARED_STATE,
     FOREIGN_JBR,
+    INVALID_IDLE_SHUTDOWN,
 }
 
 /** Captured Platform facts, before the application creates its lifecycle endpoint. */
@@ -27,10 +29,13 @@ internal data class HeadlessHostEnvironment(
     val log: Path,
     val temporary: Path,
     val productionBootstrap: Boolean,
+    /** The raw launch property; admission refines it into [ManagedHeadlessHost.idleShutdown]. */
+    val idleShutdown: String? = null,
 )
 
 /** Admission grants private process state, never project trust or semantic readiness. */
-internal class ManagedHeadlessHost private constructor(val environment: HeadlessHostEnvironment) {
+internal class ManagedHeadlessHost
+private constructor(val environment: HeadlessHostEnvironment, val idleShutdown: HostIdleShutdown) {
     companion object {
         private val KEY = Key.create<ManagedHeadlessHost>("kast.managed.headless.host")
 
@@ -67,7 +72,11 @@ internal class ManagedHeadlessHost private constructor(val environment: Headless
                         environment.installation.resolve("jbr"),
                         environment.installation.resolve("jbr/Contents/Home"),
                     ) -> Refinement.Rejected(HeadlessHostFailure.FOREIGN_JBR)
-                else -> Refinement.Refined(ManagedHeadlessHost(environment))
+                else ->
+                    when (val policy = HostIdleShutdown.parseJvmProperty(environment.idleShutdown)) {
+                        is Refinement.Rejected -> Refinement.Rejected(HeadlessHostFailure.INVALID_IDLE_SHUTDOWN)
+                        is Refinement.Refined -> Refinement.Refined(ManagedHeadlessHost(environment, policy.value))
+                    }
             }
         }
 
@@ -108,6 +117,7 @@ internal class ManagedHeadlessHost private constructor(val environment: Headless
                                     System.getProperty("idea.trust.disabled") in setOf(null, "false") &&
                                     System.getProperty("idea.trust.all.projects") in setOf(null, "false") &&
                                     System.getProperty("idea.auto.reload.plugins") in setOf(null, "false"),
+                            idleShutdown = System.getProperty(HostIdleShutdown.JVM_PROPERTY),
                         )
                     )
             } catch (_: java.io.IOException) {

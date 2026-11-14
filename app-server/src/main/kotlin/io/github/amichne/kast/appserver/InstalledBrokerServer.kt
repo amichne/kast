@@ -194,12 +194,7 @@ internal sealed interface InstalledBrokerServerConfiguration {
                             canonicalUserHome,
                             configuration,
                         ),
-                    lifecycleClient =
-                        installedWorkspaceLifecycleClient(
-                            canonicalUserHome,
-                            configuration.selectedIdeHome,
-                            configuration.managedHeadlessState,
-                        ),
+                    lifecycleClient = installedWorkspaceLifecycleClient(canonicalUserHome, configuration),
                 )
             val protocolOptions =
                 when (

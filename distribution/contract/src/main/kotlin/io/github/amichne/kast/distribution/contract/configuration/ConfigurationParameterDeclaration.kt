@@ -48,6 +48,8 @@ internal fun ConfigurationParameter.baseDeclaration(): ConfigurationDeclaration 
                 "Coordinator socket namespace owned by the physical installation state/run directory."
             ConfigurationParameter.OUTPUT_TOON ->
                 "CLI result encoding. An unset or empty value selects the declared default. The value 0 selects JSON. The value 1 selects TOON."
+            ConfigurationParameter.HOST_IDLE_SHUTDOWN ->
+                "Managed Host idle shutdown: off, or whole minutes from 5 to 1440 without admitted work, Gradle import or indexing before the Host stops itself. Takes effect at the next Host launch."
             ConfigurationParameter.WORKSPACE_PREPARATION_WAIT ->
                 "Workspace preparation wait: positive milliseconds or indefinite. Lifecycle failures, cancellation and editor closure still terminate waiting."
             else -> key.lowercase().replace('_', ' ')

@@ -5753,6 +5753,36 @@
     },
     {
       "fingerprint": {
+        "path": "distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecordTest.kt",
+        "scope": "type:HostExitRecordTest/fun:the record encodes every field, including its schema version, under default-omitting serialization()",
+        "kind": "JSON_LITERAL",
+        "sha256": "5f392dabaee61c0a039a1b5579dc32128816115ab24db25cc8f7646d596bb32a"
+      },
+      "count": 1,
+      "justification": "Independent expected encoded shape for HostExitRecord, including the required schemaVersion and discriminating enum values."
+    },
+    {
+      "fingerprint": {
+        "path": "distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecordTest.kt",
+        "scope": "type:HostExitRecordTest/fun:an unknown reason is rejected()/declaration:<anonymous>",
+        "kind": "JSON_LITERAL",
+        "sha256": "4141d966ac383580d072fff6b5feb40cff516ffc2e0a88a97435106a6e688b0c"
+      },
+      "count": 1,
+      "justification": "Negative fixture: an unknown HostExitReason must be rejected at decode."
+    },
+    {
+      "fingerprint": {
+        "path": "distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecordTest.kt",
+        "scope": "type:HostExitRecordTest/fun:a record without a schema version is rejected()/declaration:<anonymous>",
+        "kind": "JSON_LITERAL",
+        "sha256": "96fd3ddef539dcc30b37288e4b6e179bc4e63452f464e25a49e78c33e79ad1ad"
+      },
+      "count": 1,
+      "justification": "Negative fixture: a record missing its required schemaVersion must be rejected at decode."
+    },
+    {
+      "fingerprint": {
         "path": "distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/SemanticRuntimeBootstrapTest.kt",
         "scope": "type:SemanticRuntimeBootstrapTest/fun:every phase is retained and unknown phases cannot be admitted()",
         "kind": "JSON_LITERAL",
