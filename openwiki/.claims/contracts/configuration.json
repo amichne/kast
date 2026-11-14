@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:97e1c1fe10b53d7fc59c72a394dc904fbc5f4f85f9eb24305b7576c03aea2041",
+  "pageVersion": "sha256:e44a126dd6153cd651a98d6bc5085cc377257f8742276844c7ff91e0a9d3ff24",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -93,8 +93,8 @@
       "statement": "Managed lifecycle admission requires the private HOME to match the selected state and an admitted runtime; it offers no desktop alternative.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt#L18-L50",
-          "version": "repo-lines-v1:sha256:2a69f6ebcb2dc05c033c0f77cdecfe6f3a0d5cdfc50e3bfd5db5f79410002fb9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4ZDU0ZmI1YzBlYjU3YWYxODI4M2RlYmViMGVhY2FhNzE2ZmY5ZjQ5ZjA0ZDdhMzBmMzYxODViYzE1MWZjZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljNjM4YmE3ZmRjMTIxZDZiMjJmMjNlYThhM2Q4ZDA2NzA4ZjA2NTI5OTk4MTQ5NWVjNWJhMTNmYTk3YzNmYjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlNDdlZjVjMjM5N2IwNzg3NGJkODZkNDAwM2Q0YjljMjg0Mjk1NzM5YTFjYjVhZDIxMjMzMTMzYTk2NDdmN2UifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt#L19-L53",
+          "version": "repo-lines-v1:sha256:702791e208fd979a77cd1dae20fd91731ea002655ae68d612714c4521b416912:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4ZDU0ZmI1YzBlYjU3YWYxODI4M2RlYmViMGVhY2FhNzE2ZmY5ZjQ5ZjA0ZDdhMzBmMzYxODViYzE1MWZjZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiNjAxM2E2YWVlNzZjZTZiMjZmYTcyMzZiZjU4OWVmNGMzYTMyNTk2M2U0OTYzYzIzZDliMjRmZDgwZTE5OTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljNjM4YmE3ZmRjMTIxZDZiMjJmMjNlYThhM2Q4ZDA2NzA4ZjA2NTI5OTk4MTQ5NWVjNWJhMTNmYTk3YzNmYjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
         }
       ]
     },
@@ -159,10 +159,88 @@
           "version": "repo-file-v1:sha256:0e14d02381c5160abfe2dbc8c981760b992386b55884c17dfcd944234368d36b"
         }
       ]
+    },
+    {
+      "id": "claim_68237dc364944b9abe0e30e3b2acb303",
+      "statement": "Managed Host idle shutdown defaults to off, accepts whole minutes from 5 through 1440, and changes only at Host launch. Invalid launch properties reject startup.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt",
+          "version": "repo-file-v1:sha256:6be4766303626079dcd2fee8028b2dc857c7ce9bace3bf9562c226ea5f0ec52d"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/HostIdleShutdown.kt",
+          "version": "repo-file-v1:sha256:b4136c93ab9261fd9cd97c94c56fc974472a6e2834f6353b97bd379f9fe626bb"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/HostIdleShutdown.kt#L34-L35",
+          "version": "repo-lines-v1:sha256:263e720a78a8754232da0b84410b79e96703160cde5c37d708ac3a4b783b315b:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjI0OWMwOThjNGI2YmRlOWVlNjQ1MzJjMGI5MDIwYTAyZmM1Njk4ZjQ5ZTUyMWI2NWU1MzE0YTczMDRlZWM2NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWJmMzViNWRkOTEzZWY3OTUwZTg3OTVlODRhNjYyNDhmMWY4MzhlZGVmNWVmM2MwMjMzMDEzNDY4MTJmN2ZiNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGIyYTAzNWI0YThiM2VjNGUxNGQyYmMyNDcwNTFhOTFiZjk3ZDZlMmNiZjIyNWUwNGJlMGVmYTMyZmJkZTE4YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGYxZWE2YTVhZjA3M2E2YjllZDVmZTBlMThjY2UxYmI5NTdlZDk3NDhkNzlhODU3MTdiZGIxZjMyYTUxZDU0NyJ9"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
+          "version": "repo-file-v1:sha256:66aa2d8ddfd10f7901d5af40993a7ae2991f4cd655169603e09537e92d83ba4d"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt",
+          "version": "repo-file-v1:sha256:26536f2aab7a83932db16ec132b78be7d003daf46d7e0f394e6a698454c76bb5"
+        }
+      ]
+    },
+    {
+      "id": "claim_0d0a72516bcf4791babbe65056312043",
+      "statement": "The idle monitor checks every 30 seconds, resets the clock for admitted and native work, checks mutation settlement before fencing under the admission lock, and uses SettleHost and StopHost with veto recovery through settlement.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostIdleShutdownMonitor.kt",
+          "version": "repo-file-v1:sha256:56cf4af03052cb844d05adfff705f52c45482003765b06e59246be466a4cfc70"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostIdleShutdownMonitor.kt#L67-L77",
+          "version": "repo-lines-v1:sha256:dfb79f0e4b23ca863c777ab158eac911cf2b695a8add4379bf05ec90f7e5dd87:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4ZjY2NTQ4YmE3MGJmNjk4YTlkMTY2OGNjNTlkNGZlYjZjYjM2NTY4ZDIyZjZjYzY3NmI3YTU2MzlkYzQyNzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEwOTE2ZjAxYmM0Njc3ODRhNzhhNDYyYTc3NWZmMzE3M2VjNDRmNzc0NzEyYmM4NDg2YmQxYjU1NzA2MzgyMzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJhZjdmZDk0YWRmM2JjYzk3MmVlODQxZWQ0ODMwYjBlODhhM2IzZDI0YThiYmE5MmNjMjBlZmJkZGI4MDA1NzcifQ"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt",
+          "version": "repo-file-v1:sha256:60f3edc8945603feee2e34a61176a2a1fb5f65a92d8e4d1a22501719d2781bb0"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationAdmission.kt",
+          "version": "repo-file-v1:sha256:e019770d25d3b750565c76e8379c33d69f08d223b45803ece0329f0fcf45e642"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt",
+          "version": "repo-file-v1:sha256:ff7e84ab8d9c88f6961a4df1286d2a9ce5240e8f47a9d4a45ce812c596cf8570"
+        }
+      ]
+    },
+    {
+      "id": "claim_215bc2fe454f4596981bdb2d7eafc545",
+      "statement": "Both managed stop paths atomically write a HostExitRecord with reason, index state, Host lifetime and schema version. It records requested exit rather than completed exit or flushed indexes, is retracted on resumed admission, and is deleted before launch; deletion failure blocks launch while write failure permits exit.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecord.kt",
+          "version": "repo-file-v1:sha256:5f0cf15d40f79fe8d402172f1059e3073d761728b340258c69b095f3236e3a40"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecord.kt#L31-L44",
+          "version": "repo-lines-v1:sha256:9fe829e86afb01a1076172ecb706f36f790ec4f04ff7520acc012f82524c9e8e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjYmMxN2M1ZmFjMjg1OGIxMmQwOWUzZmZlZThlODkzZGUxNTQwZmRkMzVhYjc0MWIzNTc0OGRkMDBhZGQ2YjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI2OTA4MWY1MmQ5YWMzYWRjYjFjMTFiNTY4ODlhN2UzNGVhYjUyYjdmM2ExMTU2MmFmYjljM2MzMDkwYzhmNGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessLaunch.kt",
+          "version": "repo-file-v1:sha256:30e534321a42e70377638b309a66b0d6d9f3866267e4c316a4ee40e7c7c21e78"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostExitRecords.kt",
+          "version": "repo-file-v1:sha256:7698b993c6897dbd4b2c2cf4abd3d7ca6d24ec92254458abe9d83509111c19eb"
+        },
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostIdleShutdownMonitor.kt",
+          "version": "repo-file-v1:sha256:56cf4af03052cb844d05adfff705f52c45482003765b06e59246be466a4cfc70"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-13T03:20:11.225Z"
+    "at": "2026-11-14T21:41:04.802Z"
   }
 }

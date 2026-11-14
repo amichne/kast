@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d0ed96fd995749308eca607d47bf50bbff60d29153e48128fd483d453c9f7f4b",
+  "pageVersion": "sha256:e80f3c512808465bcd2693325f029a202ab9fbaa7ba695a45e434b4477267f3d",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -606,7 +606,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
-          "version": "repo-file-v1:sha256:5942c52cd2859021532fe181475fa19d8ee9f87bfdf47c833fe6ddfdb84fa755"
+          "version": "repo-file-v1:sha256:166ab9a771e54dcc3aaf84b875f01efe9fb2d5389ea0e76e04c26bfe0e1e8af6"
         }
       ]
     },
@@ -943,6 +943,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T00:13:45.182Z"
+    "at": "2026-11-14T21:34:35.265Z"
   }
 }

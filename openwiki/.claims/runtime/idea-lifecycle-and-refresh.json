@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:22abc73463186b20d0ebe596810c8abde5a5c95042e7c175bdb055ddefb24a8c",
+  "pageVersion": "sha256:241597e98046791c7918d2b010ab210b9e974cc7ee51a115354935bafc6c6b7e",
   "claims": [
     {
       "id": "claim_06e2aac3fd894966a82caf7cfced11b7",
@@ -87,8 +87,8 @@
           "version": "repo-lines-v1:sha256:3feb6eed36b042c31ad8ebbf98663ffb10d357571eabbdace90b106f7ce4c39c:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMTg2Y2JkMGYyZTFlNzJhYzBjYjdiMDBmODJiYzhjMTk0ODdiYjRiZjgxZmFkMzJhMjQxZDQ3MTc2NzBlMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkNDg2YWVhNDAxYjE3YWNmMGZmMTUzNDczYzUxYTJlZDc2NjQ5OTJiZDVhYTljN2UwOWE1ODFhOGNlOGI0NDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwYzYxMzYxOTc1MGJkN2UwMGY1ODJhN2QyOGI4MTgwMjE4MjI1MjI1M2QxMDEzZDZjNTNiYzc3ZjI4ODFmNzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU3NDdiYmQ4YjU5Zjk4NjcyMTBmYzlmZjk1Y2IzZWY0Yjc4MTI1YzA2YjRjZjkyODQxM2M4MzdhNTlkZWY4NDAifQ"
         },
         {
-          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L325-L335",
-          "version": "repo-lines-v1:sha256:6235ce096d62b7956d1f2e3de890c24abbc17400cca664ed0f7748547cbf8b13:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyY2RkNTFjNGY3YWZjYzllZmJlNmU5ZWQzM2JjZTMyZmE5YzA4ZjA2ZGM2YzkzYTcxNjc3ZThkZTBhOWMyZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1Mjg5ZWQ0ODg4ZDRmMWI0MDQwNjRiZmEyYjg3YTg1M2IxN2YzYjYzNTAyZGNiZGU0YmZjOThiNDA0ZDdlZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjliMDkxM2Y1MjY4YjAxNGZhYjk3ZGY4YTI4NDAzOWY1M2RlMGVlM2IxYmIyODhkOGY4YTAyOGQ3ZDg3OGZhNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4YTE4N2MxMzgyOGYxYmRkZThlNTlhNGUyZjQwODkyNmFmMjU0NzBhYmJjZjVkOGM3MDhhMWIxZDIyMWI1ZWUifQ"
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L325-L343",
+          "version": "repo-lines-v1:sha256:bf94e982659e770860e3a71ca85bdcf0101824b577694f91085c91e08e0a175d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyY2RkNTFjNGY3YWZjYzllZmJlNmU5ZWQzM2JjZTMyZmE5YzA4ZjA2ZGM2YzkzYTcxNjc3ZThkZTBhOWMyZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1Mjg5ZWQ0ODg4ZDRmMWI0MDQwNjRiZmEyYjg3YTg1M2IxN2YzYjYzNTAyZGNiZGU0YmZjOThiNDA0ZDdlZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjliMDkxM2Y1MjY4YjAxNGZhYjk3ZGY4YTI4NDAzOWY1M2RlMGVlM2IxYmIyODhkOGY4YTAyOGQ3ZDg3OGZhNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4YTE4N2MxMzgyOGYxYmRkZThlNTlhNGUyZjQwODkyNmFmMjU0NzBhYmJjZjVkOGM3MDhhMWIxZDIyMWI1ZWUifQ"
         },
         {
           "resource": "repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/WorkspacePreparationDeadline.kt#L9-L15",
@@ -136,7 +136,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt",
-          "version": "repo-file-v1:sha256:48fa79d192b5fad4c1e677b8a3ba400f28694de9cee79b91c7a4965f71e308d1"
+          "version": "repo-file-v1:sha256:a8ed487c10b510ab8412c424c56a5c7ab1676224c02d8308f34e9a55eba2f479"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt#L17-L17",
@@ -179,6 +179,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T22:39:43.618Z"
+    "at": "2026-11-14T21:34:35.265Z"
   }
 }

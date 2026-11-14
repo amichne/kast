@@ -109,4 +109,21 @@ Queries use the installed runtime and never consult release servers for an updat
 Gradle import and dependency resolution can still require network access.
 There is no public container creation, archive import, or desktop fallback step.
 
+## Optional idle shutdown
+
+`KAST_HOST_IDLE_SHUTDOWN` defaults to `off`: managed Hosts keep running until stopped.
+Set it to a whole number of minutes from 5 through 1440 to let an idle Host stop itself.
+For example, `KAST_HOST_IDLE_SHUTDOWN=30` selects 30 minutes.
+The setting supports saved installation and workspace configuration. It takes effect at the next Host launch, not on a running Host.
+
+Admitted requests and native work reset the idle clock. Preparation, Gradle import, and indexing prevent idle shutdown.
+The Host checks every 30 seconds and stops through its existing settlement path only when work is settled.
+The next explicit semantic request can start it again; passive session hooks cannot.
+
+Allow about 26 to 28 seconds to the first query after an idle stop when existing indexes remain usable.
+The macOS ARM64 check reported in [PR #1225](https://github.com/amichne/kast/pull/1225) took 27.8 seconds and re-indexed no files.
+That observation used one workspace and a 5-minute limit before the final fencing fix; other restart times can differ.
+
+See [Host shutdown and exit records](/reference/lifecycles#managed-host-idle-shutdown) for `state/host-exit.json` and its evidence limits.
+
 Use [Manage Kast](/reference/management) for scoped stops, exact repair, removal, and recovery.

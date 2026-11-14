@@ -119,6 +119,42 @@ A daemon restart does not replay writes. A Host restart ends its live authority.
 
 [Manage Kast](/reference/management) gives stop and recovery procedures. [Compatibility](/reference/compatibility) defines component admission.
 
+## Managed Host idle shutdown
+
+Idle shutdown is opt-in for managed Hosts. `KAST_HOST_IDLE_SHUTDOWN` accepts `off` (the default) or whole minutes from 5 through 1440.
+Control passes the policy at launch. Changing the setting does not change a running Host.
+
+The idle clock resets when the last admitted request finishes or the Host observes native work.
+Pending preparation, unsafe progress, and indexing prevent idle shutdown. The monitor checks every 30 seconds, so expiry does not mean immediate exit.
+It checks native settlement and unresolved mutation evidence before fencing admission under the same lock that checks the idle clock.
+Requests arriving after the fence receive `HOST_FENCED` rather than entering a stopping Host.
+
+The monitor settles and stops through the existing `SettleHost` and `StopHost` path.
+The normal IntelliJ exit can be vetoed. On a later check, the monitor reopens admission through settlement and retries if reopening is refused.
+Unresolved mutation evidence prevents a new idle fence and can keep an existing fence held for recovery.
+
+The next explicit semantic request can restart the Host. Existing usable indexes need not be rebuilt.
+Allow about 26 to 28 seconds to the first query after an idle stop.
+The [macOS ARM64 observation in PR #1225](https://github.com/amichne/kast/pull/1225) took 27.8 seconds with no files re-indexed.
+It covered one workspace before the final fencing fix, not every platform or restart condition.
+
+### Host exit record
+
+Both managed stop paths write `state/host-exit.json` in the private Host state directory.
+The Host writes it atomically just before requesting idle exit, or after an explicit stop's acknowledgment reaches Control.
+
+| Field | Meaning |
+| --- | --- |
+| `reason` | `IDLE` for idle shutdown; `SETTLED` for an explicit settled stop. |
+| `index` | `SMART` when every open project is in smart mode; `DUMB` when any is indexing. |
+| `hostLifetime` | Identity of the Host lifetime that requested exit. |
+| `schemaVersion` | Record format version, currently `1`. |
+
+The record proves a settled stop requested exit. It does not prove completed process exit or flushed indexes.
+An explicit stop can record `DUMB`. No consumer uses this record for index seeding yet.
+If writing fails, exit still proceeds without usable exit evidence.
+Resuming admission retracts the record. Control deletes it before every launch and rejects launch with `LAUNCH_FAILED` if deletion fails.
+
 ## Source evidence
 
 [The source map](/reference/source-map#request-connection-and-daemon-ownership) links the code for request dispatch and workspace lanes. It also links project setup, service identity, and lifecycle fences.

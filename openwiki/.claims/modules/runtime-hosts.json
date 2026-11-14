@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:efc161dc2219861a478ddf506bee27748892db7c3228d165178159aa8dd40915",
+  "pageVersion": "sha256:418d3d2cfb3c6d499ef94bd14671e4d797f38ca49a0b5e124c2aa5c56ddc1b2e",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -64,7 +64,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
-          "version": "repo-file-v1:sha256:5942c52cd2859021532fe181475fa19d8ee9f87bfdf47c833fe6ddfdb84fa755"
+          "version": "repo-file-v1:sha256:166ab9a771e54dcc3aaf84b875f01efe9fb2d5389ea0e76e04c26bfe0e1e8af6"
         }
       ]
     },
@@ -92,7 +92,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledWorkspacePreparation.kt",
-          "version": "repo-file-v1:sha256:48fa79d192b5fad4c1e677b8a3ba400f28694de9cee79b91c7a4965f71e308d1"
+          "version": "repo-file-v1:sha256:a8ed487c10b510ab8412c424c56a5c7ab1676224c02d8308f34e9a55eba2f479"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/RegisteredHostedServices.kt#L13-L41",
@@ -336,7 +336,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationSettlement.kt",
-          "version": "repo-file-v1:sha256:87cb8e04d3454165974289e7a333ac1d8e53ae20f1502383074a04867273e4f7"
+          "version": "repo-file-v1:sha256:ff7e84ab8d9c88f6961a4df1286d2a9ce5240e8f47a9d4a45ce812c596cf8570"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt",
@@ -362,7 +362,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt",
-          "version": "repo-file-v1:sha256:8ff92cdeefa2a594cf259a2de84e87bab28291ba26f8050b37a1b2d886b5c9f7"
+          "version": "repo-file-v1:sha256:60f3edc8945603feee2e34a61176a2a1fb5f65a92d8e4d1a22501719d2781bb0"
         }
       ]
     },
@@ -376,7 +376,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt",
-          "version": "repo-file-v1:sha256:f8963e824a6463e5deaa49164a9e439661c29582d8167c4503ef4e56b21627a2"
+          "version": "repo-file-v1:sha256:26536f2aab7a83932db16ec132b78be7d003daf46d7e0f394e6a698454c76bb5"
         }
       ]
     },
@@ -414,7 +414,7 @@
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleClient.kt#L215-L225",
-          "version": "repo-lines-v1:sha256:f8294b81acd688cf186738435ce0da78755beca7d55a7cbd96704532a6559929:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3NjU5NDU5OTUzNDQyZjEwNjM2YmZlZDEzZjVkYzZkM2FlNjRkZDg3MThhZDZmOTEyOTQzYzFkNDNjNGIzZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0ZTNmNmRjY2RjMTI1NDVhZGNmY2UxMWQ4NDUzYjhiMTEzNDQ4MTY0MjgzMmJmYTkzZmZmMWZkYTI2YmMzZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmM2NkNDYwZmFjYzVkNWY3YTI0ZTc4MDgwYWUyZjVhMWQ1MDQ4NjE4NmVhNDlmMzk2ZTdhMjVmMjMzNjc4YzMifQ"
+          "version": "repo-lines-v1:sha256:5d29b0251759d1d72a6f140f3cc1cb11a8c8f4eb01f6108173afbf634aa11b92:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3NjU5NDU5OTUzNDQyZjEwNjM2YmZlZDEzZjVkYzZkM2FlNjRkZDg3MThhZDZmOTEyOTQzYzFkNDNjNGIzZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0ZTNmNmRjY2RjMTI1NDVhZGNmY2UxMWQ4NDUzYjhiMTEzNDQ4MTY0MjgzMmJmYTkzZmZmMWZkYTI2YmMzZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmM2NkNDYwZmFjYzVkNWY3YTI0ZTc4MDgwYWUyZjVhMWQ1MDQ4NjE4NmVhNDlmMzk2ZTdhMjVmMjMzNjc4YzMifQ"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L149-L167",
@@ -467,6 +467,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T06:20:24.272Z"
+    "at": "2026-11-14T21:34:35.265Z"
   }
 }
