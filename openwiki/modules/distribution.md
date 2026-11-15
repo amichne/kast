@@ -418,7 +418,7 @@ sources:
 generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T04:02:40.609Z
+    at: 2026-11-15T15:55:30.239Z
 ---
 
 # Distribution and packaging
