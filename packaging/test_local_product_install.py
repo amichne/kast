@@ -112,3 +112,29 @@ def test_versions_are_admitted_and_fresh_each_minute() -> None:
     assert VERSION.fullmatch(first) and VERSION.fullmatch(second)
     with pytest.raises(ValueError):
         _ = local.select_version(local.EPOCH + 59)
+
+
+def test_removal_stdout_carries_only_its_own_receipt(
+    tmp_path: Path, capfd: pytest.CaptureFixture[str]
+) -> None:
+    root = tmp_path.resolve() / "root"
+    executable = root / "home/.local/bin/kast"
+    executable.parent.mkdir(parents=True)
+    _ = executable.write_text("installed")
+    launcher = root / "bin/kast"
+    launcher.parent.mkdir()
+    # Stands in for `stop --all --json` and `uninstall`, which both report on stdout.
+    _ = launcher.write_text(
+        'import sys\nprint(\'{"type":"complete","step":"\' + sys.argv[1] + \'"}\')\n'
+    )
+    marker = {"schemaVersion": 1, "root": str(root), "launcher": str(launcher), "version": "0.0.1"}
+    _ = (root / local.MARKER).write_text(json.dumps(marker))
+
+    assert local.main(["remove", "--root", str(root)]) == 0
+
+    captured = capfd.readouterr()
+    assert [json.loads(line) for line in captured.out.splitlines()] == [
+        {"type": "removed", "root": str(root), "version": "0.0.1"}
+    ]
+    assert '"step":"stop"' in captured.err and '"step":"uninstall"' in captured.err
+    assert not root.exists()

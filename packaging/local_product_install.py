@@ -451,7 +451,8 @@ def remove(arguments: argparse.Namespace) -> dict[str, str]:
     event(Stage.REMOVAL, "STARTED", root=str(root))
     if (root / "home/.local/bin/kast").exists():
         for step in (["stop", "--all", "--json"], ["uninstall"]):
-            if subprocess.run([sys.executable, str(launcher), *step]).returncode:
+            # Child reports go to stderr; this command's stdout carries only its own receipt.
+            if subprocess.run([sys.executable, str(launcher), *step], stdout=sys.stderr).returncode:
                 raise Rejected(Stage.REMOVAL, Failure.COMMAND_FAILED)
     if remaining_processes(root):
         raise Rejected(Stage.REMOVAL, Failure.PROCESSES_REMAIN)
