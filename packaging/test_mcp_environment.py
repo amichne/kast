@@ -1,4 +1,4 @@
-"""Private filesystem rules; the opt-in case runs real retained Python and pip."""
+"""Private filesystem rules; the opt-in case runs real retained Python offline."""
 
 from __future__ import annotations
 
@@ -49,6 +49,24 @@ def installation(tmp_path: Path) -> Path:
         _ = shutil.copyfile(SOURCES / name, root / mcp.SCRIPTS / name)
     for name in ("mcp_environment.py", "mcp-requirements.txt", "mcp-requirements.txt.lock"):
         _ = shutil.copyfile(HERE / name, root / mcp.METADATA / name)
+    site = root / mcp.DEPENDENCY_SITE
+    site.mkdir(parents=True)
+    _ = (site / "dependency.py").write_text("VALUE = 42\n")
+    notices = site / "dependency.dist-info/licenses"
+    notices.mkdir(parents=True)
+    _ = (notices / "LICENSE").write_text("fixture license\n")
+    observed = mcp.inventory(site)
+    target = mcp.native_target()
+    assert isinstance(observed, mcp.Inventory)
+    assert isinstance(target, mcp.DependencyTarget)
+    export = mcp.RequirementsLock(
+        mcp.digest(root / mcp.SERVER),
+        mcp.digest(root / mcp.SERVER_LOCK),
+        mcp.digest(root / mcp.REQUIREMENTS),
+    )
+    _ = (root / mcp.ARTIFACT).write_bytes(
+        mcp.encoded(mcp.DependencyArtifact(target, export, observed))
+    )
     manifest(root)
     return root
 
@@ -66,33 +84,12 @@ class Installer:
         self.calls.append(command)
         assert command.arguments[0] == str(self.root / mcp.PYTHON)
         assert command.environment["PATH"] == ""
-        if len(self.calls) == 1:
-            assert command.arguments[1:8] == (
-                "-I",
-                "-B",
-                "-m",
-                "pip",
-                "--isolated",
-                "--disable-pip-version-check",
-                "install",
-            )
-            for flag in (
-                "--require-hashes",
-                "--no-deps",
-                "--only-binary=:all:",
-                "--no-compile",
-                "--no-cache-dir",
-                "--ignore-installed",
-                "--no-input",
-            ):
-                assert flag in command.arguments
-            assert command.arguments[-2:] == ("--requirement", str(self.root / mcp.REQUIREMENTS))
-            site = self.root / "state/.mcp-preparing/site-packages"
-            site.mkdir()
-            _ = (site / "dependency.py").write_text("VALUE = 42\n")
-        else:
-            assert len(self.calls) == 2
-            assert command.arguments[1:5] == ("-I", "-S", "-B", "-c")
+        assert len(self.calls) == 1
+        assert command.arguments[1:5] == ("-I", "-S", "-B", "-c")
+        assert "pip" not in command.arguments and "uv" not in command.arguments
+        assert "pydantic_core._pydantic_core" in command.arguments[5]
+        assert command.arguments[-1] == str(self.root / "state/.mcp-preparing/site-packages")
+        assert (Path(command.arguments[-1]) / "dependency.py").read_text() == "VALUE = 42\n"
         return self.results.pop(0)
 
     def complete(self) -> None:
@@ -104,7 +101,7 @@ def no_process(_command: mcp.Command) -> mcp.Exited:
 
 
 def prepared(root: Path) -> None:
-    runner = Installer(root, (mcp.Exited(0), mcp.Exited(0)))
+    runner = Installer(root, (mcp.Exited(0),))
     assert mcp.prepare(root, runner) == mcp.Prepared(str(root), str(root / "state/mcp"), "CREATED")
     runner.complete()
 
@@ -119,6 +116,19 @@ def test_generated_requirements_binding() -> None:
     requirements = (HERE / "mcp-requirements.txt").read_text()
     assert "--hash=sha256:" in requirements
     assert "mcp==1.30.0" in requirements
+
+
+def test_preparation_never_invokes_a_package_manager(tmp_path: Path) -> None:
+    root = installation(tmp_path)
+
+    def imports_only(command: mcp.Command) -> mcp.Exited:
+        assert command.arguments[1:5] == ("-I", "-S", "-B", "-c")
+        assert "pip" not in command.arguments and "uv" not in command.arguments
+        return mcp.Exited(0)
+
+    assert mcp.prepare(root, imports_only) == mcp.Prepared(
+        str(root), str(root / "state/mcp"), "CREATED"
+    )
 
 
 def test_prepare_reuse_and_offline_serve_plan(tmp_path: Path) -> None:
@@ -157,22 +167,10 @@ def test_preserves_process_failure_and_partial_state(tmp_path: Path, failure: mc
     assert mcp.serve_command(root, {}) == mcp.Rejected(mcp.Failure.PARTIAL)
 
 
-@pytest.mark.parametrize(
-    "install_exit,import_exit,failure",
-    (
-        (1, 0, mcp.Failure.INSTALL),
-        (0, 1, mcp.Failure.IMPORT),
-    ),
-)
-def test_rejects_unsuccessful_process(
-    tmp_path: Path, install_exit: int, import_exit: int, failure: mcp.Failure
-) -> None:
+def test_rejects_unsuccessful_process(tmp_path: Path) -> None:
     root = installation(tmp_path)
-    results = (
-        (mcp.Exited(install_exit),) if install_exit else (mcp.Exited(0), mcp.Exited(import_exit))
-    )
-    runner = Installer(root, results)
-    assert mcp.prepare(root, runner) == mcp.Rejected(failure)
+    runner = Installer(root, (mcp.Exited(1),))
+    assert mcp.prepare(root, runner) == mcp.Rejected(mcp.Failure.IMPORT)
     runner.complete()
     assert not (root / "state/mcp").exists()
 
@@ -186,6 +184,9 @@ def test_rejects_unsuccessful_process(
         mcp.EXPORT_LOCK,
         mcp.SERVER,
         mcp.SERVER_LOCK,
+        mcp.ARTIFACT,
+        mcp.DEPENDENCY_SITE / "dependency.py",
+        mcp.DEPENDENCY_SITE / "dependency.dist-info/licenses/LICENSE",
     ),
 )
 def test_tampered_payload_rejects_before_state_effects(tmp_path: Path, relative: Path) -> None:
@@ -200,6 +201,31 @@ def test_lock_changes_cannot_reuse_stale_export(tmp_path: Path) -> None:
     root = installation(tmp_path)
     _ = (root / mcp.SERVER_LOCK).write_text("new admitted server lock")
     manifest(root)
+    assert mcp.prepare(root, no_process) == mcp.Rejected(mcp.Failure.INSTALLATION)
+    assert not (root / "state").exists()
+
+
+@pytest.mark.parametrize("change", ("missing", "extra", "empty-directory", "target", "bytes"))
+def test_dependency_artifact_rejects_before_process_or_state(tmp_path: Path, change: str) -> None:
+    root = installation(tmp_path)
+    if change == "missing":
+        (root / mcp.DEPENDENCY_SITE / "dependency.py").unlink()
+    elif change == "extra":
+        _ = (root / mcp.DEPENDENCY_SITE / "foreign.py").write_text("foreign")
+    elif change == "empty-directory":
+        (root / mcp.DEPENDENCY_SITE / "foreign").mkdir()
+    elif change == "bytes":
+        _ = (root / mcp.DEPENDENCY_SITE / "dependency.py").write_text("changed")
+        # Even refreshed outer ownership cannot detach bytes from the producer record.
+        manifest(root)
+    else:
+        artifact = root / mcp.ARTIFACT
+        original = artifact.read_bytes()
+        current = mcp.native_target()
+        assert isinstance(current, mcp.DependencyTarget)
+        other = next(target for target in mcp.DependencyTarget if target != current)
+        _ = artifact.write_bytes(original.replace(current.value.encode(), other.value.encode()))
+        manifest(root)
     assert mcp.prepare(root, no_process) == mcp.Rejected(mcp.Failure.INSTALLATION)
     assert not (root / "state").exists()
 
@@ -302,11 +328,14 @@ def test_failed_outcome_json_is_finite_and_explicit() -> None:
 
 
 def test_real_private_python_empty_path(tmp_path: Path) -> None:
-    """Explicit opt-in downloads locked wheels into a disposable installation."""
+    """Explicit opt-in consumes pre-produced dependencies, never a package index."""
     private = os.environ.get("KAST_TEST_PRIVATE_PYTHON_ROOT")
-    if private is None:
-        pytest.skip("set KAST_TEST_PRIVATE_PYTHON_ROOT to the pinned extracted python directory")
+    dependencies = os.environ.get("KAST_TEST_MCP_DEPENDENCIES")
+    if private is None or dependencies is None:
+        pytest.skip("set KAST_TEST_PRIVATE_PYTHON_ROOT and KAST_TEST_MCP_DEPENDENCIES")
     root = installation(tmp_path)
+    shutil.rmtree(root / mcp.DEPENDENCIES)
+    _ = shutil.copytree(Path(dependencies), root / mcp.DEPENDENCIES)
     shutil.rmtree(root / mcp.METADATA / "private-python")
     _ = shutil.copytree(Path(private), root / mcp.METADATA / "private-python", symlinks=False)
     shutil.rmtree(root / mcp.SCRIPTS)
@@ -314,14 +343,6 @@ def test_real_private_python_empty_path(tmp_path: Path) -> None:
     manifest(root)
     env = {"PATH": "", "HOME": str(tmp_path), "PIP_INDEX_URL": "http://127.0.0.1:1"}
     command = [str(root / mcp.PYTHON), "-I", "-S", "-B", str(root / mcp.HELPER)]
-    version = subprocess.run(
-        [str(root / mcp.PYTHON), "-I", "-B", "-m", "pip", "--version"],
-        env=env,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    assert version.stdout.startswith("pip 26.0.1 ")
     result = subprocess.run(
         [*command, "prepare", "--install-root", str(root)],
         env=env,
@@ -342,9 +363,36 @@ def test_real_private_python_empty_path(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout)["disposition"] == "REUSED"
-    # Real canonical MCP startup, no tool invocation and no native Host claim.
+    # Real client/server initialize and tools/list, no Host or tool invocation.
+    client = (
+        "import sys; sys.path.insert(0, sys.argv[1])\n"
+        "import anyio\n"
+        "from mcp import ClientSession, StdioServerParameters\n"
+        "from mcp.client.stdio import stdio_client\n"
+        "async def check():\n"
+        "    params = StdioServerParameters(command=sys.executable, "
+        "args=['-I', '-S', '-B', sys.argv[2], 'serve', '--install-root', sys.argv[3]], "
+        "env={'PATH': '', 'PYTHONDONTWRITEBYTECODE': '1'})\n"
+        "    async with stdio_client(params) as streams, ClientSession(*streams) as session:\n"
+        "        initialized = await session.initialize()\n"
+        "        assert initialized.serverInfo.name == 'kast-tasks'\n"
+        "        tools = await session.list_tools()\n"
+        "        assert {'find', 'diagnostics'} <= {tool.name for tool in tools.tools}\n"
+        "        print(initialized.serverInfo.name)\n"
+        "anyio.run(check)\n"
+    )
     result = subprocess.run(
-        [*command, "serve", "--install-root", str(root)],
+        [
+            str(root / mcp.PYTHON),
+            "-I",
+            "-S",
+            "-B",
+            "-c",
+            client,
+            str(root / "state/mcp/site-packages"),
+            str(root / mcp.HELPER),
+            str(root),
+        ],
         env=env,
         input="",
         check=False,
@@ -353,6 +401,6 @@ def test_real_private_python_empty_path(tmp_path: Path) -> None:
         timeout=60,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert result.stdout == ""
+    assert result.stdout == "kast-tasks\n"
     assert not tuple((root / "state/mcp").rglob("*.pyc"))
     assert not tuple((root / mcp.SCRIPTS).rglob("*.pyc"))

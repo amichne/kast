@@ -1,4 +1,4 @@
-"""Assemble a private production Host and install Control through its existing installer."""
+"""Assemble private Host inputs without activating a Control installation."""
 
 from __future__ import annotations
 
@@ -9,18 +9,21 @@ import json
 import os
 import platform
 import re
-import shlex
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import TypeGuard
+from typing import TYPE_CHECKING, TypeGuard
+
+from composition_platform import UnsupportedHost, host_platform
+
+if TYPE_CHECKING:
+    import managed_release as release
 
 
 class Failure(StrEnum):
@@ -29,18 +32,22 @@ class Failure(StrEnum):
     DIGEST_MISMATCH = "DIGEST_MISMATCH"
     UNSUPPORTED_PLATFORM = "UNSUPPORTED_PLATFORM"
     INVALID_DISTRIBUTION = "INVALID_DISTRIBUTION"
-    INSTALLER_FAILED = "INSTALLER_FAILED"
     EFFECT_FAILED = "EFFECT_FAILED"
     UNKNOWN_COMPONENT = "UNKNOWN_COMPONENT"
     REQUIRED_COMPONENT = "REQUIRED_COMPONENT"
     COMPONENT_DEPENDENCY = "COMPONENT_DEPENDENCY"
     INVALID_COMPONENT = "INVALID_COMPONENT"
-    SHARED_STATE = "SHARED_STATE"
 
 
 @dataclass(frozen=True, slots=True)
 class Rejected:
     reason: Failure
+
+
+@dataclass(frozen=True, slots=True)
+class ComponentStagingRejected(Rejected):
+    component: release.Rejected
+    reason: Failure = field(init=False, default=Failure.INVALID_COMPONENT)
 
 
 class AssemblyEntryKind(StrEnum):
@@ -124,9 +131,8 @@ class Input:
 
 
 @dataclass(frozen=True, slots=True)
-class Installed:
+class Assembled:
     root: str
-    command: str
     assembly: AssemblyRecord
     hostReadiness: str = "NOT_RUN"
 
@@ -245,17 +251,6 @@ def seal_runtime(home: Path) -> None:
     for path in (*home.rglob("*"), home):
         if not path.is_symlink():
             path.chmod(path.stat().st_mode & ~0o222)
-
-
-def wrapper(home: Path, state: Path) -> str:
-    executable = state / "home/.local/bin/kast"
-    return (
-        "#!/bin/sh\nset -eu\n"
-        f"[ -f {shlex.quote(str(home / 'kast-headless.json'))} ] || exit 2\n"
-        f"HOME={shlex.quote(str(state / 'home'))} "
-        f"KAST_MANAGED_HEADLESS_STATE={shlex.quote(str(state))} "
-        f'exec {shlex.quote(str(executable))} "$@"\n'
-    )
 
 
 def object_fields(value: object) -> TypeGuard[dict[object, object]]:
@@ -424,17 +419,6 @@ class AssemblyManifest:
     assets: tuple[AssemblyFile, ...]
     acceptance: AssemblyAcceptance = AssemblyAcceptance.NOT_RUN
 
-    @property
-    def disabled_plugins(self) -> tuple[str, ...]:
-        return tuple(
-            sorted(
-                identifier
-                for decision in self.components
-                if decision.decision == ComponentDisposition.EXCLUDE
-                for identifier in decision.component.identifiers
-            )
-        )
-
 
 def file_record(path: Path, base: Path) -> AssemblyFile:
     if path.is_symlink():
@@ -519,55 +503,14 @@ def select_assembly_components(
         return Rejected(Failure.INVALID_COMPONENT)
 
 
-@dataclass(frozen=True, slots=True)
-class PrivateHostProfile:
-    directory: Path
-
-
-def selected_private_profile(state: Path) -> PrivateHostProfile | Rejected:
-    selected: object = json.loads(
-        (state / "home/.local/share/kast/installation/config/selected-ide.json").read_text()
-    )
-    if not object_fields(selected) or selected.get("type") != "resolved":
-        return Rejected(Failure.INVALID_COMPONENT)
-    target = selected.get("hostPluginTarget")
-    if not object_fields(target) or target.get("type") != "RECORDED":
-        return Rejected(Failure.INVALID_COMPONENT)
-    raw = target.get("root")
-    if not isinstance(raw, str):
-        return Rejected(Failure.INVALID_COMPONENT)
-    plugins = Path(raw)
-    if (
-        plugins.resolve() != plugins
-        or plugins.name != "plugins"
-        or not plugins.is_relative_to(state / "home")
-    ):
-        return Rejected(Failure.SHARED_STATE)
-    return PrivateHostProfile(plugins.parent)
-
-
-def configure_removed_plugins(state: Path, manifest: AssemblyManifest) -> Rejected | None:
-    if not manifest.disabled_plugins:
-        return None
-    profile = selected_private_profile(state)
-    if isinstance(profile, Rejected):
-        return profile
-    path = profile.directory / "disabled_plugins.txt"
-    if path.is_symlink():
-        return Rejected(Failure.INVALID_COMPONENT)
-    prior: set[str] = set(path.read_text().splitlines()) if path.exists() else set()
-    _ = path.write_text("\n".join(sorted(prior | set(manifest.disabled_plugins))) + "\n")
-    return None
-
-
-def install(inputs: Input, installer: Path) -> Installed | Rejected:
+def assemble_inputs(inputs: Input, installer: Path) -> Assembled | Rejected:
     admitted = admit(inputs)
     if isinstance(admitted, Rejected):
         return admitted
     return assemble(admitted, installer)
 
 
-def assemble(admitted: _AdmittedInput, installer: Path) -> Installed | Rejected:
+def assemble(admitted: _AdmittedInput, installer: Path) -> Assembled | Rejected:
     inputs = admitted.inputs
     system = platform.system()
     if system not in {"Linux", "Darwin"}:
@@ -589,21 +532,24 @@ def assemble(admitted: _AdmittedInput, installer: Path) -> Installed | Rejected:
     if isinstance(manifest, Rejected):
         return manifest
     _ = (root / "assembly-manifest.json").write_text(json.dumps(asdict(manifest), indent=2) + "\n")
-    return install_prepared_runtime(admitted, home, installer, manifest)
+    return prepare_runtime(admitted, home)
 
 
-def install_prepared_runtime(
+def prepare_runtime(
     admitted: _AdmittedInput,
     home: Path,
-    installer: Path,
-    manifest: AssemblyManifest | None = None,
-) -> Installed | Rejected:
-    """Both assembly strategies use one installer, private state layout, and launcher."""
+) -> Assembled | Rejected:
+    """Stage admitted Host components for archive production, never installation."""
+    import managed_release as release
+    from managed_product import BundledAssets
+
     inputs = admitted.inputs
     root = inputs.root
+    target = host_platform(platform.system(), platform.machine())
+    if isinstance(target, UnsupportedHost):
+        return Rejected(Failure.UNSUPPORTED_PLATFORM)
     if not home.is_relative_to(root / "runtime") or home.resolve() != home:
         return Rejected(Failure.INVALID_INPUT)
-    system = platform.system()
     bootstrap = add_bootstrap(home, inputs.bootstrap)
     if isinstance(bootstrap, Rejected):
         return bootstrap
@@ -612,41 +558,21 @@ def install_prepared_runtime(
     )
     _ = (home / "kast-headless.json").write_text(json.dumps(asdict(record), indent=2) + "\n")
     seal_runtime(home)
-    state = root / "state"
-    for name in ("home", "system", "log", "tmp"):
-        (state / name).mkdir(parents=True, mode=0o700)
-    (state / "home/.gradle").mkdir(mode=0o700)
-    tools = root / "libexec"
-    tools.mkdir(mode=0o700)
-    (tools / "python3").symlink_to(Path(sys.executable).resolve(strict=True))
-    environment = {
-        "PATH": str(tools) + os.pathsep + os.defpath,
-        "HOME": str(state / "home"),
-        "TMPDIR": str(state / "tmp"),
-        "KAST_VERSION": inputs.version,
-        "KAST_HOST_VERSION": inputs.version,
-        "KAST_INSTALL_ASSETS_DIRECTORY": str(inputs.assets),
-        "KAST_JAVA_HOME": str(home / ("jbr/Contents/Home" if system == "Darwin" else "jbr")),
-    }
-    with (root / "installer.log").open("w") as log:
-        result = subprocess.run(
-            ["/bin/bash", str(installer), "--skip-codex-plugin", "--idea-home", str(home)],
-            env=environment,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            check=False,
-        )
-    if result.returncode != 0:
-        return Rejected(Failure.INSTALLER_FAILED)
-    if manifest is not None:
-        configured = configure_removed_plugins(state, manifest)
-        if configured is not None:
-            return configured
-    (root / "bin").mkdir()
-    command = root / "bin/kast"
-    _ = command.write_text(wrapper(home, state))
-    command.chmod(0o700)
-    return Installed(str(root), str(command), record)
+    components = root / "components"
+    components.mkdir(mode=0o700)
+    selected = release.stage_component_archives(
+        release.StableSelection(inputs.version, "v" + inputs.version, release.StablePolicy.PIN),
+        admitted.release_line.value,
+        components,
+        BundledAssets(inputs.assets),
+        target=target.value,
+    )
+    if isinstance(selected, release.Rejected):
+        return ComponentStagingRejected(selected)
+    # stage_component_archives admitted the complete Host ZIP inventory and identity.
+    with zipfile.ZipFile(selected.host_archive) as archive:
+        archive.extractall(components / "plugins")
+    return Assembled(str(root), record)
 
 
 def main() -> int:
@@ -669,7 +595,7 @@ def main() -> int:
         tuple(args.exclude_plugin),
     )
     try:
-        outcome = install(inputs, Path(__file__).resolve().parent.parent / "install.sh")
+        outcome = assemble_inputs(inputs, Path(__file__).resolve().parent.parent / "install.sh")
     except (
         OSError,
         ValueError,

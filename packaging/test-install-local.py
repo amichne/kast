@@ -1,78 +1,110 @@
-"""Local Gradle installation must use the versioned lifecycle without sibling deletion."""
-import json
-import os
-from pathlib import Path
-import shutil
-import subprocess
+"""Contributor and archive rejection retain foreign state without activation."""
+
+import argparse
+import hashlib
+import io
 import sys
-import tempfile
+import tarfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+import local_product_install as local
+import managed_release as release
+from installer_fixture import InstallerFixture
 
 
 class LocalInstallationTest(unittest.TestCase):
-    def test_local_adapter_delegates_to_versioned_installer_and_preserves_legacy_siblings(self):
-        self.assert_local_adapter('262')
+    def test_foreign_root_rejects_before_build_download_or_activation(self) -> None:
+        with InstallerFixture({"python3": Path(sys.executable)}) as fixture:
+            root = fixture.root / "foreign"
+            protected = root / "unproven-owner"
+            root.mkdir()
+            _ = protected.write_bytes(b"preserve")
+            source = local.SourceIdentity(str(fixture.root / "checkout"), "a" * 40, "b" * 40)
+            with (
+                patch.object(local.platform, "system", return_value="Darwin"),
+                patch.object(local.platform, "machine", return_value="arm64"),
+                patch.object(local, "admit_source", return_value=source),
+                patch.object(local, "fetch", side_effect=AssertionError("unexpected download")),
+                patch.object(local, "run_logged", side_effect=AssertionError("unexpected child")),
+            ):
+                with self.assertRaises(local.Rejected) as rejected:
+                    _ = local.install(argparse.Namespace(source=Path(source.checkout), root=root))
+            self.assertEqual(local.Stage.ROOT, rejected.exception.stage)
+            self.assertEqual(local.Failure.ROOT_REJECTED, rejected.exception.failure)
+            self.assertEqual([protected], list(root.iterdir()))
+            self.assertEqual(b"preserve", protected.read_bytes())
+            self.assertFalse((fixture.root / "checkout").exists())
+            fixture.mark_passed()
 
-    def test_263_local_adapter_preserves_the_selected_record_name(self):
-        self.assert_local_adapter('263')
+    def test_changed_cached_artifact_rejects_without_download_or_activation(self) -> None:
+        with InstallerFixture({"python3": Path(sys.executable)}) as fixture:
+            expected = hashlib.sha256(b"admitted artifact").hexdigest()
+            cached = fixture.root / expected / "control.tar.gz"
+            cached.parent.mkdir()
+            _ = cached.write_bytes(b"changed artifact")
+            with patch.object(
+                local.urllib.request, "urlopen", side_effect=AssertionError("unexpected download")
+            ):
+                with self.assertRaises(local.Rejected) as rejected:
+                    _ = local.fetch(
+                        fixture.root, "control.tar.gz", "https://invalid.example/control", expected
+                    )
+            self.assertEqual(local.Stage.INPUTS, rejected.exception.stage)
+            self.assertEqual(local.Failure.DIGEST_MISMATCH, rejected.exception.failure)
+            self.assertEqual(b"changed artifact", cached.read_bytes())
+            self.assertFalse((fixture.root / "product").exists())
+            fixture.mark_passed()
 
-    def assert_local_adapter(self, line):
-        with tempfile.TemporaryDirectory(prefix='kast-local-') as directory:
-            root = Path(directory).resolve()
-            (root / 'packaging').mkdir()
-            script = root / 'packaging/install-local.sh'
-            shutil.copy2(Path(__file__).with_name('install-local.sh'), script)
-            record = root / 'installer-contract'
-            suffix = '-idea-263' if line == '263' else ''
-            (root / 'packaging/install-legacy.sh').write_text(
-                '#!/bin/sh\n'
-                f'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-{line}.zip" || exit 32\n'
-                f'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-ide-hosted-v1.2.3-idea-{line}.zip.sha256" || exit 33\n'
-                f'test -f "$KAST_INSTALL_ASSETS_DIRECTORY/kast-host-release-v1.2.3{suffix}.json" || exit 34\n'
-                'printf "argument=%s\\n" "$@" > "' + str(record) + '"\n'
-                'for key in KAST_VERSION KAST_RELEASE_BASE_URL KAST_INSTALL_ASSETS_DIRECTORY '
-                'KAST_INSTALL_ROOT KAST_BIN_DIR KAST_INSTALL_PROFILE; do\n'
-                '  eval "value=\\${$key-}"\n'
-                '  printf "%s=%s\\n" "$key" "$value" >> "' + str(record) + '"\n'
-                'done\n'
-            )
-            product = root / 'product'
-            (product / 'bin').mkdir(parents=True)
-            (product / 'share/kast').mkdir(parents=True)
-            (product / 'share/kast/libexec').mkdir(parents=True)
-            (product / 'bin/kast').write_text('#!/bin/sh\nexit 0\n')
-            (product / 'bin/kast').chmod(0o755)
-            (product / 'share/kast/libexec/kast-service').write_text('#!/bin/sh\nexit 0\n')
-            (product / 'share/kast/libexec/kast-service').chmod(0o755)
-            (product / 'share/kast/ide-host.json').write_text(json.dumps({'productVersion': '1.2.3'}))
-            plugin = root / f'kast-ide-hosted-v1.2.3-idea-{line}.zip'
-            plugin.write_text('fixture plugin')
-            host_record = root / 'host-release.json'
-            host_record.write_text('release fixture')
-            (product / 'share/kast/host-installation.py').write_text('host helper fixture')
-            prefix = root / '.local'
-            markers = []
-            for name in ('local', 'control', 'runtime'):
-                marker = prefix / 'share/kast' / name / 'unproven-owner'
-                marker.parent.mkdir(parents=True)
-                marker.write_text('preserve')
-                markers.append(marker)
-            tool_path = str(Path(sys.executable).resolve().parent) + os.pathsep + os.defpath
-            env = {'PATH': tool_path, 'HOME': str(root), 'TMPDIR': str(root),
-                   'KAST_LOCAL_PREFIX': str(prefix), 'KAST_LOCAL_CONTROL_PRODUCT': str(product),
-                   'KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE': str(plugin), 'KAST_LOCAL_HOST_RELEASE_RECORD': str(host_record)}
-            result = subprocess.run(['bash', str(script)], env=env, text=True, capture_output=True)
-            self.assertEqual(0, result.returncode, result.stderr)
-            self.assertTrue(all(path.is_file() and path.read_text() == 'preserve' for path in markers),
-                            'unproven legacy siblings must survive local installation')
-            contract = dict(line.split('=', 1) for line in record.read_text().splitlines())
-            self.assertEqual('', contract['argument'])
-            self.assertEqual('1.2.3', contract['KAST_VERSION'])
-            self.assertEqual(str(prefix / 'share/kast'), contract['KAST_INSTALL_ROOT'])
-            self.assertEqual(str(prefix / 'bin'), contract['KAST_BIN_DIR'])
-            self.assertEqual('persistent', contract['KAST_INSTALL_PROFILE'])
-            self.assertTrue(Path(contract['KAST_INSTALL_ASSETS_DIRECTORY']).name.startswith('kast-local-assets.'))
+    def test_control_link_or_traversal_rejects_before_extraction(self) -> None:
+        with InstallerFixture({"python3": Path(sys.executable)}) as fixture:
+            protected = fixture.root / "foreign"
+            _ = protected.write_bytes(b"preserve")
+            archive = fixture.root / "control.tar.gz"
+            destination = fixture.root / "control"
+            for name, link in (("bin/kast", True), ("../foreign", False)):
+                with self.subTest(name=name):
+                    with tarfile.open(archive, "w:gz") as output:
+                        member = tarfile.TarInfo(name)
+                        if link:
+                            member.type = tarfile.SYMTYPE
+                            member.linkname = str(protected)
+                            output.addfile(member)
+                        else:
+                            member.size = len(b"replace")
+                            output.addfile(member, io.BytesIO(b"replace"))
+                    self.assertEqual(
+                        release.Failure.ARTIFACT_INVALID,
+                        release.extract_control(archive, destination),
+                    )
+                    self.assertFalse(destination.exists())
+                    self.assertEqual(b"preserve", protected.read_bytes())
+            fixture.mark_passed()
+
+    def test_control_archive_entry_boundary_uses_production_admission(self) -> None:
+        with InstallerFixture({"python3": Path(sys.executable)}) as fixture:
+            archive = fixture.root / "control.tar.gz"
+            for count, expected in (
+                (7_609, release.Admission.ADMITTED),
+                (16_384, release.Admission.ADMITTED),
+                (16_385, release.Failure.ARTIFACT_INVALID),
+            ):
+                with self.subTest(count=count):
+                    destination = fixture.root / f"control-{count}"
+                    with tarfile.open(archive, "w:gz") as output:
+                        for index in range(count):
+                            member = tarfile.TarInfo(f"share/knowledge/{index}")
+                            output.addfile(member)
+                    self.assertEqual(expected, release.extract_control(archive, destination))
+                    if expected == release.Admission.ADMITTED:
+                        self.assertEqual(
+                            count, len(list((destination / "share/knowledge").iterdir()))
+                        )
+                    else:
+                        self.assertFalse(destination.exists())
+            fixture.mark_passed()
 
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == "__main__":
+    _ = unittest.main()

@@ -430,6 +430,47 @@ class ReleaseAdmissionTest(unittest.TestCase):
         self.assertIsInstance(admitted, release.AdmittedComposition)
         self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
 
+    def test_native_dependencies_require_library_headers_target_and_dependency_scope(self) -> None:
+        source = self.source("1.2.3", unified=True)
+        selected = release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK)
+        admitted = release.stage_component_archives(selected, "262", self.stage, source)
+        assert isinstance(admitted, release.AdmittedComposition)
+        record = release.parse_component(
+            source.assets["kast-control-release-v1.2.3.json"],
+            "1.2.3",
+            f"kast-control-v1.2.3-{release.PLATFORM}.tar.gz",
+            None,
+        )
+        assert not isinstance(record, release.Failure)
+        dylib = bytes.fromhex("cffaedfe0c0000010000000006000000") + bytes(16)
+        bundle = bytes.fromhex("cffaedfe0c0000010000000008000000") + bytes(16)
+        executable = bytes.fromhex("cffaedfe0c0000010000000002000000") + bytes(16)
+        elf = bytes.fromhex("7f454c4602010100000000000000000003003e0001000000") + bytes(8)
+        dependency = "share/kast/mcp-dependencies/site-packages/native/module.so"
+        for target, name, header, accepted in (
+            ("macos-aarch64", dependency, dylib, True),
+            ("macos-aarch64", dependency, bundle, True),
+            ("macos-aarch64", dependency, executable, False),
+            ("macos-aarch64", "share/kast/foreign.so", dylib, False),
+            ("macos-aarch64", dependency, elf, False),
+            ("macos-aarch64", dependency, dylib[:16], False),
+            ("linux-x86_64", dependency, elf, True),
+            ("linux-x86_64", dependency, elf[:24] + b"\x01" + bytes(7), False),
+            ("linux-x86_64", dependency, elf[:18] + b"\xb7\x00" + elf[20:], False),
+        ):
+            with self.subTest(target=target, name=name, header=header.hex()):
+                management = admitted.control_root / "share/kast/libexec/kast-management"
+                _ = management.write_bytes(executable if target == "macos-aarch64" else elf)
+                path = admitted.control_root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                _ = path.write_bytes(header)
+                result = release.inspect_control(admitted.control_root, selected, record, target)
+                self.assertEqual(
+                    admitted.identity if accepted else release.Failure.ARTIFACT_INVALID, result
+                )
+                path.unlink()
+        self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
+
     def test_missing_capability_or_native_query_rejects_before_installation_changes(self) -> None:
         for option in ("marker", "native"):
             with (

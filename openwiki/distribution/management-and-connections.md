@@ -11,7 +11,8 @@ code_sources:
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt
 - path: packaging/composed_bundle.py
-- path: packaging/isolated_runtime.py
+- path: packaging/mcp_environment.py
+- path: packaging/mcp_dependency_artifact.py
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
@@ -101,6 +102,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeedClone.kt
   - id: openwiki-source-e140285f42db726bccbc4e01
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt
+  - id: openwiki-source-e7fd130e6641f6c75e3cde3f
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt
   - id: openwiki-source-d95d75ec0e14dda7faf63dbf
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt
   - id: openwiki-source-245e3f9878cb2ef01a1fcbd1
@@ -111,18 +114,28 @@ sources:
     resource: repo://packaging/composed_release.py
   - id: openwiki-source-611b757652f80d3a33875855
     resource: repo://packaging/container_probe.py
+  - id: openwiki-source-f499e8784ffe1f993e94d42d
+    resource: repo://packaging/generate_bootstrap.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
   - id: openwiki-source-7f5792fd36f508c6577b3562
     resource: repo://packaging/managed_product_installation.py
+  - id: openwiki-source-b7b8ecfa241af4c2651f20bf
+    resource: repo://packaging/mcp_dependency_artifact.py
+  - id: openwiki-source-4cbbb1b86a2d8ec6765d827e
+    resource: repo://packaging/mcp_environment.py
   - id: openwiki-source-e7484ccb9a72cd71aa938a2f
     resource: repo://packaging/product_acceptance.py
   - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
     resource: repo://packaging/product_lifecycle_probe.py
-generated: { by: "amp", at: "2026-11-14T23:54:19.999Z" }
+  - id: openwiki-source-4f7923fe2058729f3c0b96fe
+    resource: repo://packaging/test_mcp_dependency_artifact.py
+  - id: openwiki-source-2cd23a68d0d65408a59d5b1a
+    resource: repo://packaging/test-managed-bootstrap.py
+generated: { by: "amp", at: "2026-11-15T23:15:42.491Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T23:57:28.873Z
+    at: 2026-11-15T23:15:42.491Z
 ---
 
 # Native management and harness connections
@@ -227,6 +240,16 @@ Immutable seed snapshots remain outside Phase 1.
 The default bundle includes CLI guidance and passive session hooks without an automatic MCP server.
 It does not prepare a Python environment.
 The explicit `--mcp` option selects the complete optional transport composition and its dependency preparation.
+Production materializes target-specific wheels and their inventory before delivery.
+Before recording `artifact.json`, the producer admits the inventory, sets its regular import-data files to `0644`, and observes the inventory again.
+This includes native extensions and wheel command files shipped as data, not executable commands.
+Generated-support reuse also requires every dependency file at `0644`; even a self-consistent cached `0755` record rejects.
+The producer passes `--python sys.executable` explicitly to uv, with an empty `PATH` and interpreter downloads disabled.
+It does not depend on uv finding an ambient virtual environment or interpreter.
+Installed preparation admits that artifact, copies its site-packages, and runs an isolated import check with the private interpreter.
+It invokes no pip, uv, dependency solver, or download.
+The inventory and artifact record preserve target identity, requirement hashes, native extensions, and license files.
+Consumer admission still requires exact bytes and modes; normalization does not relax ownership, identity, or finite failure checks.
 The retired `connect` and `plugin` setup syntax directs callers to `kast install`.
 Legacy connection variants remain available for receipt admission and exact cleanup.
 
@@ -255,11 +278,13 @@ A fresh agent session is necessary after setup.
 `kast versions` lists the stable selection and five newest selectable published main builds.
 Upgrade requests refine into one typed release selection and update policy before artifact effects.
 Preview and stable select complete product records, not independently mixed Control and Host versions.
-Exact repair reads the recorded product selection even when runtime bytes need repair; ordinary requests additionally require an admitted runtime.
+Exact repair reads a published product's recorded selection even when runtime bytes need repair; ordinary requests additionally require an admitted runtime.
+A local product rejects exact repair with `LOCAL_ARTIFACT_REQUIRED` before installer or release effects.
 The wrapper writes the captured selection in a physical temporary directory before invoking the installer bridge.
 An aliased temporary-directory setting therefore still produces a physical record path.
 An unqualified upgrade keeps its recorded tracking policy and rejects a pinned policy before release access.
 Pending recovery takes precedence over selector resolution and invokes only the manifest-owned recovery bridge.
+Bridge admission requires the complete Control payload inventory to match the manifest, with unique paths and verified bytes.
 The wrapper preserves the child terminal result and does not select another release after recovery.
 
 The parser admits `uninstall --force [--json]` for legacy state only, without a harness selector.
@@ -300,8 +325,8 @@ These mechanisms alone do not establish that a running IDEA loaded the selected 
 
 ## Source owners
 
-- [`isolated_runtime.py`](../../packaging/isolated_runtime.py)
-
+- [mcp_environment.py](../../packaging/mcp_environment.py)
+- [mcp_dependency_artifact.py](../../packaging/mcp_dependency_artifact.py)
 - [KastManagementMain.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt)
 - [ManagementCommand.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt)
 - [ManagementStatus.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt)

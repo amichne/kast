@@ -24,6 +24,7 @@ import bootstrap_entry
 import composed_bundle
 import generate_bootstrap
 import immutable_store
+import managed_headless as headless
 import managed_installation as install
 import managed_product as staging
 import managed_product_installation as activation
@@ -126,6 +127,73 @@ class ProductRecordTest(unittest.TestCase):
         self.assertNotIn("platformTargets", wire)
         self.assertEqual("NATIVE", wire["targets"][0]["qualification"]["kind"])
         self.assertEqual("COMPLETE", wire["targets"][0]["qualification"]["outcome"])
+
+    def test_local_records_require_one_native_target_and_never_enter_release_admission(
+        self,
+    ) -> None:
+        published = product()
+        for target in published.targets:
+            native = replace(
+                target,
+                qualification=replace(
+                    target.qualification, producer=release.LocalProductProducer()
+                ),
+            )
+            local = release.LocalProductRecord(
+                4,
+                published.repository,
+                published.sourceRevision,
+                published.sourceTree,
+                published.version,
+                release.LocalProductProducer(),
+                (native,),
+            )
+            raw = install.encoded(local)
+            self.assertEqual(local, release.decode_installed_product_record(raw))
+            self.assertEqual(release.Failure.ARTIFACT_INVALID, release.decode_product_record(raw))
+            for invalid in (
+                replace(local, schemaVersion=2),
+                replace(local, targets=()),
+                replace(local, targets=(native, native)),
+                replace(local, targets=(target,)),
+                replace(local, targets=(replace(native, target="linux-aarch64"),)),
+                replace(
+                    local,
+                    targets=(
+                        replace(
+                            native, qualification=replace(native.qualification, outcome="NOT_RUN")
+                        ),
+                    ),
+                ),
+            ):
+                with self.subTest(target=target.target, invalid=invalid):
+                    self.assertEqual(
+                        release.Failure.ARTIFACT_INVALID,
+                        release.decode_installed_product_record(install.encoded(invalid)),
+                    )
+            selection = release.ProductSelection(
+                f"developer-v{local.version}",
+                local,
+                hashlib.sha256(raw).hexdigest(),
+                "PinnedBuild",
+                None,
+                local.sourceRevision,
+            )
+            self.assertEqual(selection, release.decode_selection(install.encoded(selection)))
+            for policy in ("TrackMain", "TrackStable"):
+                self.assertIsInstance(
+                    release.decode_selection(install.encoded(replace(selection, policy=policy))),
+                    release.Rejected,
+                )
+            source = Source(
+                {
+                    f"{release.RELEASE_URL}/{selection.releaseTag}/build-record.json": raw,
+                }
+            )
+            with tempfile.TemporaryDirectory() as temporary:
+                result = release.download_composition(selection, "262", Path(temporary), source)
+                self.assertIsInstance(result, release.Rejected)
+                self.assertEqual([], list(Path(temporary).iterdir()))
 
     def test_missing_duplicate_unsupported_runtime_mismatch_and_scripted_evidence_reject(
         self,
@@ -435,6 +503,62 @@ class ProductActivationTest(unittest.TestCase):
         self.assertIsInstance(result, staging.AdmittedProduct, result)
         assert isinstance(result, staging.AdmittedProduct)
         return result
+
+    def test_assembly_stages_admitted_host_without_installing_or_running_a_child(self) -> None:
+        product = self.admitted()
+        assets = product.components.host_archive.parent
+        archive = self.home / "donor"
+        _ = archive.write_bytes(b"producer donor")
+        bootstrap = self.home / "bootstrap.zip"
+        with zipfile.ZipFile(bootstrap, "w") as output:
+            output.writestr("kast-managed-headless/lib/kast-managed-headless.jar", b"bootstrap")
+        for changed in (False, True):
+            with self.subTest(changed=changed):
+                root = self.home / ("changed-assembly" if changed else "assembly")
+                inputs = headless.Input(
+                    root,
+                    archive,
+                    hashlib.sha256(b"producer donor").hexdigest(),
+                    bootstrap,
+                    hashlib.sha256(bootstrap.read_bytes()).hexdigest(),
+                    assets,
+                    "0.0.123",
+                    "262.1",
+                )
+                admitted = headless.admit(inputs)
+                assert not isinstance(admitted, headless.Rejected)
+                home = root / "runtime/Host"
+                home.mkdir(parents=True)
+                if changed:
+                    _ = product.components.host_archive.write_bytes(b"changed Host")
+                with patch.object(subprocess, "run", side_effect=AssertionError("forbidden child")):
+                    result = headless.prepare_runtime(admitted, home)
+                try:
+                    if changed:
+                        assert isinstance(result, headless.ComponentStagingRejected)
+                        self.assertEqual(
+                            release.Rejected(
+                                release.Failure.ARTIFACT_INVALID, release.Stage.DOWNLOAD, "0.0.123"
+                            ),
+                            result.component,
+                        )
+                        self.assertFalse((root / "components/plugins").exists())
+                    else:
+                        self.assertIsInstance(result, headless.Assembled)
+                        with zipfile.ZipFile(product.components.host_archive) as source:
+                            expected = source.read("kast-ide-hosted/lib/kast-ide-hosted.jar")
+                        self.assertEqual(
+                            expected,
+                            (
+                                root / "components/plugins/kast-ide-hosted/lib/kast-ide-hosted.jar"
+                            ).read_bytes(),
+                        )
+                    self.assertFalse((root / "state").exists())
+                    self.assertFalse((root / "bin").exists())
+                    self.assertFalse((root / "libexec").exists())
+                finally:
+                    for path in (home, *home.rglob("*")):
+                        path.chmod(0o700)
 
     def test_split_product_activation_recovers_with_original_record_and_owned_runtime(self) -> None:
         directory = self.home / "producer"
@@ -938,20 +1062,36 @@ class ProductActivationTest(unittest.TestCase):
             mcp.digest(payload / mcp.REQUIREMENTS),
         )
         _ = (payload / mcp.EXPORT_LOCK).write_bytes(mcp.encoded(export))
+        site = payload / mcp.DEPENDENCY_SITE
+        (site / "example").mkdir(parents=True)
+        _ = (site / "example/__init__.py").write_bytes(b"pass\n")
+        observed = mcp.inventory(site)
+        target = mcp.native_target()
+        assert isinstance(observed, mcp.Inventory)
+        assert isinstance(target, mcp.DependencyTarget)
+        _ = (payload / mcp.ARTIFACT).write_bytes(
+            mcp.encoded(mcp.DependencyArtifact(target, export, observed))
+        )
         self.fixture_inventory(prior)
         calls: list[mcp.Command] = []
 
         def runner(command: mcp.Command) -> mcp.Exited:
+            self.assertEqual([], calls, "unexpected process")
             calls.append(command)
-            if len(calls) == 1:
-                site = payload / "state/.mcp-preparing/site-packages/example"
-                site.mkdir(parents=True)
-                _ = (site / "__init__.py").write_bytes(b"pass\n")
-            self.assertLessEqual(len(calls), 2)
+            self.assertEqual(
+                (str(payload / mcp.PYTHON), "-I", "-S", "-B", "-c"),
+                command.arguments[:5],
+            )
+            self.assertNotIn("pip", command.arguments)
+            self.assertNotIn("uv", command.arguments)
+            self.assertEqual("", command.environment["PATH"])
+            prepared_site = payload / "state/.mcp-preparing/site-packages"
+            self.assertEqual(str(prepared_site), command.arguments[-1])
+            self.assertEqual(observed, mcp.inventory(prepared_site))
             return mcp.Exited(0)
 
         self.assertIsInstance(mcp.prepare(payload, runner), mcp.Prepared)
-        self.assertEqual(2, len(calls))
+        self.assertEqual(1, len(calls), "unconsumed process expectation")
         return payload / "state/mcp"
 
     def test_optional_mcp_state_is_admitted_and_partial_removal_resumes(self) -> None:
@@ -2164,6 +2304,157 @@ class ProductActivationTest(unittest.TestCase):
         self.assertTrue(
             all(url.startswith(f"{release.RELEASE_URL}/v1.2.3/") for url in self.source.calls)
         )
+
+    def test_local_product_installs_globally_without_release_network(self) -> None:
+        local = self.home / "local build ; literal"
+        payload = local / "payload"
+        payload.mkdir(parents=True)
+        target = self.record.targets[1]
+        record = release.LocalProductRecord(
+            4,
+            self.record.repository,
+            self.record.sourceRevision,
+            self.record.sourceTree,
+            self.record.version,
+            release.LocalProductProducer(),
+            (
+                replace(
+                    target,
+                    qualification=replace(
+                        target.qualification, producer=release.LocalProductProducer()
+                    ),
+                ),
+            ),
+        )
+        raw_record = install.encoded(record)
+        _ = (local / "build-record.json").write_bytes(raw_record)
+        for name, raw in self.values.items():
+            if name != "build-record.json":
+                _ = (payload / name).write_bytes(raw)
+        root = self.home / ".local/share/kast"
+        with (
+            patch.dict(os.environ, {"HOME": str(self.home)}),
+            patch.object(release, "HttpReleaseSource", side_effect=AssertionError("no network")),
+            patch.object(install.subprocess, "run", side_effect=AssertionError("no process")),
+        ):
+            for dry_run in (True, False):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    code = install.main(
+                        ["--local-artifact", str(local), "--json"]
+                        + (["--dry-run"] if dry_run else [])
+                    )
+                self.assertEqual(0, code, output.getvalue())
+                self.assertEqual(
+                    "PRODUCT_PLANNED" if dry_run else "PRODUCT_INSTALLED",
+                    json.loads(output.getvalue())["type"],
+                )
+                self.assertEqual(not dry_run, root.exists())
+        self.assertEqual(
+            raw_record, (root / "installation/share/kast/build-record.json").read_bytes()
+        )
+        reference = json.loads((root / "management.json").read_bytes())["product"]
+        self.assertEqual("PinnedBuild", reference["policy"])
+        self.assertEqual("a" * 40, reference["sourceRevision"])
+        self.assertEqual(hashlib.sha256(raw_record).hexdigest(), reference["buildRecordSha256"])
+        self.assertEqual(raw_record, (local / "build-record.json").read_bytes())
+        self.assertEqual(
+            release.Failure.ARTIFACT_INVALID, release.decode_product_record(raw_record)
+        )
+        self.assertEqual(
+            {"kind": "LOCAL"}, json.loads(raw_record)["targets"][0]["qualification"]["producer"]
+        )
+
+    def test_captured_local_selection_requires_local_artifact_before_release_reads(self) -> None:
+        target = self.record.targets[1]
+        record = release.LocalProductRecord(
+            4,
+            self.record.repository,
+            self.record.sourceRevision,
+            self.record.sourceTree,
+            self.record.version,
+            release.LocalProductProducer(),
+            (
+                replace(
+                    target,
+                    qualification=replace(
+                        target.qualification, producer=release.LocalProductProducer()
+                    ),
+                ),
+            ),
+        )
+        raw = install.encoded(record)
+        selected = release.ProductSelection(
+            f"developer-v{record.version}",
+            record,
+            hashlib.sha256(raw).hexdigest(),
+            "PinnedBuild",
+            None,
+            record.sourceRevision,
+        )
+        captured = self.home / "selection.json"
+        _ = captured.write_bytes(encoded_fixture(selected))
+        self.assertEqual(selected, release.decode_selection(captured.read_bytes()))
+        root = self.home / ".local/share/kast"
+        output = io.StringIO()
+        with (
+            patch.dict(os.environ, {"HOME": str(self.home)}),
+            patch.object(staging.platform, "system", return_value="Darwin"),
+            patch.object(staging.platform, "machine", return_value="arm64"),
+            patch.object(install.subprocess, "run", side_effect=AssertionError("no process")),
+            contextlib.redirect_stdout(output),
+        ):
+            code = install.main(["--resolved-selection", str(captured), "--json"], self.source)
+        self.assertEqual(1, code)
+        self.assertEqual("LOCAL_ARTIFACT_REQUIRED", json.loads(output.getvalue())["reason"])
+        self.assertEqual([], self.source.calls)
+        self.assertFalse(root.exists())
+
+    def test_local_product_rejection_preserves_global_state_without_network_fallback(self) -> None:
+        local = self.home / "local"
+        payload = local / "payload"
+        payload.mkdir(parents=True)
+        record = local / "build-record.json"
+        _ = record.write_bytes(self.raw)
+        for name, raw in self.values.items():
+            if name != "build-record.json":
+                _ = (payload / name).write_bytes(raw)
+        root = self.home / ".local/share/kast"
+        root.mkdir(parents=True)
+        protected = root / "protected"
+        _ = protected.write_bytes(b"keep installed state")
+        command = self.home / ".local/bin/kast"
+        command.parent.mkdir(parents=True)
+        _ = command.write_bytes(b"foreign launcher")
+        runtime = payload / self.record.targets[1].runtime.name
+        original = runtime.read_bytes()
+        for damage in ("record", "missing", "changed", "linked"):
+            with self.subTest(damage=damage):
+                if damage == "record":
+                    _ = record.write_bytes(b"{}")
+                elif damage == "missing":
+                    runtime.unlink()
+                elif damage == "changed":
+                    _ = runtime.write_bytes(original + b"changed")
+                else:
+                    runtime.unlink()
+                    runtime.symlink_to(protected)
+                output = io.StringIO()
+                with (
+                    patch.dict(os.environ, {"HOME": str(self.home)}),
+                    patch.object(
+                        release, "HttpReleaseSource", side_effect=AssertionError("no network")
+                    ),
+                    contextlib.redirect_stdout(output),
+                ):
+                    self.assertEqual(1, install.main(["--local-artifact", str(local), "--json"]))
+                self.assertEqual("ARTIFACT_INVALID", json.loads(output.getvalue())["reason"])
+                self.assertEqual(b"keep installed state", protected.read_bytes())
+                self.assertEqual(b"foreign launcher", command.read_bytes())
+                self.assertFalse((root / "recovery").exists())
+                _ = record.write_bytes(self.raw)
+                runtime.unlink(missing_ok=True)
+                _ = runtime.write_bytes(original)
 
     def test_product_guidance_refresh_retains_selection_and_reports_pending_repair(self) -> None:
         installed = activation.activate(self.root, self.home, self.admitted())

@@ -15,6 +15,7 @@ internal enum class BuildSelectionFailure {
     CATALOG_UNAVAILABLE,
     ARTIFACT_INVALID,
     INSTALLER_CONTRACT_UNSUPPORTED,
+    LOCAL_ARTIFACT_REQUIRED,
 }
 
 internal sealed interface SelectionAdmission<out Value> {

@@ -7,7 +7,7 @@ import io
 import json
 import tarfile
 import zipfile
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
@@ -48,13 +48,10 @@ def runtime_fixture(
     executable.chmod(0o500)
     link = executable.with_name("idea-link")
     link.symlink_to("idea")
-    plugins = root / "state/home/.local/share/JetBrains/Kast/plugins"
+    plugins = root / "components/plugins"
     plugin = plugins / "kast-ide-hosted/lib/kast-ide-hosted.jar"
     plugin.parent.mkdir(parents=True)
     _ = plugin.write_bytes(host)
-    selection = root / "state/home/.local/share/kast/installation/config/selected-ide.json"
-    selection.parent.mkdir(parents=True)
-    _ = selection.write_text(json.dumps(asdict(Selection(PluginTarget(str(plugins))))))
     support: Path | None = None
     if target.is_linux:
         support = tmp_path / "linux-support"
@@ -150,15 +147,3 @@ def test_host_change_reuses_exact_base_and_composes_owned_bytes(
         assert not (directory / "rejected").exists()
     assert bases[0] == bases[1]
     assert components[0] != components[1]
-
-
-@dataclass(frozen=True)
-class PluginTarget:
-    root: str
-    type: str = "RECORDED"
-
-
-@dataclass(frozen=True)
-class Selection:
-    hostPluginTarget: PluginTarget
-    type: str = "resolved"

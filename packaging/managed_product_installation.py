@@ -256,7 +256,7 @@ def reference_at(control: Path, root: Path) -> product.ProductReference:
     if not isinstance(reference, product.ProductReference):
         raise ValueError("product reference")
     record = install.read_record(control / "share/kast/build-record.json")
-    parsed = release.decode_product_record(record)
+    parsed = release.decode_installed_product_record(record)
     if isinstance(parsed, release.Failure):
         raise ValueError("product record")
     selected = release.ProductSelection(

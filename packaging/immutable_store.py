@@ -263,7 +263,7 @@ def original(raw: bytes, record: bytes, qualification: bytes, manifest: bytes) -
         sha(item["recordSha256"]),
         sha(item["manifestSha256"]),
     )
-    parsed = release.decode_product_record(record)
+    parsed = release.decode_installed_product_record(record)
     if isinstance(parsed, release.Failure) or digest(record) != selected.recordSha256:
         raise ValueError("original build record")
     facts = next(entry for entry in parsed.targets if entry.target == target)
@@ -509,7 +509,7 @@ def reset_preflight(
         or not 0 < len(values) <= 2
     ):
         raise ValueError("immutable reset journal binding")
-    parsed = release.decode_product_record(
+    parsed = release.decode_installed_product_record(
         install.read_record(control / "share/kast/build-record.json")
     )
     if isinstance(parsed, release.Failure):
@@ -836,7 +836,7 @@ def publication_prefix(
             return
     # A split runtime archive omits the vendor files. Its original build record
     # binds the separate base archive; never substitute an inferred base directory.
-    parsed = release.decode_product_record(selected.record)
+    parsed = release.decode_installed_product_record(selected.record)
     assert not isinstance(parsed, release.Failure)
     facts = next(item for item in parsed.targets if item.target == selected.provenance.target)
     if selected.provenance.kind != "RUNTIME" or facts.runtimeBase is None:
@@ -915,7 +915,7 @@ def inventory(root: Path, selected: Evidence) -> tuple[RuntimeFile | RuntimeLink
     seal = selected.provenance
     result = list(selected.files)
     result.extend(regular(name, raw) for name, raw in metadata(root, selected).items())
-    parsed = release.decode_product_record(selected.record)
+    parsed = release.decode_installed_product_record(selected.record)
     assert not isinstance(parsed, release.Failure)
     facts = next(item for item in parsed.targets if item.target == seal.target)
     asset = facts.runtime if seal.kind == "RUNTIME" else facts.runtimeBase
@@ -934,7 +934,7 @@ def metadata(root: Path, selected: Evidence) -> dict[str, bytes]:
         "provenance/provenance.json": install.encoded(seal),
     }
     if seal.kind == "RUNTIME":
-        parsed = release.decode_product_record(selected.record)
+        parsed = release.decode_installed_product_record(selected.record)
         assert not isinstance(parsed, release.Failure)
         manifest = product.runtime_manifest(
             selected.manifest, parsed.version, HostPlatform(seal.target)

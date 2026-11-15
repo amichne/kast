@@ -311,10 +311,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
+generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T03:03:20.161Z
+    at: 2026-11-15T20:10:47.711Z
 ---
 
 # Runtime and process hosts
@@ -361,9 +361,8 @@ Installed service admission uses the existing explicitly owned Java candidate wh
 
 Planning stores immutable live plans; applying and recovering require their exact canonical identity and current native admission. Installation and apply create no broker keys or replacement trust mechanism. Read [request dispatch](../flows/request-dispatch.md) and [change lifecycle](../flows/change-lifecycle.md) for the complete boundaries.
 
-The [installed knowledge contract](../contracts/installed-knowledge.md) describes
-`kast knowledge`, its isolated PSI extraction, verified module ownership and
-scoped guide resources staged with the control product.
+The [repository knowledge explanation](../knowledge/installed-projection-and-retrieval.md) separates retained citation and module-report evidence from live workspace authority.
+The [retired installed knowledge contract](../contracts/installed-knowledge.md) is not a current product retrieval interface.
 
 HostedSemanticServices projects the context’s admitted time allowance into query and diagnostic-scope budgets; configured capacities remain separately available. Schema-4 receipts keep the effective allowance, remaining host time, completion reserve and finite admission outcome.
 

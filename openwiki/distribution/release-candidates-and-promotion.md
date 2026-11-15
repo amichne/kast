@@ -52,6 +52,8 @@ sources:
     resource: repo://distribution/release/component_release.py
   - id: openwiki-source-8ac360e10edcbd99c75fa338
     resource: repo://distribution/release/component-release.schema.json
+  - id: openwiki-source-b58c179514e38986fca17024
+    resource: repo://packaging/local_product_install.py
   - id: openwiki-source-eb518d021af0c0c5a9bcc85c
     resource: repo://packaging/managed_product.py
   - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
@@ -62,10 +64,10 @@ sources:
     resource: repo://packaging/product_lifecycle_probe.py
   - id: openwiki-source-fbdf7de26cc8b3b5b59b53a6
     resource: repo://packaging/test_product_acceptance.py
-generated: { by: "amp", at: "2026-11-13T19:40:08.615Z" }
+generated: { by: "amp", at: "2026-11-15T19:32:41.514Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-13T21:54:15.364Z
+    at: 2026-11-15T23:15:42.491Z
 ---
 
 # Release candidates and promotion
@@ -160,10 +162,14 @@ Conflicting identity, unproven ancestry, changed assets, and exhausted contentio
 An older main revision remains a selector only while it appears in this bounded discovery window.
 
 The management command captures one admitted selection before the installer downloads artifacts.
-`managed_release.py` rechecks the selected build-record digest and complete two-target record.
+For published products, `managed_release.py` rechecks the selected build-record digest and complete two-target schema 2 or 3 record.
 `managed_product.py` admits the target's exact archive bytes, native receipt, composed inventory, and component compatibility before effects.
 Legacy main component-pair selections reject. Stable selections require an exact complete-product mapping.
 It does not rerun latest selection after capture.
+
+Local schema 4 records use `LOCAL` provenance and one supported target, not CI run identities or a second platform.
+Installed admission can retain those records, but published decoding and the CI target-record join reject them.
+Local build export therefore grants no published-product or detached installed-acceptance qualification.
 
 ## Proof limits
 

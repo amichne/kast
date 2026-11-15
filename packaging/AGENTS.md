@@ -9,7 +9,6 @@ source_revision: 85d30d515a1d777c5a83781f40813e32e69fa2e6
 code_sources:
   - path: packaging/test_composition_platform.py
   - path: packaging/composed_bundle.py
-  - path: packaging/isolated_runtime.py
   - path: packaging/test_composition_bundle.py
   - path: packaging/composition_platform.py
   - path: packaging/composed_host.py
@@ -19,8 +18,10 @@ code_sources:
   - path: packaging/pyproject.toml
   - path: packaging/generate-public-query.py
   - path: packaging/host-installation.py
-  - path: packaging/install-checkout.sh
-  - path: packaging/install-local.sh
+  - path: packaging/generate_bootstrap.py
+  - path: packaging/local_product_install.py
+  - path: packaging/mcp_dependency_artifact.py
+  - path: packaging/mcp_environment.py
   - path: packaging/installation-lifecycle.py
   - path: packaging/installation-recovery.py
   - path: packaging/run-installed-product.py
@@ -48,20 +49,21 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 
 ## Key Files
 
-- [install-checkout.sh](install-checkout.sh) - checkout installation with selected IDEA JBR admission.
-- [install-local.sh](install-local.sh) - staged-product installation.
+- [generate_bootstrap.py](generate_bootstrap.py) - canonical bootstrap and retained support membership.
+- [local_product_install.py](local_product_install.py) - contributor assembly, qualification, and canonical product activation.
 - [host-installation.py](host-installation.py) - Host plugin installation and receipts.
-- [managed_headless.py](managed_headless.py) - archive assembly and the shared private installer.
+- [managed_headless.py](managed_headless.py) - archive assembly without product installation.
 - [composed_host.py](composed_host.py) - module-based assembly from a pinned donor inventory.
-- [composed_bundle.py](composed_bundle.py) - authenticated portable setup bundles and installer dispatch.
-- [isolated_runtime.py](isolated_runtime.py) - fixed root admission and the private task environment.
+- [composed_bundle.py](composed_bundle.py) - authenticated product input archives.
+- [mcp_dependency_artifact.py](mcp_dependency_artifact.py) - producer-only target-specific dependency materialization.
+- [mcp_environment.py](mcp_environment.py) - admitted dependency copying and isolated MCP preparation without a package manager.
 - [composition_platform.py](composition_platform.py) - pinned macOS ARM64 and Linux x86-64 donors.
 - [composition_recipe.py](composition_recipe.py) - pinned roots and plugin provider candidates.
 - [composed_host_probe.py](composed_host_probe.py) - native callers, Java references, and result rejection.
 - [installation-lifecycle.py](installation-lifecycle.py) - selected-installation retirement and removal.
 - [installation-recovery.py](installation-recovery.py) - Control recovery and update sealing.
 - [generate-public-query.py](generate-public-query.py) - Kotlin and harness projections from the authored public schema.
-- [run-installed-product.py](run-installed-product.py) - archive and installer smoke in an owned temporary root.
+- [run-installed-product.py](run-installed-product.py) - complete-product native lifecycle acceptance with explicit qualified inputs.
 - [run-portable-tests.py](run-portable-tests.py) - the offline packaging test inventory.
 
 ## Subdirectories
@@ -78,20 +80,20 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - The portable runner selects `test-*.py`. The project command also selects `test_composition_*.py`.
 - Use the [isolated runtime instructions](../docs/public/reference/installation.mdx#isolated-runtime) for archive installation.
 - Read the [composition review](../docs/reviews/composed-analysis-host.md) for donor inputs, assembly commands, and native evidence limits.
-- The Gradle task `installedProductTest` exercises the assembled product.
+- The Gradle task `installedProductTest` needs complete candidate and different qualified baseline products, pinned interpreter inputs, and new evidence paths.
 - Native reset scripts need the disposable installation setup stated in their own arguments and documentation.
 - [test-host-installation.py](test-host-installation.py) - Host target and receipt protection.
-- [test-installer-entrypoint.py](test-installer-entrypoint.py) - published-channel selection and installer ingress.
+- [test-installer-entrypoint.py](test-installer-entrypoint.py) - canonical bootstrap ingress and complete-product acceptance input rejection.
 - For hook envelopes and workspace preparation commands, run `python3 packaging/test-agent-onboarding.py`.
 - These cases examine configured commands and host envelopes. They do not establish live IntelliJ preparation.
 
 ## Navigation Hints
 
-- `install_prepared_runtime` owns the private installation, Host bootstrap, and launcher.
-- `composed_bundle.py` packs `setup-kast.pyz` with the native runtime and matching Kast components.
+- `prepare_runtime` stages the Host bootstrap and admitted component bytes without activating Control.
+- `composed_bundle.py` packs the canonical generated `install.sh` with runtime inputs and matching Kast components.
 - The installer leaves the Host stopped and the private profile without a workspace grant.
-- `kast-task WORKSPACE -- COMMAND [ARGS...]` creates or reuses trust for that exact workspace.
-- Foreign, malformed, multiple, or linked grants reject before the task starts.
+- The first explicit semantic request uses native workspace admission for exact-root trust.
+- The standalone Python installer, `kast-task` launcher, desktop shell installers, and Gradle `installLocal` task are retired.
 - The native probe uses a disposable fixture and a fresh evidence directory.
 - Add `composed-host-fixture-overlay` to the fixture copy. Keep the original callback fixture because the probe uses exact source paths.
 - Assembly receipts report artifact identity. Native probe results cover their stated cases.

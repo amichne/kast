@@ -2538,6 +2538,11 @@ def main(
     _ = group.add_argument("--version")
     _ = group.add_argument("--commit")
     _ = group.add_argument("--resolved-selection", type=Path)
+    _ = group.add_argument(
+        "--local-artifact",
+        type=Path,
+        help="Complete local product directory (build-record.json and payload/)",
+    )
     _ = parser.add_argument("--idea-home")
     _ = parser.add_argument("--install-root", type=Path)
     _ = parser.add_argument("--dry-run", action="store_true")
@@ -2555,6 +2560,11 @@ def main(
     root = home / ".local/share/kast"
     outcome: contract.Outcome | SelectionRejected | ProductInstalled | ProductPlanned
     try:
+        provider = (
+            release.LocalReleaseSource(args.local_artifact)
+            if args.local_artifact is not None
+            else source
+        )
         if args.install_root is not None and args.install_root != root:
             outcome = contract.Rejected(
                 contract.Stage.PREPARATION, contract.Failure.OWNERSHIP_UNPROVEN
@@ -2584,11 +2594,13 @@ def main(
                     else resume(root, home, runner)
                 )
             else:
-                outcome = recover_recorded(root, home, args.dry_run, source, state, runner)
+                outcome = recover_recorded(root, home, args.dry_run, provider, state, runner)
         else:
-            provider = source if source is not None else release.HttpReleaseSource()
+            provider = provider if provider is not None else release.HttpReleaseSource()
             selection = (
-                release.decode_selection(read_record(args.resolved_selection))
+                provider.selection()
+                if isinstance(provider, release.LocalReleaseSource)
+                else release.decode_selection(read_record(args.resolved_selection))
                 if args.resolved_selection is not None
                 else release.resolve_selection(args.channel, args.version, args.commit, provider)
             )

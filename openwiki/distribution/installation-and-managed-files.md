@@ -5,8 +5,14 @@ description: "Explains Control and Host installation ownership, managed receipts
 tags: [kast, distribution]
 
 sources:
+  - id: openwiki-source-e61ce41a823368fa4e25eb84
+    resource: repo://.github/scripts/release/product_producer.py
   - id: openwiki-source-a387d9d545afff426d34a10a
     resource: repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
+  - id: openwiki-source-80ac513286a95222cf8ee427
+    resource: repo://build-logic/src/test/kotlin/VerifyControlDistributionTaskTest.kt
+  - id: openwiki-source-2a9daaac1604f238ef4c63fb
+    resource: repo://build.gradle.kts
   - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
     resource: repo://cli/build.gradle.kts
   - id: openwiki-source-a3af3d4f4fd16f9ce429f3c5
@@ -25,8 +31,10 @@ sources:
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
-  - id: openwiki-source-03ffc32a0ca502ab67c54b25
-    resource: repo://install.sh
+  - id: openwiki-source-74a7088da9d18da2237d9186
+    resource: repo://packaging/bootstrap.sh.in
+  - id: openwiki-source-f499e8784ffe1f993e94d42d
+    resource: repo://packaging/generate_bootstrap.py
   - id: openwiki-source-069607880d661efb9c5fbc84
     resource: repo://packaging/host_directory_exchange.py
   - id: openwiki-source-6fea3b3b86300de08664c4ee
@@ -35,6 +43,8 @@ sources:
     resource: repo://packaging/immutable_store.py
   - id: openwiki-source-fd4b4980f80cb901046d8f0e
     resource: repo://packaging/installation-lifecycle.py
+  - id: openwiki-source-b58c179514e38986fca17024
+    resource: repo://packaging/local_product_install.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
   - id: openwiki-source-7f5792fd36f508c6577b3562
@@ -55,14 +65,18 @@ sources:
     resource: repo://packaging/test-install-checkout.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
+  - id: openwiki-source-2cd23a68d0d65408a59d5b1a
+    resource: repo://packaging/test-managed-bootstrap.py
   - id: openwiki-source-b3ca2d66028c874ac7b10e77
     resource: repo://packaging/test-managed-build-record.py
   - id: openwiki-source-988817829b83f3eaab1d41af
     resource: repo://packaging/test-managed-installation.py
-generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
+  - id: openwiki-source-0bad4698830200151d28e110
+    resource: repo://packaging/test-managed-release.py
+generated: { by: "amp", at: "2026-11-15T23:15:42.491Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T04:18:31.956Z
+    at: 2026-11-15T23:15:42.491Z
 ---
 
 
@@ -71,12 +85,38 @@ verified:
 
 ## Select the product before effects
 
-The public installer selects one complete product from stable or preview release evidence.
-The product record binds both supported targets to exact component and native qualification identities.
+The public installer selects one complete product from stable, preview, or explicit local artifact evidence.
+Published schema 2 and 3 product records bind both supported targets to exact component and native qualification identities.
+Local schema 4 records instead bind one supported target with `LOCAL` producer evidence.
+They invent neither CI runs nor evidence for a second platform that was never built.
+Published-record admission rejects local records; installed-record admission retains both forms.
 Selection is independent of the checkout and installed version.
 A retained legacy component pair cannot satisfy complete-product admission.
 Installed Control launchers need no user JVM, IDEA installation, Python, or uv.
 Checkout assembly remains a separate developer boundary, not a product prerequisite.
+
+`install.sh --local-artifact DIRECTORY` reads `build-record.json` and the selected target's recorded files under `payload/`.
+`LocalReleaseSource` creates a pinned product selection and supplies local bytes to the same `download_composition` and activation owners.
+Missing, changed, or linked product files reject without product HTTP fallback.
+A captured `--resolved-selection` that names a local record without `LocalReleaseSource` rejects with `LOCAL_ARTIFACT_REQUIRED` before any release read.
+This selects the canonical global installation, not a separate contributor root.
+Local records require `PinnedBuild`, no public version, and the matching developer tag and source revision.
+The bootstrap still downloads pinned private Python and `defusedxml`; local product selection does not make setup offline.
+The local selector cannot combine with channel, version, or commit selectors.
+
+`python3 packaging/local_product_install.py build --source CLEAN_CHECKOUT --output DIRECTORY` builds an export without installing globally.
+The current builder supports macOS ARM64 and requires a clean committed source checkout.
+It shares actual assembly and native component qualification with contributor installation, then calls `product_producer.seal_target` to bind the resulting artifacts and evidence.
+The export contains `build-record.json`, recorded files under `payload/`, and qualification evidence and logs under `evidence/`.
+Its receipt reports `LOCAL_PRODUCT_BUILT` and `releaseQualification: NOT_ESTABLISHED`.
+Use the generated `install.sh --local-artifact DIRECTORY` separately for canonical installation.
+These source contracts do not establish that a particular native build or global installation has succeeded.
+
+`generate_bootstrap.py` owns the embedded engine, retained lifecycle support, and fixed data inventory.
+Gradle stages its generated support projection under `share/kast`, including the canonical root `install.sh`.
+The former `install-legacy.sh`, `install-local.sh`, and `install-checkout.sh` entry points are removed.
+The retained `install-candidate.sh` is a private lifecycle bridge, not another public installer.
+The separate contributor `install` command uses `local_product_install.py` and the existing product activation owner under an isolated root.
 
 Control owns the management executable, coordinator, adapters, private launchers, and installed configuration.
 Host owns the IDEA plugin and semantic runtime.
@@ -100,8 +140,17 @@ The managed root contains one ordinary `installation` directory.
 The `cli` module produces one native Control executable at `share/kast/libexec/kast-management`.
 Thin launchers select management, query, MCP, tool RPC, service, daemon, Codex, or installer entry points in that executable.
 The Control archive contains no `lib` directory, JARs, or class files.
-The producer guard rejects a second native image and compares the canonical executable with its qualified producer.
-It also rejects retired task payloads.
+The producer guard rejects a second native executable and compares the canonical executable with its qualified producer.
+Only under `share/kast/mcp-dependencies/site-packages` can matching-target library headers be excluded from the executable count.
+These headers must identify Mach-O `MH_DYLIB` or `MH_BUNDLE` types (6 or 8), or ELF `ET_DYN` with a zero entry point.
+The Python `inspect_control` admission applies the same narrow directory boundary.
+It reads 32 header bytes and requires macOS ARM64 or Linux x86-64 library identity for the selected target.
+Short headers do not qualify for this exception.
+An executable-shaped `.so`, a foreign-target library, or a library outside that directory remains a rejection.
+The verifier logs the bounded executable count before enforcing exactly one Control executable.
+Header regression tests exercise platform formats; they do not establish native Linux execution or complete-product qualification.
+It also rejects retired task payloads and `share/kast/knowledge`, including its descendants.
+The installed knowledge generator, extraction path, and retrieval implementation are retired; repository citation checks and module reports remain separate.
 Published-release admission keeps support for the historical pair of native executables when the new layout marker is absent.
 `ManagedInstallationOwnedTree` admits exact destructive-recovery trees under the physical selected installation.
 Its admission rejects aliases and symlink substitutions before deletion.
@@ -222,8 +271,8 @@ Read native lifecycle evidence before a claim about loaded components or workspa
 ## Source owners
 
 - [install.sh](../../install.sh)
-- [install-checkout.sh](../../packaging/install-checkout.sh)
-- [install-local.sh](../../packaging/install-local.sh)
+- [generate_bootstrap.py](../../packaging/generate_bootstrap.py)
+- [local_product_install.py](../../packaging/local_product_install.py)
 - [host-installation.py](../../packaging/host-installation.py)
 - [managed_product_installation.py](../../packaging/managed_product_installation.py)
 - [managed_installation.py](../../packaging/managed_installation.py)

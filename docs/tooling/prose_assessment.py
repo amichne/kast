@@ -249,7 +249,17 @@ def plan(
                         "--console=plain",
                     )
                 ),
-                Command((sys.executable, "packaging/test-installer-entrypoint.py")),
+                Command(
+                    (
+                        "uv",
+                        "run",
+                        "--locked",
+                        "--project",
+                        "packaging",
+                        "python",
+                        "packaging/test-installer-entrypoint.py",
+                    )
+                ),
             ),
         ),
         Step(

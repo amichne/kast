@@ -1,51 +1,16 @@
-"""Check assembled artifacts and stage the sole installation in an owned HOME."""
-from collections.abc import Iterator
-from contextlib import contextmanager
-from dataclasses import asdict, dataclass
-from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-import hashlib
+"""Run complete-product native acceptance with explicit qualified inputs.
+
+The lifecycle probe owns disposable HOME admission, production activation through
+an exact local ReleaseSource, upgrade from a different qualified baseline, native
+queries, removal and foreign-state assertions. Missing artifacts reject; a staged
+Control/desktop Host pair is not a complete-product acceptance input.
+"""
+
 import io
 import json
-import os
-from pathlib import Path
-import re
-import shlex
-import shutil
-import sqlite3
-import subprocess
-import tarfile
-from threading import Thread
 import zipfile
-import xml.etree.ElementTree as ET
-
-from installer_fixture import InstallerFixture, FixtureFailure, FixtureRejected, admitted_tools
-
-
-@dataclass(frozen=True)
-class IdeaLaunch:
-    os: str = "macOS"
-    arch: str = "aarch64"
-    launcherPath: str = "../MacOS/idea"
-
-
-@dataclass(frozen=True)
-class IdeaProductInfo:
-    buildNumber: str
-    dataDirectoryName: str = "IntelliJIdea2026.2"
-    version: str = "2026.2.3"
-    launch: tuple[IdeaLaunch, ...] = (IdeaLaunch(),)
-
-
-@dataclass(frozen=True)
-class AdmittedArtifactPair:
-    control_version: str
-    host_version: str
-    control: Path
-    host: Path
-    host_release_record: Path
-    host_installer: Path
-    idea_release_line: str
+from pathlib import Path
+from xml.etree import ElementTree as ET
 
 
 def require(condition: bool, detail: str) -> None:
@@ -53,49 +18,19 @@ def require(condition: bool, detail: str) -> None:
         raise AssertionError("installed-product: " + detail)
 
 
-def verify_artifacts(product: Path, control: Path, plugin: Path, host_record: Path) -> AdmittedArtifactPair:
-    metadata = json.loads((product / "share/kast/ide-host.json").read_text())
-    require(set(metadata) == {"schemaVersion", "productVersion", "execution", "ideaBuild",
-                             "kotlinPluginBuild", "requiredHostedContract"}, "metadata fields")
-    require(metadata["schemaVersion"] == 2 and metadata["execution"] == "existing_ide", "execution metadata")
-    require(metadata["kotlinPluginBuild"] == metadata["ideaBuild"] + "-IJ", "plugin build")
-    control_match = re.fullmatch(r"kast-control-v(\d+\.\d+\.\d+)-macos-aarch64\.tar\.gz", control.name)
-    require(control_match is not None and metadata["productVersion"] == control_match.group(1), "control version")
-    record = json.loads(host_record.read_text())
-    require(set(record) == {"type", "hostedPluginVersion", "artifact", "providedHostedContract",
-                            "supportedIntellijReleaseLine", "sourceRevision"}, "host release fields")
-    require(record["type"] == "HOST_RELEASE", "host release discriminator")
-    host_match = re.fullmatch(r"kast-ide-hosted-v(\d+\.\d+\.\d+)-idea-(\d{3})\.zip", plugin.name)
-    require(host_match is not None and record["hostedPluginVersion"] == host_match.group(1)
-            and record["supportedIntellijReleaseLine"] == host_match.group(2), "host version and platform")
-    record_suffix = "-idea-263" if host_match.group(2) == "263" else ""
-    require(host_record.name == f"kast-host-release-v{record['hostedPluginVersion']}{record_suffix}.json", "host record identity")
-    artifact = record["artifact"]
-    require(set(artifact) == {"fileName", "sha256", "bytes"}
-            and artifact["fileName"] == plugin.name and artifact["bytes"] == plugin.stat().st_size, "plugin identity")
-    require(artifact["sha256"] == "sha256:" + hashlib.sha256(plugin.read_bytes()).hexdigest(), "plugin digest")
-    require(record["providedHostedContract"] == metadata["requiredHostedContract"], "fresh pair contract")
-    for name in ("operation-registry.json", "wire-schema.json", "ide-host.json", "knowledge/manifest.json"):
-        require((product / "share/kast" / name).is_file(), "missing resource " + name)
-    verify_plugin_archive(plugin, record["hostedPluginVersion"], record["providedHostedContract"], host_match.group(2))
-    with tarfile.open(control) as archive:
-        for launcher in ("bin/kast", "bin/kast-codex", "share/kast/libexec/kast-daemon",
-                         "share/kast/libexec/kast-service", "share/kast/libexec/kast-management"):
-            member = archive.getmember(launcher)
-            require(member.isfile() and member.mode & 0o111 == 0o111, "launcher " + launcher)
-        require(archive.getmember("share/kast/knowledge/manifest.json").isfile(), "knowledge manifest")
-        require(archive.getmember("share/kast/reset-fence-v1").isfile(), "reset lifecycle marker")
-        require(archive.extractfile("share/kast/public-reset-v1").read() == b"1\n", "public reset capability")
-    helper = product / "share/kast/host-installation.py"
-    require(helper.is_file() and not helper.is_symlink(), "host installer")
-    return AdmittedArtifactPair(control_match.group(1), host_match.group(1), control, plugin, host_record, helper,
-                                host_match.group(2))
-
-
-def verify_plugin_archive(plugin: Path, host_version: str, provided_contract: dict, idea_release_line: str = "262") -> None:
+def verify_plugin_archive(
+    plugin: Path,
+    host_version: str,
+    provided_contract: dict[str, object],
+    idea_release_line: str = "262",
+) -> None:
+    """Keep independent component artifact checks separate from native acceptance."""
     with zipfile.ZipFile(plugin) as archive:
         names = archive.namelist()
-        require(bool(names) and all(name.startswith("kast-ide-hosted/") for name in names), "plugin layout")
+        require(
+            bool(names) and all(name.startswith("kast-ide-hosted/") for name in names),
+            "plugin layout",
+        )
         require(len(names) == len(set(names)), "duplicate plugin entries")
         plugin_jar = "kast-ide-hosted/lib/kast-ide-hosted.jar"
         require(plugin_jar in names, "plugin jar")
@@ -103,232 +38,25 @@ def verify_plugin_archive(plugin: Path, host_version: str, provided_contract: di
             descriptor = ET.fromstring(jar.read("META-INF/plugin.xml"))
             require(descriptor.findtext("version") == host_version, "embedded host version")
             compatibility = descriptor.find("idea-version")
-            require(compatibility is not None and compatibility.get("since-build") == idea_release_line
-                    and compatibility.get("until-build") == idea_release_line + ".*", "embedded host release line")
-            require(json.loads(jar.read("hosted-contract.json")) == provided_contract,
-                    "embedded host contract")
+            require(
+                compatibility is not None
+                and compatibility.get("since-build") == idea_release_line
+                and compatibility.get("until-build") == idea_release_line + ".*",
+                "embedded host release line",
+            )
+            require(
+                json.loads(jar.read("hosted-contract.json")) == provided_contract,
+                "embedded host contract",
+            )
 
 
-def verify_launcher(fixture: InstallerFixture, product: Path, pair: AdmittedArtifactPair) -> None:
-    launcher = product / "bin/kast"
-    require(launcher.is_file() and os.access(launcher, os.X_OK), "launcher absent")
-    environment = dict(fixture.environment)
-    environment.pop("JAVA_TOOL_OPTIONS", None)
-    environment.pop("_JAVA_OPTIONS", None)
-    environment["JAVA_OPTS"] = f'-Duser.home="{fixture.root / "home"}"'
-    version = subprocess.run([str(launcher), "--version"], cwd=fixture.root / "workspace",
-                             env=environment, capture_output=True, text=True, timeout=60)
-    require(version.returncode == 0 and version.stdout.startswith(f"kast {pair.control_version} ")
-            and version.stdout.strip().endswith("(IntelliJ plugin)"), "launcher version")
-    rejected = subprocess.run([str(launcher), "tool"], cwd=fixture.root / "workspace",
-                              env=environment, capture_output=True, text=True, timeout=60)
-    require(rejected.returncode != 0, "unsupported command accepted")
-    require(json.loads(rejected.stderr.splitlines()[-1]) == {
-        "status": "rejected", "boundary": "usage", "reason": "unsupported-private-installer-command"
-    }, "unsupported command result")
+def main() -> int:
+    # Reuse one native acceptance owner, including its required-input parser and
+    # receipt publication rule. Never convert absent prerequisites into a skip.
+    from product_lifecycle_probe import main as lifecycle_main
 
-
-@contextmanager
-def candidate_asset_server(root: Path) -> Iterator[str]:
-    handler = partial(SimpleHTTPRequestHandler, directory=str(root))
-    with ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
-        worker = Thread(target=server.serve_forever, daemon=True)
-        worker.start()
-        try:
-            yield f"http://127.0.0.1:{server.server_port}"
-        finally:
-            server.shutdown()
-            worker.join()
-
-
-def verify_assembled_installer(fixture: InstallerFixture, pair: AdmittedArtifactPair, product: Path) -> None:
-    if "java" not in fixture.tools:
-        raise FixtureRejected(FixtureFailure.INVALID_INPUT)
-    asset_root = fixture.root / "release-assets"
-    for version, sources in (
-        (pair.control_version, (pair.control,)),
-        (pair.host_version, (pair.host, pair.host_release_record, pair.host_installer)),
-    ):
-        assets = asset_root / f"v{version}"
-        assets.mkdir(parents=True, exist_ok=True)
-        for source in sources:
-            destination = assets / source.name
-            shutil.copyfile(source, destination)
-            checksum = source.with_name(source.name + ".sha256")
-            sidecar = destination.with_name(destination.name + ".sha256")
-            if checksum.is_file():
-                shutil.copyfile(checksum, sidecar)
-            else:
-                digest = hashlib.sha256(destination.read_bytes()).hexdigest()
-                sidecar.write_text(f"{digest}  {source.name}\n")
-
-    product_info = (
-        IdeaProductInfo("263.1234.99", "IntelliJIdea2026.3", "2026.3")
-        if pair.idea_release_line == "263" else IdeaProductInfo("262.1234.99")
-    )
-    idea = fixture.root / "IntelliJ IDEA.app/Contents"
-    for relative in ("Resources", "MacOS", "plugins/Kotlin", "jbr/Contents/Home/bin"):
-        (idea / relative).mkdir(parents=True)
-    (idea / "Resources/build.txt").write_text("IU-" + product_info.buildNumber + "\n")
-    (idea / "Resources/product-info.json").write_text(json.dumps(asdict(product_info)))
-    (idea / "jbr/Contents/Home/release").write_text('JAVA_VERSION="25.0.2"\nOS_ARCH="aarch64"\n')
-    java = idea / "jbr/Contents/Home/bin/java"
-    java.write_text("#!/bin/sh\nexec " + shlex.quote(str(fixture.tools["java"])) + ' "$@"\n')
-    java.chmod(0o755)
-    launcher = idea / "MacOS/idea"
-    launcher.write_text("#!/bin/sh\nexit 1\n")
-    launcher.chmod(0o755)
-
-    environment = dict(fixture.environment)
-    installation = Path(environment["HOME"]) / ".local/share/kast"
-    environment.update({
-        "KAST_VERSION": pair.control_version,
-        "KAST_HOST_VERSION": pair.host_version,
-        "KAST_INSTALL_PROFILE": "persistent",
-        "NO_COLOR": "1",
-    })
-    with candidate_asset_server(asset_root) as origin:
-        result = subprocess.run(
-            [str(fixture.tools["bash"]), "-c",
-             Path(__file__).with_name("install-legacy.sh").read_text(), "--",
-             "--idea-home", str(idea), "--stage-only", "--skip-codex-mcp", "--verbose"],
-            env=environment | {"KAST_RELEASE_BASE_URL": origin},
-            cwd=fixture.root / "workspace", capture_output=True, text=True, timeout=120,
-        )
-    reports = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
-    receipt_file = installation / "management.json"
-    require(receipt_file.is_file() and not receipt_file.is_symlink(), "management receipt absent:\n" + result.stderr[-4096:])
-    receipt = json.loads(receipt_file.read_text())
-    publication = Path(environment["XDG_CONFIG_HOME"]) / "kast"
-    require(result.returncode == 0 and (installation / "installation").is_dir()
-            and not (installation / "installation").is_symlink()
-            and not (installation / "current").exists()
-            and not (installation / "versions").exists()
-            and not (installation / "recovery/replacement").exists()
-            and publication.is_file() and not publication.is_symlink()
-            and receipt.get("schemaVersion") == 2
-            and receipt.get("installationRoot") == str(installation)
-            and receipt.get("executable") == str(publication)
-            and receipt.get("executableSha256") == hashlib.sha256(publication.read_bytes()).hexdigest()
-            and not (Path(environment["HOME"]) / "Library/Application Support/JetBrains" / product_info.dataDirectoryName / "plugins/kast-ide-hosted").exists()
-            and any(report.get("operation") == "installation.install"
-                    and report.get("semanticVersion") == pair.control_version
-                    and report.get("installation") == str(installation / "installation")
-                    and report.get("activation") == {"type": "not-requested"}
-                    and report.get("status") == "installed" for report in reports),
-            "assembled installer rejected release:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
-    verify_installed_query(fixture, publication, environment)
-    verify_installed_guidance(fixture, pair.control_version, installation, publication, environment)
-    verify_native_uninstall(fixture, pair, product, installation, publication, environment, product_info)
-
-
-def verify_installed_query(fixture: InstallerFixture, publication: Path, environment: dict[str, str]) -> None:
-    """The installed public route must admit its real query launcher before rejecting an empty workspace."""
-    result = subprocess.run([str(publication), "query", "--name", "OrderService"],
-                            cwd=fixture.root / "workspace", env={**environment, "KAST_OUTPUT_TOON": "0"},
-                            capture_output=True, text=True, timeout=60)
-    require(result.returncode == 3 and json.loads(result.stdout) == {
-        "type": "rejected", "failure": "OUT_OF_SCOPE"
-    }, "installed query startup failed:\n" + result.stderr[-4096:] + "\n" + result.stdout[-4096:])
-
-
-def verify_installed_guidance(fixture: InstallerFixture, version: str, root: Path,
-                              publication: Path, environment: dict[str, str]) -> None:
-    home = Path(environment["HOME"])
-    pi = home / "private-pi"
-    env = {**environment, "KAST_INSTALL_ROOT": str(root), "PI_CODING_AGENT_DIR": str(pi),
-           "KAST_OUTPUT_TOON": "0"}
-    first = subprocess.run([str(publication), "install", "pi", "--json"], env=env,
-                           cwd=fixture.root, capture_output=True, text=True, timeout=60)
-    require(first.returncode == 0, "Pi guidance installation:\n" + first.stderr[-4096:])
-    skill = pi / "skills/kast/SKILL.md"
-    canonical = skill.read_bytes()
-    require(f'\nmetadata:\n  version: "{version}"\n---\n'.encode() in canonical, "installed skill version")
-    sibling = pi / "skills/foreign.md"
-    sibling.write_text("foreign")
-    skill.write_text("stale")
-    (skill.parent / "old.md").write_text("obsolete resource")
-    native = root / "installation/share/kast/libexec/kast-management"
-    env["PI_CODING_AGENT_DIR"] = str(home / "unselected-pi")
-    refresh = subprocess.run([str(native), "--internal-install", "refresh-guidance"], env=env,
-                             cwd=fixture.root, capture_output=True, text=True, timeout=60)
-    require(refresh.returncode == 0, "Pi guidance refresh:\n" + refresh.stderr[-4096:])
-    require(skill.read_bytes() == canonical and not (skill.parent / "old.md").exists()
-            and sibling.read_text() == "foreign" and not (home / "unselected-pi").exists(),
-            "refresh changed bytes outside the recorded slot or kept stale resources")
-    link_target = home / "foreign-target.md"
-    link_target.write_text("protected")
-    (skill.parent / "foreign-link").symlink_to(link_target)
-    rejected = subprocess.run([str(native), "--internal-install", "refresh-guidance"], env=env,
-                              cwd=fixture.root, capture_output=True, text=True, timeout=60)
-    require(rejected.returncode != 0 and "UNSUPPORTED_FILE_KIND" in rejected.stderr
-            and (skill.parent / "foreign-link").is_symlink() and link_target.read_text() == "protected",
-            "refresh followed a link inside the managed skill")
-    (skill.parent / "foreign-link").unlink()
-
-
-def verify_native_uninstall(fixture, pair, product, installation, publication, environment, product_info: IdeaProductInfo):
-    """Real native cleanup; only filesystem and staged Host artifacts inside the owned fixture are used."""
-    plugin_root = Path(environment["HOME"]) / "Library/Application Support/JetBrains" / product_info.dataDirectoryName / "plugins"
-    helper = product / "share/kast/host-installation.py"
-    host = subprocess.run([
-        str(fixture.tools["python3"]), "-I", str(helper), "--archive", str(pair.host),
-        "--sha256", hashlib.sha256(pair.host.read_bytes()).hexdigest(), "--version", pair.host_version,
-        "--idea-build", product_info.buildNumber, "--plugin-root", str(plugin_root),
-        "--release-record", str(pair.host_release_record),
-        "--required-control", str(product / "share/kast/ide-host.json"),
-    ], env=environment, capture_output=True, text=True, timeout=60)
-    require(host.returncode == 0 and (plugin_root / "kast-ide-hosted").is_dir(),
-            "owned Host staging failed:\n" + host.stderr[-4096:])
-    namespace = hashlib.sha256(str(fixture.root / "workspace").encode()).hexdigest()
-    state = Path(environment["HOME"]) / ".kast/state/workspaces" / namespace
-    state.mkdir(parents=True, mode=0o700)
-    repository = Path(__file__).resolve().parent.parent
-    database = state / "mutation.sqlite"
-    # Use the owning schema, without manufacturing mutation, receipt, or recovery success.
-    source_names = ("SqliteLiveChangePlanStore.kt", "SqliteMutationRecoveryDatabase.kt", "SqliteLiveChangeReceiptStore.kt")
-    owner = repository / "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite"
-    statements = [sql for name in source_names
-                  for sql in re.findall(r'"""(CREATE TABLE IF NOT EXISTS .*?)"""', (owner / name).read_text(), re.S)]
-    require(len(statements) == 6, "mutation schema owner changed; fixture requires explicit reconciliation")
-    with sqlite3.connect(database) as connection:
-        for statement in statements:
-            connection.execute(statement)
-    database.chmod(0o600)
-    sentinel = fixture.root / "protected-native-uninstall.txt"
-    sentinel.write_text("protected")
-    uninstall = subprocess.run([str(publication), "uninstall"], cwd=fixture.root / "workspace",
-                               env=environment, capture_output=True, text=True, timeout=90)
-    events = [json.loads(line) for line in uninstall.stderr.splitlines() if line.startswith("{")]
-    require(uninstall.returncode == 0 and not installation.exists() and not publication.exists()
-            and not (plugin_root / "kast-ide-hosted").exists()
-            and not plugin_root.parent.joinpath(".kast-plugin-recovery").exists()
-            and not Path(environment["HOME"]).joinpath(".kast").exists()
-            and sentinel.read_text() == "protected"
-            and {"type": "COMPLETED", "artifact": "USER_STATE"} in events
-            and {"type": "COMPLETED", "artifact": "HOST_PLUGIN"} in events,
-            "native full uninstall failed:\n" + uninstall.stderr[-4096:] + "\n" + uninstall.stdout[-4096:])
-
-
-def main() -> None:
-    paths = {}
-    for key in ("KAST_INSTALLED_PRODUCT", "KAST_CONTROL_ARCHIVE", "KAST_HOSTED_PLUGIN_ARCHIVE", "KAST_HOST_RELEASE_RECORD"):
-        value = os.environ.get(key)
-        if value is None or not Path(value).is_absolute():
-            raise FixtureRejected(FixtureFailure.INVALID_INPUT)
-        paths[key] = Path(value).resolve()
-    if not paths["KAST_INSTALLED_PRODUCT"].is_dir() or not all(
-            paths[key].is_file() for key in ("KAST_CONTROL_ARCHIVE", "KAST_HOSTED_PLUGIN_ARCHIVE", "KAST_HOST_RELEASE_RECORD")):
-        raise FixtureRejected(FixtureFailure.INVALID_INPUT)
-    with InstallerFixture(admitted_tools()) as fixture:
-        product = fixture.stage_product(paths["KAST_INSTALLED_PRODUCT"])
-        pair = verify_artifacts(product, paths["KAST_CONTROL_ARCHIVE"], paths["KAST_HOSTED_PLUGIN_ARCHIVE"],
-                                paths["KAST_HOST_RELEASE_RECORD"])
-        verify_launcher(fixture, product, pair)
-        verify_assembled_installer(fixture, pair, product)
-        fixture.mark_passed()
-    print("installed-product: artifact identity, extracted task tools, persistent staging, and native Host/SQLite/full cleanup passed")
+    return lifecycle_main()
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

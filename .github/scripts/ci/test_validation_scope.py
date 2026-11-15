@@ -501,7 +501,7 @@ class SourceInventoryTest(unittest.TestCase):
             product,
         )
         for step in (
-            "Exercise the assembled Mac product",
+            "Exercise the exact assembled Mac Control executable",
             "Seal tested component candidate identity",
         ):
             with self.subTest(step=step):

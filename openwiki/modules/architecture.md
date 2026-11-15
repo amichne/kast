@@ -67,10 +67,10 @@ sources:
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "pi", at: "2026-11-11T10:38:11.930Z" }
+generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T15:35:00.856Z
+    at: 2026-11-15T20:10:47.711Z
 ---
 
 # Verified module architecture
@@ -152,9 +152,8 @@ and `PublicToolIdentity.kt`; Spotless excludes those files and
 
 Read [runtime and hosts](runtime-hosts.md) for process ownership or [protocol](protocol.md) for operation ownership.
 
-The [installed knowledge contract](../contracts/installed-knowledge.md) describes
-`kast knowledge`, its isolated PSI extraction, verified module ownership and
-scoped guide resources staged with the control product.
+The [repository knowledge explanation](../knowledge/installed-projection-and-retrieval.md) describes the retained citation scanner and verified module report.
+The [retired installed knowledge contract](../contracts/installed-knowledge.md) records the rejected product payload; it is not an installed retrieval interface.
 
 The explicit workspace refresh adapter owns native Gradle model reload and its existing VFS refresh entry points.
 `NativeHostBundleRefreshRoot.submit` separately owns the exact `VfsUtil.markDirty` and `LocalFileSystem.refreshFiles` signatures for managed Host refresh.

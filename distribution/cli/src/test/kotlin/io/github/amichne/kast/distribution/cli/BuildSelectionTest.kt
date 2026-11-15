@@ -2,13 +2,23 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstalledBuildIdentity
 import io.github.amichne.kast.distribution.contract.UpdatePolicy
+import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
+import java.nio.file.Path
 import java.security.MessageDigest
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class BuildSelectionTest {
     private val identity = InstalledBuildIdentity("v1.2.3", "1.2.3", "a".repeat(40), "b".repeat(40))
@@ -129,7 +139,223 @@ class BuildSelectionTest {
         }
         assertTrue(validProductRecord(record))
     }
+}
 
+class LocalProductProvenanceTest {
+    @Test
+    fun `local producer wire shape decodes without CI identities`() {
+        val record = productEntry().record
+        val localWire =
+            managementJson
+                .encodeToString(record)
+                .replace(
+                    managementJson.encodeToString(record.producer),
+                    managementJson.encodeToString(LocalProductProducer()),
+                )
+        val decoded = managementJson.decodeFromString<ProductBuildRecord>(localWire)
+        assertEquals(localWire, managementJson.encodeToString(decoded))
+    }
+
+    @Test
+    fun `provenance serialization preserves CI shape and requires the local discriminator`() {
+        val published = productEntry().record
+        val encoded = managementJson.parseToJsonElement(managementJson.encodeToString(published)).jsonObject
+        val producer = encoded.getValue("producer").jsonObject
+        assertEquals(setOf("runId", "runAttempt", "workflow"), producer.keys)
+        assertEquals("123", producer.getValue("runId").toString())
+        assertEquals("1", producer.getValue("runAttempt").toString())
+        assertEquals(".github/workflows/ci.yml", producer.getValue("workflow").jsonPrimitive.content)
+        val local = localProductRecord(published, "linux-x86_64")
+        for (json in listOf(managementJson, Json { encodeDefaults = false })) {
+            val actual = json.parseToJsonElement(json.encodeToString(local)).jsonObject
+            val producers =
+                listOf(
+                    actual.getValue("producer"),
+                    actual
+                        .getValue("targets")
+                        .jsonArray
+                        .single()
+                        .jsonObject
+                        .getValue("qualification")
+                        .jsonObject
+                        .getValue("producer"),
+                )
+            for (value in producers) {
+                assertEquals(setOf("kind"), value.jsonObject.keys)
+                assertEquals("LOCAL", value.jsonObject.getValue("kind").jsonPrimitive.content)
+            }
+            assertEquals(local, json.decodeFromString<ProductBuildRecord>(json.encodeToString(local)))
+        }
+        for (invalid in
+            listOf(
+                managementJson.encodeToString(LocalProductProducer()).replace("LOCAL", "REMOTE"),
+                managementJson
+                    .encodeToString(published.producer)
+                    .replace("workflow", "kind")
+                    .replace(".github/workflows/ci.yml", "LOCAL"),
+                managementJson.encodeToString(Unit),
+                managementJson.encodeToString(emptyList<String>()),
+                managementJson.encodeToString<String?>(null),
+            )) {
+            assertThrows(SerializationException::class.java) {
+                managementJson.decodeFromString<ProductProvenance>(invalid)
+            }
+        }
+    }
+
+    @Test
+    fun `installed local records reject wrong schemas targets identities and mixed provenance`() {
+        val published = productEntry().record
+        val local = localProductRecord(published, "linux-x86_64")
+        val target = local.targets.single()
+        assertTrue(validInstalledProductRecord(published))
+        assertTrue(validInstalledProductRecord(local))
+        assertTrue(validInstalledProductRecord(localProductRecord(published, "macos-aarch64")))
+        for (invalid in
+            listOf(
+                local.copy(schemaVersion = 2),
+                local.copy(schemaVersion = 3),
+                local.copy(schemaVersion = 5),
+                local.copy(producer = published.producer),
+                local.copy(targets = listOf(target.copy(qualification = published.targets.first().qualification))),
+                local.copy(targets = emptyList()),
+                local.copy(targets = listOf(target, target)),
+                local.copy(targets = listOf(target, localProductRecord(published, "macos-aarch64").targets.single())),
+                local.copy(targets = listOf(target.copy(target = "linux-aarch64"))),
+                local.copy(sourceRevision = "0".repeat(40)),
+                local.copy(sourceTree = "not-a-tree"),
+                local.copy(targets = listOf(target.copy(runtime = target.runtime.copy(sha256 = "invalid")))),
+                published.copy(producer = LocalProductProducer()),
+                published.copy(targets = listOf(target, published.targets.last())),
+            )) {
+            assertFalse(validInstalledProductRecord(invalid), invalid.toString())
+            assertFalse(validProductRecord(invalid), invalid.toString())
+        }
+        val base = ProductAsset("kast-runtime-base-linux-x86_64-${"9".repeat(64)}.zip", "9".repeat(64), 42)
+        val split =
+            target.copy(
+                runtimeBase = base,
+                qualification =
+                    target.qualification.copy(
+                        composition =
+                            NativeCompositionEvidence(
+                                base.sha256,
+                                "a".repeat(64),
+                                "b".repeat(64),
+                                target.runtime.sha256,
+                            )
+                    ),
+            )
+        assertTrue(validInstalledProductRecord(local.copy(targets = listOf(split))))
+        assertFalse(validInstalledProductRecord(local.copy(targets = listOf(split.copy(runtimeBase = null)))))
+        assertFalse(validInstalledProductRecord(local.copy(targets = listOf(target.copy(runtimeBase = base)))))
+    }
+
+    @Test
+    fun `catalog and public release never admit local provenance`() {
+        val entry = productEntry()
+        val local = localProductRecord(entry.record, "linux-x86_64")
+        for (record in
+            listOf(
+                local,
+                entry.record.copy(producer = LocalProductProducer()),
+                entry.record.copy(targets = listOf(local.targets.single(), entry.record.targets.last())),
+            )) {
+            assertFalse(validProductRecord(record))
+            val catalog = managementJson.encodeToString(ProductBuildCatalog(2, listOf(entry.copy(record = record))))
+            assertEquals(
+                SelectionAdmission.Rejected(BuildSelectionFailure.CATALOG_UNAVAILABLE),
+                AdmittedBuildCatalog.decode(catalog),
+            )
+            val raw = managementJson.encodeToString(record)
+            val digest = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray()).toHexString()
+            val mapping = managementJson.encodeToString(PublicReleaseMapping(1, "1.2.3", digest))
+            val request = (admitBuildRequest(null, "1.2.3", null) as SelectionAdmission.Admitted).value
+            assertEquals(
+                SelectionAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID),
+                resolveBuildSelection(request) { url ->
+                    ReleaseDocumentRead.Read(if (url.endsWith("release-mapping.json")) mapping else raw)
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `installed local runtime requires a private pinned developer reference`(@TempDir temporary: Path) {
+        val fixture = productFixture(temporary)
+        val recordPath = fixture.installation.resolve("share/kast/build-record.json")
+        val original = containerJson.decodeFromString<ProductBuildRecord>(Files.readString(recordPath))
+        val local = localProductRecord(original, fixture.reference.target)
+        Files.writeString(recordPath, containerJson.encodeToString(local))
+        val reference =
+            fixture.reference.copy(
+                buildRecordSha256 = sha256(recordPath),
+                policy = ProductSelectionPolicy.PinnedBuild,
+            )
+        writeProductReference(fixture.installation, reference)
+        val admitted = InstalledProductRuntime.read(fixture.installation, fixture.runtime.manifest.platform)
+        assertTrue(admitted is Refinement.Refined, admitted.toString())
+        val runtime = (admitted as Refinement.Refined).value
+        assertEquals(local, runtime.record)
+        assertEquals(fixture.runtime.root, runtime.runtime.root)
+        assertEquals(Refinement.Refined(Unit), runtime.admitCurrent())
+        for (invalid in
+            listOf(
+                reference.copy(publicVersion = "1.2.3"),
+                reference.copy(publicVersion = "1.2.3", releaseTag = "v1.2.3"),
+                reference.copy(policy = ProductSelectionPolicy.TrackMain),
+                reference.copy(policy = ProductSelectionPolicy.TrackStable),
+                reference.copy(releaseTag = "developer-v0.0.124"),
+            )) {
+            writeProductReference(fixture.installation, invalid)
+            assertEquals(
+                Refinement.Rejected(ContainerFailure.INVALID_RECORD),
+                InstalledProductRuntime.read(fixture.installation, fixture.runtime.manifest.platform),
+                invalid.toString(),
+            )
+        }
+    }
+
+    @Test
+    fun `local product repair requires its local artifact before installer or release effects`(
+        @TempDir temporary: Path
+    ) {
+        val fixture = productFixture(temporary)
+        val recordPath = fixture.installation.resolve("share/kast/build-record.json")
+        val original = containerJson.decodeFromString<ProductBuildRecord>(Files.readString(recordPath))
+        Files.writeString(
+            recordPath,
+            containerJson.encodeToString(localProductRecord(original, fixture.reference.target)),
+        )
+        val pinned =
+            fixture.reference.copy(
+                buildRecordSha256 = sha256(recordPath),
+                policy = ProductSelectionPolicy.PinnedBuild,
+            )
+        val executable = Files.createDirectories(fixture.installation.resolve("bin")).resolve("kast")
+        Files.writeString(executable, "fixture Control")
+        Files.writeString(fixture.installation.resolve("share/kast/install-candidate.sh"), "fixture installer")
+        writeProductReference(fixture.installation, pinned)
+        writeProductManagement(fixture.installation, executable, pinned)
+        val command =
+            (parseManagementCommand(listOf("upgrade", "--repair")) as ManagementParsing.Selected).command
+                as ManagementCommand.Upgrade
+        val result =
+            executeManagedUpgrade(
+                fixture.installation.parent,
+                temporary,
+                command,
+                emptyMap(),
+                ManagedUpgradeExecution(
+                    readRelease = { error("local repair must not read a release") },
+                    installer = { _, _, _ -> error("local repair must not invoke the installer") },
+                ),
+            )
+        assertEquals(ManagedUpgradeOutcome.Rejected(BuildSelectionFailure.LOCAL_ARTIFACT_REQUIRED), result)
+    }
+}
+
+class PublishedProductBuildSelectionTest {
     @Test
     fun `separated runtime records bind both target bases and native composition evidence`() {
         val entry = productEntry()
@@ -226,6 +452,15 @@ class BuildSelectionTest {
         assertEquals(SelectionAdmission.Rejected(BuildSelectionFailure.BINARY_UNAVAILABLE), result)
         assertEquals(1, reads)
     }
+}
+
+internal fun localProductRecord(record: ProductBuildRecord, platform: String): ProductBuildRecord {
+    val target = record.targets.single { it.target == platform }
+    return record.copy(
+        schemaVersion = 4,
+        producer = LocalProductProducer(),
+        targets = listOf(target.copy(qualification = target.qualification.copy(producer = LocalProductProducer()))),
+    )
 }
 
 internal fun productEntry(): ProductBuildEntry {

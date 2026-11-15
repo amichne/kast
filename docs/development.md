@@ -105,7 +105,7 @@ From the repository root, examples using the existing runners are:
   --tests 'io.github.amichne.kast.appserver.SavedConfigurationIngressTest'
 python3 packaging/test-installation-lifecycle.py RetirementBoundaryTest
 python3 packaging/test-installation-lifecycle.py RetirementAdapterTest
-python3 packaging/test-installer-entrypoint.py InstallerEntrypointTest.test_noninteractive_collision_fails_closed_at_selected_command_directory
+mise exec -- uv run --locked --project packaging python packaging/test-installer-entrypoint.py InstallerEntrypointTest.test_obsolete_component_options_reject_before_effects
 ```
 
 These selectors require no product assembly, release download or native acceptance.
@@ -445,27 +445,11 @@ The [installation reference](public/reference/installation.mdx) owns remote inst
 
 ### Install a local build
 
-> **Deprecated: desktop IDEA installation.** User-space IntelliJ IDEA plugins and desktop Hosts are targeted for removal, not removed in this change.
-> Existing 0.51.x desktop Hosts and their wire values remain supported for compatibility.
-> Use managed headless Hosts with private workspace containers and automatic workspace creation through the managed product.
-> The contributor replacement is `packaging/local_product_install.py`; see [Install a checkout as an isolated managed product](#install-a-checkout-as-an-isolated-managed-product).
-> The commands below describe the retained legacy path, not the managed product installation workflow.
+Use [Install a checkout as an isolated managed product](#install-a-checkout-as-an-isolated-managed-product) for contributor builds.
+That tool admits a clean committed checkout, assembles and qualifies its product, then uses the production activation owner.
+It does not replace the user's installation. The desktop checkout scripts and Gradle `installLocal` task are retired.
 
-For compatible local Host code changes, use [local plugin reload](local-plugin-reload.md) after its one-time setup.
-
-Install the working tree into the existing user installation from the repository root:
-
-```shell
-./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"
-```
-
-This builds the working tree, including uncommitted changes, and verifies the
-selected control and IDEA plugin archives. Restart IDEA to load a replaced host.
-Kast has one installation at `$HOME/.local/share/kast/installation`; checkout
-builds replace those components in place. Session installations and alternate
-installation roots are rejected before build or installation effects.
-
-The services have independent release inputs and package tasks:
+Producer tooling retains independent component release inputs and package tasks:
 
 ```shell
 ./gradlew assembleControlRelease -PcontrolVersion=0.50.0
@@ -521,20 +505,29 @@ For a damaged installation, use the [recovery runbook](installation-recovery.md)
 
 ### Installer development inputs
 
-The deprecated legacy component installer supports `--force`, `--dry-run`, `--version`, `--idea-home`,
-`--control-only`, `--host-only`, `uninstall`, and `--help`.
-Its `packaging/install-checkout.sh persistent` adapter is also deprecated.
-Use `packaging/local_product_install.py` for managed product checkout builds; see [Install a checkout as an isolated managed product](#install-a-checkout-as-an-isolated-managed-product).
-All component installation and lifecycle operations select
-`$HOME/.local/share/kast`; an explicit internal root binding must equal that
-path. `XDG_DATA_HOME`, custom prefixes and session profiles cannot create
-another installation.
+`packaging/generate_bootstrap.py` owns the generated root `install.sh` and retained installer support membership.
+Gradle's `generateInstallerSupport` projects that support and produces target-specific MCP dependencies before packaging.
+The producer uses uv with locked hashes and binary wheels. Installed setup copies admitted dependency files; it never runs a package manager.
 
-Release fixtures supply `KAST_INSTALL_ASSETS_DIRECTORY` with verified archives.
-Filesystem fixtures use their own admitted user home and the same canonical
-relative layout. Product read limits, endpoint selection and read-only
-inspection remain supported. Use `kast ide` for status, refresh, classes,
-supertype and completion.
+The bootstrap downloads pinned private Python and XML dependency bytes. Self-contained setup is not offline setup.
+The retained `install-candidate.sh` adapter uses only that private interpreter for upgrade, recorded recovery, and product removal.
+Missing or changed support rejects before lifecycle execution. Historical installations keep their recorded compatibility contracts.
+
+Product fixtures use a bounded local release source with production parsing and activation.
+Contributor tooling can require Python and uv; installed lifecycle commands do not.
+Restricted-PATH fixtures prove only their exercised process contracts, not native downloads, Host readiness, or release qualification.
+
+`installedProductTest` consumes complete candidate and baseline directories, not a staged Control/Host pair.
+The baseline must have a different qualified composition. The task does not assemble replacement artifacts.
+Supply pinned interpreter inputs, the native target, and new evidence and receipt paths:
+
+```shell
+mise exec -- ./gradlew installedProductTest \
+  -PkastAcceptanceCandidate="$CANDIDATE" -PkastAcceptanceBaseline="$BASELINE" \
+  -PkastAcceptancePythonArchive="$PRIVATE_PYTHON_ARCHIVE" \
+  -PkastAcceptanceDependency="$PRIVATE_DEPENDENCY" -PkastAcceptanceTarget="$TARGET" \
+  -PkastAcceptanceEvidence="$EVIDENCE" -PkastAcceptanceReceipt="$RECEIPT"
+```
 
 Version-pinned archives must match the installer contract. To stage historical
 archives that require retired setup inputs, use their matching tagged installer.

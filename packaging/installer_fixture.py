@@ -45,7 +45,7 @@ class InstallerFixture:
     """One private root; successful cases remove only their original root."""
 
     def __init__(self, tools: Mapping[str, Path], *, parent: Path | None = None):
-        validated = {}
+        validated: dict[str, Path] = {}
         for name, candidate in tools.items():
             path = Path(candidate)
             if (re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", name) is None

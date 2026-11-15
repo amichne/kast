@@ -98,9 +98,6 @@ val releaseSourceTree = providers.exec {
     commandLine("git", "rev-parse", "HEAD^{tree}")
     workingDir(rootDir)
 }.standardOutput.asText.map(String::trim)
-tasks.named("generateKastDocumentation") {
-    dependsOn(":distribution:cli:generateManagementVersion")
-}
 val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("generateKastControlMetadata") {
     group = "distribution"
     description = "Generates the control required hosted contract and public schemas."
@@ -119,6 +116,33 @@ val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("g
 }
 
 val controlProductDirectory = layout.buildDirectory.dir("control-product")
+val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip(providers.gradleProperty("kastNativeExecutable").orElse("")) { platform, executable ->
+    require(platform in setOf("macos-aarch64", "macos-x86_64", "linux-aarch64", "linux-x86_64")) {
+        "Imported native archives require a supported native platform"
+    }
+    require(executable.isNotBlank()) { "An imported platform needs a native executable" }
+    platform
+}.orElse(providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
+    when {
+        os.startsWith("Mac") && arch in setOf("aarch64", "arm64") -> "macos-aarch64"
+        os.startsWith("Mac") && arch in setOf("amd64", "x86_64") -> "macos-x86_64"
+        os == "Linux" && arch in setOf("aarch64", "arm64") -> "linux-aarch64"
+        os == "Linux" && arch in setOf("amd64", "x86_64") -> "linux-x86_64"
+        else -> throw GradleException("Control archive requires macOS or Linux on AArch64 or x86-64")
+    }
+})
+val installerSupportDirectory = layout.buildDirectory.dir("generated/installer-support")
+val generateInstallerSupport = tasks.register<Exec>("generateInstallerSupport") {
+    group = "distribution"
+    description = "Projects installer support from the bootstrap generator's inventory."
+    inputs.file("install.sh")
+    inputs.property("platform", controlArchivePlatform)
+    inputs.files(fileTree("agent-tools/skills/kast/scripts") { include("server.py", "server.py.lock") })
+    inputs.files(fileTree("packaging") { include("*.py", "*.sh", "*.lock", "*.txt", "*-v1") })
+    outputs.dir(installerSupportDirectory)
+    commandLine("python3", "packaging/generate_bootstrap.py", "--support-directory",
+        installerSupportDirectory.get().asFile.absolutePath, "--target", controlArchivePlatform.get())
+}
 val agentToolsDirectory = layout.buildDirectory.dir("generated/agent-tools")
 val generateKastAgentTools = tasks.register<GenerateAgentToolsTask>("generateKastAgentTools") {
     group = "distribution"
@@ -136,6 +160,7 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     group = "distribution"
     description = "Stages the Kast control installation for the existing IDE."
     dependsOn(generateKastControlMetadata, generateKastAgentTools)
+    dependsOn(generateInstallerSupport)
     into(controlProductDirectory)
     from(cliInstallation)
     from(generatedControlMetadata) {
@@ -148,45 +173,17 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
         into("share/kast/libexec")
         rename { "kast-management" }
     }
-    from("packaging/install-legacy.sh") {
-        into("share/kast")
-        rename { "install.sh" }
-    }
+    from(installerSupportDirectory) { into("share/kast") }
     from("distribution/cli/lifecycle-fence-v1") { into("share/kast") }
     from("distribution/cli/public-reset-v1") { into("share/kast") }
     from("distribution/cli/reset-fence-v1") { into("share/kast") }
-    from("packaging/install-completion-v1") { into("share/kast") }
     from("distribution/cli/guidance-refresh-v1") { into("share/kast") }
-    from("packaging/managed-install-v1") { into("share/kast") }
-    from("packaging/runtime_base.py") { into("share/kast") }
-    from("packaging/managed_product_removal.py") { into("share/kast") }
-    from(listOf("packaging/immutable_store.py", "packaging/product_removal_recovery.py", "packaging/product_mcp_removal.py")) { into("share/kast") }
-    from(listOf("packaging/mcp_environment.py", "packaging/mcp-requirements.txt", "packaging/mcp-requirements.txt.lock")) { into("share/kast") }
-    from(listOf("packaging/install-candidate.sh", "packaging/managed_installation.py", "packaging/managed_installation.py.lock", "packaging/managed_release.py", "packaging/managed_update_contract.py", "packaging/managed_update_journal.py", "packaging/reload_hosted.py", "packaging/host_directory_exchange.py")) { into("share/kast") }
-    from(listOf("packaging/managed_product.py", "packaging/managed_product_installation.py", "packaging/composed_bundle.py", "packaging/composition_platform.py", "packaging/isolated_runtime.py", "packaging/managed_headless.py", "packaging/runtime_archive.py", "packaging/private_interpreter.py", "packaging/bootstrap_entry.py")) { into("share/kast") }
     from("distribution/contract/src/main/resources/management/reset-inventory-observation.schema.json") { into("share/kast/schema") }
     from("distribution/contract/src/main/resources/management/management-lifecycle.schema.json") { into("share/kast/schema") }
     from("distribution/cli/one-shot-observation-v1") {
         into("share/kast")
     }
-    from(listOf("packaging/installation-lifecycle.py", "packaging/installation-recovery.py", "packaging/prune-prior-installations.py", "packaging/codex-mcp-registration.py", "packaging/host-installation.py")) { into("share/kast") }
 }
-
-val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip(providers.gradleProperty("kastNativeExecutable").orElse("")) { platform, executable ->
-    require(platform in setOf("macos-aarch64", "macos-x86_64", "linux-aarch64", "linux-x86_64")) {
-        "Imported native archives require a supported native platform"
-    }
-    require(executable.isNotBlank()) { "An imported platform needs a native executable" }
-    platform
-}.orElse(providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
-    when {
-        os.startsWith("Mac") && arch in setOf("aarch64", "arm64") -> "macos-aarch64"
-        os.startsWith("Mac") && arch in setOf("amd64", "x86_64") -> "macos-x86_64"
-        os == "Linux" && arch in setOf("aarch64", "arm64") -> "linux-aarch64"
-        os == "Linux" && arch in setOf("amd64", "x86_64") -> "linux-x86_64"
-        else -> throw GradleException("Control archive requires macOS or Linux on AArch64 or x86-64")
-    }
-})
 
 val assembleKastControlDist = tasks.register<Tar>("assembleKastControlDist") {
     group = "distribution"
@@ -279,77 +276,35 @@ tasks.register("verifyDistributionContent") {
     dependsOn(verifyKastControlDistLayout, ":runtime:hosted:hostedPlugin", ":app-server:verifyReleaseRuntimeAdmission")
 }
 
-val canonicalLocalInstallPrefix = providers.environmentVariable("HOME")
-    .map { userHome ->
-        require(userHome.isNotBlank() && java.io.File(userHome).isAbsolute) { "HOME must name an absolute user directory" }
-        file(userHome).toPath().toAbsolutePath().normalize().resolve(".local").toFile()
-    }
-val localInstallPrefix = providers.gradleProperty("kastLocalPrefix")
-    .map { configuredPrefix ->
-        require(configuredPrefix.isNotBlank()) { "kastLocalPrefix must name a non-blank installation prefix" }
-        val prefix = file(configuredPrefix).toPath().toAbsolutePath().normalize().toFile()
-        require(prefix == canonicalLocalInstallPrefix.get()) { "kastLocalPrefix must equal HOME/.local; alternate installations are unsupported" }
-        prefix
-    }
-    .orElse(canonicalLocalInstallPrefix)
-val localJavaHome = providers.systemProperty("java.home").map { configuredHome ->
-    file(configuredHome).toPath().toRealPath().toFile()
-}
-val localJavaExecutable = localJavaHome.map { home -> home.resolve("bin/java") }
-
-val localHostedIdeaBuild = providers.gradleProperty("hostedIdeaHome").map { home ->
-    val metadata = providers.fileContents(layout.projectDirectory.file(selectedIdeaProductInfo(file(home)).absolutePath)).asText.get()
-    (groovy.json.JsonSlurper().parseText(metadata) as Map<*, *>)["buildNumber"] as String
-}.orElse(libs.versions.ide.host.build)
-val localHostedPluginArchive = localHostedIdeaBuild.map { build ->
-    val releaseLine = build.substringBefore('.')
-    layout.projectDirectory.file("runtime/hosted/build/distributions/kast-ide-hosted-v${hostedPluginVersion.get()}-idea-$releaseLine.zip")
-}
-val selectedHostReleaseRecord = tasks.named<GenerateComponentReleaseTask>("generateHostReleaseRecord")
-    .flatMap { it.releaseRecord }
-
-tasks.register<Exec>("installLocal") {
-    group = "distribution"
-    description = "Installs a control/host pair (-PcontrolVersion, -PhostedPluginVersion) in the sole HOME/.local/share/kast installation."
-    doNotTrackState("The installed prefix contains live service sockets and is mutated by the installer.")
-    dependsOn(stageKastControlProduct, ":runtime:hosted:hostedPlugin", "generateHostReleaseRecord")
-    inputs.dir(controlProductDirectory)
-    inputs.file(localHostedPluginArchive)
-    inputs.file(selectedHostReleaseRecord)
-    inputs.files("packaging/install-local.sh", "packaging/install-legacy.sh")
-    inputs.property("localInstallPrefix", localInstallPrefix.map { it.absolutePath })
-    environment("KAST_LOCAL_PREFIX", localInstallPrefix.get().absolutePath)
-    environment("KAST_LOCAL_CONTROL_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
-    environment("KAST_LOCAL_HOSTED_PLUGIN_ARCHIVE", localHostedPluginArchive.get().asFile.absolutePath)
-    environment("KAST_LOCAL_HOST_RELEASE_RECORD", selectedHostReleaseRecord.get().asFile.absolutePath)
-    providers.gradleProperty("hostedIdeaHome").orNull?.let { environment("KAST_INSTALL_IDEA_HOME", it) }
-    commandLine("bash", layout.projectDirectory.file("packaging/install-local.sh"))
-}
-
 val installedProductTest = tasks.register<Exec>("installedProductTest") {
     group = "verification"
-    description = "Verifies assembled artifacts, staging, and native Host/SQLite/full cleanup in an owned HOME."
-    dependsOn(stageKastControlProduct, assembleKastControlDist, "generateHostReleaseRecord")
-    inputs.dir(controlProductDirectory)
-    inputs.file(assembleKastControlDist.flatMap(Tar::getArchiveFile))
-    inputs.file(hostedPluginArchive)
-    val hostRecord = selectedHostReleaseRecord
-    inputs.file(hostRecord)
-    inputs.files("packaging/install-legacy.sh", "packaging/installer_fixture.py", "packaging/run-installed-product.py", "packaging/pyproject.toml", "packaging/uv.lock")
-    inputs.files(
-        "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangePlanStore.kt",
-        "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteMutationRecoveryDatabase.kt",
-        "evidence/sqlite/src/main/kotlin/io/github/amichne/kast/evidence/sqlite/SqliteLiveChangeReceiptStore.kt",
-    )
+    description = "Verifies complete qualified products through native installed lifecycle acceptance."
+    val candidate = providers.gradleProperty("kastAcceptanceCandidate")
+    val baseline = providers.gradleProperty("kastAcceptanceBaseline")
+    val pythonArchive = providers.gradleProperty("kastAcceptancePythonArchive")
+    val dependency = providers.gradleProperty("kastAcceptanceDependency")
+    val target = providers.gradleProperty("kastAcceptanceTarget")
+    val evidence = providers.gradleProperty("kastAcceptanceEvidence")
+    val receipt = providers.gradleProperty("kastAcceptanceReceipt")
+    inputs.dir(candidate)
+    inputs.dir(baseline)
+    inputs.file(pythonArchive)
+    inputs.file(dependency)
+    inputs.property("target", target)
+    inputs.property("evidence", evidence)
+    inputs.property("receipt", receipt)
+    inputs.files(fileTree("packaging") { include("*.py", "*.toml", "*.lock") })
+    inputs.files(fileTree(".github/scripts/release") { include("*.py") })
     outputs.upToDateWhen { false }
-    environment("KAST_INSTALLED_PRODUCT", controlProductDirectory.get().asFile.absolutePath)
-    environment("KAST_CONTROL_ARCHIVE", assembleKastControlDist.get().archiveFile.get().asFile.absolutePath)
-    val archive = hostedPluginArchive
-    doFirst { environment("KAST_HOSTED_PLUGIN_ARCHIVE", archive.get().asFile.absolutePath) }
-    environment("KAST_HOST_RELEASE_RECORD", hostRecord.get().asFile.absolutePath)
-    environment("KAST_ACCEPTANCE_JAVA_EXECUTABLE", localJavaExecutable.get().absolutePath)
     commandLine("uv", "run", "--locked", "--project", layout.projectDirectory.dir("packaging").asFile.absolutePath,
         "python3", layout.projectDirectory.file("packaging/run-installed-product.py").asFile.absolutePath)
+    argumentProviders.add(CommandLineArgumentProvider {
+        listOf(
+            "--candidate", candidate.get(), "--baseline", baseline.get(),
+            "--private-python-archive", pythonArchive.get(), "--private-dependency", dependency.get(),
+            "--target", target.get(), "--evidence", evidence.get(), "--receipt", receipt.get(),
+        )
+    })
 }
 
 // Resolve tools from this invocation, rather than the daemon's original process environment.
@@ -415,8 +370,9 @@ val managedInstallationTest = tasks.register<VerificationReportTask>("managedIns
         "packaging/test_composition_graph.py", "packaging/test_composition_index.py",
         "packaging/test_composition_descriptors.py", "packaging/test_composition_host.py",
         "packaging/test_composition_bundle.py", "packaging/test_composition_release.py",
-        "packaging/test_runtime_archive.py",
-        "packaging/test_composition_isolated_runtime.py", "packaging/test_composition_platform.py", "-q"))
+        "packaging/test_runtime_archive.py", "packaging/test_composition_platform.py",
+        "packaging/test_mcp_environment.py", "packaging/test_mcp_dependency_artifact.py",
+        "packaging/test_local_product_install.py", "-q"))
 }
 
 val developerPublicationTest = tasks.register<VerificationReportTask>("developerPublicationTest") {
@@ -438,8 +394,8 @@ tasks.named("check") { dependsOn(managedInstallationTest, developerPublicationTe
 
 val testCheckoutInstaller = tasks.register<VerificationReportTask>("testCheckoutInstaller") {
     group = "verification"
-    description = "Verifies checkout and release bootstrap boundaries without touching machine state."
-    inputs.files("install.sh", "packaging/install-checkout.sh", "packaging/install-local.sh",
+    description = "Verifies retired entrypoints and canonical product admission boundaries."
+    inputs.files("install.sh", "packaging/generate_bootstrap.py",
         "packaging/host-installation.py", "packaging/test-install-checkout.py")
     executableFile.set(validationExecutable("python3"))
     arguments.set(listOf(layout.projectDirectory.file("packaging/test-install-checkout.py").asFile.absolutePath))
@@ -450,8 +406,10 @@ val installerEntrypointTest = tasks.register<VerificationReportTask>("installerE
     description = "Pins the documented Bash -c installer invocation and argument delivery contract."
     inputs.files("install.sh", "README.md", "docs/public/start.mdx", "docs/public/reference/installation.mdx",
         "docs/public/reference/compatibility.mdx", "packaging/test-installer-entrypoint.py")
-    executableFile.set(validationExecutable("python3"))
-    arguments.set(listOf(layout.projectDirectory.file("packaging/test-installer-entrypoint.py").asFile.absolutePath))
+    sourceFiles.from("packaging/pyproject.toml", "packaging/uv.lock")
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", "packaging", "python",
+        layout.projectDirectory.file("packaging/test-installer-entrypoint.py").asFile.absolutePath))
 }
 
 val installerFixtureTest = tasks.register<VerificationReportTask>("installerFixtureTest") {
@@ -465,8 +423,10 @@ val installerFixtureTest = tasks.register<VerificationReportTask>("installerFixt
 val installerRemovalTest = tasks.register<VerificationReportTask>("installerRemovalTest") {
     group = "verification"
     inputs.files("install.sh", "packaging/test-installer-removal.py")
-    executableFile.set(validationExecutable("python3"))
-    arguments.set(listOf(layout.projectDirectory.file("packaging/test-installer-removal.py").asFile.absolutePath))
+    sourceFiles.from("packaging/pyproject.toml", "packaging/uv.lock")
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", "packaging", "python",
+        layout.projectDirectory.file("packaging/test-installer-removal.py").asFile.absolutePath))
 }
 
 val installationSystemPythonTest = tasks.register<VerificationReportTask>("installationSystemPythonTest") {

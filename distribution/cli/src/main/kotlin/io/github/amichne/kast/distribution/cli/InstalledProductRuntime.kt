@@ -130,7 +130,7 @@ private fun validInstalledProduct(
     reference: InstalledProductReference,
     record: ProductBuildRecord,
 ): Boolean {
-    if (!validProductRecord(record) || reference.schemaVersion != 1 || reference.target != platform.publicName)
+    if (!validInstalledProductRecord(record) || reference.schemaVersion != 1 || reference.target != platform.publicName)
         return false
     val target = record.targets.singleOrNull { it.target == reference.target } ?: return false
     val runtimeRoot = installation.parent.resolveSibling("kast-workspaces").resolve("runtimes/${target.runtime.sha256}")
@@ -150,6 +150,10 @@ private fun validInstalledRelease(reference: InstalledProductReference, record: 
             reference.sourceTree != record.sourceTree
     )
         return false
+    if (record.producer is LocalProductProducer)
+        return reference.publicVersion == null &&
+            reference.policy == ProductSelectionPolicy.PinnedBuild &&
+            reference.releaseTag == "developer-v${record.version}"
     return when (val version = reference.publicVersion) {
         null ->
             reference.releaseTag == "developer-v${reference.version}" &&
@@ -170,6 +174,9 @@ internal fun installedRepairSelection(root: Path): SelectionAdmission<ResolvedBu
     return when (val selected = InstalledProductSelection.read(root.resolve("installation"), platform)) {
         is Refinement.Rejected -> SelectionAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID)
         is Refinement.Refined -> {
+            // Local product bytes exist only in their local directory; repair must not seek them remotely.
+            if (selected.value.record.producer is LocalProductProducer)
+                return SelectionAdmission.Rejected(BuildSelectionFailure.LOCAL_ARTIFACT_REQUIRED)
             val reference = selected.value.reference
             SelectionAdmission.Admitted(
                 ResolvedBuildSelection.Product(

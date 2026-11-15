@@ -4,7 +4,6 @@ import hashlib
 import io
 import json
 import subprocess
-import sys
 import tarfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -15,15 +14,12 @@ from composed_bundle import (
     BundleFailure,
     BundleManifest,
     BundleRejected,
-    ConfiguredTrust,
-    admit_trust_workspace,
-    configure_trusted_workspace,
     extract_bundle,
     read_manifest,
     sha256,
 )
 from composition_platform import HostPlatform
-from managed_headless import AssemblyEntryKind, AssemblyFile, Failure, Rejected
+from managed_headless import AssemblyEntryKind, AssemblyFile
 
 FILES = (
     "bootstrap.zip",
@@ -32,7 +28,6 @@ FILES = (
     "runtime/product-info.json",
     "runtime/lib/kast-product.jar",
     "runtime/plugins/plugin-classpath.txt",
-    "bin/setup-kast.pyz",
 )
 
 
@@ -107,69 +102,6 @@ def test_archive_duplicate_path_rejects_instead_of_replacing_bytes(tmp_path: Pat
     assert (destination / "setup-kast/item").read_bytes() == b"first"
 
 
-@dataclass(frozen=True)
-class PluginTarget:
-    root: str
-    type: str = "RECORDED"
-
-
-@dataclass(frozen=True)
-class Selection:
-    hostPluginTarget: PluginTarget
-    type: str = "resolved"
-
-
-def test_explicit_trust_uses_only_the_private_profile_and_preserves_existing_settings(
-    tmp_path: Path,
-) -> None:
-    state = tmp_path / "install/state"
-    plugins = state / "home/profile/plugins"
-    plugins.mkdir(parents=True)
-    selection = state / "home/.local/share/kast/installation/config/selected-ide.json"
-    selection.parent.mkdir(parents=True)
-    _ = selection.write_text(json.dumps(asdict(Selection(PluginTarget(str(plugins))))))
-    workspace = tmp_path / "repository"
-    workspace.mkdir()
-    admitted = admit_trust_workspace(workspace, tmp_path / "install")
-    assert not isinstance(admitted, BundleRejected)
-    _ = (state.parent / ".kast-headless-owned").write_text("kast-managed-headless-v1\n")
-    result = configure_trusted_workspace(state, admitted)
-    assert isinstance(result, ConfiguredTrust)
-    assert (
-        result.workspace == workspace
-        and result.settings == plugins.parent / "options/trusted-paths.xml"
-    )
-    expected = (
-        '<application><component name="Trusted.Paths"><option name="TRUSTED_PROJECT_PATHS">'
-        '<map><entry key="' + str(workspace) + '" value="true" /></map></option>'
-        "</component></application>"
-    ).encode()
-    assert result.settings.read_bytes() == expected
-    assert result.sha256 == hashlib.sha256(expected).hexdigest()
-    assert configure_trusted_workspace(state, admitted) == result
-    assert result.settings.read_bytes() == expected
-    formatted = b'<?xml version="1.0" encoding="UTF-8"?>\n' + expected.replace(b"><", b">\n<")
-    _ = result.settings.write_bytes(formatted)
-    reused = configure_trusted_workspace(state, admitted)
-    assert reused == ConfiguredTrust(
-        workspace, result.settings, hashlib.sha256(formatted).hexdigest()
-    )
-    assert result.settings.read_bytes() == formatted
-    other = tmp_path / "another"
-    other.mkdir()
-    other_admitted = admit_trust_workspace(other, state.parent)
-    assert not isinstance(other_admitted, BundleRejected)
-    assert configure_trusted_workspace(state, other_admitted) == Rejected(Failure.INVALID_COMPONENT)
-    assert result.settings.read_bytes() == formatted
-
-
-def test_trust_cannot_include_the_installation_state(tmp_path: Path) -> None:
-    assert admit_trust_workspace(tmp_path, tmp_path / "install") == BundleRejected(
-        BundleFailure.UNSAFE_PATH,
-        "trusted workspace",
-    )
-
-
 def test_bad_digest_rejects_before_archive_extraction(tmp_path: Path) -> None:
     archive = tmp_path / "archive"
     _ = archive.write_bytes(b"not an archive")
@@ -208,15 +140,15 @@ def test_unknown_platform_values_remain_typed_rejections(invalid: bytes) -> None
 
 
 @pytest.mark.parametrize("target", tuple(HostPlatform))
-def test_bundle_round_trip_keeps_each_native_layout_before_installer_effects(
+def test_bundle_round_trip_keeps_each_native_layout_without_an_alternate_installer(
     monkeypatch: pytest.MonkeyPatch, target: HostPlatform
 ) -> None:
     import tempfile
 
     import composed_bundle
-    from composed_bundle import PackedBundle, install_bundle, pack_bundle
+    from composed_bundle import PackedBundle, pack_bundle
     from composed_host import CompositionReceipt
-    from managed_headless import AssemblyManifest, file_record
+    from managed_headless import file_record
 
     with tempfile.TemporaryDirectory(prefix="kb-", dir="/tmp") as name:
         owned = Path(name).resolve()
@@ -277,54 +209,36 @@ def test_bundle_round_trip_keeps_each_native_layout_before_installer_effects(
             producer, assets, bootstrap, sha256(receipt), archive, "0.0.0", linux_support=support
         )
         assert isinstance(packed, PackedBundle)
-        entry = owned / "entry.pyz"
+        entry = owned / "install.sh"
         with tarfile.open(archive) as source:
             names = source.getnames()
-            assert [name for name in names if "/bin/setup-kast" in name] == [
-                "setup-kast/bin/setup-kast.pyz"
-            ]
-            installer_entry = source.extractfile("setup-kast/bin/setup-kast.pyz")
+            assert not any(name.endswith(".pyz") for name in names)
+            installer_entry = source.extractfile("setup-kast/install.sh")
             assert installer_entry is not None
             _ = entry.write_bytes(installer_entry.read())
+        assert (
+            entry.read_bytes()
+            == Path(__file__).resolve().parents[1].joinpath("install.sh").read_bytes()
+        )
         help_result = subprocess.run(
-            [sys.executable, "-I", str(entry), "--help"],
+            ["/bin/bash", str(entry), "--help"],
             cwd=owned,
             capture_output=True,
             text=True,
             check=False,
         )
         assert help_result.returncode == 0, help_result.stderr
-        assert "--archive-sha256" in help_result.stdout
+        assert "No Python, uv, or IDEA" in help_result.stdout
         destination = owned / "r"
-        visited: list[Path] = []
-
-        def installer(
-            _admitted: object,
-            installed_home: Path,
-            script: Path,
-            manifest: AssemblyManifest | None = None,
-        ) -> Rejected:
-            assert script.is_file()
-            assert manifest is None
-            visited.append(installed_home)
-            return Rejected(Failure.INSTALLER_FAILED)
-
-        monkeypatch.setattr(composed_bundle, "install_prepared_runtime", installer)
-        monkeypatch.setattr(
-            composed_bundle.platform,
-            "system",
-            lambda: "Linux" if target.is_linux else "Darwin",
+        destination.mkdir()
+        extracted = extract_bundle(archive, destination, packed.sha256)
+        assert not isinstance(extracted, BundleRejected)
+        metadata = read_manifest((extracted.source / "manifest.json").read_bytes())
+        assert isinstance(metadata, BundleManifest)
+        assert not isinstance(
+            composed_bundle.examine_files(extracted.source, metadata.files), BundleRejected
         )
-        monkeypatch.setattr(
-            composed_bundle.platform,
-            "machine",
-            lambda: "arm64" if target.value.endswith("aarch64") else "x86_64",
-        )
-        assert install_bundle(archive, packed.sha256, destination, "0.0.0") == Rejected(
-            Failure.INSTALLER_FAILED
-        )
-        expected = destination / target.layout.home
-        assert visited == [expected]
+        expected = extracted.source / "runtime"
         assert (expected / target.layout.product).read_bytes() == product.read_bytes()
         assert (expected / "lib/kast-product.jar").read_bytes() == b"fixture vendor bytes"
 

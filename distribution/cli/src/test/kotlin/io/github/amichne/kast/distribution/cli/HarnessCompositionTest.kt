@@ -162,11 +162,19 @@ class HarnessCompositionTest {
             ),
         )
 
-    @Test
-    fun `MCP admission rejects changed interpreter imports before executing any provider`() {
+    @ParameterizedTest
+    @ValueSource(
+        strings =
+            [
+                "private-python/lib/python3.12/site.py",
+                "mcp-dependencies/artifact.json",
+                "mcp-dependencies/site-packages/native.so",
+            ]
+    )
+    fun `MCP admission rejects changed private support before executing any provider`(relative: String) {
         val root = pluginFixtureWithMcp(temporary)
         val home = temporary.toRealPath().resolve("home")
-        Files.writeString(root.resolve("installation/share/kast/private-python/lib/python3.12/site.py"), "changed")
+        Files.writeString(root.resolve("installation/share/kast/$relative"), "changed")
         assertEquals(
             PluginInstallOutcome.Rejected(PluginInstallStage.PAYLOAD_ADMISSION, PluginInstallFailure.PayloadRejected),
             installCodexPlugin(

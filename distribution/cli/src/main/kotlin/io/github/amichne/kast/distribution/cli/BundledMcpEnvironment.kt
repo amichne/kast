@@ -43,6 +43,7 @@ internal sealed interface BundledMcpEnvironment {
 private const val MCP_PYTHON_ROOT = "share/kast/private-python"
 private const val MCP_PYTHON = "$MCP_PYTHON_ROOT/bin/python3.12"
 private const val MCP_HELPER = "share/kast/mcp_environment.py"
+private const val MCP_DEPENDENCIES = "share/kast/mcp-dependencies"
 private const val MCP_SCRIPTS = "share/kast/agent-tools/compositions/mcp/plugins/kast/skills/kast/scripts"
 private const val FILE_PERMISSIONS = 511
 private const val GROUP_WORLD_WRITE = 18
@@ -51,7 +52,7 @@ private val mcpFiles = setOf(MCP_HELPER, "share/kast/mcp-requirements.txt", "sha
 private fun admitMcpInventory(installation: Path, manifest: BundledManifest): Boolean {
     if (!ownedMcpPath(installation) || !ownedMcpPath(installation.resolve("installation.json"))) return false
     val files = mutableListOf<Path>()
-    for (relative in listOf(MCP_PYTHON_ROOT, MCP_SCRIPTS)) {
+    for (relative in listOf(MCP_PYTHON_ROOT, MCP_SCRIPTS, MCP_DEPENDENCIES)) {
         val tree = installation.resolve(relative)
         if (!Files.isDirectory(tree, NOFOLLOW_LINKS)) return false
         val paths = Files.walk(tree).use { it.limit(ControlDistributionLimits.maximumEntryCount.toLong() + 1).toList() }
@@ -61,7 +62,10 @@ private fun admitMcpInventory(installation: Path, manifest: BundledManifest): Bo
     files += mcpFiles.map(installation::resolve)
     val expected =
         manifest.payloadFiles.filter {
-            it.path in mcpFiles || it.path.startsWith("$MCP_PYTHON_ROOT/") || it.path.startsWith("$MCP_SCRIPTS/")
+            it.path in mcpFiles ||
+                it.path.startsWith("$MCP_PYTHON_ROOT/") ||
+                it.path.startsWith("$MCP_SCRIPTS/") ||
+                it.path.startsWith("$MCP_DEPENDENCIES/")
         }
     return mcpInventoryMatches(installation, expected, files)
 }
@@ -74,7 +78,17 @@ private fun mcpInventoryMatches(installation: Path, expected: List<BundledPayloa
             expected.map { it.path }.toSet() != names
     )
         return false
-    if (!names.containsAll(setOf(MCP_PYTHON, "$MCP_SCRIPTS/server.py", "$MCP_SCRIPTS/server.py.lock"))) return false
+    if (
+        !names.containsAll(
+            setOf(
+                MCP_PYTHON,
+                "$MCP_SCRIPTS/server.py",
+                "$MCP_SCRIPTS/server.py.lock",
+                "$MCP_DEPENDENCIES/artifact.json",
+            )
+        )
+    )
+        return false
     if (files.any { !Files.isRegularFile(it, NOFOLLOW_LINKS) || !ownedMcpPath(it) }) return false
     if (files.sumOf(Files::size) > ControlDistributionLimits.maximumPayloadBytes) return false
     return Files.isExecutable(installation.resolve(MCP_PYTHON)) &&

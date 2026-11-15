@@ -562,8 +562,8 @@
     },
     {
       "path": "openwiki/modules/architecture.md",
-      "sha256": "cedd315ada212bb69f6f32967c47e189d8d8142e126c1b4bb4fa33fd374b8196",
-      "claimsSha256": "e0f80c79e5334e456b4a7bf0ffd85e267daf626dac7a64cc2b6ddf0f5e00762a",
+      "sha256": "33d336a08bcd9bbb2f8aa0caa3dcef943104d4cd8eda2dc41eb5e07b34da4e99",
+      "claimsSha256": "dc88cfe16db97c98bd20cba3a934da8a890f6d8f0fe2a86c33e9e4ffac8fa038",
       "evidence": [
         {
           "claim": "claim_41de94c8265f45e4a3cd6c25c4c9c2a1",
@@ -609,16 +609,16 @@
         },
         {
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
-          "resource": "repo://build.gradle.kts#L104-L123",
-          "recordedVersion": "repo-lines-v1:sha256:1f809cbe56fb43c60678bb4eae7c28529eb3d35c334884cafdf85acb755f73c8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzNGU0NWUyOWRhNjc2ZGM0MDVkODNiN2Q2MDVjMjE0MmRjYTZhZjU0N2NmNDVhMzZkM2JlY2NlNDE2NDQ0MTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlOTgwZTUxYjM3MTQzYjdmMjhlN2M1ZmVkMzIxYzcxYjhiNjIyYzdiZjc4ZmFiMWUzMzg3NWNmMWVkZjU2OTUifQ",
-          "currentVersion": "repo-file-v1:sha256:7eb36c056e633413ae65c77542c0215f9e131be3d4f6ce5e6f8c6fb5797ee444",
+          "resource": "repo://build.gradle.kts#L101-L116",
+          "recordedVersion": "repo-lines-v1:sha256:8827cf6868290fe80e2f32c4f122356b30709b377be8fc911be93ec3ffeaa00a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjM2Q1YjJhMGY5Y2JkMjk2NTVlMGQ1YjYwMmI1ZjBmZTZhMDhmODQ4NDE0NDA2ZTU2NzBkYTIxYmRkMzE1YTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NjhiNDM2M2I5MzNiYzlkMzk5NTZkNjE4NjQ4YjQ1MGVmYTBlZThkMGU5MzJhYzU0ODA4MzI4OTFlZDc0Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZkYjE2MGE0MzhhMzcyZDg4MDU1YWVmNzIxMWNmYjNkNDU3ZDUxMmUwOWY4MmU4ZDkxODI5M2M4MjBkMzczNTIifQ",
+          "currentVersion": "repo-file-v1:sha256:56f1904376d379a978a386ab3c2a7c9fa69f37baf7b29dc855096be6cd51a342",
           "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_f07a20a2117e4b2fb43be348f260d2a4",
-          "resource": "repo://build.gradle.kts#L135-L150",
-          "recordedVersion": "repo-lines-v1:sha256:949d296e11253de9b7e40468898a823cdcefc5a276fe521a57fddc508f742ccf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmMjg3ZmYyYmE3MjFjMTU3NzNkMTAwZWVjM2QzYzMwM2YzZWFhNmE1YjAyZWU3NzRhMTg0N2Y4Yjc5N2ZmZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyNWNkYjlhMjNlYTQxNWU0NmVmNjZiYzE2YWI1NGRhMzg0MjE2MDFlOWU3OWQwMTVhMjJiM2UxMzZjYzg3ZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhkMzdkN2FjZGU1ZDI5ZDM5YjA4MTg1NzNhODgyMGYxZmFkZmExYmFkMDlhYzgxM2ZhMDRmODBlN2RkOGNhYTYifQ",
-          "currentVersion": "repo-file-v1:sha256:7eb36c056e633413ae65c77542c0215f9e131be3d4f6ce5e6f8c6fb5797ee444",
+          "resource": "repo://build.gradle.kts#L159-L194",
+          "recordedVersion": "repo-lines-v1:sha256:42c9c2fcb4644dcbaed62616eb04291f49b51bdacbbe1bd964d512dea2791eba:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmMjg3ZmYyYmE3MjFjMTU3NzNkMTAwZWVjM2QzYzMwM2YzZWFhNmE1YjAyZWU3NzRhMTg0N2Y4Yjc5N2ZmZDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3NjVjNzIxN2U0MDdlZGI5ZDlhMGRkMTFiYjUzNmM5YWIzNDJhYmFlMGJiODJhNGMyNTllNDNiZmRjOTE0ZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyNWNkYjlhMjNlYTQxNWU0NmVmNjZiYzE2YWI1NGRhMzg0MjE2MDFlOWU3OWQwMTVhMjJiM2UxMzZjYzg3ZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1ZTkyYjhiNzNkODY1MjAxZjY1ZDUxMTk5ZDk0ZGVlMTcwMTA4OWJhMWRhMzhmN2U4NGY3M2Q3YjBlYWRmYzAifQ",
+          "currentVersion": "repo-file-v1:sha256:56f1904376d379a978a386ab3c2a7c9fa69f37baf7b29dc855096be6cd51a342",
           "status": "NOT_ASSESSED"
         },
         {
@@ -630,16 +630,16 @@
         },
         {
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
-          "resource": "repo://build.gradle.kts#L828-L865",
+          "resource": "repo://build.gradle.kts#L784-L821",
           "recordedVersion": "repo-lines-v1:sha256:05e3309e3445a91849800ecd976ec37dcddbbd2482044a5b9d145bedd21b4337:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmMGNlMGU2ODgyNTJlNDdkMWMxMDQ2Y2ZkNDQwMmUyYWFkYWEyZTFhMTQ0NjljZjFiYjM1YmFiZGE4ZTE2YjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0OGY5YmI1NThjY2UyMjU3MGE3YzJiNTczMTYzNTMyYjNhZjRiY2FiOWRkZGJiM2YxMjIyOWJiMjdjMDliMjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZiYWRiZjMyMTcyMTFjOGMxYTYzYWYxZWQyNzU3NmE1MTdiNDBmMTQ1NmE0ZjlkMzRjNTgwZWI3YWNlMDU3YzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2YzgzZmJhZjkyYjljMmU3Yjg1YTljY2Q1NzUwZThlZjQxMjZmMjc4ZWNmYjJhYTU3MTY3MDU2YmFiZThiMTgifQ",
-          "currentVersion": "repo-file-v1:sha256:7eb36c056e633413ae65c77542c0215f9e131be3d4f6ce5e6f8c6fb5797ee444",
+          "currentVersion": "repo-file-v1:sha256:56f1904376d379a978a386ab3c2a7c9fa69f37baf7b29dc855096be6cd51a342",
           "status": "NOT_ASSESSED"
         },
         {
           "claim": "claim_2463c1ec8e3446d58d5316a6d6d78248",
-          "resource": "repo://build.gradle.kts#L861-L898",
+          "resource": "repo://build.gradle.kts#L817-L854",
           "recordedVersion": "repo-lines-v1:sha256:4cb84fde55c21798f2a13b871307945f837c2a5e7364b6c76eaa9408417f96c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNjYzAyOWJkYWJiMWEwM2RkNzUyMjQ0MGM4MGU3YTlkMzlmNjhiZTA1OTUzZDA4Y2NjZTA0MjI0OGM0YmQ2YTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwYTU1Y2M1ZGIyODA5NmM3ZmQ4MzYxZmEwNTFmYTRmNGJjMjM2YjI0ZDQ0M2I0NTBkZGU3YWIxOGJhMjkxNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzMmRlYzFiZDA1NTEyYTEzNDBkZjkyNTI3YWQ0NWQzNWI1NmQ1MjA0ZjU3YmQ3MjA4NDI2M2UzYWQ1OGRkZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkxOTIwNTE1MzMzN2JjMzEwNGE4ZDBiNmMwYWM0NTg1YzliNzcxOTRjZGU5NDk3ZDBlZjgwMDhhNjI4NzNhMTIifQ",
-          "currentVersion": "repo-file-v1:sha256:7eb36c056e633413ae65c77542c0215f9e131be3d4f6ce5e6f8c6fb5797ee444",
+          "currentVersion": "repo-file-v1:sha256:56f1904376d379a978a386ab3c2a7c9fa69f37baf7b29dc855096be6cd51a342",
           "status": "NOT_ASSESSED"
         },
         {

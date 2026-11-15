@@ -1,4 +1,4 @@
-"""Install one clean committed Kast checkout as an isolated managed product.
+"""Build a qualified local product or install it under an isolated contributor root.
 
 Contributor-only. The checkout's own CI recipe builds, assembles and natively qualifies
 a full macOS ARM64 composition, then the production activation installs it under an
@@ -21,6 +21,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -28,10 +29,12 @@ import sys
 import tempfile
 import time
 import urllib.request
+import zipfile
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 
 MARKER = "local-product.json"
 SCHEMA_VERSION = 1
@@ -107,6 +110,29 @@ class Receipt:
     schemaVersion: int = SCHEMA_VERSION
 
 
+@dataclass(frozen=True)
+class BuiltProduct:
+    source: SourceIdentity
+    version: str
+    work: Path
+    bundle: Path
+    runtime: Path
+    qualification: Path
+    python_archive: Path
+    dependency: Path
+
+
+@dataclass(frozen=True)
+class BuildReceipt:
+    directory: str
+    version: str
+    sourceRevision: str
+    sourceTree: str
+    buildRecordSha256: str
+    releaseQualification: Literal["NOT_ESTABLISHED"] = "NOT_ESTABLISHED"
+    type: Literal["LOCAL_PRODUCT_BUILT"] = "LOCAL_PRODUCT_BUILT"
+
+
 def event(stage: Stage, outcome: str, **detail: str) -> None:
     payload = {"event": "kast_local_install", "stage": stage, "outcome": outcome, **detail}
     print(json.dumps(payload), file=sys.stderr, flush=True)
@@ -142,15 +168,10 @@ def launcher_source(root: Path) -> str:
     bound.update({variable: str(home / suffix) for variable, suffix in XDG})
     removed = [key for key in BOUND if key not in bound]
     return (
-        "#!/usr/bin/env python3\n"
-        f'"""Run the isolated local Kast product installed at {root}."""\n'
-        "import os\nimport sys\n\n"
-        f"EXECUTABLE = {str(home / '.local/bin/kast')!r}\n"
-        f"BOUND = {bound!r}\n"
-        f"REMOVED = {removed!r}\n"
-        "environment = {k: v for k, v in os.environ.items() if k not in REMOVED}\n"
-        "environment.update(BOUND)\n"
-        "os.execve(EXECUTABLE, [EXECUTABLE, *sys.argv[1:]], environment)\n"
+        "#!/bin/sh\nset -eu\n"
+        + "".join(f"export {key}={shlex.quote(value)}\n" for key, value in bound.items())
+        + f"unset {' '.join(removed)}\n"
+        + f'exec {shlex.quote(str(home / ".local/bin/kast"))} "$@"\n'
     )
 
 
@@ -277,12 +298,11 @@ def fetch(cache: Path, name: str, url: str, expected: str) -> Path:
     return target
 
 
-def install(arguments: argparse.Namespace) -> Receipt:
+def build_product(arguments: argparse.Namespace) -> BuiltProduct:
     if (platform.system(), platform.machine()) != ("Darwin", "arm64"):
         raise Rejected(Stage.SOURCE, Failure.UNSUPPORTED_PLATFORM)
     source = admit_source(arguments.source)
     checkout = Path(source.checkout)
-    root = admit_new_root(arguments.root)
     version = arguments.version or select_version(time.time())
     if not re.fullmatch(r"0\.0\.[1-9][0-9]*", version):
         raise Rejected(Stage.SOURCE, Failure.VERSION_REJECTED)
@@ -403,6 +423,88 @@ def install(arguments: argparse.Namespace) -> Receipt:
     if admit_source(checkout, Stage.SOURCE_READMISSION) != source:
         raise Rejected(Stage.SOURCE_READMISSION, Failure.SOURCE_CHANGED)
 
+    return BuiltProduct(
+        source,
+        version,
+        work,
+        bundle,
+        runtime,
+        work / "qualification/qualification.json",
+        python_archive,
+        dependency,
+    )
+
+
+def export_product(built: BuiltProduct, destination: Path) -> BuildReceipt:
+    """Seal actual native evidence without inventing CI runs or another platform."""
+    import product_producer
+
+    import managed_release as release
+
+    java_release = built.work / "java-release"
+    with zipfile.ZipFile(built.runtime) as archive:
+        _ = java_release.write_bytes(
+            archive.read("host/Kast.app/Contents/jbr/Contents/Home/release")
+        )
+    try:
+        target = product_producer.seal_target(
+            Path(built.source.checkout),
+            built.bundle.parent,
+            built.qualification,
+            java_release,
+            built.source.revision,
+            built.source.tree,
+            built.version,
+            release.LocalProductProducer(),
+            "macos-aarch64",
+            "macos-aarch64",
+        ).target
+    except product_producer.Rejected:
+        raise Rejected(Stage.QUALIFICATION, Failure.INSTALLATION_REJECTED) from None
+    record = release.LocalProductRecord(
+        4,
+        release.REPOSITORY,
+        built.source.revision,
+        built.source.tree,
+        built.version,
+        release.LocalProductProducer(),
+        (target,),
+    )
+    raw = (json.dumps(asdict(record), separators=(",", ":")) + "\n").encode()
+    if release.decode_installed_product_record(raw) != record:
+        raise Rejected(Stage.QUALIFICATION, Failure.INSTALLATION_REJECTED)
+    destination.mkdir(mode=0o700)
+    payload = destination / "payload"
+    payload.mkdir(mode=0o700)
+    for asset in record.assets():
+        _ = shutil.copyfile(built.bundle.parent / asset.name, payload / asset.name)
+    _ = (destination / "build-record.json").write_bytes(raw)
+    evidence = destination / "evidence"
+    _ = shutil.copytree(built.work / "qualification", evidence / "qualification")
+    _ = shutil.copytree(built.work / "logs", evidence / "logs")
+    return BuildReceipt(
+        str(destination),
+        built.version,
+        built.source.revision,
+        built.source.tree,
+        hashlib.sha256(raw).hexdigest(),
+    )
+
+
+def build(arguments: argparse.Namespace) -> BuildReceipt:
+    destination = admit_new_root(arguments.output)
+    built = build_product(arguments)
+    result = export_product(built, destination)
+    discard_tree(built.work)
+    return result
+
+
+def install(arguments: argparse.Namespace) -> Receipt:
+    root = admit_new_root(arguments.root)
+    built = build_product(arguments)
+    source, version, work = built.source, built.version, built.work
+    bundle, runtime = built.bundle, built.runtime
+    python_archive, dependency = built.python_archive, built.dependency
     event(Stage.INSTALLATION, "STARTED", root=str(root))
     from local_product_probe import prepare_inputs
     from product_lifecycle_probe import Probe
@@ -464,7 +566,7 @@ def remove(arguments: argparse.Namespace) -> dict[str, str]:
     if (root / "home/.local/bin/kast").exists():
         for step in (["stop", "--all", "--json"], ["uninstall"]):
             # Child reports go to stderr; this command's stdout carries only its own receipt.
-            if subprocess.run([sys.executable, str(launcher), *step], stdout=sys.stderr).returncode:
+            if subprocess.run([str(launcher), *step], stdout=sys.stderr).returncode:
                 raise Rejected(Stage.REMOVAL, Failure.COMMAND_FAILED)
     if remaining_processes(root):
         raise Rejected(Stage.REMOVAL, Failure.PROCESSES_REMAIN)
@@ -475,20 +577,31 @@ def remove(arguments: argparse.Namespace) -> dict[str, str]:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
-        description="Install a clean committed checkout as an isolated managed product."
+        description="Build a qualified local product or install an isolated contributor product."
     )
     commands = parser.add_subparsers(dest="command", required=True)
     selected = commands.add_parser("install")
     _ = selected.add_argument("--root", type=Path, required=True)
     _ = selected.add_argument("--source", type=Path, default=Path.cwd())
     _ = selected.add_argument("--version")
+    produced = commands.add_parser("build")
+    _ = produced.add_argument("--output", type=Path, required=True)
+    _ = produced.add_argument("--source", type=Path, default=Path.cwd())
+    _ = produced.add_argument("--version")
     removed = commands.add_parser("remove")
     _ = removed.add_argument("--root", type=Path, required=True)
     arguments = parser.parse_args(argv)
     try:
-        result: object = (
-            asdict(install(arguments)) if arguments.command == "install" else remove(arguments)
-        )
+        result: object
+        match arguments.command:
+            case "build":
+                result = asdict(build(arguments))
+            case "install":
+                result = asdict(install(arguments))
+            case "remove":
+                result = remove(arguments)
+            case _:
+                parser.error("unknown local product command")
     except Rejected as rejected:
         detail = {"log": str(rejected.log)} if rejected.log is not None else {}
         event(rejected.stage, rejected.failure, **detail)

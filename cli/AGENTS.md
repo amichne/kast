@@ -49,7 +49,6 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedProcessObservation.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/LegacyHostProfile.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/LegacyProfileSelection.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpRunnerInvocationOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
@@ -93,7 +92,6 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - [KastServiceMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt) - private installed service control.
 - [KastDaemonMain.kt](src/main/kotlin/io/github/amichne/kast/cli/KastDaemonMain.kt) - the private managed daemon entry.
 - [InstalledServerProjectionDocuments.kt](src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledServerProjectionDocuments.kt) - installed schemas from canonical types.
-- [InstalledKnowledge.kt](src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt) - local installed knowledge reads.
 
 ## Subdirectories
 

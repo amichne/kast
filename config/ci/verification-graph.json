@@ -13,10 +13,6 @@
             "sha256": "d27b80ad3c163fc0986650b38fc1af3b3b1fb617e6e258023f85eea57a21033a"
         },
         {
-            "path": "build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt",
-            "sha256": "04e5d8a57649a26f0f2714cab997232581c21d1e908be70ebbfd290376fcb257"
-        },
-        {
             "path": "build-logic/src/main/kotlin/conventions/JsonContractVerification.kt",
             "sha256": "717897a3aa97869a486c4cffbeb6e00e595b520c54a1a74a6033e164677bf7b7"
         },
@@ -49,12 +45,8 @@
             "sha256": "4053023334c480df475bf1c7f1be4ab22634afa0a05f3aecf353c8d0a4498e0c"
         },
         {
-            "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt",
-            "sha256": "c35a1af79639466be27cf52126927ac8551e057e023977bba541662c2c62b109"
-        },
-        {
             "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsModel.kt",
-            "sha256": "56a267f80c152f9a900be212442f9a40381b32581e06953a536daa62b55b6583"
+            "sha256": "0654ed105da131ffb6023864c9ca7e0f9aa7a0202c5884ca639446a01d3ae281"
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt",
@@ -62,7 +54,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinDocumentationScanner.kt",
-            "sha256": "8982f8636b61093dfdd4148a556a60ad35e656a5debddcaad1967f190a40777b"
+            "sha256": "60f003a175c3573f20e3410f2e158d222fd39f809516505d81c31c86e7c6d4a5"
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinJsonContractScanner.kt",
@@ -74,7 +66,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/kast.architecture.gradle.kts",
-            "sha256": "ff3da876574ceac304bed6caf26c3541f996136e041c3d05dbed197dff229e19"
+            "sha256": "15215fcaed1dd0de38e570c88bc0058b90d471ec041a57c241312dadfa5a8982"
         },
         {
             "path": "build-logic/src/main/kotlin/kast.kotlin-library.gradle.kts",
@@ -257,26 +249,6 @@
             "sha256": "e58359e73d8d46983b465e3febeb1c2b74dfd2d0fb8b365c296db46990bb9455"
         },
         {
-            "path": "build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt",
-            "sha256": "df0032418bc256a75f3db364fb6566784ffba0df3ca45c127dbedf2bfd148896"
-        },
-        {
-            "path": "build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeModel.kt",
-            "sha256": "36c1308a5e9c00fc87abd7122820df20691ab625dfbda8aa9d16216739f9e16b"
-        },
-        {
-            "path": "build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeProjection.kt",
-            "sha256": "0efc1c24555df124d926fe1eb4f55e50208b6e6c94e47d5edc746e8958272f42"
-        },
-        {
-            "path": "build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeSourceBinding.kt",
-            "sha256": "ae6dc3d7c3e8b51405f2d90bc65030b858bf34906d20eb462fc13f5fdfd74023"
-        },
-        {
-            "path": "build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeValidation.kt",
-            "sha256": "35ce18375456005fed6ccf7269f6811d3cc20f3a8b7a29765e578b7a4b240480"
-        },
-        {
             "path": "build-logic/src/main/kotlin/support/tasks/DefaultTestTagSelection.kt",
             "sha256": "2d2408af2bd28617c6370f69d903fb061376c38bb417f1204d927f8ca17c86c3"
         },
@@ -358,11 +330,11 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-            "sha256": "e03a30b450cd6ffdd5276ad38c59a2a4fc6169a477a90d3d9f210ca43f55f2bc"
+            "sha256": "0f2945322ee8b355539bdd10915977ac1cb4fb50defedccdd6c93cf8324bbfb6"
         },
         {
             "path": "build.gradle.kts",
-            "sha256": "7eb36c056e633413ae65c77542c0215f9e131be3d4f6ce5e6f8c6fb5797ee444"
+            "sha256": "56f1904376d379a978a386ab3c2a7c9fa69f37baf7b29dc855096be6cd51a342"
         },
         {
             "path": "change/apply/build.gradle.kts",

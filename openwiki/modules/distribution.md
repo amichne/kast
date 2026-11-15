@@ -10,7 +10,7 @@ tags:
   - packaging
   - release
 code_sources:
-  - path: packaging/install-checkout.sh
+  - path: packaging/generate_bootstrap.py
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
     symbols:
       - installationJavaRuntimeEnvironment
@@ -291,6 +291,8 @@ sources:
     resource: repo://cli/src/main/native-launchers/bin/kast
   - id: openwiki-source-6e0cb99be2f37815eed2066a
     resource: repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativeForceResetCompositionTest.kt
+  - id: openwiki-source-e4a9595c544ec2b876590037
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/BuildCatalog.kt
   - id: openwiki-source-0e50d1b18d1925b709ede5d3
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerRuntime.kt
   - id: openwiki-source-ea2b24fdd206a91568317996
@@ -335,6 +337,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt
   - id: openwiki-source-d6537b8c3c1d3e623334d7d1
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UserStateInventory.kt
+  - id: openwiki-source-e7fd130e6641f6c75e3cde3f
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt
   - id: openwiki-source-c6a7f896f4d5f15e0d036721
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/NativeControlResetSelectionTest.kt
   - id: openwiki-source-09db336d3e004f256dbf17f7
@@ -353,8 +357,6 @@ sources:
     resource: repo://distribution/release/test_run_product_gate.py
   - id: openwiki-source-81d5f1627e19148569f46f81
     resource: repo://gradle/libs.versions.toml
-  - id: openwiki-source-03ffc32a0ca502ab67c54b25
-    resource: repo://install.sh
   - id: openwiki-source-74a7088da9d18da2237d9186
     resource: repo://packaging/bootstrap.sh.in
   - id: openwiki-source-245e3f9878cb2ef01a1fcbd1
@@ -365,24 +367,16 @@ sources:
     resource: repo://packaging/composed_host_probe.py
   - id: openwiki-source-e08b876ca00219319cbb81aa
     resource: repo://packaging/composed_release.py
-  - id: openwiki-source-ef7a40843a617c29102e725f
-    resource: repo://packaging/composition_platform.py
   - id: openwiki-source-611b757652f80d3a33875855
     resource: repo://packaging/container_probe.py
+  - id: openwiki-source-f499e8784ffe1f993e94d42d
+    resource: repo://packaging/generate_bootstrap.py
   - id: openwiki-source-6fea3b3b86300de08664c4ee
     resource: repo://packaging/host-installation.py
   - id: openwiki-source-ab52e7c01cf17ee137f833e7
     resource: repo://packaging/immutable_store.py
-  - id: openwiki-source-4070dc53852de69cdff3bd47
-    resource: repo://packaging/install-checkout.sh
-  - id: openwiki-source-1fb25dc686d01d69495da290
-    resource: repo://packaging/install-legacy.sh
-  - id: openwiki-source-37ffb827b915bda4bcca9865
-    resource: repo://packaging/install-local.sh
-  - id: openwiki-source-4c9f1a2f0eff9672edf6ca2f
-    resource: repo://packaging/installer_fixture.py
-  - id: openwiki-source-8e1c0e02a6021c5adc87ccac
-    resource: repo://packaging/isolated_runtime.py
+  - id: openwiki-source-b58c179514e38986fca17024
+    resource: repo://packaging/local_product_install.py
   - id: openwiki-source-621afc296584eb4217553339
     resource: repo://packaging/managed_headless.py
   - id: openwiki-source-1380068036b00bec817a6579
@@ -391,6 +385,10 @@ sources:
     resource: repo://packaging/managed_product_installation.py
   - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
     resource: repo://packaging/managed_release.py
+  - id: openwiki-source-b7b8ecfa241af4c2651f20bf
+    resource: repo://packaging/mcp_dependency_artifact.py
+  - id: openwiki-source-4cbbb1b86a2d8ec6765d827e
+    resource: repo://packaging/mcp_environment.py
   - id: openwiki-source-e7484ccb9a72cd71aa938a2f
     resource: repo://packaging/product_acceptance.py
   - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
@@ -401,8 +399,22 @@ sources:
     resource: repo://packaging/runtime_archive.py
   - id: openwiki-source-0b3a81cf548ab371bc04037e
     resource: repo://packaging/runtime_base.py
+  - id: openwiki-source-86043bd644ea68991c4b7993
+    resource: repo://packaging/test_composition_bundle.py
+  - id: openwiki-source-84582271586e7e5586eb61c9
+    resource: repo://packaging/test_local_product_install.py
+  - id: openwiki-source-4f7923fe2058729f3c0b96fe
+    resource: repo://packaging/test_mcp_dependency_artifact.py
   - id: openwiki-source-fbdf7de26cc8b3b5b59b53a6
     resource: repo://packaging/test_product_acceptance.py
+  - id: openwiki-source-25977fc13c4ddf2c0840d6fd
+    resource: repo://packaging/test-install-checkout.py
+  - id: openwiki-source-2cd23a68d0d65408a59d5b1a
+    resource: repo://packaging/test-managed-bootstrap.py
+  - id: openwiki-source-b3ca2d66028c874ac7b10e77
+    resource: repo://packaging/test-managed-build-record.py
+  - id: openwiki-source-28da94aa4ff852ccd4226980
+    resource: repo://packaging/test-managed-headless.py
   - id: openwiki-source-7fa48d17b46dccf82f4b3238
     resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-d124e13c6fde72403a229a1e
@@ -415,10 +427,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
+generated: { by: "amp", at: "2026-11-15T23:15:42.491Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T15:58:51.849Z
+    at: 2026-11-15T23:15:42.491Z
 ---
 
 # Distribution and packaging
@@ -427,9 +439,22 @@ verified:
 
 Public installation selects one complete product for macOS ARM64 or Linux x86-64.
 Preview and stable identify exact complete builds; stable promotion retains the qualified bytes rather than rebuilding them with another version.
-The product record requires both targets and complete qualification receipts before public admission.
+Published schema 2 and 3 product records require both CI targets and complete component qualification evidence.
+Local schema 4 records instead retain one supported target with `LOCAL` provenance and no invented CI run or second platform.
+Python published decoding and Kotlin `validProductRecord` reject local records; installed decoding and `validInstalledProductRecord` retain both forms.
+`install.sh --local-artifact DIRECTORY` also admits a local `build-record.json` and recorded files under `payload/` into the canonical global installation.
+`LocalReleaseSource` supplies a pinned selection to the existing product admission and activation owners, without product HTTP fallback.
+The bootstrap still downloads pinned private Python and `defusedxml`; local input is not offline setup.
 `InstalledProductSelection` admits recorded identity for exact repair even when runtime bytes are missing.
+`installedRepairSelection` reuses that identity only for published products; a local product rejects with `LOCAL_ARTIFACT_REQUIRED` before installer or release effects.
 `InstalledProductRuntime` adds local runtime admission for semantic requests, without release-server access or desktop fallback.
+Local installed records require `PinnedBuild`, no public version, and the matching developer tag; recorded source and artifact identities remain exact.
+
+`python3 packaging/local_product_install.py build --source CLEAN_CHECKOUT --output DIRECTORY` exports a local product without global installation.
+The current builder admits a clean committed checkout on macOS ARM64, shares actual assembly and component-native qualification, then calls `product_producer.seal_target`.
+It records real source, input, artifact and native evidence for that one target in `build-record.json`, `payload/` and `evidence/`.
+Its `LOCAL_PRODUCT_BUILT` receipt leaves `releaseQualification: NOT_ESTABLISHED`.
+Canonical installation remains a separate generated `install.sh --local-artifact DIRECTORY` invocation.
 
 The first explicit semantic request creates trust for one exact canonical Gradle root and selects private Host state.
 CLI, MCP, and RPC share that request owner; session hooks and MCP initialization remain passive.
@@ -441,6 +466,9 @@ Inactive rejected workspace records need exclusive access and private-state admi
 Repair stages verified runtime/base replacements in the existing journal and resets damaged owned bytes only after Host retirement.
 Interrupted reset resumes from retained bytes without deleting repositories, workspace profiles, or external Gradle homes.
 
+Installed local records remain eligible for exact recovery through `managed_product_installation`, `immutable_store`, and retained `UninstallManagedRoot` evidence validation.
+These consumers use installed-record admission without weakening selection, artifact, directory identity or deletion ownership checks.
+
 Native qualification is not complete. Component qualification now precedes sealed-product admission and detached installed-product acceptance.
 The stages below replace the earlier circular setup route without claiming successful native Host execution.
 Full product removal integrates recorded provider-resource and receipted Pi guidance cleanup; native behavior remains unqualified.
@@ -451,6 +479,16 @@ The Control payload contains CLI-first Codex and Copilot plugins from the canoni
 `kast install <harness>` admits the installed bundle and exact provider resources before setup.
 The default composition includes passive native session hooks without an automatic MCP server.
 Explicit `--mcp` selects the optional transport.
+The producer materializes target-specific dependency files, native extensions, and license records before delivery.
+It admits the inventory, sets its regular import-data files to `0644`, then observes the inventory again before recording `artifact.json`.
+Native extensions and wheel command files ship as import data, not executable commands.
+Generated-support reuse requires all dependency files at `0644`, rejecting even self-consistent cached `0755` records.
+It passes `--python sys.executable` explicitly to uv, with an empty `PATH` and interpreter downloads disabled.
+Production does not rely on uv discovering an ambient virtual environment or interpreter.
+If dependency production rejects, `generate_bootstrap.stage_support` writes the existing structured `MCP_REJECTED` result to stderr and keeps its finite failure code in the raised rejection.
+Missing producer tooling, install rejection and timeout therefore remain distinguishable at support generation.
+Installed MCP preparation admits and copies that inventory, then checks imports with the private interpreter; it invokes no pip, uv, solver, or download.
+Consumer admission still requires exact bytes and modes; normalization preserves ownership, target and requirement identities, and finite failure checks.
 Codex and Copilot own their plugins. The Pi receipt identifies the owned skill directory.
 Control assembly stamps the version in the skill front matter.
 Both legacy and managed installer completion enter the capability-marked guidance refresh branch.
@@ -467,7 +505,7 @@ The running coordinator supplies a bounded passive projection for its captured c
 
 Distribution contracts own configuration keys, defaults, owners, operational limits, runtime identity, and bootstrap outcomes. Managed adapters own installation trees, recovery receipts, selected IDE discovery, and endpoints. The retired isolated runtime download adapter, archive store, heap observer, and network/trust-store bootstrap have been removed; IDEA owns its import environment and trust configuration.
 
-Control and Host retain separate component artifact ownership and reviewed `idea-262.zip` and `idea-263.zip` plugin variants. Public installation selects them only through one complete product record, not independent component choices. The retained `run-installed-product.py` harness stages production Control, a receipted Host, and an empty canonical mutation database in an owned HOME. It invokes native uninstall and checks owned removal while preserving a sentinel. Those legacy fixture assertions are not evidence that the new managed product passed native qualification. The checked [configuration schema](../../packaging/configuration-schema.json) must remain aligned with the Kotlin catalogue.
+Control and Host retain separate component artifact ownership and reviewed `idea-262.zip` and `idea-263.zip` plugin variants. Public installation selects them only through one complete product record, not independent component choices. `run-installed-product.py` delegates to the complete-product lifecycle probe with explicit qualified candidate, baseline, interpreter, and evidence inputs. Missing prerequisites reject rather than skipping or substituting a staged component pair. The checked [configuration schema](../../packaging/configuration-schema.json) must remain aligned with the Kotlin catalogue.
 
 ## Component qualification and installed acceptance
 
@@ -476,7 +514,7 @@ The component probes exercise compiler behavior and private workspace retirement
 Their `COMPONENT_NATIVE` receipt binds source, bundle, and harness identity; it is not installed-product acceptance.
 The retained `container_probe.py` filename does not imply use of retired public container commands.
 
-`product_producer.py target` records one native target's evidence.
+The CI `product_producer.py target` command records one native target's evidence.
 Its `seal` operation requires both target inputs from the exact producer attempt and creates the immutable build record without rebuilding.
 That record can then enter installed-product acceptance through normal managed admission.
 The later `accept` operation joins detached receipts without rewriting the sealed record.
@@ -515,7 +553,9 @@ Overlay copies verified files rather than hard-linking them, rejects component o
 Product publication retains bases in `kast-runtime-bases` and complete runtimes in the workspace store.
 Only the producer projects split archives into qualification inputs; promotion does not rebuild or hydrate them.
 
-The retained standalone archive assembler can describe additional platforms, but it is not a public installation route or native qualification proof.
+`composed_bundle.py` packs authenticated runtime inputs, component assets, the bootstrap archive, and the canonical generated `install.sh`.
+The bundle contains no Python `zipapp` or separate standalone installer.
+Archive assembly is not a public installation route or native qualification proof.
 
 Workspace containers instead share an installer-free runtime ZIP for their version and platform.
 The native reader checks the archive digest, typed manifest, file digests, paths, and links before sealing payload bytes and atomic publication.
@@ -530,13 +570,16 @@ See [managed workspace admission](../distribution/management-and-connections.md#
 
 ## Managed headless assembly
 
-`managed_headless.py` admits an explicit vendor archive digest before it creates a new owned installation.
-It installs the bundled bootstrap descriptor, seals runtime files, and invokes the existing installer with a private HOME and bundled JBR.
+`managed_headless.py` admits an explicit vendor archive digest before it creates a new owned assembly root.
+It stages the bundled bootstrap descriptor, seals runtime files, and extracts an admitted Host archive under `components/plugins`.
+It neither invokes the installer nor creates installed command, mutable workspace, or private profile state.
+If component staging rejects, `ComponentStagingRejected` keeps the original release rejection in its `component` field.
+The outer reason remains `INVALID_COMPONENT`; the nested reason and stage remain available to callers and serialized diagnostics.
+The missing-record regression checks this preserved rejection before plugin extraction.
 The assembler rejects an existing destination.
 Its manifest records input digests, Host dependency roots, plugin decisions, and each kept or removed file.
 An explicit exclusion removes a whole plugin directory.
 Unknown plugins, Host roots, and dependencies of kept plugins reject before removal.
-The private profile disables excluded plugin IDs through the installer-owned profile receipt.
 Assembly records `NOT_RUN` for Host acceptance.
 Only installed production behavior can establish that acceptance.
 
@@ -551,7 +594,6 @@ The retained disposable native force-uninstall case asserts MCP client retiremen
 Legacy installation shutdown disables the owned coordinator and drains recorded tool processes within one 30-second retirement budget.
 Force retirement signals only admitted exact process incarnations with qualified installed class paths.
 A running selected desktop Host can reject with `HOST_RESTART_REQUIRED`.
-The retained private `kast-task` owner can examine retirement before removing its exact shutdown fence; it is not the public query route.
 Public exact repair reuses the recorded complete product and existing replacement journal, not the deleted Control-only force-reinstallation owner.
 
 The control product also includes `kast-tool-rpc`. Installation retains its configured `kast-tool-rpc-complete` wrapper inside the ordinary payload and retires owned external command links. The one-shot catalog and call interface is shared by Copilot CLI and Pi extensions without using an MCP connection. Optional catalog query-session support reuses one bounded child for a logical query and its output drains; it closes before the adapter invocation returns. Catalog discovery and per-RPC native authority checks remain separate. Both adapters default to `$HOME/.local/share/kast/installation/bin/kast-tool-rpc-complete` and preserve an explicit `KAST_TOOL_RPC_COMMAND` transport override; ambient alternate installation selectors cannot redirect their default.
@@ -563,13 +605,7 @@ Legacy receipt variants keep exact destination and payload ownership for cleanup
 Plugin installation rejects foreign standalone MCP entries before plugin effects.
 After Codex admits the plugin, Kast removes only receipt-owned legacy registrations.
 
-## Retained installer diagnostics and CI evidence
-
-The legacy installer adapter renders progress, activation qualifications, and finite failure details. Its `--verbose` option retains child reports; it is not a public product-bootstrap option.
-
-Default failure presentation reads a bounded tail of each child stream and gives rejection and recovery details priority over routine telemetry.
-It displays at most 12 details and one truncation notice.
-The child exit status remains authoritative, and `--verbose` preserves the complete child streams.
+## CI evidence
 
 CI classifies the exact changed-path window on Linux before allocating product runners.
 An audited edit to authored docs runs Mintlify, the Markdown parser, glossary tests, and glossary projection checks.
@@ -624,7 +660,7 @@ The publisher rechecks producer success, complete asset inventory, checksums, so
 Existing releases must match exactly for retries.
 A delayed publisher can keep its immutable release but cannot update latest after main advances.
 The public `developer-latest` branch contains a pointer to the exact prerelease and original build revision.
-The public bootstrap selects preview or stable; the retained legacy installer accepts `--developer-latest`.
+The public bootstrap selects preview, stable, or an explicit local artifact; its historical `--developer-latest` alias selects preview.
 Manual publication accepts a successful current-main push or manual CI run ID with matching event and producer evidence.
 
 The Linux source job and macOS native job configure cache transport for Gradle User Home state and task outputs.
@@ -640,28 +676,16 @@ Mac qualification imports the executable from the assembled Control archive into
 The workflow keeps the native suite's XML and HTML reports with the Mac qualification evidence.
 Stable product release maps a public version to the exact retained preview tag and build-record digest without rebuilding.
 
-## Legacy component installation and recovery
+## Retained internal component installation and recovery
 
-The remaining component installer, checkout, and desktop lifecycle owners support legacy development and recovery contracts.
-They are not prerequisites or alternate public setup instructions for the managed product.
-Desktop IntelliJ IDEA plugin installation is deprecated, without removal of the retained installation behavior.
-The checkout and component scripts warn on stderr before parsing arguments; their stdout remains available to existing callers.
-Checkout contributors are directed to `packaging/local_product_install.py` for managed product installation.
-Control stages `packaging/install-legacy.sh` as its private `share/kast/install.sh` lifecycle adapter.
-Native component uninstall uses that adapter, not the public bootstrap parser.
-The root `install.sh` remains the public managed-product entry point.
-The legacy installer reports the selected IDEA version and build before it fetches release-line-specific plugin bytes.
-An absent matching plugin rejects before installation effects.
-Paired installation offers the Codex plugin and defaults to that choice without a terminal.
-
-`--install-codex-plugin` and `--skip-codex-plugin` select the choice explicitly.
-The former MCP registration flags remain aliases.
-Component installation and stage-only installation skip the plugin.
-An explicit plugin choice needs paired installation and rejects component requests before download or installation effects.
-Installation does not start a broker or publish desktop discovery.
-
-Checkout installation replaces the sole user installation in place.
-Session mode and alternate roots reject before build or installation effects.
+`generate_bootstrap.py` owns embedded engine, retained support, and fixed data membership.
+Gradle stages its generated projection under `share/kast`, including the same canonical root `install.sh`.
+The competing `install-legacy.sh`, `install-local.sh`, and `install-checkout.sh` entry points are removed.
+`install-candidate.sh` remains a private bridge for recorded upgrade and recovery callers, not another public installer.
+Bridge admission requires the complete manifest-owned Control inventory and verified bytes.
+The separate contributor `install` command uses `packaging/local_product_install.py` and existing product activation under an isolated root rather than a replacement shell installer.
+Desktop IntelliJ IDEA plugin installation remains deprecated; its shared Host receipt and recovery helpers remain consumed internally.
+The internal contracts below do not restore a public component, stage-only, or desktop setup route.
 
 Single-directory schema-3 and hosted-only schema-2 installations retire their coordinator without invoking
 the retired isolated-workspace `stop` command. Legacy schema-1 installations
@@ -711,7 +735,7 @@ installation composes this owner with `ControlInstallRequest(ControlPayload)`.
 
 Installation child processes emit `kast_installation` records by default with a closed stage and outcome. Prior admission, retirement, configuration validation, candidate and activated-command qualification, and App Server enablement keep distinct success, nonzero exit, deadline, I/O and interruption observations. New-payload admission remains authoritative; these records do not contain command arguments, environment values or filesystem paths. Ordinary installation rejects a failed prior admission or retirement with a stage-specific failure and preserves the selected release. A same-version payload without trust proof or recovery receipt likewise rejects without replacement. Explicit `--force` remains a separate reset operation.
 
-Prior launchd retirement completes only after observing the selected service absent. A `bootout` exit alone cannot prove retirement: the owner repeats bounded `launchctl list` observations within one ten-second deadline and preserves a finite deadline, I/O, interruption, or exit rejection. The typed `kast_installation_retirement` event retains the `OBSERVE_BEFORE`, `BOOTOUT`, and `OBSERVE_AFTER` stage with the closed result and its admitted exit code where present; it excludes command arguments, service labels, and child output. The public installer renders those facts for people and retains full records through `--verbose`.
+Prior launchd retirement completes only after observing the selected service absent. A `bootout` exit alone cannot prove retirement: the owner repeats bounded `launchctl list` observations within one ten-second deadline and preserves a finite deadline, I/O, interruption, or exit rejection. The typed `kast_installation_retirement` event retains the `OBSERVE_BEFORE`, `BOOTOUT`, and `OBSERVE_AFTER` stage with the closed result and its admitted exit code where present; it excludes command arguments, service labels, and child output.
 
 `ControlDistributionLimits` owns the maximum verified control-product entry count and manifest size used by staged installation and runtime identity admission. The shell bootstrap, installed lifecycle, build verifier, and Kotlin owner are checked for the same entry limit, and release layout verification rejects a product outside that bound before publication. Upgrade admission uses the new, checksum-verified lifecycle implementation to inspect the prior installation. Failed inspection or retirement rejects the upgrade. This retains the resource limits while preventing copied limits from drifting below the product that the build produced.
 
@@ -778,9 +802,8 @@ inspection retains historical records so old control processes can retire safely
 
 Release asset construction, checksums, SBOM inventory, and publication use the same archive inventory.
 
-The [installed knowledge contract](../contracts/installed-knowledge.md) describes
-`kast knowledge`, its isolated PSI extraction, verified module ownership and
-scoped guide resources staged with the control product.
+The [retired installed knowledge contract](../contracts/installed-knowledge.md) records the rejected `share/kast/knowledge` payload.
+The [repository knowledge explanation](../knowledge/installed-projection-and-retrieval.md) covers the retained citation scanner and verified module report, not installed retrieval.
 
 The generated catalogue also declares the four execution ceilings, host backlog
 and connection capacity, and native source continuation byte/TTL limits.
@@ -868,10 +891,6 @@ Focused helper tests prove bounded inventory, identity ordering and that recover
 predicate using case-owned inputs. They do not establish the required live
 mixed-version result; the completed native proof remains a separate gate.
 
-The legacy checkout adapter admits the selected IDEA bundle's executable JBR and Java
-25-or-newer release before Gradle or staging. It scopes that runtime to its children.
-The checkout path needs exactly one fully quoted `JAVA_VERSION` declaration.
-Duplicate declarations, an unclosed quote, trailing text, and incompatible runtime environments reject before Gradle starts.
 Installed Control launchers select modes in the shared native executable without JVM setup.
 Nonempty `HOME` and `TMPDIR` values pass through explicit native system properties.
 

@@ -3,33 +3,26 @@ from __future__ import annotations
 import hashlib
 import io
 import json
-import subprocess
 import tempfile
 import unittest
 import zipfile
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Literal
 
 import managed_update_contract as contract
 from managed_headless import (
-    AssemblyManifest,
     AssemblyRecord,
     Component,
-    ComponentDecision,
-    ComponentDisposition,
-    ComponentReason,
     Failure,
     Input,
     Rejected,
     SupportedIdeReleaseLine,
     add_bootstrap,
     admit,
-    configure_removed_plugins,
     host_dependency_roots,
+    prepare_runtime,
     select_assembly_components,
     select_components,
-    wrapper,
 )
 
 
@@ -63,22 +56,33 @@ class RuntimeModeFixture:
     mode: str
 
 
-@dataclass(frozen=True, slots=True)
-class RecordedPluginTargetFixture:
-    root: str
-    type: Literal["RECORDED"] = "RECORDED"
-
-
-@dataclass(frozen=True, slots=True)
-class SelectedIdeFixture:
-    home: str
-    bundle: str
-    executable: str
-    hostPluginTarget: RecordedPluginTargetFixture
-    type: Literal["resolved"] = "resolved"
-
-
 class ManagedHeadlessTest(unittest.TestCase):
+    def test_component_rejection_preserves_its_stage_and_reason(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="h", dir="/tmp") as temporary:
+            candidate = inputs(Path(temporary).resolve())
+            admitted = admit(candidate)
+            assert not isinstance(admitted, Rejected)
+            home = candidate.root / "runtime/host"
+            home.mkdir(parents=True)
+            try:
+                result = prepare_runtime(admitted, home)
+                assert isinstance(result, Rejected)
+                assert asdict(result) == {
+                    "reason": "INVALID_COMPONENT",
+                    "component": {
+                        "reason": "INSTALLER_CONTRACT_UNSUPPORTED",
+                        "stage": "RECORDS",
+                        "requested": "0.0.0",
+                        "platform": "macos-aarch64",
+                        "selectable": (),
+                    },
+                }
+                assert not (candidate.root / "components/plugins").exists()
+            finally:
+                for path in (*home.rglob("*"), home):
+                    if not path.is_symlink():
+                        path.chmod(path.stat().st_mode | 0o700)
+
     def test_reviewed_full_vendor_builds_preserve_identity_and_reject_the_next_line(self) -> None:
         with tempfile.TemporaryDirectory(prefix="h", dir="/tmp") as temporary:
             candidate = inputs(Path(temporary).resolve())
@@ -140,62 +144,6 @@ class ManagedHeadlessTest(unittest.TestCase):
                     )
                     assert required.is_file()
                     assert host_dependency_roots(root, "0.0.0") == ("dependency.262",)
-
-    def test_removed_plugins_use_the_recorded_private_profile_and_preserve_existing_disabled_ids(
-        self,
-    ) -> None:
-        removed = Component("plugins/optional", ("optional",), ("optional.model",), ())
-        manifest = AssemblyManifest(
-            1,
-            "a" * 64,
-            "b" * 64,
-            "c" * 64,
-            "d" * 64,
-            ("required",),
-            (
-                ComponentDecision(
-                    removed,
-                    ComponentDisposition.EXCLUDE,
-                    ComponentReason.EXPLICIT_NON_ROOT_CANDIDATE,
-                ),
-            ),
-            (),
-            (),
-            (),
-        )
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary).resolve()
-            state = root / "state"
-            plugins = state / "home/private-profile/plugins"
-            plugins.mkdir(parents=True)
-            selected_path = state / "home/.local/share/kast/installation/config/selected-ide.json"
-            selected_path.parent.mkdir(parents=True)
-            selected = SelectedIdeFixture(
-                "/owned/idea",
-                "/owned/idea",
-                "/owned/idea/bin/idea",
-                RecordedPluginTargetFixture(str(plugins)),
-            )
-            _ = selected_path.write_text(json.dumps(asdict(selected)))
-            disabled = plugins.parent / "disabled_plugins.txt"
-            _ = disabled.write_text("existing\n")
-            assert configure_removed_plugins(state, manifest) is None
-            assert disabled.read_text() == "existing\noptional\n"
-            outside = root / "other-profile/plugins"
-            outside.mkdir(parents=True)
-            sentinel = outside.parent / "disabled_plugins.txt"
-            _ = sentinel.write_text("protected\n")
-            _ = selected_path.write_text(
-                json.dumps(
-                    asdict(
-                        replace(
-                            selected, hostPluginTarget=RecordedPluginTargetFixture(str(outside))
-                        )
-                    )
-                )
-            )
-            assert configure_removed_plugins(state, manifest) == Rejected(Failure.SHARED_STATE)
-            assert sentinel.read_text() == "protected\n"
 
     def test_component_archive_adapter_keeps_vendor_bytes_and_records_exact_removed_inputs(
         self,
@@ -348,35 +296,6 @@ class ManagedHeadlessTest(unittest.TestCase):
                 "kotlinPluginBuild",
             }
             assert record["schemaVersion"] == 1
-
-    def test_wrapper_preserves_literal_arguments_and_rejects_absent_assembly(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="h", dir="/tmp") as temporary:
-            root = Path(temporary).resolve()
-            home = root / "idea $(false); 'literal'"
-            state = root / "state with spaces"
-            home.mkdir()
-            executable = state / "home/.local/bin/kast"
-            executable.parent.mkdir(parents=True)
-            _ = executable.write_text(
-                '#!/bin/sh\nprintf "%s\\n" "$HOME" "$KAST_MANAGED_HEADLESS_STATE"\n'
-                'printf "<%s>\\n" "$@"\n'
-            )
-            executable.chmod(0o700)
-            command = root / "kast"
-            _ = command.write_text(wrapper(home, state))
-            command.chmod(0o700)
-            literal = "$(false); 'argument'"
-            rejected = subprocess.run(
-                [str(command), literal], capture_output=True, text=True, check=False
-            )
-            assert rejected.returncode == 2
-            assert rejected.stdout == ""
-            _ = (home / "kast-headless.json").write_text("assembly admission belongs to Control\n")
-            result = subprocess.run(
-                [str(command), literal], capture_output=True, text=True, check=False
-            )
-            assert result.returncode == 0
-            assert result.stdout.splitlines() == [str(state / "home"), str(state), f"<{literal}>"]
 
     def test_runtime_mode_survives_the_installer_projection(self) -> None:
         wire = RuntimeModeFixture(
