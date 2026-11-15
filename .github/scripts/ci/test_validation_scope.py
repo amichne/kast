@@ -492,7 +492,7 @@ class SourceInventoryTest(unittest.TestCase):
         runner = next(line.strip() for line in product.splitlines() if "runs-on:" in line)
         self.assertEqual(
             "runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || "
-            'fromJSON(\'["self-hosted", "macOS", "ARM64", "kast-main"]\') }}',
+            "'macos-15' }}",
             runner,
         )
         self.assertIn(
@@ -512,7 +512,7 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("name: ci-build-candidate-", product)
         self.assertNotIn("name: ci-product-candidate-", product)
 
-    def test_self_hosted_native_producers_have_no_hosted_runner_fallback(self):
+    def test_native_producers_require_github_hosted_apple_silicon(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
         # The composed target matrix has its own explicit hosted runner contract below.
         # Stable promotion consumes retained bytes and is no longer a native producer.
@@ -521,7 +521,12 @@ class SourceInventoryTest(unittest.TestCase):
                 body = (workflows / filename).read_text().split(f"\n  {job}:\n", 1)[1]
                 body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
                 runner = next(line.strip() for line in body.splitlines() if "runs-on:" in line)
-                self.assertEqual("runs-on: [self-hosted, macOS, ARM64, kast-main]", runner)
+                self.assertEqual("runs-on: macos-15", runner)
+                self.assertIn("actions/setup-python@", body)
+                self.assertIn("uv==0.12.9", body)
+        for path in workflows.glob("*.yml"):
+            with self.subTest(workflow=path.name):
+                self.assertNotIn("self-hosted", path.read_text())
 
     def test_native_compilation_is_main_only_before_scope_selection(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()

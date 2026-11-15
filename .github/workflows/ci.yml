@@ -228,8 +228,8 @@ jobs:
     name: Compile macOS native executable
     needs: [scope, source-work]
     if: github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.outputs.candidate != 'REUSED'
-    runs-on: [self-hosted, macOS, ARM64, kast-main]
-    timeout-minutes: 45
+    runs-on: macos-15
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -241,14 +241,10 @@ jobs:
         with:
           distribution: liberica-nik
           java-version: '25.0.2+13'
-      - name: Set up local Python
-        env:
-          UV_PYTHON_INSTALL_DIR: ${{ runner.tool_cache }}/uv-python
-        run: |
-          uv python install "$(cat .python-version)"
-          uv venv --allow-existing --seed --python "$(cat .python-version)" "$RUNNER_TOOL_CACHE/kast-ci-python"
-          echo "$RUNNER_TOOL_CACHE/kast-ci-python/bin" >> "$GITHUB_PATH"
-          "$RUNNER_TOOL_CACHE/kast-ci-python/bin/python3" -m pip install uv==0.12.9
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+      - run: python3 -m pip install --disable-pip-version-check uv==0.12.9
       - name: Verify publication contracts on macOS
         run: python3 -m unittest discover -s .github/scripts/release -p 'test_*.py'
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
@@ -258,7 +254,7 @@ jobs:
           cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
       - name: Exercise macOS reset adapters
         run: >-
-          ./gradlew :distribution:cli:test
+          ./gradlew --no-parallel --max-workers=2 -Dorg.gradle.jvmargs=-Xmx4g :distribution:cli:test
           --tests '*NativeResetListenerTest'
           --tests '*NativeResetPeerAcceptanceTest'
           --tests '*ResetLaunchObservationTest'
@@ -345,7 +341,7 @@ jobs:
     name: Kotlin product
     needs: [scope, source-work, native, assembly]
     if: always() && github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && (needs.source-work.outputs.candidate == 'REUSED' || (needs.native.result == 'success' && needs.assembly.result == 'success')) && (inputs.rollout == '' || inputs.rollout == 'none')
-    runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || fromJSON('["self-hosted", "macOS", "ARM64", "kast-main"]') }}
+    runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || 'macos-15' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -363,20 +359,11 @@ jobs:
           distribution: liberica-nik
           java-version: '25.0.2+13'
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        if: needs.source-work.outputs.candidate != 'REUSED' && runner.environment != 'self-hosted'
+        if: needs.source-work.outputs.candidate != 'REUSED'
         with:
           python-version-file: .python-version
       - run: python3 -m pip install uv==0.12.9
-        if: needs.source-work.outputs.candidate != 'REUSED' && runner.environment != 'self-hosted'
-      - name: Set up local Python
-        if: needs.source-work.outputs.candidate != 'REUSED' && runner.environment == 'self-hosted'
-        env:
-          UV_PYTHON_INSTALL_DIR: ${{ runner.tool_cache }}/uv-python
-        run: |
-          uv python install "$(cat .python-version)"
-          uv venv --allow-existing --seed --python "$(cat .python-version)" "$RUNNER_TOOL_CACHE/kast-ci-python"
-          echo "$RUNNER_TOOL_CACHE/kast-ci-python/bin" >> "$GITHUB_PATH"
-          "$RUNNER_TOOL_CACHE/kast-ci-python/bin/python3" -m pip install uv==0.12.9
+        if: needs.source-work.outputs.candidate != 'REUSED'
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         if: needs.source-work.outputs.candidate != 'REUSED'
         with:
