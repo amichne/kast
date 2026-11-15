@@ -4,6 +4,7 @@
 --enable-url-protocols=https
 -H:IncludeResources=management/bootstrap-install.sh
 -H:IncludeResources=jq-engine[.]properties
+-H:IncludeResources=mcp-result-schemas[.]json
 --exact-reachability-metadata
 -Os
 -H:+UnlockExperimentalVMOptions

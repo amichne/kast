@@ -29,6 +29,22 @@ tasks.named<ProcessResources>("processResources") {
     from(jqEngineMetadata)
 }
 
+val mcpResultSchemaDirectory = layout.buildDirectory.dir("generated/mcp-result-schemas")
+val mcpResultSchemas =
+    tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateMcpResultSchemas") {
+        group = "build"
+        // The generator consumes compiled owners and ordinary resources, never its own generated output.
+        classpath.from(sourceSets.main.get().output.classesDirs)
+        classpath.from(tasks.named<ProcessResources>("processResources").map { it.destinationDir })
+        classpath.from(configurations.runtimeClasspath)
+        mainClass.set("io.github.amichne.kast.cli.mcp.McpResultSchemas")
+        outputFile.set(mcpResultSchemaDirectory.map { it.file("mcp-result-schemas.json") })
+    }
+
+sourceSets.main {
+    output.dir(mapOf("builtBy" to mcpResultSchemas), mcpResultSchemaDirectory)
+}
+
 application {
     applicationName = "kast"
     mainClass = "io.github.amichne.kast.cli.KastCliMainKt"

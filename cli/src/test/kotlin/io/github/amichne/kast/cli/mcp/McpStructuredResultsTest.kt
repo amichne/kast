@@ -18,6 +18,16 @@ import org.junit.jupiter.api.Test
 
 class McpStructuredResultsTest {
     @Test
+    fun `packaged result schemas retain every canonical semantic contract`() {
+        val names =
+            io.github.amichne.kast.protocol.registry.PublicToolIdentity.entries.map { it.toolName } + "health_check"
+        for (name in names) {
+            assertEquals(McpResultSchemas.generate(name), McpStructuredResults.semanticSchemaFor(name), name)
+        }
+        assertThrows(IllegalStateException::class.java) { McpStructuredResults.semanticSchemaFor("unbound_tool") }
+    }
+
+    @Test
     fun `every transport failure has a closed MCP schema without widening semantic contracts`() {
         val names =
             io.github.amichne.kast.protocol.registry.PublicToolIdentity.entries.map { it.toolName } + "health_check"
