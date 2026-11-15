@@ -112,6 +112,32 @@ This is process and profile separation, not an OS sandbox. Build code runs with 
 Saved installation or workspace settings can select an external Gradle home through `GRADLE_USER_HOME`.
 Inherited credentials remain available to the build. Treat an external Gradle home as trusted input: it can contain credentials, properties, and init scripts.
 
+### Optional dependency sharing and index seeding
+
+`KAST_WORKSPACE_DEPENDENCY_SHARING` accepts exactly `PRIVATE` (the default) or `SHARED`.
+It supports saved installation and workspace configuration and takes effect only when a workspace container is first created.
+Changing it does not convert an existing container. Upgrades, generation rebuilds, and repair do not seed existing containers.
+
+| Policy | `GRADLE_USER_HOME` | Gradle home recorded at creation | Index seeding |
+| --- | --- | --- | --- |
+| `PRIVATE` | Unset | `<container>/state/home/.gradle` | Not requested. |
+| `PRIVATE` | Set | The selected canonical directory. | Not requested. |
+| `SHARED` | Unset | Kast-owned `kast-workspaces/shared/gradle`. | Attempted. |
+| `SHARED` | Set | The selected canonical directory. | Attempted. |
+
+`SHARED` does not select your `~/.gradle` unless you explicitly choose it through `GRADLE_USER_HOME`.
+Each Host retains its private HOME and IDE profile. Dependency sharing does not share live index storage.
+
+Index seeding clones an IDE system directory from a stopped, compatible workspace into a new container with copy-on-write storage.
+The donor can belong to another repository. Its runtime archive, platform, and canonical Gradle home must match.
+Initial clone support is limited to macOS APFS on the same filesystem. There is no full-copy fallback.
+If no donor qualifies or cloning is unsupported, creation continues empty.
+A clone failure also continues empty, but only after partial clone cleanup succeeds; failed cleanup rejects creation.
+
+A seed is a starting point, not freshness evidence. The Host still scans, imports, and validates before semantic readiness.
+Phase 1 native qualification and performance measurements remain pending; historical seeding experiments are not current performance proof.
+See [seed outcomes](/reference/lifecycles#workspace-index-seeding) and [passive status](/reference/management#1-check-the-installation) for the recorded result.
+
 Queries use the installed runtime and never consult release servers for an update.
 Gradle import and dependency resolution can still require network access.
 There is no public container creation, archive import, or desktop fallback step.

@@ -59,7 +59,13 @@ internal fun <Result> invokeManagedTool(
         }
     val opened =
         when (admission) {
-            WorkspaceOperationAdmission.PREPARE -> ManagedWorkspaceQuery.open(context.installation, root, environment)
+            WorkspaceOperationAdmission.PREPARE ->
+                ManagedWorkspaceQuery.open(
+                    context.installation,
+                    root,
+                    environment,
+                    ::inspectWorkspaceSeedHost,
+                )
             WorkspaceOperationAdmission.EXISTING_AUTHORITY ->
                 ManagedWorkspaceQuery.openExisting(context.installation, root, environment)
         }

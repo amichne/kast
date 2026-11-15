@@ -2919,10 +2919,20 @@
       "content": [
         {
           "path": "docs/public/glossary.mdx",
-          "sha256": "1e30618db0c00be5e8a94d47518d8069f819c43c24bf7c2343f6e041063572a5"
+          "sha256": "7a61d230fe098bfa64ae499fcc20aa3b8bbc200ab162bc7f675a71ff1e935b00"
         }
       ],
       "claims": [
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_deb57041eff94e9bb75bcfe6268fc468",
+          "statementSha256": "bd22f8daf115f966c9327fbfe8b8360885863ea3f83ed30492b04eefd87cad15"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_5e004059a6ce4ae4ac58f92a482f5c63",
+          "statementSha256": "a54da76e513268101c2654fa5d7cb74edade228f68f0e09f5db1b92fb8b5587a"
+        },
         {
           "page": "openwiki/glossary/compiler-identity.md",
           "claimId": "claim_ed14f8768fe44ece9daec12e43601ae9",
@@ -2987,7 +2997,7 @@
       "generatedOwners": [
         {
           "path": "docs/glossary.json",
-          "sha256": "f82d7494b240c1e3f5dffc7a7de442c5d4b276adbd72eb912e3c2addd1bf4792"
+          "sha256": "8866b265d24851b34a82b57f91e5048039cf9c66d7c20eeee49a594e35807914"
         }
       ],
       "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
@@ -5832,15 +5842,15 @@
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationParameterDeclaration.kt",
-          "sha256": "ec9acc164acfe58763e79686922e8013e2b4ff34ff7294ea60c6ccedcfd92af0"
+          "sha256": "9fe92a514b4fe3f38e39332e6a26cd18b7bfc5900af5a0844192451888ea8718"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "sha256": "66aa2d8ddfd10f7901d5af40993a7ae2991f4cd655169603e09537e92d83ba4d"
+          "sha256": "6393b60efd70381f092a06f4aab767e0a0786c6dc03c48e42a1b0da5753d5d3f"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
-          "sha256": "3e890804d664af8841c442b0b3735379e95f5779b2ed8cea53ac4c734dfe212d"
+          "sha256": "1f2bfffc70ae347d0bf83b0e413856bc45d9b459c4556edacbc0d8ad577f7fc2"
         },
         {
           "path": "distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/CliOutput.kt",
@@ -5872,7 +5882,7 @@
         },
         {
           "path": "packaging/configuration-schema.json",
-          "sha256": "bee38228eadc45feb077f85b49cc2b391c4ca538dd888f95951d0717859aa243"
+          "sha256": "ebe9b4d3fe96242b943413d839e680ce19f8018f09c1ca14084b8013745d91be"
         }
       ],
       "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
@@ -6317,10 +6327,30 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "5d58e3b746e71517f87b019bc7a34f273d1d42d8f53ff10209c86c92f5613f4b"
+          "sha256": "e79896339bc6bec02283975d0da0f9a38f490a4ec936da307d57b1e5f9551e37"
         }
       ],
       "claims": [
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_deb57041eff94e9bb75bcfe6268fc468",
+          "statementSha256": "bd22f8daf115f966c9327fbfe8b8360885863ea3f83ed30492b04eefd87cad15"
+        },
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_2b7707c46ffa434cb4864d95f6f59455",
+          "statementSha256": "d6400ef0b1ca23bbd05863bd7ab5d0f7c53b5d69c4806e7badb6a6e508394aa2"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_30c8df371f9248c0aebd6de0fd14035e",
+          "statementSha256": "2e8d32a101a20b86af40b1b74ff662d9485227818c2cc1de5927872381a130ba"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_74dbbb05f8ba4ad78e9a91cbc7925b20",
+          "statementSha256": "1d8041ac6b64175d012d491cd3b842a3e493e80112f21e385db855486d09ca04"
+        },
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_68237dc364944b9abe0e30e3b2acb303",
@@ -6847,7 +6877,7 @@
       "content": [
         {
           "path": "docs/public/reference/lifecycles.mdx",
-          "sha256": "9e7ba215bee13bd2d1a6b490bd5d86cf879fc229e11eeadd857af336371ce14a"
+          "sha256": "33a256a55ff065cca65543d9430fb3218ada3c98b330457cb192e54743ba38f2"
         },
         {
           "path": "docs/public/snippets/diagrams/request-lifecycle.jsx",
@@ -6855,6 +6885,31 @@
         }
       ],
       "claims": [
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_7c7c76e077fc401dbc35669cd50ecd10",
+          "statementSha256": "ebc1361b7f785b7165333c499f5eb5fba4e0927c4d4d28fdf4ad6ca7fa50df02"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_5e004059a6ce4ae4ac58f92a482f5c63",
+          "statementSha256": "a54da76e513268101c2654fa5d7cb74edade228f68f0e09f5db1b92fb8b5587a"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_232142798fb842a2800442d3380ff1ab",
+          "statementSha256": "44f6f66a865dfc588f5826a1ee851845b5038c6ced4d14d980ff4ba61a92cde4"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_30c8df371f9248c0aebd6de0fd14035e",
+          "statementSha256": "2e8d32a101a20b86af40b1b74ff662d9485227818c2cc1de5927872381a130ba"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_74dbbb05f8ba4ad78e9a91cbc7925b20",
+          "statementSha256": "1d8041ac6b64175d012d491cd3b842a3e493e80112f21e385db855486d09ca04"
+        },
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_68237dc364944b9abe0e30e3b2acb303",
@@ -7005,11 +7060,11 @@
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "sha256": "66aa2d8ddfd10f7901d5af40993a7ae2991f4cd655169603e09537e92d83ba4d"
+          "sha256": "6393b60efd70381f092a06f4aab767e0a0786c6dc03c48e42a1b0da5753d5d3f"
         },
         {
           "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
-          "sha256": "3e890804d664af8841c442b0b3735379e95f5779b2ed8cea53ac4c734dfe212d"
+          "sha256": "1f2bfffc70ae347d0bf83b0e413856bc45d9b459c4556edacbc0d8ad577f7fc2"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
@@ -7490,10 +7545,25 @@
       "content": [
         {
           "path": "docs/public/reference/management.mdx",
-          "sha256": "788bce6381fca0c46cedac8194d64f7da28573316b218487d004fb921473c8f8"
+          "sha256": "0f8e3f982a03c8f59c035398a64e8fe23362137d9ab1312c35f900344186bb9e"
         }
       ],
       "claims": [
+        {
+          "page": "openwiki/contracts/configuration.md",
+          "claimId": "claim_155c8abd84444a3b82d83a902aaa52fa",
+          "statementSha256": "a4f8981a2b2acd0f9778fe104bed33be67c07c2494abd1e1ff18de9a30852867"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_97a17347b2a94151b22e10ecfa46fdb3",
+          "statementSha256": "9174cad9241a78b0ae4329c7f8a0a459afdd81c14b320c2ee4f6dc90ded01582"
+        },
+        {
+          "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+          "claimId": "claim_271812e9b9c2481b9c656dfeb787bb20",
+          "statementSha256": "980e1c1456d6086fdbbb733de1686f2f683ce759843021b6ea0cf8688ea81ef9"
+        },
         {
           "page": "openwiki/contracts/configuration.md",
           "claimId": "claim_91a8a70849534ef1b2462828f3d9c9fb",

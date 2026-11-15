@@ -31,6 +31,8 @@ sources:
     resource: repo://.github/workflows/ci.yml
   - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
     resource: repo://cli/build.gradle.kts
+  - id: openwiki-source-581a5d52446c24f31ab1ed9d
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/WorkspaceSeedHost.kt
   - id: openwiki-source-f2c689f11ca37c5559bce314
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
   - id: openwiki-source-e1bc625b6dcbcb48924bf9b4
@@ -39,10 +41,16 @@ sources:
     resource: repo://cli/src/main/native-launchers/bin/kast-mcp
   - id: openwiki-source-75e91bf709db8b5e164b1b31
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
+  - id: openwiki-source-e18a27e9e0fbd580f3d323e9
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerFiles.kt
   - id: openwiki-source-97c3915cf78feeb35ecec04a
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerProgress.kt
+  - id: openwiki-source-a3d400e2149c937d7b2dafff
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryLease.kt
   - id: openwiki-source-22e272ee16fcff0c22f636ab
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStateAdmission.kt
+  - id: openwiki-source-dc8df2b070b8c6ba7da7a8f9
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt
   - id: openwiki-source-5640c4be5bb8760f0f77a90d
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/CopilotPluginInstallation.kt
   - id: openwiki-source-b6ffac113b6a09198425b019
@@ -65,6 +73,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
   - id: openwiki-source-7cea1ff036129ab5e1cebfe3
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt
+  - id: openwiki-source-dd26d5b3df9520fb1b710d75
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceStatus.kt
   - id: openwiki-source-1d4cdf342ee112e0d9d87924
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementReceiptAdmission.kt
   - id: openwiki-source-a62e12ff14ead337deede61b
@@ -87,6 +97,10 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt
   - id: openwiki-source-d9ace9189c53b7c82c5ed60c
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceReclamation.kt
+  - id: openwiki-source-0675d10d4917bf4cb2dc6de8
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeedClone.kt
+  - id: openwiki-source-e140285f42db726bccbc4e01
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt
   - id: openwiki-source-d95d75ec0e14dda7faf63dbf
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt
   - id: openwiki-source-245e3f9878cb2ef01a1fcbd1
@@ -105,10 +119,10 @@ sources:
     resource: repo://packaging/product_acceptance.py
   - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
     resource: repo://packaging/product_lifecycle_probe.py
-generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
+generated: { by: "amp", at: "2026-11-14T23:54:19.999Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-13T03:20:11.225Z
+    at: 2026-11-14T23:57:28.873Z
 ---
 
 # Native management and harness connections
@@ -154,6 +168,58 @@ Admission opportunistically reclaims vanished-root profiles only after exact gen
 An exterior `.removing-ID.json` receipt survives interrupted deletion.
 Unreadable cleanup candidates produce bounded rejection evidence rather than failing an unrelated semantic request.
 See [retirement and recovery](upgrades-shutdown-and-reset.md) for the deletion boundary and remaining qualification gaps.
+
+## Workspace index seeding
+
+Only new workspace creation with `KAST_WORKSPACE_DEPENDENCY_SHARING=SHARED` attempts index seeding.
+`ContainerStore` stages private state, seeds `state/system`, and writes creation evidence before atomic publication.
+Existing containers and upgrade, repair, or generation rebuild paths keep their recorded policy and home without seeding.
+See [configuration](../contracts/configuration.md#creation-time-dependency-sharing) for the four-way Gradle-home selection and legacy default.
+
+### Donor admission
+
+A donor can belong to any workspace, not just a sibling repository worktree.
+Cheap selection requires the current generation, matching runtime archive and platform, the same canonical Gradle home, and no `.removing-ID.json` receipt.
+The admitted generation must contain a physical system directory and a supported Host exit record with `SMART` and a canonical UUID `hostLifetime`.
+`reason` remains `IDLE` or `SETTLED`; neither alone proves completed exit or flushed storage.
+The private state location binds the record to its generation and runtime, without extra DTO fields.
+Candidates are ordered by newest exit-record filesystem modification time, then ascending container ID.
+
+The donor's non-blocking exclusive query lease spans generation and record revalidation, stopped-Host inspection, and the whole clone.
+The platform-derived IntelliJ configuration `.lock` must be absent, and the existing lifecycle transport must report `HOST_UNAVAILABLE`.
+An answering endpoint, leftover lock, or unproven observation skips the donor. Selection never starts or stops a donor Host.
+This combines evidence; endpoint unavailability alone is insufficient.
+The historical lock-removal/flush ordering experiment covered one macOS/IntelliJ build, not every supported release or platform.
+
+### Clone and creation evidence
+
+`cloneWorkspaceSystem` supports macOS APFS on the same FileStore, using native `clonefile` per regular file.
+It clones the whole `state/system` tree, not the sibling `state/host-exit.json`.
+The physical system root must belong to the current user with mode `0700`; every descendant must share its owner.
+Source admission rejects links, foreign owners, special files, and more than 250,000 entries.
+There is no full-copy or hard-link fallback. Running Hosts never share writable index storage.
+The seed grants no semantic authority: ordinary project scans, imports, and readiness checks still apply.
+
+`state/workspace-seed.json` records `schemaVersion: 1` and `result`, whose `type` selects the closed outcome.
+The bounded progress event uses `event: kast_workspace_seed` with the same result and no paths.
+
+| Result type | Creation effect and retained fields |
+| --- | --- |
+| `NOT_REQUESTED` | `PRIVATE`; empty initial system state. |
+| `SEEDED` | Clone completed; `donor` is the donor container ID. |
+| `NO_ELIGIBLE_DONOR` | No donor passed selection; continue empty. |
+| `DONORS_BUSY` | Donor query-lease contention occurred without a usable donor; continue empty. |
+| `UNSUPPORTED_FILESYSTEM` | Unsupported platform or filesystem; continue empty after successful cleanup. |
+| `CLONE_FAILED` | `stage` is `SOURCE_ADMISSION` or `CLONE`; continue empty only after successful cleanup. |
+| `SELECTION_REJECTED` | `failure` retains a finite `ContainerFailure`; continue empty. |
+| `CLEANUP_REJECTED` | `failure` retains the cleanup failure; reject publication. Only progress records this result. |
+
+Receipt writing must succeed before publication. Partial clones are never published, and cleanup failure cannot become an empty success.
+Cleanup re-admits the recipient's private physical system root before deleting partial clone entries, without following an aliased root.
+Passive status exposes the recorded sharing policy, Gradle home, saved-configuration match, and an admitted seed receipt or unavailable evidence.
+Missing legacy receipts remain unavailable; they are not synthesized as `NOT_REQUESTED`.
+Phase 1 native qualification and performance remain pending. Historical seeded-start measurements do not qualify this implementation.
+Immutable seed snapshots remain outside Phase 1.
 
 ## Guidance installation and ownership
 

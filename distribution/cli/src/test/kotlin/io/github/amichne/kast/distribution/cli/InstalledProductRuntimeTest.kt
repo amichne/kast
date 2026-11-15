@@ -6,7 +6,6 @@ import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscov
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -265,7 +264,7 @@ class InstalledWorkspaceAdmissionTest {
         Files.delete(gradle)
         assertEquals(
             Refinement.Rejected(ContainerFailure.INVALID_GRADLE_HOME),
-            ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()),
+            ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap(), noSeedProbe()),
         )
         assertTrue(store.workspace(workspace) is Refinement.Refined)
         assertEquals(
@@ -273,7 +272,9 @@ class InstalledWorkspaceAdmissionTest {
             ContainerQueryLease.whileIdle(container) { Refinement.Refined(Unit) },
         )
         Files.createDirectory(gradle)
-        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()) as Refinement.Refined).value.close()
+        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap(), noSeedProbe()) as Refinement.Refined)
+            .value
+            .close()
     }
 
     @Test
@@ -292,12 +293,14 @@ class InstalledWorkspaceAdmissionTest {
                 channel.lock().use {
                     assertEquals(
                         Refinement.Rejected(ContainerFailure.BUSY),
-                        ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()),
+                        ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap(), noSeedProbe()),
                     )
                     assertFalse(Files.exists(store.resolve("containers")))
                 }
             }
-        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()) as Refinement.Refined).value.close()
+        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap(), noSeedProbe()) as Refinement.Refined)
+            .value
+            .close()
         assertTrue(Files.exists(store.resolve("containers")))
     }
 
@@ -332,7 +335,7 @@ class InstalledWorkspaceAdmissionTest {
         Files.writeString(fixture.installation.parent.resolve(SHUTDOWN_FENCE), "fenced")
         assertEquals(
             Refinement.Rejected(ContainerFailure.FENCE_REJECTED),
-            ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()),
+            ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap(), noSeedProbe()),
         )
         assertFalse(Files.exists(fixture.runtime.root.parent.parent.resolve("containers")))
     }
@@ -344,10 +347,14 @@ class InstalledWorkspaceAdmissionTest {
         Files.writeString(workspace.resolve("settings.gradle.kts"), "")
         val root = (FilesystemCanonicalRootDiscovery.discover(workspace) as CanonicalRootDiscovery.Discovered).root
         val store = ContainerStore(fixture.runtime.root.parent.parent, fixture.runtime.manifest.platform)
-        val first = (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()) as Refinement.Refined).value
+        val first =
+            (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap(), noSeedProbe()) as Refinement.Refined)
+                .value
         val record = (store.workspace(workspace) as Refinement.Refined).value
         val trust = Files.readString(record.directory.resolve("trust.xml"))
-        val second = (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()) as Refinement.Refined).value
+        val second =
+            (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap(), noSeedProbe()) as Refinement.Refined)
+                .value
         second.close()
         val container = (store.select(record.id.text) as Refinement.Refined).value
         assertEquals(
@@ -376,7 +383,9 @@ class InstalledWorkspaceAdmissionTest {
             ManagedWorkspaceQuery.openExisting(fixture.installation, root, emptyMap()),
         )
         assertFalse(Files.exists(store.containers))
-        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()) as Refinement.Refined).value.close()
+        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap(), noSeedProbe()) as Refinement.Refined)
+            .value
+            .close()
         val previous = (store.route(workspace) as Refinement.Refined).value
         assertEquals(
             Refinement.Refined(Unit),
@@ -400,7 +409,9 @@ class InstalledWorkspaceAdmissionTest {
         Files.writeString(workspace.resolve("settings.gradle.kts"), "")
         val root = (FilesystemCanonicalRootDiscovery.discover(workspace) as CanonicalRootDiscovery.Discovered).root
         val store = ContainerStore(fixture.runtime.root.parent.parent, fixture.runtime.manifest.platform)
-        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()) as Refinement.Refined).value.close()
+        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap(), noSeedProbe()) as Refinement.Refined)
+            .value
+            .close()
         val previous = (store.route(workspace) as Refinement.Refined).value
         val trust = Files.readString(previous.directory.resolve("trust.xml"))
         val durable = Files.readString(previous.directory.resolve("container.json"))
@@ -409,19 +420,21 @@ class InstalledWorkspaceAdmissionTest {
             retireManagedWorkspaces(store, { Refinement.Refined(Unit) }) { Refinement.Refined(Unit) },
         )
         val replacement = productFixture(temporary, "replacement Host")
-        (ManagedWorkspaceQuery.open(replacement.installation, root, emptyMap()) as Refinement.Refined).value.use { query
-            ->
-            assertNotEquals(previous.home, query.home)
-            assertEquals(previous.gradleHome.toString(), query.environment["GRADLE_USER_HOME"])
-            assertEquals(Refinement.Refined("prepared"), query.prepare { "prepared" })
-            assertEquals(trust, Files.readString(previous.directory.resolve("trust.xml")))
-            assertEquals(durable, Files.readString(previous.directory.resolve("container.json")))
-            (ManagedWorkspaceQuery.openExisting(replacement.installation, root, emptyMap()) as Refinement.Refined)
-                .value
-                .use { retained ->
-                    assertEquals(query.home, retained.home)
-                }
-        }
+        (ManagedWorkspaceQuery.open(replacement.installation, root, emptyMap(), noSeedProbe()) as Refinement.Refined)
+            .value
+            .use { query ->
+                assertNotEquals(previous.home, query.home)
+                assertEquals(previous.gradleHome.toString(), query.environment["GRADLE_USER_HOME"])
+                assertFalse(Files.exists(query.home.parent.resolve("workspace-seed.json")))
+                assertEquals(Refinement.Refined("prepared"), query.prepare { "prepared" })
+                assertEquals(trust, Files.readString(previous.directory.resolve("trust.xml")))
+                assertEquals(durable, Files.readString(previous.directory.resolve("container.json")))
+                (ManagedWorkspaceQuery.openExisting(replacement.installation, root, emptyMap()) as Refinement.Refined)
+                    .value
+                    .use { retained ->
+                        assertEquals(query.home, retained.home)
+                    }
+            }
     }
 
     @Test
@@ -436,6 +449,7 @@ class InstalledWorkspaceAdmissionTest {
                 fixture.installation,
                 root,
                 mapOf("KAST_MANAGED_HEADLESS_STATE" to temporary.resolve("foreign").toString()),
+                noSeedProbe(),
             ),
         )
         assertFalse(Files.exists(fixture.runtime.root.parent.parent.resolve("containers")))
@@ -448,7 +462,9 @@ class InstalledWorkspaceAdmissionTest {
         Files.writeString(workspace.resolve("settings.gradle.kts"), "")
         val root = (FilesystemCanonicalRootDiscovery.discover(workspace) as CanonicalRootDiscovery.Discovered).root
         val store = ContainerStore(fixture.runtime.root.parent.parent, fixture.runtime.manifest.platform)
-        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap()) as Refinement.Refined).value.close()
+        (ManagedWorkspaceQuery.open(fixture.installation, root, emptyMap(), noSeedProbe()) as Refinement.Refined)
+            .value
+            .close()
         val old = (store.select(ContainerId.forWorkspace(workspace).text) as Refinement.Refined).value
         assertEquals(Refinement.Refined(Unit), store.recordRetirement(old))
         Files.delete(workspace.resolve("settings.gradle.kts"))
@@ -457,46 +473,31 @@ class InstalledWorkspaceAdmissionTest {
         Files.writeString(other.resolve("settings.gradle.kts"), "")
         val next = (FilesystemCanonicalRootDiscovery.discover(other) as CanonicalRootDiscovery.Discovered).root
         (ContainerQueryLease.acquire(old) as Refinement.Refined).value.use {
-            (ManagedWorkspaceQuery.open(fixture.installation, next, emptyMap()) as Refinement.Refined).value.close()
+            (ManagedWorkspaceQuery.open(fixture.installation, next, emptyMap(), noSeedProbe()) as Refinement.Refined)
+                .value
+                .close()
             assertTrue(Files.exists(old.directory))
         }
         val evidence = Files.createDirectories(old.home.resolve(".kast/unknown")).resolve("pending")
         Files.writeString(evidence, "unresolved")
-        (ManagedWorkspaceQuery.open(fixture.installation, next, emptyMap()) as Refinement.Refined).value.close()
+        (ManagedWorkspaceQuery.open(fixture.installation, next, emptyMap(), noSeedProbe()) as Refinement.Refined)
+            .value
+            .close()
         assertEquals("unresolved", Files.readString(evidence))
         Files.delete(evidence)
         Files.delete(evidence.parent)
         Files.delete(evidence.parent.parent)
-        (ManagedWorkspaceQuery.open(fixture.installation, next, emptyMap()) as Refinement.Refined).value.close()
+        (ManagedWorkspaceQuery.open(fixture.installation, next, emptyMap(), noSeedProbe()) as Refinement.Refined)
+            .value
+            .close()
         assertFalse(Files.exists(old.directory))
         assertTrue(Files.exists(fixture.runtime.root))
         assertTrue(Files.isDirectory(other))
     }
 }
 
-@Serializable
-private data class ProductReceiptFixture(
-    val schemaVersion: Int,
-    val installationRoot: String,
-    val executable: String,
-    val executableSha256: String,
-    val product: InstalledProductReference,
-    val registrations: List<ManagedRegistration>,
-    val guidance: List<ManagedGuidance>,
-)
-
-internal fun writeProductManagement(installation: Path, executable: Path, reference: InstalledProductReference) {
-    val receipt =
-        ProductReceiptFixture(
-            3,
-            installation.parent.toString(),
-            executable.toString(),
-            sha256(executable),
-            reference,
-            emptyList(),
-            emptyList(),
-        )
-    Files.writeString(receiptPath(installation.parent), containerJson.encodeToString(receipt))
+private fun noSeedProbe(): WorkspaceSeedHostProbe = WorkspaceSeedHostProbe { _, _, _ ->
+    error("Unexpected donor probe")
 }
 
 internal data class InstalledRuntimeFixture(

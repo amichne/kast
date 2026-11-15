@@ -106,6 +106,7 @@ private constructor(
     val readLimits: ReadLimits,
     val workspacePreparationWait: io.github.amichne.kast.kernel.ElapsedTimeAllowance,
     val hostIdleShutdown: HostIdleShutdown,
+    val workspaceDependencySharing: WorkspaceDependencySharing,
     private val delegatedEnvironment: GradleImportEnvironment,
 ) {
     val selectedIdeHome: ConfigurationPathSelection
@@ -316,6 +317,20 @@ private constructor(
                             ConfigurationFailure.INVALID_VALUE,
                         )
                 }
+            val dependencySharing =
+                when (
+                    val parsed =
+                        WorkspaceDependencySharing.parseSetting(
+                            byKey.getValue(ConfigurationParameter.WORKSPACE_DEPENDENCY_SHARING).value.boundaryValue()
+                        )
+                ) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return rejected(
+                            ConfigurationParameter.WORKSPACE_DEPENDENCY_SHARING.key,
+                            parsed.failure,
+                        )
+                }
             val rawNames = byKey.getValue(ConfigurationParameter.GRADLE_IMPORT_VARIABLES).value.boundaryValue()
             val gradleHome = byKey[ConfigurationParameter.GRADLE_USER_HOME]?.value?.boundaryValue()
             val names =
@@ -356,6 +371,7 @@ private constructor(
                     readLimits,
                     preparationWait,
                     idleShutdown,
+                    dependencySharing,
                     delegated,
                 )
             )

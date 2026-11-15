@@ -27,6 +27,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
   - id: openwiki-source-c58b3f38ca46d44dd30a8771
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
+  - id: openwiki-source-dc8df2b070b8c6ba7da7a8f9
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt
   - id: openwiki-source-bae14a3ed4bc7ba21f443356
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
   - id: openwiki-source-6f0b647814adafaaa5d5c5f2
@@ -97,10 +99,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleStop.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
-generated: { by: "amp", at: "2026-11-13T02:31:12.884Z" }
+generated: { by: "amp", at: "2026-11-14T23:43:30.219Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T03:03:20.161Z
+    at: 2026-11-14T23:57:28.873Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -127,6 +129,13 @@ Cleanup requires proven root absence, no query lease, exact retired generation e
 The owner atomically detaches the private profile and retains an exterior `.removing-ID.json` receipt until deletion completes.
 Changed identities, reappearing roots, and unrecognized private evidence retain recovery state.
 Repository content, shared runtime bytes, and external Gradle homes are outside this profile deletion boundary.
+
+Dependency sharing does not change existing workspace records during upgrade, repair, or generation rebuild.
+Only first creation attempts index seeding. Removing one workspace leaves the shared Gradle cache available to other workspaces.
+After workspace removal, full uninstall admits only the fixed Kast-owned `kast-workspaces/shared/gradle` cache for deletion.
+It refuses foreign siblings or owners, `.kast` recovery evidence, and trees exceeding the separate 2,000,000-entry cache budget.
+Cleanup does not follow links into external targets. An explicitly selected external Gradle home remains outside removal authority.
+These are source-level ownership rules, not completed native removal qualification.
 
 Full product removal retains its recovery interpreter and payload inventory under `recovery/installation/product-removal`.
 `UninstallManagedRoot` admits that complete import tree before recovery execution and checks remaining files before cleanup.

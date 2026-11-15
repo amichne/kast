@@ -63,20 +63,36 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
   - id: openwiki-source-fb61cc58d2fa4809ff4d73bb
     resource: repo://cli/src/main/native-launchers/bin/kast-mcp
+  - id: openwiki-source-f6d88e313802a0e3d7a8ade3
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerModel.kt
   - id: openwiki-source-22e272ee16fcff0c22f636ab
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStateAdmission.kt
+  - id: openwiki-source-dc8df2b070b8c6ba7da7a8f9
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt
   - id: openwiki-source-ecb21af09f4a49f9e40342dd
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
+  - id: openwiki-source-dd26d5b3df9520fb1b710d75
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceStatus.kt
   - id: openwiki-source-7cd4eb997a7878eca6390142
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
+  - id: openwiki-source-0675d10d4917bf4cb2dc6de8
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeedClone.kt
+  - id: openwiki-source-e140285f42db726bccbc4e01
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt
   - id: openwiki-source-5ec7d945181fa4fe6a508e08
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntimeTest.kt
   - id: openwiki-source-fd4148a6ba46f590f554b6b6
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
+  - id: openwiki-source-15e8231ce806d461eb152470
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationParameterDeclaration.kt
   - id: openwiki-source-e6c1742713e79102193033b8
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/HostIdleShutdown.kt
   - id: openwiki-source-681368e4942d2fb35f298a68
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
+  - id: openwiki-source-9202c39abfaacebb6448e73f
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt
+  - id: openwiki-source-5e9e3b1e0e52cf606ae88456
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/WorkspaceDependencySharing.kt
   - id: openwiki-source-e1b836dcfc56d72f6b2f511f
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecord.kt
   - id: openwiki-source-a788214182281b80d302305d
@@ -105,10 +121,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt
   - id: openwiki-source-b063b188a00b030d97a5f66b
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt
-generated: { by: "amp", at: "2026-11-14T21:38:41.615Z" }
+generated: { by: "amp", at: "2026-11-14T23:43:30.219Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T21:41:04.802Z
+    at: 2026-11-14T23:57:28.873Z
 ---
 
 # Installation configuration
@@ -247,6 +263,31 @@ Recreating the same canonical directory restores launch eligibility without rewr
 
 These are source-level contracts. Native qualification and complete product admission remain separate gates; see [release qualification](../distribution/release-candidates-and-promotion.md).
 
+## Creation-time dependency sharing
+
+`KAST_WORKSPACE_DEPENDENCY_SHARING` accepts exactly `PRIVATE` (default) or `SHARED`; other values reject with `INVALID_VALUE`.
+The catalogue declares workspace scope, owner `:distribution:cli`, and application boundary `NEXT_WORKSPACE_CREATION`.
+`WorkspaceDependencySharing.parseSetting` in `:distribution:contract` parses the value once.
+Saved installation and workspace configuration use the existing resolution precedence; an explicit `GRADLE_USER_HOME` still selects the canonical home.
+
+| Policy | Explicit Gradle home | Creation-time selection | Index seeding |
+| --- | --- | --- | --- |
+| `PRIVATE` | Absent | `<container>/state/home/.gradle` | Not requested. |
+| `PRIVATE` | Present | The selected canonical directory. | Not requested. |
+| `SHARED` | Absent | Kast-owned `kast-workspaces/shared/gradle`. | Attempted. |
+| `SHARED` | Present | The selected canonical directory. | Attempted. |
+
+The Kast-owned shared home is not the user's `~/.gradle`. External homes remain trusted build input, not Kast-owned cleanup targets.
+`container.json` persists `dependencySharing` and the Gradle path; a missing legacy policy decodes as `PRIVATE`.
+Changing configuration does not convert existing containers. Upgrades, generation rebuilds, and repair do not seed them.
+Each Host keeps a private HOME and IDE profile; dependency sharing does not share live indexes.
+
+Passive status compares the recorded policy and home with saved configuration using an empty ambient environment.
+`savedDependencyConfiguration` reports `MATCHES_CREATION`, `DIFFERS_FROM_CREATION`, or unavailable evidence; it never converts the workspace.
+The `seed` observation admits the creation receipt rather than inferring success from a configured policy.
+See [managed workspace creation](../distribution/management-and-connections.md#workspace-index-seeding) for donors, clone limits, and outcomes.
+These contracts describe local source; Phase 1 native qualification and performance remain unproven.
+
 ## Managed Host idle shutdown
 
 `KAST_HOST_IDLE_SHUTDOWN` defaults to `off`. It accepts `off` or whole minutes from 5 through 1440.
@@ -264,7 +305,8 @@ Both managed stop paths write `state/host-exit.json` atomically. The Host exit r
 The idle path writes just before requesting exit. An explicit stop writes after its acknowledgment reaches Control.
 The record proves a settled stop requested exit, not completed process exit or flushed indexes.
 Resumed admission retracts it. Control deletes it before every launch; failure to delete blocks launch with `LAUNCH_FAILED`.
-A record write failure does not prevent exit. No consumer uses the record for index seeding yet.
+A record write failure does not prevent exit. Index seeding requires a supported `SMART` record plus separate donor admission and stopped-Host observations.
+The record alone grants no donor authority and is not copied into a seeded recipient.
 
 Source owners: [policy parser](../../distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/HostIdleShutdown.kt), [idle monitor](../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostIdleShutdownMonitor.kt), [exit record](../../distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecord.kt), and [record writer](../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostExitRecords.kt).
 
