@@ -6327,7 +6327,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "f93ea3f22398e8f3c7019cbe8ebec632736813cd4635ba1ed62aced59f30322a"
+          "sha256": "8b606936020b256bee5409fcfd4f95fb270cc2bb9f7bbbc770ce6c8f11192d6f"
         }
       ],
       "claims": [
@@ -6630,6 +6630,16 @@
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_67d4349c2da442659e515959bc27eee2",
           "statementSha256": "fbd8995321c9a07b42b663ad5e2baf4f9ad206439aed08df4847b8d706daba05"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_6d354ecdb25847e98076d3b89a5c40dc",
+          "statementSha256": "c89aae5ba7b34ab4c4141bfe1f5d77a59b2ebe5c55459acd4cff2e44949b3fad"
+        },
+        {
+          "page": "openwiki/distribution/installation-and-managed-files.md",
+          "claimId": "claim_97f8635df26f48c68f1397589e0cf829",
+          "statementSha256": "330ac27f8ef097742c08d68b84545e94eb314ca70c1b0d2e33b4b6d14cb955f3"
         }
       ],
       "generatedOwners": [

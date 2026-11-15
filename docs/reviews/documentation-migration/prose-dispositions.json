@@ -16476,6 +16476,354 @@
         "severity": "warning"
       },
       "reason": "Keep passive hooks, explicit managed workspace preparation, and optional MCP private interpreter admission distinct. ProductInstalled notices, capability-marked guidance refresh, Pi receipt cleanup, and provider routing versus inventory ownership have separate recovery rules. Retired shell setup does not restore ambient Python requirements. Grade remains above target; live-provider loading and reader comprehension remain unproven."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/installation.mdx",
+        "sourceSha256": "8b606936020b256bee5409fcfd4f95fb270cc2bb9f7bbbc770ce6c8f11192d6f",
+        "rule": "HowTo.Steps",
+        "line": 1,
+        "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "severity": "warning"
+      },
+      "reason": "The procedure uses numbered section headings: install the selected release, inspect installed state, then prove a semantic connection. Each has executable commands. Keep optional local-product setup and private-state reference material outside that sequence. The missing Markdown list remains an assessed structural exception, not a claim of reader success. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/installation-and-managed-files.md",
+        "sourceSha256": "fcd592e58ccb32959f82944f4eeb1535c7aa1908d0935643cfc60ea941ee3663",
+        "rule": "Slopsentral.Diction",
+        "line": 186,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain identifies the original runtime/base publication evidence that must survive before payload copying begins. The surrounding paragraphs scope cleanup to a prepared allocation outside the managed stores. Preserve this provenance and effect ordering; accept only this diction advisory. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/installation-and-managed-files.md",
+        "sourceSha256": "fcd592e58ccb32959f82944f4eeb1535c7aa1908d0935643cfc60ea941ee3663",
+        "rule": "Slopsentral.LongSentence",
+        "line": 226,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep device remapping conditional on unchanged recorded inode and owner constraints, with one consistent mapping from recorded to current devices. Adjacent receipt and root checks preserve physical ownership. Splitting away these conditions risks implying that any changed device is accepted. This accepts length only. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/management-and-connections.md",
+        "sourceSha256": "545b53e4971b44f7acf9933f81929f30b44cd5e5f6d080c1e7bc38557dbd84eb",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.36 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep request-owned workspace admission, passive status, provider routing intent, and receipt-proven ownership distinct. The MCP update explicitly applies mode 0644 to prepared regular dependency files so installed admission sees normalized modes independently of source archive permissions. Interpreter and dependency qualification remain separate. The grade target remains unmet; this review grants no native or comprehension proof. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/release-candidates-and-promotion.md",
+        "sourceSha256": "04c2990126197623e062b0f8e607ce57095dd0f2328d40003c053b21e4685076",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.43 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep component-native qualification, immutable two-target sealing, detached installed acceptance, and publication authority separate. Local schema 4 records carry one target and LOCAL provenance, not invented CI evidence. Exact producer, baseline, and parallel-query identity constraints remain necessary. The grade is accepted as an advisory, not proof that those gates ran or readers understood them. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/release-candidates-and-promotion.md",
+        "sourceSha256": "04c2990126197623e062b0f8e607ce57095dd0f2328d40003c053b21e4685076",
+        "rule": "Slopsentral.Modals",
+        "line": 96,
+        "message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "May expresses permitted baseline source-revision equality, not uncertainty or a promised equality. The same sentence still requires a genuinely different actual bundle/runtime/Control composition for each target. Preserve that permission-versus-obligation distinction. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/release-candidates-and-promotion.md",
+        "sourceSha256": "04c2990126197623e062b0f8e607ce57095dd0f2328d40003c053b21e4685076",
+        "rule": "Slopsentral.Diction",
+        "line": 101,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain describes continuity of the compiler Host identity from three concurrent cold callers into the later warm query. This is an identity assertion, not merely successful responses or continued process reachability. Keep that exact acceptance distinction. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/release-candidates-and-promotion.md",
+        "sourceSha256": "04c2990126197623e062b0f8e607ce57095dd0f2328d40003c053b21e4685076",
+        "rule": "Slopsentral.Diction",
+        "line": 171,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain distinguishes installed admission preserving LOCAL records from published decoding and CI joins rejecting them. The preceding schema-4 paragraph forbids invented CI run identities. Accept this word only where the two admission contracts remain explicit. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+        "sourceSha256": "dfef88afabbdd90897b8a4c1a072f1b81a324801f7fd3369b66461c3c77bd197",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.36 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep generation-bound retirement, exclusive fencing, exact-product repair, exterior recovery receipts, and provider cleanup ownership separate. Legacy force paths remain excluded from managed state, and empty bookkeeping is not unsettled invocation evidence. Retired shell adapters do not restore public component installation. Grade remains above target; native-removal and comprehension evidence remain separate. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+        "sourceSha256": "dfef88afabbdd90897b8a4c1a072f1b81a324801f7fd3369b66461c3c77bd197",
+        "rule": "Slopsentral.Diction",
+        "line": 138,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain states that changed identities, reappearing roots, and unknown private evidence preserve recovery state instead of authorizing deletion. The preceding exterior receipt and following exclusion of repository/shared data define the protected boundary. Accept this persistence wording without weakening rejection. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+        "sourceSha256": "dfef88afabbdd90897b8a4c1a072f1b81a324801f7fd3369b66461c3c77bd197",
+        "rule": "Slopsentral.Modals",
+        "line": 153,
+        "message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "May marks an optional post-call filesystem state: completed native calls need not leave empty one-shot or tool-session directories. The next sentence limits replacement/removal to admitted empty bookkeeping with identity and empty-directory checks. Do not imply those directories always exist or contain disposable live state. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.Diction",
+        "line": 443,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain describes schema-4 records preserving one supported target and LOCAL provenance without manufacturing a second platform or CI run. The next sentence distinguishes installed and published admission. Accept this provenance wording only. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.Diction",
+        "line": 444,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain distinguishes installed decoding and validInstalledProductRecord accepting both record forms from published decoding and validProductRecord rejecting LOCAL records. Preserve those exact admission owners and the asymmetry; accept diction only. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.LongSentence",
+        "line": 506,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the retired isolated download adapter, archive store, heap observer, and network/trust-store bootstrap inventory together. IDEA owns import environment and trust configuration instead. The preceding sentences identify current contract and managed-adapter owners. This accepts retirement-list length, not renewed isolated-runtime authority. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.Diction",
+        "line": 508,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain describes Control and Host preserving separate component artifact ownership and reviewed idea-262.zip/idea-263.zip variants. The next sentence requires one complete public product record rather than independent component selection. This accepts ownership wording without restoring public component installation. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.Diction",
+        "line": 522,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain requires preview publication and stable promotion to preserve the original sealed record and payload bytes after detached acceptance receipts arrive. Sealing, acceptance, and publication remain separate stages. This accepts immutable-provenance wording, not publication authority. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.LongSentence",
+        "line": 738,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Two sentences share this exact Vale identity. Keep bounded launchctl observations within one ten-second deadline and finite deadline/I/O/interruption/exit rejection distinct from bootout success. Also keep OBSERVE_BEFORE, BOOTOUT, and OBSERVE_AFTER correlated with closed result and admitted exit code while excluding labels, arguments, and output. This accepts both measured lengths, not retirement based on exit alone. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.LongSentence",
+        "line": 740,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the shared entry-limit requirement across shell bootstrap, installed lifecycle, build verifier, and Kotlin owner, with release-layout rejection before publication. The following sentences require checksum-verified prior inspection and reject failed retirement. This accepts the owner inventory's length without weakening resource limits. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.LongSentence",
+        "line": 754,
+        "message": "Long sentence: 37 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep historical paired plugin ownership separate from new Control-only receipts: only explicit detach-legacy-pair performs paired maintenance, and preparing the next recovery baseline removes receipt ownership without changing plugin files. The paragraph preserves uncertain process/journal evidence. This accepts the legacy distinction's length, not new public setup authority. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.LongSentence",
+        "line": 757,
+        "message": "Long sentence: 39 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep legacy force-reset effects under the activation lock: fence and retire exact services, remove scoped aliases and derived upstream directory, then quarantine payload/state and recovery before staging. The preceding sentence says the public product bootstrap rejects this option. This accepts ordered-effect length, not public reset authority. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.LongSentence",
+        "line": 826,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep process command-line observations qualified as runtime evidence for version-root tracing, followed by exact launchd bootout before reviewed login-item removal. The surrounding lines require per-entry consent and preserve entries changed during review. This accepts length without authorizing heuristic deletion. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.LongSentence",
+        "line": 840,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep offline login-entry recovery conditional on removing only the login argument and obtaining the retained exact-profile service property-list bytes. The sentence separately recognizes the older one-shot form. This accepts length without allowing a partial or approximate launchd match. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.LongSentence",
+        "line": 864,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all three legacy compiler-query witnesses C1/P1, C2/P1, and C2/P2, unchanged Host identities across Control upgrade, and unchanged Control files/generation across Host installation. The paragraph explicitly denies that routine tests prove this native behavior. This accepts the conjunctive acceptance list's length only. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.LongSentence",
+        "line": 879,
+        "message": "Long sentence: 32 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the legacy unavailable loaded-version observation explicit while requiring the private production coordinator, new epoch, fresh generation, and ready-service evidence to agree. The following sentence keeps candidate status strict. This accepts length, not conversion of unavailable evidence into verified success. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.Diction",
+        "line": 897,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retains describes an exterior retirement journal surviving uninstall cleanup. The sentence distinguishes managed recovery interpreter/payload ownership from legacy Host-removal receipts, with unknown evidence still protected after Control removal. Accept this persistence wording only. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.LongSentence",
+        "line": 906,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the SQLite cleanup adapter's exact-schema and bounded typed plan/attempt/journal/receipt inspection read-only. It must not initialize, checkpoint, or manufacture recovery. Adjacent sentences preserve unknown state and exclude full cleanup from upgrade. This accepts the ownership-and-exclusion list's length only. Rechecked after the LOCAL_ARTIFACT_REQUIRED repair update; this advisory sits on unchanged text, so its review stands."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/installation.mdx",
+        "sourceSha256": "8b606936020b256bee5409fcfd4f95fb270cc2bb9f7bbbc770ce6c8f11192d6f",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 9.09 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep complete local product records distinct from component archives and release qualification. The added sentence names the exact LOCAL_ARTIFACT_REQUIRED value and the command that returns it, so `kast upgrade --repair` users learn that local bytes are never fetched remotely. InstalledProductRuntime.kt and managed_release.py own that rejection. Grade 9.09 remains above target; comprehension is unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/installation-and-managed-files.md",
+        "sourceSha256": "fcd592e58ccb32959f82944f4eeb1535c7aa1908d0935643cfc60ea941ee3663",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.41 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep complete-product activation, local-artifact admission, and retained legacy recovery distinct. The added sentence states that a captured selection naming a local record without LocalReleaseSource rejects with LOCAL_ARTIFACT_REQUIRED before any release read; managed_release.py download_composition owns it. Exact names are required. Grade 12.41 remains above target and proves neither comprehension nor installed execution."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.76 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep complete-product selection, LOCAL versus published records, and repair admission distinct. The added sentence limits installedRepairSelection reuse to published products and names the LOCAL_ARTIFACT_REQUIRED rejection owned by InstalledProductRuntime.kt. Exact identifiers preserve that boundary. Grade 12.76 remains above target and does not prove comprehension."
     }
   ]
 }
