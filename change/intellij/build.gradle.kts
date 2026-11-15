@@ -15,37 +15,17 @@ base {
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val ideaDistributionVersion = catalog.findVersion("idea-platform-build").get().requiredVersion
 
-private val extractedIdeaDistributionDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/symbol-intellij-idea-distributions/$ideaDistributionVersion")))
+val changeIdeaDistribution =
+    configurations.create("changeIdeaDistribution") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
     }
 
-private fun extractedIdeaFiles(configure: ConfigurableFileTree.() -> Unit) =
-    files(
-            extractedIdeaDistributionDirectory.map { directory ->
-                fileTree(directory) {
-                    configure()
-                }
-            }
-        )
-        .builtBy(":symbol:intellij:extractSymbolIdeaDistribution")
+private val ideaLibs: FileCollection = ideaLibraries(changeIdeaDistribution, IdeaLibraryFamily.PLATFORM)
 
-private val ideaLibs: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/lib/**/*.jar")
-    exclude("**/plugins/**")
-    exclude("**/lib/intellij.libraries.kotlinx.serialization.*.jar")
-    exclude("**/lib/intellij.libraries.ktor.utils.jar")
-}
+private val kotlinPluginLibs: FileCollection = ideaLibraries(changeIdeaDistribution, IdeaLibraryFamily.KOTLIN)
 
-private val kotlinPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/plugins/Kotlin/lib/**/*.jar")
-    exclude("**/plugins/Kotlin/lib/jps/**")
-    exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-}
-
-private val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/plugins/java/lib/**/*.jar")
-}
+private val javaPluginLibs: FileCollection = ideaLibraries(changeIdeaDistribution, IdeaLibraryFamily.JAVA)
 
 dependencies {
     implementation(project(":protocol:contract"))
@@ -56,6 +36,10 @@ dependencies {
     implementation(project(":evidence:contract"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
+
+    changeIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaDistributionVersion@zip") {
+        isTransitive = false
+    }
 
     compileOnly(catalog.findLibrary("serialization-json").get())
     testImplementation(catalog.findLibrary("serialization-json").get())

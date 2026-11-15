@@ -39,48 +39,30 @@ val workspaceReadIdeaDistribution =
         isCanBeResolved = true
     }
 
-private val extractedIdeaDistributionDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/workspace-intellij-read-idea-distributions/$ideHostBuild")))
-    }
-
-val extractWorkspaceReadIdeaDistribution =
-    tasks.register<ExtractIdeaDistributionTask>("extractWorkspaceReadIdeaDistribution") {
-        archives.from(workspaceReadIdeaDistribution)
-        ideaVersion.set(ideHostBuild)
-        libraryFamilies.set(
-            setOf(
-                IdeaLibraryFamily.PLATFORM,
-                IdeaLibraryFamily.KOTLIN,
-                IdeaLibraryFamily.JAVA,
-                IdeaLibraryFamily.GRADLE,
-            )
-        )
-        outputDirectory.set(extractedIdeaDistributionDirectory)
-    }
-
-private fun extractedIdeaFiles(configure: ConfigurableFileTree.() -> Unit) =
+private fun ideaFamily(family: IdeaLibraryFamily, configure: ConfigurableFileTree.() -> Unit): FileCollection =
     if (hostedIdeaHome.isPresent) files(fileTree(hostedIdeaHome.get()) { configure() })
-    else
-        files(
-                extractedIdeaDistributionDirectory.map { directory ->
-                    fileTree(directory) { configure() }
-                }
-            )
-            .builtBy(extractWorkspaceReadIdeaDistribution)
+    else ideaLibraries(workspaceReadIdeaDistribution, family)
 
-private val ideaLibraries: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/lib/**/*.jar")
-    exclude("**/plugins/**")
-    exclude("**/lib/intellij.libraries.kotlinx.serialization.*.jar")
-    exclude("**/lib/intellij.libraries.ktor.utils.jar")
-}
+private val ideaLibraries: FileCollection =
+    ideaFamily(IdeaLibraryFamily.PLATFORM) {
+        include("**/lib/**/*.jar")
+        exclude("**/plugins/**")
+        exclude("**/lib/intellij.libraries.kotlinx.serialization.*.jar")
+        exclude("**/lib/intellij.libraries.ktor.utils.jar")
+    }
 
-private val kotlinPluginLibraries: ConfigurableFileCollection = extractedIdeaFiles {
-    include("**/plugins/Kotlin/lib/**/*.jar")
-    exclude("**/plugins/Kotlin/lib/jps/**")
-    exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-}
+private val kotlinPluginLibraries: FileCollection =
+    ideaFamily(IdeaLibraryFamily.KOTLIN) {
+        include("**/plugins/Kotlin/lib/**/*.jar")
+        exclude("**/plugins/Kotlin/lib/jps/**")
+        exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
+    }
+
+private val javaPluginLibraries: FileCollection =
+    ideaFamily(IdeaLibraryFamily.JAVA) { include("**/plugins/java/lib/**/*.jar") }
+
+private val gradlePluginLibraries: FileCollection =
+    ideaFamily(IdeaLibraryFamily.GRADLE) { include("**/plugins/gradle*/lib/**/*.jar") }
 
 dependencies {
     implementation(project(":protocol:contract"))
@@ -93,9 +75,9 @@ dependencies {
     }
     compileOnly(ideaLibraries)
     compileOnly(kotlinPluginLibraries)
-    compileOnly(extractedIdeaFiles { include("**/plugins/java/lib/**/*.jar") })
-    compileOnly(extractedIdeaFiles { include("**/plugins/gradle*/lib/**/*.jar") })
-    testImplementation(extractedIdeaFiles { include("**/plugins/gradle*/lib/**/*.jar") })
+    compileOnly(javaPluginLibraries)
+    compileOnly(gradlePluginLibraries)
+    testImplementation(gradlePluginLibraries)
     testImplementation(ideaLibraries)
     testImplementation(kotlinPluginLibraries)
     testImplementation(catalog.findLibrary("serialization-json").get())

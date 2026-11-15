@@ -17,21 +17,23 @@ base { archivesName.set("kast-ide-hosted") }
 val hostedIdeaHome = providers.gradleProperty("hostedIdeaHome")
 val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 val pinnedBuild = catalog.findVersion("ide-host-build").get().requiredVersion
-val sdk =
-    hostedIdeaHome.orElse(
-        gradle.gradleUserHomeDir.resolve("kast/workspace-intellij-read-idea-distributions/$pinnedBuild").path
-    )
-val platform =
-    files(
-        sdk.map { home ->
-            fileTree(home) {
+val hostedIdeaDistribution =
+    configurations.create("hostedIdeaDistribution") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+val platform: FileCollection =
+    if (hostedIdeaHome.isPresent)
+        files(
+            fileTree(hostedIdeaHome.get()) {
                 include("lib/**/*.jar", "plugins/gradle*/lib/**/*.jar", "plugins/java/lib/**/*.jar")
                 exclude("lib/intellij.libraries.kotlinx.serialization.*.jar", "lib/intellij.libraries.ktor.utils.jar")
             }
-        }
-    )
-
-if (!hostedIdeaHome.isPresent) platform.builtBy(":workspace:intellij-read:extractWorkspaceReadIdeaDistribution")
+        )
+    else
+        listOf(IdeaLibraryFamily.PLATFORM, IdeaLibraryFamily.GRADLE, IdeaLibraryFamily.JAVA)
+            .map { family -> ideaLibraries(hostedIdeaDistribution, family) }
+            .reduce(FileCollection::plus)
 
 val ideBuild =
     if (hostedIdeaHome.isPresent) {
@@ -128,6 +130,7 @@ dependencies {
     implementation(project(":traversal:service"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
+    hostedIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$pinnedBuild@zip") { isTransitive = false }
     compileOnly(platform)
     testImplementation(testFixtures(project(":query:protocol")))
     testImplementation(testFixtures(project(":workspace:contract")))
