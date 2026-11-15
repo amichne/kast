@@ -13144,6 +13144,18 @@
     {
       "finding": {
         "stage": "root-vale-3.24.0",
+        "path": "openwiki/development/testing-and-native-qualification.md",
+        "sourceSha256": "aaf0532c9f4658e3a61fbed8913ddcb9e0ba529e3b61e90fdf3a8a71939cdab9",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.07 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep disposable local installed acceptance distinct from sealed two-target release qualification. The page prose stays unchanged after the local product installer Claim refresh; only verification metadata moved. The grade advisory remains unmet. Reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/index.md",
         "sourceSha256": "b2353c13b39fb266a817d192e2eddc912191177959bf9f5948f1c4e960b17feb",
         "rule": "Slopsentral.Grade",

@@ -311,6 +311,42 @@ prove public network acquisition, `kast upgrade --repair` selection, a different
 upgrade, Linux behavior, or complete product qualification. Failure retains the
 disposable root named in `disposable-root.txt`; inspect it before cleanup.
 
+### Install a checkout as an isolated managed product
+
+On macOS ARM64, `packaging/local_product_install.py` installs one clean committed
+checkout as a managed product you can keep using. Use it to run a branch with
+private workspace containers before release. It never replaces the user installation.
+
+```shell
+mise exec -- uv run --locked --project packaging python packaging/local_product_install.py \
+  install --root ~/.local/share/kast-local/my-branch --source /path/to/clean/checkout
+cd /path/to/workspace && ~/.local/share/kast-local/my-branch/bin/kast query --name MyClass --json
+```
+
+The first semantic request in a workspace creates its private container automatically.
+
+The command admits the source with the release source check and rejects staged,
+uncommitted and untracked changes. It builds the checkout's own CI release tasks
+under a fresh `0.0.N` version and assembles full native archives. Native component
+qualification runs in a macOS sandbox that denies access to your home directory.
+The command admits the source again, then installs through the production
+activation. Only release acquisition reads local files, as in the disposable probe.
+Pinned donor, interpreter and dependency inputs are cached by digest under
+`~/.cache/kast-local-product`.
+
+The root holds an isolated HOME, the qualification receipt, and a `local-product.json`
+receipt with the exact source and archive digests. Run `bin/kast` from the root to use
+the product. It binds HOME, XDG directories and `KAST_INSTALL_ROOT` to the root. Other
+variables pass through, including `GRADLE_USER_HOME` and `KAST_*` settings. Because
+HOME changes, the product does not read your global Git or Gradle configuration
+unless you set them explicitly.
+
+Remove the root with `local_product_install.py remove --root ROOT`. It stops every
+Host, uninstalls, checks that no process remains below the isolated HOME, then
+deletes the root. A failed install keeps its work directory under `/private/tmp`
+and reports the failed stage and its log. The receipt records
+`releaseQualification=NOT_ESTABLISHED`.
+
 ## CI candidates and developer publication
 
 CI selects its plan from the exact diff.
