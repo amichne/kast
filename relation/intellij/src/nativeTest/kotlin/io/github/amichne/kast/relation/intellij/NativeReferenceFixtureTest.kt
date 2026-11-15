@@ -22,7 +22,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
 
 /** Two effect-boundary cases share only their case-owned native project and fixed reference oracle. */
 abstract class NativeReferenceFixtureTest : HeavyPlatformTestCase() {
@@ -30,7 +30,9 @@ abstract class NativeReferenceFixtureTest : HeavyPlatformTestCase() {
 
     override fun getModuleType() = JavaModuleType.getModuleType()
 
-    protected fun prepareReferenceFixture(): NativeReferenceFixture {
+    protected fun prepareReferenceFixture(
+        targetSource: String = "package proof\nfun target() = 1\n"
+    ): NativeReferenceFixture {
         val base = getOrCreateProjectBaseDir()
         val source =
             WriteCommandAction.writeCommandAction(project).compute<VirtualFile, RuntimeException> {
@@ -46,13 +48,13 @@ abstract class NativeReferenceFixtureTest : HeavyPlatformTestCase() {
             WriteCommandAction.writeCommandAction(project).compute<VirtualFile, RuntimeException> {
                 source.createChildData(this, name).also { it.setBinaryContent(text.toByteArray()) }
             }
-        val targetFile = file("Target.kt", "package proof\nfun target() = 1\n")
+        val targetFile = file("Target.kt", targetSource)
         val callerFile = file("Caller.kt", "package consumer\nfun caller() = proof.target()\n")
         PsiDocumentManager.getInstance(project).commitAllDocuments()
         IndexingTestUtil.waitUntilIndexesAreReady(project)
-        val target = (psiManager.findFile(targetFile) as KtFile).declarations.single() as KtNamedFunction
-        assertEquals(TARGET_OFFSET, checkNotNull(target.nameIdentifier).textRange.startOffset)
-        val request = nativeRelationRequest(base.toNioPath(), targetFile.toNioPath(), TARGET_OFFSET)
+        val target = (psiManager.findFile(targetFile) as KtFile).declarations.single() as KtNamedDeclaration
+        val targetOffset = checkNotNull(target.nameIdentifier).textRange.startOffset
+        val request = nativeRelationRequest(base.toNioPath(), targetFile.toNioPath(), targetOffset)
         val model =
             WorkspaceSearchScopeModel.compile(
                 request.subject.lease.workspaceRoot,
@@ -95,7 +97,6 @@ abstract class NativeReferenceFixtureTest : HeavyPlatformTestCase() {
     }
 
     private companion object {
-        const val TARGET_OFFSET = 18
         const val CALLER_OFFSET = 38
     }
 }
@@ -103,7 +104,7 @@ abstract class NativeReferenceFixtureTest : HeavyPlatformTestCase() {
 class NativeReferenceFixture
 internal constructor(
     private val project: Project,
-    val target: KtNamedFunction,
+    val target: KtNamedDeclaration,
     val callerFile: VirtualFile,
     val request: RelationRequest,
     private val model: WorkspaceSearchScopeModelCompilation,
