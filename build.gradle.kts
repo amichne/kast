@@ -406,8 +406,10 @@ val installerEntrypointTest = tasks.register<VerificationReportTask>("installerE
     description = "Pins the documented Bash -c installer invocation and argument delivery contract."
     inputs.files("install.sh", "README.md", "docs/public/start.mdx", "docs/public/reference/installation.mdx",
         "docs/public/reference/compatibility.mdx", "packaging/test-installer-entrypoint.py")
-    executableFile.set(validationExecutable("python3"))
-    arguments.set(listOf(layout.projectDirectory.file("packaging/test-installer-entrypoint.py").asFile.absolutePath))
+    sourceFiles.from("packaging/pyproject.toml", "packaging/uv.lock")
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", "packaging", "python",
+        layout.projectDirectory.file("packaging/test-installer-entrypoint.py").asFile.absolutePath))
 }
 
 val installerFixtureTest = tasks.register<VerificationReportTask>("installerFixtureTest") {
@@ -421,8 +423,10 @@ val installerFixtureTest = tasks.register<VerificationReportTask>("installerFixt
 val installerRemovalTest = tasks.register<VerificationReportTask>("installerRemovalTest") {
     group = "verification"
     inputs.files("install.sh", "packaging/test-installer-removal.py")
-    executableFile.set(validationExecutable("python3"))
-    arguments.set(listOf(layout.projectDirectory.file("packaging/test-installer-removal.py").asFile.absolutePath))
+    sourceFiles.from("packaging/pyproject.toml", "packaging/uv.lock")
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(listOf("run", "--locked", "--project", "packaging", "python",
+        layout.projectDirectory.file("packaging/test-installer-removal.py").asFile.absolutePath))
 }
 
 val installationSystemPythonTest = tasks.register<VerificationReportTask>("installationSystemPythonTest") {
