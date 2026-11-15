@@ -91,7 +91,7 @@ No build scan evidence is available for this change.
 
 ## Platform checks and native compilation
 
-Mac checks are off by default while the self-hosted Mac is unavailable.
+Mac checks use GitHub-hosted Apple silicon runners. They are off when the repository variable is absent.
 Set the GitHub repository variable `KAST_MACOS_CHECKS` to `true` to enable them.
 An absent variable or `false` leaves them off.
 The switch covers native compilation, fresh Mac product qualification, both manual release workflows, and automatic developer promotion.
@@ -105,7 +105,7 @@ or use an account with repository-variable write access:
 gh variable set KAST_MACOS_CHECKS --repo amichne/kast --body false
 ```
 
-When the Mac runner is available again, opt in:
+To enable the Mac checks:
 
 ```sh
 gh variable set KAST_MACOS_CHECKS --repo amichne/kast --body true
@@ -177,11 +177,9 @@ The retained record keeps the original platform, toolchain, version, producer an
 
 A fresh candidate still needs macOS to exercise the assembled Mac product and seal its identity.
 Linux cannot execute those binaries.
-Main pushes and manual main runs use the self-hosted `kast-main` runner for native compilation and fresh product qualification.
-Both release workflows use that runner and accept only main dispatches.
-These jobs never select a GitHub-hosted Mac, even when `KAST_SELF_HOSTED_RUNNER` is absent or false.
-With `KAST_MACOS_CHECKS=true`, an unavailable self-hosted Mac leaves these jobs queued.
-Leave the switch off to keep validation on Linux until that runner returns.
+Main pushes and manual main runs compile and qualify fresh Mac candidates on the GitHub-hosted `macos-15` runner.
+The manual component release uses that runner as well. Stable promotion uses retained bytes.
+No personal Mac or persistent runner service is required.
 The reused-candidate Linux route remains unchanged.
 
 ## Compile once and join qualification late
@@ -207,19 +205,10 @@ Its hosted Mac spent almost 44 minutes generating Control a second time.
 That is measured duplicate work, not a promised wall-time saving.
 The changed graph still needs a remote timing measurement.
 
-The runner service keeps its checkout under its own work directory.
 Final product qualification consumes release archives and runs native launcher cases through Gradle against the assembled executable.
-Local Python uses the version in `.python-version` through uv and a runner-owned virtual environment.
-This avoids the macOS `setup-python` installer's fixed `/Users/runner` prefix.
+Each hosted job sets up the Python version in `.python-version` and installs the pinned uv version.
 The native Gradle task passes `-mmacosx-version-min=15.0` to the macOS linker.
 Before candidate sealing, it rejects a native binary whose deployment target differs from macOS 15.0.
-The local pre-job hook uses `self_hosted_guard.py` before repository steps start.
-It accepts only main CI jobs named `native` or `kotlin`, plus manual main jobs named `release` in both release workflows.
-It rejects other repositories, refs, events, workflows, and jobs.
-Install the hook outside the runner application directory.
-Set `ACTIONS_RUNNER_HOOK_JOB_STARTED` in the runner's `.env`.
-Restart the service after a hook change.
-Keep the installed hook synchronized with its reviewed source.
 
 Reuse admission runs only after a main push.
 Manual main runs use fresh candidates.
