@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
+import io.github.amichne.kast.cli.direct.inspectWorkspaceSeedHost
 import io.github.amichne.kast.cli.installation.InstallationManifest
 import io.github.amichne.kast.cli.installation.PayloadFile
 import io.github.amichne.kast.distribution.cli.ManagedWorkspaceQuery
@@ -96,7 +97,7 @@ internal class NativeManagedWorkspaceFixture(installation: Path, workspace: Path
             ),
         )
         val root = (FilesystemCanonicalRootDiscovery.discover(workspace) as CanonicalRootDiscovery.Discovered).root
-        val admitted = ManagedWorkspaceQuery.open(installation, root, emptyMap())
+        val admitted = ManagedWorkspaceQuery.open(installation, root, emptyMap(), ::inspectWorkspaceSeedHost)
         check(admitted is Refinement.Refined) { "Managed fixture admission failed: $admitted" }
         admitted.value.use { query ->
             val launch = SelectedIdeInstallation.resolve(idea)

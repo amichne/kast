@@ -151,9 +151,15 @@ private fun ContainerStore.admitRecord(
     if (!validWorkspace(workspace)) return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
     val privateGradle = directory.resolve("state/home/.gradle")
     // Availability is a launch fact, not durable ownership of this private workspace.
-    if (gradle != privateGradle && !validExternalGradlePath(gradle))
+    val ownedShared =
+        gradle == sharedGradleHome &&
+            record.dependencySharing ==
+                io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing.SHARED
+    if (gradle != privateGradle && !ownedShared && !validExternalGradlePath(gradle))
         return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-    return Refinement.Refined(AdmittedWorkspace(id, name, workspace, directory, gradle, generation))
+    return Refinement.Refined(
+        AdmittedWorkspace(id, name, workspace, directory, gradle, generation, record.dependencySharing)
+    )
 }
 
 internal fun ContainerStore.validWorkspace(path: Path): Boolean {

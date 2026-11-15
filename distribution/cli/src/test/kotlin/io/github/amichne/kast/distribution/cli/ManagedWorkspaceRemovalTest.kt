@@ -122,6 +122,38 @@ class ManagedWorkspaceRemovalTest {
         reclaimVanishedWorkspaces(store)
         assertFalse(Files.exists(container.directory))
     }
+
+    @Test
+    fun `uninstall removes only its shared Gradle cache without following external links`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath().resolve("kast")
+        val shared = root.resolveSibling("kast-workspaces").resolve("shared/gradle")
+        assertTrue(privateContainerDirectory(shared) is Refinement.Refined)
+        val external = Files.createDirectory(temporary.resolve("external"))
+        val sentinel = Files.writeString(external.resolve("sentinel"), "external")
+        Files.writeString(shared.resolve("cache"), "owned")
+        Files.createSymbolicLink(shared.resolve("external"), external)
+        cleanupRemovedWorkspaceStore(root)
+        assertFalse(Files.exists(root.resolveSibling("kast-workspaces")))
+        assertEquals("external", Files.readString(sentinel))
+    }
+
+    @Test
+    fun `foreign shared siblings and recovery evidence block cache deletion`(@TempDir temporary: Path) {
+        val root = temporary.toRealPath().resolve("kast")
+        val shared = root.resolveSibling("kast-workspaces").resolve("shared/gradle")
+        assertTrue(privateContainerDirectory(shared) is Refinement.Refined)
+        val cache = Files.writeString(shared.resolve("cache"), "protected")
+        val foreign = Files.writeString(shared.resolveSibling("foreign"), "foreign")
+        assertThrows(ManagementRejected::class.java) { cleanupRemovedWorkspaceStore(root) }
+        assertEquals("protected", Files.readString(cache))
+        assertEquals("foreign", Files.readString(foreign))
+        Files.delete(foreign)
+        val evidence =
+            Files.writeString(Files.createDirectory(shared.resolve(".kast")).resolve("recovery"), "unresolved")
+        assertThrows(ManagementRejected::class.java) { cleanupRemovedWorkspaceStore(root) }
+        assertEquals("protected", Files.readString(cache))
+        assertEquals("unresolved", Files.readString(evidence))
+    }
 }
 
 private fun removalWorkspace(temporary: Path): Pair<ContainerStore, AdmittedContainer> {
