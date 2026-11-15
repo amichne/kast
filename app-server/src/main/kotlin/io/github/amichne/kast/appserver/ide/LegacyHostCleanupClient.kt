@@ -8,6 +8,11 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import java.nio.file.Path
 
 /** Exact prior endpoint cleanup only. No workspace, semantic, launch or reload authority. */
+@Deprecated(
+    "Desktop IDEA Host cleanup is compatibility-only; new workspaces use managed headless Hosts.",
+    level = DeprecationLevel.WARNING,
+)
+@Suppress("DEPRECATION") // Reading the prior desktop identity is required for exact cleanup.
 class LegacyHostCleanupClient(userHome: Path, private val selectedHome: Path) {
     private val transport = LifecycleSocketExchange(userHome)
 

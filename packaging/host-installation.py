@@ -1667,6 +1667,12 @@ def install(request):
 
 
 def main():
+    print(
+        'kast-host-installation: deprecated desktop IntelliJ IDEA plugin installation command; '
+        'use install.sh or kast upgrade for managed headless Hosts and automatic workspace creation.',
+        file=sys.stderr,
+        flush=True,
+    )
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', type=Path)
     parser.add_argument('--sha256')

@@ -245,6 +245,13 @@ def reload_archive(archive: Path, plugins: Path) -> Staged | Rejected:
 
 
 def main(arguments: list[str]) -> int:
+    print(
+        "kast-reload: deprecated desktop IntelliJ IDEA plugin reload command; "
+        "use kast upgrade for the managed product. "
+        "For checkout builds, use packaging/local_product_install.py.",
+        file=sys.stderr,
+        flush=True,
+    )
     if arguments == ["--self-test"]:
         suite = unittest.defaultTestLoader.loadTestsFromName("test_reload_hosted")
         if suite.countTestCases() == 0:

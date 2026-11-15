@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:9a9af530b48c94c91aa312f75440011615a0bd39f1a9630b5f941e5a7602af46",
+  "pageVersion": "sha256:7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -64,7 +64,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
-          "version": "repo-file-v1:sha256:166ab9a771e54dcc3aaf84b875f01efe9fb2d5389ea0e76e04c26bfe0e1e8af6"
+          "version": "repo-file-v1:sha256:7a8c338d40ca2fd487a1985d77e5fbe0afe3b5daaa6c9067c7b6a347c5f9fb5e"
         }
       ]
     },
@@ -417,7 +417,7 @@
           "version": "repo-lines-v1:sha256:5d29b0251759d1d72a6f140f3cc1cb11a8c8f4eb01f6108173afbf634aa11b92:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3NjU5NDU5OTUzNDQyZjEwNjM2YmZlZDEzZjVkYzZkM2FlNjRkZDg3MThhZDZmOTEyOTQzYzFkNDNjNGIzZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA0ZTNmNmRjY2RjMTI1NDVhZGNmY2UxMWQ4NDUzYjhiMTEzNDQ4MTY0MjgzMmJmYTkzZmZmMWZkYTI2YmMzZGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZmM2NkNDYwZmFjYzVkNWY3YTI0ZTc4MDgwYWUyZjVhMWQ1MDQ4NjE4NmVhNDlmMzk2ZTdhMjVmMjMzNjc4YzMifQ"
         },
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L149-L167",
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L153-L171",
           "version": "repo-lines-v1:sha256:c60756a270829a47c866c045914928b45f73276304a453cc3aa3d21d97124e0c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc4NjNhNTkzNWUzNWUxOWI4MWJjNThhZmI3NWVlMmI1MGE5MmMxZWQ1ZTI0MjVjMmVlYjQzZjg0MTkzOTMxNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQzMTFhNjY3ODRiMDg1MzA3ODE5YjA1YjQ4MmU0ZGJjZGUzNjc5NDQ1Y2QwNDRmOTdhNDIxYmFkMTkxODIxOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5ZjhhYzAzMmJhN2RkOWQyZTA4YTM5OWNkZjZhMjEzYWNhMjg1ZTQwODUyODViN2Y4ZTk0MWE5MDlkMGEwMTMifQ"
         }
       ]
@@ -463,10 +463,20 @@
           "version": "repo-file-v1:sha256:f409b5714cdd1df83301f5b9418d5202ef9e958fe0580c4df89696fa32366d06"
         }
       ]
+    },
+    {
+      "id": "claim_9c60830875604a0d9ce6ef9ebb0ea40b",
+      "statement": "The application service emits one desktop deprecation warning during initialization for DESKTOP mode, without emitting that warning for managed headless mode or changing desktop admission.",
+      "evidence": [
+        {
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt#L65-L100",
+          "version": "repo-lines-v1:sha256:42b1df3e2aeae311a55c6c5acd153b388c7b57256462e97ae2309f1299cc5e00:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiMDFjZTMwMTEyM2VmOWNiYmY4MTI5MzZjMzM1ZDNhNWFkYTQ3NGM5MDFmOWQ0MzEwOGRkYjAyY2YzZWI2ZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlYjkxNjU0N2FjYjkzNjQxNmEzZWYzNjcyYTBlYTZiYjZjNzE5NTMxNjMwZmRhN2Y0NGI2OTE1OTE5YmI4NGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0ZjgxMmNhOGI1NWMyYTgxMjdiNWYwNDRjM2UxMWVkM2U2ZWM4NDQ1Zjg1ZjJkYjFhNjc4NzdlN2U3MThiODUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiMDU1MjM2MjUwYTdiNGI5MGYwMTk5YzdhZTkyZGFmY2Y1OTgzYzBkNDFmZDgwMzBhZmZkMTg2OWU1NTAxOGMifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T22:19:18.487Z"
+    "at": "2026-11-15T03:03:20.161Z"
   }
 }

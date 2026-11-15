@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:74f933ddab85f2df9364ec7dbfe2a34ec17b45f1453a99a10281aea1e48db1ee",
+  "pageVersion": "sha256:86b97cf2d9c08435974a996777d81c602ce14d2ce30c9e9f894b4c39ddff547f",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -102,7 +102,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
         },
         {
           "resource": "repo://packaging/managed_installation.py#L1026-L1061",
@@ -148,7 +148,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
         },
         {
           "resource": "repo://packaging/managed_installation.py#L1902-L1922",
@@ -381,6 +381,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T21:34:35.265Z"
+    "at": "2026-11-15T03:03:20.161Z"
   }
 }

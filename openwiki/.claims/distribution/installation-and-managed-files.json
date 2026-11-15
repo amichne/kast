@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:3fe9f5dca9953c2b17c392da2e8fd8c1b5cd4b3d77a03aeb09062ed3015f59d7",
+  "pageVersion": "sha256:be30c1aa238807021a60b640e8e00e6083b48a34ad3e2ff37a100775c4213ddf",
   "claims": [
     {
       "id": "claim_2c9e43d8ffac41339c5ff59e614427da",
@@ -16,7 +16,7 @@
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
         }
       ]
     },
@@ -26,7 +26,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
         },
         {
           "resource": "repo://packaging/host-installation.py#L1222-L1222",
@@ -54,11 +54,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
         },
         {
           "resource": "repo://packaging/test-host-installation.py",
-          "version": "repo-file-v1:sha256:01ded12200e41cfe9757d1fabf1c9436a554b0987fe7dba4acd25407933e13aa"
+          "version": "repo-file-v1:sha256:e121df5464619b223e7c939f0d7f3010316bb45eafa8f60296aae294d941ae4c"
         }
       ]
     },
@@ -104,7 +104,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
         },
         {
           "resource": "repo://packaging/managed_installation.py#L1545-L1583",
@@ -152,7 +152,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
         },
         {
           "resource": "repo://packaging/host_directory_exchange.py",
@@ -160,7 +160,7 @@
         },
         {
           "resource": "repo://packaging/test-host-installation.py",
-          "version": "repo-file-v1:sha256:01ded12200e41cfe9757d1fabf1c9436a554b0987fe7dba4acd25407933e13aa"
+          "version": "repo-file-v1:sha256:e121df5464619b223e7c939f0d7f3010316bb45eafa8f60296aae294d941ae4c"
         }
       ]
     },
@@ -218,11 +218,11 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
         },
         {
           "resource": "repo://packaging/test-host-installation.py",
-          "version": "repo-file-v1:sha256:01ded12200e41cfe9757d1fabf1c9436a554b0987fe7dba4acd25407933e13aa"
+          "version": "repo-file-v1:sha256:e121df5464619b223e7c939f0d7f3010316bb45eafa8f60296aae294d941ae4c"
         }
       ]
     },
@@ -381,10 +381,28 @@
           "version": "repo-file-v1:sha256:41f6377edfa813436c688a47542c4c5b390c983ce412cde6eee3f6b21869a295"
         }
       ]
+    },
+    {
+      "id": "claim_67d4349c2da442659e515959bc27eee2",
+      "statement": "The deprecated standalone desktop IDEA Host installation command warns on stderr before argument admission without changing stdout reports; importing its shared managed transaction helpers does not execute that warning.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/host-installation.py#L1669-L1719",
+          "version": "repo-lines-v1:sha256:69f58dffc95bf59d6bc689002f552e01c019f44edf034325fad72b4b3a0bb39b:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyZTMxMjU3ZGMwYWUxZDU5MzAzN2MyODBjOWFkNTA4MTliOGE2YzhjZjcyOGJlMDcxNmQwMGEzZWVjYzA0YmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2MzcyNmIwNWQzODllYjA5NzM5NTBhMDk0OWMzZTA4YjA5YWNmZjRiNjg4NzExYzA1YzIyMjMyMDg0YjJjNGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhNGQ0ODhiMjQ1ZmIwZTkzOWE3OWFhNzAzYzg2YTJkMTFmMzliNjU2ZTRmZDFmMmM5NGFlYThkZmJlZWJkNzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://packaging/test-host-installation.py#L762-L797",
+          "version": "repo-lines-v1:sha256:8229221b3b389db6c7bb962378d845bfae969a9ac9da938f17651f785b82b256:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4Y2RiMzNjYzcwYTI2Njc1ZDA2ZTRiOGQ1MmVmNDU2YWJlZmJhNmVhYWJiY2QyYmQ5ODdlNjhkZDNiYTZkOTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMxZmE2ZWU5MDMyYzVlOTY1YTBlZmQ1MDNhYzg0MTFlMmVjNmRiM2UyZDFkN2ZjYzg3OGI5YmYwYTU5NjJhY2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZkNGJkZjgyNGEwNjNiMzRjYzkzM2ExMmIwZGFiNGRiYjVkY2Y5NjdiZTk1NGZhNGU3MDAzNWZkZTdiNzFhMWYifQ"
+        },
+        {
+          "resource": "repo://packaging/test-install-checkout.py#L65-L89",
+          "version": "repo-lines-v1:sha256:8111bc0326ef6e26a600b83dd4a000864bcc5c1f529519e9e315d34704534e82:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxNGMyNjQ0NWQyMTY4Y2YxNjJiZTFiNjM4NmYyYzRiNDI3NTNhY2IzYzBmM2Y3NzQzOTE1YTE3ZjU3NjE2M2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwOTZkN2JlNzNkNzYyNWYxNDRlYmI4ZTExOWQ0YzI1MWYyZmUxNjIwNWRmMWEyN2UzMTYyZWIwOGI2MDE4ZTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZiZmNkY2M3YzI3YzE0MTI3Zjk4NjI1ZGExODdkMWI3OTRlM2IyMmNjNzVhM2RlNzU2NzYwZTU3MDMxMjdmMWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyZGY1NzY0ZDUwYzVhODI5NGJiOTIxOGQxY2M2NjE2MGJkZDE2MjhjZjExNmVkZDZmYjg4MDhiYmU0ZTQ5YzQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-13T03:20:11.225Z"
+    "at": "2026-11-15T03:03:20.161Z"
   }
 }

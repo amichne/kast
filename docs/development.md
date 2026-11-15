@@ -444,6 +444,13 @@ After recovery succeeds, resolve the latest build again and complete its install
 The [installation reference](public/reference/installation.mdx) owns remote installation commands and current restart behavior.
 
 ### Install a local build
+
+> **Deprecated: desktop IDEA installation.** User-space IntelliJ IDEA plugins and desktop Hosts are targeted for removal, not removed in this change.
+> Existing 0.51.x desktop Hosts and their wire values remain supported for compatibility.
+> Use managed headless Hosts with private workspace containers and automatic workspace creation through the managed product.
+> The contributor replacement is `packaging/local_product_install.py`; see [Install a checkout as an isolated managed product](#install-a-checkout-as-an-isolated-managed-product).
+> The commands below describe the retained legacy path, not the managed product installation workflow.
+
 For compatible local Host code changes, use [local plugin reload](local-plugin-reload.md) after its one-time setup.
 
 Install the working tree into the existing user installation from the repository root:
@@ -476,7 +483,7 @@ activates the candidate and repeats admission. Plugin files and IntelliJ remain
 unchanged. Control sessions start fresh. `kast status` separates installed and
 running control from each observed host's identity, version and compatibility.
 
-Install a host independently with the public installer's `--host-only --version`
+For deprecated desktop compatibility checks, install a Host with the legacy component installer's `--host-only --version`
 input, then restart IntelliJ through its ordinary lifecycle. The
 [mixed-version native check](../runtime/hosted/native/README.md) uses the existing
 user installation and normal IntelliJ profile, preserving configuration and
@@ -514,9 +521,10 @@ For a damaged installation, use the [recovery runbook](installation-recovery.md)
 
 ### Installer development inputs
 
-The public installer supports `--force`, `--dry-run`, `--version`, `--idea-home`,
+The deprecated legacy component installer supports `--force`, `--dry-run`, `--version`, `--idea-home`,
 `--control-only`, `--host-only`, `uninstall`, and `--help`.
-Use `packaging/install-checkout.sh persistent` for checkout builds.
+Its `packaging/install-checkout.sh persistent` adapter is also deprecated.
+Use `packaging/local_product_install.py` for managed product checkout builds; see [Install a checkout as an isolated managed product](#install-a-checkout-as-an-isolated-managed-product).
 All component installation and lifecycle operations select
 `$HOME/.local/share/kast`; an explicit internal root binding must equal that
 path. `XDG_DATA_HOME`, custom prefixes and session profiles cannot create

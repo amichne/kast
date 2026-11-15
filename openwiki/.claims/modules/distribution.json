@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e80f3c512808465bcd2693325f029a202ab9fbaa7ba695a45e434b4477267f3d",
+  "pageVersion": "sha256:a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -68,7 +68,7 @@
         },
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
         }
       ]
     },
@@ -150,7 +150,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/native/README.md",
-          "version": "repo-file-v1:sha256:fc247d569820f8ba286481b22f0f0e20ed0a4e775d1b891a51250eaa1ec189c9"
+          "version": "repo-file-v1:sha256:1c7415fce34c581393d1e9fc2f55b3ba8ac86a7ce73f8f4546197d4a9e378571"
         },
         {
           "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L850-L924",
@@ -196,7 +196,7 @@
       "evidence": [
         {
           "resource": "repo://runtime/hosted/native/README.md",
-          "version": "repo-file-v1:sha256:fc247d569820f8ba286481b22f0f0e20ed0a4e775d1b891a51250eaa1ec189c9"
+          "version": "repo-file-v1:sha256:1c7415fce34c581393d1e9fc2f55b3ba8ac86a7ce73f8f4546197d4a9e378571"
         },
         {
           "resource": "repo://runtime/hosted/native/mixed_version_acceptance.py#L1064-L1110",
@@ -225,7 +225,7 @@
           "version": "repo-file-v1:sha256:9029eea7d5508755003ef49ad6ef2c06b2f92fe331c3afcd7c57e8c45526780d"
         },
         {
-          "resource": "repo://packaging/install-legacy.sh#L209-L255",
+          "resource": "repo://packaging/install-legacy.sh#L211-L257",
           "version": "repo-lines-v1:sha256:2f8597aec0d6942cb3434d362ddc93827ac061226bf536af2e322fd822e504c5:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiODJhYWM1NzU2NWYyODFiYmI5MmQwOTAzYzEzYTMyZjI1MTBiMDlhMGFmNzllZTE5ZDE5N2NkNTAyYjFkZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiZTY4ZGJjMWYyNzcyMzRmYWYxMDdhZTNiYTZkZWZiZGI2Y2ZmYjJmZWQ0YTYyMDVhNjk3OTlhZTIzMDgzMDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4OGIwNjFlMGNmNDY5NTIzZWFhNmM1MTRkM2E0NjBkMGFjMGNhNDEwYzkyZDRkY2U5Njk5YTBkOGZjZGI3YjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM2MGNmMjFiNzA1NTQzY2ZmZTJmNzEzNGU5YTUwYzA1OTllMjEyNzc4OTE3ODVjZDBiYzQ3MzE4MmMzOWMyMWEifQ"
         }
       ]
@@ -240,7 +240,7 @@
         },
         {
           "resource": "repo://packaging/install-checkout.sh",
-          "version": "repo-file-v1:sha256:b71785a696898867ea435a7c3666ee524cd7a65ddeb5b050db6f0a725f9a6f39"
+          "version": "repo-file-v1:sha256:53e6177303c7dc913905db4e8aa2030212be2445d6921847d51a338416ea2cd2"
         }
       ]
     },
@@ -344,7 +344,7 @@
       "evidence": [
         {
           "resource": "repo://packaging/host-installation.py",
-          "version": "repo-file-v1:sha256:24fd7dad644dab92b9e8804919370ecc2127d5a44730fba466aab243c32b86c7"
+          "version": "repo-file-v1:sha256:d9a8a14a4595fb5989b2bd278fe5a61a13d1082bf639253e27c14b4d7843e2a0"
         }
       ]
     },
@@ -353,7 +353,7 @@
       "statement": "Legacy installer failure presentation reads bounded stream tails and prioritizes rejection and recovery details. It keeps the child exit status and limits display to 12 details plus one truncation notice; verbose output retains complete streams.",
       "evidence": [
         {
-          "resource": "repo://packaging/install-legacy.sh#L75-L195",
+          "resource": "repo://packaging/install-legacy.sh#L77-L197",
           "version": "repo-lines-v1:sha256:711621f49f98845bdfe7ae3e240ccdce73ac3183a35c9c24f703a14ff36c0ebe:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzY2NjNjRkMjIyY2VjM2M0OTU0YmZlZjJiYzc2Zjc3ZWJkZjZlODc3MGU1MTgwNzVkMzU1Y2M4YzZkOGE0Y2IxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI4ZTQyM2E1MTZiNTBiZjNiZmJlYjVhN2Y0ODJhYjljYjJjNTBhYTNmYzM0OWUxYTBmYjNiZTQzMTZkYjZhNjY1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmNmQ2OWQwZWU1YTljMmFiN2JjODE0NmE5ODE4ZmE3Mjk4ZGQ3NTgwYTg2ZTY0M2FmOThkNTM0MTE4OTVkMjNjIn0"
         }
       ]
@@ -606,7 +606,7 @@
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleApplication.kt",
-          "version": "repo-file-v1:sha256:166ab9a771e54dcc3aaf84b875f01efe9fb2d5389ea0e76e04c26bfe0e1e8af6"
+          "version": "repo-file-v1:sha256:7a8c338d40ca2fd487a1985d77e5fbe0afe3b5daaa6c9067c7b6a347c5f9fb5e"
         }
       ]
     },
@@ -910,11 +910,11 @@
         },
         {
           "resource": "repo://install.sh",
-          "version": "repo-file-v1:sha256:117faa9507391280b4b655e900cce14d2888e657c273d268aacb4188ccf55d60"
+          "version": "repo-file-v1:sha256:86f101e118472a99dd7dfe6ce02af65433fc5dffd743af10fa8f8e3fac741e67"
         },
         {
           "resource": "repo://packaging/install-legacy.sh",
-          "version": "repo-file-v1:sha256:026e401ee9880e53ddd88cce73cfc72f0e10042bdfd6bb4fb0555542dd48742d"
+          "version": "repo-file-v1:sha256:db160d6dcec06aed7ebc35152d868479a09d8fb350c5258d17d4947ae338b1b5"
         }
       ]
     },
@@ -939,10 +939,28 @@
           "version": "repo-lines-v1:sha256:254127986b4c6c2568a2f1cbbd1e82a143f3cbd146ef1303ca05c108aab29d31:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4Nzk5YzY1MTU3ZDBiYmE3ZjkzYmUwMjM0NzY1NWI3MjJlMjcxNmUzYjM0MjM0MDMzMjUwMzI1NzUxOWU1MGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0Njc1YjEyZDJhYmNhNDYxOWNmNDZiY2I3OGI4MWE3MTQ2Y2NjZGQ5NzRlOGM5OTI0MDhjNzg5ZTQxNDZmMTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ5YWE4OGI3MzVjZGU3NDg0ZTk5NDE5YzgwODM0OWY4NWZkMGRiNGRkMTVhZWY5NWJjOWVhMzdlN2IwZTNlZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI0YzFmNDVjMDQ4ZThkODRhZDFiYTY2NjhkYjA5MjRjZGE5ZWNlNjYyZmViNmM4NGE2MmY3ZmUxN2FhMzFmODIifQ"
         }
       ]
+    },
+    {
+      "id": "claim_2ab4f665c29a46d6bbdd0b27cf74d9e3",
+      "statement": "Retained desktop IDEA checkout and component installer entry points warn on stderr before argument parsing and direct checkout contributors to the managed product installer.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/install-checkout.sh#L1-L11",
+          "version": "repo-lines-v1:sha256:c16b9d7004f7167ee6f0a20d4d8e43f668689f470845ba48de207e39816b3187:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkOTVmYzA0YTgwYzk1MmY0OWNlNDE4ODYyN2M1M2IwZmJlOGM0NDA0MWI5NTJkNTkyYWNkMWRlOTk4NjE0NjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4NTJlZWY3ZWZjMWEzZmVlMTkyMTBkOWYzMDMwMjU1YWFhNTcxM2Q4MDllMGFjYTIyNmEzZjdmMzA2Y2Q1NzEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1NDMyNmRkMmQ0MDBlOTFlMTA3ZDJhZDhjZjdiMWMwZGRmNzQ5OWViN2M3ZmZmYWU2MGNhOWVlN2Y0OTVhMWIifQ"
+        },
+        {
+          "resource": "repo://packaging/install-legacy.sh#L1-L12",
+          "version": "repo-lines-v1:sha256:1cb5ff32d4e4ef746a1799d1d6142f7fef7a83073d94eb65e4e8d61598b3b1cc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkOTVmYzA0YTgwYzk1MmY0OWNlNDE4ODYyN2M1M2IwZmJlOGM0NDA0MWI5NTJkNTkyYWNkMWRlOTk4NjE0NjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiZTliNzAxZGE1Mzk3OGIyYzc2OWQyNmIzYzA1MzhlZmY0N2MyNDI0OWIwOGJkZDY3ZjVhYzcyY2JiZDJiMTEifQ"
+        },
+        {
+          "resource": "repo://packaging/install-local.sh#L1-L12",
+          "version": "repo-lines-v1:sha256:ec7fd35c4e3d87d70930b9b1a336162633931d577afa517f62def99df5649e1a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkOTVmYzA0YTgwYzk1MmY0OWNlNDE4ODYyN2M1M2IwZmJlOGM0NDA0MWI5NTJkNTkyYWNkMWRlOTk4NjE0NjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwMDMyNmU1Y2E0OWVkNjI3OGVjZjdkMDQ5NzE5ZmRlODAzYjU0Yjk5NDY5YzU3ZWFmZDRhYWMwMWVhNmE1ODMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiOTQ2ZTZjYzA3OWQwMmQ5ZTNmNmIwMTU0YTJhMDFkZGQ2YjJhZDY5MWEzNzZhNjE1NzAyMWU4YWE1MjdkNTQifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T21:34:35.265Z"
+    "at": "2026-11-15T04:02:40.609Z"
   }
 }

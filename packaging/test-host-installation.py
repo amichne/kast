@@ -771,7 +771,7 @@ class HostInstallationTest(unittest.TestCase):
         with patch.object(sys, 'argv', arguments), redirect_stdout(stdout), redirect_stderr(stderr):
             result = host.main()
         self.assertEqual(0, result)
-        self.assertEqual('', stderr.getvalue())
+        self.assertIn('deprecated desktop IntelliJ IDEA', stderr.getvalue())
         self.assertEqual({'type': 'ACTIVATED', 'hostedPluginVersion': '2.0.0',
                          'plugin': str(self.plugins / 'kast-ide-hosted'), 'restartRequired': True},
                          json.loads(stdout.getvalue()))
@@ -783,14 +783,14 @@ class HostInstallationTest(unittest.TestCase):
             result = host.main()
         self.assertEqual(0, result)
         self.assertEqual('ACTIVATED', json.loads(stdout.getvalue())['type'])
-        self.assertEqual('', stderr.getvalue())
+        self.assertIn('deprecated desktop IntelliJ IDEA', stderr.getvalue())
         jar.write_bytes(b'changed')
         stdout, stderr = io.StringIO(), io.StringIO()
         with patch.object(sys, 'argv', ['host-installation.py', '--remove', '--plugin-root', str(self.plugins)]), \
                 redirect_stdout(stdout), redirect_stderr(stderr):
             result = host.main()
         self.assertEqual(1, result)
-        self.assertEqual('', stderr.getvalue())
+        self.assertIn('deprecated desktop IntelliJ IDEA', stderr.getvalue())
         self.assertEqual({'type': 'REJECTED', 'failure': 'OWNERSHIP_UNPROVEN'}, json.loads(stdout.getvalue()))
         self.assertEqual(b'changed', jar.read_bytes())
         self.assert_control_unchanged()
@@ -1014,7 +1014,9 @@ class HostInstallationTest(unittest.TestCase):
                 retained.chmod(permissions)
                 result = subprocess.run(command + options, capture_output=True, text=True, timeout=10)
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
-                self.assertEqual('OWNERSHIP_UNPROVEN', json.loads(result.stderr)['failure'])
+                warning, report = result.stderr.split('\n', 1)
+                self.assertIn('deprecated desktop IntelliJ IDEA', warning)
+                self.assertEqual('OWNERSHIP_UNPROVEN', json.loads(report)['failure'])
                 self.assertEqual(permissions, stat.S_IMODE(retained.stat().st_mode))
                 self.assertEqual(before, (lock.stat().st_ino, receipt.read_bytes()))
 

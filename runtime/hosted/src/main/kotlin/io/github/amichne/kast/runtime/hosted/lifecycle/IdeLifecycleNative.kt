@@ -55,6 +55,10 @@ internal class IdeLifecycleNative(
 
     fun settlement(): HostNativeSettlement = inspectHostNativeSettlement(::hasActivePreparation)
 
+    @Deprecated(
+        "Borrowed desktop IDEA projects are targeted for removal; use managed workspace registration.",
+        level = DeprecationLevel.WARNING,
+    )
     fun observeProjects() {
         ProjectManager.getInstance()
             .openProjects

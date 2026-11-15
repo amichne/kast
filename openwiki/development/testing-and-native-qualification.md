@@ -31,10 +31,10 @@ sources:
     resource: repo://runtime/hosted/NATIVE_FIXTURES.md
   - id: openwiki-source-af72e3368d1f0c22109e4ecf
     resource: repo://runtime/hosted/native/README.md
-generated: { by: "amp", at: "2026-11-13T02:46:27.789Z" }
+generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T03:53:56.579Z
+    at: 2026-11-15T03:55:28.462Z
 ---
 
 # Tests and native qualification
@@ -66,6 +66,10 @@ Use a controlled callback or scheduler when the behavior consumes that transitio
 Do not use sleep or a race to manufacture a timeout.
 
 ## Native and installed evidence
+
+The desktop IDEA mixed-version check is deprecated and retained for compatibility, including existing 0.51.x Hosts.
+It does not qualify managed headless Hosts or the contributor installer, `packaging/local_product_install.py`, which installs a checkout as an isolated managed product.
+New qualification uses private workspace containers and automatic workspace creation through the managed product.
 
 The relation and hosted native fixture guides define separate IDEA entry conditions and selectors.
 They cover platform-owned semantics that scripted service inputs cannot establish.

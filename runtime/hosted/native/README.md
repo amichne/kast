@@ -1,5 +1,11 @@
 # Mixed-version native acceptance
 
+> **Deprecated: desktop IDEA acceptance path.** This check installs the Host in a user's IntelliJ IDEA profile, a path targeted for removal.
+> It remains available for desktop compatibility checks, including existing 0.51.x Hosts; this change removes no behavior or wire values.
+> Use managed headless Hosts with private workspace containers and automatic workspace creation through the managed product for new qualification.
+> For managed product checkout installation, the contributor replacement is `packaging/local_product_install.py`; see [Install a checkout as an isolated managed product](../../../docs/development.md#install-a-checkout-as-an-isolated-managed-product).
+> Desktop acceptance does not qualify that replacement.
+
 For the keyless `kast.ide-hosted.runtime.v3` contract, use components declaring
 that same contract and wire digest. The historical C1/C2/P1/P2 inventories below
 do not qualify a keyless change. An old loaded plugin must be replaced and IDEA
