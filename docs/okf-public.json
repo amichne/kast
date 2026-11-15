@@ -6317,7 +6317,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "be3a06a651f556bdbfcf4c2bca62c50f035c8a4482416dab755b7aa9bb0c0a37"
+          "sha256": "5d58e3b746e71517f87b019bc7a34f273d1d42d8f53ff10209c86c92f5613f4b"
         }
       ],
       "claims": [
@@ -6560,6 +6560,21 @@
           "page": "openwiki/modules/distribution.md",
           "claimId": "claim_ad749fc7207f474da8f752c4f6b90d19",
           "statementSha256": "49285c34b39df65a3141a5a3c0e0c8b8f42c0f64ff0eceeedacc6ccf7b9d008b"
+        },
+        {
+          "page": "openwiki/modules/protocol.md",
+          "claimId": "claim_60f60006f7e340409ff0c334eeb6cc11",
+          "statementSha256": "a81db119fd98150da62685a7e4d102eb33ce373bf84d20bd027cb4b95a58c0bc"
+        },
+        {
+          "page": "openwiki/modules/runtime-hosts.md",
+          "claimId": "claim_9c60830875604a0d9ce6ef9ebb0ea40b",
+          "statementSha256": "e6d6129551492373c6f19c060c05da67e5f6b0c03e02269f75c55ed8a1037771"
+        },
+        {
+          "page": "openwiki/distribution/installation-and-managed-files.md",
+          "claimId": "claim_67d4349c2da442659e515959bc27eee2",
+          "statementSha256": "fbd8995321c9a07b42b663ad5e2baf4f9ad206439aed08df4847b8d706daba05"
         }
       ],
       "generatedOwners": [
