@@ -11,7 +11,6 @@ import jdk.jfr.StackTrace
 internal enum class DirectToolStage {
     MAIN,
     SESSION_COMPOSITION,
-    HOSTED_CATALOG_COMPOSITION,
     ROOT_BINDING,
     WORKSPACE_CLIENT_COMPOSITION,
     CAPABILITIES_COMPOSITION,

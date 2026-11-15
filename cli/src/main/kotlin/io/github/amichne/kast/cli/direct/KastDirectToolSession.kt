@@ -8,9 +8,9 @@ import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.ide.executeAdmittedPublicTool
-import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.cli.mcp.McpInvestigationTools
 import io.github.amichne.kast.cli.mcp.McpSingleChangeTool
+import io.github.amichne.kast.cli.mcp.McpStructuredResults
 import io.github.amichne.kast.cli.mcp.admitMcpHealthInput
 import io.github.amichne.kast.cli.rpc.InvocationRecordKind
 import io.github.amichne.kast.cli.rpc.OneShotInvocationRecord
@@ -131,20 +131,16 @@ private fun installedToolRegistration(selected: List<AgentToolDefinition>, query
     DirectToolRegistration(
         selected.map { it.name }.toSet() + directToolName(SupportToolIdentity.HEALTH_CHECK.toolName)
     ) {
-        val catalog =
-            observeDirectToolStage(DirectToolStage.HOSTED_CATALOG_COMPOSITION) {
-                installedHostedBootstrap().tools.associateBy { it.name }
-            }
         observeDirectToolStage(DirectToolStage.DIRECT_CATALOG_PROJECTION) {
-            selected.map {
-                val identity = PublicToolIdentity.entries.single { identity -> identity.toolName == it.name.value }
-                catalog
-                    .getValue(it.name.value)
-                    .directToolDocument()
-                    .copy(
-                        inputSchema = PublicToolContract.parameters(identity, queryCatalog),
-                        description = identity.descriptionFor(queryCatalog),
-                    )
+            selected.map { definition ->
+                val identity = PublicToolIdentity.entries.single { it.toolName == definition.name.value }
+                DirectToolDocument(
+                    name = definition.name.value,
+                    description = identity.descriptionFor(queryCatalog),
+                    inputSchema = PublicToolContract.parameters(identity, queryCatalog),
+                    outputSchema = McpStructuredResults.schemaFor(definition.name.value),
+                    effect = definition.operation.effect,
+                )
             } + directSupportTools()
         }
     }
