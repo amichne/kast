@@ -11,8 +11,12 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.idea.references.KtInvokeFunctionReference
 import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.psi.KtBreakExpression
 import org.jetbrains.kotlin.psi.KtCallElement
+import org.jetbrains.kotlin.psi.KtContinueExpression
+import org.jetbrains.kotlin.psi.KtExpressionWithLabel
 import org.jetbrains.kotlin.psi.KtLabelReferenceExpression
+import org.jetbrains.kotlin.psi.KtReturnExpression
 import org.jetbrains.kotlin.psi.KtTypeReference
 
 internal enum class IntellijExactReferenceShape {
@@ -187,9 +191,10 @@ internal fun IntellijRelationPlan.References.admit(
     }
 
 private fun IntellijExactReferenceShape.admits(reference: KtReference): Boolean =
-    // A label such as `return@Name` names a lambda, function body or loop, never a declaration. Native search still
-    // offers it for a same-named declaration, so its shape is closed before K2 confirmation.
-    reference.element !is KtLabelReferenceExpression &&
+    // A jump label such as `return@Name` names a lambda, function body or loop, never a declaration. Native search
+    // still offers it for a same-named declaration, so its shape is closed before K2 confirmation. A receiver label in
+    // `this@Name` or `super@Name` names its enclosing declaration and stays admitted.
+    !reference.element.isJumpLabel() &&
         when (this) {
             IntellijExactReferenceShape.ANY -> true
             // An implicit invoke reference owns the entire call, including arguments, rather than its callee name.
@@ -199,6 +204,13 @@ private fun IntellijExactReferenceShape.admits(reference: KtReference): Boolean 
             IntellijExactReferenceShape.TYPE ->
                 PsiTreeUtil.getParentOfType(reference.element, KtTypeReference::class.java, false) != null
         }
+
+private fun PsiElement.isJumpLabel(): Boolean {
+    if (this !is KtLabelReferenceExpression) return false
+    val jump = PsiTreeUtil.getParentOfType(this, KtExpressionWithLabel::class.java, true) ?: return false
+    return jump.getTargetLabel() == this &&
+        (jump is KtReturnExpression || jump is KtBreakExpression || jump is KtContinueExpression)
+}
 
 private fun PsiElement.isCallCallee(): Boolean {
     val call = PsiTreeUtil.getParentOfType(this, KtCallElement::class.java, false) ?: return false
