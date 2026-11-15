@@ -314,7 +314,7 @@ disposable root named in `disposable-root.txt`; inspect it before cleanup.
 ### Install a checkout as an isolated managed product
 
 On macOS ARM64, `packaging/local_product_install.py` installs one clean committed
-checkout as a managed product you can keep using. Use it to dogfood a branch with
+checkout as a managed product you can keep using. Use it to run a branch with
 private workspace containers before release. It never replaces the user installation.
 
 ```shell
@@ -326,11 +326,11 @@ cd /path/to/workspace && ~/.local/share/kast-local/my-branch/bin/kast query --na
 The first semantic request in a workspace creates its private container automatically.
 
 The command admits the source with the release source check and rejects staged,
-unstaged and untracked changes. It builds the checkout's own CI release tasks
+uncommitted and untracked changes. It builds the checkout's own CI release tasks
 under a fresh `0.0.N` version and assembles full native archives. Native component
 qualification runs in a macOS sandbox that denies access to your home directory.
 The command admits the source again, then installs through the production
-activation. Only release acquisition is virtualized, as in the disposable probe.
+activation. Only release acquisition reads local files, as in the disposable probe.
 Pinned donor, interpreter and dependency inputs are cached by digest under
 `~/.cache/kast-local-product`.
 

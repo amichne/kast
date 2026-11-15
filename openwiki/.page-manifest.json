@@ -93,11 +93,11 @@
       "completedRunId": "1d75a9b3-9c86-4579-86e0-578597792c3e"
     },
     "/openwiki/development/testing-and-native-qualification.md": {
-      "gitHead": "2d0fddd357966296ab7b0ce4106f4b4b72084cd9",
-      "sourceFingerprint": "sha256:acd8d2ef24fabaf0021ea98022edfc7ae279c74d723807806c804e9d3b2430e0",
-      "pageVersion": "sha256:067a361a1796c2eb0979e9e161ffc3dc29dc3ccb34f0c0290c3b30d890528e48",
+      "pageVersion": "sha256:aaf0532c9f4658e3a61fbed8913ddcb9e0ba529e3b61e90fdf3a8a71939cdab9",
       "completedBy": "amp",
-      "completedRunId": "e135a947-dfb1-4bb7-9d80-bbd11f23399b"
+      "completedRunId": "c1166dd5-48be-4eee-874b-69540ff2322b",
+      "gitHead": "59e3fcb7eb0384ce06c1068a87cc015f0d7acda4",
+      "sourceFingerprint": "sha256:dddb9fc697bfce6bcb76be8e78695dfb68bc6d37935832a61fe1e7cc5252b527"
     },
     "/openwiki/distribution/installation-and-managed-files.md": {
       "gitHead": "ecfb3dcb622da5d629504de0eb3337ba243bb697",
@@ -247,11 +247,11 @@
       "completedRunId": "38fd9d0a-0fdb-4862-8038-2f764e19f3c7"
     },
     "/openwiki/modules/runtime-hosts.md": {
+      "gitHead": "34410832145b00ba7eef3eca538c172e3d04bfc4",
+      "sourceFingerprint": "sha256:e91e21e182f7db89c5287b2f2eb8a2c90db9c164c58bd815e4ce48e6c04dcf08",
       "pageVersion": "sha256:9a9af530b48c94c91aa312f75440011615a0bd39f1a9630b5f941e5a7602af46",
       "completedBy": "amp",
-      "completedRunId": "79315281-8ffa-4ad5-8d72-0a08ebcbb793",
-      "gitHead": "34410832145b00ba7eef3eca538c172e3d04bfc4",
-      "sourceFingerprint": "sha256:e91e21e182f7db89c5287b2f2eb8a2c90db9c164c58bd815e4ce48e6c04dcf08"
+      "completedRunId": "79315281-8ffa-4ad5-8d72-0a08ebcbb793"
     },
     "/openwiki/modules/semantic-reads.md": {
       "gitHead": "38a41e57f771fcf427ae35991791ebed2c45b538",
@@ -429,11 +429,11 @@
       "completedRunId": "4ed08cb5-1f51-45a0-bc69-57f49091f4e9"
     },
     "/openwiki/transport/coordinator-and-workspace-preparation.md": {
+      "gitHead": "34410832145b00ba7eef3eca538c172e3d04bfc4",
+      "sourceFingerprint": "sha256:e91e21e182f7db89c5287b2f2eb8a2c90db9c164c58bd815e4ce48e6c04dcf08",
       "pageVersion": "sha256:79906a49a4de532eb0f4a5358e3f47ddb95e8f8b837f95f2611e884d462425f2",
       "completedBy": "amp",
-      "completedRunId": "79315281-8ffa-4ad5-8d72-0a08ebcbb793",
-      "gitHead": "34410832145b00ba7eef3eca538c172e3d04bfc4",
-      "sourceFingerprint": "sha256:e91e21e182f7db89c5287b2f2eb8a2c90db9c164c58bd815e4ce48e6c04dcf08"
+      "completedRunId": "79315281-8ffa-4ad5-8d72-0a08ebcbb793"
     },
     "/openwiki/transport/direct-mcp-and-tool-rpc.md": {
       "gitHead": "2d0fddd357966296ab7b0ce4106f4b4b72084cd9",
