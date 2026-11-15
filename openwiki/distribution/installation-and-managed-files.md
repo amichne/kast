@@ -51,16 +51,18 @@ sources:
     resource: repo://packaging/product_removal_recovery.py
   - id: openwiki-source-2a77c42fb15d42188a60711b
     resource: repo://packaging/test-host-installation.py
+  - id: openwiki-source-25977fc13c4ddf2c0840d6fd
+    resource: repo://packaging/test-install-checkout.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
   - id: openwiki-source-b3ca2d66028c874ac7b10e77
     resource: repo://packaging/test-managed-build-record.py
   - id: openwiki-source-988817829b83f3eaab1d41af
     resource: repo://packaging/test-managed-installation.py
-generated: { by: "amp", at: "2026-11-13T02:07:25.535Z" }
+generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-13T03:20:11.225Z
+    at: 2026-11-15T04:18:31.956Z
 ---
 
 
@@ -165,6 +167,10 @@ Recovery uses the recorded composition and preimages. An unresolved recovery kee
 A recovery-only invocation does not select a new release.
 
 ## Retained independent Host receipts
+
+The standalone `host-installation.py` command is deprecated for desktop IDEA plugin installation.
+It warns on stderr before argument admission, leaving stdout reports unchanged.
+Managed installers still import its shared receipt and transaction helpers without that command warning.
 
 `host-installation.py` admits the Host release and plugin destination before effects.
 The active receipt records the plugin root, destination, and artifact inventory with filesystem identities.

@@ -10,7 +10,9 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
+import tempfile
 import unittest
 import zipfile
 
@@ -58,6 +60,32 @@ class HostReleaseFixture:
     type: str = 'HOST_RELEASE'
     providedHostedContract: ContractFixture = ContractFixture()
     sourceRevision: str = '1' * 40
+
+
+class DesktopDeprecationTest(unittest.TestCase):
+    def test_legacy_commands_warn_on_stderr_before_argument_admission(self):
+        commands = (
+            ["bash", str(CHECKOUT_INSTALLER)],
+            ["bash", str(PUBLIC_INSTALLER), "--help"],
+            ["bash", str(CHECKOUT_INSTALLER.with_name("install-local.sh"))],
+            [sys.executable, str(CHECKOUT_INSTALLER.with_name("host-installation.py"))],
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            for command in commands:
+                with self.subTest(script=command[1]):
+                    result = subprocess.run(
+                        command,
+                        cwd=directory,
+                        env={**os.environ, "HOME": directory, "KAST_LOCAL_CONTROL_PRODUCT": ""},
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    first_line = result.stderr.splitlines()[0] if result.stderr else ""
+                    self.assertIn("deprecated", first_line)
+                    self.assertIn("desktop IntelliJ IDEA", first_line)
+                    self.assertIn("managed", first_line)
+                    self.assertNotIn("deprecated", result.stdout)
 
 
 class ControlDistributionLimitTest(unittest.TestCase):

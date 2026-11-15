@@ -75,6 +75,18 @@ class IdeLifecycleApplication(private val scope: CoroutineScope) : Disposable {
             observe = ::recordHostRefresh,
         )
     private val logger = Logger.getInstance(IdeLifecycleApplication::class.java)
+
+    init {
+        // One warning per application service lifetime, not per request or project.
+        @Suppress("DEPRECATION") // Identify legacy mode without changing its admission.
+        if (runtimeIdentity.mode == io.github.amichne.kast.protocol.contract.IdeHostMode.DESKTOP) {
+            logger.warn(
+                "kast_desktop_host_deprecated: Desktop IntelliJ IDEA Hosts are targeted for removal; " +
+                    "use managed headless Hosts with automatic workspace creation."
+            )
+        }
+    }
+
     private val job =
         scope.launch(Dispatchers.IO) {
             if (ApplicationManager.getApplication().isHeadlessEnvironment && ManagedHeadlessHost.current() == null)

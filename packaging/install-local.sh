@@ -2,6 +2,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+printf '%s\n' 'install-local: deprecated desktop IntelliJ IDEA plugin installation; use managed headless Hosts. For checkout builds, use packaging/local_product_install.py.' >&2
+
 fail() {
   printf 'install-local: %s\n' "$*" >&2
   exit 1

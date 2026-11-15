@@ -3,6 +3,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+printf '%s\n' 'kast-install: deprecated desktop IntelliJ IDEA plugin installation; use managed headless Hosts and automatic workspace creation. For checkout builds, use packaging/local_product_install.py.' >&2
+
 fail() { printf 'kast-install: %s\n' "$*" >&2; exit 1; }
 installer="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)/install-legacy.sh"
 mode=${1:-}

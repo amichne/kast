@@ -311,10 +311,10 @@ sources:
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryRetentionDiagnosticsTest.kt
   - id: openwiki-source-73144b588342a1cc6d17731e
     resource: repo://workspace/intellij-read/src/test/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedTraversalPhaseDiagnosticsTest.kt
-generated: { by: "openwiki/0.9.0", at: "2026-11-14T06:20:24.272Z" }
+generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T22:19:18.487Z
+    at: 2026-11-15T03:03:20.161Z
 ---
 
 # Runtime and process hosts
@@ -439,6 +439,10 @@ and mutation planning do not use this capability. The
 the identity checks and returned handle metadata.
 
 The plugin additionally owns one `IdeLifecycleApplication` service and user-scoped control endpoint per selected graphical application home. It remains available with zero projects, advertises actual build, host incarnation and capabilities, and keeps at most 256 operation records. The endpoint reuses existing ownership and framed transport. After a plugin upgrade, Kast can reclaim a dead endpoint with the same root and socket without matching its old capability catalog. The absent PID, exclusive lock, and unchanged file identities still govern retirement. Project semantic services remain project-scoped.
+
+Desktop IntelliJ IDEA Hosts are deprecated in favor of managed headless Hosts and automatic workspace creation.
+The application service logs `kast_desktop_host_deprecated` once during desktop initialization, not per project or request.
+Managed headless initialization does not emit that warning. Existing desktop startup and admission remain unchanged.
 
 The agent-only `workspace_lifecycle` tool calls the App Server-owned lifecycle client directly and exposes inspect/open/present/release/close/status. `request_user_close` needs the existing controller lease and an exact local confirmation for one native target. Preparation cannot produce that confirmation. The daemon uses opening before semantic dispatch and never obtains user-close authority from that preparation.
 

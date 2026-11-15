@@ -160,9 +160,21 @@ def sandbox_profile(home: Path) -> str:
 
 
 def admit_new_root(root: Path) -> Path:
-    parent = root.parent.resolve(strict=True)
-    if parent.is_symlink() or not parent.is_dir() or parent.stat().st_uid != os.getuid():
-        raise Rejected(Stage.ROOT, Failure.ROOT_REJECTED)
+    try:
+        parent = root.parent.resolve()
+        missing: list[Path] = []
+        ancestor = parent
+        while not os.path.lexists(ancestor):
+            missing.append(ancestor)
+            ancestor = ancestor.parent
+        if not ancestor.is_dir() or ancestor.stat().st_uid != os.getuid():
+            raise Rejected(Stage.ROOT, Failure.ROOT_REJECTED)
+        for directory in reversed(missing):
+            directory.mkdir(mode=0o700)
+        if parent.is_symlink() or not parent.is_dir() or parent.stat().st_uid != os.getuid():
+            raise Rejected(Stage.ROOT, Failure.ROOT_REJECTED)
+    except OSError:
+        raise Rejected(Stage.ROOT, Failure.ROOT_REJECTED) from None
     selected = parent / root.name
     if os.path.lexists(selected):
         raise Rejected(Stage.ROOT, Failure.ROOT_REJECTED)

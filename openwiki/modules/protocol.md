@@ -65,6 +65,8 @@ sources:
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryDeferredSupplierExecutionDocument.kt
   - id: openwiki-source-3206e378903869638a68fb5a
     resource: repo://protocol/contract/src/main/resources/ide-hosted/hosted-endpoint.schema.json
+  - id: openwiki-source-38dc8ef482bf6ce4d8ab0cc4
+    resource: repo://protocol/contract/src/test/kotlin/io/github/amichne/kast/protocol/contract/HostInstallationLifecycleContractTest.kt
   - id: openwiki-source-207ff2d32f1b70dfee08054c
     resource: repo://protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/OperationRegistry.kt
   - id: openwiki-source-1905c35a82810ccf74696707
@@ -83,10 +85,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-c7caab29dec6e41d0046710e
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
-generated: { by: "codex", at: "2026-11-06T05:26:56.646Z" }
+generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:39:33.821Z
+    at: 2026-11-15T03:03:20.161Z
 ---
 
 # Protocol
@@ -199,6 +201,8 @@ The response carries the settled runtime identity. Loaded replacement identity r
 
 Runtime identity carries the closed `DESKTOP` or `MANAGED_HEADLESS` mode.
 Serialization includes the default `DESKTOP` value.
+`DESKTOP` and enabled automatic plugin reload are deprecated at warning level, not removed from the wire contract.
+Advertisements from 0.51.x that omit mode still decode as `DESKTOP`.
 The project endpoint can carry a managed application advertisement with its runtime identity and hosted compatibility.
 That schema needs `MANAGED_HEADLESS`, disabled auto reload, and positive process identity fields.
 This advertisement supplies no semantic completion or workspace readiness proof.

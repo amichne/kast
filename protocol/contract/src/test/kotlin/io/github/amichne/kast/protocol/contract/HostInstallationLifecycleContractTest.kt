@@ -26,6 +26,12 @@ class HostInstallationLifecycleContractTest {
     fun `Host mode encodes its default and rejects unknown ownership`() {
         val desktop = kotlinx.serialization.json.Json.encodeToString(identity)
         assertEquals("DESKTOP", json.parseToJsonElement(desktop).jsonObject.getValue("mode").jsonPrimitive.content)
+        assertEquals(identity, json.decodeFromString<IdeHostRuntimeIdentity>(desktop))
+        assertEquals(
+            identity,
+            json.decodeFromString<IdeHostRuntimeIdentity>(desktop.replace(",\"mode\":\"DESKTOP\"", "")),
+        )
+        assertEquals(HostAutoReload.ENABLED, json.decodeFromString<HostAutoReload>("\"ENABLED\""))
         val headless = json.encodeToString(identity.copy(mode = IdeHostMode.MANAGED_HEADLESS))
         assertEquals(
             "MANAGED_HEADLESS",

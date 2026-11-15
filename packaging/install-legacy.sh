@@ -3,6 +3,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+printf '%s\n' 'kast-install: deprecated desktop IntelliJ IDEA component installer; use install.sh for the managed product and automatic workspace creation.' >&2
+
 readonly PROGRAM="kast-install"
 readonly REPOSITORY="amichne/kast"
 readonly INSTALL_DOWNLOAD_RETRIES=5

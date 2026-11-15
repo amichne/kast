@@ -10,7 +10,11 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.contract.IdeProjectDescription
 import io.github.amichne.kast.runtime.hosted.HostedCompatibilityMetadata
 
-/** Managed project registration belongs to the native opener, after project initialization. */
+/**
+ * Borrowed desktop IDEA observation is deprecated and retained for compatibility only. Managed project registration
+ * belongs to the native opener, after project initialization.
+ */
+@Suppress("DEPRECATION") // Dispatch must still recognize legacy desktop Hosts.
 internal fun observeApplicationProjects(mode: IdeHostMode, observeBorrowed: () -> Unit) {
     when (mode) {
         IdeHostMode.DESKTOP -> observeBorrowed()

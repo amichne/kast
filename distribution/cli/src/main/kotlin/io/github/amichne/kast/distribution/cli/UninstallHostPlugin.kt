@@ -206,7 +206,8 @@ private fun rejectHostRemoval(
 internal fun executeHostRemoval(arguments: List<String>): HostRemovalProcessObservation {
     val process =
         try {
-            ProcessBuilder(arguments).redirectErrorStream(true).start()
+            // Only stdout is the typed reply; helper diagnostics, such as its deprecation notice, reach the user.
+            ProcessBuilder(arguments).redirectError(ProcessBuilder.Redirect.INHERIT).start()
         } catch (_: java.io.IOException) {
             return HostRemovalProcessObservation.Rejected(HostPluginCleanupFailure.PROCESS_UNAVAILABLE)
         } catch (_: SecurityException) {

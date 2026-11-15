@@ -29,17 +29,28 @@ internal data class ApplicationRuntimeIdentity(
     val hostLifetime: String,
     val buildIdentity: ApplicationHostBuild,
     val autoReload: ApplicationAutoReload,
-    @kotlinx.serialization.EncodeDefault val mode: ApplicationHostMode = ApplicationHostMode.DESKTOP,
+    // Keep the 0.51.x compatibility default when an advertisement omits mode.
+    @Suppress("DEPRECATION")
+    @kotlinx.serialization.EncodeDefault
+    val mode: ApplicationHostMode = ApplicationHostMode.DESKTOP,
 )
 
 @Serializable
 internal enum class ApplicationHostMode {
+    @Deprecated(
+        "Desktop IntelliJ IDEA Hosts are targeted for removal; use managed headless Hosts.",
+        level = DeprecationLevel.WARNING,
+    )
     DESKTOP,
     MANAGED_HEADLESS,
 }
 
 @Serializable
 internal enum class ApplicationAutoReload {
+    @Deprecated(
+        "Desktop IDEA automatic plugin reload is targeted for removal; use managed product updates.",
+        level = DeprecationLevel.WARNING,
+    )
     ENABLED,
     DISABLED,
 }
@@ -116,6 +127,8 @@ internal fun readApplicationHost(
         readApplicationSelection(selectedInstallation(root).resolve("config/selected-ide.json"), home)
     }
 
+// This compatibility read rejects desktop advertisements; it does not select a desktop Host.
+@Suppress("DEPRECATION")
 internal fun readWorkspaceApplicationHost(container: AdmittedContainer): Observation<LoadedApplicationHost> {
     val observed =
         observeSelectedApplication(container.home, ::observeApplicationProcess) {

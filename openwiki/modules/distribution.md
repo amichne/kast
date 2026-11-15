@@ -377,6 +377,8 @@ sources:
     resource: repo://packaging/install-checkout.sh
   - id: openwiki-source-1fb25dc686d01d69495da290
     resource: repo://packaging/install-legacy.sh
+  - id: openwiki-source-37ffb827b915bda4bcca9865
+    resource: repo://packaging/install-local.sh
   - id: openwiki-source-4c9f1a2f0eff9672edf6ca2f
     resource: repo://packaging/installer_fixture.py
   - id: openwiki-source-8e1c0e02a6021c5adc87ccac
@@ -413,10 +415,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "amp", at: "2026-11-13T19:40:08.615Z" }
+generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T21:34:35.265Z
+    at: 2026-11-15T04:02:40.609Z
 ---
 
 # Distribution and packaging
@@ -642,6 +644,9 @@ Stable product release maps a public version to the exact retained preview tag a
 
 The remaining component installer, checkout, and desktop lifecycle owners support legacy development and recovery contracts.
 They are not prerequisites or alternate public setup instructions for the managed product.
+Desktop IntelliJ IDEA plugin installation is deprecated, without removal of the retained installation behavior.
+The checkout and component scripts warn on stderr before parsing arguments; their stdout remains available to existing callers.
+Checkout contributors are directed to `packaging/local_product_install.py` for managed product installation.
 Control stages `packaging/install-legacy.sh` as its private `share/kast/install.sh` lifecycle adapter.
 Native component uninstall uses that adapter, not the public bootstrap parser.
 The root `install.sh` remains the public managed-product entry point.

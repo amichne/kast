@@ -1,5 +1,11 @@
 # Reload the local IntelliJ plugin
 
+> **Deprecated: desktop IDEA plugin reload.** User-space IntelliJ IDEA plugins and desktop Hosts are targeted for removal.
+> Use managed headless Hosts and automatic workspace creation through the managed product; update with `kast upgrade`.
+> The contributor replacement is `packaging/local_product_install.py`; see [Install a checkout as an isolated managed product](development.md#install-a-checkout-as-an-isolated-managed-product).
+> The standalone reload command already rejects with `MANAGED_REPLACEMENT_REQUIRED`; the instructions below record the legacy experiment, not a current managed update procedure.
+> Shared archive admission and transaction helpers remain available to the managed installer.
+
 Use local reload for Kotlin code and resource changes inside the installed Host JAR layout.
 This path supports macOS and IntelliJ IDEA `262.*`.
 The IDE owns unload and load through its native dynamic-plugin lifecycle.

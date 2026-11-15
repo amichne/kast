@@ -38,6 +38,13 @@ Add the printed command directory to `PATH` if needed. The installer does not ed
 
 Use [agent setup](/reference/integrations) after installation. No desktop plugin installation or restart is needed.
 
+<Warning>
+  Desktop IntelliJ IDEA Hosts and user-space plugin installation are deprecated and targeted for removal.
+  Legacy component installation with `--host-only` remains a compatibility path, not managed product setup.
+  Existing 0.51.x desktop Hosts and their wire values remain supported for compatibility.
+  Use managed headless Hosts with private workspace state and automatic workspace creation instead.
+</Warning>
+
 ## 1. Install the selected release
 
 ```shell
