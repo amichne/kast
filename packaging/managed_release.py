@@ -47,6 +47,7 @@ class Failure(StrEnum):
     CATALOG_UNAVAILABLE = "CATALOG_UNAVAILABLE"
     ARTIFACT_INVALID = "ARTIFACT_INVALID"
     INSTALLER_CONTRACT_UNSUPPORTED = "INSTALLER_CONTRACT_UNSUPPORTED"
+    LOCAL_ARTIFACT_REQUIRED = "LOCAL_ARTIFACT_REQUIRED"
 
 
 class Stage(StrEnum):
@@ -1571,6 +1572,13 @@ def download_composition(
 ) -> AdmittedProduct | Rejected:
     """Never activate a legacy component pair as a complete private-runtime product."""
     requested = selection.version
+    if (
+        isinstance(selection, ProductSelection)
+        and isinstance(selection.record, LocalProductRecord)
+        and not isinstance(source, LocalReleaseSource)
+    ):
+        # Local product bytes exist only in their local directory; never acquire them remotely.
+        return Rejected(Failure.LOCAL_ARTIFACT_REQUIRED, Stage.SELECTION, requested)
     if isinstance(selection, MainSelection):
         return Rejected(Failure.BINARY_UNAVAILABLE, Stage.RECORDS, requested)
     if isinstance(selection, StableSelection):

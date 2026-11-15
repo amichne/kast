@@ -104,7 +104,7 @@ sources:
 generated: { by: "amp", at: "2026-11-15T19:32:41.514Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:31:50.464Z
+    at: 2026-11-15T23:15:42.491Z
 ---
 
 # Upgrade, shutdown, and guarded reset

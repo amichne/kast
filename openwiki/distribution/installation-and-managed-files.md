@@ -73,10 +73,10 @@ sources:
     resource: repo://packaging/test-managed-installation.py
   - id: openwiki-source-0bad4698830200151d28e110
     resource: repo://packaging/test-managed-release.py
-generated: { by: "amp", at: "2026-11-15T20:31:50.464Z" }
+generated: { by: "amp", at: "2026-11-15T23:15:42.491Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:31:50.464Z
+    at: 2026-11-15T23:15:42.491Z
 ---
 
 
@@ -98,6 +98,7 @@ Checkout assembly remains a separate developer boundary, not a product prerequis
 `install.sh --local-artifact DIRECTORY` reads `build-record.json` and the selected target's recorded files under `payload/`.
 `LocalReleaseSource` creates a pinned product selection and supplies local bytes to the same `download_composition` and activation owners.
 Missing, changed, or linked product files reject without product HTTP fallback.
+A captured `--resolved-selection` that names a local record without `LocalReleaseSource` rejects with `LOCAL_ARTIFACT_REQUIRED` before any release read.
 This selects the canonical global installation, not a separate contributor root.
 Local records require `PinnedBuild`, no public version, and the matching developer tag and source revision.
 The bootstrap still downloads pinned private Python and `defusedxml`; local product selection does not make setup offline.

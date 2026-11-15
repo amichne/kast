@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dc2811b171ec115ed2207a817ef8a5557ec3d7010320288de4c80219876b6b4b",
+  "pageVersion": "sha256:545b53e4971b44f7acf9933f81929f30b44cd5e5f6d080c1e7bc38557dbd84eb",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -170,15 +170,23 @@
     },
     {
       "id": "claim_6d354ecdb25847e98076d3b89a5c40dc",
-      "statement": "Exact repair admits the recorded product selection independently of runtime-byte admission; ordinary semantic requests additionally require the selected runtime.",
+      "statement": "Exact repair admits a published product's recorded selection independently of runtime-byte admission; a local schema 4 product with LOCAL producer evidence rejects with LOCAL_ARTIFACT_REQUIRED before installer or release effects. Ordinary semantic requests additionally require the selected runtime.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntime.kt#L167-L190",
-          "version": "repo-lines-v1:sha256:d492bbc27b9e4286f19a707478decad9ff7299cc15eabc18788e5ebfe77cf3bd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU4OGRlYjM0NmY3MzFhOGZkZGNiMmYzZWUyYWI3NjlmMGY0OWU1MTY1MjliOTRhMjBhOTczOTgyYTVlNmQ0ZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzYjY0ZTk3MWU0MmE0YmE1MmRjMTY1Y2ZmOGM3MTdkZTIzOTRiZTNmYjQ1M2Y2ZDUxZjJjNzdiZTcyZTQ4YWYifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntime.kt#L168-L193",
+          "version": "repo-lines-v1:sha256:e1a2c233621904f7e21d6136c219171c9f1c8006f11d9fc674139e7bd183714b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0ZDYzMTkwNDM0NDg1ZmFjNWY1NjdmZjUzOTFmOTA1N2ViZTMzODQzMmMyNjBiZmM3MjI4ZGQzZDcyODU4YjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUzYjY0ZTk3MWU0MmE0YmE1MmRjMTY1Y2ZmOGM3MTdkZTIzOTRiZTNmYjQ1M2Y2ZDUxZjJjNzdiZTcyZTQ4YWYifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntime.kt#L29-L122",
-          "version": "repo-lines-v1:sha256:23f846c383e813730b6d734e12045afc066e2ca943e06f5c790d3feb4df43bab:eyJzZWxlY3RlZExpbmVDb3VudCI6OTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzNDg2MjA4ZmViOTgyNDI5YTkyYmNjM2U3ZGUwOWY4MmE1YzY4MTE5OTY0Y2I1Y2U4YjQ3NTNlZDY3ZWRhNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxY2I1MTlmMzMwY2QwZjFhY2Q5NTY2YWExNzBlMDY3MTkwNWUzZDZiYmZmZjhiNjAyZjNiODFlM2ExN2QzNDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ0NjllNzJjOTg1YmE0OTVmNTZkMzVhNzZkYWFlMjBiNjQ3YzEzMGFlMGIxY2YxZDg3YjM5MTUzYzVjMzFhMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRhODkyMWNmMmU1ZjEyOTI1YWJlNTkwZjMxYWRlOWIxOGM0NzQyZTk5ZDk0MWMyNDRmMjNhMzMzN2FkYjkxZWMifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntime.kt#L28-L117",
+          "version": "repo-lines-v1:sha256:d62fcecb20993c86eed502a2acea72480cd82d22b3f4822ca9fa3dd3e75c6762:eyJzZWxlY3RlZExpbmVDb3VudCI6OTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJhYmI2M2ViZTVlMGI0MTZhYWEwYmIyZTU2MTJlNDY1NmYwMDQyMTZlOGFjMTZhMjJmZDQzMTkwYjhlNTYwNDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJkYTg2YTJjZmNhYTcwMWIxMzliYmFmZWEzNjk2YzdhZGY0N2Y0ZWFkZjI3ZjI5YTVmMGYyNjgzZWY4YmI3ZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ0YjY5ZWQzMWE3YTlkOWIxMjZhZmVkMjJiMGVjYTdjMjUyYmY5NGM1YjQzMjQ3NjRhODdiOWFhNDZmMmQ5NmYifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt#L83-L103",
+          "version": "repo-lines-v1:sha256:4ba2480ac50df77350fef8006f0c11b94424346844f1a796a7faea141229de6a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5ZGI4ZDJkZTRiZWQ3MThmODhiNGUzZGI5ODM1NTI0ZTIxNmU0ZjQ4NmI2MmJiYzI4MzQ5NGNkZDI1OTI4MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ODFiNzkzOTg3ZWNjMjExNGE5Yjg1ZTI1NDczYmQyZGQ4ZjQ4ZTM4ZWE5NGNhMjhjYzU0NTk3NGVlYjVkZTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4YTc0NDZkOTIxMDFjYmQwZjYxMTI3NWExNmY0MjFjMzQ2OWM1MTA2MjBiZTk1YWMyOTcwMGUyOGM0NTBjNWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5MDIyODRjYmEzNGExNjg0NDc1ZTIwNDE5OWVhYzMxNTQxYTk4ODMxZDQxODIyODkyMWRiZTgxZDMwMzE2YzUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt#L319-L355",
+          "version": "repo-lines-v1:sha256:b77b333b493fdff4ed5d51eb6b271d8227c41e11597b3f503ffb1179d1f5e1ac:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZjA5ZWIwYzU3NDRmYjk3MzMxYjk4ZmYzZmJmMDVhNjAyYmEzZjdmNjdlNWRhNWJlOTA5NTAzM2Y2MjU4MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxODVkN2M3OWYwOWEyYzEwYjc4MjQyMjcwZmUzOGMwZjRmYTlmOTA3YjBlNjNjZDM5NzFiOTM5N2JmYTUxMzUifQ"
         }
       ]
     },
@@ -519,6 +527,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T21:32:57.222Z"
+    "at": "2026-11-15T23:15:42.491Z"
   }
 }

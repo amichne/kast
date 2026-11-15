@@ -2365,6 +2365,51 @@ class ProductActivationTest(unittest.TestCase):
             {"kind": "LOCAL"}, json.loads(raw_record)["targets"][0]["qualification"]["producer"]
         )
 
+    def test_captured_local_selection_requires_local_artifact_before_release_reads(self) -> None:
+        target = self.record.targets[1]
+        record = release.LocalProductRecord(
+            4,
+            self.record.repository,
+            self.record.sourceRevision,
+            self.record.sourceTree,
+            self.record.version,
+            release.LocalProductProducer(),
+            (
+                replace(
+                    target,
+                    qualification=replace(
+                        target.qualification, producer=release.LocalProductProducer()
+                    ),
+                ),
+            ),
+        )
+        raw = install.encoded(record)
+        selected = release.ProductSelection(
+            f"developer-v{record.version}",
+            record,
+            hashlib.sha256(raw).hexdigest(),
+            "PinnedBuild",
+            None,
+            record.sourceRevision,
+        )
+        captured = self.home / "selection.json"
+        _ = captured.write_bytes(encoded_fixture(selected))
+        self.assertEqual(selected, release.decode_selection(captured.read_bytes()))
+        root = self.home / ".local/share/kast"
+        output = io.StringIO()
+        with (
+            patch.dict(os.environ, {"HOME": str(self.home)}),
+            patch.object(staging.platform, "system", return_value="Darwin"),
+            patch.object(staging.platform, "machine", return_value="arm64"),
+            patch.object(install.subprocess, "run", side_effect=AssertionError("no process")),
+            contextlib.redirect_stdout(output),
+        ):
+            code = install.main(["--resolved-selection", str(captured), "--json"], self.source)
+        self.assertEqual(1, code)
+        self.assertEqual("LOCAL_ARTIFACT_REQUIRED", json.loads(output.getvalue())["reason"])
+        self.assertEqual([], self.source.calls)
+        self.assertFalse(root.exists())
+
     def test_local_product_rejection_preserves_global_state_without_network_fallback(self) -> None:
         local = self.home / "local"
         payload = local / "payload"

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:bd85074b208d843b3ef89d72d1789a77c744bda897f4a893f67b0cc934be63c4",
+  "pageVersion": "sha256:a6968bc3caeff56b62ad8f18f60ef354f07467606cf93241e858af5938daf934",
   "claims": [
     {
       "id": "claim_6e162d0003544cefbaac0dcbf07fab32",
@@ -602,11 +602,19 @@
     },
     {
       "id": "claim_a564dad9fb634a9ea8147a33742eeff4",
-      "statement": "InstalledProductSelection admits exact recorded identity for repair without requiring runtime bytes. InstalledProductRuntime additionally admits local runtime bytes for semantic requests without release-server access. Local installed records require PinnedBuild, no publicVersion and the matching developer tag, preserving exact source and artifact identities.",
+      "statement": "InstalledProductSelection admits exact recorded identity for repair without requiring runtime bytes. installedRepairSelection reuses that selection only for published products; a local product with LOCAL producer evidence rejects with LOCAL_ARTIFACT_REQUIRED before installer or release effects. InstalledProductRuntime additionally admits local runtime bytes for semantic requests without release-server access. Local installed records require PinnedBuild, no publicVersion and the matching developer tag, preserving exact source and artifact identities.",
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntime.kt",
-          "version": "repo-file-v1:sha256:340daf495f14db070b2a33dd1efa2b0a8c5f2588112d067777846e0511ce8f7e"
+          "version": "repo-file-v1:sha256:047cbefaf8691004a8c454f53bc68093b2e79881690e12be7eb247ad94f5b478"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt#L83-L103",
+          "version": "repo-lines-v1:sha256:4ba2480ac50df77350fef8006f0c11b94424346844f1a796a7faea141229de6a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5ZGI4ZDJkZTRiZWQ3MThmODhiNGUzZGI5ODM1NTI0ZTIxNmU0ZjQ4NmI2MmJiYzI4MzQ5NGNkZDI1OTI4MGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ODFiNzkzOTg3ZWNjMjExNGE5Yjg1ZTI1NDczYmQyZGQ4ZjQ4ZTM4ZWE5NGNhMjhjYzU0NTk3NGVlYjVkZTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4YTc0NDZkOTIxMDFjYmQwZjYxMTI3NWExNmY0MjFjMzQ2OWM1MTA2MjBiZTk1YWMyOTcwMGUyOGM0NTBjNWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5MDIyODRjYmEzNGExNjg0NDc1ZTIwNDE5OWVhYzMxNTQxYTk4ODMxZDQxODIyODkyMWRiZTgxZDMwMzE2YzUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt#L319-L355",
+          "version": "repo-lines-v1:sha256:b77b333b493fdff4ed5d51eb6b271d8227c41e11597b3f503ffb1179d1f5e1ac:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjZjA5ZWIwYzU3NDRmYjk3MzMxYjk4ZmYzZmJmMDVhNjAyYmEzZjdmNjdlNWRhNWJlOTA5NTAzM2Y2MjU4MjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxODVkN2M3OWYwOWEyYzEwYjc4MjQyMjcwZmUzOGMwZjRmYTlmOTA3YjBlNjNjZDM5NzFiOTM5N2JmYTUxMzUifQ"
         }
       ]
     },
@@ -733,7 +741,7 @@
           "version": "repo-lines-v1:sha256:c11a55306bf0ef3d215e6d4feb388adaad6346024f95bbda3d96da09cf467428:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlODQ2MTI1NTEwOTNkNzY2OWRlMTBhZjA5ZmQ5MmYxMGM1NTJlY2Y2ODUzMzM0OGM1Njc2YTEzYWQ1NTZjMDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiOTlhZmQ2NWNlZDNhODNiNzBhYmIwYWFjNjY0YjFlZjdhMWI1MTcxMWZhYWVmNWNmZmJjYTFjNzRkNjAwNmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3YTFmZjczM2VkYWRhMGYyNWY1NTg0ZmI2YmMzZDBkOGRiMGIxYzcxMDczMGJiZTgzOWZmY2NmNmUyOTc3YjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkYTE2ZTgxYThlNjBmZjRkYTE1N2I4Yzc1ZjIyNGQwYjNhODQ1YmRjZDY3YWNlNmRiOWI5NjlkNmM5YjdmZTAifQ"
         },
         {
-          "resource": "repo://packaging/managed_release.py#L525-L606",
+          "resource": "repo://packaging/managed_release.py#L526-L607",
           "version": "repo-lines-v1:sha256:7f03258910192cd48b486e02df64e845af3a2925f97ff937e8ec91cbb85d0fbe:eyJzZWxlY3RlZExpbmVDb3VudCI6ODIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0YjIzNDE1OGIwOTU1NzgxMzVmNzkxZjIyZDk0NzVjZmJiMzY4YTQ4MTE4MzE1YjBmYTU5NjBlMWE0ODExM2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4YmI4ZDg4YjM2OGI2ZTE5MTMwNTFlNDMzM2Q2MTc1MmRlMTkzMjFmZWYxZTdkZjZkMjIxM2RlODI4NWMzNTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlZTkwN2MwNmQ0ZjNiMTc0ZmI2NTM1MzUyZjBlYTAxYzc4ZmQ3ZmRkYTk2YmFiNTY0NWFjODFiMjJiNzAzM2MifQ"
         }
       ]
@@ -909,7 +917,7 @@
           "version": "repo-lines-v1:sha256:a98bbebfb4254effc8d9b4712f53d634bdd18c011425fb48e0cca91e4caf0329:eyJzZWxlY3RlZExpbmVDb3VudCI6ODUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MDc2ZTFhZGZiODc3MzFlNTUwNDEyNWI5YTUyMjQ1YTY4NDFlNjc5ZTM3NmNkMjA1Y2JjZWIxYmQzZmRiMzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhZDQyY2Q4NGZjZWM2MzdlNTlmMWExMTUzNmExNjljYjA0MWIwYTgwY2ViODI4YmYwZWUxZDVlZWY1ODRiNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJmOGNkODQwMzkzNGFmOWM2YjUzZjE0MjBlMTA1NmNiMzJkZWU2MzNjOTQ2ZGFlMDA4N2YxNTQ0ZjVlMTg1ZTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFkNjJhNmY3Yjg5YmE0MTc3MWI3Y2M4YWI4NjdkZDJlNjAxODdjOTE4N2U1YjdmNWYxMGU3ZjcxZjdkY2ViMzUifQ"
         },
         {
-          "resource": "repo://packaging/managed_release.py#L205-L271",
+          "resource": "repo://packaging/managed_release.py#L206-L272",
           "version": "repo-lines-v1:sha256:9c336170aff3f464be1ae8b3c93584681a9578575358281a4a3537e32f5a00a5:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlZGE2M2Q1MzdkYTcyZTg4YTkwMWJhNWVjMGM5NjNlYTFhYjg1ZjVkM2Y3NDkxMTllMDg5OGNkMTdkMWU2OTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyYTUwMDBkNTM4OTRhYmE0ZTRjNjAxYzRkZDFlMTM5MDk0NGFiODllMTlhNzRlOGM5NzlhOTc4YWZiMjUwZjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ5NTU4YzBiMjU2YTA2ZWQ1MDMwNTQwMzc5ZmRlYmVkMWRjNTFiMmJlYzhlYzhmY2ZhMWExZmMyZWU1MTE5YjAifQ"
         }
       ]
@@ -1071,6 +1079,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T21:32:57.222Z"
+    "at": "2026-11-15T23:15:42.491Z"
   }
 }

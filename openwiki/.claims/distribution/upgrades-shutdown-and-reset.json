@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e43b3e11ae11a25991bc978cef802d5426112f12cdaeed894fb41fe98091e89e",
+  "pageVersion": "sha256:dfef88afabbdd90897b8a4c1a072f1b81a324801f7fd3369b66461c3c77bd197",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -308,7 +308,7 @@
         },
         {
           "resource": "repo://packaging/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:26bff5a207f24b8e1525274cd564484272b814597256c3da42fdb4e387795e9d"
+          "version": "repo-file-v1:sha256:b656b3e0b11e891c9de1f929855b0aeee043ce46fd135f0e7c5e36afa9b9bf0b"
         }
       ]
     },
@@ -352,7 +352,7 @@
         },
         {
           "resource": "repo://packaging/test-managed-build-record.py",
-          "version": "repo-file-v1:sha256:26bff5a207f24b8e1525274cd564484272b814597256c3da42fdb4e387795e9d"
+          "version": "repo-file-v1:sha256:b656b3e0b11e891c9de1f929855b0aeee043ce46fd135f0e7c5e36afa9b9bf0b"
         }
       ]
     },
@@ -425,6 +425,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T20:31:50.464Z"
+    "at": "2026-11-15T23:15:42.491Z"
   }
 }

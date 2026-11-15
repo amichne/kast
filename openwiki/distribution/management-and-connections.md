@@ -102,6 +102,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeedClone.kt
   - id: openwiki-source-e140285f42db726bccbc4e01
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt
+  - id: openwiki-source-e7fd130e6641f6c75e3cde3f
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt
   - id: openwiki-source-d95d75ec0e14dda7faf63dbf
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt
   - id: openwiki-source-245e3f9878cb2ef01a1fcbd1
@@ -130,10 +132,10 @@ sources:
     resource: repo://packaging/test_mcp_dependency_artifact.py
   - id: openwiki-source-2cd23a68d0d65408a59d5b1a
     resource: repo://packaging/test-managed-bootstrap.py
-generated: { by: "amp", at: "2026-11-15T21:32:57.222Z" }
+generated: { by: "amp", at: "2026-11-15T23:15:42.491Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T21:32:57.222Z
+    at: 2026-11-15T23:15:42.491Z
 ---
 
 # Native management and harness connections
@@ -276,7 +278,8 @@ A fresh agent session is necessary after setup.
 `kast versions` lists the stable selection and five newest selectable published main builds.
 Upgrade requests refine into one typed release selection and update policy before artifact effects.
 Preview and stable select complete product records, not independently mixed Control and Host versions.
-Exact repair reads the recorded product selection even when runtime bytes need repair; ordinary requests additionally require an admitted runtime.
+Exact repair reads a published product's recorded selection even when runtime bytes need repair; ordinary requests additionally require an admitted runtime.
+A local product rejects exact repair with `LOCAL_ARTIFACT_REQUIRED` before installer or release effects.
 The wrapper writes the captured selection in a physical temporary directory before invoking the installer bridge.
 An aliased temporary-directory setting therefore still produces a physical record path.
 An unqualified upgrade keeps its recorded tracking policy and rejects a pinned policy before release access.

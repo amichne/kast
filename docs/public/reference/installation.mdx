@@ -65,6 +65,7 @@ The installer pins the record's exact product identity and verifies the same dig
 It reads product bytes locally and never falls back to GitHub for missing files.
 The bootstrap still downloads its pinned private interpreter and dependency; this option does not make setup offline.
 Do not combine `--local-artifact` with `--channel`, `--version`, or `--commit`.
+`kast upgrade --repair` rejects a local product with `LOCAL_ARTIFACT_REQUIRED` before effects, because its bytes exist only in the local directory.
 
 <Warning>
   Desktop IntelliJ IDEA Hosts and user-space plugin installation are deprecated and targeted for removal.

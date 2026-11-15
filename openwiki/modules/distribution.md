@@ -337,6 +337,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UninstallManagedRoot.kt
   - id: openwiki-source-d6537b8c3c1d3e623334d7d1
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/UserStateInventory.kt
+  - id: openwiki-source-e7fd130e6641f6c75e3cde3f
+    resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt
   - id: openwiki-source-c6a7f896f4d5f15e0d036721
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/NativeControlResetSelectionTest.kt
   - id: openwiki-source-09db336d3e004f256dbf17f7
@@ -425,10 +427,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "amp", at: "2026-11-15T21:32:57.222Z" }
+generated: { by: "amp", at: "2026-11-15T23:15:42.491Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T21:32:57.222Z
+    at: 2026-11-15T23:15:42.491Z
 ---
 
 # Distribution and packaging
@@ -444,6 +446,7 @@ Python published decoding and Kotlin `validProductRecord` reject local records; 
 `LocalReleaseSource` supplies a pinned selection to the existing product admission and activation owners, without product HTTP fallback.
 The bootstrap still downloads pinned private Python and `defusedxml`; local input is not offline setup.
 `InstalledProductSelection` admits recorded identity for exact repair even when runtime bytes are missing.
+`installedRepairSelection` reuses that identity only for published products; a local product rejects with `LOCAL_ARTIFACT_REQUIRED` before installer or release effects.
 `InstalledProductRuntime` adds local runtime admission for semantic requests, without release-server access or desktop fallback.
 Local installed records require `PinnedBuild`, no public version, and the matching developer tag; recorded source and artifact identities remain exact.
 

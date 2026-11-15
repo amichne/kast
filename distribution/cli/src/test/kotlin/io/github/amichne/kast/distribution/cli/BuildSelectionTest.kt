@@ -315,6 +315,44 @@ class LocalProductProvenanceTest {
             )
         }
     }
+
+    @Test
+    fun `local product repair requires its local artifact before installer or release effects`(
+        @TempDir temporary: Path
+    ) {
+        val fixture = productFixture(temporary)
+        val recordPath = fixture.installation.resolve("share/kast/build-record.json")
+        val original = containerJson.decodeFromString<ProductBuildRecord>(Files.readString(recordPath))
+        Files.writeString(
+            recordPath,
+            containerJson.encodeToString(localProductRecord(original, fixture.reference.target)),
+        )
+        val pinned =
+            fixture.reference.copy(
+                buildRecordSha256 = sha256(recordPath),
+                policy = ProductSelectionPolicy.PinnedBuild,
+            )
+        val executable = Files.createDirectories(fixture.installation.resolve("bin")).resolve("kast")
+        Files.writeString(executable, "fixture Control")
+        Files.writeString(fixture.installation.resolve("share/kast/install-candidate.sh"), "fixture installer")
+        writeProductReference(fixture.installation, pinned)
+        writeProductManagement(fixture.installation, executable, pinned)
+        val command =
+            (parseManagementCommand(listOf("upgrade", "--repair")) as ManagementParsing.Selected).command
+                as ManagementCommand.Upgrade
+        val result =
+            executeManagedUpgrade(
+                fixture.installation.parent,
+                temporary,
+                command,
+                emptyMap(),
+                ManagedUpgradeExecution(
+                    readRelease = { error("local repair must not read a release") },
+                    installer = { _, _, _ -> error("local repair must not invoke the installer") },
+                ),
+            )
+        assertEquals(ManagedUpgradeOutcome.Rejected(BuildSelectionFailure.LOCAL_ARTIFACT_REQUIRED), result)
+    }
 }
 
 class PublishedProductBuildSelectionTest {
@@ -416,7 +454,7 @@ class PublishedProductBuildSelectionTest {
     }
 }
 
-private fun localProductRecord(record: ProductBuildRecord, platform: String): ProductBuildRecord {
+internal fun localProductRecord(record: ProductBuildRecord, platform: String): ProductBuildRecord {
     val target = record.targets.single { it.target == platform }
     return record.copy(
         schemaVersion = 4,

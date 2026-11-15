@@ -174,6 +174,9 @@ internal fun installedRepairSelection(root: Path): SelectionAdmission<ResolvedBu
     return when (val selected = InstalledProductSelection.read(root.resolve("installation"), platform)) {
         is Refinement.Rejected -> SelectionAdmission.Rejected(BuildSelectionFailure.ARTIFACT_INVALID)
         is Refinement.Refined -> {
+            // Local product bytes exist only in their local directory; repair must not seek them remotely.
+            if (selected.value.record.producer is LocalProductProducer)
+                return SelectionAdmission.Rejected(BuildSelectionFailure.LOCAL_ARTIFACT_REQUIRED)
             val reference = selected.value.reference
             SelectionAdmission.Admitted(
                 ResolvedBuildSelection.Product(
