@@ -63,12 +63,19 @@ def test_launcher_binds_identity_and_forwards_settings(tmp_path: Path) -> None:
 
 def test_new_root_must_be_absent_under_an_owned_directory(tmp_path: Path) -> None:
     assert local.admit_new_root(tmp_path / "fresh") == tmp_path.resolve() / "fresh"
+    nested = tmp_path / "missing" / "parent" / "fresh"
+    assert local.admit_new_root(nested) == nested.resolve()
+    assert nested.parent.is_dir()
+    assert nested.parent.stat().st_mode & 0o777 == 0o700
+    assert not nested.exists()
     (tmp_path / "taken").mkdir()
     (tmp_path / "link").symlink_to(tmp_path / "elsewhere")
-    for name in ("taken", "link"):
+    _ = (tmp_path / "file").write_text("protected")
+    for name in ("taken", "link", "file/missing/fresh"):
         with pytest.raises(local.Rejected) as rejected:
             _ = local.admit_new_root(tmp_path / name)
         assert rejected.value.failure == local.Failure.ROOT_REJECTED
+    assert (tmp_path / "file").read_text() == "protected"
 
 
 def test_removal_requires_a_marker_naming_this_root(tmp_path: Path) -> None:
