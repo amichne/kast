@@ -68,7 +68,6 @@ class DesktopDeprecationTest(unittest.TestCase):
             ["bash", str(CHECKOUT_INSTALLER)],
             ["bash", str(PUBLIC_INSTALLER), "--help"],
             ["bash", str(CHECKOUT_INSTALLER.with_name("install-local.sh"))],
-            [sys.executable, str(CHECKOUT_INSTALLER.with_name("reload_hosted.py"))],
             [sys.executable, str(CHECKOUT_INSTALLER.with_name("host-installation.py"))],
         )
         with tempfile.TemporaryDirectory() as directory:

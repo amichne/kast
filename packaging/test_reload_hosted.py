@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import io
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -57,6 +58,23 @@ def fixture(
 
 
 class LocalReloadTest(unittest.TestCase):
+    def test_legacy_command_warns_on_stderr_before_argument_admission(self) -> None:
+        script = Path(__file__).with_name("reload_hosted.py")
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run(
+                [sys.executable, str(script)],
+                cwd=directory,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        first_line = result.stderr.splitlines()[0] if result.stderr else ""
+        self.assertIn("deprecated desktop IntelliJ IDEA", first_line)
+        self.assertIn("managed", first_line)
+        self.assertNotIn("deprecated", result.stdout)
+        self.assertIn("--archive", result.stderr)
+        self.assertEqual(2, result.returncode)
+
     def test_first_stable_layout_migration_needs_a_normal_restart(self) -> None:
         self.assertEqual(plan(fixture(legacy=True), fixture("2")), Rejected(Failure.LAYOUT_CHANGED))
 
