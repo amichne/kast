@@ -12,8 +12,8 @@ sources:
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
 generated: { by: "amp", at: "2026-11-12T21:34:19.290Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-11T10:38:11.930Z
+  - by: openwiki/0.9.0
+    at: 2026-11-15T15:35:00.856Z
 ---
 
 # Kast repository guide

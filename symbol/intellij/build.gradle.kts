@@ -22,40 +22,9 @@ val symbolIdeaDistribution =
         isCanBeResolved = true
     }
 
-private val extractedIdeaDistributionDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/symbol-intellij-idea-distributions/$ideaPlatformBuild")))
-    }
+private val kotlinPluginLibs: FileCollection = ideaLibraries(symbolIdeaDistribution, IdeaLibraryFamily.KOTLIN)
 
-val extractSymbolIdeaDistribution =
-    tasks.register<ExtractIdeaDistributionTask>("extractSymbolIdeaDistribution") {
-        archives.from(symbolIdeaDistribution)
-        ideaVersion.set(ideaPlatformBuild)
-        libraryFamilies.set(setOf(IdeaLibraryFamily.PLATFORM, IdeaLibraryFamily.KOTLIN, IdeaLibraryFamily.JAVA))
-        outputDirectory.set(extractedIdeaDistributionDirectory)
-    }
-
-private val kotlinPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedIdeaDistributionDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/plugins/Kotlin/lib/**/*.jar")
-                    exclude("**/plugins/Kotlin/lib/jps/**")
-                    exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-                }
-            }
-        )
-        .builtBy(extractSymbolIdeaDistribution)
-
-private val javaPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedIdeaDistributionDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/plugins/java/lib/**/*.jar")
-                }
-            }
-        )
-        .builtBy(extractSymbolIdeaDistribution)
+private val javaPluginLibs: FileCollection = ideaLibraries(symbolIdeaDistribution, IdeaLibraryFamily.JAVA)
 
 dependencies {
     implementation(project(":symbol:contract"))

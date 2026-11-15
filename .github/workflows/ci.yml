@@ -162,12 +162,11 @@ jobs:
           cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
           cache-cleanup: on-success
           # caches includes caches/build-cache-1, Gradle's local task-output cache.
-          # Cacheable IDEA extraction tasks restore their outputs from that cache. Cache the non-cacheable topology Sync separately.
+          # IDEA library transform outputs also live under caches.
           gradle-home-cache-includes: |
             caches
             notifications
             native-build-tools
-            kast/topology-intellij-kotlin-plugin
 
       - name: Validate affected source obligations
         if: needs.scope.outputs.product == 'skip'
@@ -728,12 +727,11 @@ jobs:
           cache-read-only: ${{ inputs.rollout != 'warm' }}
           cache-cleanup: on-success
           # caches includes caches/build-cache-1, Gradle's local task-output cache.
-          # Cacheable IDEA extraction tasks restore their outputs from that cache. Cache the non-cacheable topology Sync separately.
+          # IDEA library transform outputs also live under caches.
           gradle-home-cache-includes: |
             caches
             notifications
             native-build-tools
-            kast/topology-intellij-kotlin-plugin
 
       - name: Replay frozen change
         env:

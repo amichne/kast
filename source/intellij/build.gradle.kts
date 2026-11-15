@@ -14,38 +14,25 @@ base {
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 private val ideaPlatformBuild = catalog.findVersion("idea-platform-build").get().requiredVersion
 
-private val extractedIdeaDistributionDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/symbol-intellij-idea-distributions/$ideaPlatformBuild")))
+val sourceIdeaDistribution =
+    configurations.create("sourceIdeaDistribution") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
     }
 
-private val kotlinPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedIdeaDistributionDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/plugins/Kotlin/lib/**/*.jar")
-                    exclude("**/plugins/Kotlin/lib/jps/**")
-                    exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-                }
-            }
-        )
-        .builtBy(":symbol:intellij:extractSymbolIdeaDistribution")
+private val kotlinPluginLibs: FileCollection = ideaLibraries(sourceIdeaDistribution, IdeaLibraryFamily.KOTLIN)
 
-private val javaPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedIdeaDistributionDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/plugins/java/lib/**/*.jar")
-                }
-            }
-        )
-        .builtBy(":symbol:intellij:extractSymbolIdeaDistribution")
+private val javaPluginLibs: FileCollection = ideaLibraries(sourceIdeaDistribution, IdeaLibraryFamily.JAVA)
 
 dependencies {
     implementation(project(":source:contract"))
     implementation(project(":symbol:contract"))
     implementation(project(":workspace:contract"))
     implementation(project(":workspace:intellij-read"))
+
+    sourceIdeaDistribution("com.jetbrains.intellij.idea:ideaIC:$ideaPlatformBuild@zip") {
+        isTransitive = false
+    }
 
     compileOnly("com.jetbrains.intellij.platform:core:$ideaPlatformBuild")
     compileOnly("com.jetbrains.intellij.platform:core-impl:$ideaPlatformBuild")

@@ -20,39 +20,9 @@ val topologyIdeaDistribution =
         isCanBeResolved = true
     }
 
-private val extractedKotlinPluginDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/topology-intellij-kotlin-plugin/$ideaPlatformBuild")))
-    }
-
-val extractTopologyKotlinPlugin =
-    tasks.register<Sync>("extractTopologyKotlinPlugin") {
-        from({ zipTree(topologyIdeaDistribution.singleFile) }) {
-            include("**/plugins/Kotlin/lib/**/*.jar")
-            include("**/plugins/java/lib/**/*.jar")
-            exclude("**/plugins/Kotlin/lib/jps/**")
-            exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-            eachFile {
-                relativePath =
-                    RelativePath(
-                        true,
-                        *relativePath.segments.dropWhile { segment -> segment != "lib" }.drop(1).toTypedArray(),
-                    )
-            }
-        }
-        includeEmptyDirs = false
-        into(extractedKotlinPluginDirectory)
-    }
-
-private val kotlinPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedKotlinPluginDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/*.jar")
-                }
-            }
-        )
-        .builtBy(extractTopologyKotlinPlugin)
+private val kotlinPluginLibs: FileCollection =
+    ideaLibraries(topologyIdeaDistribution, IdeaLibraryFamily.KOTLIN) +
+        ideaLibraries(topologyIdeaDistribution, IdeaLibraryFamily.JAVA)
 
 dependencies {
     implementation(project(":protocol:contract"))

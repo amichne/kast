@@ -20,39 +20,9 @@ val diagnosticIdeaDistribution =
         isCanBeResolved = true
     }
 
-private val extractedKotlinPluginDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/diagnostic-intellij-kotlin-plugin/$ideaPlatformBuild")))
-    }
-
-val extractDiagnosticKotlinPlugin =
-    tasks.register<Sync>("extractDiagnosticKotlinPlugin") {
-        from({ zipTree(diagnosticIdeaDistribution.singleFile) }) {
-            include("**/plugins/Kotlin/lib/**/*.jar")
-            include("**/plugins/java/lib/**/*.jar")
-            exclude("**/plugins/Kotlin/lib/jps/**")
-            exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-            eachFile {
-                relativePath =
-                    RelativePath(
-                        true,
-                        *relativePath.segments.dropWhile { segment -> segment != "lib" }.drop(1).toTypedArray(),
-                    )
-            }
-        }
-        includeEmptyDirs = false
-        into(extractedKotlinPluginDirectory)
-    }
-
-private val kotlinPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedKotlinPluginDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/*.jar")
-                }
-            }
-        )
-        .builtBy(extractDiagnosticKotlinPlugin)
+private val kotlinPluginLibs: FileCollection =
+    ideaLibraries(diagnosticIdeaDistribution, IdeaLibraryFamily.KOTLIN) +
+        ideaLibraries(diagnosticIdeaDistribution, IdeaLibraryFamily.JAVA)
 
 dependencies {
     implementation(catalog.findLibrary("serialization-json").get())

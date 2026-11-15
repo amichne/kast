@@ -116,10 +116,7 @@ gradle.projectsEvaluated {
 GRADLE
 step 'Gradle dependencies and IDE compile SDKs' ./gradlew --no-daemon --console=plain \
     --no-configuration-cache --max-workers=2 -Dorg.gradle.jvmargs=-Xmx3g \
-    --init-script "$dependency_init" prepareOrbDependencies \
-    :workspace:intellij-read:extractWorkspaceReadIdeaDistribution \
-    :symbol:intellij:extractSymbolIdeaDistribution :diagnostic:intellij:extractDiagnosticKotlinPlugin \
-    :topology:intellij:extractTopologyKotlinPlugin :relation:intellij:extractRelationKotlinPlugin
+    --init-script "$dependency_init" prepareOrbDependencies
 
 step 'Verify persisted login environment' env -i HOME="$HOME" USER="$(id -un)" PATH=/usr/bin:/bin \
     /bin/bash -lc 'set -euo pipefail; test "$KAST_ORB_ENV_ACTIVE" = "$PWD"; test "$JAVA_HOME" = "$GRAALVM_HOME"; for tool in java native-image node npm vale uv python3 mint; do command -v "$tool"; done'

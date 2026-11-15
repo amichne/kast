@@ -26,40 +26,9 @@ val relationIdeaDistribution =
         isCanBeResolved = true
     }
 
-private val extractedKotlinPluginDirectory =
-    objects.directoryProperty().apply {
-        set(file(gradle.gradleUserHomeDir.resolve("kast/relation-intellij-kotlin-plugin/$ideaPlatformBuild")))
-    }
-
-val extractRelationKotlinPlugin =
-    tasks.register<Sync>("extractRelationKotlinPlugin") {
-        inputs.property("pluginLibrarySets", listOf("Kotlin", "java"))
-        from({ zipTree(relationIdeaDistribution.singleFile) }) {
-            include("**/plugins/Kotlin/lib/**/*.jar")
-            include("**/plugins/java/lib/**/*.jar")
-            exclude("**/plugins/Kotlin/lib/jps/**")
-            exclude("**/plugins/Kotlin/lib/kotlinc/lib/kotlin-compiler.jar")
-            eachFile {
-                relativePath =
-                    RelativePath(
-                        true,
-                        *relativePath.segments.dropWhile { segment -> segment != "lib" }.drop(1).toTypedArray(),
-                    )
-            }
-        }
-        includeEmptyDirs = false
-        into(extractedKotlinPluginDirectory)
-    }
-
-private val kotlinPluginLibs: ConfigurableFileCollection =
-    files(
-            extractedKotlinPluginDirectory.map { directory ->
-                fileTree(directory) {
-                    include("**/*.jar")
-                }
-            }
-        )
-        .builtBy(extractRelationKotlinPlugin)
+private val kotlinPluginLibs: FileCollection =
+    ideaLibraries(relationIdeaDistribution, IdeaLibraryFamily.KOTLIN) +
+        ideaLibraries(relationIdeaDistribution, IdeaLibraryFamily.JAVA)
 
 dependencies {
     implementation(project(":protocol:contract"))

@@ -109,7 +109,7 @@ code_sources:
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/AdmittedHostedQuery.kt
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T23:43:30.219Z
+    at: 2026-11-15T15:35:00.856Z
 sources:
   - id: openwiki-source-48edfaeb8d917960adc80600
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt

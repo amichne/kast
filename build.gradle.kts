@@ -871,7 +871,7 @@ val semanticInputGate = tasks.register<Exec>("verifyKotlinSemanticInputs") {
 val semanticInventoryGate = tasks.register<Exec>("verifyKotlinSemanticInventory") {
     group = "verification"
     description = "Examines the pinned FIR population and classified evidence without claiming trace completion."
-    dependsOn(":relation:intellij:extractRelationKotlinPlugin", ":runtime:hosted:semanticCoverageFixtureTest")
+    dependsOn(":relation:intellij:extractNativeTestIdea", ":runtime:hosted:semanticCoverageFixtureTest")
     workingDir(semanticCoverageDirectory.dir("tooling"))
     val fixtureHome = providers.gradleProperty("nativeFixtureIdeaHome")
         .map { file(it) }.getOrElse(layout.projectDirectory.dir("relation/intellij/build/native-test/idea").asFile)
