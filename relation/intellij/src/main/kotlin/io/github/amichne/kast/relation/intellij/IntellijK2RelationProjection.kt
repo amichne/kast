@@ -184,6 +184,7 @@ internal class IntellijK2RelationProjection(
         }
 
     fun confirmReferenceTarget(reference: KtReference, subject: RelationEndpoint): IntellijReferenceTargetResult {
+        if (reference.isImportName()) return confirmImportedTarget(reference, subject)
         val declaration =
             when (val resolved = resolve(reference)) {
                 is IntellijK2ResolvedDeclaration.Found -> resolved.declaration
@@ -194,21 +195,7 @@ internal class IntellijK2RelationProjection(
                 is IntellijK2ResolvedDeclaration.Unsupported,
                 IntellijK2ResolvedDeclaration.Unresolved -> return IntellijReferenceTargetResult.Unresolved
             }
-        val evidence =
-            when (val result = project(declaration)) {
-                is IntellijRelationDeclarationProjection.Projected -> result.evidence
-                IntellijRelationDeclarationProjection.Unsupported -> return IntellijReferenceTargetResult.Unresolved
-            }
-        return when (
-            val proof =
-                io.github.amichne.kast.relation.contract.RelationConfirmedReferenceTarget.fromCompiler(
-                    subject,
-                    evidence,
-                )
-        ) {
-            is Refinement.Refined -> IntellijReferenceTargetResult.Confirmed(proof.value)
-            is Refinement.Rejected -> IntellijReferenceTargetResult.Different
-        }
+        return confirmDeclaration(declaration, subject)
     }
 
     private fun confirmExactTarget(reference: KtReference, subject: RelationEndpoint): IntellijK2TargetConfirmation =
