@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.serialization.Required
@@ -73,6 +74,7 @@ internal data class ContainerRecord(
     val workspace: String,
     val gradleHome: String,
     @Required val schemaVersion: Int = 2,
+    val dependencySharing: WorkspaceDependencySharing = WorkspaceDependencySharing.PRIVATE,
 )
 
 /** Version 1 ingress remains bounded; runtime selection is not a durable workspace fact. */
@@ -114,6 +116,7 @@ internal constructor(
     val workspace: Path,
     val directory: Path,
     val gradleHome: Path,
+    val dependencySharing: WorkspaceDependencySharing = WorkspaceDependencySharing.PRIVATE,
 )
 
 internal class StagedContainerCreation
@@ -132,8 +135,16 @@ internal constructor(
     val directory: Path,
     val gradleHome: Path,
     val generation: ContainerGenerationSource,
+    val dependencySharing: WorkspaceDependencySharing = WorkspaceDependencySharing.PRIVATE,
 ) {
-    fun record(): ContainerRecord = ContainerRecord(id.text, name.text, workspace.toString(), gradleHome.toString())
+    fun record(): ContainerRecord =
+        ContainerRecord(
+            id.text,
+            name.text,
+            workspace.toString(),
+            gradleHome.toString(),
+            dependencySharing = dependencySharing,
+        )
 }
 
 internal sealed interface ContainerStoreEntry {

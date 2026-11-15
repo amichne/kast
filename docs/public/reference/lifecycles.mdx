@@ -151,9 +151,49 @@ The Host writes it atomically just before requesting idle exit, or after an expl
 | `schemaVersion` | Record format version, currently `1`. |
 
 The record proves a settled stop requested exit. It does not prove completed process exit or flushed indexes.
-An explicit stop can record `DUMB`. No consumer uses this record for index seeding yet.
+An explicit stop can record `DUMB`; that record cannot qualify an index seed donor.
 If writing fails, exit still proceeds without usable exit evidence.
 Resuming admission retracts the record. Control deletes it before every launch and rejects launch with `LAUNCH_FAILED` if deletion fails.
+
+## Workspace index seeding
+
+With [dependency sharing](/reference/installation#optional-dependency-sharing-and-index-seeding) set to `SHARED`, only new workspace containers attempt index seeding.
+Existing containers, upgrades, generation rebuilds, and repair are unchanged.
+
+Control filters donors by current generation, runtime archive, platform, and canonical Gradle home before attempting a lease.
+A donor can belong to any repository. It must have an admitted physical generation system directory and no removal receipt.
+Its Host exit record must have the supported schema, `SMART` index state, and a canonical UUID Host lifetime.
+The record's private location binds it to the generation and runtime; those are not extra record fields.
+The newest exit-record filesystem modification time wins, with ascending container ID as the tie-break.
+
+A non-blocking exclusive donor lease spans revalidation and cloning. Control requires both an absent IntelliJ configuration `.lock` and lifecycle `HOST_UNAVAILABLE`.
+Active or unproven donors are skipped. Selection never starts or stops a donor Host.
+Endpoint unavailability alone is not exit proof. The lock-removal/flush ordering experiment covered one macOS/IntelliJ build, not every platform or release.
+
+Cloning copies the whole `state/system` tree with native `clonefile` for each regular file, only on macOS APFS within one filesystem.
+Source admission rejects links, foreign owners, special files, and trees exceeding 250,000 entries.
+The sibling `state/host-exit.json` is not cloned. The recipient never inherits donor exit eligibility.
+There is no full-copy or hard-link fallback and no sharing between running Hosts' index storage.
+The Host still validates its own project before semantic readiness; a seed grants no live authority or freshness proof.
+
+### Seed outcomes
+
+Published creation evidence lives in `state/workspace-seed.json`, with `schemaVersion: 1` and a `result` discriminated by `type`.
+Progress emits the same result with `event: kast_workspace_seed`. Status exposes the receipt as a qualified observation.
+
+| Result type | Meaning |
+| --- | --- |
+| `NOT_REQUESTED` | Creation used `PRIVATE`. |
+| `SEEDED` | The clone completed; `donor` identifies the donor container. |
+| `NO_ELIGIBLE_DONOR` | No donor passed selection. Creation continues empty. |
+| `DONORS_BUSY` | Selection encountered donor query-lease contention and found no usable donor. Creation continues empty. |
+| `UNSUPPORTED_FILESYSTEM` | The platform or clone filesystem is unsupported. Creation continues empty after cleanup. |
+| `CLONE_FAILED` | Source admission or cloning failed; `stage` is `SOURCE_ADMISSION` or `CLONE`. Creation continues empty only after cleanup succeeds. |
+| `SELECTION_REJECTED` | Selection failed with a finite `ContainerFailure` in `failure`. Creation continues empty. |
+| `CLEANUP_REJECTED` | Cleanup failed with `failure`. Creation rejects without publishing a profile; only progress records this outcome. |
+
+Receipt writing must also succeed before publication. Missing or invalid receipt evidence remains unavailable, not a fabricated `NOT_REQUESTED`.
+Phase 1 native qualification remains pending. Historical speedups and lock-order observations do not qualify this implementation.
 
 ## Source evidence
 

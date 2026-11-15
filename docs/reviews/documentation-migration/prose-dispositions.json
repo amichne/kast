@@ -12977,10 +12977,10 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/management.mdx",
-        "sourceSha256": "788bce6381fca0c46cedac8194d64f7da28573316b218487d004fb921473c8f8",
+        "sourceSha256": "0f8e3f982a03c8f59c035398a64e8fe23362137d9ab1312c35f900344186bb9e",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 9.28 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 9.54 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
       "reason": "Keep six management verbs, mutually exclusive status scopes, recorded pins, exact repair, and recovery-before-reselection instructions explicit. Temporary stop is not persistent disablement; vanished-root reclamation needs exact retirement and settled private evidence, and uninstall excludes repositories and external Gradle homes. The revised guide preserves those boundaries and pending native qualification rather than shortening them for a grade score. Comprehension remains unassessed."
@@ -12989,7 +12989,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/management.mdx",
-        "sourceSha256": "788bce6381fca0c46cedac8194d64f7da28573316b218487d004fb921473c8f8",
+        "sourceSha256": "0f8e3f982a03c8f59c035398a64e8fe23362137d9ab1312c35f900344186bb9e",
         "rule": "HowTo.Reference",
         "line": 26,
         "message": "8 table rows. Refer to the reference for the full list of options rather than carrying it here.",
@@ -13205,10 +13205,10 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/management-and-connections.md",
-        "sourceSha256": "fce3748c4899f1781dbd7b55a893dc901101a6777cf1b08b0a59c09cdceefe07",
+        "sourceSha256": "62ebd2509487869e5455c550a00094e46efc2fe8634edd5f03bfe6d0f9afd7f2",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 12.57 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 12.24 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
       "reason": "Keep request-owned managed admission, durable workspace identity, passive status, and temporary stop separate from retired public container commands. The revised management contract distinguishes provider routing intent from inventory-proven ownership, exact repair from release selection, and component sealing from detached installed acceptance. The bounded identifiers and finite failures preserve authority through those transitions; the updated grade does not prove comprehension or completed native effects."
@@ -14213,7 +14213,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/transport/coordinator-and-workspace-preparation.md",
-        "sourceSha256": "79906a49a4de532eb0f4a5358e3f47ddb95e8f8b837f95f2611e884d462425f2",
+        "sourceSha256": "f3b0dd522c377cd0150a5996c74ec5807cde9adb88f113c05f85775f3c1af881",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 13.20 exceeds the shared advisory target of 8.",
@@ -14225,7 +14225,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/transport/direct-mcp-and-tool-rpc.md",
-        "sourceSha256": "d7ec43428cd3da1f3c7e941c1dab9af2a0c53c4550df999784566113c9e371e9",
+        "sourceSha256": "6ef9c99bd7e128f5a4262682e661033442e47a025fda495effd8652ad85cf2b7",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.08 exceeds the shared advisory target of 8.",
@@ -14237,7 +14237,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/transport/harness-delivery.md",
-        "sourceSha256": "c3247febefc7607bff6fa78b86bdfe161bd149e5af90fb6a5ebeafe604eed06e",
+        "sourceSha256": "71e53a523f2be28965bc0e055ddd56bb26acaaaeba210bfa5b676cd37c3a11a9",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 11.74 exceeds the shared advisory target of 8.",
@@ -14309,7 +14309,7 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/installation.mdx",
-        "sourceSha256": "be3a06a651f556bdbfcf4c2bca62c50f035c8a4482416dab755b7aa9bb0c0a37",
+        "sourceSha256": "055979fe02c681e506cc3c37f66500c964125cb9b7a5ed91ee4c31a8d4bcab6b",
         "rule": "HowTo.Steps",
         "line": 1,
         "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
@@ -14321,19 +14321,19 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/lifecycles.mdx",
-        "sourceSha256": "9e7ba215bee13bd2d1a6b490bd5d86cf879fc229e11eeadd857af336371ce14a",
+        "sourceSha256": "33a256a55ff065cca65543d9430fb3218ada3c98b330457cb192e54743ba38f2",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 8.17 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 8.75 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep launch-only policy, idle admission fencing, veto/recovery boundaries and requested-exit evidence separate. The new section uses short sentences and exact fields; grade 8.17 remains above the advisory target, not comprehension proof. Reviewed at this digest and location; the advisory remains visible."
+      "reason": "Keep launch-only policy, idle admission fencing, veto/recovery boundaries and requested-exit evidence separate. The seeding section preserves creation-only scope, donor admission, all eight outcomes and fail-closed partial-clone cleanup. Grade 8.75 remains advisory, not comprehension or installed/native qualification proof."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/architecture/functional-packages.md",
-        "sourceSha256": "fe1758c5c7a524ef02c9fc7d5bde33d9fa6a76b7c50d9517db44e78789602588",
+        "sourceSha256": "b7217b26eb274255a4cf59fc75d28e7b6b5ed80365c7699d6b270f34376d4804",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 18.98 exceeds the shared advisory target of 8.",
@@ -14345,21 +14345,21 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/configuration.md",
-        "sourceSha256": "e44a126dd6153cd651a98d6bc5085cc377257f8742276844c7ff91e0a9d3ff24",
+        "sourceSha256": "fa1e42f139f1d755a321d50e568f8b766eee02b44290f89045b13ee342ebd124",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 12.04 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 11.93 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
-      "reason": "Keep saved configuration, managed launch bindings, launch-only idle policy, atomic fencing and requested-exit evidence distinct. Exact settings and finite failures remain necessary; grade 12.04 remains above the advisory target, not comprehension or native qualification proof. Reviewed at this digest and location; the advisory remains visible."
+      "reason": "Keep saved configuration, managed launch bindings, launch-only idle policy, atomic fencing and requested-exit evidence distinct. The dependency-sharing matrix and passive comparison preserve creation-time policy and canonical home separately. Exact settings and finite failures remain necessary; grade 11.93 is advisory, not comprehension or installed/native qualification proof."
     },
     {
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/configuration.md",
-        "sourceSha256": "e44a126dd6153cd651a98d6bc5085cc377257f8742276844c7ff91e0a9d3ff24",
+        "sourceSha256": "fa1e42f139f1d755a321d50e568f8b766eee02b44290f89045b13ee342ebd124",
         "rule": "Slopsentral.LongSentence",
-        "line": 121,
+        "line": 137,
         "message": "Long sentence: 26 words.",
         "severity": "warning"
       },
@@ -14369,9 +14369,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/configuration.md",
-        "sourceSha256": "e44a126dd6153cd651a98d6bc5085cc377257f8742276844c7ff91e0a9d3ff24",
+        "sourceSha256": "fa1e42f139f1d755a321d50e568f8b766eee02b44290f89045b13ee342ebd124",
         "rule": "Slopsentral.LongSentence",
-        "line": 220,
+        "line": 236,
         "message": "Long sentence: 29 words.",
         "severity": "warning"
       },
@@ -14381,9 +14381,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/contracts/configuration.md",
-        "sourceSha256": "e44a126dd6153cd651a98d6bc5085cc377257f8742276844c7ff91e0a9d3ff24",
+        "sourceSha256": "fa1e42f139f1d755a321d50e568f8b766eee02b44290f89045b13ee342ebd124",
         "rule": "Slopsentral.Diction",
-        "line": 243,
+        "line": 259,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
         "severity": "warning"
       },
@@ -14393,10 +14393,10 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
-        "sourceSha256": "74f933ddab85f2df9364ec7dbfe2a34ec17b45f1453a99a10281aea1e48db1ee",
+        "sourceSha256": "f7c3bae1ff4257b5b6c7c224645e6d8b84074f97208a523913f796bffa5b6837",
         "rule": "Slopsentral.Grade",
         "line": 1,
-        "message": "Estimated Flesch-Kincaid grade 12.26 exceeds the shared advisory target of 8.",
+        "message": "Estimated Flesch-Kincaid grade 12.24 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
       "reason": "Keep exact-generation retirement and exclusive leases before product fencing, damage repair, and vanished-root reclamation. The revised page preserves exterior recovery receipts, admitted recovery interpreter/tree limits, empty bookkeeping versus unsettled invocations, provider cleanup ownership, and the managed-state exclusion on legacy force uninstall. Retained legacy lifecycle contracts remain separately labeled. The grade is accepted without native-removal or comprehension evidence. Reviewed at this digest and location; the advisory remains visible."
@@ -14405,9 +14405,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
-        "sourceSha256": "74f933ddab85f2df9364ec7dbfe2a34ec17b45f1453a99a10281aea1e48db1ee",
+        "sourceSha256": "f7c3bae1ff4257b5b6c7c224645e6d8b84074f97208a523913f796bffa5b6837",
         "rule": "Slopsentral.Diction",
-        "line": 128,
+        "line": 130,
         "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
         "severity": "warning"
       },
@@ -14417,9 +14417,9 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
-        "sourceSha256": "74f933ddab85f2df9364ec7dbfe2a34ec17b45f1453a99a10281aea1e48db1ee",
+        "sourceSha256": "f7c3bae1ff4257b5b6c7c224645e6d8b84074f97208a523913f796bffa5b6837",
         "rule": "Slopsentral.Modals",
-        "line": 136,
+        "line": 145,
         "message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
         "severity": "warning"
       },
@@ -15149,13 +15149,25 @@
       "finding": {
         "stage": "root-vale-3.24.0",
         "path": "openwiki/runtime/idea-lifecycle-and-refresh.md",
-        "sourceSha256": "241597e98046791c7918d2b010ab210b9e974cc7ee51a115354935bafc6c6b7e",
+        "sourceSha256": "abdc70beed750de637e12e9e0dc044cdd4ab9448aff81756c994967248080014",
         "rule": "Slopsentral.Grade",
         "line": 1,
         "message": "Estimated Flesch-Kincaid grade 12.05 exceeds the shared advisory target of 8.",
         "severity": "warning"
       },
       "reason": "Keep configured bounded and indefinite waiting, shared native deadline continuation, Host/root/project checks, and transport limits explicit. Separate paragraphs distinguish policy, continuation, and transport. Exact lifecycle and refresh identifiers preserve the ownership boundaries. The grade target remains unmet; reader comprehension remains unmeasured. The canonical body is byte-identical to the pre-refresh body; only native verification frontmatter changed. Preserve the advisory at its current source digest and line. Reviewed at this digest and location; the advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/installation.mdx",
+        "sourceSha256": "055979fe02c681e506cc3c37f66500c964125cb9b7a5ed91ee4c31a8d4bcab6b",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.36 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep the exact PRIVATE/SHARED values, four-way Gradle-home matrix, creation-only boundary and fail-closed cleanup qualification. The short reference sentences preserve the contract; the grade is advisory, not reader-comprehension proof."
     }
   ]
 }

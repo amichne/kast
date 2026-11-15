@@ -92,3 +92,18 @@ private fun ConfigurationParameter.acceptedSources(): List<ConfigurationSource> 
             (if (mutability == ConfigurationMutability.USER_SETTING) listOf(ConfigurationSource.SAVED_INSTALLATION)
             else emptyList()) +
             ConfigurationSource.DEFAULT
+
+internal fun workspaceDependencyDeclaration(base: ConfigurationDeclaration): ConfigurationDeclaration =
+    base.copy(
+        description =
+            "Creation-time dependency sharing: PRIVATE keeps private Gradle state; " +
+                "SHARED selects a shared Gradle home and best-effort index seeding. " +
+                "Existing workspaces and generation rebuilds are unchanged.",
+        applicationBoundary = ConfigurationBoundary.NEXT_WORKSPACE_CREATION,
+        identityImpact = ConfigurationImpact.MODEL,
+        admittedRange =
+            ConfigurationAdmittedRange(
+                finiteValues = listOf("PRIVATE", "SHARED"),
+                ownerAdmission = "WorkspaceDependencySharing.parseSetting; creation-time selection",
+            ),
+    )

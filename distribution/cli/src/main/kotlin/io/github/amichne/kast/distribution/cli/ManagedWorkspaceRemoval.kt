@@ -66,9 +66,10 @@ internal fun cleanupRemovedWorkspaceStore(root: Path) {
     if (Files.notExists(store.root, NOFOLLOW_LINKS)) return
     requireWorkspaceRemoval(admitPrivateContainerDirectory(store.root))
     Files.newDirectoryStream(store.root).use { entries ->
-        if (entries.any { it.fileName.toString() !in setOf("locks", "container.lock", "runtimes") })
+        if (entries.any { it.fileName.toString() !in setOf("locks", "container.lock", "runtimes", "shared") })
             throw ManagementRejected("uninstall-workspaces", ContainerFailure.FOREIGN_STATE.name)
     }
+    removeSharedWorkspaceGradle(store)
     removeWorkspaceQueryLocks(store.root.resolve("locks"))
     if (Files.exists(store.runtimes, NOFOLLOW_LINKS)) {
         requireWorkspaceRemoval(admitPrivateContainerDirectory(store.runtimes))
@@ -77,6 +78,39 @@ internal fun cleanupRemovedWorkspaceStore(root: Path) {
     removeWorkspaceLock(store.root.resolve("container.lock"))
     Files.delete(store.root)
 }
+
+/** Only the fixed Kast-owned cache is in this deletion scope; links never grant authority over their targets. */
+private fun removeSharedWorkspaceGradle(store: ContainerStore) {
+    val shared = store.root.resolve("shared")
+    if (Files.notExists(shared, NOFOLLOW_LINKS)) return
+    requireWorkspaceRemoval(admitPrivateContainerDirectory(shared))
+    Files.newDirectoryStream(shared).use { entries ->
+        if (entries.any { it != store.sharedGradleHome })
+            throw ManagementRejected("uninstall-workspaces", ContainerFailure.FOREIGN_STATE.name)
+    }
+    if (Files.notExists(store.sharedGradleHome, NOFOLLOW_LINKS)) {
+        Files.delete(shared)
+        return
+    }
+    requireWorkspaceRemoval(admitPrivateContainerDirectory(store.sharedGradleHome))
+    val paths = Files.walk(store.sharedGradleHome).use { it.limit(MAXIMUM_SHARED_GRADLE_FILES + 1).toList() }
+    val owner = Files.getOwner(shared, NOFOLLOW_LINKS)
+    if (
+        paths.size > MAXIMUM_SHARED_GRADLE_FILES ||
+            paths.any { Files.getOwner(it, NOFOLLOW_LINKS) != owner || it.fileName.toString() == ".kast" }
+    )
+        throw ManagementRejected("uninstall-workspaces", ContainerFailure.FOREIGN_STATE.name)
+    for (path in paths.sortedDescending()) {
+        requireWorkspaceRemoval(
+            if (path.parent.toRealPath() == path.parent) Refinement.Refined(Unit)
+            else Refinement.Rejected(ContainerFailure.FOREIGN_STATE)
+        )
+        Files.delete(path)
+    }
+    Files.delete(shared)
+}
+
+private const val MAXIMUM_SHARED_GRADLE_FILES = 2_000_000L
 
 private fun removeWorkspaceQueryLocks(locks: Path) {
     if (Files.notExists(locks, NOFOLLOW_LINKS)) return

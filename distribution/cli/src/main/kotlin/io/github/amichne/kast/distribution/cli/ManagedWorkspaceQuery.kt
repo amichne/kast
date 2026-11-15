@@ -36,21 +36,31 @@ private constructor(
             installation: Path,
             root: CanonicalRoot,
             inherited: Map<String, String>,
+            seedHostProbe: WorkspaceSeedHostProbe,
         ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
-            open(installation, root, inherited, WorkspaceAccess.PREPARE)
+            open(installation, root, inherited, WorkspaceAccess.PREPARE, seedHostProbe)
 
         fun openExisting(
             installation: Path,
             root: CanonicalRoot,
             inherited: Map<String, String>,
         ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
-            open(installation, root, inherited, WorkspaceAccess.RETAINED)
+            open(
+                installation,
+                root,
+                inherited,
+                WorkspaceAccess.RETAINED,
+                WorkspaceSeedHostProbe { _, _, _ ->
+                    error("Retained workspace access cannot select a seed")
+                },
+            )
 
         private fun open(
             installation: Path,
             root: CanonicalRoot,
             inherited: Map<String, String>,
             access: WorkspaceAccess,
+            seedHostProbe: WorkspaceSeedHostProbe,
         ): Refinement<ManagedWorkspaceQuery, ContainerFailure> = containerFiles {
             val waiting = ManagedWorkspaceWait()
             val platform =
@@ -64,7 +74,7 @@ private constructor(
                     is Refinement.Refined -> selected.value
                 }
             ContainerQueryLease.duringStoreAdmission(product.runtime.root.parent.parent) {
-                openSelected(installation, root, inherited, product, waiting, access)
+                openSelected(installation, root, inherited, product, waiting, access, seedHostProbe)
             }
         }
 
@@ -75,8 +85,10 @@ private constructor(
             product: InstalledProductRuntime,
             waiting: ContainerPreparationWait,
             access: WorkspaceAccess,
+            seedHostProbe: WorkspaceSeedHostProbe,
         ): Refinement<ManagedWorkspaceQuery, ContainerFailure> {
-            val store = ContainerStore(product.runtime.root.parent.parent, product.runtime.manifest.platform)
+            val store =
+                ContainerStore(product.runtime.root.parent.parent, product.runtime.manifest.platform, seedHostProbe)
             if ("KAST_MANAGED_HEADLESS_STATE" in inherited) return Refinement.Rejected(ContainerFailure.FOREIGN_STATE)
             when (val current = product.admitCurrent()) {
                 is Refinement.Rejected -> return current
@@ -192,7 +204,11 @@ private fun createWorkspace(
     val creation =
         when (
             val admitted =
-                store.admitCreation(ContainerCommand.Create(null, root.path.toString(), gradle, false), root.path)
+                store.admitCreation(
+                    ContainerCommand.Create(null, root.path.toString(), gradle, false),
+                    root.path,
+                    configuration.workspaceDependencySharing,
+                )
         ) {
             is Refinement.Rejected ->
                 return if (admitted.failure == ContainerFailure.WORKSPACE_EXISTS) store.workspace(root.path)

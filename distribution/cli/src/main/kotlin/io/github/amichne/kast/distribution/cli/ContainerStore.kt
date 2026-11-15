@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
@@ -11,45 +12,25 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
 
 /** Committed records are the registry. There is no second mutable index or selected-container link. */
-internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
+internal class ContainerStore(
+    val root: Path,
+    val platform: ContainerPlatform,
+    private val seedHostProbe: WorkspaceSeedHostProbe = WorkspaceSeedHostProbe { _, _, _ ->
+        WorkspaceSeedEndpoint.UNPROVEN
+    },
+    private val seedClone: (Path, Path) -> WorkspaceSeedClone = ::cloneWorkspaceSystem,
+) {
     val containers: Path = root.resolve("containers")
     val runtimes: Path = root.resolve("runtimes")
+    val sharedGradleHome: Path = root.resolve("shared/gradle")
 
     /** Cheap workspace, name, and Gradle admission precedes runtime download or allocation. */
     fun admitCreation(
         request: ContainerCommand.Create,
         directory: Path,
-    ): Refinement<AdmittedContainerCreation, ContainerFailure> = containerFiles { parseCreation(request, directory) }
-
-    private fun parseCreation(
-        request: ContainerCommand.Create,
-        directory: Path,
-    ): Refinement<AdmittedContainerCreation, ContainerFailure> {
-        val workspace = Path.of(request.root ?: directory.toString()).toRealPath()
-        if (!validWorkspace(workspace) || !Files.isDirectory(workspace))
-            return Refinement.Rejected(ContainerFailure.INVALID_WORKSPACE)
-        val id = ContainerId.forWorkspace(workspace)
-        val defaultName =
-            workspace.fileName.toString().replace(Regex("(?:[^A-Za-z0-9._-])"), "-").take(DEFAULT_NAME_CHARACTERS)
-        val name =
-            when (
-                val parsed =
-                    ContainerName.parse(request.name ?: "c-$defaultName-${id.text.take(DEFAULT_ID_CHARACTERS)}")
-            ) {
-                is Refinement.Rejected -> return parsed
-                is Refinement.Refined -> parsed.value
-            }
-        val destination = containers.resolve(id.text)
-        val gradle =
-            if (request.gradleHome == null) destination.resolve("state/home/.gradle")
-            else Path.of(request.gradleHome).toRealPath()
-        if (request.gradleHome != null && !validExternalGradle(gradle))
-            return Refinement.Rejected(ContainerFailure.INVALID_GRADLE_HOME)
-        val creation = AdmittedContainerCreation(id, name, workspace, destination, gradle)
-        return when (val available = admitAvailableCreation(creation)) {
-            is Refinement.Rejected -> available
-            is Refinement.Refined -> Refinement.Refined(creation)
-        }
+        dependencySharing: WorkspaceDependencySharing = WorkspaceDependencySharing.PRIVATE,
+    ): Refinement<AdmittedContainerCreation, ContainerFailure> = containerFiles {
+        parseCreation(request, directory, dependencySharing)
     }
 
     internal fun admitAvailableCreation(creation: AdmittedContainerCreation): Refinement<Unit, ContainerFailure> =
@@ -101,16 +82,26 @@ internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
                 PosixFilePermissions.asFileAttribute(containerDirectoryMode),
             )
         try {
-            when (val staged = stageCreation(creation, runtime, staging)) {
-                is Refinement.Rejected -> staged
-                is Refinement.Refined -> publish(StagedContainerCreation(creation, staged.value, staging))
+            val staged =
+                when (val prepared = stageCreation(creation, runtime, staging)) {
+                    is Refinement.Rejected -> return@containerFiles prepared
+                    is Refinement.Refined -> prepared.value
+                }
+            val complete = StagedContainerCreation(creation, staged, staging)
+            when (val seeded = seedWorkspace(this, complete, seedHostProbe, seedClone)) {
+                is Refinement.Rejected -> seeded
+                is Refinement.Refined -> publish(complete)
             }
         } finally {
-            if (Files.exists(staging, NOFOLLOW_LINKS))
-                Files.walk(staging).use { paths ->
-                    for (path in paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path)
-                }
+            discardStaging(staging)
         }
+    }
+
+    private fun discardStaging(staging: Path) {
+        if (Files.exists(staging, NOFOLLOW_LINKS))
+            Files.walk(staging).use { paths ->
+                for (path in paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path)
+            }
     }
 
     private fun stageCreation(
@@ -118,6 +109,14 @@ internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
         runtime: AdmittedContainerRuntime,
         staging: Path,
     ): Refinement<AdmittedContainer, ContainerFailure> {
+        if (creation.gradleHome == sharedGradleHome) {
+            for (path in listOf(root.resolve("shared"), sharedGradleHome)) {
+                when (val private = privateContainerDirectory(path)) {
+                    is Refinement.Rejected -> return private
+                    is Refinement.Refined -> Unit
+                }
+            }
+        }
         for (child in listOf("state/home/.gradle", "state/system", "state/log", "state/tmp", "config")) Files
             .createDirectories(staging.resolve(child), PosixFilePermissions.asFileAttribute(containerDirectoryMode))
         val admitted =
@@ -129,6 +128,7 @@ internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
                     creation.directory,
                     creation.gradleHome,
                     ContainerGenerationSource.Current,
+                    creation.dependencySharing,
                 ),
                 runtime,
             )
@@ -301,6 +301,44 @@ internal class ContainerStore(val root: Path, val platform: ContainerPlatform) {
     }
 }
 
+private fun ContainerStore.parseCreation(
+    request: ContainerCommand.Create,
+    directory: Path,
+    dependencySharing: WorkspaceDependencySharing,
+): Refinement<AdmittedContainerCreation, ContainerFailure> {
+    val workspace = Path.of(request.root ?: directory.toString()).toRealPath()
+    if (!validWorkspace(workspace) || !Files.isDirectory(workspace))
+        return Refinement.Rejected(ContainerFailure.INVALID_WORKSPACE)
+    val id = ContainerId.forWorkspace(workspace)
+    val defaultName =
+        workspace.fileName.toString().replace(Regex("(?:[^A-Za-z0-9._-])"), "-").take(DEFAULT_NAME_CHARACTERS)
+    val name =
+        when (
+            val parsed = ContainerName.parse(request.name ?: "c-$defaultName-${id.text.take(DEFAULT_ID_CHARACTERS)}")
+        ) {
+            is Refinement.Rejected -> return parsed
+            is Refinement.Refined -> parsed.value
+        }
+    val destination = containers.resolve(id.text)
+    val gradle =
+        if (request.gradleHome == null) defaultGradleHome(destination, dependencySharing)
+        else Path.of(request.gradleHome).toRealPath()
+    if (request.gradleHome != null && !validExternalGradle(gradle))
+        return Refinement.Rejected(ContainerFailure.INVALID_GRADLE_HOME)
+    val creation = AdmittedContainerCreation(id, name, workspace, destination, gradle, dependencySharing)
+    return when (val available = admitAvailableCreation(creation)) {
+        is Refinement.Rejected -> available
+        is Refinement.Refined -> Refinement.Refined(creation)
+    }
+}
+
 internal const val MAXIMUM_CONTAINER_ENTRIES = 1024
+
+internal fun ContainerStore.defaultGradleHome(directory: Path, sharing: WorkspaceDependencySharing): Path =
+    when (sharing) {
+        WorkspaceDependencySharing.PRIVATE -> directory.resolve("state/home/.gradle")
+        WorkspaceDependencySharing.SHARED -> sharedGradleHome
+    }
+
 private const val DEFAULT_NAME_CHARACTERS = 48
 private const val DEFAULT_ID_CHARACTERS = 8

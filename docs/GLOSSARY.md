@@ -9,6 +9,32 @@ The JSON source also records each term's scope, reason, and source meaning.
 
 ## Terms
 
+### dependency sharing
+
+A creation-time workspace policy that selects private or shared Gradle state. SHARED also requests index seeding for a new workspace container.
+
+Example: KAST_WORKSPACE_DEPENDENCY_SHARING=SHARED selects the Kast-owned shared Gradle home when GRADLE_USER_HOME is absent.
+Keep distinct: Dependency sharing does not share live IDE index storage or convert existing containers. PRIVATE can still select an external Gradle home without requesting index seeding.
+
+Source evidence:
+
+- [`Revision 9, Phase 1 implementation decisions: dependency sharing`](https://ampcode.com/artifacts/design-opt-in-index-seeding-with-a-shared-gradle-home-c64caf61-e5ae-40e0-922f-4b4092cc4c49), checked 2026-11-14.
+- `distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/WorkspaceDependencySharing.kt`: `WorkspaceDependencySharing`.
+- `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt`: `ContainerStore`.
+
+### index seeding
+
+An optional creation step that clones the IDE system directory from a compatible stopped workspace into a new workspace container. The Host still validates its project before semantic readiness.
+
+Example: A SHARED workspace creation records SEEDED with its donor container ID after a copy-on-write clone completes.
+Keep distinct: An index seed is copied initial state, not shared live storage, a retained index snapshot, a search seed declaration, or proof of freshness.
+
+Source evidence:
+
+- [`Revision 9, Phase 1 implementation decisions: donor admission and clone outcomes`](https://ampcode.com/artifacts/design-opt-in-index-seeding-with-a-shared-gradle-home-c64caf61-e5ae-40e0-922f-4b4092cc4c49), checked 2026-11-14.
+- `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt`: `seedWorkspace`.
+- `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeedClone.kt`: `cloneWorkspaceSystem`.
+
 ### idle shutdown
 
 An opt-in managed Host stop after a configured period without admitted requests or observed native work. It uses the existing settlement and normal exit path.

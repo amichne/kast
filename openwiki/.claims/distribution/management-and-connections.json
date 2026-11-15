@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fce3748c4899f1781dbd7b55a893dc901101a6777cf1b08b0a59c09cdceefe07",
+  "pageVersion": "sha256:62ebd2509487869e5455c550a00094e46efc2fe8634edd5f03bfe6d0f9afd7f2",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -149,12 +149,12 @@
       "statement": "Each managed semantic request admits the installed product locally and owns a reader lease; preparation can create an exact-root workspace, while retained reads require existing state.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L165-L215",
-          "version": "repo-lines-v1:sha256:60f45ea2c874bca8a192fc78c495cec380a34cf12515e45fde8ec124b00b4f74:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExM2M5ZjgzM2M3MDdkMWJkYmE3NWYwY2I4MmFiMWI0NDNkMWY1YjI1ZGVlNWRkODBmMzE2MTE4MGIxOTg4M2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkOWE4YzNjMDgzZWRjYWVmMjZjMzdiNGJiZmJkNmQ3YmYyNjMzYWM1NmJhNWJjOGRiN2JlMDFhOTRiZTNkZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZjljOWFjMWY4ZmZmNzMwYzRlNTU3YzczOTUzNzAxODYwZGUwODIzOTYyYWFlN2EwZDI1NmFjMGMwNTA5NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhMGRiZjA5MzFlNGQxZTZkOTQzNWE2OWZkMzlhNDNjZjYzMDI2YmEyM2M4YTA4MDE1YzBhZjY2ZDI1MzI5N2EifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L177-L231",
+          "version": "repo-lines-v1:sha256:916d42e5a0fb46ce09dd4f2ff8c259d16f319896492f02e956220547acb6bf4b:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExM2M5ZjgzM2M3MDdkMWJkYmE3NWYwY2I4MmFiMWI0NDNkMWY1YjI1ZGVlNWRkODBmMzE2MTE4MGIxOTg4M2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkOWE4YzNjMDgzZWRjYWVmMjZjMzdiNGJiZmJkNmQ3YmYyNjMzYWM1NmJhNWJjOGRiN2JlMDFhOTRiZTNkZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZjljOWFjMWY4ZmZmNzMwYzRlNTU3YzczOTUzNzAxODYwZGUwODIzOTYyYWFlN2EwZDI1NmFjMGMwNTA5NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhMGRiZjA5MzFlNGQxZTZkOTQzNWE2OWZkMzlhNDNjZjYzMDI2YmEyM2M4YTA4MDE1YzBhZjY2ZDI1MzI5N2EifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L35-L100",
-          "version": "repo-lines-v1:sha256:ae74c01088cc3699afadae9fe564a7a9616fb99ea0dd0217cc9d1509b1a8f010:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3MGFmM2IzODI3ZjljNDQyYTkwNDZhN2U1YjQxYmQ4NmY1N2U3ZjkwZGFkMDJiNDQwMDQ5ZjE3NTZjMTM2OGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxNmJiMzg0M2Q2MTJiNzlhNThjODA1MDg3N2E1NDg4MmNiZGMyNTJiZTU4ODhhMTk0ZGRjZThhMjExYjhlMTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlZmMwNjQ1MzlmZGE5NzAyYjQzNTgzZDViNzM1ODQxYTk1OWM0YmJkYjhmNDgxNTNiYzljNTZjNGRiYTI4NmIifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L35-L112",
+          "version": "repo-lines-v1:sha256:a832ebf288bea2abb334764f2bb3eba5be53a8eb87be7910f270119a458b4f77:eyJzZWxlY3RlZExpbmVDb3VudCI6NzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3MGFmM2IzODI3ZjljNDQyYTkwNDZhN2U1YjQxYmQ4NmY1N2U3ZjkwZGFkMDJiNDQwMDQ5ZjE3NTZjMTM2OGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxNmJiMzg0M2Q2MTJiNzlhNThjODA1MDg3N2E1NDg4MmNiZGMyNTJiZTU4ODhhMTk0ZGRjZThhMjExYjhlMTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlZmMwNjQ1MzlmZGE5NzAyYjQzNTgzZDViNzM1ODQxYTk1OWM0YmJkYjhmNDgxNTNiYzljNTZjNGRiYTI4NmIifQ"
         }
       ]
     },
@@ -333,7 +333,7 @@
           "version": "repo-lines-v1:sha256:5320d2ba9a87329b2378c1e0f7129e456152230a9a0ef122e9f3b56d26014a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNDBkMzVhMTI4ZTYyMjE5NjcxZTQ0OTE0N2Y5ZTFlNjQ2MTBiNzI2NGQyMmRmYWQ1Njg4YWMzMGQzMmIwMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5N2M3NTQxMjk2NmE4ODZiNjM1YzA3YWI3MjhkOWY3M2VlYjM4ODYzZmEwYmFmMGNmMjcwNmFkYzgwZWZiMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwY2I3M2UyMzg2ZWM2NDFhYjY2YTcxYTViMjRmNzJiNWJlNzRjMjVkMTlkOTQyZDRmNDk3MDdiZWQ3NmI3ZTAifQ"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L477-L556",
+          "resource": "repo://.github/workflows/ci.yml#L495-L574",
           "version": "repo-lines-v1:sha256:e6e8ddd4430d6f482f564a8480af7b3afe3b33a6d6bdacd32deac1e00e38352d:eyJzZWxlY3RlZExpbmVDb3VudCI6ODAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzOGZkMmU1ZWFlYjE5YWU4ZjViNmJmNzY5MjYzMmQ1NDgyMjA3MWZlZjU5MmE1MjE3ZDBiZDZjMzc5YTNiNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0Yjg4MmEyYzc1MTdiMWM0NzljYTZhMDRmOTIyNzJlMzIzMGU5YzZlMDQ3MWNmY2E4ZDRlODNlMTM5M2I5NGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3MDM1ZDI4NTZhMjIwYjdjN2U2ZDE5ZTRhNDI1Y2Y0NjkwMjRmNjc2YWUzYTNmMmJlOWFiOGI5NmQxN2RiMGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU4ZTcxMDIxMjgzNDkyM2E5ZTNlMzZhMWRlNjE2ZjZkZmNlMTlhOWI4OTU3OGI3Yjc5YWM2OGRmYzMwNDk0NmUifQ"
         },
         {
@@ -341,7 +341,7 @@
           "version": "repo-lines-v1:sha256:9128fcd3c23e1ad118f567f27ce8a5e0d8cb03c756e9a77661067f647d026067:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4ZjhkODk1MTUzYzFhOTA0OWIxM2NlMjExOWMxMDY4ZjFjMmJiZWQ3N2M2ZWFlMWFhOTliODgyNjM1NzQ5MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlNTEwNjVmOTY3NDlhZWI2NDAwMzI0NGRmNjU1OGI3YWFiMzhjMmZhZjU0MDFhNDg4MjhjZjQwZWZjZDdkNDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4MjhjZjNmMzI1ZDZkOTZlZThlMjAzMmRmNmRiNzhjNzhlOWJlOGQ1MmZhODEwYjk5MDZkODNiMjAyMDc1MDYifQ"
         },
         {
-          "resource": "repo://packaging/product_lifecycle_probe.py#L333-L347",
+          "resource": "repo://packaging/product_lifecycle_probe.py#L366-L380",
           "version": "repo-lines-v1:sha256:5baa0ee3daf07f43224098c247ef028e23e6fb8ba0c47a0f361328faeb619a53:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmZjg2ZTUzY2I3OThlN2ZjNTlhNjUzNDY4MTZmZDcyOTVhYzA3MjYzMGI4ZmMwMzVkMDkzMWJmMmMyYjk5ZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5Y2JmZjEwODVlYmEwMjdhYjBkYmRmMGQ1ZmI4ODllOGQxYmU0N2JmN2FhODUxZGI0YTJlNDg5NjhjYmUyYWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhZTVhN2FlNmM5YzllYWRmZGUyNTAwOWI0YjAxOTk1ZDk2YTYwYjE0NDQwZDJiMDI3YjY2ZWJlODc4NTUxMzkifQ"
         }
       ]
@@ -356,25 +356,111 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStateAdmission.kt",
-          "version": "repo-file-v1:sha256:2c5577f988ffd56eb0f3e96a90d3a742284e7cca5a70947337b2dcf0b66bd556"
+          "version": "repo-file-v1:sha256:74fc9af24210652ddcb9c8a1fe09963f8a540d70a52bc08ea0728c203638ecdb"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt",
-          "version": "repo-file-v1:sha256:98378f6dc46502e01e93c85be530954ca750d20459372fba8922fcc711be6fb9"
+          "version": "repo-file-v1:sha256:9a5410e2aa90b960dde03a554445d080125402430020554292cfd5aee522f00b"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt",
-          "version": "repo-file-v1:sha256:b62e5821cfb0467b33251f6106fda901225c7557dd2bca5084046334f545f9e4"
+          "version": "repo-file-v1:sha256:1dccec353da792286153f073b20633331cee58e7d27b1df60db8dd099dde668e"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/RejectedWorkspaceRemoval.kt",
           "version": "repo-file-v1:sha256:669f45129427d5be229c39c415fe0bc60b04e568723dbe9ab8a313f1592bf946"
         }
       ]
+    },
+    {
+      "id": "claim_5e004059a6ce4ae4ac58f92a482f5c63",
+      "statement": "Only new SHARED workspace creation attempts index seeding in unpublished staging before the creation receipt and atomic publication. Existing containers and generation rebuilds retain creation policy and Gradle home without seeding.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt#L15-L341",
+          "version": "repo-lines-v1:sha256:a7b6eeb4a7fcee21d7aa0f49cdd86d65c4b1602c00800e9fb408e64feefef2fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MzI3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0OTIxOGI3NTJhNDExZjQ0NjI1NTRmZTNhMThiN2E0NWMxMjJiY2JkZGU3OWYxNDBhODNlZDM4MTMzZDExNDQxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ODkzZjQwZTM3ODFlYjg5NmM4MmQwNDZhMDgwNjdhMTFlMzVjZGYyZjFkZmFmMjZmZWE5MGI4ZGI2Njc2NDEzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxYjk3MzExMzlhNDUyY2EyOWM1YmQ5MWFiZDgzMmFiNjk4NDliYjVjYjFmMmI4ZDhhN2UzMzExZGNmYmU3N2U3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzOTVjOWFmY2EzZjU4OTljZGEyMTViMDJiOTRiMzA3NjZiOWQ4YWViN2E4YTM5ZWFlZDNmNDM5NzlmZmEzMTQwIn0"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L12-L246",
+          "version": "repo-lines-v1:sha256:eadd655bc4a0285bb28cca8154b16487a03b5d58c8f5d9b1cec1d866acb54bfc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjM1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmNzFjNTRhMjg0ZGM0ODVlYWUyOTU2MWYzOTUwNjMyMGIxZDQ5M2M5MDBkNTJlODI1ODhkMmQ2ZWEwNDE1ZGE0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ODkzZjQwZTM3ODFlYjg5NmM4MmQwNDZhMDgwNjdhMTFlMzVjZGYyZjFkZmFmMjZmZWE5MGI4ZGI2Njc2NDEzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0NjgyMTQwZWE4MmNmYzI1ZWIwNDJkMzYyOTc3ZmZkMGRhYzZhMDk5MGQ3NTFhN2RmNjU4NTNkZjM4ZDQwNWQ3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjNjI0YzNkYjRmMzRmMDVhNjE5YzA4NmYyZWFlYTJjYjVmODJiYzU5OWQzMjE2N2Q3YWU3NDQ1ZTc2MTk0M2M0In0"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt#L30-L223",
+          "version": "repo-lines-v1:sha256:05637a67a05da7a44b1cf82bc4217e28e99090fa97f65b4be434a6f75653ab43:eyJzZWxlY3RlZExpbmVDb3VudCI6MTk0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmODQxNWVjNjMxNzU3YWUxZTA5NGNmMGFmZDdlMDcxYWNiM2JiZGE1ZmU3OGVjMzA5MDJhMGNlZTRkMTY2NWQyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhNjg2YTQ4NzQwNDlhZTQ4Y2VhNTUzMWMxODQ4MTdhOGYyOTY0NTE0MGJkOTQ4ZmQ4Y2Q3ZGFlM2RiMzY0ZDU0IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_232142798fb842a2800442d3380ff1ab",
+      "statement": "Any compatible current workspace can donate, regardless of repository. Selection matches runtime archive, platform and canonical Gradle home, rejects removal receipts, admits a physical generation system and supported SMART exit record with canonical UUID lifetime, and orders newest record mtime then ascending container ID. A nonblocking exclusive lease spans revalidation, absent platform config lock, HOST_UNAVAILABLE observation and cloning without donor start or stop.",
+      "evidence": [
+        {
+          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/WorkspaceSeedHost.kt#L12-L23",
+          "version": "repo-lines-v1:sha256:76b1ba77a70d4ca478a3d3156a1da6bff70ca29b3bfe9c70564567e611f35cb0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhNjk1MTEwMzdjYjY3MjY5ZTdhZDk0NWJkOTBiZWYyOTk3M2I1OTUzMDk1ODY2MzAxYzVjMjNiYmJmODFhYjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI4YWE3MGVkZDVhZDE1ZDZkYTA3ZjkzNTM0OGFkOWI5ZTQ4MTQyZGVmMzBjYzQ1MGIzYmMxNWMzMzBhNDU2ZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerQueryLease.kt#L119-L234",
+          "version": "repo-lines-v1:sha256:e9c67c30592d2541235461753df7c508cc9433fc143f89670d47203f6b0a8ca9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmMWY0ZDllYmYxZGRkYmE1NTZlNDQ2YWEzNjgxMzI3MTQyMTgzZmNjZThmNjJkNjliYTlmZTlkYWM5MjIzODYzIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIyNjU2Njc3NGNmYzkzYWRmYzUzMGIyZmIwZDBlNjM2NTE5YjUxNzkxMDc5YzgyYWYzYjk4MzQ5YzNhMDFmOGRkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJiYjJiMjkwNjQyZGE4ODU5OTdmYjIxYzFmZmRkOWQ0ZWM1NGVjNjk0ODgyMTMxYTdkY2E5YWQzZTc1NjE5M2JlIn0"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStateAdmission.kt#L17-L204",
+          "version": "repo-lines-v1:sha256:aab921627de2d913a4214bb22fe9714618af9ef4f7a589ece9a3415328bd1abd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTg4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJiZTgxYTlkMWY3ZWM1OWExOGFlYmQ0ODZhYTVjZWU1ZDk3NmY3ZTY5NmI5YzRlZWJmNWJmNDQyZDY2MzcyYjlhIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ODkzZjQwZTM3ODFlYjg5NmM4MmQwNDZhMDgwNjdhMTFlMzVjZGYyZjFkZmFmMjZmZWE5MGI4ZGI2Njc2NDEzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxMTEyOWM4NmUwYmIxODA0YjQxNjAwMDQ1M2NjMDViNDdlZDFlZDZiZjNjOTZkMjI2ZDIzOTk1M2RmY2Q1NTliIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI2YzM5NmExY2Q5MzFkZjhiM2E4MWY3M2MwMGZjNWFjZTQzNzFlZmQ1MTAwMDM5ZTU2NmJiN2RhYWNkM2U2NTFiIn0"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt#L30-L223",
+          "version": "repo-lines-v1:sha256:05637a67a05da7a44b1cf82bc4217e28e99090fa97f65b4be434a6f75653ab43:eyJzZWxlY3RlZExpbmVDb3VudCI6MTk0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmODQxNWVjNjMxNzU3YWUxZTA5NGNmMGFmZDdlMDcxYWNiM2JiZGE1ZmU3OGVjMzA5MDJhMGNlZTRkMTY2NWQyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhNjg2YTQ4NzQwNDlhZTQ4Y2VhNTUzMWMxODQ4MTdhOGYyOTY0NTE0MGJkOTQ4ZmQ4Y2Q3ZGFlM2RiMzY0ZDU0IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_30c8df371f9248c0aebd6de0fd14035e",
+      "statement": "The initial clone adapter uses macOS APFS clonefile on the same FileStore for the entire system tree, bounded to 250000 entries. The physical root must be current-user owned with mode 0700; descendants must share that owner, and links and special files reject. The sibling Host exit record is excluded by clone scope, and full-copy and hard-link fallbacks are absent.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerFiles.kt#L46-L61",
+          "version": "repo-lines-v1:sha256:e4579a275825d558386f4d3803bc9485935f18526e44d6a7762e2435d7c195df:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyYmJkMzY5NGM2MjFmOGY4ZGYzZWQ1YjJlYzY2ZjY3ZmZiNDg3NjE3Yzk0ZWIzYzBmOWM2MTk4ZjE2NjUxYjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEyMGE0YTBkMDc5ZWZkY2JmNjE3NDgwNzhiZjFlN2E1YWMxYjkzNDdjYWU2NzkyZWRhZmFlZWZjMTlkMjQ2MmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlYmIxZDdjMDM1YzM1MDhkOTU5YTU1ODE1OTcyMmM5ODcyN2M1Zjg1ZTQzMWRlODQ5OTAxNjNlOGIxMmEyNWUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt#L64-L268",
+          "version": "repo-lines-v1:sha256:3b4a1f7af57476d7565502ecf23f126af8df9e7bf7c28c939677d76bba62d6f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjA1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhNDdiMDAzZGM1YTNkZjk0NTczODA4MjE5NzdiNDYyOTBlODFiOGNlYTJmMDg2OTI3ZDlmYTcxMjFiMzdhNTkyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0NjU4N2Q3N2RkOTZlYjZmOGNlYTdjYzQzNmRiMzBlYzY2NDRlZGZiM2MxODg3NGRiNDgwM2VhYWMyYjgxNGMzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmYTgzYTc1ZmQ3NTRhMzZkNDBkYzVjYWMxNjA0NDkwNDYzMWZiOTU4MWNjNjAxMWVjN2M4YzlmMjEwZGUwMmNkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeedClone.kt#L33-L115",
+          "version": "repo-lines-v1:sha256:d5793dc3530b36cad6ec066bc06bc83d013ffa1287253b6834b98d4751fb0219:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4NDY2ZTk0MjhiYjVhNTEwNDUwNmI3YTdhODMyOWQ0YWVhMDBmMmM0YzczNDA4YjAwZjNiNDlmMjFkODUxZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJjYzY2ZGFiYTc1MWU5N2ZlZjdjMGM4OTliYzQ1ODUzNWFkNzA5NDJmZDBlYzQzYmQwZTY5NWJhOTJlYTU5NDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_74dbbb05f8ba4ad78e9a91cbc7925b20",
+      "statement": "Workspace creation records schemaVersion 1 and a typed result in state/workspace-seed.json and emits kast_workspace_seed progress. Outcomes are NOT_REQUESTED, SEEDED(donor), NO_ELIGIBLE_DONOR, DONORS_BUSY, UNSUPPORTED_FILESYSTEM, CLONE_FAILED(stage), SELECTION_REJECTED(failure) and CLEANUP_REJECTED(failure). Unsupported or failed cloning continues empty only after cleanup succeeds; cleanup rejection emits progress and aborts publication without a receipt. Cleanup re-admits the recipient private physical root before deletion, so an aliased root rejects publication without deleting its external target.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerFiles.kt#L46-L61",
+          "version": "repo-lines-v1:sha256:e4579a275825d558386f4d3803bc9485935f18526e44d6a7762e2435d7c195df:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyYmJkMzY5NGM2MjFmOGY4ZGYzZWQ1YjJlYzY2ZjY3ZmZiNDg3NjE3Yzk0ZWIzYzBmOWM2MTk4ZjE2NjUxYjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEyMGE0YTBkMDc5ZWZkY2JmNjE3NDgwNzhiZjFlN2E1YWMxYjkzNDdjYWU2NzkyZWRhZmFlZWZjMTlkMjQ2MmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlYmIxZDdjMDM1YzM1MDhkOTU5YTU1ODE1OTcyMmM5ODcyN2M1Zjg1ZTQzMWRlODQ5OTAxNjNlOGIxMmEyNWUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeedClone.kt#L33-L115",
+          "version": "repo-lines-v1:sha256:d5793dc3530b36cad6ec066bc06bc83d013ffa1287253b6834b98d4751fb0219:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4NDY2ZTk0MjhiYjVhNTEwNDUwNmI3YTdhODMyOWQ0YWVhMDBmMmM0YzczNDA4YjAwZjNiNDlmMjFkODUxZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJjYzY2ZGFiYTc1MWU5N2ZlZjdjMGM4OTliYzQ1ODUzNWFkNzA5NDJmZDBlYzQzYmQwZTY5NWJhOTJlYTU5NDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt#L30-L223",
+          "version": "repo-lines-v1:sha256:05637a67a05da7a44b1cf82bc4217e28e99090fa97f65b4be434a6f75653ab43:eyJzZWxlY3RlZExpbmVDb3VudCI6MTk0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmODQxNWVjNjMxNzU3YWUxZTA5NGNmMGFmZDdlMDcxYWNiM2JiZGE1ZmU3OGVjMzA5MDJhMGNlZTRkMTY2NWQyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhNjg2YTQ4NzQwNDlhZTQ4Y2VhNTUzMWMxODQ4MTdhOGYyOTY0NTE0MGJkOTQ4ZmQ4Y2Q3ZGFlM2RiMzY0ZDU0IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_97a17347b2a94151b22e10ecfa46fdb3",
+      "statement": "Passive workspace status exposes recorded dependency sharing and Gradle home, compares both with saved configuration without ambient input, and admits seed receipt schema and donor identity. Invalid or missing evidence remains unavailable without conversion or fabricated NOT_REQUESTED.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceStatus.kt#L95-L146",
+          "version": "repo-lines-v1:sha256:dd6fff42e4225479cc8854dc722fa80cff5184d589ac6a8f172d56289eb86a53:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4ZjQ4ZjJlYTNmMTcyMGIxZGYyZjMyNzU3NzRmMGI3YTM2ZWE2YTQxNzQxYWNjMjg1NTg0Yzg4MTAxYWZiNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzZTZlMjQ4MzhhNTIxMzQxNzA1OTIxOGEwN2UzNWUyZjFjNmNkZTk0Mjg3NDZhZGNlOWVhNmI4ZTFmN2Y2M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-13T03:20:11.225Z"
+    "at": "2026-11-14T23:57:28.873Z"
   }
 }

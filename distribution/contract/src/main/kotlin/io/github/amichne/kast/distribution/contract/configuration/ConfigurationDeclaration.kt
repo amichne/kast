@@ -27,6 +27,7 @@ enum class ConfigurationBoundary {
     NEXT_INSTALLATION_ACTIVATION,
     NEXT_CONNECTION,
     NEXT_WORKER_LAUNCH,
+    NEXT_WORKSPACE_CREATION,
     REQUEST,
     BUILD,
     TEST,

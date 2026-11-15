@@ -176,7 +176,8 @@ class ContainerRecordAdmissionTest {
                 .value
         val record =
             containerJson.parseToJsonElement(Files.readString(container.directory.resolve("container.json"))).jsonObject
-        assertEquals(setOf("id", "name", "workspace", "gradleHome", "schemaVersion"), record.keys)
+        assertEquals(setOf("id", "name", "workspace", "gradleHome", "schemaVersion", "dependencySharing"), record.keys)
+        assertEquals("PRIVATE", record.getValue("dependencySharing").jsonPrimitive.content)
         assertEquals("2", record.getValue("schemaVersion").jsonPrimitive.content)
         val generation = container.directory.resolve("generation.json")
         assertTrue(Files.isRegularFile(generation))

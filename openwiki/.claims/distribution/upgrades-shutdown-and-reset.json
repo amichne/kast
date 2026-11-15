@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:74f933ddab85f2df9364ec7dbfe2a34ec17b45f1453a99a10281aea1e48db1ee",
+  "pageVersion": "sha256:f7c3bae1ff4257b5b6c7c224645e6d8b84074f97208a523913f796bffa5b6837",
   "claims": [
     {
       "id": "claim_4418145e0e48413589ccb805f87f8741",
@@ -208,7 +208,7 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt",
-          "version": "repo-file-v1:sha256:b62e5821cfb0467b33251f6106fda901225c7557dd2bca5084046334f545f9e4"
+          "version": "repo-file-v1:sha256:1dccec353da792286153f073b20633331cee58e7d27b1df60db8dd099dde668e"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceReclamation.kt#L35-L134",
@@ -286,7 +286,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt",
-          "version": "repo-file-v1:sha256:b62e5821cfb0467b33251f6106fda901225c7557dd2bca5084046334f545f9e4"
+          "version": "repo-file-v1:sha256:1dccec353da792286153f073b20633331cee58e7d27b1df60db8dd099dde668e"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementUninstall.kt",
@@ -377,10 +377,24 @@
           "version": "repo-file-v1:sha256:4aabd3e0557288d6f798a533c000e2d698fe6a72a92d3a2d68f8815671bd9fda"
         }
       ]
+    },
+    {
+      "id": "claim_271812e9b9c2481b9c656dfeb787bb20",
+      "statement": "Shared Gradle cache deletion belongs only to full uninstall after workspace removal, not individual profile reclamation. The fixed shared/gradle tree is admitted separately with a 2000000-entry budget, rejects foreign siblings or owners and .kast evidence, and never follows external link targets. Existing records are not converted or seeded by upgrade, repair or generation rebuild.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt#L15-L341",
+          "version": "repo-lines-v1:sha256:a7b6eeb4a7fcee21d7aa0f49cdd86d65c4b1602c00800e9fb408e64feefef2fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MzI3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0OTIxOGI3NTJhNDExZjQ0NjI1NTRmZTNhMThiN2E0NWMxMjJiY2JkZGU3OWYxNDBhODNlZDM4MTMzZDExNDQxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ODkzZjQwZTM3ODFlYjg5NmM4MmQwNDZhMDgwNjdhMTFlMzVjZGYyZjFkZmFmMjZmZWE5MGI4ZGI2Njc2NDEzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxYjk3MzExMzlhNDUyY2EyOWM1YmQ5MWFiZDgzMmFiNjk4NDliYjVjYjFmMmI4ZDhhN2UzMzExZGNmYmU3N2U3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzOTVjOWFmY2EzZjU4OTljZGEyMTViMDJiOTRiMzA3NjZiOWQ4YWViN2E4YTM5ZWFlZDNmNDM5NzlmZmEzMTQwIn0"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceRemoval.kt#L64-L268",
+          "version": "repo-lines-v1:sha256:3b4a1f7af57476d7565502ecf23f126af8df9e7bf7c28c939677d76bba62d6f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjA1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhNDdiMDAzZGM1YTNkZjk0NTczODA4MjE5NzdiNDYyOTBlODFiOGNlYTJmMDg2OTI3ZDlmYTcxMjFiMzdhNTkyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0NjU4N2Q3N2RkOTZlYjZmOGNlYTdjYzQzNmRiMzBlYzY2NDRlZGZiM2MxODg3NGRiNDgwM2VhYWMyYjgxNGMzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmYTgzYTc1ZmQ3NTRhMzZkNDBkYzVjYWMxNjA0NDkwNDYzMWZiOTU4MWNjNjAxMWVjN2M4YzlmMjEwZGUwMmNkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T21:34:35.265Z"
+    "at": "2026-11-14T23:57:28.873Z"
   }
 }

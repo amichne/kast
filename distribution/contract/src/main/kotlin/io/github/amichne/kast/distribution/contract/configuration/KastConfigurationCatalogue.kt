@@ -330,6 +330,13 @@ enum class ConfigurationParameter(
         defaultValue = "1020000",
         children = setOf(ConfigurationChild.BROKER),
     ),
+    WORKSPACE_DEPENDENCY_SHARING(
+        "KAST_WORKSPACE_DEPENDENCY_SHARING",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.WORKSPACE,
+        ":distribution:cli",
+        defaultValue = "PRIVATE",
+    ),
     HOST_IDLE_SHUTDOWN(
         "KAST_HOST_IDLE_SHUTDOWN",
         ConfigurationSyntax.OWNER_INPUT,
@@ -498,6 +505,7 @@ enum class ConfigurationParameter(
 
     fun declaration(): ConfigurationDeclaration {
         val base = baseDeclaration()
+        if (this == WORKSPACE_DEPENDENCY_SHARING) return workspaceDependencyDeclaration(base)
         if (this == HOST_IDLE_SHUTDOWN)
             return base.copy(
                 admittedRange =

@@ -35,6 +35,13 @@ Status reads local evidence without starting Java, granting trust, repairing sta
 Observations have a `state` of `VERIFIED` or `UNAVAILABLE`, with a `value` or `reason`.
 An unavailable observation is not proof of absence. A loaded Host is not proof of semantic readiness.
 
+Each recorded workspace exposes its creation-time `dependencySharing` policy and canonical `gradleHome`.
+`savedDependencyConfiguration` compares both with saved installation and workspace configuration, without ambient environment overrides.
+Its verified value is `MATCHES_CREATION` or `DIFFERS_FROM_CREATION`; failed comparison remains unavailable.
+A difference does not convert or re-seed the workspace. Legacy records without a sharing field keep `PRIVATE`.
+The `seed` observation contains the [creation receipt](/reference/lifecycles#seed-outcomes), or an unavailable reason when the receipt cannot be admitted.
+An unavailable receipt does not prove that seeding was not requested.
+
 <a id="upgrade" />
 
 ## 2. Update
@@ -123,6 +130,9 @@ kast uninstall
 
 The removal contract covers owned installation bytes, workspace state, and agent registrations after process retirement.
 Repositories, external Gradle homes, and foreign registrations remain outside that scope.
+Uninstall also removes the fixed Kast-owned `kast-workspaces/shared/gradle` cache, without following links to external targets.
+Foreign siblings, foreign owners, or `.kast` recovery evidence prevent that cleanup.
+Removing one workspace does not remove the shared cache.
 If ownership or retirement cannot be proved, keep the recovery output instead of deleting paths manually.
 Native removal acceptance remains part of the qualification work; this guide is not evidence that it passed.
 
