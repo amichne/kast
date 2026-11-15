@@ -13156,6 +13156,18 @@
     {
       "finding": {
         "stage": "root-vale-3.24.0",
+        "path": "openwiki/development/testing-and-native-qualification.md",
+        "sourceSha256": "a80ed10b7848f0d83a062977c40482f8a7bf3dc4dd111ca3b117516aa3ac10e8",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 11.20 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep disposable local installed acceptance distinct from sealed two-target release qualification. The added paragraph marks the desktop IDEA mixed-version check as a deprecated compatibility check that does not qualify managed headless Hosts or the contributor installer. The grade advisory remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
         "path": "openwiki/distribution/index.md",
         "sourceSha256": "b2353c13b39fb266a817d192e2eddc912191177959bf9f5948f1c4e960b17feb",
         "rule": "Slopsentral.Grade",
@@ -13200,6 +13212,42 @@
         "severity": "warning"
       },
       "reason": "Keep the inode, owner, and device mapping conditions together. The sentence stays unchanged and the length advisory remains. This sentence matches the parent of 992e857. Its current line and source digest bind this review. The advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/installation-and-managed-files.md",
+        "sourceSha256": "93aefcd608038aaf221ff38483f81b0348d9a8dcc08b68fa9870e9b2ccd1a8d4",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.50 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep complete-product activation and its replacement journal distinct from retained legacy composition recovery. The added paragraph states that the standalone host-installation.py command warns on stderr before argument admission while stdout reports and shared helper imports stay unchanged. The grade advisory remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/installation-and-managed-files.md",
+        "sourceSha256": "93aefcd608038aaf221ff38483f81b0348d9a8dcc08b68fa9870e9b2ccd1a8d4",
+        "rule": "Slopsentral.Diction",
+        "line": 137,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain refers to original runtime/base publication evidence captured before copying payload bytes, so later cleanup cannot infer ownership merely from a staging name. The paragraph separates those exterior stages from managed stores and protects unknown legacy contents. Preserve this evidence-lifetime meaning and effect ordering rather than treating it as an interchangeable instruction to keep arbitrary files. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/installation-and-managed-files.md",
+        "sourceSha256": "93aefcd608038aaf221ff38483f81b0348d9a8dcc08b68fa9870e9b2ccd1a8d4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 177,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the inode, owner, and device mapping conditions together. The sentence stays unchanged and the length advisory remains. This sentence matches the parent of 992e857. Its current line and source digest bind this review. The advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
     },
     {
       "finding": {
@@ -13996,6 +14044,42 @@
     {
       "finding": {
         "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/protocol.md",
+        "sourceSha256": "9869188e2272153b553f79bb44912e83078528fe42c882a3ee4589aba205a7f7",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 14.03 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep canonical operations, registry identity, wire projections, and finite failure reports distinct. The added sentences deprecate DESKTOP and enabled automatic reload at warning level without removing wire values, and keep the 0.51.x omitted-mode decoding. The grade target remains unmet and does not establish reader comprehension."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/protocol.md",
+        "sourceSha256": "9869188e2272153b553f79bb44912e83078528fe42c882a3ee4589aba205a7f7",
+        "rule": "Slopsentral.LongSentence",
+        "line": 137,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep required execution reports with admitted query, source, and traversal failures. Missing, invalid, and null metadata remain distinct. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/protocol.md",
+        "sourceSha256": "9869188e2272153b553f79bb44912e83078528fe42c882a3ee4589aba205a7f7",
+        "rule": "Slopsentral.LongSentence",
+        "line": 139,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the exact packaged-catalog byte limit and malformed UTF-8, missing-file, symlink, incompatible-metadata, and drift rejection before provider startup. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/runtime-hosts.md",
         "sourceSha256": "523d49abe3a94d685396d417b5f4949bdca1f257b5542ef0399f19b3d2267943",
         "rule": "Slopsentral.Grade",
@@ -14320,6 +14404,30 @@
     {
       "finding": {
         "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/installation.mdx",
+        "sourceSha256": "5d58e3b746e71517f87b019bc7a34f273d1d42d8f53ff10209c86c92f5613f4b",
+        "rule": "HowTo.Steps",
+        "line": 1,
+        "message": "A how-to guide is a sequence of steps; there is no numbered list here.",
+        "severity": "warning"
+      },
+      "reason": "Reviewed the remote initial installation followed by numbered headings 1, 2, and 3 for release selection, passive installed-state inspection, and a semantic connection. The managed Host now loads on demand; a desktop plugin or restart is not an omitted step. Vale requires a Markdown ordered list and does not count numbered headings. Keep alternative channel/version/commit selectors outside a duplicate sequence and preserve the warning that native acceptance and publication remain incomplete. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "docs/public/reference/installation.mdx",
+        "sourceSha256": "5d58e3b746e71517f87b019bc7a34f273d1d42d8f53ff10209c86c92f5613f4b",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 8.36 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep complete-product admission, preview/stable and exact pins, passive status, and the first explicit request's exact-root trust grant. The added warning marks desktop IntelliJ IDEA Hosts and user-space plugin installation as deprecated, keeps --host-only and 0.51.x desktop wire values as compatibility paths, and directs readers to managed headless Hosts. The grade advisory remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
         "path": "docs/public/reference/lifecycles.mdx",
         "sourceSha256": "9e7ba215bee13bd2d1a6b490bd5d86cf879fc229e11eeadd857af336371ce14a",
         "rule": "Slopsentral.Grade",
@@ -14424,6 +14532,42 @@
         "severity": "warning"
       },
       "reason": "May describes permitted residual empty one-shot or tool-session directories after completed native calls, not uncertain semantic completion or guaranteed leftovers. The following sentences constrain replacement/removal to identity-checked empty-directory operations and still reject invocation records, unknown names, and links. Preserve that optional bookkeeping state without broadening cleanup authority or claiming native removal qualification. Reviewed at this digest and location; the advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+        "sourceSha256": "86b97cf2d9c08435974a996777d81c602ce14d2ce30c9e9f894b4c39ddff547f",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.26 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact-generation retirement and exclusive leases before product fencing, damage repair, and vanished-root reclamation. The revised page preserves exterior recovery receipts, admitted recovery interpreter/tree limits, empty bookkeeping versus unsettled invocations, provider cleanup ownership, and the managed-state exclusion on legacy force uninstall. Retained legacy lifecycle contracts remain separately labeled. The grade is accepted without native-removal or comprehension evidence. Reviewed at this digest and location; the advisory remains visible. The page grade is unchanged after the desktop deprecation edits; the current source digest binds this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+        "sourceSha256": "86b97cf2d9c08435974a996777d81c602ce14d2ce30c9e9f894b4c39ddff547f",
+        "rule": "Slopsentral.Diction",
+        "line": 128,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain identifies the recovery-preserving rejection state when profile identity changes, a root reappears, or private evidence is unrecognized. The exterior removal receipt survives until verified deletion completes; repository content, shared runtime bytes, and external Gradle homes remain excluded. Preserve this durable recovery obligation rather than suggesting ordinary discretionary file keeping. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+        "sourceSha256": "86b97cf2d9c08435974a996777d81c602ce14d2ce30c9e9f894b4c39ddff547f",
+        "rule": "Slopsentral.Modals",
+        "line": 136,
+        "message": "Replace 'may' with a direct statement or can, will, or must. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "May describes permitted residual empty one-shot or tool-session directories after completed native calls, not uncertain semantic completion or guaranteed leftovers. The following sentences constrain replacement/removal to identity-checked empty-directory operations and still reject invocation records, unknown names, and links. Preserve that optional bookkeeping state without broadening cleanup authority or claiming native removal qualification. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
     },
     {
       "finding": {
@@ -14860,6 +15004,186 @@
     {
       "finding": {
         "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 12.63 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep complete-product selection, component-native sealing, detached installed acceptance, immutable vendor bases, and request-owned workspace state distinct. The added paragraph deprecates desktop plugin installation without removing retained behavior and keeps the stderr warning separate from stdout consumed by existing callers. The grade advisory remains unmet; reader comprehension remains unmeasured."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 468,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the retired isolated-runtime adapters together. IDEA owns import and trust configuration after those adapters leave the active graph. Rechecked after native Claim finalization; the cited sentence or unchanged grade finding keeps this review. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.Diction",
+        "line": 470,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain describes continuing separate Control/Host artifact ownership and the reviewed idea-262.zip / idea-263.zip variants, not public permission to mix component selections. The next sentence requires one complete product record and the paragraph labels the old installed-product fixture as legacy evidence. Preserve the ownership distinction without turning retained component support into a current native qualification claim. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.Diction",
+        "line": 484,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain states byte-preserving publication: preview and stable require the detached acceptance receipts while preserving the original sealed record and payload bytes. The preceding seal/accept distinction rules out rebuilding or rewriting the sealed identity when receipts are joined. Preserve this durable provenance contract rather than weakening it to a generic preference about keeping artifacts. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.Diction",
+        "line": 518,
+        "message": "Use 'more' instead of 'additional'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Additional platforms describes the broader descriptive scope of the retained standalone archive assembler, not extra supported public product targets. The same sentence excludes that assembler as a public installation route or native qualification proof, while the component/acceptance section names the two qualified-target requirements. Keep this explicit legacy-capability boundary rather than implying that more product platforms are available. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 714,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the bounded launchctl retirement deadline and finite failures beside OBSERVE_BEFORE, BOOTOUT, and OBSERVE_AFTER outcomes. Command arguments and child output stay excluded. Rechecked the unchanged finding after publication-permission and routing review. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 716,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the shell bootstrap, installed lifecycle, build verifier, and Kotlin owner under one product-entry limit before publication. Rechecked the unchanged finding after publication-permission and routing review. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 730,
+        "message": "Long sentence: 37 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep historical paired-receipt maintenance distinct from Control-only detachment. The new recovery receipt removes Host ownership without changes to plugin files. Rechecked the unchanged finding after publication-permission and routing review. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 733,
+        "message": "Long sentence: 39 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep service retirement, exact transport cleanup, and payload/recovery quarantine under the activation lock before the next staging step. Rechecked the unchanged finding after publication-permission and routing review. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 803,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep runtime command-line evidence and exact launchd-label retirement before removal of the reviewed login item. Changed entries remain preserved. Rechecked the unchanged finding after publication-permission and routing review. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 817,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the launchd service owner and exact daemon and installer command paths together. Rechecked the unchanged finding after publication-permission and routing review. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 841,
+        "message": "Long sentence: 35 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep all three compiler-query witnesses and both unchanged-identity obligations across independent Control and Host upgrades. Routine tests do not establish native behavior. Rechecked the unchanged finding after publication-permission and routing review. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 856,
+        "message": "Long sentence: 32 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep unavailable legacy loaded-version evidence qualified. The restored coordinator, new epoch, fresh generation, and ready-service evidence must agree. Rechecked the unchanged finding after publication-permission and routing review. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.Diction",
+        "line": 878,
+        "message": "Use 'keep' instead of 'retain'. Keep the source meaning.",
+        "severity": "warning"
+      },
+      "reason": "Retain describes the separate legacy Host-removal path still owned by legacy receipts; managed product removal instead carries an admitted recovery interpreter and payload tree through UninstallManagedRoot. The paragraph also preserves exterior journal authority after Control removal and protects foreign guidance siblings. Keep these recovery lifetimes and ownership distinctions, not an implication that all retained paths are public setup choices. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/distribution.md",
+        "sourceSha256": "a8fd2bb413f2ffe4238c5bbe0cdac390668694aa3504915a61d5c80761b9fef4",
+        "rule": "Slopsentral.LongSentence",
+        "line": 887,
+        "message": "Long sentence: 26 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact SQLite schemas and bounded typed records under read-only inspection. The adapter does not initialize, checkpoint, or manufacture recovery. Rechecked the unchanged finding after publication-permission and routing review. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
         "path": "openwiki/modules/index.md",
         "sourceSha256": "2de6cb3da6746779ef6ee61fe82aba65f315b6756894e81b0ff11366be1fc883",
         "rule": "Slopsentral.Grade",
@@ -15084,6 +15408,210 @@
         "severity": "warning"
       },
       "reason": "Keep target-basis admission before token restoration; single evaluation, final freshness, actual grant, work and elapsed time remain coupled. Reviewed at this digest and location; the advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.Grade",
+        "line": 1,
+        "message": "Estimated Flesch-Kincaid grade 13.44 exceeds the shared advisory target of 8.",
+        "severity": "warning"
+      },
+      "reason": "Keep private launch, exact workspace trust, and live Host admission distinct. The added paragraph bounds the kast_desktop_host_deprecated log to one desktop application initialization and states that managed headless initialization stays silent. The grade target remains unmet; the advisory remains visible."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 346,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep reset startup restricted to an installation-bound ACTIVATING record and held exclusive lease; malformed/unlocked records stay fenced. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 358,
+        "message": "Long sentence: 34 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep prepared workspace and immutable plan admission before changes, preserving finite failures and root/Host/output binding. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 360,
+        "message": "Long sentence: 33 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep launched-process socket ownership and physical identities before and after connection; reachability alone proves no owner. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 403,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep CONNECTION_RELEASE after permit return and before the next correlated health request. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 431,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep lifecycle linking, passive reads and automatic imported-input refresh separate. Recursive sources, flat missing-root/Gradle-input parents, workspace bounds and explicit forced FILE_REFRESH describe distinct scopes. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 431,
+        "message": "Long sentence: 41 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep lifecycle linking, passive reads and automatic imported-input refresh separate. Recursive sources, flat missing-root/Gradle-input parents, workspace bounds and explicit forced FILE_REFRESH describe distinct scopes. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 431,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep lifecycle linking, passive reads and automatic imported-input refresh separate. Recursive sources, flat missing-root/Gradle-input parents, workspace bounds and explicit forced FILE_REFRESH describe distinct scopes. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 431,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep lifecycle linking, passive reads and automatic imported-input refresh separate. Recursive sources, flat missing-root/Gradle-input parents, workspace bounds and explicit forced FILE_REFRESH describe distinct scopes. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 514,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact whole-property-list admission and recovered-command identity for private daemon recovery; the earlier form remains retirement-only. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 524,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep addressed digest, input fingerprint and finite phase together; terminal or previous-process admissions cannot be resettled. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 554,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exact daemon target, candidate digest and request identity together; malformed or mismatched update replies reject. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 570,
+        "message": "Long sentence: 29 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep captured version, ready roots, connection count and bounded fresh Host observations qualified as passive evidence. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 588,
+        "message": "Long sentence: 28 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep local owner-envelope admission and proven process absence before current-contract/root admission or capacity charging. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 601,
+        "message": "Long sentence: 31 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep the four K2 value-flow capabilities under one admitted project, source model and observation capability. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 612,
+        "message": "Long sentence: 27 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep exclusive phase intervals distinct from inclusive traversal duration and CPU measurements. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
+    },
+    {
+      "finding": {
+        "stage": "root-vale-3.24.0",
+        "path": "openwiki/modules/runtime-hosts.md",
+        "sourceSha256": "7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+        "rule": "Slopsentral.LongSentence",
+        "line": 618,
+        "message": "Long sentence: 39 words.",
+        "severity": "warning"
+      },
+      "reason": "Keep target-basis admission before token restoration; single evaluation, final freshness, actual grant, work and elapsed time remain coupled. Reviewed at this digest and location; the advisory remains visible. Rebound after the desktop deprecation edits shifted this unchanged sentence; its current line and source digest bind this review."
     },
     {
       "finding": {
