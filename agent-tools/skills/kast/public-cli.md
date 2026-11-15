@@ -31,6 +31,23 @@ None establishes runtime behavior or unrestricted transitive reachability.
 Discovery scope selects seeds; expansion scope restricts destinations.
 `CALLERS` follows incoming calls; `CALLEES` follows outgoing calls, including constructors.
 
+### Calls inside stored lambdas
+
+Kast attributes some calls differently from IntelliJ IDEA.
+IntelliJ call hierarchy and find usages name the function that encloses the call text.
+A Kast caller is a function that runs the call in place, including through an inline lambda.
+
+A lambda passed to a `fun interface` constructor, a class constructor, or a non-inline parameter is stored.
+Its enclosing function does not run it.
+For `fun build() = Gateway { target() }`, IntelliJ reports `build` as a caller of `target`. Kast does not.
+Kast records the call in `relation_observations[].callback_observations`.
+Its `named_policy` has type `EXCLUDED` and reason `NON_INLINE_ARGUMENT`.
+The actual caller is the code that later invokes the interface method.
+
+`TRACE` includes these calls as source relationships.
+An explicit `CALLERS` query can reject with `CALLBACK_GRAPH_UNPROVEN` when Kast cannot prove who invokes the stored lambda.
+Do not report the enclosing function as a caller from that evidence.
+
 `source read` reads source under an issued selector.
 `result read` and `result resume` deliver existing evidence without another semantic investigation.
 Keep the original output kind for retained reads, including canonical detail reads.

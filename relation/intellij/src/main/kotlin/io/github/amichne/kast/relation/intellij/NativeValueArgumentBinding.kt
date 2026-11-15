@@ -7,8 +7,11 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
+import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaPropertyAccessorSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSamConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtExpression
@@ -34,15 +37,20 @@ internal fun nativeArgumentBinding(
         val resolved =
             call.resolveCall()
                 ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+        val parameter =
+            resolved.valueArgumentMapping[expression]?.symbol
+                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
         val callable =
             when (val candidate = resolved.signature.symbol) {
                 is KaNamedFunctionSymbol -> candidate
                 is KaConstructorSymbol -> candidate
-                else -> return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
+                // The compiler synthesizes a SAM constructor; its mapped formal has no source body.
+                is KaSamConstructorSymbol ->
+                    return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.EXTERNAL_CALL)
+                is KaAnonymousFunctionSymbol,
+                is KaPropertyAccessorSymbol ->
+                    return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
             }
-        val parameter =
-            resolved.valueArgumentMapping[expression]?.symbol
-                ?: return@observedAnalyze Refinement.Rejected(NativeArgumentBindingFailure.UNRESOLVED_REFERENCE)
         val position =
             when (val value = ValueArgumentPosition.parse(callable.valueParameters.indexOf(parameter))) {
                 is Refinement.Refined -> value.value

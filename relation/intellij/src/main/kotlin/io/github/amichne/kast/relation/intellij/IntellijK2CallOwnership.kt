@@ -8,7 +8,11 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
+import org.jetbrains.kotlin.analysis.api.symbols.KaAnonymousFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaPropertyAccessorSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSamConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtFunction
 
@@ -110,13 +114,24 @@ private fun KaSession.inlineArgumentOwner(
     val call =
         supplyingCallbackCall(argument.argument) ?: return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
     val resolved = call.resolveCall() ?: return Refinement.Rejected(CallOwnershipFailure.UnresolvedArgumentMapping)
-    val function =
-        resolved.signature.symbol as? KaNamedFunctionSymbol
-            ?: return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
     val parameter =
         resolved.valueArgumentMapping[argument.expression]?.symbol
             ?: return Refinement.Rejected(CallOwnershipFailure.UnresolvedArgumentMapping)
     if (parameter.returnType !is KaFunctionType) return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
+    val function =
+        when (val callee = resolved.signature.symbol) {
+            is KaNamedFunctionSymbol -> callee
+            // Constructors and SAM constructors are never inline; a SAM constructor stores the body as the
+            // interface implementation.
+            is KaConstructorSymbol,
+            is KaSamConstructorSymbol ->
+                return excludedCallback(
+                    owner,
+                    io.github.amichne.kast.relation.contract.CallbackExclusionReason.NON_INLINE_ARGUMENT,
+                )
+            is KaAnonymousFunctionSymbol,
+            is KaPropertyAccessorSymbol -> return Refinement.Rejected(CallOwnershipFailure.UnsupportedBoundary)
+        }
     when (
         classifyInlineCallback(
             function.isInline,
