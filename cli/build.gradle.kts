@@ -38,11 +38,16 @@ val mcpResultSchemas =
         classpath.from(tasks.named<ProcessResources>("processResources").map { it.destinationDir })
         classpath.from(configurations.runtimeClasspath)
         mainClass.set("io.github.amichne.kast.cli.mcp.McpResultSchemas")
-        outputFile.set(mcpResultSchemaDirectory.map { it.file("mcp-result-schemas.json") })
+        outputFile.set(layout.buildDirectory.file("generated/mcp-result-schema-archive/mcp-result-schemas.zip"))
+    }
+val mcpResultSchemaResources =
+    tasks.register<Sync>("unpackMcpResultSchemas") {
+        from(zipTree(mcpResultSchemas.flatMap { it.outputFile }))
+        into(mcpResultSchemaDirectory)
     }
 
 sourceSets.main {
-    output.dir(mapOf("builtBy" to mcpResultSchemas), mcpResultSchemaDirectory)
+    output.dir(mapOf("builtBy" to mcpResultSchemaResources), mcpResultSchemaDirectory)
 }
 
 application {

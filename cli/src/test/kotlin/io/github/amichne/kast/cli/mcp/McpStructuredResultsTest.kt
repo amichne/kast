@@ -23,9 +23,69 @@ class McpStructuredResultsTest {
             io.github.amichne.kast.protocol.registry.PublicToolIdentity.entries.map { it.toolName } + "health_check"
         for (name in names) {
             assertEquals(McpResultSchemas.generate(name), McpStructuredResults.semanticSchemaFor(name), name)
+            val document = Json.parseToJsonElement(resourceText("/mcp-result-schemas/$name.json")).jsonObject
+            assertEquals(setOf("contractVersion", "name", "schema"), document.keys)
+            assertEquals(name, document.getValue("name").jsonPrimitive.content)
+            assertEquals(McpResultSchemas.generate(name), document.getValue("schema"), name)
         }
         assertThrows(IllegalStateException::class.java) { McpStructuredResults.semanticSchemaFor("unbound_tool") }
     }
+
+    @Test
+    fun `result lookup loads only its own schema and retains it for repeated requests`() {
+        val available =
+            mutableMapOf(
+                "/mcp-result-schemas.json" to resourceText("/mcp-result-schemas.json"),
+                "/mcp-result-schemas/replace_body.json" to resourceText("/mcp-result-schemas/replace_body.json"),
+            )
+        val resources = McpResultSchemas.Resources { path -> checkNotNull(available.remove(path)) { path } }
+        assertThrows(IllegalStateException::class.java) { resources.schemaFor("unbound_tool") }
+        val expected = McpResultSchemas.generate("replace_body")
+        assertEquals(expected, resources.schemaFor("replace_body"))
+        assertEquals(expected, resources.schemaFor("replace_body"))
+        assertTrue(available.isEmpty())
+    }
+
+    @Test
+    fun `result lookup fails closed for missing incompatible or mismatched resources`() {
+        val indexPath = "/mcp-result-schemas.json"
+        val schemaPath = "/mcp-result-schemas/replace_body.json"
+        val index = resourceText(indexPath)
+        val schema = resourceText(schemaPath)
+        val version =
+            Json.parseToJsonElement(index).jsonObject.getValue("contractVersion").jsonPrimitive.content.toInt()
+        val cases =
+            listOf(
+                mapOf(
+                    indexPath to
+                        index.replaceFirst("\"contractVersion\":$version", "\"contractVersion\":${version + 1}"),
+                    schemaPath to schema,
+                ),
+                mapOf(indexPath to index.replace("\"query_symbols\"", "\"unbound_tool\""), schemaPath to schema),
+                mapOf(
+                    indexPath to index,
+                    schemaPath to
+                        schema.replaceFirst("\"contractVersion\":$version", "\"contractVersion\":${version + 1}"),
+                ),
+                mapOf(
+                    indexPath to index,
+                    schemaPath to schema.replaceFirst("\"name\":\"replace_body\"", "\"name\":\"add_declaration\""),
+                ),
+            )
+        for (available in cases) {
+            val resources = McpResultSchemas.Resources { path -> available.getValue(path) }
+            assertThrows(IllegalStateException::class.java) { resources.schemaFor("replace_body") }
+        }
+        val malformed = McpResultSchemas.Resources { path -> if (path == indexPath) index else "{" }
+        assertThrows(SerializationException::class.java) { malformed.schemaFor("replace_body") }
+        for (available in listOf(emptyMap(), mapOf(indexPath to index))) {
+            val resources = McpResultSchemas.Resources { path -> available.getValue(path) }
+            assertThrows(NoSuchElementException::class.java) { resources.schemaFor("replace_body") }
+        }
+    }
+
+    private fun resourceText(path: String): String =
+        checkNotNull(javaClass.getResourceAsStream(path)) { path }.bufferedReader(Charsets.UTF_8).use { it.readText() }
 
     @Test
     fun `every transport failure has a closed MCP schema without widening semantic contracts`() {
