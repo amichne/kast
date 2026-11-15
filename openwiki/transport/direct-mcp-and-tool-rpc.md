@@ -59,7 +59,7 @@ sources:
 generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-13T00:20:29.143Z
+    at: 2026-11-14T23:43:30.219Z
 ---
 
 # Direct MCP and tool RPC

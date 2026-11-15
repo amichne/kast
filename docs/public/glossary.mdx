@@ -8,6 +8,18 @@ icon: "book-open"
 
 Use these terms to read a Kast answer. Exact fields and their values keep the spelling from your installed catalog.
 
+## dependency sharing
+
+A creation-time workspace policy that selects private or shared Gradle state. SHARED also requests index seeding for a new workspace container.
+
+[Source: `Revision 9, Phase 1 implementation decisions: dependency sharing`](https://ampcode.com/artifacts/design-opt-in-index-seeding-with-a-shared-gradle-home-c64caf61-e5ae-40e0-922f-4b4092cc4c49).
+
+## index seeding
+
+An optional creation step that clones the IDE system directory from a compatible stopped workspace into a new workspace container. The Host still validates its project before semantic readiness.
+
+[Source: `Revision 9, Phase 1 implementation decisions: donor admission and clone outcomes`](https://ampcode.com/artifacts/design-opt-in-index-seeding-with-a-shared-gradle-home-c64caf61-e5ae-40e0-922f-4b4092cc4c49).
+
 ## idle shutdown
 
 An opt-in managed Host stop after a configured period without admitted requests or observed native work. It uses the existing settlement and normal exit path.

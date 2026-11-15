@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:e44a126dd6153cd651a98d6bc5085cc377257f8742276844c7ff91e0a9d3ff24",
+  "pageVersion": "sha256:fa1e42f139f1d755a321d50e568f8b766eee02b44290f89045b13ee342ebd124",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -133,12 +133,8 @@
       "statement": "Managed request admission reads the installed product locally, rejects inherited private-state overrides, and creates workspace state only for preparation access rather than retained reads.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L165-L210",
-          "version": "repo-lines-v1:sha256:fe54899323afe2e516f965e308c4f6989ee26700ce2c16c8ff6b9df06ee01cd9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExM2M5ZjgzM2M3MDdkMWJkYmE3NWYwY2I4MmFiMWI0NDNkMWY1YjI1ZGVlNWRkODBmMzE2MTE4MGIxOTg4M2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZjljOWFjMWY4ZmZmNzMwYzRlNTU3YzczOTUzNzAxODYwZGUwODIzOTYyYWFlN2EwZDI1NmFjMGMwNTA5NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMzQwNzEwYjJmZDU5NGRiYzRjN2U2YzZlMTgzM2ZiMTVlM2Q1YjUwYzAyOGNhODllNWJlYTM2MzgyMjIzNTEifQ"
-        },
-        {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L49-L100",
-          "version": "repo-lines-v1:sha256:a60705e73905b0a5f5df693553d3e91d9399814c6b88cf4025e2f51a5df07f67:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZWU0MmVmNWQ0YmVlOTA0MmMxYzRmYzNjMTgyZmFjZWM5OGRiZDc4NGJjMGRkMmJhNzk5NzE0N2U3N2U4ODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyZjIzZDE1YmQ1MmY1Y2NmNTA3MGE5YTc2ZTgzZWIyMGZkZDI1ZDUwZjc2ODk4NTE1YzE1ODk4ZTBmY2Q3MzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlZmMwNjQ1MzlmZGE5NzAyYjQzNTgzZDViNzM1ODQxYTk1OWM0YmJkYjhmNDgxNTNiYzljNTZjNGRiYTI4NmIifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L12-L246",
+          "version": "repo-lines-v1:sha256:eadd655bc4a0285bb28cca8154b16487a03b5d58c8f5d9b1cec1d866acb54bfc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjM1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmNzFjNTRhMjg0ZGM0ODVlYWUyOTU2MWYzOTUwNjMyMGIxZDQ5M2M5MDBkNTJlODI1ODhkMmQ2ZWEwNDE1ZGE0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ODkzZjQwZTM3ODFlYjg5NmM4MmQwNDZhMDgwNjdhMTFlMzVjZGYyZjFkZmFmMjZmZWE5MGI4ZGI2Njc2NDEzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0NjgyMTQwZWE4MmNmYzI1ZWIwNDJkMzYyOTc3ZmZkMGRhYzZhMDk5MGQ3NTFhN2RmNjU4NTNkZjM4ZDQwNWQ3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjNjI0YzNkYjRmMzRmMDVhNjE5YzA4NmYyZWFlYTJjYjVmODJiYzU5OWQzMjE2N2Q3YWU3NDQ1ZTc2MTk0M2M0In0"
         }
       ]
     },
@@ -148,15 +144,15 @@
       "evidence": [
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStateAdmission.kt",
-          "version": "repo-file-v1:sha256:2c5577f988ffd56eb0f3e96a90d3a742284e7cca5a70947337b2dcf0b66bd556"
+          "version": "repo-file-v1:sha256:74fc9af24210652ddcb9c8a1fe09963f8a540d70a52bc08ea0728c203638ecdb"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt",
-          "version": "repo-file-v1:sha256:98378f6dc46502e01e93c85be530954ca750d20459372fba8922fcc711be6fb9"
+          "version": "repo-file-v1:sha256:9a5410e2aa90b960dde03a554445d080125402430020554292cfd5aee522f00b"
         },
         {
           "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntimeTest.kt",
-          "version": "repo-file-v1:sha256:0e14d02381c5160abfe2dbc8c981760b992386b55884c17dfcd944234368d36b"
+          "version": "repo-file-v1:sha256:a27fc5ffdeace09ab8810e9d48c8bb7555172e9c3de5c676d4ed0c13c12dd091"
         }
       ]
     },
@@ -178,7 +174,7 @@
         },
         {
           "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
-          "version": "repo-file-v1:sha256:66aa2d8ddfd10f7901d5af40993a7ae2991f4cd655169603e09537e92d83ba4d"
+          "version": "repo-file-v1:sha256:6393b60efd70381f092a06f4aab767e0a0786c6dc03c48e42a1b0da5753d5d3f"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt",
@@ -237,10 +233,78 @@
           "version": "repo-file-v1:sha256:56cf4af03052cb844d05adfff705f52c45482003765b06e59246be466a4cfc70"
         }
       ]
+    },
+    {
+      "id": "claim_deb57041eff94e9bb75bcfe6268fc468",
+      "statement": "Workspace dependency sharing admits exactly PRIVATE or SHARED, defaults PRIVATE, and has WORKSPACE scope with distribution:cli ownership and NEXT_WORKSPACE_CREATION application. The contract parser refines the policy once.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationParameterDeclaration.kt#L96-L109",
+          "version": "repo-lines-v1:sha256:a81d58d7ccc48336fd8b5c9b1a12ce74a6863e16f88ef12824c510f386aa25da:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhOTk0Nzg3Nzg2NzRkYThiZTFhZGIxNjhlNTZkNzkwNWI2MTZkMjQxY2ZiZTI5YTEzYTU5ZTYyOWRjMTM3MGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjNjJhZDc0NTc4OGVmOTNmZDA4ZDMxMjQ1N2Q1YjhlOTk5MmQ3ZjFmMmU4MzUyNDIwMmEwNTNiNmVkNTk3ZmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt#L333-L339",
+          "version": "repo-lines-v1:sha256:9f51d69c0ac6267f75afb5cf662675f2655dc2e3e974d558f955f6fa50d84d04:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmRjYTk0NzNiMTkxNjUzMmQ0ZDIzMWVhZjgzMGRlMDMxOGQ1YmQ5YmNjOGUwY2RkNWM4NWQ5YjU1N2QwMzE3NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzAyYzQxNGI1NGNmODZkZmI0ZjkwZGZlN2Q3YmRiZmE2NjZiN2RkZGQzMmYxMjg2ZjIzMGE1YjUzMjQxODE4YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGQzMzMxMzA5NzQ2MGYzYjgxNTJlZDYwMmE3OTNiNTFmYmNiZDkyZThhYjA2NDc2NjZmYjMwNDk3MTA1NDUyOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTdlOGZkZWRkYmY1MjU4MmE4ZDBmMGVkZDNjMDkxNjQxMWE3M2M4ZjlkOWNmZjc1ZmU3NWVlYzkxYTAxNDUxZSJ9"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt#L320-L333",
+          "version": "repo-lines-v1:sha256:6e4e24310fdc380a4d027106601a215ab0a4df57ced5bccbfed099d8bcdc9afc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhMjUzYTI1ZmY0YzQ0M2Q1OTBlMjBkZTliNmE1YzA5Y2RmMGM2MzVlZTRmYmY2YWZiNTYxYjEyMGZkNjA2YmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNjQ3OWNjMjMwNDQwZmQ0MWU4MjI0MjE4Njc5Njk4NTU5ZDI4OTNiZDY3YjQzODBhZmFiODExYjM4YTU1YWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0YzAxZmY2ZmMyMjIxYWI1MGNjMGM3YjBiNDA5OWFlMjY1NDkwNTY5MTUzMTliMjdiMzJjMThmMjYyYmE2ZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwMzRlNGRkNmFjNDlhZDVlOTdkNzkzNGMxNDNlZDI4NjAwNTk2NTk0MDgwNTMyMGI3YmI2MjIwZjE5YjgzNWQifQ"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/WorkspaceDependencySharing.kt#L7-L20",
+          "version": "repo-lines-v1:sha256:be9d91bac4946844d0d2cea5b9ff3178be065dd2d225bfd7bb9d88e7b7fae55c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZjgyNGI1MDJlMGZmMDExODg1ODlkMzdkOTIwYjgxYTIyOGY5Mjk0NmZkZDBjYzYxNGYxNDAyYWI4NzFkMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4NjVmYWQxZTUyN2Q4Y2ViZTY0NzExYTBjMTllNWY2NDRmNGE4ZGY3MmZhOWZhNmUyMjEyODU4MTAzY2VmOTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2b7707c46ffa434cb4864d95f6f59455",
+      "statement": "At creation, PRIVATE without GRADLE_USER_HOME selects private state/home/.gradle, SHARED without it selects Kast-owned shared/gradle, and an explicit canonical external home wins for either policy. container.json retains the sharing policy with PRIVATE as the legacy default. Existing containers and generation rebuilds are not converted or seeded.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerModel.kt#L70-L148",
+          "version": "repo-lines-v1:sha256:c7abca5ad3d5e631ee761b16a4b61b3b8e55b5433f85dcb2c0ebfe37f8740c5d:eyJzZWxlY3RlZExpbmVDb3VudCI6NzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZjgyNGI1MDJlMGZmMDExODg1ODlkMzdkOTIwYjgxYTIyOGY5Mjk0NmZkZDBjYzYxNGYxNDAyYWI4NzFkMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhZWM0OTE4ZDJiM2I5ODkxM2E0MjAwNjVkMTkyNzMwYTNhZWRhNTEwYzcxNWVlMmZkMjkzOWY3ZDMxZTdiZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzZTAzYWVjMTgyZWY0ZjU3YWJiNTUwNWQzNDM3M2NhMTYxOTk0MmIzM2U2NzczMTYzNTQ5ZTMzYmUwZjQwYjUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt#L15-L341",
+          "version": "repo-lines-v1:sha256:a7b6eeb4a7fcee21d7aa0f49cdd86d65c4b1602c00800e9fb408e64feefef2fa:eyJzZWxlY3RlZExpbmVDb3VudCI6MzI3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0OTIxOGI3NTJhNDExZjQ0NjI1NTRmZTNhMThiN2E0NWMxMjJiY2JkZGU3OWYxNDBhODNlZDM4MTMzZDExNDQxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ODkzZjQwZTM3ODFlYjg5NmM4MmQwNDZhMDgwNjdhMTFlMzVjZGYyZjFkZmFmMjZmZWE5MGI4ZGI2Njc2NDEzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxYjk3MzExMzlhNDUyY2EyOWM1YmQ5MWFiZDgzMmFiNjk4NDliYjVjYjFmMmI4ZDhhN2UzMzExZGNmYmU3N2U3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIzOTVjOWFmY2EzZjU4OTljZGEyMTViMDJiOTRiMzA3NjZiOWQ4YWViN2E4YTM5ZWFlZDNmNDM5NzlmZmEzMTQwIn0"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt#L12-L246",
+          "version": "repo-lines-v1:sha256:eadd655bc4a0285bb28cca8154b16487a03b5d58c8f5d9b1cec1d866acb54bfc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjM1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmNzFjNTRhMjg0ZGM0ODVlYWUyOTU2MWYzOTUwNjMyMGIxZDQ5M2M5MDBkNTJlODI1ODhkMmQ2ZWEwNDE1ZGE0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ODkzZjQwZTM3ODFlYjg5NmM4MmQwNDZhMDgwNjdhMTFlMzVjZGYyZjFkZmFmMjZmZWE5MGI4ZGI2Njc2NDEzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0NjgyMTQwZWE4MmNmYzI1ZWIwNDJkMzYyOTc3ZmZkMGRhYzZhMDk5MGQ3NTFhN2RmNjU4NTNkZjM4ZDQwNWQ3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjNjI0YzNkYjRmMzRmMDVhNjE5YzA4NmYyZWFlYTJjYjVmODJiYzU5OWQzMjE2N2Q3YWU3NDQ1ZTc2MTk0M2M0In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_155c8abd84444a3b82d83a902aaa52fa",
+      "statement": "Passive workspace status compares recorded sharing policy and canonical Gradle home with saved configuration using no ambient environment. It reports MATCHES_CREATION, DIFFERS_FROM_CREATION or unavailable evidence and separately admits the workspace seed receipt without mutation.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceStatus.kt#L95-L146",
+          "version": "repo-lines-v1:sha256:dd6fff42e4225479cc8854dc722fa80cff5184d589ac6a8f172d56289eb86a53:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4ZjQ4ZjJlYTNmMTcyMGIxZGYyZjMyNzU3NzRmMGI3YTM2ZWE2YTQxNzQxYWNjMjg1NTg0Yzg4MTAxYWZiNjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzZTZlMjQ4MzhhNTIxMzQxNzA1OTIxOGEwN2UzNWUyZjFjNmNkZTk0Mjg3NDZhZGNlOWVhNmI4ZTFmN2Y2M2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7c7c76e077fc401dbc35669cd50ecd10",
+      "statement": "Index seeding consumes a supported SMART Host exit record only with separate generation, physical system, exclusive lease, absent config lock and HOST_UNAVAILABLE admission. The record alone proves neither completed process exit nor flushed storage, and only system/ is cloned.",
+      "evidence": [
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeedClone.kt#L33-L115",
+          "version": "repo-lines-v1:sha256:d5793dc3530b36cad6ec066bc06bc83d013ffa1287253b6834b98d4751fb0219:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4NDY2ZTk0MjhiYjVhNTEwNDUwNmI3YTdhODMyOWQ0YWVhMDBmMmM0YzczNDA4YjAwZjNiNDlmMjFkODUxZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJjYzY2ZGFiYTc1MWU5N2ZlZjdjMGM4OTliYzQ1ODUzNWFkNzA5NDJmZDBlYzQzYmQwZTY5NWJhOTJlYTU5NDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt#L30-L223",
+          "version": "repo-lines-v1:sha256:05637a67a05da7a44b1cf82bc4217e28e99090fa97f65b4be434a6f75653ab43:eyJzZWxlY3RlZExpbmVDb3VudCI6MTk0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmODQxNWVjNjMxNzU3YWUxZTA5NGNmMGFmZDdlMDcxYWNiM2JiZGE1ZmU3OGVjMzA5MDJhMGNlZTRkMTY2NWQyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhNjg2YTQ4NzQwNDlhZTQ4Y2VhNTUzMWMxODQ4MTdhOGYyOTY0NTE0MGJkOTQ4ZmQ4Y2Q3ZGFlM2RiMzY0ZDU0IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/HostExitRecord.kt#L30-L44",
+          "version": "repo-lines-v1:sha256:060d3e954f3fa39e672002f584541bbc136f839c3985a4932ee6607f2e102350:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZjgyNGI1MDJlMGZmMDExODg1ODlkMzdkOTIwYjgxYTIyOGY5Mjk0NmZkZDBjYzYxNGYxNDAyYWI4NzFkMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5OWRmYjM3NjYzM2NlMjE3ZDg3YTVmNGEzYThlYWJmYWJkZmUxOTQyNDdmYmIwMzMyMWQyMjdiNzAzZTZjOGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T21:41:04.802Z"
+    "at": "2026-11-14T23:57:28.873Z"
   }
 }

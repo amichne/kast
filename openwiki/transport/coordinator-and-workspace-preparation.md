@@ -47,7 +47,7 @@ sources:
 generated: { by: "amp", at: "2026-11-14T22:19:18.487Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T22:19:18.487Z
+    at: 2026-11-14T23:57:28.873Z
 ---
 
 # Coordinator and workspace preparation
