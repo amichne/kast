@@ -64,7 +64,6 @@ class BootstrapImportTest(unittest.TestCase):
                 "bootstrap_entry.py",
                 "composed_bundle.py",
                 "composition_platform.py",
-                "isolated_runtime.py",
                 "managed_headless.py",
                 "runtime_archive.py",
                 "runtime_base.py",

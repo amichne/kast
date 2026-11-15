@@ -27,6 +27,8 @@ sources:
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/InstalledDaemonUpgrade.kt
   - id: openwiki-source-c58b3f38ca46d44dd30a8771
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
+  - id: openwiki-source-e4a9595c544ec2b876590037
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/BuildCatalog.kt
   - id: openwiki-source-dc8df2b070b8c6ba7da7a8f9
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt
   - id: openwiki-source-bae14a3ed4bc7ba21f443356
@@ -99,10 +101,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleStop.kt
   - id: openwiki-source-93a63f2900e2bb9b08843608
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/LifecycleReply.kt
-generated: { by: "amp", at: "2026-11-14T23:43:30.219Z" }
+generated: { by: "amp", at: "2026-11-15T19:32:41.514Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T23:57:28.873Z
+    at: 2026-11-15T20:31:50.464Z
 ---
 
 # Upgrade, shutdown, and guarded reset
@@ -123,6 +125,12 @@ Exact repair stages verified runtime and base bytes in the existing replacement 
 Only recorded Host retirement and the unchanged shutdown fence permit deletion of a damaged owned runtime directory.
 The same journal resumes an interrupted reset before Control replacement.
 Foreign files, changed links, and replacement directory identities remain protected.
+
+Retained local product records use installed-record validation, not published-only decoding.
+`managed_product_installation.reference_at` keeps the pinned local selection and exact record, target and artifact identities.
+`immutable_store` uses that same installed-record boundary for original evidence, reset, publication and retained inventory.
+`UninstallManagedRoot` also admits local schema 4 records when checking retained immutable evidence.
+This preserves recovery eligibility without treating a local build as a published two-target release or weakening deletion ownership.
 
 After product retirement, and during preparation admission, `WorkspaceReclamation` inspects vanished roots.
 Cleanup requires proven root absence, no query lease, exact retired generation evidence, and settled private `.kast` state.
@@ -191,6 +199,7 @@ The replacement adapter preserves that rejection as `CONTROL_REJECTED` with `CON
 
 `ManagedUpgrade` examines pending replacement records and the shutdown fence before policy or release resolution.
 A pending transaction invokes the admitted installed bridge with `--recover-only` and the selected output options.
+Installed bridge admission requires unique manifest paths, an exact complete Control inventory, and verified payload bytes.
 If installed admission fails, `RecordedRecoveryInstaller` admits only the candidate identity from the replacement receipt.
 Admission binds canonical paths, the current owner, manifest digest, exact payload inventory, file modes, and installer capability.
 The candidate can occupy its recorded stage, the installation directory, or the journal quarantine.

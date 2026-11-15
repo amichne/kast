@@ -1,74 +1,50 @@
 ---
 type: Kotlin Contract
-title: Installed knowledge
-description: The control product exposes bounded syntax documentation and scoped guides without starting a semantic runtime.
-resource: file://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge
+title: Retired installed knowledge contract
+description: Control rejects the retired installed knowledge payload; repository citation checks and module reports remain separate.
+resource: file://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
 tags: [knowledge, cli, distribution, syntax, guidance]
 code_sources:
-  - path: build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt
-  - path: build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsModel.kt
-  - path: build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt
-  - path: build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinDocumentationScanner.kt
+  - path: build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
   - path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
-  - path: build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt
-  - path: build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeProjection.kt
-  - path: build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeValidation.kt
-  - path: build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeSourceBinding.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeResources.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/AdmittedKnowledge.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeInventoryAdmission.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
+  - path: build.gradle.kts
   - path: packaging/run-installed-product.py
 sources:
-  - id: openwiki-source-e7e9afae9a60cee55a46b246
-    resource: repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt
   - id: openwiki-source-6d6c58a5bfeff1b2388a6735
     resource: repo://build-logic/src/main/kotlin/kast.architecture.gradle.kts
-  - id: openwiki-source-b4184b3e65833677c17e8554
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt
-generated: { by: "codex", at: "2026-11-03T06:09:31.584Z" }
+  - id: openwiki-source-a387d9d545afff426d34a10a
+    resource: repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
+  - id: openwiki-source-2a9daaac1604f238ef4c63fb
+    resource: repo://build.gradle.kts
+  - id: openwiki-source-d1f8b0a2ac011ef2d36005a5
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
+  - id: openwiki-source-8faf23d69764b95242de5e09
+    resource: repo://packaging/run-installed-product.py
+generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-11-10T06:03:12.348Z
+  - by: openwiki/0.9.0
+    at: 2026-11-15T20:10:47.711Z
 ---
 
-# Installed knowledge
+# Retired installed knowledge contract
 
-The retired `kast knowledge` command searched installed declaration descriptors and read listed resources. The assets and parser remain in the control product for now, but the private executable no longer exposes the command. These descriptors concern Kast's shipped source, not the user's open project.
+The installed knowledge bundle and its retrieval implementation are retired.
+`VerifyControlDistributionTask` rejects `share/kast/knowledge` and every descendant as a retired payload.
+Its required-entry list no longer includes a knowledge manifest as a product requirement.
+The former descriptor, guide-resource, and installed-reader contracts do not describe the current Control payload.
 
-The isolated Kotlin PSI extractor supplies source headers and Kotlin documentation comments. Its output
-retains `KOTLIN_PSI_SYNTAX`, Kotlin-only named-declaration coverage, no type
-resolution and no inherited documentation. Complete and rejected extraction
-reports are closed serialized variants. A failed input cannot produce a partial
-success inventory.
+The Control archive keeps its 16,384-entry limit.
+The separate installed-tree traversal allowance is 32,768 entries, including the separately admitted pinned interpreter.
+Removing the knowledge payload does not raise the archive limit.
 
-The distribution generator consumes the module inventory checked by
-`verifyKastArchitecture` and tracked guides. Longest-directory ownership must
-resolve to one module. Module-level guidance and declaration-level guidance use
-their respective source directories; nested guides are never widened to an
-entire parent module.
+Repository knowledge remains distinct from installed resources.
+`generateKastModuleKnowledge` still writes the verified architecture and scoped-guide report under `build/reports/kast-architecture/`.
+Read [repository knowledge](../knowledge/installed-projection-and-retrieval.md) for that report and the retained citation scanner.
 
-| Resource | Retained content |
-| --- | --- |
-| `manifest.json` | Version, source revision, evidence, module and guide descriptors |
-| `modules/.../index.json` | Shallow declaration descriptors and module guidance |
-| `modules/.../declarations/<id>.json` | Source header, Kotlin documentation comments, source path and exact governing guides |
-| `guides/...json` | Complete guide content, scope and SHA-256 |
+## Acceptance remains separate
 
-Generation rejects duplicate identities, resource collisions, incorrect guidance
-and resources exceeding 8 MiB. Installed admission retains supported evidence
-and canonical resource identities before file effects. Exact reads decode their
-specific DTO, verify inventory and ownership, and validate declaration identity
-or guide content hashes. Unsupported schema versions, unknown fields, oversized
-files, path escapes and symbolic links reject. Search returns at most 20 shallow
-matches; it does not read declaration bodies.
-
-The focused parser and projection tests keep the internal asset contract.
-`installedProductTest` verifies archive contents and rejects former semantic CLI
-commands from the private executable.
-
-The former shell lookup examples are retired. Validate the retained generation
-contract with `./gradlew :build-logic:test :cli:check verifyJsonContracts installedProductTest`.
-
-The installed knowledge manifest uses the Control release identity. Changing `controlVersion` updates it independently of `hostedPluginVersion`; shared source module versions do not couple the packaged services.
+`installedProductTest` delegates complete-product native lifecycle acceptance
+to `product_lifecycle_probe.py`. It requires explicit candidate and baseline
+products, private Python and dependency artifacts, target, evidence and receipt
+paths. Component archive checks do not establish native acceptance.

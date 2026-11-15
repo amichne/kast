@@ -62,17 +62,22 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         check(entries.none { entry ->
             entry == "lib" || entry.startsWith("lib/") || entry.endsWith(".jar") || entry.endsWith(".class")
         }) { "control product contains JVM libraries or bytecode" }
-        val retiredTaskRoots = setOf("share/kast/container", "share/kast/task-vm")
-        check(entries.none { entry -> retiredTaskRoots.any { entry == it || entry.startsWith("$it/") } }) {
-            "control product contains a retired task payload"
+        val retiredPayloadRoots = setOf("share/kast/container", "share/kast/task-vm", "share/kast/knowledge")
+        check(entries.none { entry -> retiredPayloadRoots.any { entry == it || entry.startsWith("$it/") } }) {
+            "control product contains a retired payload"
         }
         val nativeExecutables = paths.filter(Files::isRegularFile).filter { path ->
             Files.newInputStream(path).use { input ->
-                java.util.HexFormat.of().formatHex(input.readNBytes(4)) in setOf(
+                val header = input.readNBytes(32)
+                val native = java.util.HexFormat.of().formatHex(header.take(4).toByteArray()) in setOf(
                     "cffaedfe", "feedfacf", "cefaedfe", "feedface", "cafebabe", "bebafeca", "cafebabf", "bfbafeca", "7f454c46",
                 )
+                val dependencyLibrary = root.relativize(path).startsWith("share/kast/mcp-dependencies/site-packages") &&
+                    nativeLibraryHeaderMatches(header, targetPlatform.get())
+                native && !dependencyLibrary
             }
         }
+        logger.lifecycle("Control native inventory: executables={}", nativeExecutables.size)
         check(nativeExecutables == listOf(executable)) {
             "control product must contain exactly one native executable"
         }
@@ -99,7 +104,6 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/configuration-schema.json",
             "share/kast/wire-schema.json",
             "share/kast/ide-host.json",
-            "share/kast/knowledge/manifest.json",
             "share/kast/licenses/LICENSE",
         )
         check((required + guidanceDistributionEntries()).all(entries::contains)) { "control product is missing required entries" }
@@ -162,6 +166,22 @@ internal fun nativeQueryHeaderMatches(header: ByteArray, platform: String): Bool
             listOf(127, 69, 76, 70, 2, 1) && (header[18].toInt() and 255) == 183 && header[19].toInt() == 0
         "linux-x86_64" -> header.take(6).map { it.toInt() and 255 } ==
             listOf(127, 69, 76, 70, 2, 1) && header[18].toInt() == 62 && header[19].toInt() == 0
+        else -> false
+    }
+
+private fun nativeLibraryHeaderMatches(header: ByteArray, platform: String): Boolean =
+    when (platform) {
+        "macos-aarch64", "macos-x86_64" -> {
+            val cpu = if (platform == "macos-aarch64") 12 else 7
+            header.size >= 20 && header.take(8).map { it.toInt() and 255 } ==
+                listOf(207, 250, 237, 254, cpu, 0, 0, 1) &&
+                header[12].toInt() in setOf(6, 8) && header.slice(13..15).all { it == 0.toByte() }
+        }
+        "linux-aarch64", "linux-x86_64" ->
+            header.size == 32 && nativeQueryHeaderMatches(header.copyOf(20), platform) &&
+                header[16].toInt() == 3 && header[17].toInt() == 0 &&
+                // ET_DYN alone also describes PIE executables; a library has no entry point.
+                header.slice(24..31).all { it == 0.toByte() }
         else -> false
     }
 

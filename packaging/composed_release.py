@@ -34,7 +34,6 @@ from composed_host_probe import ProbeReceipt, probe
 from composition_platform import HostPlatform, host_platform
 from container_probe import ContainerProbeReceipt
 from container_probe import probe as probe_containers
-from isolated_runtime import ZIPAPP
 from managed_headless import (
     Input,
     Rejected,
@@ -269,7 +268,7 @@ def assemble_release(
         return source
     observe(ReleaseStage.DONOR, StageOutcome.COMPLETE)
     observe(ReleaseStage.INVENTORY, StageOutcome.STARTED)
-    installer = REPOSITORY / "packaging/install-legacy.sh"
+    installer = REPOSITORY / "install.sh"
     inventory = select_assembly_components(source, admitted, installer)
     if isinstance(inventory, Rejected):
         observe(ReleaseStage.INVENTORY, StageOutcome.REJECTED)
@@ -278,7 +277,7 @@ def assemble_release(
     _ = manifest.write_text(json.dumps(asdict(inventory), indent=2) + "\n")
     observe(ReleaseStage.INVENTORY, StageOutcome.COMPLETE)
     observe(ReleaseStage.COMPOSITION, StageOutcome.STARTED)
-    composed = compose(inputs, source, manifest, sha256(manifest), installer)
+    composed = compose(inputs, source, manifest, sha256(manifest))
     if isinstance(
         composed, (Rejected, CompositionRejected, DescriptorRejected, GraphRejected, IndexRejected)
     ):
@@ -448,7 +447,7 @@ def _qualify_release(
     if not re.fullmatch("[a-f0-9]{64}", expected) or sha256(archive) != expected:
         observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
         return BundleRejected(BundleFailure.DIGEST_MISMATCH, "bundle archive")
-    entry = installer_zipapp(archive, version, revision)
+    entry = bundle_component_records(archive, version, revision)
     if isinstance(entry, BundleRejected):
         observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
         return entry
@@ -558,8 +557,9 @@ def _qualify_release(
     return result
 
 
-def installer_zipapp(archive: Path, version: str, revision: str) -> bytes | BundleRejected:
-    name = f"setup-kast/{ZIPAPP}"
+def bundle_component_records(
+    archive: Path, version: str, revision: str
+) -> tuple[bytes, ...] | BundleRejected:
     releases = {
         f"setup-kast/assets/kast-control-release-v{version}.json": (
             "CONTROL_RELEASE",
@@ -573,7 +573,7 @@ def installer_zipapp(archive: Path, version: str, revision: str) -> bytes | Bund
     entries: dict[str, bytes] = {}
     with tarfile.open(archive, "r|gz") as contents:
         for member in contents:
-            if member.name != name and member.name not in releases:
+            if member.name not in releases:
                 continue
             if member.name in entries or not member.isfile() or not 0 < member.size <= 1_048_576:
                 return BundleRejected(BundleFailure.UNSAFE_PATH, member.name)
@@ -581,8 +581,6 @@ def installer_zipapp(archive: Path, version: str, revision: str) -> bytes | Bund
             assert source is not None
             with source:
                 entries[member.name] = source.read()
-    if name not in entries:
-        return BundleRejected(BundleFailure.INVALID_MANIFEST, name)
     for component, (kind, version_key) in releases.items():
         data = entries.get(component)
         record: object = json.loads(data) if data is not None else None
@@ -593,7 +591,7 @@ def installer_zipapp(archive: Path, version: str, revision: str) -> bytes | Bund
             or record.get(version_key) != version
         ):
             return BundleRejected(BundleFailure.INVALID_MANIFEST, component)
-    return entries[name]
+    return tuple(entries[name] for name in releases)
 
 
 def prepare_linux_support(output: Path) -> LinuxSupportPrepared | ReleaseRejected:

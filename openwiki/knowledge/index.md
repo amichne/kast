@@ -1,3 +1,3 @@
 # Files
 
-- [Installed knowledge projection and retrieval](installed-projection-and-retrieval.md) - Explains syntax-only declaration extraction, exact module and guide ownership, bounded installed resources, and local retrieval.
+- [Repository knowledge after installed bundle retirement](installed-projection-and-retrieval.md) - Explains the retained repository citation scanner and verified module report, separate from the retired installed knowledge payload and retrieval implementation.

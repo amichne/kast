@@ -422,8 +422,8 @@ private fun writeControlFiles(
             .trimMargin(),
     )
     require(controlFileCount >= 5)
-    val knowledge = Files.createDirectories(metadata.resolve("knowledge/declarations"))
-    repeat(controlFileCount - 5) { index -> Files.writeString(knowledge.resolve("$index.json"), emptyDocument) }
+    val inventory = Files.createDirectories(metadata.resolve("inventory-fixture/entries"))
+    repeat(controlFileCount - 5) { index -> Files.writeString(inventory.resolve("$index.json"), emptyDocument) }
 }
 
 private fun writeControlMetadata(metadata: Path, version: String) {

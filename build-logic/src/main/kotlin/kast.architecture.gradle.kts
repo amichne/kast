@@ -1,11 +1,7 @@
-import conventions.GenerateKnowledgeDocsTask
-import conventions.jsoncontracts.KnowledgeDocsRequest
-import org.gradle.api.tasks.Sync
 import support.architecture.gradle.GenerateKastModuleKnowledgeTask
 import support.architecture.gradle.GenerateVerificationGraphTask
 import support.architecture.gradle.TopologyImpactTask
 import support.architecture.gradle.VerifyKastArchitectureTask
-import support.knowledge.GenerateInstalledKnowledgeTask
 
 plugins {
     base
@@ -26,7 +22,6 @@ fun moduleArtifacts(variant: String): FileCollection = files(modulePaths.map { m
 })
 val moduleFacts = moduleArtifacts("kastModuleFacts")
 val productionClasses = moduleArtifacts("kastProductionClasses")
-val productionSources = moduleArtifacts("kastProductionSources")
 
 val generateVerificationGraph = tasks.register<GenerateVerificationGraphTask>("generateVerificationGraph") {
     group = "verification"
@@ -71,38 +66,6 @@ val trackedAgentGuidePaths = providers.exec {
         .sorted()
 }
 
-val currentSourceRevision = providers.gradleProperty("kastSourceRevision").orElse(
-    providers.exec {
-        workingDir(layout.projectDirectory)
-        commandLine("git", "rev-parse", "HEAD")
-    }.standardOutput.asText.map(String::trim)
-)
-
-val generateKastDocumentation = tasks.register<GenerateKnowledgeDocsTask>("generateKastDocumentation") {
-    group = "distribution"
-    description = "Extracts detached public Kotlin declarations and KDoc with isolated PSI syntax evidence."
-    repositoryDirectory.set(layout.projectDirectory)
-    sourceFiles.from(files(productionSources).asFileTree.matching { include("**/*.kt") })
-    outputFile.set(layout.buildDirectory.file("generated/knowledge/kotlin-docs.json"))
-}
-
-// Reuse the root build's already-isolated compiler/parser configuration without adding compiler PSI to Gradle's
-// own plugin classloader. The root build creates the configuration after this convention is applied, so configureEach
-// must observe future configurations as well as existing ones.
-configurations.configureEach {
-    if (name == "jsonContractParser") {
-        val parser = this
-        generateKastDocumentation.configure {
-            parserClasspath.from(
-                files(
-                    KnowledgeDocsRequest::class.java.protectionDomain.codeSource.location,
-                    parser,
-                )
-            )
-        }
-    }
-}
-
 tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
     group = "distribution"
     description = "Serializes the verified module architecture and scoped AGENTS.md knowledge."
@@ -116,27 +79,4 @@ tasks.register<GenerateKastModuleKnowledgeTask>("generateKastModuleKnowledge") {
     rootDirectory.set(layout.projectDirectory)
     outputFile.set(layout.buildDirectory.file("reports/kast-architecture/kast-module-knowledge.json"))
     dependsOn(verifyKastArchitecture)
-}
-
-val generateInstalledKnowledgeBundle = tasks.register<GenerateInstalledKnowledgeTask>("generateInstalledKnowledgeBundle") {
-    group = "distribution"
-    description = "Joins verified module guidance with detached public Kotlin declaration documentation."
-    productVersion.set(providers.gradleProperty("controlVersion").orElse(providers.provider { project.version.toString() }))
-    sourceRevision.set(currentSourceRevision)
-    moduleProjectPaths.set(modulePaths)
-    agentGuidePaths.set(trackedAgentGuidePaths)
-    agentGuideFiles.from(trackedAgentGuidePaths)
-    repositoryDirectory.set(layout.projectDirectory)
-    documentationFile.set(generateKastDocumentation.flatMap { it.outputFile })
-    outputDirectory.set(layout.buildDirectory.dir("generated/installed-knowledge"))
-    dependsOn(verifyKastArchitecture, generateKastDocumentation)
-}
-
-// The existing control product is the distribution owner. Augment it lazily when the root build registers its Sync
-// task rather than creating another installation path.
-tasks.withType<Sync>().matching { it.name == "stageKastControlProduct" }.configureEach {
-    dependsOn(generateInstalledKnowledgeBundle)
-    from(generateInstalledKnowledgeBundle.flatMap { it.outputDirectory }) {
-        into("share/kast/knowledge")
-    }
 }

@@ -19,7 +19,7 @@ from composed_bundle import (
     sha256,
 )
 from composition_platform import HostPlatform
-from managed_headless import Rejected, object_fields, selected_private_profile
+from managed_headless import Rejected, object_fields
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,10 +78,7 @@ def pack_runtime(
         or not re.fullmatch("[a-f0-9]{64}", bootstrap)
     ):
         return BundleRejected(BundleFailure.INVALID_MANIFEST, "assembly identity")
-    profile = selected_private_profile(root / "state")
-    if isinstance(profile, Rejected):
-        return profile
-    plugins = profile.directory / "plugins"
+    plugins = root / "components/plugins"
     prefix = "host" if target.is_linux else "host/Kast.app/Contents"
     sources = [
         (prefix + "/" + path.relative_to(home).as_posix(), path)

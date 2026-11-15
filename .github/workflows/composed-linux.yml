@@ -9,7 +9,7 @@ on:
         default: 0.0.0
         type: string
       action_revision:
-        description: Exact kast-action commit for Linux adapter evidence
+        description: Retired archive-action input; must be empty
         required: false
         type: string
       linux_only:
@@ -36,7 +36,7 @@ on:
         required: true
         type: string
       action_revision:
-        description: Exact kast-action commit for Linux adapter evidence
+        description: Retired archive-action input; must be empty
         required: false
         type: string
 
@@ -72,7 +72,7 @@ jobs:
           TARGET: ${{ matrix.target }}
         run: |
           bash .github/scripts/release/admit-source.sh --expected-source-revision "$GITHUB_SHA"
-          python3 -c 'import os,re; assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", os.environ["BUNDLE_VERSION"]), "numeric version required"'
+          python3 -c 'import os,re; assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", os.environ["BUNDLE_VERSION"]), "numeric version required"; assert not os.environ["ACTION_REVISION"], "archive-action contract retired; action_revision must be empty"'
           test -z "$RELEASE_TARGET" || test "$RELEASE_TARGET" = "$TARGET"
 
       - name: Set up Python
@@ -277,52 +277,6 @@ jobs:
           compression-level: 0
           retention-days: 30
 
-      - name: Admit the optional action revision
-        if: ${{ !cancelled() && steps.candidate-artifact.outcome == 'success' && matrix.target == 'linux-x86_64' && inputs.action_revision != '' }}
-        id: action-revision
-        shell: bash
-        run: |
-          [[ "$ACTION_REVISION" =~ ^[0-9a-f]{40}$ ]]
-          printf 'sha=%s\n' "$ACTION_REVISION" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: ${{ !cancelled() && steps.action-revision.outcome == 'success' }}
-        id: action-source
-        with:
-          repository: amichne/kast-action
-          ref: ${{ steps.action-revision.outputs.sha }}
-          path: build/kast-action
-          persist-credentials: false
-
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: ${{ !cancelled() && steps.action-source.outcome == 'success' }}
-        id: action-node
-        with:
-          node-version: '24.21.0'
-
-      - name: Install the exact Linux archive through the Node action
-        if: ${{ !cancelled() && steps.action-node.outcome == 'success' }}
-        shell: bash
-        run: |
-          actual_action_revision=$(git -C build/kast-action rev-parse HEAD)
-          [[ "$actual_action_revision" == "$ACTION_REVISION" ]]
-          archive="$PWD/build/composed-release/kast-composed-setup-v${BUNDLE_VERSION}-linux-x86_64.tar.gz"
-          digest=$(cut -d ' ' -f1 "${archive}.sha256")
-          url=$(/usr/bin/python3 -I -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).as_uri())' "$archive")
-          evidence="$PWD/build/action-evidence"
-          mkdir "$evidence"
-          printf '%s\n' "$actual_action_revision" > "$evidence/action-revision"
-          printf '%s\n' "$digest" > "$evidence/archive-sha256"
-          env -i PATH=/usr/bin:/bin HOME="$evidence" \
-            "INPUT_VERSION=$BUNDLE_VERSION" "INPUT_ARTIFACT_URL=$url" \
-            "INPUT_ARTIFACT_SHA256=$digest" INPUT_INSTALL_DIR=/tmp/ka \
-            "GITHUB_PATH=$evidence/path" "GITHUB_ENV=$evidence/environment" \
-            "GITHUB_OUTPUT=$evidence/outputs" "$(command -v node)" \
-            build/kast-action/dist/index.js > "$evidence/installation.json" 2> "$evidence/installation.stderr"
-          grep -Fx '/tmp/ka/bin' "$evidence/path"
-          grep -Fx 'kast-task-command=/tmp/ka/bin/kast-task' "$evidence/outputs"
-          test -z "$(find /tmp/ka/state \( -name trusted-paths.xml -o -name endpoint.json \) -print)"
-
       - name: Retain qualification evidence
         if: always()
         uses: actions/upload-artifact@v7.0.2
@@ -330,9 +284,7 @@ jobs:
           name: kast-composed-evidence-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             build/composed-evidence/
-            build/action-evidence/
             /tmp/kc/installer.log
             /tmp/kc/state/log/
-            /tmp/ka/installer.log
           if-no-files-found: warn
           retention-days: 14

@@ -375,7 +375,7 @@ jobs:
           cache-read-only: true
       - uses: ./.github/actions/jq-oracle
         if: needs.source-work.outputs.candidate != 'REUSED'
-      - name: Exercise the assembled Mac product
+      - name: Exercise the exact assembled Mac Control executable
         if: needs.source-work.outputs.candidate != 'REUSED'
         run: uv run --locked --script .github/scripts/ci/native_handoff.py qualify --version "0.0.$GITHUB_RUN_NUMBER"
       - name: Verify cold RPC subprocesses on macOS

@@ -11,7 +11,8 @@ code_sources:
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementExecution.kt
 - path: packaging/composed_bundle.py
-- path: packaging/isolated_runtime.py
+- path: packaging/mcp_environment.py
+- path: packaging/mcp_dependency_artifact.py
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
@@ -115,14 +116,20 @@ sources:
     resource: repo://packaging/managed_installation.py
   - id: openwiki-source-7f5792fd36f508c6577b3562
     resource: repo://packaging/managed_product_installation.py
+  - id: openwiki-source-b7b8ecfa241af4c2651f20bf
+    resource: repo://packaging/mcp_dependency_artifact.py
+  - id: openwiki-source-4cbbb1b86a2d8ec6765d827e
+    resource: repo://packaging/mcp_environment.py
   - id: openwiki-source-e7484ccb9a72cd71aa938a2f
     resource: repo://packaging/product_acceptance.py
   - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
     resource: repo://packaging/product_lifecycle_probe.py
-generated: { by: "amp", at: "2026-11-14T23:54:19.999Z" }
+  - id: openwiki-source-4f7923fe2058729f3c0b96fe
+    resource: repo://packaging/test_mcp_dependency_artifact.py
+generated: { by: "amp", at: "2026-11-15T19:39:32.150Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T23:57:28.873Z
+    at: 2026-11-15T19:39:32.150Z
 ---
 
 # Native management and harness connections
@@ -227,6 +234,12 @@ Immutable seed snapshots remain outside Phase 1.
 The default bundle includes CLI guidance and passive session hooks without an automatic MCP server.
 It does not prepare a Python environment.
 The explicit `--mcp` option selects the complete optional transport composition and its dependency preparation.
+Production materializes target-specific wheels and their inventory before delivery.
+The producer passes `--python sys.executable` explicitly to uv, with an empty `PATH` and interpreter downloads disabled.
+It does not depend on uv finding an ambient virtual environment or interpreter.
+Installed preparation admits that artifact, copies its site-packages, and runs an isolated import check with the private interpreter.
+It invokes no pip, uv, dependency solver, or download.
+The inventory and artifact record preserve target identity, requirement hashes, native extensions, and license files.
 The retired `connect` and `plugin` setup syntax directs callers to `kast install`.
 Legacy connection variants remain available for receipt admission and exact cleanup.
 
@@ -260,6 +273,7 @@ The wrapper writes the captured selection in a physical temporary directory befo
 An aliased temporary-directory setting therefore still produces a physical record path.
 An unqualified upgrade keeps its recorded tracking policy and rejects a pinned policy before release access.
 Pending recovery takes precedence over selector resolution and invokes only the manifest-owned recovery bridge.
+Bridge admission requires the complete Control payload inventory to match the manifest, with unique paths and verified bytes.
 The wrapper preserves the child terminal result and does not select another release after recovery.
 
 The parser admits `uninstall --force [--json]` for legacy state only, without a harness selector.
@@ -300,8 +314,8 @@ These mechanisms alone do not establish that a running IDEA loaded the selected 
 
 ## Source owners
 
-- [`isolated_runtime.py`](../../packaging/isolated_runtime.py)
-
+- [mcp_environment.py](../../packaging/mcp_environment.py)
+- [mcp_dependency_artifact.py](../../packaging/mcp_dependency_artifact.py)
 - [KastManagementMain.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt)
 - [ManagementCommand.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt)
 - [ManagementStatus.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt)

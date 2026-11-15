@@ -202,6 +202,73 @@ class HttpReleaseSource:
             return TransferFailure.UNAVAILABLE
 
 
+class LocalReleaseSource:
+    """Transport local product bytes; normal product admission remains authoritative."""
+
+    def __init__(self, directory: Path):
+        self.directory = directory.absolute()
+
+    def path(self, url: str) -> Path | TransferFailure:
+        name = url.rsplit("/", 1)[-1]
+        if not name or name in {".", ".."} or "\\" in name:
+            return TransferFailure.NOT_FOUND
+        parent = self.directory if name == "build-record.json" else self.directory / "payload"
+        path = parent / name
+        if (
+            self.directory.is_symlink()
+            or parent.is_symlink()
+            or not parent.is_dir()
+            or path.is_symlink()
+            or not path.is_file()
+        ):
+            return TransferFailure.NOT_FOUND
+        return path
+
+    def read(self, url: str, limit: int) -> bytes | TransferFailure:
+        try:
+            path = self.path(url)
+            if isinstance(path, TransferFailure):
+                return path
+            with path.open("rb") as stream:
+                raw = stream.read(limit + 1)
+            return raw if len(raw) <= limit else TransferFailure.LIMIT_EXCEEDED
+        except OSError:
+            return TransferFailure.UNAVAILABLE
+
+    def download(self, url: str, destination: Path, limit: int) -> DownloadedFile | TransferFailure:
+        size, digest = 0, hashlib.sha256()
+        try:
+            path = self.path(url)
+            if isinstance(path, TransferFailure):
+                return path
+            with path.open("rb") as stream, destination.open("xb") as output:
+                while block := stream.read(min(65_536, limit - size + 1)):
+                    size += len(block)
+                    if size > limit:
+                        return TransferFailure.LIMIT_EXCEEDED
+                    digest.update(block)
+                    _ = output.write(block)
+            return DownloadedFile(destination, digest.hexdigest(), size)
+        except OSError:
+            return TransferFailure.UNAVAILABLE
+
+    def selection(self) -> ProductSelection | Rejected:
+        raw = self.read("build-record.json", MAXIMUM_RECORD_BYTES)
+        if isinstance(raw, TransferFailure):
+            return Rejected(Failure.ARTIFACT_INVALID, Stage.RECORDS, str(self.directory))
+        record = decode_installed_product_record(raw)
+        if isinstance(record, Failure):
+            return Rejected(Failure.ARTIFACT_INVALID, Stage.RECORDS, str(self.directory))
+        return ProductSelection(
+            f"developer-v{record.version}",
+            record,
+            hashlib.sha256(raw).hexdigest(),
+            "PinnedBuild",
+            None,
+            record.sourceRevision,
+        )
+
+
 def mapping(value: object) -> TypeGuard[dict[object, object]]:
     return isinstance(value, dict)
 
@@ -251,6 +318,11 @@ class ProductProducer:
 
 
 @dataclass(frozen=True, slots=True)
+class LocalProductProducer:
+    kind: Literal["LOCAL"] = "LOCAL"
+
+
+@dataclass(frozen=True, slots=True)
 class ProductInputs:
     javaReleaseSha256: str
     dependencyLocksSha256: str
@@ -269,7 +341,7 @@ class NativeCompositionEvidence:
 @dataclass(frozen=True, slots=True)
 class NativeQualification:
     receipt: ProductAsset
-    producer: ProductProducer
+    producer: ProductProducer | LocalProductProducer
     bundleSha256: str
     runtimeSha256: str
     controlSha256: str
@@ -301,6 +373,20 @@ class ProductRecord:
     sourceTree: str
     version: str
     producer: ProductProducer
+    targets: tuple[ProductTarget, ...]
+
+    def assets(self) -> tuple[ProductAsset, ...]:
+        return tuple(asset for target in self.targets for asset in target.assets())
+
+
+@dataclass(frozen=True, slots=True)
+class LocalProductRecord:
+    schemaVersion: Literal[4]
+    repository: str
+    sourceRevision: str
+    sourceTree: str
+    version: str
+    producer: LocalProductProducer
     targets: tuple[ProductTarget, ...]
 
     def assets(self) -> tuple[ProductAsset, ...]:
@@ -406,7 +492,12 @@ def product_target(value: object, version: str) -> ProductTarget | Failure:
             return Failure.ARTIFACT_INVALID
         base, composition = parsed_base, NativeCompositionEvidence(*witnesses)
     receipt = product_asset(evidence["receipt"], f"qualification-{target}.json")
-    producer = product_producer(evidence["producer"], ".github/workflows/composed-linux.yml")
+    provenance = evidence["producer"]
+    producer = (
+        LocalProductProducer()
+        if mapping(provenance) and set(provenance) == {"kind"} and provenance["kind"] == "LOCAL"
+        else product_producer(provenance, ".github/workflows/composed-linux.yml")
+    )
     control = evidence["controlSha256"]
     if (
         isinstance(receipt, Failure)
@@ -431,7 +522,7 @@ def product_target(value: object, version: str) -> ProductTarget | Failure:
     )
 
 
-def parse_product_record(value: object) -> ProductRecord | Failure:
+def parse_installed_product_record(value: object) -> ProductRecord | LocalProductRecord | Failure:
     """Schema evidence only; producer and retained byte admission belong to the publisher."""
     if not mapping(value) or set(value) != {
         "schemaVersion",
@@ -446,10 +537,18 @@ def parse_product_record(value: object) -> ProductRecord | Failure:
     build, tree, version, targets = (
         value[key] for key in ("sourceRevision", "sourceTree", "version", "targets")
     )
-    producer = product_producer(value["producer"], ".github/workflows/ci.yml")
+    provenance = value["producer"]
+    producer = (
+        LocalProductProducer()
+        if value["schemaVersion"] == 4
+        and mapping(provenance)
+        and set(provenance) == {"kind"}
+        and provenance["kind"] == "LOCAL"
+        else product_producer(provenance, ".github/workflows/ci.yml")
+    )
     if (
         type(value["schemaVersion"]) is not int
-        or value["schemaVersion"] not in (2, 3)
+        or value["schemaVersion"] not in (2, 3, 4)
         or value["repository"] != REPOSITORY
         or not revision(build)
         or not revision(tree)
@@ -458,7 +557,7 @@ def parse_product_record(value: object) -> ProductRecord | Failure:
         or not re.fullmatch(r"0\.0\.[1-9][0-9]*", version)
         or isinstance(producer, Failure)
         or not sequence(targets)
-        or len(targets) != 2
+        or len(targets) != (1 if isinstance(producer, LocalProductProducer) else 2)
     ):
         return Failure.ARTIFACT_INVALID
     facts: list[ProductTarget] = []
@@ -467,6 +566,14 @@ def parse_product_record(value: object) -> ProductRecord | Failure:
         if isinstance(admitted, Failure):
             return admitted
         facts.append(admitted)
+    if isinstance(producer, LocalProductProducer):
+        if any(not isinstance(item.qualification.producer, LocalProductProducer) for item in facts):
+            return Failure.ARTIFACT_INVALID
+        return LocalProductRecord(4, REPOSITORY, build, tree, version, producer, tuple(facts))
+    if value["schemaVersion"] == 4 or any(
+        not isinstance(item.qualification.producer, ProductProducer) for item in facts
+    ):
+        return Failure.ARTIFACT_INVALID
     if tuple(item.target for item in facts) != PRODUCT_TARGETS:
         return Failure.ARTIFACT_INVALID
     if any((item.runtimeBase is not None) != (value["schemaVersion"] == 3) for item in facts):
@@ -476,11 +583,25 @@ def parse_product_record(value: object) -> ProductRecord | Failure:
     )
 
 
+def parse_product_record(value: object) -> ProductRecord | Failure:
+    record = parse_installed_product_record(value)
+    return Failure.ARTIFACT_INVALID if isinstance(record, LocalProductRecord) else record
+
+
 def decode_product_record(raw: bytes) -> ProductRecord | Failure:
     if len(raw) > MAXIMUM_RECORD_BYTES:
         return Failure.ARTIFACT_INVALID
     try:
         return parse_product_record(document(raw))
+    except (ValueError, UnicodeError, RecursionError):
+        return Failure.ARTIFACT_INVALID
+
+
+def decode_installed_product_record(raw: bytes) -> ProductRecord | LocalProductRecord | Failure:
+    if len(raw) > MAXIMUM_RECORD_BYTES:
+        return Failure.ARTIFACT_INVALID
+    try:
+        return parse_installed_product_record(document(raw))
     except (ValueError, UnicodeError, RecursionError):
         return Failure.ARTIFACT_INVALID
 
@@ -532,7 +653,7 @@ def parse_release_mapping(value: object) -> ReleaseMapping | Failure:
 @dataclass(frozen=True, slots=True)
 class ProductSelection:
     releaseTag: str
-    record: ProductRecord
+    record: ProductRecord | LocalProductRecord
     recordSha256: str
     policy: str
     publicVersion: str | None
@@ -560,7 +681,7 @@ def parse_product_selection(value: object) -> ProductSelection | Failure:
         or value["type"] != "Product"
     ):
         return Failure.SELECTOR_INVALID
-    record = parse_product_record(value["record"])
+    record = parse_installed_product_record(value["record"])
     tag, digest, policy, public, main = (
         value[key]
         for key in ("releaseTag", "recordSha256", "policy", "publicVersion", "mainRevision")
@@ -573,6 +694,8 @@ def parse_product_selection(value: object) -> ProductSelection | Failure:
         or not isinstance(policy, str)
         or policy not in ("TrackStable", "TrackMain", "PinnedBuild")
     ):
+        return Failure.SELECTOR_INVALID
+    if isinstance(record, LocalProductRecord) and (policy != "PinnedBuild" or public is not None):
         return Failure.SELECTOR_INVALID
     if public is None:
         if (
@@ -1186,6 +1309,24 @@ def integration_digest(control: Path) -> str:
     return digest.hexdigest()
 
 
+def native_dependency_library(header: bytes, target: str) -> bool:
+    if len(header) != 32:
+        return False
+    if target == "macos-aarch64":
+        return header[:8] == b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01" and header[12:16] in (
+            b"\x06\x00\x00\x00",
+            b"\x08\x00\x00\x00",
+        )
+    if target == "linux-x86_64":
+        return (
+            header[:6] == b"\x7fELF\x02\x01"
+            and header[16:20] == b"\x03\x00\x3e\x00"
+            # ET_DYN also describes PIE executables; a library has no entry point.
+            and header[24:32] == bytes(8)
+        )
+    return False
+
+
 def inspect_control(
     control: Path, selection: Selection, record: ComponentRecord, target: str = PLATFORM
 ) -> BuildIdentity | Failure:
@@ -1250,7 +1391,8 @@ def inspect_control(
                     return Failure.ARTIFACT_INVALID
                 if path.is_file():
                     with path.open("rb") as stream:
-                        if stream.read(4) in (
+                        header = stream.read(32)
+                        if header[:4] in (
                             b"\xcf\xfa\xed\xfe",
                             b"\xfe\xed\xfa\xcf",
                             b"\x7fELF",
@@ -1261,7 +1403,13 @@ def inspect_control(
                             b"\xca\xfe\xba\xbf",
                             b"\xbf\xba\xfe\xca",
                         ):
-                            native_files.append(path)
+                            if not (
+                                path.is_relative_to(
+                                    control / "share/kast/mcp-dependencies/site-packages"
+                                )
+                                and native_dependency_library(header, target)
+                            ):
+                                native_files.append(path)
             if native_files != [executable]:
                 return Failure.ARTIFACT_INVALID
         elif query_header != native_header:
@@ -1437,7 +1585,12 @@ def download_composition(
         return Rejected(Failure.BINARY_UNAVAILABLE, Stage.RECORDS, requested)
     if (
         hashlib.sha256(raw).hexdigest() != selection.recordSha256
-        or decode_product_record(raw) != selection.record
+        or (
+            decode_installed_product_record(raw)
+            if isinstance(source, LocalReleaseSource)
+            else decode_product_record(raw)
+        )
+        != selection.record
     ):
         return Rejected(Failure.ARTIFACT_INVALID, Stage.RECORDS, requested)
     # Lazy import preserves the existing self-contained legacy recovery bootstrap.

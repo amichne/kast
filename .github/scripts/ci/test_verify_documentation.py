@@ -12,7 +12,10 @@ from verify_documentation import commands
 
 class DocumentationProofTest(unittest.TestCase):
     def test_installer_examples_keep_their_offline_consumer_without_product_assembly(self):
-        self.assertIn(("python3", "packaging/test-installer-entrypoint.py"), commands(()))
+        self.assertIn(
+            ("uv", "run", "--locked", "--project", "packaging", "python", "packaging/test-installer-entrypoint.py"),
+            commands(()),
+        )
         # Only declaration qualification needs the isolated PSI parser, not product assembly.
         self.assertEqual(
             [("./gradlew", "verifyKnowledgeClaims")],

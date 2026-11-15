@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:7eded273e75733574429d4354cedfd8e684864e8b5dec3c293729aa963008465",
+  "pageVersion": "sha256:69f04d3d2678b9b7fefcceeee86cfa1518e66e06c0a6dee2b3c50d6fb358512e",
   "claims": [
     {
       "id": "claim_cba32ff6d1504aa6a89a0a11ab8441d3",
@@ -77,7 +77,7 @@
           "version": "repo-file-v1:sha256:704c6fae450e2b83c1ba216a4139c9e5658833b9e02d47d394d4ceda313fb0bd"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt#L44-L65",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt#L48-L69",
           "version": "repo-lines-v1:sha256:a03ef3eb47adcd3ee8b5d5e061405e5cb055bdb28c53dd048e23178d4f467df7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2YjY1ZTdlNzI1NWM2OWIxNWNmYmJkNTY4YjZkOWVmODhkYjBmZDQ0OTcwNGJmNjQ3OTk2ODhiZjRiNThlNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0MTA4YmMzNTJmZmIyMzY1YTljMjNlYjg4ZDUwMjM2Y2FjNzZlMzNiZDYyNTM1YWYyMGMyMDAwNDdmYmE2YzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlM2NkMTdjZDlhZmE2NmE1MDBmYjdlZjQ2MTA0NTJkZWY1YjJjNjAxNzM5NDljZjA0ODA0ZDY4ZDVkY2U2YzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -117,7 +117,7 @@
           "version": "repo-lines-v1:sha256:3118ca2b84f949c9fed489cabeb67fda381e1612beb0d439e60fe6c0d739f31b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3YTJiMzc2NjAwOTFkYjA1ZDFjYjY4YTFhNzAwNDNjOWEyNTkwYTljZDE2ZDU4MTBmMjExY2MwYzMwZmI1NjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyZTAyNWY3MDc3ODg0MzA3NTBjNDU3Y2FiNDc3NmQ0ZDk3ZDA1MzExNTdmNmY5MjEyNDM2ZjZmZmFlOTA0OGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3M2M5OTNkMDIyNTMyNjA3YjIxNDllNzlmMjk1ZTNiZDBlNDEyZTBjYzFmZGEzYjJjNzBlOGZlZDA3M2M0YmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMifQ"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt#L44-L65",
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatusRendering.kt#L48-L69",
           "version": "repo-lines-v1:sha256:a03ef3eb47adcd3ee8b5d5e061405e5cb055bdb28c53dd048e23178d4f467df7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2YjY1ZTdlNzI1NWM2OWIxNWNmYmJkNTY4YjZkOWVmODhkYjBmZDQ0OTcwNGJmNjQ3OTk2ODhiZjRiNThlNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0MTA4YmMzNTJmZmIyMzY1YTljMjNlYjg4ZDUwMjM2Y2FjNzZlMzNiZDYyNTM1YWYyMGMyMDAwNDdmYmE2YzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlM2NkMTdjZDlhZmE2NmE1MDBmYjdlZjQ2MTA0NTJkZWY1YjJjNjAxNzM5NDljZjA0ODA0ZDY4ZDVkY2U2YzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
@@ -477,6 +477,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T03:03:20.161Z"
+    "at": "2026-11-15T20:10:47.711Z"
   }
 }

@@ -17,7 +17,8 @@ Kast manages its own Host on macOS ARM64 and Linux x86-64. Desktop IDEA is not a
 ## Requirements
 
 Use a supported machine, a Kotlin Gradle project, Bash, curl, and standard archive and checksum utilities.
-Kast supplies its private interpreter, Java runtime, and IntelliJ analysis runtime. No user Python or uv installation is required.
+Kast supplies its private interpreter, Java runtime, and IntelliJ analysis runtime. No user Python, uv, or pip installation is required.
+The bootstrap downloads pinned interpreter and dependency bytes, so setup still requires network access.
 Your project still supplies its build configuration, dependencies, and any required credentials.
 
 <a id="install" />
@@ -38,12 +39,43 @@ Add the printed command directory to `PATH` if needed. The installer does not ed
 
 Use [agent setup](/reference/integrations) after installation. No desktop plugin installation or restart is needed.
 
+### Install a local product globally
+
+On macOS ARM64, build and qualify a clean committed checkout first:
+
+```shell
+mise exec -- uv run --locked --project packaging python packaging/local_product_install.py \
+  build --source /path/to/clean/checkout --output /absolute/path/to/product
+```
+
+From a checkout, pass a local product directory to the same installer:
+
+```shell
+/bin/bash ./install.sh --local-artifact /absolute/path/to/product --dry-run --json
+/bin/bash ./install.sh --local-artifact /absolute/path/to/product --json
+```
+
+The directory contains `build-record.json` and a `payload/` directory with the selected platform's recorded artifacts.
+These include the setup bundle, runtime archive, native qualification receipt, and runtime base when the record requires one.
+A Control archive or setup bundle alone is not a complete product.
+Local build records identify only the qualified platform. They record local provenance, not GitHub runs or release qualification.
+
+This uses the normal installation and command paths above, not a separate contributor installation.
+The installer pins the record's exact product identity and verifies the same digests, archive inventories, and qualification evidence as remote setup.
+It reads product bytes locally and never falls back to GitHub for missing files.
+The bootstrap still downloads its pinned private interpreter and dependency; this option does not make setup offline.
+Do not combine `--local-artifact` with `--channel`, `--version`, or `--commit`.
+
 <Warning>
   Desktop IntelliJ IDEA Hosts and user-space plugin installation are deprecated and targeted for removal.
-  Legacy component installation with `--host-only` remains a compatibility path, not managed product setup.
+  The desktop component installer and checkout shell adapters are retired. Use `install.sh` for managed product setup.
   Existing 0.51.x desktop Hosts and their wire values remain supported for compatibility.
   Use managed headless Hosts with private workspace state and automatic workspace creation instead.
 </Warning>
+
+Explicit MCP setup uses target-specific dependencies packaged with the selected Control build.
+It verifies the private interpreter and exact dependency inventory before preparation. It does not invoke pip, uv, or a dependency solver.
+Upgrade, recorded recovery, and product removal reuse admitted private support; missing or changed bytes reject without an ambient interpreter fallback.
 
 ## 1. Install the selected release
 

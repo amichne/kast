@@ -11,14 +11,13 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SKIP_SUMMARY = re.compile(r'\bskipped=([0-9]+)\b')
+CASE_SUMMARY = re.compile(r'\bRan ([0-9]+) tests? in\b')
 
 
 def expected_skips() -> dict[str, int]:
     permitted = {}
     if platform.system() != 'Darwin':
         permitted['test-host-installation.py'] = 2
-    if platform.system() != 'Darwin' or platform.machine() != 'arm64':
-        permitted['test-install-checkout.py'] = 15
     return permitted
 
 
@@ -55,9 +54,14 @@ def main() -> int:
                     evidence.seek(max(0, log.stat().st_size - 4096))
                     print(evidence.read().decode(errors='replace'), file=sys.stderr)
                 return 1
-            with log.open('rb') as evidence:
-                evidence.seek(max(0, log.stat().st_size - 4096))
-                summary = evidence.read().decode(errors='replace')
+            with log.open(errors='replace') as evidence:
+                summary = ''.join(line for line in evidence
+                                  if CASE_SUMMARY.search(line) or SKIP_SUMMARY.search(line))
+            cases = CASE_SUMMARY.findall(summary)
+            if len(cases) != 1 or int(cases[0]) == 0:
+                print(f'portable-tests: {path.name}: test selection rejected', file=sys.stderr)
+                print(summary, file=sys.stderr)
+                return 1
             observed_skips = sum(int(count) for count in SKIP_SUMMARY.findall(summary))
             if observed_skips != permitted_skips.get(path.name, 0):
                 print(f'portable-tests: {path.name}: unexpected skipped cases ({observed_skips})', file=sys.stderr)

@@ -12,6 +12,7 @@ import tarfile
 import tempfile
 import unittest
 import zipfile
+from contextlib import redirect_stderr
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
@@ -19,6 +20,7 @@ from unittest.mock import patch
 import defusedxml
 
 import generate_bootstrap as generator
+import mcp_environment as mcp
 import private_interpreter as private
 
 
@@ -28,13 +30,128 @@ def script(path: Path, source: str) -> None:
 
 
 class BootstrapTest(unittest.TestCase):
+    def test_retained_support_has_one_exact_inventory(self) -> None:
+        expected = {
+            "bootstrap_entry.py",
+            "private_interpreter.py",
+            "managed_installation.py",
+            "managed_release.py",
+            "managed_product.py",
+            "managed_product_installation.py",
+            "managed_product_removal.py",
+            "immutable_store.py",
+            "product_removal_recovery.py",
+            "product_mcp_removal.py",
+            "mcp_environment.py",
+            "managed_update_contract.py",
+            "managed_update_journal.py",
+            "reload_hosted.py",
+            "host-installation.py",
+            "installation-recovery.py",
+            "installation-lifecycle.py",
+            "host_directory_exchange.py",
+            "composed_bundle.py",
+            "composition_platform.py",
+            "managed_headless.py",
+            "runtime_archive.py",
+            "runtime_base.py",
+            "install.sh",
+            "install-candidate.sh",
+            "managed_installation.py.lock",
+            "mcp-requirements.txt",
+            "mcp-requirements.txt.lock",
+            "managed-install-v1",
+            "install-completion-v1",
+            "prune-prior-installations.py",
+            "codex-mcp-registration.py",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "support"
+            generator.stage_support(output)
+            self.assertEqual(expected, {path.name for path in output.iterdir()})
+            self.assertTrue(generator.check_support(output))
+            (output / "managed_release.py").unlink()
+            self.assertFalse(generator.check_support(output))
+            generator.stage_support(output)
+            _ = (output / "foreign").write_bytes(b"protected")
+            with self.assertRaises(ValueError):
+                generator.stage_support(output)
+            self.assertEqual(b"protected", (output / "foreign").read_bytes())
+
+    def test_support_inventory_rejects_duplicate_and_unsafe_paths(self) -> None:
+        for names in (("bootstrap_entry.py", "bootstrap_entry.py"), ("../outside",), ("/root",)):
+            with self.subTest(names=names), self.assertRaises(ValueError):
+                _ = generator.validate_members(names)
+
+    def test_dependency_production_preserves_finite_rejection(self) -> None:
+        for uv, failure in (
+            (None, mcp.Failure.PROCESS),
+            (Path("/producer/uv"), mcp.Failure.INSTALL),
+            (Path("/producer/uv"), mcp.Failure.TIMEOUT),
+        ):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary).resolve() / "support"
+                diagnostic = io.StringIO()
+                with (
+                    patch.object(generator.producer, "produce", return_value=mcp.Rejected(failure)),
+                    redirect_stderr(diagnostic),
+                    self.assertRaisesRegex(ValueError, failure.value),
+                ):
+                    generator.stage_support(output, mcp.DependencyTarget.MACOS_ARM64, uv)
+                self.assertEqual(
+                    {"status": "MCP_REJECTED", "failure": failure.value},
+                    json.loads(diagnostic.getvalue()),
+                )
+                self.assertFalse((output / "mcp-dependencies").exists())
+
+    def test_shipped_support_requires_exact_target_dependency_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary).resolve()
+            generator.stage_support(output)
+            target = mcp.DependencyTarget.MACOS_ARM64
+            self.assertFalse(generator.check_support(output, target))
+            site = output / "mcp-dependencies/site-packages"
+            site.mkdir(parents=True)
+            dependency = site / "native.so"
+            _ = dependency.write_bytes(b"native dependency fixture")
+            dependency.chmod(0o644)
+            scripts = generator.HERE.parent / "agent-tools/skills/kast/scripts"
+            server, lock, requirements = (
+                "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in (
+                    scripts / "server.py",
+                    scripts / "server.py.lock",
+                    generator.HERE / "mcp-requirements.txt",
+                )
+            )
+            export = mcp.RequirementsLock(server, lock, requirements)
+            artifact = mcp.DependencyArtifact(
+                target,
+                export,
+                mcp.Inventory(
+                    (
+                        mcp.File(
+                            "native.so",
+                            "sha256:" + hashlib.sha256(b"native dependency fixture").hexdigest(),
+                            0o644,
+                        ),
+                    ),
+                    (),
+                ),
+            )
+            _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(artifact))
+            self.assertTrue(generator.check_support(output, target))
+            self.assertFalse(generator.check_support(output, mcp.DependencyTarget.LINUX_X86_64))
+            _ = dependency.write_bytes(b"changed dependency")
+            self.assertFalse(generator.check_support(output, target))
+
     def test_checked_in_bootstrap_is_the_exact_generated_inventory(self) -> None:
         self.assertEqual(generator.render(), (generator.HERE.parent / "install.sh").read_bytes())
         # Linux limits each exec argument to 32 pages, including the terminating NUL.
         self.assertLess(len(generator.render()), 131_072)
         inventory = (generator.HERE.parent / "build.gradle.kts").read_text()
-        for name in generator.SOURCES:
-            self.assertIn('"packaging/' + name + '"', inventory)
+        self.assertIn("dependsOn(generateInstallerSupport)", inventory)
+        self.assertIn("from(installerSupportDirectory)", inventory)
 
     def test_unsupported_platform_rejects_before_any_storage_or_transfer(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -56,6 +173,28 @@ class BootstrapTest(unittest.TestCase):
             self.assertEqual(1, result.returncode)
             self.assertIn("supported complete products", result.stderr)
             self.assertEqual([tools], list(root.iterdir()))
+
+    def test_local_artifact_conflicts_reject_before_downloads(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bootstrap = root / "install.sh"
+            _ = bootstrap.write_bytes(generator.render())
+            for arguments in (
+                ["--local-artifact", str(root), "--channel", "preview"],
+                ["--version", "1.2.3", "--local-artifact", str(root)],
+                ["--local-artifact"],
+            ):
+                with self.subTest(arguments=arguments):
+                    result = subprocess.run(
+                        ["/bin/bash", str(bootstrap), *arguments],
+                        env={"HOME": str(root), "PATH": ""},
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    self.assertEqual(1, result.returncode)
+                    self.assertIn("select exactly one build", result.stderr)
+                    self.assertEqual([bootstrap], list(root.iterdir()))
 
     def test_both_target_bootstraps_run_the_engine_without_python_or_uv_on_path(self) -> None:
         for system, machine in (("Darwin", "arm64"), ("Linux", "x86_64")):
@@ -122,8 +261,18 @@ class BootstrapTest(unittest.TestCase):
                         )
                     ),
                 )
+                local = root / "local product ; literal"
+                local.mkdir()
                 result = subprocess.run(
-                    ["/bin/bash", str(bootstrap), "--recover-only", "--dry-run", "--json"],
+                    [
+                        "/bin/bash",
+                        str(bootstrap),
+                        "--local-artifact",
+                        str(local),
+                        "--recover-only",
+                        "--dry-run",
+                        "--json",
+                    ],
                     env={"HOME": str(home), "PATH": str(tools), "TMPDIR": str(root)},
                     capture_output=True,
                     text=True,

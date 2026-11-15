@@ -561,13 +561,14 @@ internal fun productFixture(temporary: Path, host: String = "fixture-not-a-plugi
     return InstalledRuntimeFixture(installation, runtime, reference)
 }
 
-private fun writeProductReference(installation: Path, reference: InstalledProductReference) {
+internal fun writeProductReference(installation: Path, reference: InstalledProductReference) {
     Files.writeString(
         installation.resolve("share/kast/product-selection.json"),
         containerJson.encodeToString(reference),
     )
     val files =
         listOf(
+                "bin/kast",
                 "share/kast/build-record.json",
                 "share/kast/product-selection.json",
                 "share/kast/install-candidate.sh",

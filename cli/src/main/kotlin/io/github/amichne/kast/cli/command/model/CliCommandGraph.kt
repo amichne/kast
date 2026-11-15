@@ -9,7 +9,6 @@ import io.github.amichne.kast.cli.CliTextDocument
 import io.github.amichne.kast.cli.CliTextDocumentAdmission
 import io.github.amichne.kast.cli.command.change.changeCommandGroup
 import io.github.amichne.kast.cli.command.codex.codexCommandGroup
-import io.github.amichne.kast.cli.command.knowledge.knowledgeCommandFamily
 import io.github.amichne.kast.cli.command.product.productCommandGroup
 import io.github.amichne.kast.cli.command.source.sourceCommandGroup
 import io.github.amichne.kast.cli.command.workspace.indexCommandGroup
@@ -323,7 +322,6 @@ private fun canonicalGraph(
 ): CliCommandGraph {
     val tools = io.github.amichne.kast.cli.command.tool.publicToolCommands(preparers, requestInput)
     val product = productCommandGroup()
-    val knowledge = knowledgeCommandFamily()
     val appServer = io.github.amichne.kast.cli.command.appserver.appServerCommandGroup()
     val codex = codexCommandGroup()
     val ide = io.github.amichne.kast.cli.command.ide.ideCommandGroup()
@@ -339,7 +337,6 @@ private fun canonicalGraph(
     val localFamilies =
         listOf(
             product,
-            knowledge,
             codex,
             ide,
         )

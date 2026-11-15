@@ -12,7 +12,9 @@ import ctypes
 import hashlib
 import json
 import os
+import platform
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -27,6 +29,9 @@ PYTHON = METADATA / "private-python/bin/python3.12"
 HELPER = METADATA / "mcp_environment.py"
 REQUIREMENTS = METADATA / "mcp-requirements.txt"
 EXPORT_LOCK = METADATA / "mcp-requirements.txt.lock"
+DEPENDENCIES = METADATA / "mcp-dependencies"
+ARTIFACT = DEPENDENCIES / "artifact.json"
+DEPENDENCY_SITE = DEPENDENCIES / "site-packages"
 SCRIPTS = METADATA / "agent-tools/compositions/mcp/plugins/kast/skills/kast/scripts"
 SERVER = SCRIPTS / "server.py"
 SERVER_LOCK = SCRIPTS / "server.py.lock"
@@ -83,6 +88,38 @@ class RequirementsLock:
     schemaVersion: int = 1
 
 
+class DependencyTarget(StrEnum):
+    MACOS_ARM64 = "macos-aarch64"
+    LINUX_X86_64 = "linux-x86_64"
+
+    @property
+    def triple(self) -> str:
+        return (
+            "aarch64-apple-darwin"
+            if self == DependencyTarget.MACOS_ARM64
+            else "x86_64-unknown-linux-gnu"
+        )
+
+
+def native_target() -> DependencyTarget | Rejected:
+    match platform.system(), platform.machine():
+        case "Darwin", "arm64" | "aarch64":
+            return DependencyTarget.MACOS_ARM64
+        case "Linux", "x86_64" | "amd64":
+            return DependencyTarget.LINUX_X86_64
+        case _:
+            return Rejected(Failure.INSTALLATION)
+
+
+@dataclass(frozen=True)
+class DependencyArtifact:
+    target: DependencyTarget
+    export: RequirementsLock
+    inventory: Inventory
+    pythonVersion: str = "3.12.12"
+    schemaVersion: int = 1
+
+
 @dataclass(frozen=True)
 class Identity:
     device: int
@@ -100,6 +137,7 @@ class Installation:
     identity: Identity
     manifestSha256: str
     export: RequirementsLock
+    dependencies: Inventory
 
 
 @dataclass(frozen=True)
@@ -165,7 +203,7 @@ def sequence(value: object) -> TypeGuard[list[object]]:
     return isinstance(value, list)
 
 
-def encoded(value: Receipt | Prepared | Rejected | RequirementsLock) -> bytes:
+def encoded(value: Receipt | Prepared | Rejected | RequirementsLock | DependencyArtifact) -> bytes:
     return (json.dumps(asdict(value), sort_keys=True, separators=(",", ":")) + "\n").encode()
 
 
@@ -261,7 +299,7 @@ def inventory(root: Path) -> Inventory | Rejected:
 
 
 def admit_installation(root: Path) -> Installation | Rejected:
-    """Admit the original inventory before running Python/pip or mutating state.
+    """Admit the original inventory before running Python or mutating state.
 
     The inventory is the local installation authority, not a signed trust root.
     The caller must admit the helper/interpreter before launching this helper.
@@ -288,7 +326,7 @@ def admit_installation(root: Path) -> Installation | Rejected:
         # Verify every interpreter and canonical server import, including absent
         # and extra files. Unrelated native payloads remain their owner's concern.
         selected: set[str] = set()
-        for subtree in (METADATA / "private-python", SCRIPTS):
+        for subtree in (METADATA / "private-python", SCRIPTS, DEPENDENCIES):
             observed = inventory(root / subtree)
             if isinstance(observed, Rejected):
                 return Rejected(Failure.INSTALLATION)
@@ -316,8 +354,20 @@ def admit_installation(root: Path) -> Installation | Rejected:
         )
         if record_bytes(root / EXPORT_LOCK) != encoded(export):
             return Rejected(Failure.INSTALLATION)
+        target = native_target()
+        dependencies = inventory(root / DEPENDENCY_SITE)
+        if (
+            isinstance(target, Rejected)
+            or isinstance(dependencies, Rejected)
+            or not dependencies.files
+            or {path.name for path in (root / DEPENDENCIES).iterdir()}
+            != {"artifact.json", "site-packages"}
+            or record_bytes(root / ARTIFACT)
+            != encoded(DependencyArtifact(target, export, dependencies))
+        ):
+            return Rejected(Failure.INSTALLATION)
         return Installation(
-            root, Identity.observe(root), digest(root / "installation.json"), export
+            root, Identity.observe(root), digest(root / "installation.json"), export, dependencies
         )
     except (OSError, ValueError):
         return Rejected(Failure.INSTALLATION)
@@ -339,7 +389,7 @@ def admit_environment(installation: Installation) -> Environment | Rejected:
         }:
             return Rejected(Failure.STATE)
         observed = inventory(destination / "site-packages")
-        if isinstance(observed, Rejected) or not observed.files:
+        if isinstance(observed, Rejected) or observed != installation.dependencies:
             return Rejected(Failure.STATE)
         receipt = Receipt(
             str(installation.root), installation.manifestSha256, installation.export, observed
@@ -397,50 +447,16 @@ def prepare(root: Path, runner: Runner = run) -> Prepared | Rejected:
             "PATH": "",
             "HOME": str(stage),
             "TMPDIR": str(stage),
-            "PIP_CONFIG_FILE": os.devnull,
             "PYTHONDONTWRITEBYTECODE": "1",
         }
-        installed = runner(
-            Command(
-                (
-                    str(root / PYTHON),
-                    "-I",
-                    "-B",
-                    "-m",
-                    "pip",
-                    "--isolated",
-                    "--disable-pip-version-check",
-                    "install",
-                    "--require-hashes",
-                    "--no-deps",
-                    "--only-binary=:all:",
-                    "--no-compile",
-                    "--no-cache-dir",
-                    "--ignore-installed",
-                    "--no-input",
-                    "--quiet",
-                    "--retries",
-                    "0",
-                    "--timeout",
-                    "30",
-                    "--index-url",
-                    "https://pypi.org/simple",
-                    "--target",
-                    str(site),
-                    "--requirement",
-                    str(root / REQUIREMENTS),
-                ),
-                environment,
-            )
-        )
-        if isinstance(installed, Rejected):
-            return installed
-        if installed.code != 0:
-            return Rejected(Failure.INSTALL)
+        # Wheels (including native extensions and license records) are already
+        # materialized by the producer. No solver, archive import, or download
+        # participates in installed preparation.
+        _ = shutil.copytree(root / DEPENDENCY_SITE, site, symlinks=True)
         if Identity.observe(state) != state_identity or Identity.observe(stage) != stage_identity:
             return Rejected(Failure.CONCURRENT)
         observed = inventory(site)
-        if isinstance(observed, Rejected) or not observed.files:
+        if isinstance(observed, Rejected) or observed != installation.dependencies:
             return Rejected(Failure.STATE)
         checked = runner(
             Command(
@@ -451,7 +467,9 @@ def prepare(root: Path, runner: Runner = run) -> Prepared | Rejected:
                     "-B",
                     "-c",
                     "import sys; sys.path.insert(0, sys.argv[1]); "
-                    "import anyio, jsonschema, mcp, pydantic",
+                    "import anyio, jsonschema, mcp, pydantic; "
+                    "import _cffi_backend, cryptography.hazmat.bindings._rust, "
+                    "pydantic_core._pydantic_core, rpds.rpds",
                     str(site),
                 ),
                 environment,

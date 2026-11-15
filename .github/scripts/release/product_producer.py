@@ -102,7 +102,7 @@ def seal_target(
     revision: str,
     tree: str,
     version: str,
-    producer: product.ProductProducer,
+    producer: product.ProductProducer | product.LocalProductProducer,
     target: str,
     native_target: str,
 ) -> TargetRecord:
@@ -235,7 +235,9 @@ def read_target(path: Path) -> TargetRecord:
     ):
         raise Rejected(Failure.INVALID_IDENTITY)
     target = product.product_target(value["target"], version)
-    if isinstance(target, product.Failure):
+    if isinstance(target, product.Failure) or not isinstance(
+        target.qualification.producer, product.ProductProducer
+    ):
         raise Rejected(Failure.INVALID_RECORD)
     return TargetRecord(1, product.REPOSITORY, revision, tree, version, target)
 

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 import platform
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 from typing import Protocol, runtime_checkable
@@ -28,6 +31,35 @@ def load_policy() -> SkipPolicy:
 
 
 class PortableSkipInventoryTest(unittest.TestCase):
+    def test_selection_evidence_survives_buffered_output_but_requires_cases(self) -> None:
+        for body, expected in (
+            ("pass\n", 1),
+            ("import unittest; unittest.main(exit=False)\n", 1),
+            (
+                "import unittest\nclass Case(unittest.TestCase):\n"
+                " def test_case(self): self.assertEqual(1, 1)\n"
+                "unittest.main(exit=False)\nprint('x' * 8192)\n",
+                0,
+            ),
+        ):
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as temporary:
+                packaging = Path(temporary) / "packaging"
+                packaging.mkdir()
+                runner = packaging / "run-portable-tests.py"
+                _ = runner.write_bytes(Path(__file__).with_name(runner.name).read_bytes())
+                _ = (packaging / "test-empty.py").write_text(body)
+                result = subprocess.run(
+                    [sys.executable, str(runner)],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(expected, result.returncode, result.stderr)
+                if expected:
+                    self.assertIn("test selection rejected", result.stderr)
+                else:
+                    self.assertIn("1 suites passed", result.stdout)
+
     def admitted_skips(self, system: str, machine: str) -> dict[str, int]:
         with (
             patch.object(platform, "system", return_value=system),
@@ -38,18 +70,18 @@ class PortableSkipInventoryTest(unittest.TestCase):
     def test_darwin_arm64_permits_no_skips(self) -> None:
         self.assertEqual({}, self.admitted_skips("Darwin", "arm64"))
 
-    def test_darwin_x86_64_permits_only_release_installer_skips(self) -> None:
-        self.assertEqual({"test-install-checkout.py": 15}, self.admitted_skips("Darwin", "x86_64"))
+    def test_darwin_x86_64_permits_no_skips(self) -> None:
+        self.assertEqual({}, self.admitted_skips("Darwin", "x86_64"))
 
     def test_linux_arm64_permits_both_exact_platform_counts(self) -> None:
         self.assertEqual(
-            {"test-install-checkout.py": 15, "test-host-installation.py": 2},
+            {"test-host-installation.py": 2},
             self.admitted_skips("Linux", "arm64"),
         )
 
     def test_linux_x86_64_permits_both_exact_platform_counts(self) -> None:
         self.assertEqual(
-            {"test-install-checkout.py": 15, "test-host-installation.py": 2},
+            {"test-host-installation.py": 2},
             self.admitted_skips("Linux", "x86_64"),
         )
 

@@ -372,7 +372,6 @@ def test_missing_component_harness_rejects_before_installer_or_workspace_effects
 ) -> None:
     archive = tmp_path / "candidate.tar.gz"
     entries = {
-        "setup-kast/bin/setup-kast.pyz": b"never execute the legacy installer",
         "setup-kast/assets/kast-control-release-v0.1.2.json": json.dumps(
             asdict(ComponentRecordFixture("CONTROL_RELEASE", "a" * 40))
         ).encode(),
@@ -404,11 +403,11 @@ def test_missing_component_harness_rejects_before_installer_or_workspace_effects
 
 
 @pytest.mark.parametrize("entry_count", [0, 2])
-def test_authenticated_archive_rejects_missing_or_duplicate_zipapp(
+def test_authenticated_archive_rejects_missing_or_duplicate_component_record(
     tmp_path: Path, entry_count: int
 ) -> None:
     archive = tmp_path / "candidate.tar.gz"
-    entry = "setup-kast/bin/setup-kast.pyz"
+    entry = "setup-kast/assets/kast-control-release-v0.1.2.json"
     with tarfile.open(archive, "w:gz") as bundle:
         for _ in range(entry_count):
             info = tarfile.TarInfo(entry)

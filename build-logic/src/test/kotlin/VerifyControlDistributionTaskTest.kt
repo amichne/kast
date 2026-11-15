@@ -56,12 +56,48 @@ class VerifyControlDistributionTaskTest {
     }
 
     @Test
-    fun `control rejects retired task payloads`(@TempDir directory: Path) {
+    fun `MCP shared libraries are not additional Control executables`(@TempDir directory: Path) {
+        val cases = listOf(
+            Triple("macos-aarch64", "cffaedfe0c000001000000000200000000000000", "cffaedfe0c000001000000000600000000000000"),
+            Triple("macos-aarch64", "cffaedfe0c000001000000000200000000000000", "cffaedfe0c000001000000000800000000000000"),
+            Triple("linux-aarch64", "7f454c460201010000000000000000000200b700", "7f454c460201010000000000000000000300b700010000000000000000000000"),
+            Triple("linux-x86_64", "7f454c4602010100000000000000000002003e00", "7f454c4602010100000000000000000003003e00010000000000000000000000"),
+        )
+        for ((index, case) in cases.withIndex()) {
+            val (platform, executable, library) = case
+            val task = guidanceFixture(Files.createDirectory(directory.resolve("case-$index")))
+            task.maximumInstalledBytes.set(4096)
+            task.targetPlatform.set(platform)
+            Files.write(task.qualifiedControlExecutable.get().asFile.toPath(), java.util.HexFormat.of().parseHex(executable))
+            val root = task.controlDirectory.get().asFile.toPath()
+            val dependency = root.resolve("share/kast/mcp-dependencies/site-packages/extension.so")
+            Files.createDirectories(dependency.parent)
+            Files.write(dependency, java.util.HexFormat.of().parseHex(library))
+            task.verify()
+
+            val outsideDependencies = root.resolve("extension.so")
+            Files.move(dependency, outsideDependencies)
+            assertEquals("control product must contain exactly one native executable",
+                assertThrows(IllegalStateException::class.java, task::verify).message)
+            Files.move(outsideDependencies, dependency)
+
+            // A native executable remains forbidden even when named like a dependency.
+            val disguised = java.util.HexFormat.of().parseHex(
+                if (platform.startsWith("linux")) library.dropLast(16) + "0100000000000000" else executable,
+            )
+            Files.write(dependency, disguised)
+            assertEquals("control product must contain exactly one native executable",
+                assertThrows(IllegalStateException::class.java, task::verify).message)
+        }
+    }
+
+    @Test
+    fun `control rejects retired payloads`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)
         val root = task.controlDirectory.get().asFile.toPath()
-        for (name in listOf("container", "task-vm")) {
+        for (name in listOf("container", "task-vm", "knowledge")) {
             val directory = Files.createDirectory(root.resolve("share/kast/$name"))
-            assertEquals("control product contains a retired task payload",
+            assertEquals("control product contains a retired payload",
                 assertThrows(IllegalStateException::class.java, task::verify).message)
             Files.delete(directory)
         }
@@ -110,7 +146,7 @@ class VerifyControlDistributionTaskTest {
             "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management",
             "share/kast/install.sh", "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json", "share/kast/wire-schema.json", "share/kast/ide-host.json",
-            "share/kast/knowledge/manifest.json", "share/kast/licenses/LICENSE",
+            "share/kast/licenses/LICENSE",
         ) + listOf("", "compositions/mcp/").flatMap { composition ->
             val prefix = "share/kast/agent-tools/$composition"
             listOf(".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",

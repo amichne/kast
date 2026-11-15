@@ -21,16 +21,16 @@ from composition_index import IndexRejected, PluginIndex, encode_plugin_index
 from composition_platform import HostPlatform, UnsupportedHost, host_platform
 from composition_recipe import BUILD, ROOTS, plan, support_resources
 from managed_headless import (
+    Assembled,
     AssemblyEntryKind,
     AssemblyFile,
     Input,
-    Installed,
     Rejected,
     admit,
     file_record,
-    install_prepared_runtime,
     object_fields,
     object_items,
+    prepare_runtime,
 )
 
 
@@ -267,9 +267,9 @@ def product(
 
 
 def compose(
-    inputs: Input, source: Path, manifest: Path, manifest_sha256: str, installer: Path
+    inputs: Input, source: Path, manifest: Path, manifest_sha256: str
 ) -> (
-    Installed | Rejected | CompositionRejected | DescriptorRejected | GraphRejected | IndexRejected
+    Assembled | Rejected | CompositionRejected | DescriptorRejected | GraphRejected | IndexRejected
 ):
     target = host_platform(platform.system(), platform.machine())
     if isinstance(target, UnsupportedHost):
@@ -440,7 +440,7 @@ def compose(
     _ = (root / "composition-manifest.json").write_text(
         json.dumps(asdict(receipt), indent=2) + "\n"
     )
-    return install_prepared_runtime(admitted, home, installer)
+    return prepare_runtime(admitted, home)
 
 
 def main() -> int:
@@ -465,12 +465,11 @@ def main() -> int:
             args.source_home,
             args.source_manifest,
             args.source_manifest_sha256,
-            Path(__file__).resolve().parent / "install-legacy.sh",
         )
     except (OSError, ValueError, zipfile.BadZipFile) as error:
         result = CompositionRejected(CompositionFailure.EFFECT_FAILED, type(error).__name__)
     print(json.dumps(asdict(result), indent=2))
-    return 0 if isinstance(result, Installed) else 1
+    return 0 if isinstance(result, Assembled) else 1
 
 
 if __name__ == "__main__":

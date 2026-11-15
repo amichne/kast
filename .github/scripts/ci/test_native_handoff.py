@@ -39,9 +39,9 @@ class NativeHandoffTest(unittest.TestCase):
     def test_qualification_exercises_the_assembled_image_and_preserves_failed_stages(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
         image_bytes = bytes.fromhex("cffaedfe0c000001") + b"qualified image"
-        for product_exit, native_exit in ((0, 0), (7, 0), (0, 7)):
+        for native_exit in (0, 7):
             with (
-                self.subTest(product_exit=product_exit, native_exit=native_exit),
+                self.subTest(native_exit=native_exit),
                 tempfile.TemporaryDirectory() as temporary,
             ):
                 root = Path(temporary)
@@ -56,14 +56,6 @@ class NativeHandoffTest(unittest.TestCase):
                 control = source / f"kast-control-v{identity.version}-macos-aarch64.tar.gz"
                 with tarfile.open(control, "w:gz") as archive:
                     archive.add(image, arcname="share/kast/libexec/kast-management")
-                (source / f"kast-ide-hosted-v{identity.version}-idea-262.zip").write_bytes(
-                    b"host fixture"
-                )
-                paired = product_exit == 0 and native_exit == 0
-                if paired:
-                    (source / f"kast-ide-hosted-v{identity.version}-idea-263.zip").write_bytes(
-                        b"second Host fixture"
-                    )
                 pack(
                     source,
                     root / "bundle",
@@ -75,25 +67,6 @@ class NativeHandoffTest(unittest.TestCase):
                 if not isinstance(payload, Admitted):
                     self.fail("matching release rejected")
                 effects = []
-
-                def product_effect(command, *, environment, observed=effects, code=product_exit):
-                    self.assertEqual(["python3", "packaging/run-installed-product.py"], command)
-                    self.assertEqual(
-                        image_bytes,
-                        (
-                            Path(environment["KAST_INSTALLED_PRODUCT"])
-                            / "share/kast/libexec/kast-management"
-                        ).read_bytes(),
-                    )
-                    observed.append("product")
-                    plugin = Path(environment["KAST_HOSTED_PLUGIN_ARCHIVE"])
-                    suffix = "-idea-263" if plugin.name.endswith("-idea-263.zip") else ""
-                    self.assertEqual(
-                        f"kast-host-release-v{identity.version}{suffix}.json",
-                        Path(environment["KAST_HOST_RELEASE_RECORD"]).name,
-                    )
-                    if code:
-                        raise subprocess.CalledProcessError(code, command)
 
                 def native_effect(
                     observed_identity, *arguments, observed=effects, code=native_exit
@@ -107,6 +80,7 @@ class NativeHandoffTest(unittest.TestCase):
                         ("share", "kast", "libexec", "kast-management"), selected.parts[-4:]
                     )
                     self.assertEqual(image_bytes, selected.read_bytes())
+                    self.assertEqual(0o755, selected.stat().st_mode & 0o777)
                     observed.append("native")
                     if code:
                         raise subprocess.CalledProcessError(code, ["./gradlew", *arguments])
@@ -116,21 +90,26 @@ class NativeHandoffTest(unittest.TestCase):
                     patch.dict(native_handoff.os.environ, {"JAVA_HOME": str(java)}),
                     patch.object(native_handoff.platform, "system", return_value="Darwin"),
                     patch.object(native_handoff.platform, "machine", return_value="arm64"),
-                    patch.object(native_handoff, "run", side_effect=product_effect) as product,
+                    patch.object(
+                        native_handoff,
+                        "run",
+                        side_effect=AssertionError("complete-product runner must not run"),
+                    ) as product,
                     patch.object(native_handoff, "gradle", side_effect=native_effect) as native,
                 ):
-                    if product_exit or native_exit:
-                        with self.assertRaises(subprocess.CalledProcessError):
+                    if native_exit:
+                        with self.assertRaises(subprocess.CalledProcessError) as failure:
                             native_handoff.qualify(payload)
+                        self.assertEqual(native_exit, failure.exception.returncode)
                     else:
                         native_handoff.qualify(payload)
-                    self.assertEqual(2 if paired else 1, product.call_count)
-                    if product_exit:
-                        native.assert_not_called()
-                        self.assertEqual(["product"], effects)
-                    else:
-                        native.assert_called_once()
-                        self.assertEqual(["product", "product", "native"] if paired else ["product", "native"], effects)
+                    product.assert_not_called()
+                    native.assert_called_once()
+                    self.assertEqual(["native"], effects)
+                    self.assertEqual(
+                        control.read_bytes(),
+                        (root / f"build/release/v{identity.version}" / control.name).read_bytes(),
+                    )
 
     def test_restore_preserves_release_bytes_and_rejects_a_different_toolchain(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
