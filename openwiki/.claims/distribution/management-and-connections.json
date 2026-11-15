@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dfeef2dff56de6e21d5ea1cd49bdf13d077a698a731f46f38583b14efbe7a9a8",
+  "pageVersion": "sha256:dc2811b171ec115ed2207a817ef8a5557ec3d7010320288de4c80219876b6b4b",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -460,11 +460,19 @@
     },
     {
       "id": "claim_658432ebcba2469e89fc131b0dcd5da6",
-      "statement": "Explicit MCP preparation admits and copies a producer-materialized target-specific dependency inventory, including native extensions and license files, and performs a private isolated import check without invoking pip, uv, a solver or downloads during installation.",
+      "statement": "Production admits the target-specific MCP dependency inventory, normalizes its regular import-data files to 0644, then re-observes the inventory before recording artifact.json. Generated-support reuse requires all dependency files at 0644 and rejects self-consistent cached 0755 records. Explicit installed preparation still requires exact inventory bytes and modes, preserves native extensions and license files, and checks imports with the private interpreter without pip, uv, a solver or downloads. Ownership, target and requirement identities and finite failure handling remain required.",
       "evidence": [
         {
-          "resource": "repo://packaging/mcp_dependency_artifact.py#L32-L124",
-          "version": "repo-lines-v1:sha256:b0593818674648ed887b7d938dc3184a0d76f8cd94d6d2fe7711eba51c596839:eyJzZWxlY3RlZExpbmVDb3VudCI6OTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyZmIwYTQ2MjBlZDhjNDY4NGZlZjVhY2FjNjY2NDViZjk1OTkyOGVjMzdlMDM3Njc3NzJlOGIwMzNlZmYwZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM5Mzk1ZTRjZmE0NGE1Mzg3ZmJlZmI0ZWRkNGIzNWU2YmU3YjQ2ZDFkYmU5YjlhZjgwMWE1MmY1ZGJkM2E3MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM0Yzk5ZjkzMGZmN2JkMTA3MTgxN2IwZmEzMjhjZjNhM2QyNWEwMWUyZWI1Yzk1ZGEzYmYzYzRlMWVlMjBkMDUifQ"
+          "resource": "repo://packaging/generate_bootstrap.py#L80-L94",
+          "version": "repo-lines-v1:sha256:231ca114b47145ae4645dbae826d7864475ef0d353274134bed34df883393236:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2NmQ3YmM4MmI2ZTg3ZDY5ZDFkYTIzYjEwNjkxYjc5YjZkYzhhMWI0YzM2MzZiZDAyMDI1YzE3MmQwODc3MTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNGM5N2EwMzRhN2Q5NGQ5MzEzYWZhMWYyMTlhOGJkMDAzMjlmYjYxMjk3YjI5OWNmZjI4ZDg3MDBjYTBmMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZhMDQ1MDRlYWQwZDg5NGZlYjBiYTE2NzU2NjI0NDcyZjQzOTA4NTJjMzNiYWQxNjJkMzRjMzAwYjUwZDM0MjMifQ"
+        },
+        {
+          "resource": "repo://packaging/mcp_dependency_artifact.py#L29-L129",
+          "version": "repo-lines-v1:sha256:b6c3be3b831e6560a101e351afd0ae3ca0198131ec857aa5d897c62da9619eee:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyMjdhZjg5NzhlNTA1NTVkZDkwY2YxZGI0MmUxNjU3NGU4ZDcwYTVlMjM2ODZiZTBhNjQ2MTdmYTNlNDhiMzc3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5ZDAzNTkxNjJhMjY4ZmFkMGU5NzAxOGFlMTA5M2VkNDNkMmNjMWM5ZWQ5M2JlNTFhMmI4NzBmYzU1OWM2MjhiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwMzM5MmViYzBiZTU3ZDBjZjQ2YTM0YjU0YTk4ZTY2ZmFkNGE4YmNkYTA2YTRjOTJhZjA2ZGRhODgzODNjZWVmIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI0OTJkMzU2ZGU0YmE1NDJlNzMyOGJjMzM3NmJjMzQ4M2NmMTQ2ZDUxNTkzZjg5ZjJiNWY3ZWRmZTdkZTcwMDE2In0"
+        },
+        {
+          "resource": "repo://packaging/mcp_environment.py#L273-L298",
+          "version": "repo-lines-v1:sha256:bfcb0a3517d502c0059daa81d4295b9625e0e4a61893ff33fbfab2611f0c3c46:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwZTUwZWNiNDZhMTJiNTRkNGUzYWZjYzE2YzRlNWM3NTRjZjJhM2E5OGIwZTNhZTQ4NWEyZjUyZjFjMzdhNzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0MTQ3YTRhMTAyYzM5N2Y3YmIwMzU2MTdjNTcxOGRjMGZjZjJhOWEwMDhhYmQwNTU4NDk1NmJjOTExYjlhMDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1Y2I2YTI4ZmQwMTY5YTM5ODg4ZDNmNzAyY2MzZDFlYTgwOTE1NTA1YWFmMmE4ZmQ2OTFlODc5MjA1N2JhZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxOGQxMjAwYmQ2YTEzOGZkNmU5ZTM4NGRlN2RhMzIyMjk2Zjk1YWVkYjIwYTc1YTUxYmRlMzE2NGFhZWJmZjIifQ"
         },
         {
           "resource": "repo://packaging/mcp_environment.py#L340-L377",
@@ -473,6 +481,14 @@
         {
           "resource": "repo://packaging/mcp_environment.py#L429-L505",
           "version": "repo-lines-v1:sha256:522488935308d327aad3b0b679c36536c58d704628541c91b6f7b925c17da72a:eyJzZWxlY3RlZExpbmVDb3VudCI6NzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4ZDdkZDg0OWVmNjM2ZjAxZDk0NmFkYmMxMmJlMjJlYzM0YzMzNDk4NjE3ZjUzMWU3YjAyZWM4NTIxNDZmYTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5ZGNiNTI5ZGUyZTAzYmE1YmVlZDU3OThlMGY1YTUzOTZhMWExYzg1ZTRkMGYzZTRlNDU2MWNhMGU0ZDBhZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZlZmU0MGIyYjZkZWFjOGI2MzY4ZmY0OWVhOWFhYTRlODJjYzM1NDMzM2RmMDg5N2E4NGIxZjJiMDY5NDRmYTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ0OTI3NzQwOWY5NjdhMDU1Mzk5ZmJiYjEyNDNiYTAxNWFmNzFkNzg1Yzg0NzMxNTgyZDY3OTJkYmYxZWYzNzcifQ"
+        },
+        {
+          "resource": "repo://packaging/test-managed-bootstrap.py#L107-L157",
+          "version": "repo-lines-v1:sha256:66fb45352aa99e4f0116c633e6f60e6731ec3bd3e437b08688d44e194b1c715a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3MmQ5NzU4NzRmNDg0YTdiNWM0YjIzYWVkMjk2MGJjN2VlNDE1N2VhNGRlYmEwMTFmNGUyN2YwYmJjMzQzZmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4ZmVjODlhYTllZDJmNTA0NTRjNjEzYTM1ODM5ZTNmYjI5YzU1Zjc3ODQ4NDFjOTI5NTUwMWY1OTZlOTlkYjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAxODk2NWY0NWUwMTkwNWU3ZmNiOGNjZmU4ZTZiZTBjOTMzODM2ZjRkNGVkNjY2NmU5MzY4NGZiM2YwNDFjOGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1ZGVkNDE1OTc1YWI4ZjhiNjAyYjgxODIzYWMzYzEzYmExNDhiYmFlM2E2MGY1NDk3OWU2MjkwNzQ0N2U0MWUifQ"
+        },
+        {
+          "resource": "repo://packaging/test_mcp_dependency_artifact.py#L23-L110",
+          "version": "repo-lines-v1:sha256:f730e862923d48d69a399cd482e2f1b7fd0ee55822e83029226528e915f3db3b:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5OGNhMDQ0N2ZhMjZkNDBjNDc1ZDJjYTU4NTY1Y2IyNmM1YjBmYjU1MjIwYzZmNTgyNmFhMWNmZmQ1M2QxZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3MzM5MTE2ODdjMDUxNmVjZTgwMjY1OTU5ODI4NzY1ZTdiOGYxY2ZjNjllMzA0NmJiMWRlNzBhOTNjYTRkNTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjNGM0NDUyYzUxY2QyNWU2NGFlODVkYTBhODEyMTZmMTJhNDIyZmRmYmMyYzUyY2EzZjMwMTJmMGRlZDE4MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU2ODBiMGYyOTI4YWMwZGJmM2RkNGEzMWQ1YzE2ZTkxOThhMjlhNjA4NmQzOWNmYjU3YzIwZjYwYmUzM2E2NWQifQ"
         }
       ]
     },
@@ -503,6 +519,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T19:39:32.150Z"
+    "at": "2026-11-15T21:32:57.222Z"
   }
 }

@@ -112,6 +112,8 @@ sources:
     resource: repo://packaging/composed_release.py
   - id: openwiki-source-611b757652f80d3a33875855
     resource: repo://packaging/container_probe.py
+  - id: openwiki-source-f499e8784ffe1f993e94d42d
+    resource: repo://packaging/generate_bootstrap.py
   - id: openwiki-source-1380068036b00bec817a6579
     resource: repo://packaging/managed_installation.py
   - id: openwiki-source-7f5792fd36f508c6577b3562
@@ -126,10 +128,12 @@ sources:
     resource: repo://packaging/product_lifecycle_probe.py
   - id: openwiki-source-4f7923fe2058729f3c0b96fe
     resource: repo://packaging/test_mcp_dependency_artifact.py
-generated: { by: "amp", at: "2026-11-15T19:39:32.150Z" }
+  - id: openwiki-source-2cd23a68d0d65408a59d5b1a
+    resource: repo://packaging/test-managed-bootstrap.py
+generated: { by: "amp", at: "2026-11-15T21:32:57.222Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T19:39:32.150Z
+    at: 2026-11-15T21:32:57.222Z
 ---
 
 # Native management and harness connections
@@ -235,11 +239,15 @@ The default bundle includes CLI guidance and passive session hooks without an au
 It does not prepare a Python environment.
 The explicit `--mcp` option selects the complete optional transport composition and its dependency preparation.
 Production materializes target-specific wheels and their inventory before delivery.
+Before recording `artifact.json`, the producer admits the inventory, sets its regular import-data files to `0644`, and observes the inventory again.
+This includes native extensions and wheel command files shipped as data, not executable commands.
+Generated-support reuse also requires every dependency file at `0644`; even a self-consistent cached `0755` record rejects.
 The producer passes `--python sys.executable` explicitly to uv, with an empty `PATH` and interpreter downloads disabled.
 It does not depend on uv finding an ambient virtual environment or interpreter.
 Installed preparation admits that artifact, copies its site-packages, and runs an isolated import check with the private interpreter.
 It invokes no pip, uv, dependency solver, or download.
 The inventory and artifact record preserve target identity, requirement hashes, native extensions, and license files.
+Consumer admission still requires exact bytes and modes; normalization does not relax ownership, identity, or finite failure checks.
 The retired `connect` and `plugin` setup syntax directs callers to `kast install`.
 Legacy connection variants remain available for receipt admission and exact cleanup.
 

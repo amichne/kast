@@ -425,10 +425,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "amp", at: "2026-11-15T20:31:50.464Z" }
+generated: { by: "amp", at: "2026-11-15T21:32:57.222Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:31:50.464Z
+    at: 2026-11-15T21:32:57.222Z
 ---
 
 # Distribution and packaging
@@ -477,11 +477,15 @@ The Control payload contains CLI-first Codex and Copilot plugins from the canoni
 The default composition includes passive native session hooks without an automatic MCP server.
 Explicit `--mcp` selects the optional transport.
 The producer materializes target-specific dependency files, native extensions, and license records before delivery.
+It admits the inventory, sets its regular import-data files to `0644`, then observes the inventory again before recording `artifact.json`.
+Native extensions and wheel command files ship as import data, not executable commands.
+Generated-support reuse requires all dependency files at `0644`, rejecting even self-consistent cached `0755` records.
 It passes `--python sys.executable` explicitly to uv, with an empty `PATH` and interpreter downloads disabled.
 Production does not rely on uv discovering an ambient virtual environment or interpreter.
 If dependency production rejects, `generate_bootstrap.stage_support` writes the existing structured `MCP_REJECTED` result to stderr and keeps its finite failure code in the raised rejection.
 Missing producer tooling, install rejection and timeout therefore remain distinguishable at support generation.
 Installed MCP preparation admits and copies that inventory, then checks imports with the private interpreter; it invokes no pip, uv, solver, or download.
+Consumer admission still requires exact bytes and modes; normalization preserves ownership, target and requirement identities, and finite failure checks.
 Codex and Copilot own their plugins. The Pi receipt identifies the owned skill directory.
 Control assembly stamps the version in the skill front matter.
 Both legacy and managed installer completion enter the capability-marked guidance refresh branch.

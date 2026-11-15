@@ -157,6 +157,22 @@ def test_plan_keeps_both_engines_and_every_publication_obligation(tmp_path: Path
     )
 
 
+def test_installer_example_runs_in_locked_packaging_project(tmp_path: Path) -> None:
+    steps = plan(tmp_path, tmp_path / "build/prose", "vale", "vale", "mint", ())
+    examples = next(step for step in steps if step.name == "examples")
+    assert examples.commands[1] == Command(
+        (
+            "uv",
+            "run",
+            "--locked",
+            "--project",
+            "packaging",
+            "python",
+            "packaging/test-installer-entrypoint.py",
+        )
+    )
+
+
 def test_real_process_adapter_preserves_nonzero_result(tmp_path: Path) -> None:
     result = run_command(
         tmp_path,

@@ -63,7 +63,7 @@ class Wheels:
             path = site / name
             path.parent.mkdir(parents=True, exist_ok=True)
             _ = path.write_bytes(value)
-            path.chmod(0o644)
+            path.chmod(0o755 if name == "native.so" else 0o644)
         return self.result
 
     def complete(self) -> None:

@@ -112,6 +112,13 @@ def produce(
             observed = mcp.inventory(site)
             if isinstance(observed, mcp.Rejected) or not observed.files:
                 return mcp.Rejected(mcp.Failure.STATE)
+            # Control archives ship dependency imports as data, not commands.
+            # Record their delivered modes rather than uv's executable wheel modes.
+            for entry in observed.files:
+                (site / entry.path).chmod(0o644)
+            observed = mcp.inventory(site)
+            if isinstance(observed, mcp.Rejected):
+                return observed
             artifact = mcp.DependencyArtifact(target, export, observed)
             _ = (stage / "artifact.json").write_bytes(mcp.encoded(artifact))
             if source_export() != export or mcp.Identity.observe(metadata) != identity:

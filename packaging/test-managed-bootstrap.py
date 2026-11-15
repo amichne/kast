@@ -142,6 +142,17 @@ class BootstrapTest(unittest.TestCase):
             _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(artifact))
             self.assertTrue(generator.check_support(output, target))
             self.assertFalse(generator.check_support(output, mcp.DependencyTarget.LINUX_X86_64))
+            dependency.chmod(0o755)
+            executable = replace(
+                artifact,
+                inventory=replace(
+                    artifact.inventory, files=(replace(artifact.inventory.files[0], mode=0o755),)
+                ),
+            )
+            _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(executable))
+            self.assertFalse(generator.check_support(output, target))
+            dependency.chmod(0o644)
+            _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(artifact))
             _ = dependency.write_bytes(b"changed dependency")
             self.assertFalse(generator.check_support(output, target))
 
