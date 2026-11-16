@@ -24,7 +24,14 @@ from validation_scope import Scope
 import developer_catalog as catalog
 import product_candidate as candidate
 import publish_developer as publisher
-from test_developer_publication import Release, RemoteAsset, Script, Step, response
+from test_developer_publication import (
+    Release,
+    RemoteAsset,
+    Script,
+    discovery,
+    inspection,
+    tag_target,
+)
 
 product = catalog.product
 
@@ -280,6 +287,61 @@ def split_fixture(directory: Path) -> product.ProductRecord:
 
 
 class ProductCandidateTest(unittest.TestCase):
+    def test_remote_targets_preserve_owners_and_reject_local_qualifications(self) -> None:
+        targets = tuple(
+            product.ProductTarget(
+                target,
+                product.ProductInputs("1" * 64, "2" * 64, "3" * 64, "4" * 64),
+                product.ProductAsset(f"kast-composed-setup-v0.0.123-{target}.tar.gz", "5" * 64, 7),
+                product.ProductAsset(f"kast-runtime-v0.0.123-{target}.zip", "6" * 64, 11),
+                product.NativeQualification(
+                    product.ProductAsset(f"qualification-{target}.json", "7" * 64, 13),
+                    product.ProductProducer(run_id, 2, ".github/workflows/composed-linux.yml"),
+                    "5" * 64,
+                    "6" * 64,
+                    "8" * 64,
+                ),
+            )
+            for target, run_id in (("linux-x86_64", 456), ("macos-aarch64", 123))
+        )
+        record = product.ProductRecord(
+            2,
+            "amichne/kast",
+            "a" * 40,
+            "b" * 40,
+            "0.0.123",
+            product.ProductProducer(123, 1, ".github/workflows/ci.yml"),
+            targets,
+        )
+        self.assertEqual(
+            (
+                (
+                    targets[0],
+                    product.ProductProducer(456, 2, ".github/workflows/composed-linux.yml"),
+                ),
+                (
+                    targets[1],
+                    product.ProductProducer(123, 2, ".github/workflows/composed-linux.yml"),
+                ),
+            ),
+            candidate.remote_targets(record),
+        )
+        for index in (0, 1):
+            with self.subTest(local_target=index):
+                local = replace(
+                    targets[index],
+                    qualification=replace(
+                        targets[index].qualification,
+                        producer=product.LocalProductProducer(),
+                    ),
+                )
+                changed = replace(
+                    record, targets=((local, targets[1]) if index == 0 else (targets[0], local))
+                )
+                self.assertEqual(
+                    candidate.candidate.Failure.WRONG_PRODUCER, candidate.remote_targets(changed)
+                )
+
     def test_component_candidate_cannot_be_promoted_without_installed_acceptance(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary) / "candidate"
@@ -600,11 +662,15 @@ class ProductCandidateTest(unittest.TestCase):
                 for asset in prepared.assets
             )
             document = Release("v1.2.3", "a" * 40, assets, prerelease=False)
-            script = Script(Step("GET", "releases/tags/v1.2.3", response(document)))
+            script = Script(
+                *discovery(document),
+                *inspection(document),
+                tag_target(document.tag_name, published=True),
+            )
             result = publisher.publish(
                 prepared, publisher.RemotePublisher("amichne/kast", prepared.build, script.run)
             )
-            self.assertEqual(catalog.CommitResult.COMMITTED, result)
+            self.assertEqual(catalog.CommitResult.UNCHANGED, result)
             script.consumed()
 
     def test_catalog_preserves_complete_targets_and_keeps_legacy_identity(self) -> None:

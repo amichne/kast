@@ -79,6 +79,42 @@ class CatalogPolicyTest(unittest.TestCase):
 
 
 class PublicationConcurrencyTest(unittest.TestCase):
+    def test_unchanged_catalog_needs_exact_pointer_before_skipping_writes(self) -> None:
+        document = catalog.Catalog(1, (entry(3),))
+        pointer = catalog.latest_pointer(document)
+        for existing, expected in (
+            (pointer, catalog.CommitResult.UNCHANGED),
+            (None, catalog.CommitResult.COMMITTED),
+            ("old pointer\n", catalog.CommitResult.COMMITTED),
+        ):
+            with self.subTest(pointer=existing):
+                snapshot = catalog.Snapshot("a" * 40, "b" * 40, document, False, existing)
+                writes: list[catalog.Catalog] = []
+
+                def commit(
+                    before: catalog.Snapshot,
+                    after: catalog.Catalog,
+                    latest: str,
+                    *,
+                    expected_snapshot: catalog.Snapshot = snapshot,
+                    recorded: list[catalog.Catalog] = writes,
+                ) -> catalog.CommitResult:
+                    self.assertEqual(expected_snapshot, before)
+                    self.assertEqual(pointer, latest)
+                    recorded.append(after)
+                    return catalog.CommitResult.COMMITTED
+
+                self.assertEqual(
+                    expected,
+                    catalog.publish(
+                        entry(3),
+                        lambda snapshot=snapshot: snapshot,
+                        lambda revisions: revisions,
+                        commit,
+                    ),
+                )
+                self.assertEqual([] if existing == pointer else [document], writes)
+
     def test_contended_write_recomputes_from_newly_admitted_catalog(self) -> None:
         initial = catalog.Catalog(1, (entry(3),))
         concurrent = catalog.Catalog(1, (entry(5), entry(3)))

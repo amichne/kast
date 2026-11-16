@@ -12,6 +12,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packaging"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packaging" / "internal"))
 import product_acceptance as acceptance
 
 import build_candidate as candidate
@@ -125,6 +126,19 @@ def read(directory: Path, *, accepted: bool = False) -> product.ProductRecord | 
         return candidate.Failure.INVALID_RECORD
 
 
+def remote_targets(
+    record: product.ProductRecord,
+) -> tuple[tuple[product.ProductTarget, product.ProductProducer], ...] | candidate.Failure:
+    """Preserve each target with its admitted remote producer before remote effects."""
+    targets: list[tuple[product.ProductTarget, product.ProductProducer]] = []
+    for target in record.targets:
+        producer = target.qualification.producer
+        if not isinstance(producer, product.ProductProducer):
+            return candidate.Failure.WRONG_PRODUCER
+        targets.append((target, producer))
+    return tuple(targets)
+
+
 def admit_producer(
     record: product.ProductRecord, producer: product.ProductProducer, value: object
 ) -> candidate.Failure | product.Admission:
@@ -180,13 +194,16 @@ def admit_baseline(
     record = read(directory)
     if isinstance(record, candidate.Failure):
         return record
+    targets = remote_targets(record)
+    if isinstance(targets, candidate.Failure):
+        return targets
     if (
         record.producer != producer
         or record.sourceRevision != revision
         or product.file_digest(directory / "build-record.json") != digest
     ):
         return candidate.Failure.WRONG_PRODUCER
-    for owner in (record.producer, *(target.qualification.producer for target in record.targets)):
+    for owner in (record.producer, *(owner for _, owner in targets)):
         if (owner.runId, owner.runAttempt) != (producer.runId, producer.runAttempt):
             return candidate.Failure.WRONG_PRODUCER
         admitted = admit_producer_identity(record, owner, observed_run)
@@ -260,9 +277,12 @@ def admit(
     record = read(directory, accepted=True)
     if isinstance(record, candidate.Failure):
         return record
+    targets = remote_targets(record)
+    if isinstance(targets, candidate.Failure):
+        return targets
     for producer in (
         record.producer,
-        *(target.qualification.producer for target in record.targets),
+        *(owner for _, owner in targets),
     ):
         observed_run = observe_run(producer)
         result = admit_producer(record, producer, observed_run)
@@ -299,12 +319,12 @@ def admit(
         ),
         *(
             (
-                target.qualification.producer,
+                producer,
                 f"kast-qualified-product-{target.target}-{record.sourceRevision}-"
-                f"{target.qualification.producer.runId}-{target.qualification.producer.runAttempt}",
+                f"{producer.runId}-{producer.runAttempt}",
                 target.assets(),
             )
-            for target in record.targets
+            for target, producer in targets
         ),
     ]
     for producer, name, assets in retained:
