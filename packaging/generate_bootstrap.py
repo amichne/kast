@@ -23,6 +23,7 @@ SOURCES = (
     "managed_product.py",
     "managed_product_installation.py",
     "managed_product_removal.py",
+    "legacy_purge.py",
     "immutable_store.py",
     "product_removal_recovery.py",
     "product_mcp_removal.py",
