@@ -149,7 +149,7 @@ PRODUCT_SOURCE_PREFIXES = tuple(
     f"{module}/src/{source_set}/kotlin/" for module in PRODUCT_MODULES for source_set in ("main", "test")
 )
 
-# Candidate preflight examines this inventory against the resolved native task graph.
+# Modules compiled into the native Control executable.
 NATIVE_INPUT_MODULES = frozenset({
     "app-server",
     "change/apply",
@@ -181,7 +181,6 @@ class Check(str, Enum):
     PRODUCT = "product"
     PORTABLE = "portable"
     DOCUMENTATION = "documentation"
-    GATE_GRAPH = "gate_graph"
 
 
 ALL_CHECKS = frozenset(Check)
@@ -231,7 +230,7 @@ class Selection:
 
     def with_native_compilation(self, mode: NativeCompilation) -> "Selection":
         if mode is NativeCompilation.DISABLED:
-            return Selection(self.checks - {Check.PRODUCT, Check.GATE_GRAPH}, self.reason, self.plan)
+            return Selection(self.checks - {Check.PRODUCT}, self.reason, self.plan)
         return self
 
     @property

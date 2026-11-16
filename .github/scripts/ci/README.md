@@ -7,10 +7,10 @@ Pull requests use the merge base. Pushes use the entire before/head range.
 | Plan | Required work | Product publication |
 | --- | --- | --- |
 | `DOCUMENTATION` | Mintlify, parser, glossary, knowledge links, installer examples, and documentation tooling | None |
-| `SOURCE` | Affected owners and consumers, their semantic families, shared guards, offline preflight and portable packaging | None |
+| `SOURCE` | Affected owners and consumers, their semantic families, shared guards and portable packaging | None |
 | `SOURCE_FULL` | Complete source gate, portable packaging and documentation | None |
 | `PRODUCT` | Source gate, product gate, immutable candidate and portable packaging | Admitted tested candidate |
-| `FULL` | Every check above and gate membership inspection | Admitted tested candidate |
+| `FULL` | Every check above | Admitted tested candidate |
 
 The documentation plan admits reviewed pages, navigation, styles, generated views, and their documentation tooling.
 It also admits the reader-journey audit reports and Vale profiles from PR #1130.
@@ -35,8 +35,8 @@ Symlinks, executable modes, type changes and malformed observations select full 
 Missing history, invalid revisions and unknown events also keep every check.
 The source plan accepts main/test Kotlin sources outside the native executable and installation owners.
 The product plan covers those release-sensitive owners.
-Candidate preflight compares the native owner inventory with the actual native compilation graph.
-Changes to build configuration select full validation and must pass that comparison.
+`NATIVE_INPUT_MODULES` lists the native executable owners by hand; no CI step compares it with the native compilation graph.
+While pull requests skip product validation and main pushes always select it, that inventory changes no job selection.
 Main pushes with source changes select product validation before automatic developer promotion when Mac checks are enabled.
 A source-inventory test checks that each listed root remains included in `settings.gradle.kts`.
 New modules, fixtures and unknown roots keep full validation until their scope is reviewed.
@@ -290,9 +290,8 @@ Inherited pytest selection options cannot replace required execution with collec
 
 ## Source obligations and qualification
 
-`source_validation.py` admits a clean source tree, runs the offline preflight suites, examines the Gradle graph, and runs `sourceValidationGate`.
-A failed offline preflight stops before Gradle starts, including its dry-run.
-The failure report lists no graph tasks and keeps every source obligation as missing.
+`source_validation.py` admits a clean source tree, examines the Gradle graph, and runs `sourceValidationGate`.
+The release preflight suites run once, in the scope job's `fast_checks.py decisions` stage.
 The script records the source tree, task graph, elapsed time, exit code, and dependency compiler count.
 Full and affected commands request single-use Gradle daemons with `--no-daemon`.
 The local product gate requests the same daemon lifetime.
@@ -346,7 +345,6 @@ This preserves type-resolved analysis and obligations that `scopedCheck` alone o
 | App Server | Public query generation |
 | Installation scripts | Offline lifecycle, recovery, removal, cleanup, system Python, local installation and installer fixtures |
 | Included build | Build-logic tests and quality rules |
-| Offline preflight | Version resolution, product-gate commands, candidate admission, environment admission, gate membership rules and execution evidence |
 | Portable container | Onboarding, cloud environment, MCP registration, developer publication, Git attribution, host installation and shared adapter suites |
 
 The graph rejects native compilation, installed-product composition, release runtime admission, hosted-plugin assembly, and release assembly.
@@ -384,7 +382,6 @@ Repository branch-protection settings remain unchanged.
 
 Local `productBuildGate` and standalone release builds keep the complete gate.
 Routine CI distributes its source and native obligations across the target platforms.
-Candidate preflight still examines the complete gate and native input inventory.
 No matched hosted timing comparison establishes a speedup for this split.
 
 ## Affected obligations and rollout

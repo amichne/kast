@@ -12,7 +12,6 @@ code_sources:
 - path: .github/scripts/ci/validation_scope.py
 - path: .github/scripts/ci/validation_outcome.py
 - path: .github/scripts/ci/test_validation_outcome.py
-- path: .github/scripts/ci/verify-checks.py
 - path: .github/scripts/release/build_candidate.py
 - path: distribution/release/component_release.py
 - path: distribution/release/component-release.schema.json
@@ -64,10 +63,10 @@ sources:
     resource: repo://packaging/product_lifecycle_probe.py
   - id: openwiki-source-fbdf7de26cc8b3b5b59b53a6
     resource: repo://packaging/test_product_acceptance.py
-generated: { by: "amp", at: "2026-11-15T19:32:41.514Z" }
+generated: { by: "unknown", at: "2026-11-16T04:06:28.637Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T23:15:42.491Z
+    at: 2026-11-16T04:06:28.637Z
 ---
 
 # Release candidates and promotion
@@ -187,7 +186,6 @@ This explanation records the source contract, not a completed two-target accepta
 
 - [ci.yml](../../.github/workflows/ci.yml)
 - [required_checks.py](../../.github/scripts/ci/required_checks.py)
-- [verify-checks.py](../../.github/scripts/ci/verify-checks.py)
 - [build_candidate.py](../../.github/scripts/release/build_candidate.py)
 - [product_producer.py](../../.github/scripts/release/product_producer.py)
 - [product_candidate.py](../../.github/scripts/release/product_candidate.py)

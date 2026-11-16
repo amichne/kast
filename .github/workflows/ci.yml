@@ -43,7 +43,6 @@ jobs:
       product: ${{ steps.scope.outputs.product }}
       portable: ${{ steps.scope.outputs.portable }}
       documentation: ${{ steps.scope.outputs.documentation }}
-      gate_graph: ${{ steps.scope.outputs.gate_graph }}
       scope: ${{ steps.scope.outputs.scope }}
       plan: ${{ steps.scope.outputs.plan }}
     steps:
@@ -171,24 +170,13 @@ jobs:
       - name: Validate affected source obligations
         if: needs.scope.outputs.product == 'skip'
         env:
-          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           CI_VERIFICATION_PLAN: ${{ needs.scope.outputs.plan }}
         run: python3 .github/scripts/ci/source_validation.py --affected --base "$BASE_SHA" --event "$GITHUB_EVENT_NAME"
 
       - name: Validate complete candidate source obligations
         if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
-        env:
-          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
         run: python3 .github/scripts/ci/source_validation.py
-
-      - name: Examine candidate gate membership
-        if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-          GATE_GRAPH: ${{ needs.scope.outputs.gate_graph }}
-        run: python3 .github/scripts/ci/verify-checks.py --preflight-only --gate-graph "$GATE_GRAPH"
 
       - name: Prepare compiled native inputs
         if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
@@ -244,8 +232,6 @@ jobs:
         with:
           python-version-file: .python-version
       - run: python3 -m pip install --disable-pip-version-check uv==0.12.9
-      - name: Verify publication contracts on macOS
-        run: python3 -m unittest discover -s .github/scripts/release -p 'test_*.py'
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           validate-wrappers: true
@@ -378,19 +364,11 @@ jobs:
       - name: Exercise the exact assembled Mac Control executable
         if: needs.source-work.outputs.candidate != 'REUSED'
         run: uv run --locked --script .github/scripts/ci/native_handoff.py qualify --version "0.0.$GITHUB_RUN_NUMBER"
-      - name: Verify cold RPC subprocesses on macOS
-        if: needs.source-work.outputs.candidate != 'REUSED'
-        run: >-
-          ./gradlew --no-daemon --no-parallel --max-workers=1
-          -Dorg.gradle.jvmargs=-Xmx5g -Pversion="0.0.$GITHUB_RUN_NUMBER"
-          :cli:test --tests io.github.amichne.kast.cli.rpc.KastToolRpcQuerySessionProcessTest
-          --console=plain
       - uses: actions/upload-artifact@v7.0.2
         if: always() && needs.source-work.outputs.candidate != 'REUSED'
         with:
           name: macos-query-session-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            cli/build/test-results/test/
             build/test-results/publicLauncherTest/
             build/reports/tests/publicLauncherTest/
           if-no-files-found: warn

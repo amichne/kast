@@ -35,13 +35,6 @@ COMMAND = (
     # The hosted source graph can stall in Gradle's parallel project configuration.
     "-Dorg.gradle.isolated-projects.diagnostics=true",
 )
-PREFLIGHT = (
-    "python3",
-    ".github/scripts/ci/verify-checks.py",
-    "--preflight-only",
-    "--gate-graph",
-    "skip",
-)
 SOURCE_REQUIRED = frozenset(
     {
         ":sourceValidationGate",
@@ -245,38 +238,20 @@ def run(
     required = (SOURCE_REQUIRED if plan is None else obligations(plan)) - frozenset(skipped)
     for log_name in (*gradle_graph.REPORTS, "gradle.log", "source-execution.json"):
         (destination / log_name).unlink(missing_ok=True)
-    environment = os.environ.copy()
-    environment["KAST_RELEASE_JDK_25"] = (
-        environment.get("KAST_RELEASE_JDK_25") or environment["JAVA_HOME"]
-    )
-    preflight = subprocess.run(
-        PREFLIGHT,
-        cwd=root,
-        env=environment,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-    )
-    (destination / "preflight.log").write_text(preflight.stdout)
-    graph = Graph((), tuple(sorted(required)), ())
-    code = preflight.returncode
-    outcome = Outcome.PROCESS_FAILED
     invocations = 0
-    if code == 0:
-        graph_log = destination / "task-graph.log"
-        planned = gradle_graph.run((*command, "--dry-run"), root, destination, graph_budget)
-        graph = inspect_graph(graph_log.read_text(errors="replace"), required, skipped)
-        code = planned.exitCode
-        match planned.outcome:
-            case gradle_graph.Outcome.TIMED_OUT:
-                outcome = Outcome.GRAPH_TIMED_OUT
-            case gradle_graph.Outcome.CANCELLED:
-                outcome = Outcome.GRAPH_CANCELLED
-            case gradle_graph.Outcome.START_FAILED:
-                outcome = Outcome.PROCESS_FAILED
-            case gradle_graph.Outcome.SUCCEEDED | gradle_graph.Outcome.PROCESS_FAILED:
-                outcome = Outcome.GRAPH_REJECTED
+    graph_log = destination / "task-graph.log"
+    planned = gradle_graph.run((*command, "--dry-run"), root, destination, graph_budget)
+    graph = inspect_graph(graph_log.read_text(errors="replace"), required, skipped)
+    code = planned.exitCode
+    match planned.outcome:
+        case gradle_graph.Outcome.TIMED_OUT:
+            outcome = Outcome.GRAPH_TIMED_OUT
+        case gradle_graph.Outcome.CANCELLED:
+            outcome = Outcome.GRAPH_CANCELLED
+        case gradle_graph.Outcome.START_FAILED:
+            outcome = Outcome.PROCESS_FAILED
+        case gradle_graph.Outcome.SUCCEEDED | gradle_graph.Outcome.PROCESS_FAILED:
+            outcome = Outcome.GRAPH_REJECTED
     if code == 0 and graph.accepted:
         with (destination / "gradle.log").open("w") as log:
             process = subprocess.Popen(

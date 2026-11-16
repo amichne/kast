@@ -21,7 +21,6 @@ def docs_only_results():
                 "product": "skip",
                 "portable": "skip",
                 "documentation": "run",
-                "gate_graph": "skip",
                 "scope": "DOCUMENTATION",
             },
         },
@@ -68,7 +67,7 @@ class RequiredChecksTest(unittest.TestCase):
 
     def test_source_feedback_cannot_complete_candidate_qualification(self):
         needs = docs_only_results()
-        needs["scope"]["outputs"] = dict.fromkeys(("source", "product", "portable", "documentation", "gate_graph"), "run")
+        needs["scope"]["outputs"] = dict.fromkeys(("source", "product", "portable", "documentation"), "run")
         needs["scope"]["outputs"]["scope"] = "FULL"
         needs["source"]["result"] = "success"
         needs["portable"]["result"] = "success"
@@ -101,7 +100,7 @@ class RequiredChecksTest(unittest.TestCase):
 
     def test_full_plan_requires_all_jobs_to_succeed(self):
         needs = docs_only_results()
-        needs["scope"]["outputs"] = dict.fromkeys(("source", "product", "portable", "documentation", "gate_graph"), "run")
+        needs["scope"]["outputs"] = dict.fromkeys(("source", "product", "portable", "documentation"), "run")
         needs["scope"]["outputs"]["scope"] = "FULL"
         needs["kotlin"]["result"] = "skipped"
         self.assertEqual(Verdict.CHECK_FAILED, inspect(needs))
@@ -127,14 +126,12 @@ class RequiredChecksTest(unittest.TestCase):
 
     def test_incomplete_or_contradictory_plans_reject(self):
         for changes in (
-            {"gate_graph": None},
             {"product": "run"},
             {"portable": "run"},
             {"scope": "FULL"},
             {"scope": "unknown"},
             {"scope": None},
             {"documentation": "skip"},
-            {"gate_graph": "run"},
         ):
             needs = docs_only_results()
             needs["scope"]["outputs"].update(changes)

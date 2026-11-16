@@ -85,7 +85,6 @@ class SourceValidationTest(unittest.TestCase):
                 tempfile.TemporaryDirectory() as temporary,
                 patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                 patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-                patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "preflight passed")),
                 patch.object(source.gradle_graph, "run", side_effect=graph_process(graph_output(required))),
                 patch.object(source.subprocess, "Popen") as executed,
                 redirect_stdout(io.StringIO()),
@@ -222,7 +221,6 @@ class SourceValidationTest(unittest.TestCase):
                 with (
                     patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                     patch.object(source, "source_identity", side_effect=[identity, after]) as admitted,
-                    patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "preflight passed")),
                     patch.object(source.gradle_graph, "run", side_effect=graph_process(graph_output(expected_obligations()))),
                     patch.object(source.subprocess, "Popen", return_value=process) as executed,
                     redirect_stdout(io.StringIO()),
@@ -250,7 +248,6 @@ class SourceValidationTest(unittest.TestCase):
             with (
                 patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                 patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-                patch.object(source, "PREFLIGHT", (sys.executable, "-c", "print('preflight')")),
                 patch.object(source, "COMMAND", (sys.executable, "-c", child)),
                 redirect_stdout(io.StringIO()) as console,
             ):
@@ -266,7 +263,6 @@ class SourceValidationTest(unittest.TestCase):
             patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
             tempfile.TemporaryDirectory() as temporary,
             patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-            patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "preflight passed")),
             patch.object(source.gradle_graph, "run", side_effect=graph_process("BUILD SUCCESSFUL")),
             patch.object(source.subprocess, "Popen") as executed,
         ):
@@ -285,7 +281,6 @@ class SourceValidationTest(unittest.TestCase):
                 self.subTest(status=status), tempfile.TemporaryDirectory() as temporary,
                 patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
                 patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-                patch.object(source.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "preflight passed")),
                 patch.object(source.gradle_graph, "run", side_effect=graph_process(graph_output(expected_obligations()), status, code)),
                 patch.object(source.subprocess, "Popen") as executed,
             ):
@@ -318,41 +313,30 @@ class SourceValidationTest(unittest.TestCase):
                 run.assert_not_called()
                 self.assertNotEqual(0, result.exception.code)
 
-    def test_failed_offline_preflight_never_starts_gradle_execution(self):
-        def run(command, **_):
-            if command == source.PREFLIGHT:
-                return subprocess.CompletedProcess(command, 2, "offline suite failed")
-            self.assertEqual([*COMMAND, "--dry-run"], command)
-            return subprocess.CompletedProcess(command, 0, graph_output(expected_obligations()))
-
+    def test_rejected_graph_replaces_earlier_evidence(self):
         with (
             tempfile.TemporaryDirectory() as temporary,
             patch.dict(os.environ, {"JAVA_HOME": "/source-jdk"}),
             patch.object(source, "source_identity", return_value=("a" * 40, "b" * 40)),
-            patch.object(source.subprocess, "run", side_effect=run) as commands,
+            patch.object(source.gradle_graph, "run", side_effect=graph_process("BUILD SUCCESSFUL")),
             patch.object(source.subprocess, "Popen") as executed,
         ):
             destination = Path(temporary)
-            (destination / "task-graph.log").write_text("previous successful graph")
             (destination / "gradle.log").write_text("previous successful execution")
             (destination / "task-graph-execution.json").write_text("previous graph result")
             (destination / "task-graph-process.txt").write_text("previous process observation")
             (destination / "unrelated.log").write_text("keep this file")
             evidence = source.run(ROOT, destination)
-            self.assertEqual("offline suite failed", (destination / "preflight.log").read_text())
-            self.assertFalse((destination / "task-graph.log").exists())
             self.assertFalse((destination / "gradle.log").exists())
             self.assertFalse((destination / "task-graph-execution.json").exists())
             self.assertFalse((destination / "task-graph-process.txt").exists())
             self.assertEqual("keep this file", (destination / "unrelated.log").read_text())
             report = json.loads((destination / "source-execution.json").read_text())
-        self.assertEqual("PROCESS_FAILED", report["outcome"])
-        self.assertEqual([], report["graph"]["tasks"])
+        self.assertEqual("GRAPH_REJECTED", report["outcome"])
         self.assertEqual(sorted(expected_obligations()), report["graph"]["missing"])
         executed.assert_not_called()
-        self.assertEqual([source.PREFLIGHT], [call.args[0] for call in commands.call_args_list])
-        self.assertEqual(source.Outcome.PROCESS_FAILED, evidence.outcome)
-        self.assertEqual(2, evidence.exitCode)
+        self.assertEqual(source.Outcome.GRAPH_REJECTED, evidence.outcome)
+        self.assertNotEqual(0, evidence.exitCode)
 
     def test_source_obligations_include_every_owner_and_specialized_check(self):
         self.assertTrue(inspect_graph(graph_output(expected_obligations())).accepted)

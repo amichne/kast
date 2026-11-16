@@ -47,7 +47,7 @@ class ValidationScopeTest(unittest.TestCase):
             with self.subTest(scope=scope):
                 self.assertIs(selected, selected.with_native_compilation(NativeCompilation.ENABLED))
                 disabled = selected.with_native_compilation(NativeCompilation.DISABLED)
-                self.assertEqual(checks - {Check.PRODUCT, Check.GATE_GRAPH}, disabled.checks)
+                self.assertEqual(checks - {Check.PRODUCT}, disabled.checks)
                 self.assertEqual(disabled.checks, SCOPE_CHECKS[disabled.scope])
                 self.assertNotIn(disabled.scope, (Scope.FULL, Scope.PRODUCT))
 
@@ -63,7 +63,7 @@ class ValidationScopeTest(unittest.TestCase):
             ):
                 main()
             self.assertEqual(
-                "source=run\nproduct=skip\nportable=run\ndocumentation=run\ngate_graph=skip\nscope=SOURCE_FULL\n",
+                "source=run\nproduct=skip\nportable=run\ndocumentation=run\nscope=SOURCE_FULL\n",
                 output.read_text(),
             )
 
@@ -307,7 +307,7 @@ class ValidationScopeTest(unittest.TestCase):
                 main()
             choose.assert_called_once_with("push", "a" * 40, "b" * 40)
             self.assertEqual(
-                "source=skip\nproduct=skip\nportable=skip\ndocumentation=run\ngate_graph=skip\nscope=DOCUMENTATION\n",
+                "source=skip\nproduct=skip\nportable=skip\ndocumentation=run\nscope=DOCUMENTATION\n",
                 output.read_text(),
             )
 
