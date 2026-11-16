@@ -91,7 +91,7 @@ No build scan evidence is available for this change.
 
 ## Platform checks and native compilation
 
-Mac checks use GitHub-hosted Apple silicon runners. They are off when the repository variable is absent.
+Mac checks use Apple silicon runners. They are off when the repository variable is absent.
 Set the GitHub repository variable `KAST_MACOS_CHECKS` to `true` to enable them.
 An absent variable or `false` leaves them off.
 The switch covers native compilation, fresh Mac product qualification, both manual release workflows, and automatic developer promotion.
@@ -168,9 +168,32 @@ Every main push or manual main run that needs a product builds and qualifies a f
 The **Isolated runtime candidates** workflow produces platform archives with its own qualification receipts.
 
 The `Kotlin product` job needs macOS to exercise the assembled Mac product; Linux cannot execute those binaries.
-Main pushes and manual main runs compile and qualify Mac candidates on the GitHub-hosted `macos-15` runner.
-The manual component release uses that runner as well. Stable promotion uses retained bytes.
-No personal Mac or persistent runner service is required.
+The `native` and `kotlin` jobs prefer the self-hosted `kast-main` Mac and fall back to the GitHub-hosted `macos-15` runner.
+A selector job runs `mac_runner.py` immediately before each of them.
+It picks the Mac only when the GitHub runner API reports an online, idle runner with the `self-hosted`, `macOS`, `ARM64`, and `kast-main` labels.
+A missing `KAST_RUNNER_STATUS_TOKEN` secret, a failed request, a malformed response, or a busy or offline Mac selects `macos-15`.
+The step summary records the reason.
+The secret is a fine-grained token for this repository with read-only **Administration** permission; `GITHUB_TOKEN` cannot list runners.
+A Mac that goes offline after selection still leaves that job queued until it returns or the run is cancelled.
+Other macOS jobs, including complete-product qualification and installed acceptance, stay on hosted runners because they install products and start Hosts.
+The manual component release uses `macos-15`. Stable promotion uses retained bytes.
+
+The Mac native compile waits only for the `native-inputs` job, not for complete source validation.
+The `kotlin`, `composed-macos`, and sealing jobs still require `source-work` success.
+On the hosted 3-core, 7 GB Mac, the native compile took 26 minutes and spent 31% of it in GC.
+The same image compiled in about 3 minutes on the 16 GB Linux runner and in under 2 minutes on the local Mac.
+
+### Local runner setup
+
+The runner service is registered as `kast-main-mac` and runs from its own directory.
+Its `.env` sets a runner-owned `GRADLE_USER_HOME` so CI never shares the developer Gradle home.
+It also sets `ACTIONS_RUNNER_HOOK_JOB_STARTED` to a hook outside the runner application directory.
+The hook runs an installed copy of `self_hosted_guard.py` before repository steps start.
+The guard accepts only main CI jobs named `native` or `kotlin`, plus manual main jobs named `release` in both release workflows.
+It rejects other repositories, refs, events, workflows, and jobs, including fork pull requests that name the runner labels.
+Keep the installed guard synchronized with its reviewed source and restart the service after a hook change.
+Jobs set up Python through `.github/actions/local-python`, which uses uv with runner-owned tool state.
+The runner `.path` must include uv.
 
 ## Compile once and join qualification late
 

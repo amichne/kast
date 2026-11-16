@@ -488,7 +488,7 @@ class SourceInventoryTest(unittest.TestCase):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
         product = workflow.split("\n  kotlin:\n", 1)[1]
         product = re.split(r"\n  (?=\S)", product, maxsplit=1)[0]
-        self.assertIn("    runs-on: macos-15\n", product)
+        self.assertIn("    runs-on: ${{ fromJSON(needs.kotlin-runner.outputs.labels) }}\n", product)
         self.assertIn("needs.native.result == 'success' && needs.assembly.result == 'success'", product)
         self.assertIn("- name: Exercise the exact assembled Mac Control executable\n", product)
         self.assertNotIn("REUSED", workflow)
@@ -496,21 +496,46 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertNotIn("build_candidate.py seal", workflow)
         self.assertNotIn("build_candidate.py reuse", workflow)
 
-    def test_native_producers_require_github_hosted_apple_silicon(self):
+    def test_only_guarded_main_jobs_may_prefer_the_local_mac(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
+        workflow = (workflows / "ci.yml").read_text()
         # The composed target matrix has its own explicit hosted runner contract below.
         # Stable promotion consumes retained bytes and is no longer a native producer.
-        for filename, job in (("ci.yml", "native"), ("release-component.yml", "release")):
-            with self.subTest(workflow=filename, job=job):
-                body = (workflows / filename).read_text().split(f"\n  {job}:\n", 1)[1]
+        body = (workflows / "release-component.yml").read_text().split("\n  release:\n", 1)[1]
+        body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
+        self.assertIn("    runs-on: macos-15\n", body)
+        # self_hosted_guard.py admits exactly these ci.yml jobs on the local runner.
+        for job, selector in (("native", "native-runner"), ("kotlin", "kotlin-runner")):
+            with self.subTest(job=job):
+                body = workflow.split(f"\n  {job}:\n", 1)[1]
                 body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
-                runner = next(line.strip() for line in body.splitlines() if "runs-on:" in line)
-                self.assertEqual("runs-on: macos-15", runner)
-                self.assertIn("actions/setup-python@", body)
-                self.assertIn("uv==0.12.9", body)
+                self.assertIn(f"    runs-on: ${{{{ fromJSON(needs.{selector}.outputs.labels) }}}}\n", body)
+                self.assertIn("if: github.event_name != 'pull_request'", body.replace("always() && ", ""))
+                self.assertIn("uses: ./.github/actions/local-python", body)
+                self.assertIn("cache-disabled: ${{ runner.environment == 'self-hosted' }}", body)
+                selection = workflow.split(f"\n  {selector}:\n", 1)[1]
+                selection = re.split(r"\n  (?=\S)", selection, maxsplit=1)[0]
+                self.assertIn("run: python3 .github/scripts/ci/mac_runner.py", selection)
+        self.assertEqual(2, workflow.count("fromJSON(needs."))
         for path in workflows.glob("*.yml"):
             with self.subTest(workflow=path.name):
-                self.assertNotIn("self-hosted", path.read_text())
+                self.assertNotIn("[self-hosted", path.read_text())
+
+    def test_native_compile_waits_for_inputs_not_full_source_validation(self):
+        workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
+        native = re.split(r"\n  (?=\S)", workflow.split("\n  native:\n", 1)[1], maxsplit=1)[0]
+        self.assertIn("    needs: [scope, native-inputs, native-runner]\n", native)
+        source = re.split(r"\n  (?=\S)", workflow.split("\n  source-work:\n", 1)[1], maxsplit=1)[0]
+        self.assertNotIn("native_handoff.py inputs", source)
+        inputs = re.split(r"\n  (?=\S)", workflow.split("\n  native-inputs:\n", 1)[1], maxsplit=1)[0]
+        self.assertIn("native_handoff.py inputs", inputs)
+        self.assertIn("name: native-inputs-${{ github.run_id }}-${{ github.run_attempt }}", inputs)
+        # Product consumers keep the complete source proof as a precondition.
+        for job in ("kotlin", "composed-macos"):
+            body = re.split(r"\n  (?=\S)", workflow.split(f"\n  {job}:\n", 1)[1], maxsplit=1)[0]
+            self.assertIn("needs.source-work.result == 'success'", body)
+        sealed = re.split(r"\n  (?=\S)", workflow.split("\n  sealed-product:\n", 1)[1], maxsplit=1)[0]
+        self.assertIn("    needs: [scope, source-work, composed-products, composed-macos]\n", sealed)
 
     def test_native_compilation_is_main_only_before_scope_selection(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
@@ -542,7 +567,8 @@ class SourceInventoryTest(unittest.TestCase):
                 r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", path.read_text()
             ):
                 runner = re.search(r"^    runs-on: (.+)$", body, re.M)
-                if runner is None or "macos" not in runner[1].lower():
+                selected = runner is not None and "fromJSON(needs." in runner[1]
+                if runner is None or ("macos" not in runner[1].lower() and not selected):
                     continue
                 with self.subTest(workflow=path.name, job=job):
                     condition = re.search(r"^    if: (.+)$", body, re.M)

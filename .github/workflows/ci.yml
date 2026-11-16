@@ -160,19 +160,6 @@ jobs:
         if: needs.scope.outputs.product == 'run'
         run: python3 .github/scripts/ci/source_validation.py
 
-      - name: Prepare compiled native inputs
-        if: needs.scope.outputs.product == 'run'
-        run: uv run --locked --script .github/scripts/ci/native_handoff.py inputs --version "0.0.$GITHUB_RUN_NUMBER"
-
-      - name: Retain compiled native inputs
-        if: needs.scope.outputs.product == 'run'
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: native-inputs-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/handoff-output/
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Retain source evidence
         if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
         uses: actions/upload-artifact@v7.0.2
@@ -184,11 +171,70 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Native inputs need only compiled classes, so the Mac compile no longer waits
+  # for full source validation. Every product consumer still requires source-work.
+  native-inputs:
+    name: Prepare compiled native inputs
+    needs: scope
+    if: github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: liberica-nik
+          java-version: '25.0.2+13'
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+      - run: python3 -m pip install --disable-pip-version-check uv==0.12.9
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.21.0"
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          # source-work owns Linux cache population.
+          cache-read-only: true
+      - name: Prepare compiled native inputs
+        run: uv run --locked --script .github/scripts/ci/native_handoff.py inputs --version "0.0.$GITHUB_RUN_NUMBER"
+      - name: Retain compiled native inputs
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: native-inputs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/handoff-output/
+          if-no-files-found: error
+          retention-days: 7
+
+  # Prefer the trusted kast-main Mac only when GitHub reports it online and idle.
+  # Any other observation, including a missing status token, selects macos-15.
+  native-runner:
+    name: Select macOS native runner
+    needs: [scope, native-inputs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      labels: ${{ steps.select.outputs.labels }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - id: select
+        env:
+          KAST_RUNNER_STATUS_TOKEN: ${{ secrets.KAST_RUNNER_STATUS_TOKEN }}
+        run: python3 .github/scripts/ci/mac_runner.py
+
   native:
     name: Compile macOS native executable
-    needs: [scope, source-work]
+    needs: [scope, native-inputs, native-runner]
     if: github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run'
-    runs-on: macos-15
+    runs-on: ${{ fromJSON(needs.native-runner.outputs.labels) }}
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -202,12 +248,19 @@ jobs:
           distribution: liberica-nik
           java-version: '25.0.2+13'
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        if: runner.environment != 'self-hosted'
         with:
           python-version-file: .python-version
       - run: python3 -m pip install --disable-pip-version-check uv==0.12.9
+        if: runner.environment != 'self-hosted'
+      - name: Set up local Python
+        if: runner.environment == 'self-hosted'
+        uses: ./.github/actions/local-python
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           validate-wrappers: true
+          # The local runner keeps its own Gradle home and never writes hosted caches.
+          cache-disabled: ${{ runner.environment == 'self-hosted' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
       - name: Exercise macOS reset adapters
@@ -290,11 +343,29 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  # Re-observe the Mac when the product job becomes ready; it may have gone offline since native.
+  kotlin-runner:
+    name: Select macOS product runner
+    needs: [scope, assembly]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      labels: ${{ steps.select.outputs.labels }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - id: select
+        env:
+          KAST_RUNNER_STATUS_TOKEN: ${{ secrets.KAST_RUNNER_STATUS_TOKEN }}
+        run: python3 .github/scripts/ci/mac_runner.py
+
   kotlin:
     name: Kotlin product
-    needs: [scope, source-work, native, assembly]
-    if: always() && github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && needs.native.result == 'success' && needs.assembly.result == 'success' && (inputs.rollout == '' || inputs.rollout == 'none')
-    runs-on: macos-15
+    needs: [scope, source-work, native, assembly, kotlin-runner]
+    if: always() && github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && needs.native.result == 'success' && needs.assembly.result == 'success' && needs.kotlin-runner.result == 'success' && (inputs.rollout == '' || inputs.rollout == 'none')
+    runs-on: ${{ fromJSON(needs.kotlin-runner.outputs.labels) }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -306,9 +377,14 @@ jobs:
           distribution: liberica-nik
           java-version: '25.0.2+13'
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        if: runner.environment != 'self-hosted'
         with:
           python-version-file: .python-version
       - run: python3 -m pip install uv==0.12.9
+        if: runner.environment != 'self-hosted'
+      - name: Set up local Python
+        if: runner.environment == 'self-hosted'
+        uses: ./.github/actions/local-python
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}
@@ -316,6 +392,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           validate-wrappers: true
+          cache-disabled: ${{ runner.environment == 'self-hosted' }}
           cache-read-only: true
       - uses: ./.github/actions/jq-oracle
       - name: Exercise the exact assembled Mac Control executable

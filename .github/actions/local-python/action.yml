@@ -1,0 +1,15 @@
+name: Set up local runner Python
+description: >-
+  Provision the .python-version interpreter and the pinned uv inside runner-owned tool state.
+  actions/setup-python cannot install on a self-hosted macOS runner outside /Users/runner.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        UV_PYTHON_INSTALL_DIR: ${{ runner.tool_cache }}/uv-python
+      run: |
+        uv python install "$(cat .python-version)"
+        uv venv --allow-existing --seed --python "$(cat .python-version)" "$RUNNER_TOOL_CACHE/kast-ci-python"
+        echo "$RUNNER_TOOL_CACHE/kast-ci-python/bin" >> "$GITHUB_PATH"
+        "$RUNNER_TOOL_CACHE/kast-ci-python/bin/python3" -m pip install --disable-pip-version-check uv==0.12.9
