@@ -39,6 +39,7 @@ class MainState(str, Enum):
 class ObservationStage(str, Enum):
     SOURCE_TREE = "SOURCE_TREE"
     RUN_ARTIFACTS = "RUN_ARTIFACTS"
+    RETAINED_DOWNLOAD = "RETAINED_DOWNLOAD"
     WORKFLOW_RUN = "WORKFLOW_RUN"
     MAIN_HEAD = "MAIN_HEAD"
 

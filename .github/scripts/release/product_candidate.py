@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import subprocess
 import sys
 import tarfile
 import tempfile
 import zipfile
 from collections.abc import Callable
+from dataclasses import asdict
 from pathlib import Path
 
 if not sys.flags.isolated:
@@ -373,12 +375,30 @@ def admit(
                         temporary,
                     ],
                     check=False,
-                    timeout=180,
+                    timeout=600,
                     capture_output=True,
                 )
-            except (OSError, subprocess.TimeoutExpired):
-                return candidate.Failure.DOWNLOAD_FAILED
-            if downloaded.returncode:
+                outcome = (
+                    candidate.ObservationOutcome.PROCESS_FAILED
+                    if downloaded.returncode
+                    else candidate.ObservationOutcome.OBSERVED
+                )
+            except subprocess.TimeoutExpired:
+                outcome = candidate.ObservationOutcome.TIMED_OUT
+            except OSError:
+                outcome = candidate.ObservationOutcome.UNAVAILABLE
+            print(
+                json.dumps(
+                    asdict(
+                        candidate.ObservationEvidence(
+                            candidate.ObservationStage.RETAINED_DOWNLOAD, outcome, 1, None
+                        )
+                    )
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+            if outcome is not candidate.ObservationOutcome.OBSERVED:
                 return candidate.Failure.DOWNLOAD_FAILED
             for asset in assets:
                 path = (

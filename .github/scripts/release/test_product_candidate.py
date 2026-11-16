@@ -11,6 +11,7 @@ import tarfile
 import tempfile
 import unittest
 import zipfile
+from contextlib import redirect_stderr
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from unittest.mock import patch
@@ -571,7 +572,7 @@ class ProductCandidateTest(unittest.TestCase):
                     if fault in ("none", "missing-native")
                     else (
                         [validation_name, ci_name]
-                        if fault in ("toolchain", "acceptance")
+                        if fault in ("toolchain", "acceptance", "timeout", "unavailable", "process")
                         else [validation_name]
                     )
                 )
@@ -623,8 +624,16 @@ class ProductCandidateTest(unittest.TestCase):
                         arguments[:-1],
                     )
                     self.assertEqual(
-                        (False, 180, name != validation_name), (check, timeout, capture_output)
+                        (False, 180 if name == validation_name else 600, name != validation_name),
+                        (check, timeout, capture_output),
                     )
+                    if name == ci_name:
+                        if fault == "timeout":
+                            raise subprocess.TimeoutExpired(arguments, timeout)
+                        if fault == "unavailable":
+                            raise OSError("private adapter detail")
+                        if fault == "process":
+                            return subprocess.CompletedProcess(arguments, 1, b"", b"private detail")
                     for filename, raw in retained[name].items():
                         path = Path(arguments[-1]) / filename
                         path.parent.mkdir(parents=True, exist_ok=True)
@@ -643,12 +652,34 @@ class ProductCandidateTest(unittest.TestCase):
                     self.assertEqual(expected_runs.pop(0), producer.runId)
                     return asdict(runs[0 if producer.runId == 123 else 1])
 
+                evidence = io.StringIO()
                 with (
+                    redirect_stderr(evidence),
                     patch.object(candidate.candidate, "tree", return_value="b" * 40) as tree,
                     patch.object(candidate.candidate, "observe", side_effect=observe_artifacts),
                     patch.object(candidate.subprocess, "run", side_effect=download),
                 ):
                     result = candidate.admit(directory, observe_run)
+                signals = [json.loads(line) for line in evidence.getvalue().splitlines()]
+                expected_outcomes = {
+                    "none": ["OBSERVED"] * 3,
+                    "timeout": ["TIMED_OUT"],
+                    "unavailable": ["UNAVAILABLE"],
+                    "process": ["PROCESS_FAILED"],
+                }
+                if fault in expected_outcomes:
+                    self.assertEqual(
+                        [
+                            {
+                                "stage": "RETAINED_DOWNLOAD",
+                                "outcome": outcome,
+                                "attempt": 1,
+                                "httpStatus": None,
+                            }
+                            for outcome in expected_outcomes[fault]
+                        ],
+                        signals,
+                    )
                 if fault == "source-only":
                     tree.assert_not_called()
                 else:
@@ -664,6 +695,8 @@ class ProductCandidateTest(unittest.TestCase):
                         if fault == "expired"
                         else candidate.candidate.Failure.SOURCE_NOT_QUALIFIED
                         if fault == "source-only"
+                        else candidate.candidate.Failure.DOWNLOAD_FAILED
+                        if fault in ("timeout", "unavailable", "process")
                         else candidate.candidate.Failure.PAYLOAD_MISMATCH
                     ),
                     result,
@@ -676,6 +709,9 @@ class ProductCandidateTest(unittest.TestCase):
             "expired",
             "missing-native",
             "source-only",
+            "timeout",
+            "unavailable",
+            "process",
         ):
             run_case(fault)
 
