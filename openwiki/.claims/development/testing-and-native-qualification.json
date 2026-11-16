@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:a80ed10b7848f0d83a062977c40482f8a7bf3dc4dd111ca3b117516aa3ac10e8",
+  "pageVersion": "sha256:0388c425f0541f9954930ed51533a60102fe853ac452c2afc50df98fae42689c",
   "claims": [
     {
       "id": "claim_b360f4c00a974d9fa3febbb40e81500c",
@@ -8,17 +8,21 @@
       "evidence": [
         {
           "resource": "repo://docs/development.md",
-          "version": "repo-file-v1:sha256:a019a0e7df63d7ebf6bbba6a02b272e19fc07a8452c6fcca91bfb2be765cac8a"
+          "version": "repo-file-v1:sha256:51606904bba5b419b8d75a1fa2790b1e420b1ccb797b3989875d0a7c13a38c3e"
         }
       ]
     },
     {
       "id": "claim_6dcd0fb988634a25ab7708ca6caf1b59",
-      "statement": "The portable packaging runner uses owned process state, enumerates offline suites, and rejects unexpected skipped cases.",
+      "statement": "The portable packaging runner uses owned process state, enumerates offline suites, requires one nonempty test summary per suite, and rejects unexpected skips. It scans summary lines throughout the log so buffered output cannot hide the test count.",
       "evidence": [
         {
-          "resource": "repo://packaging/run-portable-tests.py",
-          "version": "repo-file-v1:sha256:df7f05f496d917706f677ebfc08b84d6e2ab336d1e70f932902a9d1ad2b4bf33"
+          "resource": "repo://packaging/run-portable-tests.py#L23-L71",
+          "version": "repo-lines-v1:sha256:3446cffb0d600a3a537b6c09121222b716c90479b648314f8190317dd90c782c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhMjUwMjlmOTY0YzIxOTBmZGUyNWIxYTViYTEyYTZhYTA0YzExNGRiZDIxYTUwNzFmNTc5MmVkNTM2Y2MxOTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0ODI2MGJjMGYxZWI0OTFkYzAxNGUxNzk1MjdiNWY0M2ZhOWMxMzk0OGM1MGIwMDZlZTk5M2VkY2Q5ODJhM2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1NzIyYjhjNGYyODMxYTA4YTZmZjE2OGQxNjUxMTRiNmZkYmFjZjk4NDIxNTM2NjI3NzY5M2JkY2IzYmQwMjAifQ"
+        },
+        {
+          "resource": "repo://packaging/test-portable-tests.py#L34-L61",
+          "version": "repo-lines-v1:sha256:0e2bcebb8fd491a85de01ca6ab73892a0098c36f24ef8852565f0cb32cb78a4e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU3NGJhMTE4ZjJkMmYyM2Q0Y2Y4YjNhMDAzMWQxMDlkMGQzNmU4ZTAyZGQyOGNlNjExYWRmM2M3NzMwZjUzOGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU4NTk2MDhkZWMyOGQ2ZDQ5ZTVhZmZjZTM1ZGFmMGRjODFhNjdkNWVjNzRiNGU3OWRlODIxOTRjMjk1YmJhZjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAyYzIzZWJkN2JmN2E0NzIyYjc3OTFhMzgyZDQ4NDVlYWViY2E4M2FhYWNkNWNiNzM0YmNiODM2ZTlmYTdmMzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1NTc3MzM4NjYzYTA1ZTExNWM5ZTMwNzVmZjgxZjc1M2JjM2Q1YzBkOGQ5MjVjYmVjZmNjZjIxMTU4MDJhYjYifQ"
         }
       ]
     },
@@ -101,10 +105,24 @@
           "version": "repo-lines-v1:sha256:4a0c87e7b623beb5beaa56e584f9a892746435765950ab2f2ea9110b761ca3f4:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjEzNzllMjRlNDE4MzRkNzBiYTY3NjMyM2EyYWNiYjNiYzJmODRlMmM5MDZjMTdkMTZhZDQ4YWRmMTAzM2JmZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTY3ODc4MGU1ZjI1MzdmMWU4MGI4ZDlkNzI5MGFkZTA3MWY1YThiM2JlNWU3NjlkYTliMThhZWZjMTZiMzYzZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTc3ZDQxMmMyNjlhZjcxMzMxOTYzNDgzYTNlMGU5OGVkN2RlNGQyMjc0ZjRhZGE3Yjc4ZmY5MjI5NjViYTE5NCJ9"
         }
       ]
+    },
+    {
+      "id": "claim_e410e79b1b684aff8251d58ac36084e1",
+      "statement": "Installed-product acceptance delegates to the complete-product lifecycle probe with qualified candidate and baseline artifacts and explicit interpreter and evidence inputs; missing prerequisites reject rather than skipping or substituting a staged component pair.",
+      "evidence": [
+        {
+          "resource": "repo://docs/development.md#L520-L533",
+          "version": "repo-lines-v1:sha256:efa7abe0170285442edfb19324e19a7ec5cd3269dbc82f23b4113e3e1041c25b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5ZmVjNDRiNTc5ZjM3NjE5MjhmNzBhODQ1OGRhNDFmNWIyNWMyMTkzMjk0MzYwZmVjNTMwYWFkOTQwZTgxMzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyN2Q4YmRjMjRiMmI1YTRjMGQ2OWViNzEwMmYyZDJhODhhMDhhZjFjZmE5NGY3ZjVhOTJiNDQyNGQ2MTJiMTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJiYTQ1ZGFmMmIwZjNkY2M1N2FhMmNkNGRjZmQ1YjE0ZWNjY2Q4ODc4MTAwYzlhZDJkYjA2ZTgwMmIyYmRmNjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk4M2QwNTJlZmIyZTBiZTNlZjIwY2MxNmQ2NmFlMGQxYzBjODUxYzY5NTYyZjA4YzQ0NGJmZDgzZjM5ZjJhMmYifQ"
+        },
+        {
+          "resource": "repo://packaging/run-installed-product.py#L55-L61",
+          "version": "repo-lines-v1:sha256:2b159533caef9458be60a01e9e7c831114906aef168bd9d465b7b0dccab2af54:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2IwMGY1ZGIzMzJkOTM5MTI2OTAyZDk1ODA3NDFlNWMzYzlkMmNkMDg3ODQ0NjI3M2Y3ODYxMjNmMDVmNTEzZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjQ4NmZmNWNmOTM2M2I0NDI5MzM2ODAzYjJjOTYwZTczZGE4YzQ3ZmEwYzZmNjc2NThkMTRiMzIzY2QyMmQzNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjJmNDhhNGU2NTAyMGEwMmMzMGUzZmZhNTVmZWE0ODI5MGU2ZDgyNzMzNWI5ZjVkMmI2MjYxMGQzYjQ5MGJkZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmI2NGU5MjAwMGExOWNhMzg1OTNhNGU2YTBiYWM3NzA5NmQxZTk4Njk0OWEzYjYyODI2YjdjZWE0ZjczZDllOSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T03:55:28.462Z"
+    "at": "2026-11-15T18:33:44.464Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:fa1e42f139f1d755a321d50e568f8b766eee02b44290f89045b13ee342ebd124",
+  "pageVersion": "sha256:f12ce8bd4eeaa53e0f91a8ab08f29411debc1604888c0272a012532f368084cf",
   "claims": [
     {
       "id": "claim_91a8a70849534ef1b2462828f3d9c9fb",
@@ -152,7 +152,7 @@
         },
         {
           "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntimeTest.kt",
-          "version": "repo-file-v1:sha256:a27fc5ffdeace09ab8810e9d48c8bb7555172e9c3de5c676d4ed0c13c12dd091"
+          "version": "repo-file-v1:sha256:42226c5e2ff7e6805f0808c41caa63b6b3b84352add846b286407a03187366eb"
         }
       ]
     },
@@ -301,10 +301,24 @@
           "version": "repo-lines-v1:sha256:060d3e954f3fa39e672002f584541bbc136f839c3985a4932ee6607f2e102350:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZjgyNGI1MDJlMGZmMDExODg1ODlkMzdkOTIwYjgxYTIyOGY5Mjk0NmZkZDBjYzYxNGYxNDAyYWI4NzFkMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc5OWRmYjM3NjYzM2NlMjE3ZDg3YTVmNGEzYThlYWJmYWJkZmUxOTQyNDdmYmIwMzMyMWQyMjdiNzAzZTZjOGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_71586c40088e4616a7e890a8563a6b14",
+      "statement": "The managed installer derives the persistent Control staging profile; former checkout, local and legacy shell installer entry points are absent.",
+      "evidence": [
+        {
+          "resource": "repo://packaging/managed_installation.py#L1004-L1018",
+          "version": "repo-lines-v1:sha256:96037fd97561803f3a7f7256960fe5ffc0827cb90b172a6e9a94e88df49ba207:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNhZWQ4YmZkYTQzOGRhOWJkZDM1YTg4NWJmZTQ3YTNjZjE2Y2RjOWIwM2E1ZTZlYjdlZWU1ZTIxYTlmZjRkNWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiOTk5Y2Y2MTE5YTUzZDcyOTc3Y2M2ZDhiNTFjNTcxMjQxY2ZkYTliMmU1YjQ5NzAyN2RkMzhiNzg3NGVhNjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI4ZTg1MDVhOWNiZTliYmJlMmQxNmUxOGU0YjBiMjAxZmIyZGUxNjlmN2UwZDJmZjVhZmYzNDhkMGMzYmM1NWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzMmVjZjgxMDkyNzBlODZiNDViZGE1N2NkMjI1Y2YwN2Y1NjA5ZDYwYTQxZTE5NDY1OTI0ZGE1NTI1NmQ1ZGIifQ"
+        },
+        {
+          "resource": "repo://packaging/test-install-checkout.py#L23-L36",
+          "version": "repo-lines-v1:sha256:3cee1b07e15163394d5b374d0d69f9f25fb7d56de7b5e820d2d34e322e81c5ca:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzYWNhM2M1ODdlNmNiNDA0ZmQwYTQ4OWU0ZWI1NjUzMTUwYjliMDM5MDk0NGY5NzdmY2E2OTYxNGMzZjM1NDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViNjk0NmJlOTMxZWIyYzU4NTE1YTE2ZDI5YTk3YmI0MDQyOWM5ZmM5YmM5NTNmZTkyZjEwMzk3MmQyMTdjYWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFhYzVmNTZiYWU5OTgyYzkwODAxMTVjNmU5OGRlNGY3ZGQ3NTE5YmIwODI5NWI5NjlkNzEzMGM5NTE1NzI1OGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY0OTZhNTBkMmYyMmIzNzQ1MzhhZWYwMzM5MDdlZTk5ZmMwMWY1Y2NjMDQ1Nzg3ZDUyMzUxNDY4YjYyZDNhNGEifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T23:57:28.873Z"
+    "at": "2026-11-15T19:32:41.514Z"
   }
 }

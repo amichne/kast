@@ -12,10 +12,13 @@ from verify_documentation import commands
 
 class DocumentationProofTest(unittest.TestCase):
     def test_installer_examples_keep_their_offline_consumer_without_product_assembly(self):
-        self.assertIn(("python3", "packaging/test-installer-entrypoint.py"), commands(()))
+        self.assertIn(
+            ("uv", "run", "--locked", "--project", "packaging", "python", "packaging/tests/test-installer-entrypoint.py"),
+            commands(()),
+        )
         # Only declaration qualification needs the isolated PSI parser, not product assembly.
         self.assertEqual(
-            [("./gradlew", "verifyKnowledgeClaims")],
+            [("./gradlew", "verifyKnowledgeBase"), ("./gradlew", "verifyKnowledgeClaims")],
             [command for command in commands(()) if "gradlew" in command[0]],
         )
 
@@ -30,11 +33,11 @@ class DocumentationProofTest(unittest.TestCase):
             (tooling / "audit.py").write_text("# owned audit runner\n")
             selected = readability_commands(root)
             self.assertIn(
-                ("uv", "run", "--locked", "--project", "docs/tooling", "pytest",
+                ("uv", "run", "--locked", "--project", "docs/internal/tooling", "pytest",
                  "-c", "config/vale/readability/pytest.ini", "config/vale/readability"), selected,
             )
             self.assertIn(
-                ("uv", "run", "--locked", "--project", "docs/tooling", "pyright",
+                ("uv", "run", "--locked", "--project", "docs/internal/tooling", "pyright",
                  "--project", "config/vale/readability/pyrightconfig.json"), selected,
             )
             # A surviving test/config must not disappear from the plan when the runner is deleted.
@@ -44,12 +47,12 @@ class DocumentationProofTest(unittest.TestCase):
 
     def test_documentation_lane_rejects_public_okf_projection_drift(self):
         self.assertIn(
-            ("uv", "run", "--locked", "--project", "docs/tooling", "python",
-             "docs/tooling/okf_public.py", "--check"),
+            ("uv", "run", "--locked", "--project", "docs/internal/tooling", "python",
+             "docs/internal/tooling/okf_public.py", "--check"),
             commands(()),
         )
 
-    def test_documentation_lane_rejects_stale_canonical_claims(self):
+    def test_documentation_lane_keeps_claim_integrity_and_current_assessment(self):
         self.assertIn(
             ("./gradlew", "verifyKnowledgeClaims"),
             commands(()),
@@ -57,11 +60,11 @@ class DocumentationProofTest(unittest.TestCase):
 
     def test_documentation_lane_keeps_native_claim_and_reader_obligations(self):
         plan = commands(())
-        package = json.loads(Path("docs/tooling/markdown/package.json").read_text())
+        package = json.loads(Path("docs/internal/tooling/markdown/package.json").read_text())
         self.assertIn("test:evidence", package["scripts"]["check"])
         self.assertIn(
-            ("uv", "run", "--locked", "--project", "docs/tooling", "python",
-             "docs/tooling/reader_contracts.py", "--report",
+            ("uv", "run", "--locked", "--project", "docs/internal/tooling", "python",
+             "docs/internal/tooling/reader_contracts.py", "--report",
              "build/reports/documentation/reader-contracts.json"), plan,
         )
 
@@ -100,11 +103,10 @@ class DocumentationProofTest(unittest.TestCase):
 
     def test_navigation_and_snippet_inputs_keep_their_real_consumers(self):
         plan = commands(("AGENTS.md",))
-        self.assertIn(("npm", "run", "build", "--prefix", "docs/tooling/value-journey"), plan)
+        self.assertIn(("npm", "run", "build", "--prefix", "docs/internal/tooling/value-journey"), plan)
         self.assertIn(("git", "diff", "--exit-code", "--", "docs/public/snippets/value-journey.jsx",
                        "docs/public/images/value-journey.svg"), plan)
-        self.assertIn(("uv", "run", "--locked", "--project", "docs/tooling", "python", ".github/scripts/code_kb.py",
-                       "check-documentation-inputs", "--repo", ".", "--docs", "openwiki", "--strict", "--format", "json"), plan)
+        self.assertIn(("./gradlew", "verifyKnowledgeBase"), plan)
 
     def test_glossary_proof_retains_all_consumed_prose_and_projection_checks(self):
         self.assertEqual(
@@ -113,9 +115,9 @@ class DocumentationProofTest(unittest.TestCase):
                 "run",
                 "--locked",
                 "--project",
-                "docs/tooling",
+                "docs/internal/tooling",
                 "python",
-                "docs/tooling/check_glossary.py",
+                "docs/internal/tooling/check_glossary.py",
                 "docs/glossary.json",
                 "README.md",
                 "docs",
@@ -132,10 +134,10 @@ class DocumentationProofTest(unittest.TestCase):
     def test_parser_and_existing_documentation_tests_precede_prose_validation(self):
         plan = commands(("AGENTS.md",))
         self.assertEqual(
-            ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/tooling/markdown"), plan[0]
+            ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/internal/tooling/markdown"), plan[0]
         )
-        self.assertEqual(("npm", "run", "check", "--prefix", "docs/tooling/markdown"), plan[1])
-        self.assertEqual(("uv", "run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling"), plan[2])
+        self.assertEqual(("npm", "run", "check", "--prefix", "docs/internal/tooling/markdown"), plan[1])
+        self.assertEqual(("uv", "run", "--locked", "--project", "docs/internal/tooling", "pytest", "-c", "docs/internal/tooling/pyproject.toml", "docs/internal/tooling", "docs/internal/tests"), plan[2])
 
 
 if __name__ == "__main__":

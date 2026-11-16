@@ -47,10 +47,10 @@ sources:
     resource: repo://docs/tooling/test_knowledge_refresh.py
   - id: openwiki-source-ed23841223cbb1f8ea2721ef
     resource: repo://docs/tooling/test_publication.py
-generated: { by: "pi", at: "2026-11-11T06:28:10.019Z" }
+generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-15T20:10:47.711Z
 ---
 
 # Knowledge upkeep and coverage assessment
@@ -144,5 +144,5 @@ Keep the report and examine every substantive warning against the source meaning
 ## Read next
 
 - [Package coverage](../architecture/functional-packages.md)
-- [Installed projection](../knowledge/installed-projection-and-retrieval.md)
+- [Repository knowledge after installed bundle retirement](../knowledge/installed-projection-and-retrieval.md)
 - [Test evidence](testing-and-native-qualification.md)

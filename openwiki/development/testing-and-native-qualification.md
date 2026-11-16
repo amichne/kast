@@ -13,6 +13,7 @@ code_sources:
 - path: runtime/hosted/native/README.md
 - path: packaging/run-portable-tests.py
 - path: packaging/run-portable-tests-container.sh
+- path: packaging/run-installed-product.py
 - path: packaging/local_product_probe.py
 - path: .github/workflows/ci.yml
 - path: experiments/host-observation/ACCEPTANCE.md
@@ -25,16 +26,20 @@ sources:
     resource: repo://packaging/local_product_probe.py
   - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
     resource: repo://packaging/product_lifecycle_probe.py
+  - id: openwiki-source-8faf23d69764b95242de5e09
+    resource: repo://packaging/run-installed-product.py
   - id: openwiki-source-af8d30969eca7e840eedf039
     resource: repo://packaging/run-portable-tests.py
+  - id: openwiki-source-13056895a4583d99c7a53a3e
+    resource: repo://packaging/test-portable-tests.py
   - id: openwiki-source-a1bf1d8cd4e32016c6593087
     resource: repo://runtime/hosted/NATIVE_FIXTURES.md
   - id: openwiki-source-af72e3368d1f0c22109e4ecf
     resource: repo://runtime/hosted/native/README.md
-generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
+generated: { by: "amp", at: "2026-11-15T18:33:44.464Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T03:55:28.462Z
+    at: 2026-11-15T18:33:44.464Z
 ---
 
 # Tests and native qualification
@@ -78,8 +83,14 @@ A successful installation or handshake alone does not establish a usable semanti
 
 The portable packaging runner enumerates the checked-in offline Python suites under owned state.
 Its container form adds a read-only checkout and disabled network access.
-The runner rejects unexpected skips and records the permitted platform-specific count.
+The runner requires one nonempty test summary for each suite.
+It scans summary lines throughout the log so buffered output cannot hide the test count.
+It rejects unexpected skips and records the permitted platform-specific count.
 A Linux container pass does not qualify macOS IDEA or launchd behavior.
+
+`run-installed-product.py` delegates native acceptance to `product_lifecycle_probe.py`.
+It requires complete qualified candidate and baseline inputs, pinned interpreter inputs, and explicit evidence destinations.
+Missing prerequisites reject rather than skipping or substituting a staged Control/desktop Host pair.
 
 ## Disposable local installed acceptance
 

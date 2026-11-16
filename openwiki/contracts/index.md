@@ -1,7 +1,7 @@
 # Files
 
 - [Installation configuration](configuration.md) - Every external configuration input has declared ownership, parsing, defaults, and projection before it can affect the broker, installation or existing-IDE request.
-- [Installed knowledge](installed-knowledge.md) - The control product exposes bounded syntax documentation and scoped guides without starting a semantic runtime.
+- [Retired installed knowledge contract](installed-knowledge.md) - Control rejects the retired installed knowledge payload; repository citation checks and module reports remain separate.
 - [Operation outcomes](operation-outcomes.md) - Semantic success is complete or explicitly qualified and carries either published or live evidence; rejection carries no successful payload.
 - [Canonical operation registry](operation-registry.md) - The public operation set is closed, and successful registry and wire construction prove exact complete coverage with unique identities.
 - [Public intent tools](public-tools.md) - Public query, diagnostics, and bounded source changes lower into canonical operations without transferring compiler authority.

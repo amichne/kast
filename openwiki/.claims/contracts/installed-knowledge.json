@@ -1,50 +1,66 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:8f9811d307bbd340f51868b8396443e04508b49c434ebc8e34dac98da8e69d29",
+  "pageVersion": "sha256:6c82e72c249bf09b5ab7abef62b3a6b2bc546fb4f9255729a3f3c52f823f216f",
   "claims": [
     {
-      "id": "claim_10de93622f2540deb257f97bdbfbc003",
-      "statement": "Installed declaration descriptors expose KOTLIN_PSI_SYNTAX evidence with Kotlin-only named-declaration coverage, no type resolution and no inherited documentation.",
+      "id": "claim_b6c4f17cb399436c9b7bb467e65b171d",
+      "statement": "installedProductTest delegates complete-product native lifecycle acceptance to product_lifecycle_probe.py and requires explicit candidate, baseline, private Python and dependency artifacts, target, evidence and receipt inputs; component archive checks are separate from native acceptance.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt#L34-L45",
-          "version": "repo-lines-v1:sha256:5ace9c074f5308635fd35486050e1ade7bb56fe78cf394511222e54e5b5931c2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyZjgyNGI1MDJlMGZmMDExODg1ODlkMzdkOTIwYjgxYTIyOGY5Mjk0NmZkZDBjYzYxNGYxNDAyYWI4NzFkMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiNmJkMzRlM2EzMTgwYzY1MjhlZTAyMTI0OTdmMmRkZDM3MmMzNDYyOGY0OTQ1ZThjMmE2ZDc1MGUxNWQ1NjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNiZmNhMzJiNjBkZTYwM2VlY2Y1NWI4YmVmMDY3ZGQ1OTliYWVkZTlkYmI5MjIxMDJmYzc0YjkxNmU3ZTAwZDIifQ"
+          "resource": "repo://build.gradle.kts#L279-L310",
+          "version": "repo-lines-v1:sha256:31fcfadc073dcaaca51b6d8de39dd332797c8742c63fbe8ea6efd98a666f90a5:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyNWI1MjU5ODlhYmEzZTYxMjE2ZWNkOWZlMzBhNmRkNzZjZDI0NWQ5YjE5ODcxM2U3ZDUwOGZlZTgwNjk3YTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzNzE3YzBkYmMzYjQzZjE4ODNkMjg3ODI3ZWU4ZTNlYjJkMWIzYzE4MjM2OTUyZWJiYjUyNDJjMjY4ZGFiNGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhZDU4NDhmNzNlNzJhYTUyMDRmZTU2YzZiMTNhM2RkMGYyNDRhNzI3MWYzMzU3ZjE1YjNhMzJlODA1ZDFmOGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJiZjc5MDA0MGFjYWFkOGZjNDJjN2ZiNDBiYTcwZTJlYWJmNTI4NDA0ZWVjNzcyNmU4ZmNmZGJiMjJmOGQ0MDYifQ"
+        },
+        {
+          "resource": "repo://packaging/run-installed-product.py#L22-L29",
+          "version": "repo-lines-v1:sha256:ca9079745da78bb492f83bd8293cf0426d68c0106e815642189b14c0d77937de:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzQ0YjY4ODU0M2ZkZDY3OTljZDcwMTJhZjU4NWI4Zjg1MzIwZTdjMWQ5YzY2NjQxMGJmOTc1ODNkZmZkYmU5MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDRlYjE4ZGFlMzc5YjA0MzBjZTZhN2YxMDBmNGNhZTczZjVlZjM4ZDY4NDE3ZDAzMDUyZjAwMGY3NmJlN2VlNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTAzOTg3NDcxN2Y5NzE2NjhmMzA5ZDI5NTFhMmUwN2JiYzllYWU4OTA5YzE1MGY5MWFlNjkzMjAzNTljYTE5ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2NkN2YwMGYxMjA0MDIxMTliNzNmMjdlZGE3MjhmOTA2YzlhY2JlYWRiYjIxOGIyYmI4MTM4MzZhODAzZmZmNiJ9"
+        },
+        {
+          "resource": "repo://packaging/run-installed-product.py#L53-L62",
+          "version": "repo-lines-v1:sha256:ba393a0a43a57b730cfdada7bbb7913bea207b8496282fe21551e75b17b3e286:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiMzk3OTMzYTI0YTgwMWVlOTIzMzI3YmQ2OWEwMTA0OWMwNzc5MTUwMjFjZjJlYzM5ZGRhNGY4MWFhODM3ZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiNjRlOTIwMDBhMTljYTM4NTkzYTRlNmEwYmFjNzcwOTZkMWU5ODY5NDlhM2I2MjgyNmI3Y2VhNGY3M2Q5ZTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU2ZGZiZjQ1M2Y3ZjFiZWJhYjcyODM2MWIwZjM5M2VlYjRjMWZiNjY4ZjllYTIyYjkxNmRhY2Y1ZGZmODFkODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
-      "id": "claim_49b9fbdcc0ad4a819734869072c004b7",
-      "statement": "The standalone Kotlin documentation extraction process rejects the complete inventory if any source is unsupported, noncanonical, unreadable or invalid.",
+      "id": "claim_679e546a87d846b7be0f5b5db287ec44",
+      "statement": "Control distribution verification rejects share/kast/knowledge and its descendants as retired payloads and no longer requires a knowledge manifest.",
       "evidence": [
         {
-          "resource": "repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt#L24-L76",
-          "version": "repo-lines-v1:sha256:5dd05ef0ada3779fce739d7b08607aae3e91c057c9f1f25d827e346b527d0732:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0NTczYmNkZDliYzE4YjBhYWM4NTBmZmFmMzIwZjk5ZTY3OGEyZTM1NmZlMjY3ODVkZjc2YzdlYTI0ZDViOGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt#L65-L68",
+          "version": "repo-lines-v1:sha256:962c796c27b3643db2cf26d1e845827fd735d599e3cfbd18e409c462c3c84daf:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWY2NTRiY2U0NGExNDQ0MGMwODk1NWQyODQ4ZjA1Njc3MDczODMwNzNlMDQyMGFiYTc3ZmZhODlkNmJmZTcxZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTZiMDQ0OTE0Njk3MjJlODM2M2E5NGU0MDQ0NTM4ZTAxM2EyYTIxN2UzNmIxZTU2OGJhNjBhY2I3YjRjOGYyZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzI3MTNlMjRjMGI3NzRmOTA3NGMwYjkzZmVlNjJlNzNkNjczMTMxODYxYzliOWMyY2I3NGE4N2VmZGFmNjdkYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDE5ZDhmOWViNWE5ZmQ4YjJiMzZiMzE0NzE3OTk2MmIzMmQ0NDQ3M2VhNDFmMmQ1OWQzNjBiYjQ2N2Y0YjNhMyJ9"
+        },
+        {
+          "resource": "repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt#L88-L108",
+          "version": "repo-lines-v1:sha256:04f80fd9b52a151d4a2fc511f333ebd8f076fcd66a6288b712349c917085a129:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY3NWY5ZTUyNTNiYmFhOTNiYzZhZmQzZWRkZGE5MjM2Mjc4MGNhZjkwN2VmMzZlMDA3NWM5MzcyNTkxYjQ3M2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5MzU5MWY5OGMzY2EyZDU2MGJjYTY0YmNiN2QyYjE3YTg4MmNhN2ZlNzRjODJmMTNiMjhkMzczMjQwY2ZjZDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNhNmI1NTZkZTZiMGEwNDM2NzczY2E0YTc3YWZkZDViMjE5ZTRiMmViZjQzZjkzMTdkNzk2NTg4ZTk4MjBiNDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNkZGQzNWMzZDdjZDAwYjljNzQ5YTFkYjg3ZTg5NDJlZmEwNjdkM2MzYjA0MDMxNGJjYmExOTc1ZTdiNWE1MDcifQ"
         }
       ]
     },
     {
-      "id": "claim_5ea16474b7184796b70c2dff3d0f6738",
-      "statement": "Installed knowledge resources are limited to 8 MiB and require canonical JSON identities in the manifest, modules or guides namespaces before resource effects.",
+      "id": "claim_16d3f89a550f4f678b31266825d4498d",
+      "statement": "Control archive admission retains its 16,384-entry bound, distinct from the 32,768-entry installed-tree traversal allowance that includes the separately admitted interpreter.",
       "evidence": [
         {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt#L6-L64",
-          "version": "repo-lines-v1:sha256:14ba64d9cd7f80f22864118a94bb2988d544c8fbe8d499ff84238ffc6f222aae:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlOGFlOGRiZWVmODFjYjI4YzUzMTNjNzFmYmRjYjQ3ZDMzNjhiNGNjNmVkNWZlZDVhNDc3Y2Q5NDhmMDk0NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2MjM4ZjY3YmEwNjBkNTk5NTgxNzg1MTQ2MGRhNWJlMDA4N2NkODcxOTcyN2FlMmFiM2VlNDZjZGYyOWY3ZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhODdjYTY4YzQ1YzUyOWExZjVjNjc0ZmM3ODhkYmFlNTExYmFlMzIzZmJlZGUyM2NjOWMyNmRkN2M0YmVlNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+          "resource": "repo://build.gradle.kts#L215-L228",
+          "version": "repo-lines-v1:sha256:fc5fe4866b32341a415c225a4287e3c6cd47140d175bb81391ec3f7e0a63c813:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0NDY2ODc5YTI3OWE5NTQzMmM4Zjg5MmQ1NDZkMWZiMGViMWI2ZGRmZGQzZWNjOTJlZTUyODg5ODBiNTM5MzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmYzgwMzU4MjEwZjBkZTYzNTcyZjFlOTM4MmYxMzQ3YmJkNmI3ZTgxNDVjZTg2NmFjMzU4OWVjMWZjZGNmMWMifQ"
+        },
+        {
+          "resource": "repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt#L3-L10",
+          "version": "repo-lines-v1:sha256:ff48e9c5af6b262d27076f6444ac1bab80ab1679225672a8314afab02b832a74:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzJmNTkxODRiODUyZDY0MmY3ZjE1MDM1NTMxMmI0YmEyNmZjMTE4Mjc4NDU3OWVkYWI0ZmIwYTlkNGEwMzg0NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzM4ZTMyOGI1MWY4OTZhZmU3YzM4ZWNlNDQzYTg1OTgwMGIwYmI1OGZmYTc1ZGNiOGUxZjE1NTAwMzhlMWRkNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTFkODg1YmQ5YzJhYzBhZmRhY2M3NDYzZGZkMmU5OWQzMTk0Yjk4Yzk3ZTY5ZmIyZmVhZTQwMmIwZTdjYjVhYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2UzMDg0Y2ExN2RjOWI3MTQ5MWQ4NjVjZjFkNWIwYjRmMzczMGY4OTlmNmU5MjgyY2QyYmIyMDBlOWI3YjcwYSJ9"
         }
       ]
     },
     {
-      "id": "claim_008563ea267a4d9e9d20046e3954d59e",
-      "statement": "The installed knowledge manifest is versioned by Control independently of the hosted IntelliJ plugin release.",
+      "id": "claim_d97a81a8e249485b9908104706ebe5f8",
+      "statement": "generateKastModuleKnowledge retains the verified module architecture and scoped AGENTS.md report under build/reports/kast-architecture rather than installed knowledge resources.",
       "evidence": [
         {
-          "resource": "repo://build-logic/src/main/kotlin/kast.architecture.gradle.kts",
-          "version": "repo-file-v1:sha256:ff3da876574ceac304bed6caf26c3541f996136e041c3d05dbed197dff229e19"
+          "resource": "repo://build-logic/src/main/kotlin/kast.architecture.gradle.kts#L69-L82",
+          "version": "repo-lines-v1:sha256:36d74cf847efd474949eac5b911646276844febd279b70741558be8f32ef672f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyYjg3YjI1ODkwYTM0NWI4MDQwMTkzODljNmRiNWE1NmM5MmY3MjhlYWQ0ODdjYTEyYzUxOGM1NjBmN2Q1N2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBiZTE5MGQxNDkwYmI5ZWZhMWFhNjE2OTY4ZmU4MjZlNzQwZDBmMTRiNjg3ZTRmMjQ4ZTBmNTJlNGVmODdiNTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-11-10T06:03:12.348Z"
+    "by": "openwiki/0.9.0",
+    "at": "2026-11-15T20:10:47.711Z"
   }
 }

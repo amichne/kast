@@ -13,7 +13,7 @@ import org.junit.jupiter.api.io.TempDir
 
 class ControlDistributionLayoutTest {
     @Test
-    fun `control verification admits the shipped knowledge bundle file count`(@TempDir temporary: Path) {
+    fun `control verification admits a large file inventory`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val outcome =
             executeFixtureInstallation(
@@ -58,7 +58,7 @@ class ControlDistributionLayoutTest {
     }
 
     @Test
-    fun `installation with the shipped knowledge file count is idempotent`(@TempDir temporary: Path) {
+    fun `installation with a large file inventory is idempotent`(@TempDir temporary: Path) {
         val root = temporary.toRealPath()
         val request =
             releaseRequest(

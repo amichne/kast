@@ -9,7 +9,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - path: install.sh
-  - path: packaging/install-checkout.sh
+  - path: packaging/managed_installation.py
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
   - path: distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
@@ -45,7 +45,6 @@ code_sources:
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SavedConfigurationAdmissionTest.kt
   - path: packaging/configuration-schema.json
   - path: build-policy/configuration-ingress.json
-  - path: packaging/install-local.sh
   - path: packaging/test-install-local.py
   - path: build.gradle.kts
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/ModelInputFailure.kt
@@ -109,6 +108,10 @@ sources:
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt
   - id: openwiki-source-8677e434adb584035406f54a
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
+  - id: openwiki-source-1380068036b00bec817a6579
+    resource: repo://packaging/managed_installation.py
+  - id: openwiki-source-25977fc13c4ddf2c0840d6fd
+    resource: repo://packaging/test-install-checkout.py
   - id: openwiki-source-f1b91cff1056c87a66c81c26
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationAdmission.kt
   - id: openwiki-source-5bce5e00d8d37b48b461a27e
@@ -121,10 +124,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt
   - id: openwiki-source-b063b188a00b030d97a5f66b
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt
-generated: { by: "amp", at: "2026-11-14T23:43:30.219Z" }
+generated: { by: "amp", at: "2026-11-15T18:33:44.464Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T23:57:28.873Z
+    at: 2026-11-15T19:32:41.514Z
 ---
 
 # Installation configuration
@@ -227,9 +230,9 @@ installation. Installation and installed management operations reject alternate 
 `XDG_DATA_HOME` does not select another installation. The root and installer bin
 paths keep their HOME-derived proofs in typed request values.
 
-The derived `KAST_INSTALL_PROFILE` accepts only persistent. Session installation
-is retired, and checkout session requests reject before Gradle or installation
-effects. `KAST_INSTALL_ROOT` and `KAST_BIN_DIR` are derived bindings, not saved
+The managed installer derives `KAST_INSTALL_PROFILE=persistent` for Control staging.
+The former checkout and session installation scripts are removed.
+`KAST_INSTALL_ROOT` and `KAST_BIN_DIR` are derived bindings, not saved
 user settings. These legacy adapter bindings do not select another public installation.
 
 The private daemon remains a declared raw-environment ingress owner. Public CLI, MCP, and tool RPC instead share managed request admission. MCP initialization is passive: the first explicit semantic request selects the exact canonical root and its private Host state. Retained reads require an existing record instead of creating a trust grant. These launchers add no Codex App Server request.

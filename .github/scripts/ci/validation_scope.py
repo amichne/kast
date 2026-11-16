@@ -64,9 +64,9 @@ DOCUMENTATION_CONSUMER_PATHS = frozenset({
     # verify_documentation.py retains those direct checks without product assembly.
     ".github/scripts/ci/README.md", "README.md", "app-server/README.md",
     "app-server/docs/public-query-contract.md", "docs/development.md",
-    "docs/documentation-structure.md", "docs/hosted-read-configuration.md",
+    "docs/internal/documentation-structure.md", "docs/hosted-read-configuration.md",
     "docs/static-query-execution.md", "docs/okf-public.json",
-    "docs/tooling/okf_public.py", "docs/tooling/test_okf_public.py",
+    "docs/internal/tooling/okf_public.py", "docs/internal/tooling/test_okf_public.py",
     "docs/public/reference/AGENTS.md", "docs/public/start.mdx",
     "docs/public/reference/installation.mdx", "docs/public/reference/compatibility.mdx",
     "docs/public/reference/responses.mdx", "docs/public/reference/symbols.mdx",
@@ -90,7 +90,7 @@ def documentation_input(path: str) -> bool:
     return (
         path in DOCUMENTATION_PATHS
         or path in DOCUMENTATION_CONSUMER_PATHS
-        or path.startswith("docs/tooling/value-journey/")
+        or path.startswith("docs/internal/tooling/value-journey/")
         or (path.startswith("docs/reviews/readability-audit/") and Path(path).suffix in {".md", ".json", ".txt"})
         or (path.startswith("config/vale/readability/") and Path(path).suffix in {".ini", ".yml", ".txt"})
     )
@@ -149,7 +149,7 @@ PRODUCT_SOURCE_PREFIXES = tuple(
     f"{module}/src/{source_set}/kotlin/" for module in PRODUCT_MODULES for source_set in ("main", "test")
 )
 
-# Candidate preflight examines this inventory against the resolved native task graph.
+# Modules compiled into the native Control executable.
 NATIVE_INPUT_MODULES = frozenset({
     "app-server",
     "change/apply",
@@ -181,7 +181,6 @@ class Check(str, Enum):
     PRODUCT = "product"
     PORTABLE = "portable"
     DOCUMENTATION = "documentation"
-    GATE_GRAPH = "gate_graph"
 
 
 ALL_CHECKS = frozenset(Check)
@@ -231,7 +230,7 @@ class Selection:
 
     def with_native_compilation(self, mode: NativeCompilation) -> "Selection":
         if mode is NativeCompilation.DISABLED:
-            return Selection(self.checks - {Check.PRODUCT, Check.GATE_GRAPH}, self.reason, self.plan)
+            return Selection(self.checks - {Check.PRODUCT}, self.reason, self.plan)
         return self
 
     @property

@@ -23,13 +23,12 @@ code_sources:
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerControlRoute.kt
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/schema/CanonicalJson.kt
 - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt
-- path: build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt
+- path: build-logic/src/main/kotlin/conventions/KotlinFileLengthBaseline.kt
 - path: build-logic/src/main/kotlin/conventions/jsoncontracts/JsonContractBaseline.kt
 - path: build-logic/src/main/kotlin/support/architecture/ArchitectureAdmission.kt
 - path: build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt
 - path: build-logic/src/main/kotlin/support/architecture/knowledge/ModuleKnowledgeProjection.kt
 - path: build-logic/src/main/kotlin/support/architecture/projection/ArchitectureProjection.kt
-- path: build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt
 - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
 - path: build-logic/src/main/kotlin/support/tasks/nativefixtures/NativeFixtureJvmArguments.kt
 - path: change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/AddDeclarationApplyService.kt
@@ -46,7 +45,6 @@ code_sources:
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/change/ChangeCommands.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/codex/CodexCommands.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/product/ProductCommands.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/source/SourceCommands.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
@@ -54,7 +52,6 @@ code_sources:
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolDocument.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/AdmittedKnowledge.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CliBoundaryDocuments.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
@@ -109,7 +106,7 @@ code_sources:
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/AdmittedHostedQuery.kt
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T15:35:00.856Z
+    at: 2026-11-15T20:10:47.711Z
 sources:
   - id: openwiki-source-48edfaeb8d917960adc80600
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
@@ -121,7 +118,7 @@ sources:
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "amp", at: "2026-11-12T20:28:55.635Z" }
+generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
 ---
 
 # Functional package coverage
@@ -131,7 +128,7 @@ generated: { by: "amp", at: "2026-11-12T20:28:55.635Z" }
 This map routes production Kotlin packages to explanations of their functional owners.
 The inventory uses package declarations from the active Gradle modules and the included build logic.
 It excludes experimental repositories and test fixtures from the production package count.
-The current source declares 97 package-and-module pairs across 43 modules and the included build logic.
+The retired installed-knowledge packages are not active production owners.
 
 One explanation can cover several packages when they share a mechanism.
 Large packages also need topic pages for distinct operations, state owners, and failure paths.
@@ -171,13 +168,12 @@ The retired indexer does not become an active semantic host because its director
 | `app-server` | `io.github.amichne.kast.appserver.runtime` | [coordinator and workspace preparation](../transport/coordinator-and-workspace-preparation.md) |
 | `app-server` | `io.github.amichne.kast.appserver.schema` | [public admission](../queries/public-admission.md) |
 | `app-server` | `io.github.amichne.kast.appserver.storage` | [invocations and durable records](../transport/invocations-and-durable-records.md) |
-| `build-logic` | `conventions` | [installed projection and retrieval](../knowledge/installed-projection-and-retrieval.md) |
+| `build-logic` | `conventions` | [build and architecture](../development/build-and-architecture.md) |
 | `build-logic` | `conventions.jsoncontracts` | [contracts and generation](../development/contracts-and-generation.md) |
 | `build-logic` | `support.architecture` | [build and architecture](../development/build-and-architecture.md) |
 | `build-logic` | `support.architecture.gradle` | [build and architecture](../development/build-and-architecture.md) |
-| `build-logic` | `support.architecture.knowledge` | [installed projection and retrieval](../knowledge/installed-projection-and-retrieval.md) |
+| `build-logic` | `support.architecture.knowledge` | [repository knowledge](../knowledge/installed-projection-and-retrieval.md) |
 | `build-logic` | `support.architecture.projection` | [build and architecture](../development/build-and-architecture.md) |
-| `build-logic` | `support.knowledge` | [installed projection and retrieval](../knowledge/installed-projection-and-retrieval.md) |
 | `build-logic` | `support.tasks` | [build and architecture](../development/build-and-architecture.md) |
 | `build-logic` | `support.tasks.nativefixtures` | [build and architecture](../development/build-and-architecture.md) |
 | `change/apply` | `io.github.amichne.kast.change.apply` | [planning and write admission](../changes/planning-and-write-admission.md) |
@@ -194,7 +190,6 @@ The retired indexer does not become an active semantic host because its director
 | `cli` | `io.github.amichne.kast.cli.command.change` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.command.codex` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.command.ide` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.knowledge` | [installed projection and retrieval](../knowledge/installed-projection-and-retrieval.md) |
 | `cli` | `io.github.amichne.kast.cli.command.product` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.command.source` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.command.tool` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
@@ -202,7 +197,6 @@ The retired indexer does not become an active semantic host because its director
 | `cli` | `io.github.amichne.kast.cli.direct` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.ide` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.installation` | [installation and managed files](../distribution/installation-and-managed-files.md) |
-| `cli` | `io.github.amichne.kast.cli.knowledge` | [installed projection and retrieval](../knowledge/installed-projection-and-retrieval.md) |
 | `cli` | `io.github.amichne.kast.cli.mcp` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.projection` | [contracts and generation](../development/contracts-and-generation.md) |
 | `cli` | `io.github.amichne.kast.cli.rpc` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
@@ -291,13 +285,12 @@ Directory indexes belong to OpenWiki and regenerate at finalization.
 - [BrokerControlRoute.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/BrokerControlRoute.kt)
 - [CanonicalJson.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/schema/CanonicalJson.kt)
 - [PrivateRecordFiles.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt)
-- [GenerateKnowledgeDocsTask.kt](../../build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt)
+- [KotlinFileLengthBaseline.kt](../../build-logic/src/main/kotlin/conventions/KotlinFileLengthBaseline.kt)
 - [JsonContractBaseline.kt](../../build-logic/src/main/kotlin/conventions/jsoncontracts/JsonContractBaseline.kt)
 - [ArchitectureAdmission.kt](../../build-logic/src/main/kotlin/support/architecture/ArchitectureAdmission.kt)
 - [ArchitectureTasks.kt](../../build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt)
 - [ModuleKnowledgeProjection.kt](../../build-logic/src/main/kotlin/support/architecture/knowledge/ModuleKnowledgeProjection.kt)
 - [ArchitectureProjection.kt](../../build-logic/src/main/kotlin/support/architecture/projection/ArchitectureProjection.kt)
-- [GenerateInstalledKnowledgeTask.kt](../../build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt)
 - [GenerateAgentToolsTask.kt](../../build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt)
 - [NativeFixtureJvmArguments.kt](../../build-logic/src/main/kotlin/support/tasks/nativefixtures/NativeFixtureJvmArguments.kt)
 - [AddDeclarationApplyService.kt](../../change/apply/src/main/kotlin/io/github/amichne/kast/change/apply/AddDeclarationApplyService.kt)
@@ -314,7 +307,6 @@ Directory indexes belong to OpenWiki and regenerate at finalization.
 - [ChangeCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/change/ChangeCommands.kt)
 - [CodexCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/codex/CodexCommands.kt)
 - [IdeCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt)
-- [KnowledgeCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt)
 - [ProductCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/product/ProductCommands.kt)
 - [SourceCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/source/SourceCommands.kt)
 - [PublicToolCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt)
@@ -322,7 +314,6 @@ Directory indexes belong to OpenWiki and regenerate at finalization.
 - [DirectToolDocument.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolDocument.kt)
 - [ExistingIdeCli.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt)
 - [ControlInstallationInput.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt)
-- [AdmittedKnowledge.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/AdmittedKnowledge.kt)
 - [KastMcpMain.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt)
 - [CliBoundaryDocuments.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CliBoundaryDocuments.kt)
 - [KastToolRpcMain.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt)

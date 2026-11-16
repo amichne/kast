@@ -7,24 +7,25 @@ Pull requests use the merge base. Pushes use the entire before/head range.
 | Plan | Required work | Product publication |
 | --- | --- | --- |
 | `DOCUMENTATION` | Mintlify, parser, glossary, knowledge links, installer examples, and documentation tooling | None |
-| `SOURCE` | Affected owners and consumers, their semantic families, shared guards, offline preflight and portable packaging | None |
+| `SOURCE` | Affected owners and consumers, their semantic families, shared guards and portable packaging | None |
 | `SOURCE_FULL` | Complete source gate, portable packaging and documentation | None |
 | `PRODUCT` | Source gate, product gate, immutable candidate and portable packaging | Admitted tested candidate |
-| `FULL` | Every check above and gate membership inspection | Admitted tested candidate |
+| `FULL` | Every check above | Admitted tested candidate |
 
 The documentation plan admits reviewed pages, navigation, styles, generated views, and their documentation tooling.
 It also admits the reader-journey audit reports and Vale profiles from PR #1130.
 The frozen path inventory in `fixtures/pr1130-paths.txt` covers all 113 changed files at `d02373e8`.
 Tests reject broader validation skips when an installer script, Kotlin source, build file, or workflow joins that inventory.
 Before adding a path, inspect its consumers in Gradle, packaging, generators and tests.
-README, start, installation and compatibility examples run `packaging/test-installer-entrypoint.py` without Gradle.
+README, start, installation and compatibility examples run `packaging/tests/test-installer-entrypoint.py` without Gradle.
 When the readability runner or its test exists, the documentation job also runs its pytest, Pyright and Ruff checks.
 Most OpenWiki source inputs keep full validation.
-Reviewed documentation inputs instead run `check-documentation-inputs` for source paths and links.
-That mode emits `DOCUMENTATION_INPUTS` evidence and makes no Kotlin declaration claim.
-Full source validation keeps `verifyKnowledgeBase` and its declaration evidence.
-A source-inventory test checks the current literal source paths and inline links.
-New references to listed pages and unsupported reference forms require review before CI can pass.
+The documentation job runs `verifyKnowledgeBase` and `verifyKnowledgeClaims` with the isolated Kotlin parser.
+Source integrity rejects malformed references and broken document links.
+It reports current declaration drift as unresolved evidence without rewriting producer metadata.
+The assessment distinguishes integrity acceptance from current evidence and publication qualification.
+New or changed explanations still need coherent source attribution.
+Full publication qualification needs a complete current candidate and exact input-bound receipts.
 Generated callable schemas, product scripts, build configuration, unknown paths and mixed documentation/product changes select full validation.
 A reviewed documentation script keeps its direct tests instead of selecting Kotlin product qualification.
 Rejected affected plans report their finite failure code, such as `UNKNOWN_OWNER` or `STALE_GRAPH`.
@@ -34,8 +35,8 @@ Symlinks, executable modes, type changes and malformed observations select full 
 Missing history, invalid revisions and unknown events also keep every check.
 The source plan accepts main/test Kotlin sources outside the native executable and installation owners.
 The product plan covers those release-sensitive owners.
-Candidate preflight compares the native owner inventory with the actual native compilation graph.
-Changes to build configuration select full validation and must pass that comparison.
+`NATIVE_INPUT_MODULES` lists the native executable owners by hand; no CI step compares it with the native compilation graph.
+While pull requests skip product validation and main pushes always select it, that inventory changes no job selection.
 Main pushes with source changes select product validation before automatic developer promotion when Mac checks are enabled.
 A source-inventory test checks that each listed root remains included in `settings.gradle.kts`.
 New modules, fixtures and unknown roots keep full validation until their scope is reviewed.
@@ -70,7 +71,6 @@ Cleanup runs after successful builds, and existing encrypted configuration-cache
 The CI jobs that run Gradle populate their shared caches on main.
 The Linux source job stores source task outputs.
 The macOS native job stores outputs from the reset-adapter suites.
-If main reuses a qualified candidate, CI skips Gradle and keeps the candidate's payload.
 
 Keep setup restore/save reports, build task outcomes, native metrics and job timestamps from necessary runs.
 A transport hit does not prove task-output reuse or a speedup.
@@ -79,7 +79,7 @@ Source validation uses the fixed validation version `0.0.0` for product, control
 Source identities can still invalidate outputs. Measure their effect.
 Source and candidate invocations use `--info` to keep configuration-cache rejection reasons and task input changes.
 Source logs stay in the existing source reports; candidate logs stay in the Actions build step.
-Keep ordinary source validation at `0.0.0`; do not substitute a run number to improve candidate reuse.
+Keep ordinary source validation at `0.0.0`; do not substitute a run number to improve candidate cache hits.
 Candidate qualification retains its actual release version and exact source identity.
 
 A local CLI compilation probe reused configuration and left compilation up-to-date on an identical second invocation.
@@ -128,7 +128,6 @@ gh variable set KAST_NATIVE_COMPILATION --repo amichne/kast --body false
 Source, portable packaging and documentation keep their selected checks.
 A full selection becomes `SOURCE_FULL` and runs the complete source gate.
 Its validation record says `SOURCE_VALIDATED` and grants no product publication authority.
-The source gate cannot reuse a product candidate while native compilation is disabled.
 Both manual release workflows and developer promotion also skip while the variable is `false`.
 An earlier source-only record still rejects product promotion after the variable returns to `true`.
 
@@ -165,22 +164,13 @@ The switch does not remove fixture sources or their case manifest.
 ## Candidate runner routing
 
 Routine pull-request CI checks source without producing a product candidate.
-On a main push that needs a product, CI first searches for a qualified candidate from the merged pull request.
-Reuse needs the same source tree and an admitted payload.
-If CI finds no eligible candidate, the main run builds and qualifies one.
+Every main push or manual main run that needs a product builds and qualifies a fresh candidate.
 The **Isolated runtime candidates** workflow produces platform archives with its own qualification receipts.
 
-A reused candidate runs the final `Kotlin product` job on `ubuntu-latest`.
-That job downloads and retains the qualified payload without executing its macOS binaries.
-Reuse admission still requires a successful same-repository pull request and an identical source tree.
-The retained record keeps the original platform, toolchain, version, producer and payload digests.
-
-A fresh candidate still needs macOS to exercise the assembled Mac product and seal its identity.
-Linux cannot execute those binaries.
-Main pushes and manual main runs compile and qualify fresh Mac candidates on the GitHub-hosted `macos-15` runner.
+The `Kotlin product` job needs macOS to exercise the assembled Mac product; Linux cannot execute those binaries.
+Main pushes and manual main runs compile and qualify Mac candidates on the GitHub-hosted `macos-15` runner.
 The manual component release uses that runner as well. Stable promotion uses retained bytes.
 No personal Mac or persistent runner service is required.
-The reused-candidate Linux route remains unchanged.
 
 ## Compile once and join qualification late
 
@@ -190,8 +180,6 @@ It restores their exact release instead of compiling Control again on the smalle
 The restore checks the source revision, source tree, version, archive digest, target platform, and compiler toolchain.
 Artifact selection stays within the same workflow run and attempt.
 A missing or rejected archive fails the job; it never triggers a replacement build.
-When source validation admits a reused PR candidate, no same-attempt native release exists.
-That path keeps its independent complete-product compilation; it does not borrow another attempt's release.
 
 Each target still builds its separate native component harness and runs native qualification.
 The two workflow calls execute one target each, so splitting their dependencies adds no target executions.
@@ -208,17 +196,13 @@ The changed graph still needs a remote timing measurement.
 Final product qualification consumes release archives and runs native launcher cases through Gradle against the assembled executable.
 Each hosted job sets up the Python version in `.python-version` and installs the pinned uv version.
 The native Gradle task passes `-mmacosx-version-min=15.0` to the macOS linker.
-Before candidate sealing, it rejects a native binary whose deployment target differs from macOS 15.0.
-
-Reuse admission runs only after a main push.
-Manual main runs use fresh candidates.
-Verify actual Linux retention with the successful main push job and its candidate artifact after merge.
+The native stage rejects a binary whose deployment target differs from macOS 15.0.
 
 Run the focused checks from the repository root:
 
 ```sh
 uv run --locked --script .github/scripts/ci/fast_checks.py
-uv run --locked --project docs/tooling pyright --project .github/scripts/ci/pyrightconfig.json
+uv run --locked --project docs/internal/tooling pyright --project .github/scripts/ci/pyrightconfig.json
 python3 .github/scripts/ci/verify_documentation.py
 actionlint .github/workflows/ci.yml .github/workflows/docs.yml .github/workflows/developer-release.yml
 ```
@@ -289,9 +273,8 @@ Inherited pytest selection options cannot replace required execution with collec
 
 ## Source obligations and qualification
 
-`source_validation.py` admits a clean source tree, runs the offline preflight suites, examines the Gradle graph, and runs `sourceValidationGate`.
-A failed offline preflight stops before Gradle starts, including its dry-run.
-The failure report lists no graph tasks and keeps every source obligation as missing.
+`source_validation.py` admits a clean source tree, examines the Gradle graph, and runs `sourceValidationGate`.
+The release preflight suites run once, in the scope job's `fast_checks.py decisions` stage.
 The script records the source tree, task graph, elapsed time, exit code, and dependency compiler count.
 Full and affected commands request single-use Gradle daemons with `--no-daemon`.
 The local product gate requests the same daemon lifetime.
@@ -345,7 +328,6 @@ This preserves type-resolved analysis and obligations that `scopedCheck` alone o
 | App Server | Public query generation |
 | Installation scripts | Offline lifecycle, recovery, removal, cleanup, system Python, local installation and installer fixtures |
 | Included build | Build-logic tests and quality rules |
-| Offline preflight | Version resolution, product-gate commands, candidate admission, environment admission, gate membership rules and execution evidence |
 | Portable container | Onboarding, cloud environment, MCP registration, developer publication, Git attribution, host installation and shared adapter suites |
 
 The graph rejects native compilation, installed-product composition, release runtime admission, hosted-plugin assembly, and release assembly.
@@ -355,7 +337,6 @@ Linux owns the source result through `source-work`.
 The stable `Source validation` check needs that job, independently of native compilation.
 Source-only changes use affected selection with fixed validation versions.
 Product changes run the complete source gate before the native input archive is prepared.
-A reused candidate keeps its original successful source proof and exact source tree.
 Failed, cancelled, missing, and skipped source results reject the source aggregate.
 The final required gate also needs the qualified candidate.
 
@@ -364,17 +345,16 @@ The routine candidate path uses four stages:
 1. Linux runs source checks and compiles JVM inputs.
 2. macOS compiles those inputs with Native Image and examines the executable version and deployment target.
 3. Linux admits the native artifact, assembles release archives, examines layout and runtime admission, and generates the SBOM.
-4. macOS runs the installed-product tests against those archives and seals the existing candidate record.
+4. macOS runs the public launcher tests against the assembled Mac Control executable.
 
 Each transfer carries the source revision, source tree, version, artifact kind, and SHA-256 digest.
 The native artifact also carries the compiler toolchain digest through assembly.
-Final qualification rejects a different toolchain before candidate sealing.
+Final qualification rejects a different toolchain.
 A mismatched identity or digest rejects the next stage before compilation or assembly.
 Archive extraction rejects links and paths outside the destination.
 The native stage compiles transferred JVM inputs directly with Native Image.
 Mac adapter and launcher cases use Gradle.
 The native tests still need macOS because Linux cannot execute the Mac binary.
-Candidate reuse keeps the existing payload bytes and skips these stages.
 
 Main CI qualifies packaging, installation, native inputs, toolchains, and release policy after merge.
 Pull-request source success does not prove native behavior.
@@ -383,7 +363,6 @@ Repository branch-protection settings remain unchanged.
 
 Local `productBuildGate` and standalone release builds keep the complete gate.
 Routine CI distributes its source and native obligations across the target platforms.
-Candidate preflight still examines the complete gate and native input inventory.
 No matched hosted timing comparison establishes a speedup for this split.
 
 ## Affected obligations and rollout

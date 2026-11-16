@@ -103,6 +103,16 @@ This guide owns repository rules and routes source investigation.
 - The user grants standing authorization for these restarts. Do not ask for separate approval.
 - Preserve user work through the normal IDE restart action.
 
+## Repository discovery
+
+Use `bin/kast-repo list` and `bin/kast-repo read <path>` for default repository retrieval.
+The manifest `.agents/repository-surfaces.json` declares the public entrypoints.
+Use explicit `--internal` expansion for implementation diagnosis.
+Private paths remain available to unrestricted filesystem tools.
+Keep `install.sh` as the public installer and `bin/kast-knowledge-refresh` as the maintenance entrypoint.
+The packaging inventory owns delivered member names independently of private source paths.
+OpenWiki keeps its native root and lifecycle. Do not move its store through a rename or symlink.
+
 ## Navigation Hints
 
 - For architecture uncertainty, use optional OpenWiki retrieval. If retrieval tools are unavailable, read `openwiki/quickstart.md` and its source citations.
@@ -193,7 +203,7 @@ This guide owns repository rules and routes source investigation.
 - Use each term for its defined concept. Add a source-backed definition before a new domain term becomes shared vocabulary.
 - Preserve code identifiers, commands, UI labels, generated contracts, and attributed quotations. Do not rename a distinct concept because its wording resembles another term.
 - Keep historical reports tied to their recorded revision. Apply terminology changes to current prose within the glossary's declared scope.
-- Edit the JSON source. Regenerate its reader view and Vale terminology rules through [the documentation policy](docs/documentation-structure.md#glossary-ownership).
+- Edit the JSON source. Regenerate its reader view and Vale terminology rules through [the documentation policy](docs/internal/documentation-structure.md#glossary-ownership).
 - Keep the README focused on reader value and one default installation path. Put options, lifecycle behavior, and runtime detail in reference documentation.
 - Use Vale `3.24.0` from `mise.toml` with `.vale.ini`. Rules and licenses reside in `config/vale/` and need no runtime package download.
 - Run `mise exec -- vale --no-global --config=.vale.ini --output=JSON` with each changed prose path. Keep the report.
@@ -204,7 +214,7 @@ This guide owns repository rules and routes source investigation.
 
 - Use OpenWiki only when requested or when a concrete architecture or dependency uncertainty needs context; stop once grounded. Use `openwiki/quickstart.md` when retrieval tools are unavailable.
 - Treat OpenWiki pages as source-bound routing and explanation. Claims retain source versions; `code_sources` preserve exact declaration citations and impact. Source, schemas, generated contracts, tests and verified Gradle architecture remain stronger evidence.
-- After changing cited source, run `./gradlew knowledgeImpact`, refresh affected concepts through the OpenWiki page lifecycle when their Claims changed, and run `./gradlew verifyKnowledgeBase`.
+- After a change to cited source, run `./gradlew knowledgeImpact` and `./gradlew verifyKnowledgeBase verifyKnowledgeClaims`. Update authored explanations when behavior changes. Report review demand through the existing assessment. Use `bin/kast-knowledge-refresh` for native reconciliation. Ordinary source work must not rewrite unrelated Claim metadata. A publication candidate needs complete current assessment. Review age alone requests maintenance and does not establish falsehood or fresh proof.
 
 <!-- OPENWIKI:START -->
 

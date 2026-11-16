@@ -1,7 +1,16 @@
 package io.github.amichne.kast.distribution.cli
 
+import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 @Serializable internal data class BuildRecordReference(val name: String, val sha256: String)
 
@@ -21,7 +30,43 @@ internal data class MainBuildEntry(
 
 @Serializable internal data class ProductAsset(val name: String, val sha256: String, val bytes: Long)
 
-@Serializable internal data class ProductProducer(val runId: Long, val runAttempt: Int, val workflow: String)
+@Serializable(with = ProductProvenanceSerializer::class) internal sealed interface ProductProvenance
+
+@Serializable
+internal data class ProductProducer(val runId: Long, val runAttempt: Int, val workflow: String) : ProductProvenance
+
+@Serializable
+internal enum class LocalProductProducerKind {
+    LOCAL
+}
+
+@Serializable
+internal data class LocalProductProducer(
+    @Required val kind: LocalProductProducerKind = LocalProductProducerKind.LOCAL
+) : ProductProvenance
+
+/** Dispatches on the sealed type in both directions; native images register no reflective serializer lookup. */
+internal object ProductProvenanceSerializer : KSerializer<ProductProvenance> {
+    override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: ProductProvenance) =
+        when (value) {
+            is ProductProducer -> encoder.encodeSerializableValue(ProductProducer.serializer(), value)
+            is LocalProductProducer -> encoder.encodeSerializableValue(LocalProductProducer.serializer(), value)
+        }
+
+    override fun deserialize(decoder: Decoder): ProductProvenance {
+        val input = decoder as? JsonDecoder ?: throw SerializationException("Product provenance must be JSON")
+        val element = input.decodeJsonElement()
+        val strategy: DeserializationStrategy<ProductProvenance> =
+            when (element) {
+                is JsonObject ->
+                    if ("kind" in element) LocalProductProducer.serializer() else ProductProducer.serializer()
+                else -> throw SerializationException("Product provenance must be an object")
+            }
+        return input.json.decodeFromJsonElement(strategy, element)
+    }
+}
 
 @Serializable
 internal data class ProductInputs(
@@ -42,7 +87,7 @@ internal data class NativeCompositionEvidence(
 @Serializable
 internal data class NativeQualification(
     val receipt: ProductAsset,
-    val producer: ProductProducer,
+    val producer: ProductProvenance,
     val bundleSha256: String,
     val runtimeSha256: String,
     val controlSha256: String,
@@ -68,7 +113,7 @@ internal data class ProductBuildRecord(
     val sourceRevision: String,
     val sourceTree: String,
     val version: String,
-    val producer: ProductProducer,
+    val producer: ProductProvenance,
     val targets: List<ProductTarget>,
 )
 
@@ -83,27 +128,44 @@ internal data class ProductBuildEntry(
 @Serializable internal data class ProductBuildCatalog(val schemaVersion: Int, val builds: List<ProductBuildEntry>)
 
 private const val SPLIT_PRODUCT_RECORD_SCHEMA_VERSION = 3
+private const val LOCAL_PRODUCT_RECORD_SCHEMA_VERSION = 4
 
 internal fun validProductRecord(record: ProductBuildRecord): Boolean =
     record.schemaVersion in setOf(2, SPLIT_PRODUCT_RECORD_SCHEMA_VERSION) &&
-        record.repository == "amichne/kast" &&
-        listOf(record.sourceRevision, record.sourceTree).all(::productRevision) &&
-        record.version.length <= MAX_VERSION_CHARACTERS &&
-        Regex("0\\.0\\.[1-9][0-9]*").matches(record.version) &&
+        validProductIdentity(record) &&
         validProducer(record.producer, ".github/workflows/ci.yml") &&
         record.targets.map { it.target } == listOf("linux-x86_64", "macos-aarch64") &&
         record.targets.all {
             (it.runtimeBase != null) == (record.schemaVersion == SPLIT_PRODUCT_RECORD_SCHEMA_VERSION) &&
+                validProducer(it.qualification.producer, ".github/workflows/composed-linux.yml") &&
                 validProductTarget(it, record.version)
         }
+
+internal fun validInstalledProductRecord(record: ProductBuildRecord): Boolean =
+    validProductRecord(record) ||
+        (record.schemaVersion == LOCAL_PRODUCT_RECORD_SCHEMA_VERSION &&
+            validProductIdentity(record) &&
+            record.producer is LocalProductProducer &&
+            record.targets.size == 1 &&
+            record.targets.all {
+                it.target in setOf("linux-x86_64", "macos-aarch64") &&
+                    it.qualification.producer is LocalProductProducer &&
+                    validProductTarget(it, record.version)
+            })
+
+private fun validProductIdentity(record: ProductBuildRecord): Boolean =
+    record.repository == "amichne/kast" &&
+        listOf(record.sourceRevision, record.sourceTree).all(::productRevision) &&
+        record.version.length <= MAX_VERSION_CHARACTERS &&
+        Regex("0\\.0\\.[1-9][0-9]*").matches(record.version)
 
 private fun productRevision(value: String): Boolean =
     Regex("[0-9a-f]{40}").matches(value) && value != "0".repeat(REVISION_LENGTH)
 
 internal fun productDigest(value: String): Boolean = Regex("[0-9a-f]{64}").matches(value)
 
-private fun validProducer(producer: ProductProducer, workflow: String): Boolean =
-    producer.runId > 0 && producer.runAttempt > 0 && producer.workflow == workflow
+private fun validProducer(producer: ProductProvenance, workflow: String): Boolean =
+    producer is ProductProducer && producer.runId > 0 && producer.runAttempt > 0 && producer.workflow == workflow
 
 private fun validProductAsset(asset: ProductAsset, name: String): Boolean =
     asset.name == name && productDigest(asset.sha256) && asset.bytes in 1 until MAX_PRODUCT_ASSET_BYTES
@@ -121,7 +183,6 @@ private fun validProductTarget(target: ProductTarget, version: String): Boolean 
         validProductAsset(target.bundle, "kast-composed-setup-v$version-${target.target}.tar.gz") &&
         validProductAsset(target.runtime, "kast-runtime-v$version-${target.target}.zip") &&
         validProductAsset(evidence.receipt, "qualification-${target.target}.json") &&
-        validProducer(evidence.producer, ".github/workflows/composed-linux.yml") &&
         evidence.kind == "NATIVE" &&
         evidence.outcome == "COMPLETE" &&
         evidence.bundleSha256 == target.bundle.sha256 &&

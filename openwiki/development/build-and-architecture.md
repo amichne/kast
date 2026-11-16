@@ -17,7 +17,6 @@ code_sources:
   - path: .github/scripts/ci/validation_scope.py
   - path: config/README.md
   - path: build-logic/src/test/kotlin/support/architecture/knowledge/ModuleKnowledgeProjectionTest.kt
-  - path: build-logic/src/test/kotlin/support/knowledge/InstalledKnowledgeProjectionTest.kt
   - path: build-logic/src/main/kotlin/support/architecture/projection/ArchitectureProjection.kt
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - path: build-logic/src/main/kotlin/support/tasks/nativefixtures/NativeFixtureJvmArguments.kt
@@ -32,10 +31,10 @@ sources:
     resource: repo://build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt
   - id: openwiki-source-492a0ca28ef350e203697356
     resource: repo://config/README.md
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T04:56:18.579Z
+    at: 2026-11-16T04:06:28.637Z
 ---
 
 
@@ -86,7 +85,6 @@ Use domain tests and native qualification for those separate claims.
 ## Focused tests
 
 - [ModuleKnowledgeProjectionTest.kt](../../build-logic/src/test/kotlin/support/architecture/knowledge/ModuleKnowledgeProjectionTest.kt)
-- [InstalledKnowledgeProjectionTest.kt](../../build-logic/src/test/kotlin/support/knowledge/InstalledKnowledgeProjectionTest.kt)
 
 ## Source owners
 
@@ -104,7 +102,7 @@ Use domain tests and native qualification for those separate claims.
 
 - [Contract generation](contracts-and-generation.md)
 - [Package routes](../architecture/functional-packages.md)
-- [Installed knowledge](../knowledge/installed-projection-and-retrieval.md)
+- [Repository knowledge](../knowledge/installed-projection-and-retrieval.md)
 
 ## Task adapters and projections
 

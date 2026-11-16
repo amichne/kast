@@ -30,6 +30,23 @@ import org.junit.jupiter.api.Test
 
 class CliCommandGraphContractTest {
     @Test
+    fun `retired installed knowledge commands reject without root or runtime demand`() {
+        var boundaryTouched = false
+        val cli = testCli { boundaryTouched = true }
+
+        for (arguments in listOf(emptyList(), listOf("Outcome"), listOf("manifest.json"))) {
+            val exit = cli.execute(listOf("knowledge") + arguments, Path.of("/missing"))
+
+            assertTrue(exit is CliExit.BoundaryRejected, arguments.toString())
+            assertEquals(CliBoundaryExitStatus.USAGE, (exit as CliExit.BoundaryRejected).status)
+        }
+        val help = cli.execute(listOf("knowledge", "--help"), Path.of("/missing"))
+        assertTrue(help is CliExit.Complete)
+        assertFalse(help.document.value.contains("knowledge"))
+        assertFalse(boundaryTouched)
+    }
+
+    @Test
     fun `public service diagnostics use the parser and setup commands are absent`() {
         val graph = commandGraphFactory()
         val publicCommand = listOf("app-server", "status")

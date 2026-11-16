@@ -6,7 +6,7 @@ For a first query in your Kotlin project, use [the first-query tutorial](public/
 Choose the route that matches your change:
 
 - For code, start with [one behavior](#test-one-behavior-at-a-time), then use [the scoped edit loop](#use-the-scoped-edit-loop).
-- For prose, use [the documentation policy](documentation-structure.md) and its separate prose and terminology procedures.
+- For prose, use [the documentation policy](internal/documentation-structure.md) and its separate prose and terminology procedures.
 - For a local product, read [build and installation](#build-and-install-the-checkout) before changes to your existing installation.
 - For release evidence, read [CI candidates and developer publication](#ci-candidates-and-developer-publication).
 
@@ -103,9 +103,9 @@ From the repository root, examples using the existing runners are:
   --tests 'io.github.amichne.kast.distribution.contract.configuration.KastConfigurationResolutionTest'
 ./gradlew :app-server:test \
   --tests 'io.github.amichne.kast.appserver.SavedConfigurationIngressTest'
-python3 packaging/test-installation-lifecycle.py RetirementBoundaryTest
-python3 packaging/test-installation-lifecycle.py RetirementAdapterTest
-python3 packaging/test-installer-entrypoint.py InstallerEntrypointTest.test_noninteractive_collision_fails_closed_at_selected_command_directory
+mise exec -- uv run --locked --project packaging pytest packaging/tests/test-installation-lifecycle.py::RetirementBoundaryTest
+mise exec -- uv run --locked --project packaging pytest packaging/tests/test-installation-lifecycle.py::RetirementAdapterTest
+mise exec -- uv run --locked --project packaging python packaging/tests/test-installer-entrypoint.py InstallerEntrypointTest.test_obsolete_component_options_reject_before_effects
 ```
 
 These selectors require no product assembly, release download or native acceptance.
@@ -164,7 +164,7 @@ For a change to prose, include the glossary task and select files for Vale:
 ```shell
 mise exec -- ./gradlew :distribution:cli:scopedCheck \
   verifyDocumentationGlossary verifyScopedProse \
-  -PkastProsePaths=docs/development.md,docs/tooling/README.md --continue
+  -PkastProsePaths=docs/development.md,docs/internal/tooling/README.md --continue
 ```
 
 `kastProsePaths` accepts distinct repository-relative `.md`, `.mdx`, and `.txt` paths separated by commas.
@@ -185,14 +185,14 @@ Live installation and release-catalog reads keep their existing freshness rules.
 Run all offline packaging suites in an isolated Linux container with:
 
 ```shell
-./packaging/run-portable-tests-container.sh
+./packaging/internal/verification/run-portable-tests-container.sh
 ```
 
 The runner mounts the checkout read-only, disables network access, and gives each
 test process an owned home, executable temp directory for fixture scripts, and
 tool path. Installer policy tests supply a private `uname` observation for the
 supported macOS case and separately assert rejection of Linux. It includes every
-remaining `packaging/test-*.py` suite. Platform-specific installer cases remain
+remaining `packaging/tests/test-*.py` suite. Platform-specific installer cases remain
 gated to macOS; the Linux container does not qualify them. The runner rejects
 unexpected skips and reports the expected platform skip count (currently 15 on
 Linux, zero on macOS arm64).
@@ -200,7 +200,7 @@ CI runs this container suite on a disposable Ubuntu runner for every pull reques
 and main push, alongside the macOS product checks.
 
 Run the same offline inventory without Docker using
-`python3 packaging/run-portable-tests.py`. A container pass proves the offline installer contract
+`python3 packaging/internal/verification/run-portable-tests.py`. A container pass proves the offline installer contract
 and process tests on Linux. It does not establish native IDEA or Codex behavior.
 
 Report the command, observed result and evidence level: pure policy, private
@@ -275,15 +275,15 @@ their own explicit version and qualification.
 
 ### Disposable local installed acceptance
 
-On macOS ARM64, use `packaging/local_product_probe.py` to exercise the installed
+On macOS ARM64, use `packaging/internal/verification/local_product_probe.py` to exercise the installed
 product without a published two-target release candidate. This contributor path
 does not change release admission or grant release qualification.
 
 Build a positive candidate version such as `0.0.1`. Assemble its matching Control
-and Host with `packaging/composed_release.py assemble --full-native-archives`.
+and Host with `packaging/internal/composition/composed_release.py assemble --full-native-archives`.
 Keep the other required assembly arguments. This option retains a full runtime
 archive instead of splitting a shared base; the default release path is unchanged.
-Run `packaging/composed_release.py qualify` with those exact archives and a native
+Run `packaging/internal/composition/composed_release.py qualify` with those exact archives and a native
 component harness. Supply `--sandbox` when a desktop IDEA process is running.
 Qualification verifies the archive comparison before discarding its expanded copies.
 
@@ -291,7 +291,7 @@ Supply the resulting component receipt, pinned interpreter inputs, and an explic
 macOS sandbox profile to the local probe. Use a fresh evidence directory.
 
 ```shell
-mise exec -- uv run --locked --project packaging python packaging/local_product_probe.py \
+mise exec -- uv run --locked --project packaging python packaging/internal/verification/local_product_probe.py \
   --bundle "$BUNDLE" --runtime "$RUNTIME" --qualification "$QUALIFICATION" \
   --private-python-archive "$PRIVATE_PYTHON_ARCHIVE" \
   --private-dependency "$PRIVATE_DEPENDENCY" --sandbox "$SANDBOX" \
@@ -313,12 +313,12 @@ disposable root named in `disposable-root.txt`; inspect it before cleanup.
 
 ### Install a checkout as an isolated managed product
 
-On macOS ARM64, `packaging/local_product_install.py` installs one clean committed
+On macOS ARM64, `packaging/internal/product/local_product_install.py` installs one clean committed
 checkout as a managed product you can keep using. Use it to run a branch with
 private workspace containers before release. It never replaces the user installation.
 
 ```shell
-mise exec -- uv run --locked --project packaging python packaging/local_product_install.py \
+mise exec -- uv run --locked --project packaging python packaging/internal/product/local_product_install.py \
   install --root ~/.local/share/kast-local/my-branch --source /path/to/clean/checkout
 cd /path/to/workspace && ~/.local/share/kast-local/my-branch/bin/kast query --name MyClass --json
 ```
@@ -362,11 +362,7 @@ The candidate contains the installable payload and a typed identity record.
 The record retains the build commit, Git tree, toolchain, platform, and every file digest.
 CI retains candidates for 30 days.
 
-After merge, main CI searches successful runs for the merged PR's exact head.
-It reuses a same-repository candidate only when its complete Git tree matches merged `main`.
-The candidate retains its original commit and version.
-Missing or expired candidates, changed trees, and fork producers require a fresh main build.
-Malformed records, damaged payloads, and incomplete observations reject reuse.
+Main CI builds a fresh candidate for every product run; it does not reuse pull-request payloads.
 
 Successful main CI from a push triggers the developer publication workflow automatically.
 A `DOCS_VALIDATED` result leaves the developer product pointer unchanged and publishes no candidate.
@@ -445,27 +441,11 @@ The [installation reference](public/reference/installation.mdx) owns remote inst
 
 ### Install a local build
 
-> **Deprecated: desktop IDEA installation.** User-space IntelliJ IDEA plugins and desktop Hosts are targeted for removal, not removed in this change.
-> Existing 0.51.x desktop Hosts and their wire values remain supported for compatibility.
-> Use managed headless Hosts with private workspace containers and automatic workspace creation through the managed product.
-> The contributor replacement is `packaging/local_product_install.py`; see [Install a checkout as an isolated managed product](#install-a-checkout-as-an-isolated-managed-product).
-> The commands below describe the retained legacy path, not the managed product installation workflow.
+Use [Install a checkout as an isolated managed product](#install-a-checkout-as-an-isolated-managed-product) for contributor builds.
+That tool admits a clean committed checkout, assembles and qualifies its product, then uses the production activation owner.
+It does not replace the user's installation. The desktop checkout scripts and Gradle `installLocal` task are retired.
 
-For compatible local Host code changes, use [local plugin reload](local-plugin-reload.md) after its one-time setup.
-
-Install the working tree into the existing user installation from the repository root:
-
-```shell
-./packaging/install-checkout.sh persistent --idea-home "/Applications/IntelliJ IDEA.app"
-```
-
-This builds the working tree, including uncommitted changes, and verifies the
-selected control and IDEA plugin archives. Restart IDEA to load a replaced host.
-Kast has one installation at `$HOME/.local/share/kast/installation`; checkout
-builds replace those components in place. Session installations and alternate
-installation roots are rejected before build or installation effects.
-
-The services have independent release inputs and package tasks:
+Producer tooling retains independent component release inputs and package tasks:
 
 ```shell
 ./gradlew assembleControlRelease -PcontrolVersion=0.50.0
@@ -509,32 +489,41 @@ npx mint@4.2.841 dev --port 3000
 
 Open `http://localhost:3000` and examine both tabs, their navigation, and their links. Edit the MDX pages and `docs.json` together.
 
-The callable generator writes `docs/public/reference/callables.openapi.json`. The protocol registry keeps ownership of the generated contract. Use the [documentation structure](documentation-structure.md) for route and content rules.
+The callable generator writes `docs/public/reference/callables.openapi.json`. The protocol registry keeps ownership of the generated contract. Use the [documentation structure](internal/documentation-structure.md) for route and content rules.
 
 After changing source-bound knowledge, run from the repository root:
 
 ```shell
-./gradlew knowledgeImpact verifyKnowledgeBase
+./gradlew knowledgeImpact verifyKnowledgeBase verifyKnowledgeClaims
 ```
 
 For a damaged installation, use the [recovery runbook](installation-recovery.md).
 
 ### Installer development inputs
 
-The deprecated legacy component installer supports `--force`, `--dry-run`, `--version`, `--idea-home`,
-`--control-only`, `--host-only`, `uninstall`, and `--help`.
-Its `packaging/install-checkout.sh persistent` adapter is also deprecated.
-Use `packaging/local_product_install.py` for managed product checkout builds; see [Install a checkout as an isolated managed product](#install-a-checkout-as-an-isolated-managed-product).
-All component installation and lifecycle operations select
-`$HOME/.local/share/kast`; an explicit internal root binding must equal that
-path. `XDG_DATA_HOME`, custom prefixes and session profiles cannot create
-another installation.
+`packaging/internal/bootstrap/generate_bootstrap.py` owns the generated root `install.sh` and retained installer support membership.
+Gradle's `generateInstallerSupport` projects that support and produces target-specific MCP dependencies before packaging.
+The producer uses uv with locked hashes and binary wheels. Installed setup copies admitted dependency files; it never runs a package manager.
 
-Release fixtures supply `KAST_INSTALL_ASSETS_DIRECTORY` with verified archives.
-Filesystem fixtures use their own admitted user home and the same canonical
-relative layout. Product read limits, endpoint selection and read-only
-inspection remain supported. Use `kast ide` for status, refresh, classes,
-supertype and completion.
+The bootstrap downloads pinned private Python and XML dependency bytes. Self-contained setup is not offline setup.
+The retained `install-candidate.sh` adapter uses only that private interpreter for upgrade, recorded recovery, and product removal.
+Missing or changed support rejects before lifecycle execution. Historical installations keep their recorded compatibility contracts.
+
+Product fixtures use a bounded local release source with production parsing and activation.
+Contributor tooling can require Python and uv; installed lifecycle commands do not.
+Restricted-PATH fixtures prove only their exercised process contracts, not native downloads, Host readiness, or release qualification.
+
+`installedProductTest` consumes complete candidate and baseline directories, not a staged Control/Host pair.
+The baseline must have a different qualified composition. The task does not assemble replacement artifacts.
+Supply pinned interpreter inputs, the native target, and new evidence and receipt paths:
+
+```shell
+mise exec -- ./gradlew installedProductTest \
+  -PkastAcceptanceCandidate="$CANDIDATE" -PkastAcceptanceBaseline="$BASELINE" \
+  -PkastAcceptancePythonArchive="$PRIVATE_PYTHON_ARCHIVE" \
+  -PkastAcceptanceDependency="$PRIVATE_DEPENDENCY" -PkastAcceptanceTarget="$TARGET" \
+  -PkastAcceptanceEvidence="$EVIDENCE" -PkastAcceptanceReceipt="$RECEIPT"
+```
 
 Version-pinned archives must match the installer contract. To stage historical
 archives that require retired setup inputs, use their matching tagged installer.
@@ -618,16 +607,21 @@ The repository's architecture concepts live in `openwiki/`. Use the OpenWiki
 Codex skill to search and read relevant sections, or follow the quickstart map
 when retrieval is unavailable. Recheck important details against source.
 
-Refresh concepts with OpenWiki's begin/plan/next-page/submit-page/finish lifecycle.
-Claims and their source versions, category indexes, provenance and run state are
-owned by OpenWiki. The existing `knowledgeImpact` and `verifyKnowledgeBase` tasks
-now read `openwiki/`: they validate links and source paths and preserve Kotlin PSI
-and Python AST declaration checks for `code_sources`. These checks prove source
-declaration presence, not compiler resolution or native execution. OpenWiki's
-Claims lifecycle separately rechecks changed evidence.
+Use `bin/kast-knowledge-refresh` for native maintenance in an isolated checkout.
+The coordinator preserves OpenWiki's begin/plan/next-page/submit-page/finish lifecycle and interrupted checkpoints.
+OpenWiki owns Claims, source versions, category indexes, provenance, and run state.
+Ordinary source work updates authored explanations when behavior changes.
+It does not reconcile the complete Claim corpus or rewrite unrelated producer metadata.
 
-Local native OpenWiki uses its private subscription login and `gpt-6-luna` setting. Pages
-written through Codex MCP use the current chat model. The optional GitHub workflow
-runs only on manual dispatch, requires its own API credential, selects Luna and
-disables telemetry and tracing. No subscription token belongs in repository
-secrets or checked-in files.
+`knowledgeImpact` reports affected concepts.
+`verifyKnowledgeBase` and `verifyKnowledgeClaims` reject malformed records and report current evidence separately.
+Review age requests maintenance. It does not prove falsehood or a fresh review.
+Declaration presence proves syntax, not compiler resolution or native execution.
+Full publication qualification needs a completed current bundle and input-bound prose and rendered receipts.
+An incomplete maintenance run keeps the accepted public snapshot unchanged.
+
+The GitHub workflow uses manual dispatch and one maintenance concurrency group.
+It needs its own API credential and selects its configured native model.
+`--readiness` reports credential presence without secret values. It does not prove authentication or model access.
+A daily cadence remains a proposal until authenticated readiness succeeds and the user authorizes the schedule.
+No subscription token belongs in repository secrets or checked-in files.

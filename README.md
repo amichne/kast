@@ -56,3 +56,11 @@ Queries use installed runtime bytes without contacting release servers. Your Gra
 
 Kast uses the [GNU General Public License v3.0 only](LICENSE).
 Report security issues through [private vulnerability reporting](https://github.com/amichne/kast/security/advisories/new).
+
+## Repository entrypoints
+
+Use `install.sh` for installation and [the public documentation](docs/public/start.mdx) for product guidance.
+Contributors can discover public files with `bin/kast-repo list` and read them with `bin/kast-repo read <path>`.
+Explicit `--internal` expansion includes private implementation.
+Use `bin/kast-knowledge-refresh` for knowledge maintenance.
+The [engineering guide](AGENTS.md) routes source work and explains its evidence limits.

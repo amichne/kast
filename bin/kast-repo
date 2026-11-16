@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.12,<3.14"
+# dependencies = []
+# [[tool.uv.index]]
+# name = "pypi"
+# url = "https://pypi.org/simple"
+# default = true
+# [tool.uv]
+# no-build = true
+# ///
+"""Read declared repository surfaces from any working directory."""
+
+import runpy
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+
+if __name__ == "__main__":
+    runpy.run_path(
+        str(Path(__file__).resolve().parents[1] / "docs/internal/navigation.py"),
+        run_name="__main__",
+    )

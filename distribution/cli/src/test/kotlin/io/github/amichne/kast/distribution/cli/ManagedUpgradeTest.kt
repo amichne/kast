@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 class ManagedUpgradeTest {
     @TempDir lateinit var temporary: Path
@@ -41,11 +43,15 @@ class ManagedUpgradeTest {
         assertRecovery(fixture)
     }
 
-    @Test
-    fun `missing recovery bridge rejects without fresh discovery`() {
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `missing bridge or changed private support rejects without effects`(missingBridge: Boolean) {
         val fixture = fixture()
-        Files.writeString(fixture.root.resolve(SHUTDOWN_FENCE), "pending")
-        Files.delete(fixture.installation.resolve("share/kast/install-candidate.sh"))
+        val fence = fixture.root.resolve(SHUTDOWN_FENCE)
+        Files.writeString(fence, "pending")
+        val receipt = Files.readAllBytes(receiptPath(fixture.root)).toList()
+        if (missingBridge) Files.delete(fixture.installation.resolve("share/kast/install-candidate.sh"))
+        else Files.writeString(fixture.installation.resolve("share/kast/bootstrap_entry.py"), "changed")
         val result =
             executeManagedUpgrade(
                 fixture.root,
@@ -54,13 +60,15 @@ class ManagedUpgradeTest {
                 emptyMap(),
                 ManagedUpgradeExecution(
                     readRelease = { error("discovery during recovery") },
-                    installer = { _, _, _ -> error("unowned recovery child") },
+                    installer = { _, _, _ -> error("changed private support must not execute") },
                 ),
             )
         assertEquals(
             ManagedUpgradeOutcome.RecoveryRequired(BuildSelectionFailure.INSTALLER_CONTRACT_UNSUPPORTED),
             result,
         )
+        assertEquals("pending", Files.readString(fence))
+        assertEquals(receipt, Files.readAllBytes(receiptPath(fixture.root)).toList())
     }
 
     @Test
@@ -284,10 +292,13 @@ class ManagedUpgradeTest {
 
     private fun fixture(pinned: Boolean = false): LifecycleFixture {
         val fixture = createLifecycleFixture(temporary)
+        Files.createDirectories(fixture.installation.resolve("bin"))
         val manifest = (readBundledManifest(fixture.installation) as BundledManifestRead.Read).manifest
         val relative = "share/kast/install-candidate.sh"
         val bridge = fixture.installation.resolve(relative)
         Files.writeString(bridge, "#!/bin/bash\nexit 0\n")
+        val support = fixture.installation.resolve("share/kast/bootstrap_entry.py")
+        Files.writeString(support, "private dispatch fixture")
         Files.writeString(
             fixture.installation.resolve("installation.json"),
             managementJson.encodeToString(
@@ -295,7 +306,11 @@ class ManagedUpgradeTest {
                     3,
                     "1.2.3",
                     fixture.installation.toString(),
-                    manifest.payloadFiles + BundledPayload(relative, "sha256:${sha256(bridge)}", 493),
+                    manifest.payloadFiles +
+                        listOf(
+                            BundledPayload(relative, "sha256:${sha256(bridge)}", 493),
+                            BundledPayload("share/kast/bootstrap_entry.py", "sha256:${sha256(support)}", 420),
+                        ),
                 )
             ),
         )

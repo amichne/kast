@@ -2221,7 +2221,7 @@
         },
         {
           "path": "docs/public/snippets/okf/modules/architecture.mdx",
-          "sha256": "6f030d3b82dbfa19f047c313c8ae881c96326cf8893a6599a128332882d86be7"
+          "sha256": "193a3e252eda7ece3a1c81541ee9e5a11a1582c704736b0de8fd88de0415bb78"
         },
         {
           "path": "docs/public/snippets/okf/runtime/hosted-composition-and-publication.mdx",
@@ -2286,7 +2286,7 @@
           "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         }
       ],
-      "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "explanation",
@@ -4029,7 +4029,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "b4c25011b6f96cf12974711b37fb983cf59317f24fa40d130515ea3ea1778364"
+          "statementSha256": "9e7181de3d1f134336b1d6779cccee3273bd414cb236f8762959c63da28b9239"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -4084,7 +4084,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
+          "statementSha256": "59dada5dcbcb8b427848236d33a11ec164bd435422622b5af3d850717a7ded38"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -4167,7 +4167,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "reference",
@@ -6024,7 +6024,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "b4c25011b6f96cf12974711b37fb983cf59317f24fa40d130515ea3ea1778364"
+          "statementSha256": "9e7181de3d1f134336b1d6779cccee3273bd414cb236f8762959c63da28b9239"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -6079,7 +6079,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
+          "statementSha256": "59dada5dcbcb8b427848236d33a11ec164bd435422622b5af3d850717a7ded38"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -6142,7 +6142,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "reference/composition",
@@ -6327,7 +6327,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "e79896339bc6bec02283975d0da0f9a38f490a4ec936da307d57b1e5f9551e37"
+          "sha256": "ac4eb09ee484fad0e4a72cf748d0ce7dbe7dd52e5d56531eb45a2be25a565c5e"
         }
       ],
       "claims": [
@@ -6469,7 +6469,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "b4c25011b6f96cf12974711b37fb983cf59317f24fa40d130515ea3ea1778364"
+          "statementSha256": "9e7181de3d1f134336b1d6779cccee3273bd414cb236f8762959c63da28b9239"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -6524,7 +6524,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
+          "statementSha256": "59dada5dcbcb8b427848236d33a11ec164bd435422622b5af3d850717a7ded38"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -6554,17 +6554,42 @@
         {
           "page": "openwiki/modules/distribution.md",
           "claimId": "claim_62b31492f84b4a84a50c056fff0156c3",
-          "statementSha256": "557af0ad5e8bede66e0ca2d6a1e872ff46b8bdfffc208ca85a8a50d0eba59347"
+          "statementSha256": "5ca4f76a0585256d925d925978760fc484579b04e88c1c10011d3dab55c993fb"
         },
         {
           "page": "openwiki/modules/distribution.md",
           "claimId": "claim_a65551bb99e948b0912765c1a8eb46a7",
-          "statementSha256": "682ac3c20bd561e18d895d5bd1274bfe92f33ef18d90922249f72e8575fb767d"
+          "statementSha256": "7d2ab180cd0f88b382339e3f0c4d531d00e30b29c7c958c6d30fe062c91445b6"
         },
         {
           "page": "openwiki/modules/distribution.md",
-          "claimId": "claim_9eaa2539bec849d78a5a206e77c0cb63",
-          "statementSha256": "29770958c82b4baf3be8f3297839b3d318807829033e2261bbf93e65e09daa23"
+          "claimId": "claim_a89e8c20d11a4732927560c06b5c84d9",
+          "statementSha256": "d1a3593b905b545d8d3c6f06f97f2163e7fce501020de6273de18bbe94041af5"
+        },
+        {
+          "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
+          "claimId": "claim_03ec0689bc8f40a7aed0163b6f216918",
+          "statementSha256": "def3d4a76f6b6e27f1a0eae02af5fc982e72a5a155d85770a25752e3dcbf9f82"
+        },
+        {
+          "page": "openwiki/modules/distribution.md",
+          "claimId": "claim_3bbfdf39d2964dbeaa883f5109206e65",
+          "statementSha256": "6686d78df69190f6502253beb4c1080785a9376e7ff5ac75865f452f1024ba7a"
+        },
+        {
+          "page": "openwiki/modules/distribution.md",
+          "claimId": "claim_62212ccffd1049e9a3aadcbe5130d948",
+          "statementSha256": "c878957cc84351ddd614a32abc3c1da1632f8779e131b3fb1d42a1bf096f65fd"
+        },
+        {
+          "page": "openwiki/modules/distribution.md",
+          "claimId": "claim_4173354912854d1aa777032feefe1870",
+          "statementSha256": "3e5b3f7845cfcbfd52a4881984aba7b33d7b57c10cfa316d31927c6d50310659"
+        },
+        {
+          "page": "openwiki/modules/distribution.md",
+          "claimId": "claim_85a1ae21345546f39a95cfc33381880d",
+          "statementSha256": "516135d6294162f6ce666495cf61090343394756ead2d3afaf8bc26dd0e81637"
         },
         {
           "page": "openwiki/modules/runtime-hosts.md",
@@ -6605,6 +6630,16 @@
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_67d4349c2da442659e515959bc27eee2",
           "statementSha256": "fbd8995321c9a07b42b663ad5e2baf4f9ad206439aed08df4847b8d706daba05"
+        },
+        {
+          "page": "openwiki/distribution/management-and-connections.md",
+          "claimId": "claim_6d354ecdb25847e98076d3b89a5c40dc",
+          "statementSha256": "c89aae5ba7b34ab4c4141bfe1f5d77a59b2ebe5c55459acd4cff2e44949b3fad"
+        },
+        {
+          "page": "openwiki/distribution/installation-and-managed-files.md",
+          "claimId": "claim_97f8635df26f48c68f1397589e0cf829",
+          "statementSha256": "330ac27f8ef097742c08d68b84545e94eb314ca70c1b0d2e33b4b6d14cb955f3"
         }
       ],
       "generatedOwners": [
@@ -6617,7 +6652,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "reference/integrations",
@@ -6943,7 +6978,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
+          "statementSha256": "59dada5dcbcb8b427848236d33a11ec164bd435422622b5af3d850717a7ded38"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -7071,7 +7106,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "reference/limits",
@@ -7400,7 +7435,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "b4c25011b6f96cf12974711b37fb983cf59317f24fa40d130515ea3ea1778364"
+          "statementSha256": "9e7181de3d1f134336b1d6779cccee3273bd414cb236f8762959c63da28b9239"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -7455,7 +7490,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
+          "statementSha256": "59dada5dcbcb8b427848236d33a11ec164bd435422622b5af3d850717a7ded38"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -7538,7 +7573,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "reference/management",
@@ -7667,7 +7702,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "b4c25011b6f96cf12974711b37fb983cf59317f24fa40d130515ea3ea1778364"
+          "statementSha256": "9e7181de3d1f134336b1d6779cccee3273bd414cb236f8762959c63da28b9239"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -7722,7 +7757,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
+          "statementSha256": "59dada5dcbcb8b427848236d33a11ec164bd435422622b5af3d850717a7ded38"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -7755,7 +7790,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "reference/mcp-catalog",
@@ -13410,7 +13445,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "b4c25011b6f96cf12974711b37fb983cf59317f24fa40d130515ea3ea1778364"
+          "statementSha256": "9e7181de3d1f134336b1d6779cccee3273bd414cb236f8762959c63da28b9239"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -13465,7 +13500,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
+          "statementSha256": "59dada5dcbcb8b427848236d33a11ec164bd435422622b5af3d850717a7ded38"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -13858,7 +13893,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "reference/staleness",
@@ -14127,7 +14162,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "b4c25011b6f96cf12974711b37fb983cf59317f24fa40d130515ea3ea1778364"
+          "statementSha256": "9e7181de3d1f134336b1d6779cccee3273bd414cb236f8762959c63da28b9239"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -14182,7 +14217,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
+          "statementSha256": "59dada5dcbcb8b427848236d33a11ec164bd435422622b5af3d850717a7ded38"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -14245,7 +14280,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "reference/walkthrough",
@@ -15271,7 +15306,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "b4c25011b6f96cf12974711b37fb983cf59317f24fa40d130515ea3ea1778364"
+          "statementSha256": "9e7181de3d1f134336b1d6779cccee3273bd414cb236f8762959c63da28b9239"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -15326,7 +15361,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
+          "statementSha256": "59dada5dcbcb8b427848236d33a11ec164bd435422622b5af3d850717a7ded38"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -15469,7 +15504,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "troubleshooting",
@@ -15612,7 +15647,7 @@
         {
           "page": "openwiki/distribution/installation-and-managed-files.md",
           "claimId": "claim_e3338f0a02284cc1b32f0b8ffa297bd8",
-          "statementSha256": "b4c25011b6f96cf12974711b37fb983cf59317f24fa40d130515ea3ea1778364"
+          "statementSha256": "9e7181de3d1f134336b1d6779cccee3273bd414cb236f8762959c63da28b9239"
         },
         {
           "page": "openwiki/distribution/management-and-connections.md",
@@ -15667,7 +15702,7 @@
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
           "claimId": "claim_22d3ba222be341a7a9e4e95810ddc46f",
-          "statementSha256": "871da238a52e6d51b7bd207388c24f5fb752723ca1a6f4de30074f3f2858d406"
+          "statementSha256": "59dada5dcbcb8b427848236d33a11ec164bd435422622b5af3d850717a7ded38"
         },
         {
           "page": "openwiki/distribution/upgrades-shutdown-and-reset.md",
@@ -15730,7 +15765,7 @@
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
         }
       ],
-      "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
+      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
     },
     {
       "route": "tutorials/first-query",

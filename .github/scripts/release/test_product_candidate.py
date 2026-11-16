@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -24,7 +25,14 @@ from validation_scope import Scope
 import developer_catalog as catalog
 import product_candidate as candidate
 import publish_developer as publisher
-from test_developer_publication import Release, RemoteAsset, Script, Step, response
+from test_developer_publication import (
+    Release,
+    RemoteAsset,
+    Script,
+    discovery,
+    inspection,
+    tag_target,
+)
 
 product = catalog.product
 
@@ -280,6 +288,93 @@ def split_fixture(directory: Path) -> product.ProductRecord:
 
 
 class ProductCandidateTest(unittest.TestCase):
+    def test_isolated_release_helpers_keep_shipped_owner_and_reject_source_fallback(self) -> None:
+        repository = Path(__file__).resolve().parents[3]
+        assert product.__file__ is not None
+        owner = Path(product.__file__)
+        with tempfile.TemporaryDirectory(prefix="kast isolated release ") as temporary:
+            coordinator = Path(temporary)
+            for name in ("managed_release.py", "managed_update_journal.py"):
+                _ = (coordinator / name).write_bytes(owner.with_name(name).read_bytes())
+            command = (
+                sys.executable,
+                "-I",
+                "-B",
+                "-c",
+                "import pathlib,sys; c,r=sys.argv[1:3]; "
+                "v=str(pathlib.Path(r)/'packaging/internal/verification'); "
+                "sys.path[:0]=[c,v,str(pathlib.Path(r)/'.github/scripts/release')]; "
+                "import product_candidate as candidate; "
+                "assert pathlib.Path(candidate.product.__file__).parent == pathlib.Path(c); "
+                "assert not any(pathlib.Path(p).is_relative_to(pathlib.Path(r)/'packaging') "
+                "for p in sys.path if p != v); "
+                "print('shipped owner retained')",
+                str(coordinator),
+                str(repository),
+            )
+            accepted = subprocess.run(command, capture_output=True, check=False, timeout=30)
+            self.assertEqual(0, accepted.returncode, accepted.stderr.decode())
+            self.assertEqual(b"shipped owner retained\n", accepted.stdout)
+            (coordinator / "managed_release.py").unlink()
+            rejected = subprocess.run(command, capture_output=True, check=False, timeout=30)
+            self.assertNotEqual(0, rejected.returncode)
+            self.assertIn(b"No module named 'managed_release'", rejected.stderr)
+
+    def test_remote_targets_preserve_owners_and_reject_local_qualifications(self) -> None:
+        targets = tuple(
+            product.ProductTarget(
+                target,
+                product.ProductInputs("1" * 64, "2" * 64, "3" * 64, "4" * 64),
+                product.ProductAsset(f"kast-composed-setup-v0.0.123-{target}.tar.gz", "5" * 64, 7),
+                product.ProductAsset(f"kast-runtime-v0.0.123-{target}.zip", "6" * 64, 11),
+                product.NativeQualification(
+                    product.ProductAsset(f"qualification-{target}.json", "7" * 64, 13),
+                    product.ProductProducer(run_id, 2, ".github/workflows/composed-linux.yml"),
+                    "5" * 64,
+                    "6" * 64,
+                    "8" * 64,
+                ),
+            )
+            for target, run_id in (("linux-x86_64", 456), ("macos-aarch64", 123))
+        )
+        record = product.ProductRecord(
+            2,
+            "amichne/kast",
+            "a" * 40,
+            "b" * 40,
+            "0.0.123",
+            product.ProductProducer(123, 1, ".github/workflows/ci.yml"),
+            targets,
+        )
+        self.assertEqual(
+            (
+                (
+                    targets[0],
+                    product.ProductProducer(456, 2, ".github/workflows/composed-linux.yml"),
+                ),
+                (
+                    targets[1],
+                    product.ProductProducer(123, 2, ".github/workflows/composed-linux.yml"),
+                ),
+            ),
+            candidate.remote_targets(record),
+        )
+        for index in (0, 1):
+            with self.subTest(local_target=index):
+                local = replace(
+                    targets[index],
+                    qualification=replace(
+                        targets[index].qualification,
+                        producer=product.LocalProductProducer(),
+                    ),
+                )
+                changed = replace(
+                    record, targets=((local, targets[1]) if index == 0 else (targets[0], local))
+                )
+                self.assertEqual(
+                    candidate.candidate.Failure.WRONG_PRODUCER, candidate.remote_targets(changed)
+                )
+
     def test_component_candidate_cannot_be_promoted_without_installed_acceptance(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary) / "candidate"
@@ -600,11 +695,15 @@ class ProductCandidateTest(unittest.TestCase):
                 for asset in prepared.assets
             )
             document = Release("v1.2.3", "a" * 40, assets, prerelease=False)
-            script = Script(Step("GET", "releases/tags/v1.2.3", response(document)))
+            script = Script(
+                *discovery(document),
+                *inspection(document),
+                tag_target(document.tag_name, published=True),
+            )
             result = publisher.publish(
                 prepared, publisher.RemotePublisher("amichne/kast", prepared.build, script.run)
             )
-            self.assertEqual(catalog.CommitResult.COMMITTED, result)
+            self.assertEqual(catalog.CommitResult.UNCHANGED, result)
             script.consumed()
 
     def test_catalog_preserves_complete_targets_and_keeps_legacy_identity(self) -> None:

@@ -78,7 +78,7 @@ jobs:
               "docs/public/docs.json", "docs/public/index.mdx", "docs/public/start.mdx",
               "docs/public/search.mdx", "docs/public/troubleshooting.mdx",
               "docs/public/style.css", "docs/public/sidebar-toggle.js",
-              "docs/tooling/rendered", ".github/tools/mintlify", ".github/workflows/docs.yml",
+              "docs/internal/tooling/rendered", ".github/tools/mintlify", ".github/workflows/docs.yml",
           )
           base = os.environ["BASE_SHA"]
           head = os.environ["HEAD_SHA"]
@@ -93,30 +93,28 @@ jobs:
       - name: Click through Get started on desktop and mobile
         if: steps.reader-path.outputs.run == 'true'
         run: |
-          npm ci --prefix docs/tooling/rendered --ignore-scripts --no-audit --no-fund
+          npm ci --prefix docs/internal/tooling/rendered --ignore-scripts --no-audit --no-fund
           node .github/tools/mintlify/node_modules/@puppeteer/browsers/lib/cjs/main-cli.js \
             install chrome@155.0.8059.84 --path build/documentation/browsers
-          uv run --locked --project docs/tooling python docs/tooling/rendered/run.py \
+          uv run --locked --project docs/internal/tooling python docs/internal/tooling/rendered/run.py \
             --preview --reader-journey \
             --browser-executable build/documentation/browsers/chrome/linux-155.0.8059.84/chrome-linux64/chrome \
             --output build/reports/documentation/reader-journey
 
       - name: Assess prose and contract evidence
         id: prose
-        continue-on-error: true
         run: >-
-          uv run --locked --project docs/tooling python docs/tooling/prose_assessment.py
+          uv run --locked --project docs/internal/tooling python docs/internal/tooling/prose_assessment.py
           --vale-bin "$(mise where vale@3.24.0)/vale"
           --reader-vale-bin "$(mise where vale@3.25.1)/vale"
           --dispositions docs/reviews/documentation-migration/prose-dispositions.json
           --report build/reports/documentation/prose/receipt.json
 
-      - name: Qualify exact documentation source
+      - name: Report knowledge integrity and maintenance demand
         if: ${{ !cancelled() }}
         run: >-
-          uv run --locked --project docs/tooling python docs/tooling/publication.py --source-only
-          --prose-report build/reports/documentation/prose/receipt.json
-          --report build/reports/documentation/source-qualification.json
+          uv run --locked --project docs/internal/tooling python docs/internal/tooling/knowledge_check.py
+          > build/reports/documentation/knowledge-assessment.json
 
       - name: Keep documentation evidence
         if: ${{ !cancelled() }}

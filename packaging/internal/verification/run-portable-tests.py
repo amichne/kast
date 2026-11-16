@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Run every offline packaging test with an owned home, temp tree, and tool path."""
+from pathlib import Path
+import os
+import platform
+import re
+import subprocess
+import sys
+import tempfile
+
+
+ROOT = Path(__file__).resolve().parents[3]
+SKIP_SUMMARY = re.compile(r'\bskipped=([0-9]+)\b')
+CASE_SUMMARY = re.compile(r'\bRan ([0-9]+) tests? in\b')
+
+
+def expected_skips() -> dict[str, int]:
+    permitted = {}
+    if platform.system() != 'Darwin':
+        permitted['test-host-installation.py'] = 2
+    return permitted
+
+
+def main() -> int:
+    tests = tuple(sorted((ROOT / 'packaging/tests').glob('test-*.py')))
+    if not tests:
+        print('portable-tests: test inventory rejected', file=sys.stderr)
+        return 2
+    permitted_skips = expected_skips()
+    with tempfile.TemporaryDirectory(prefix='kast-portable-') as directory:
+        owned = Path(directory).resolve()
+        for name in ('home', 'tmp', 'config', 'data', 'state', 'cache'):
+            (owned / name).mkdir(mode=0o700)
+        environment = {
+            'PATH': str(Path(sys.executable).resolve().parent) + os.pathsep + os.defpath,
+            'HOME': str(owned / 'home'), 'TMPDIR': str(owned / 'tmp'),
+            'TMP': str(owned / 'tmp'), 'TEMP': str(owned / 'tmp'),
+            'XDG_CONFIG_HOME': str(owned / 'config'), 'XDG_DATA_HOME': str(owned / 'data'),
+            'XDG_STATE_HOME': str(owned / 'state'), 'XDG_CACHE_HOME': str(owned / 'cache'),
+            'PYTHONDONTWRITEBYTECODE': '1', 'LC_ALL': 'C', 'TZ': 'UTC',
+            'PYTHONPATH': os.pathsep.join(str(ROOT / path) for path in (
+                'packaging/internal/bootstrap', 'packaging/internal/composition',
+                'packaging/internal/configuration', 'packaging/internal/installation',
+                'packaging/internal/mcp', 'packaging/internal/product',
+                'packaging/internal/query', 'packaging/internal/runtime',
+                'packaging/internal/verification', 'packaging', 'packaging/tests',
+            )),
+        }
+        for path in tests:
+            log = owned / f'{path.stem}.log'
+            with log.open('xb') as output:
+                try:
+                    result = subprocess.run([sys.executable, str(path)], cwd=ROOT, env=environment,
+                                            stdout=output, stderr=subprocess.STDOUT, timeout=180)
+                except subprocess.TimeoutExpired:
+                    print(f'portable-tests: {path.name}: deadline-exceeded', file=sys.stderr)
+                    return 1
+            if result.returncode != 0:
+                print(f'portable-tests: {path.name}: exit {result.returncode}', file=sys.stderr)
+                with log.open('rb') as evidence:
+                    evidence.seek(max(0, log.stat().st_size - 4096))
+                    print(evidence.read().decode(errors='replace'), file=sys.stderr)
+                return 1
+            with log.open(errors='replace') as evidence:
+                summary = ''.join(line for line in evidence
+                                  if CASE_SUMMARY.search(line) or SKIP_SUMMARY.search(line))
+            cases = CASE_SUMMARY.findall(summary)
+            if len(cases) != 1 or int(cases[0]) == 0:
+                print(f'portable-tests: {path.name}: test selection rejected', file=sys.stderr)
+                print(summary, file=sys.stderr)
+                return 1
+            observed_skips = sum(int(count) for count in SKIP_SUMMARY.findall(summary))
+            if observed_skips != permitted_skips.get(path.name, 0):
+                print(f'portable-tests: {path.name}: unexpected skipped cases ({observed_skips})', file=sys.stderr)
+                print(summary, file=sys.stderr)
+                return 1
+            print(f'portable-tests: {path.name}: passed, {observed_skips} skipped', flush=True)
+    print(f'portable-tests: {len(tests)} suites passed; {sum(permitted_skips.values())} platform cases skipped')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

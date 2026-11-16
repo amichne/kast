@@ -311,7 +311,7 @@ private fun addRetainedEvidence(bundle: Path, proof: ProductRemovalProof, expect
                 readBoundedFile(recordPath, 1_048_576L)
                     ?: throw ManagementRejected("uninstall-recovery", "retained product record is unavailable")
             val record = decodeRemovalDocument<ProductBuildRecord>(raw)
-            requireRemoval(validProductRecord(record))
+            requireRemoval(validInstalledProductRecord(record))
             val target =
                 record.targets.singleOrNull { target ->
                     when (entry.kind) {

@@ -47,7 +47,7 @@ class ValidationScopeTest(unittest.TestCase):
             with self.subTest(scope=scope):
                 self.assertIs(selected, selected.with_native_compilation(NativeCompilation.ENABLED))
                 disabled = selected.with_native_compilation(NativeCompilation.DISABLED)
-                self.assertEqual(checks - {Check.PRODUCT, Check.GATE_GRAPH}, disabled.checks)
+                self.assertEqual(checks - {Check.PRODUCT}, disabled.checks)
                 self.assertEqual(disabled.checks, SCOPE_CHECKS[disabled.scope])
                 self.assertNotIn(disabled.scope, (Scope.FULL, Scope.PRODUCT))
 
@@ -63,7 +63,7 @@ class ValidationScopeTest(unittest.TestCase):
             ):
                 main()
             self.assertEqual(
-                "source=run\nproduct=skip\nportable=run\ndocumentation=run\ngate_graph=skip\nscope=SOURCE_FULL\n",
+                "source=run\nproduct=skip\nportable=run\ndocumentation=run\nscope=SOURCE_FULL\n",
                 output.read_text(),
             )
 
@@ -91,7 +91,7 @@ class ValidationScopeTest(unittest.TestCase):
             ".agents/tooling",
             "build-logic",
             "packaging/helper",
-            "docs/tooling",
+            "docs/internal/tooling",
             "gradle/plugins",
             "config",
             "build-policy",
@@ -134,9 +134,9 @@ class ValidationScopeTest(unittest.TestCase):
         paths = (
             ".github/scripts/ci/README.md", "README.md", "app-server/README.md",
             "app-server/docs/public-query-contract.md", "docs/development.md",
-            "docs/documentation-structure.md", "docs/hosted-read-configuration.md",
+            "docs/internal/documentation-structure.md", "docs/hosted-read-configuration.md",
             "docs/static-query-execution.md", "docs/okf-public.json",
-            "docs/tooling/okf_public.py", "docs/tooling/test_okf_public.py",
+            "docs/internal/tooling/okf_public.py", "docs/internal/tooling/test_okf_public.py",
             "docs/public/reference/AGENTS.md", "docs/public/start.mdx",
             "docs/public/reference/installation.mdx", "docs/public/reference/compatibility.mdx",
             "docs/public/explanation/value-journey-evidence.mdx",
@@ -164,7 +164,7 @@ class ValidationScopeTest(unittest.TestCase):
 
     def test_documentation_neighbors_cannot_inherit_reviewed_ownership(self):
         for path in (
-            ".github/scripts/ci/new.py", "docs/tooling/new.py",
+            ".github/scripts/ci/new.py", "docs/internal/tooling/new.py",
             "config/vale/readability/new.py", "config/vale/readability/src/main/kotlin/Probe.kt",
             "docs/reviews/readability-audit/build.gradle.kts",
             "experiments/host-observation/protocol.py", "experiments/host-observation/new.md",
@@ -183,7 +183,7 @@ class ValidationScopeTest(unittest.TestCase):
     def test_documentation_consumers_cover_navigation_and_generated_examples(self):
         for path in ("docs/public/docs.json", "docs/public/style.css", "docs/public/explanation/value-journey.mdx",
                      "docs/public/reference/responses.mdx", "docs/public/reference/symbols.mdx", "docs/public/search.mdx",
-                     "docs/public/snippets/value-journey.jsx", "docs/tooling/value-journey/src/trace.ts"):
+                     "docs/public/snippets/value-journey.jsx", "docs/internal/tooling/value-journey/src/trace.ts"):
             self.assertEqual(DOCS, classify_paths((path,)))
 
     def test_generated_callable_schema_keeps_product_and_portable_checks(self):
@@ -235,9 +235,9 @@ class ValidationScopeTest(unittest.TestCase):
             "new-config.json",
             "docs/public/reference/new-page.mdx",
             "install.sh",
-            "packaging/test-install-local.py",
+            "packaging/tests/test-install-local.py",
             "packaging/portable.Dockerfile",
-            "docs/tooling/check_glossary.py",
+            "docs/internal/tooling/check_glossary.py",
             "docs/glossary.json",
         ):
             with self.subTest(path=path):
@@ -307,7 +307,7 @@ class ValidationScopeTest(unittest.TestCase):
                 main()
             choose.assert_called_once_with("push", "a" * 40, "b" * 40)
             self.assertEqual(
-                "source=skip\nproduct=skip\nportable=skip\ndocumentation=run\ngate_graph=skip\nscope=DOCUMENTATION\n",
+                "source=skip\nproduct=skip\nportable=skip\ndocumentation=run\nscope=DOCUMENTATION\n",
                 output.read_text(),
             )
 
@@ -378,7 +378,7 @@ class ExactDiffTest(unittest.TestCase):
 
     def test_readme_and_documentation_tooling_bypass_module_planning_for_prs_and_pushes(self):
         self.write("README.md", "# Reader journey\n")
-        self.write("docs/tooling/okf_public.py", "# documentation projector\n")
+        self.write("docs/internal/tooling/okf_public.py", "# documentation projector\n")
         self.write("config/vale/readability/test_audit.py", "# audit contract\n")
         head = self.commit("documentation consumers")
         for event in ("pull_request", "push"):
@@ -483,34 +483,17 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertNotIn("--emit", arguments)
         self.assertIn("-H:+GenerateEmbeddedResourcesFile", arguments)
 
-    def test_candidate_retention_routes_reuse_to_linux_before_fresh_mac_selection(self):
+    def test_mac_product_job_requires_fresh_native_assembly_and_retains_no_component_candidate(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
         product = workflow.split("\n  kotlin:\n", 1)[1]
         product = re.split(r"\n  (?=\S)", product, maxsplit=1)[0]
-        # Bind the workflow's explicit expression, as with the other inventory guards.
-        # Hosted execution must separately establish which runner actually ran it.
-        runner = next(line.strip() for line in product.splitlines() if "runs-on:" in line)
-        self.assertEqual(
-            "runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || "
-            "'macos-15' }}",
-            runner,
-        )
-        self.assertIn(
-            "needs.source-work.outputs.candidate == 'REUSED' || "
-            "(needs.native.result == 'success' && needs.assembly.result == 'success')",
-            product,
-        )
-        for step in (
-            "Exercise the assembled Mac product",
-            "Seal tested component candidate identity",
-        ):
-            with self.subTest(step=step):
-                self.assertIn(
-                    f"- name: {step}\n        if: needs.source-work.outputs.candidate != 'REUSED'\n",
-                    product,
-                )
-        self.assertIn("name: ci-build-candidate-", product)
-        self.assertNotIn("name: ci-product-candidate-", product)
+        self.assertIn("    runs-on: macos-15\n", product)
+        self.assertIn("needs.native.result == 'success' && needs.assembly.result == 'success'", product)
+        self.assertIn("- name: Exercise the exact assembled Mac Control executable\n", product)
+        self.assertNotIn("REUSED", workflow)
+        self.assertNotIn("ci-build-candidate-", workflow)
+        self.assertNotIn("build_candidate.py seal", workflow)
+        self.assertNotIn("build_candidate.py reuse", workflow)
 
     def test_native_producers_require_github_hosted_apple_silicon(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
@@ -611,7 +594,7 @@ class SourceInventoryTest(unittest.TestCase):
         assembly = workflow.split("- name: Assemble matching Control, Host, and bootstrap\n", 1)[1]
         assembly = assembly.split("\n      - name:", 1)[0]
         self.assertIn(
-            "if: inputs.release_target != 'macos-aarch64' || (inputs.complete_product && !inputs.reuse_ci_release)",
+            "if: inputs.release_target != 'macos-aarch64'\n",
             assembly,
         )
         self.assertIn("assembleRelease :runtime:hosted:headlessBootstrapPlugin", assembly)
@@ -619,9 +602,9 @@ class SourceInventoryTest(unittest.TestCase):
             "${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}",
             assembly,
         )
-        bootstrap = workflow.split("- name: Assemble bootstrap for the reused candidate\n", 1)[1]
+        bootstrap = workflow.split("- name: Assemble bootstrap for the retained macOS release\n", 1)[1]
         bootstrap = bootstrap.split("\n      - name:", 1)[0]
-        self.assertIn("(!inputs.complete_product || inputs.reuse_ci_release)", bootstrap)
+        self.assertIn("if: inputs.release_target == 'macos-aarch64'\n", bootstrap)
         self.assertIn(":runtime:hosted:headlessBootstrapPlugin", bootstrap)
         self.assertNotIn("assembleRelease", bootstrap)
 
@@ -643,11 +626,8 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("needs: [scope, source-work, assembly]", mac)
         self.assertIn("!cancelled()", mac)
         self.assertIn("needs.source-work.result == 'success'", mac)
-        self.assertIn(
-            "(needs.source-work.outputs.candidate == 'REUSED' || needs.assembly.result == 'success')",
-            mac,
-        )
-        self.assertIn("reuse_ci_release: ${{ needs.source-work.outputs.candidate != 'REUSED' }}", mac)
+        self.assertIn("needs.assembly.result == 'success' &&", mac)
+        self.assertNotIn("reuse_ci_release", mac)
         self.assertIn("uses: ./.github/workflows/composed-linux.yml", mac)
         self.assertIn("complete_product: true", mac)
         self.assertIn("release_target: macos-aarch64", mac)
@@ -694,7 +674,7 @@ class SourceInventoryTest(unittest.TestCase):
         candidate = (workflows / "composed-linux.yml").read_text()
         reused = candidate.split("- name: Download the exact CI release\n", 1)[1]
         reused = reused.split("- name: Assemble bootstrap", 1)[0]
-        self.assertIn("inputs.reuse_ci_release && inputs.release_target == 'macos-aarch64'", reused)
+        self.assertIn("inputs.complete_product && inputs.release_target == 'macos-aarch64'", reused)
         self.assertIn("name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}", reused)
         self.assertNotIn("run-id:", reused)
         self.assertIn("native_handoff.py restore --version", reused)
@@ -721,7 +701,7 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn('--version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"', candidate)
         self.assertIn("--receipt build/composed-evidence/qualification.json", candidate)
         self.assertLess(
-            candidate.index("packaging/composed_release.py qualify"),
+            candidate.index("packaging/internal/composition/composed_release.py qualify"),
             candidate.index("product_producer.py target"),
         )
         self.assertLess(

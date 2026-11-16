@@ -1,122 +1,97 @@
 ---
 type: System Explanation
-title: Installed knowledge projection and retrieval
-description: Explains syntax-only declaration extraction, exact module and guide ownership,
-  bounded installed resources, and local retrieval.
+title: Repository knowledge after installed bundle retirement
+description: Explains the retained repository citation scanner and verified module report,
+  separate from the retired installed knowledge payload and retrieval implementation.
 tags:
 - kast
 - knowledge
 code_sources:
-- path: build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt
-- path: build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt
 - path: build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinDocumentationScanner.kt
-- path: build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt
-- path: build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeProjection.kt
-- path: build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeValidation.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeResources.kt
+- path: build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt
+- path: build-logic/src/main/kotlin/kast.architecture.gradle.kts
+- path: build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt
+- path: build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
 - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
 - path: build-logic/src/main/kotlin/support/architecture/knowledge/ModuleKnowledgeProjection.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/AdmittedKnowledge.kt
-- path: build-logic/src/test/kotlin/support/knowledge/InstalledKnowledgeProjectionTest.kt
-- path: cli/src/test/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledgeTest.kt
+- path: build-logic/src/test/kotlin/support/architecture/knowledge/ModuleKnowledgeProjectionTest.kt
 - path: build-logic/src/test/kotlin/KotlinDocumentationScannerTest.kt
 sources:
-  - id: openwiki-source-e7e9afae9a60cee55a46b246
-    resource: repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt
+  - id: openwiki-source-f0a1e859396a2b60ccc2b595
+    resource: repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt
   - id: openwiki-source-97c69063b7394d01bd57dc64
     resource: repo://build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinDocumentationScanner.kt
-  - id: openwiki-source-e9e7fa3b6fa605695b1a61fb
-    resource: repo://build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt
-  - id: openwiki-source-20d4273e9ec9b4304314e042
-    resource: repo://build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeValidation.kt
+  - id: openwiki-source-6d6c58a5bfeff1b2388a6735
+    resource: repo://build-logic/src/main/kotlin/kast.architecture.gradle.kts
+  - id: openwiki-source-0fb50e2bf387542f1a9d1fd4
+    resource: repo://build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt
+  - id: openwiki-source-b99ddefd81bdadd0befd1ee3
+    resource: repo://build-logic/src/main/kotlin/support/architecture/knowledge/ModuleKnowledgeProjection.kt
+  - id: openwiki-source-a387d9d545afff426d34a10a
+    resource: repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
+  - id: openwiki-source-604402605ebdfe0ea353e307
+    resource: repo://build-logic/src/test/kotlin/KotlinDocumentationScannerTest.kt
   - id: openwiki-source-ed6022ca58911768febfbe7e
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
-  - id: openwiki-source-27de7245d23d2992605b750d
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt
-  - id: openwiki-source-b4184b3e65833677c17e8554
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt
   - id: openwiki-source-d3ccbe593611586a04efc776
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+generated: { by: "amp", at: "2026-11-15T20:21:03.545Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:39:24.024Z
+    at: 2026-11-15T20:21:03.545Z
 ---
 
-# Installed knowledge projection and retrieval
+# Repository knowledge after installed bundle retirement
 
-## A packaged syntax reference
+## Retired product boundary
 
-The installed knowledge bundle joins public Kotlin declaration text with admitted module ownership and scoped guides.
-It does not contain a live semantic index.
-`GenerateKnowledgeDocsTask` starts an isolated documentation parser.
-`KnowledgeDocsMain` reads canonical Kotlin sources and publishes a closed complete or rejected extraction report.
-Unsupported or unreadable sources prevent a success-shaped partial inventory.
+The installed knowledge generator, Kotlin documentation comment extraction, CLI command, and reader are retired.
+Control distribution verification rejects `share/kast/knowledge` and its descendants.
+The removed declaration cards and guide-resource inventory are not a current installed interface.
+The public native management graph exposes no knowledge command, and the private installer entry admits only `--version`.
+Read the [retired contract](../contracts/installed-knowledge.md) for the unchanged archive limit and separate native acceptance boundary.
 
-`KotlinDocumentationScanner` supplies declaration signatures and direct documentation from PSI syntax.
-The extraction does not resolve references or infer inherited documentation.
-A declaration card is syntax evidence for the packaged source revision.
-It cannot replace a current exact reference from the semantic host.
+## Repository citation evidence
 
-## Module and guide ownership
+`KotlinDocumentationScanner.symbols()` remains a repository citation scanner.
+It visits named Kotlin declarations regardless of visibility, reports declaration names and identifier line ranges, and rejects syntax errors as `INVALID_KOTLIN`.
+It marks a function annotated `@Test` with a body as an executable-test citation candidate.
+Comments and quoted declaration text do not become declarations.
+This PSI evidence performs no name or type resolution and does not prove a test passed.
 
-The projection consumes the module graph admitted by architecture policy.
-Longest-directory ownership must select one module for each declaration.
-The generator reads the exact tracked `AGENTS.md` files as canonical regular files.
-It keeps full guide content and the guide's own scope and digest.
+`KnowledgeSymbolsMain` reads source files through that scanner and serializes accepted or rejected results.
+An unreadable file retains `UNREADABLE_SOURCE` rather than a successful empty result.
+These repository checks do not recreate installed documentation resources or live workspace authority.
 
-Module-level guidance uses the module directory.
-Declaration-level guidance uses the exact source path.
-A nested guide can govern one source directory tree without widening to every declaration in its parent module.
-Duplicate resources, invalid paths, incorrect guide sets, and oversized resources reject the projection.
-The resource limit is 8 MiB.
+## Verified module report
 
-## Local retrieval
+`generateKastModuleKnowledge` remains wired to `verifyKastArchitecture`.
+Its output is `build/reports/kast-architecture/kast-module-knowledge.json`, not an installed knowledge manifest.
+The task reconstructs accepted architecture evidence and requires exact byte agreement with the published architecture verification report.
+It reads tracked `AGENTS.md` files only as canonical regular files and checks their declared file identities.
 
-`InstalledKnowledgeReader` first admits the installed manifest.
-A simple selection searches shallow descriptors and keeps at most 20 ranked matches.
-A JSON resource path selects one admitted manifest, module, declaration, or guide resource.
-`KnowledgeResourcePath` accepts only the defined resource prefixes and canonical components.
-Traversal components, foreign resources, changed digests, and mismatched descriptors remain finite lookup failures.
-
-The retained private JVM command family connects to this reader.
-The public native management command does not expose that private graph as a public semantic interface.
-The private installer process entry admits only its version command.
-Read the packaged resources through an admitted consumer rather than assuming a historical command remains public.
-
-## Extension and evidence limits
-
-Extend the typed resource model, projection, manifest admission, and consumer together when a new resource kind is necessary.
-Keep syntax provenance and scoped instructions distinct from compiler-grounded identity and current workspace authority.
-Projection tests establish exact resource and guide ownership.
-Reader tests establish bounded local lookup and rejection, without a running IDEA process.
+`ModuleKnowledgeProjection` binds the product version and source revision to accepted architecture, observed project dependencies, and scoped guides.
+It retains each guide's content, scope directory, and SHA-256.
+For each module it records governing guides in scope order and descendant guides separately.
+Missing root guidance, duplicate guide paths, invalid paths, invalid release identity, and missing governing coverage remain finite projection failures.
+These module and guide facts do not establish compiler identity, native qualification, or a successful global installation.
 
 ## Focused tests
 
-- [InstalledKnowledgeProjectionTest.kt](../../build-logic/src/test/kotlin/support/knowledge/InstalledKnowledgeProjectionTest.kt)
-- [InstalledKnowledgeTest.kt](../../cli/src/test/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledgeTest.kt)
 - [KotlinDocumentationScannerTest.kt](../../build-logic/src/test/kotlin/KotlinDocumentationScannerTest.kt)
+- [ModuleKnowledgeProjectionTest.kt](../../build-logic/src/test/kotlin/support/architecture/knowledge/ModuleKnowledgeProjectionTest.kt)
 
 ## Source owners
 
-- [GenerateKnowledgeDocsTask.kt](../../build-logic/src/main/kotlin/conventions/GenerateKnowledgeDocsTask.kt)
-- [KnowledgeDocsMain.kt](../../build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeDocsMain.kt)
 - [KotlinDocumentationScanner.kt](../../build-logic/src/main/kotlin/conventions/jsoncontracts/KotlinDocumentationScanner.kt)
-- [GenerateInstalledKnowledgeTask.kt](../../build-logic/src/main/kotlin/support/knowledge/GenerateInstalledKnowledgeTask.kt)
-- [InstalledKnowledgeProjection.kt](../../build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeProjection.kt)
-- [InstalledKnowledgeValidation.kt](../../build-logic/src/main/kotlin/support/knowledge/InstalledKnowledgeValidation.kt)
-- [InstalledKnowledge.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/InstalledKnowledge.kt)
-- [KnowledgeAdmission.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeAdmission.kt)
-- [KnowledgeResources.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/KnowledgeResources.kt)
+- [KnowledgeSymbolsMain.kt](../../build-logic/src/main/kotlin/conventions/jsoncontracts/KnowledgeSymbolsMain.kt)
+- [`kast.architecture.gradle.kts`](../../build-logic/src/main/kotlin/kast.architecture.gradle.kts)
+- [ArchitectureTasks.kt](../../build-logic/src/main/kotlin/support/architecture/gradle/ArchitectureTasks.kt)
+- [VerifyDistributionTasks.kt](../../build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt)
 - [KastCliMain.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt)
 - [ManagementCommand.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt)
 - [ModuleKnowledgeProjection.kt](../../build-logic/src/main/kotlin/support/architecture/knowledge/ModuleKnowledgeProjection.kt)
-- [KnowledgeCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/knowledge/KnowledgeCommands.kt)
-- [AdmittedKnowledge.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/knowledge/AdmittedKnowledge.kt)
 
 ## Read next
 

@@ -45,7 +45,7 @@ class InstallationLiveStateRecoveryTest {
         Files.writeString(prior.resolve("config/workspaces.json"), registry)
         val second = request(root, "1.2.4")
         Files.copy(
-            Path.of("../packaging/installation-lifecycle.py"),
+            Path.of("../packaging/internal/installation/installation-lifecycle.py"),
             second.controlRoot.value.resolve("share/kast/installation-lifecycle.py"),
             StandardCopyOption.REPLACE_EXISTING,
         )
@@ -76,7 +76,7 @@ class InstallationLiveStateRecoveryTest {
         )
         val candidate = request(root, "1.2.4")
         Files.copy(
-            Path.of("../packaging/installation-lifecycle.py"),
+            Path.of("../packaging/internal/installation/installation-lifecycle.py"),
             candidate.controlRoot.value.resolve("share/kast/installation-lifecycle.py"),
             StandardCopyOption.REPLACE_EXISTING,
         )
@@ -124,7 +124,7 @@ class InstallationLiveStateRecoveryTest {
         val manifest = Files.readString(prior.resolve("installation.json"))
         val second = request(root, "1.2.4")
         Files.copy(
-            Path.of("../packaging/installation-lifecycle.py"),
+            Path.of("../packaging/internal/installation/installation-lifecycle.py"),
             second.controlRoot.value.resolve("share/kast/installation-lifecycle.py"),
             StandardCopyOption.REPLACE_EXISTING,
         )
@@ -178,7 +178,7 @@ class InstallationLiveStateRecoveryTest {
         Files.createSymbolicLink(Files.createDirectories(prior.resolve("state/run")).resolve("persistent"), external)
         val second = request(root, "1.2.4")
         Files.copy(
-            Path.of("../packaging/installation-lifecycle.py"),
+            Path.of("../packaging/internal/installation/installation-lifecycle.py"),
             second.controlRoot.value.resolve("share/kast/installation-lifecycle.py"),
             StandardCopyOption.REPLACE_EXISTING,
         )
@@ -226,7 +226,7 @@ class InstallationLiveStateRecoveryTest {
         Files.createSymbolicLink(run.resolve("live-link"), external)
         val second = request(root, "1.2.4")
         Files.copy(
-            Path.of("../packaging/installation-lifecycle.py"),
+            Path.of("../packaging/internal/installation/installation-lifecycle.py"),
             second.controlRoot.value.resolve("share/kast/installation-lifecycle.py"),
             StandardCopyOption.REPLACE_EXISTING,
         )

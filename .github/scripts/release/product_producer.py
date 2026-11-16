@@ -102,7 +102,7 @@ def seal_target(
     revision: str,
     tree: str,
     version: str,
-    producer: product.ProductProducer,
+    producer: product.ProductProducer | product.LocalProductProducer,
     target: str,
     native_target: str,
 ) -> TargetRecord:
@@ -182,7 +182,9 @@ def seal_target(
         product.ProductInputs(
             product.file_digest(regular(java_release)),
             resolution_digest(root),
-            product.file_digest(regular(root / "packaging/composition_recipe.py")),
+            product.file_digest(
+                regular(root / "packaging/internal/composition/composition_recipe.py")
+            ),
             donor,
         ),
         bundle,
@@ -235,7 +237,9 @@ def read_target(path: Path) -> TargetRecord:
     ):
         raise Rejected(Failure.INVALID_IDENTITY)
     target = product.product_target(value["target"], version)
-    if isinstance(target, product.Failure):
+    if isinstance(target, product.Failure) or not isinstance(
+        target.qualification.producer, product.ProductProducer
+    ):
         raise Rejected(Failure.INVALID_RECORD)
     return TargetRecord(1, product.REPOSITORY, revision, tree, version, target)
 

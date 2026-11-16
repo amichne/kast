@@ -238,19 +238,13 @@ internal fun pluginFixtureWithMcp(temporary: Path): Path {
     )
     val metadata = installation.resolve("share/kast")
     val support =
-        listOf("mcp_environment.py", "mcp-requirements.txt", "mcp-requirements.txt.lock").map { name ->
-            Files.copy(Path.of("../../packaging/$name"), metadata.resolve(name))
+        listOf("internal/mcp/mcp_environment.py", "mcp-requirements.txt", "mcp-requirements.txt.lock").map { relative ->
+            val source = Path.of("../../packaging").resolve(relative)
+            Files.copy(source, metadata.resolve(source.fileName))
         }
-    val python = metadata.resolve("private-python/bin/python3.12")
-    Files.createDirectories(python.parent)
-    Files.writeString(python, "fixture interpreter; process execution is explicitly injected")
-    Files.setPosixFilePermissions(python, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
-    val library = metadata.resolve("private-python/lib/python3.12/site.py")
-    Files.createDirectories(library.parent)
-    Files.writeString(library, "fixture standard library")
+    val runtime = mcpRuntimeFixture(metadata)
     val manifest = (readBundledManifest(installation) as BundledManifestRead.Read).manifest
-    val files =
-        Files.walk(composition).use { it.filter(Files::isRegularFile).toList() } + support + listOf(python, library)
+    val files = Files.walk(composition).use { it.filter(Files::isRegularFile).toList() } + support + runtime
     Files.writeString(
         installation.resolve("installation.json"),
         Json.encodeToString(
@@ -268,6 +262,24 @@ internal fun pluginFixtureWithMcp(temporary: Path): Path {
         ),
     )
     return root
+}
+
+private fun mcpRuntimeFixture(metadata: Path): List<Path> {
+    val python = metadata.resolve("private-python/bin/python3.12")
+    Files.createDirectories(python.parent)
+    Files.writeString(python, "fixture interpreter; process execution is explicitly injected")
+    Files.setPosixFilePermissions(python, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"))
+    val library = metadata.resolve("private-python/lib/python3.12/site.py")
+    Files.createDirectories(library.parent)
+    Files.writeString(library, "fixture standard library")
+    val dependencies =
+        listOf("artifact.json", "site-packages/native.so").map { relative ->
+            val file = metadata.resolve("mcp-dependencies/$relative")
+            Files.createDirectories(file.parent)
+            Files.writeString(file, "fixture dependency; process execution is explicitly injected")
+            file
+        }
+    return listOf(python, library) + dependencies
 }
 
 internal fun copyPluginCache(marketplace: Path, cache: Path) {

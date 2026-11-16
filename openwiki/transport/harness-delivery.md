@@ -68,7 +68,7 @@ sources:
 generated: { by: "amp", at: "2026-11-13T00:41:13.770Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T23:43:30.219Z
+    at: 2026-11-15T18:33:44.464Z
 ---
 
 # Agent context and harness delivery

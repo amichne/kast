@@ -43,7 +43,6 @@ jobs:
       product: ${{ steps.scope.outputs.product }}
       portable: ${{ steps.scope.outputs.portable }}
       documentation: ${{ steps.scope.outputs.documentation }}
-      gate_graph: ${{ steps.scope.outputs.gate_graph }}
       scope: ${{ steps.scope.outputs.scope }}
       plan: ${{ steps.scope.outputs.plan }}
     steps:
@@ -96,7 +95,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Run offline packaging suites
-        run: ./packaging/run-portable-tests-container.sh
+        run: ./packaging/internal/verification/run-portable-tests-container.sh
 
   source-work:
     needs: scope
@@ -104,26 +103,13 @@ jobs:
     name: Source obligations
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    outputs:
-      candidate: ${{ steps.reuse.outputs.candidate || 'MISSING' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - name: Reuse tested merged PR candidate
-        if: needs.scope.outputs.product == 'run' && github.event_name == 'push' && github.ref == 'refs/heads/main' && env.KAST_SEMANTIC_FIXTURES == 'false'
-        id: reuse
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >-
-          python3 .github/scripts/release/build_candidate.py reuse
-          --repository "$GITHUB_REPOSITORY" --revision "$GITHUB_SHA"
-          --bundle build/candidate --github-output "$GITHUB_OUTPUT"
-
       - name: Set up Liberica NIK Java 25
-        if: steps.reuse.outputs.candidate != 'REUSED'
         id: jdk25
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
@@ -131,7 +117,6 @@ jobs:
           java-version: '25.0.2+13'
 
       - name: Set up Python
-        if: steps.reuse.outputs.candidate != 'REUSED'
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: ".python-version"
@@ -139,20 +124,16 @@ jobs:
           cache-dependency-path: experiments/host-observation/requirements-test.txt
 
       - name: Install host protocol and semantic test tools
-        if: steps.reuse.outputs.candidate != 'REUSED'
         run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
 
       - uses: ./.github/actions/jq-oracle
-        if: steps.reuse.outputs.candidate != 'REUSED'
 
       - name: Set up documentation parser runtime
-        if: steps.reuse.outputs.candidate != 'REUSED'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24.21.0"
 
       - name: Set up Gradle
-        if: steps.reuse.outputs.candidate != 'REUSED'
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           validate-wrappers: true
@@ -171,31 +152,20 @@ jobs:
       - name: Validate affected source obligations
         if: needs.scope.outputs.product == 'skip'
         env:
-          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           CI_VERIFICATION_PLAN: ${{ needs.scope.outputs.plan }}
         run: python3 .github/scripts/ci/source_validation.py --affected --base "$BASE_SHA" --event "$GITHUB_EVENT_NAME"
 
       - name: Validate complete candidate source obligations
-        if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
-        env:
-          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
+        if: needs.scope.outputs.product == 'run'
         run: python3 .github/scripts/ci/source_validation.py
 
-      - name: Examine candidate gate membership
-        if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          KAST_RELEASE_JDK_25: ${{ steps.jdk25.outputs.path }}
-          GATE_GRAPH: ${{ needs.scope.outputs.gate_graph }}
-        run: python3 .github/scripts/ci/verify-checks.py --preflight-only --gate-graph "$GATE_GRAPH"
-
       - name: Prepare compiled native inputs
-        if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
+        if: needs.scope.outputs.product == 'run'
         run: uv run --locked --script .github/scripts/ci/native_handoff.py inputs --version "0.0.$GITHUB_RUN_NUMBER"
 
       - name: Retain compiled native inputs
-        if: needs.scope.outputs.product == 'run' && steps.reuse.outputs.candidate != 'REUSED'
+        if: needs.scope.outputs.product == 'run'
         uses: actions/upload-artifact@v7.0.2
         with:
           name: native-inputs-${{ github.run_id }}-${{ github.run_attempt }}
@@ -203,17 +173,8 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Retain reused candidate
-        if: steps.reuse.outputs.candidate == 'REUSED'
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: reused-candidate-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/candidate/
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Retain source evidence
-        if: always() && steps.reuse.outputs.candidate != 'REUSED' && (inputs.rollout == '' || inputs.rollout == 'none')
+        if: always() && (inputs.rollout == '' || inputs.rollout == 'none')
         uses: actions/upload-artifact@v7.0.2
         with:
           name: ci-source-reports-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
@@ -226,7 +187,7 @@ jobs:
   native:
     name: Compile macOS native executable
     needs: [scope, source-work]
-    if: github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.outputs.candidate != 'REUSED'
+    if: github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run'
     runs-on: macos-15
     timeout-minutes: 75
     steps:
@@ -244,8 +205,6 @@ jobs:
         with:
           python-version-file: .python-version
       - run: python3 -m pip install --disable-pip-version-check uv==0.12.9
-      - name: Verify publication contracts on macOS
-        run: python3 -m unittest discover -s .github/scripts/release -p 'test_*.py'
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           validate-wrappers: true
@@ -339,81 +298,42 @@ jobs:
   kotlin:
     name: Kotlin product
     needs: [scope, source-work, native, assembly]
-    if: always() && github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && (needs.source-work.outputs.candidate == 'REUSED' || (needs.native.result == 'success' && needs.assembly.result == 'success')) && (inputs.rollout == '' || inputs.rollout == 'none')
-    runs-on: ${{ needs.source-work.outputs.candidate == 'REUSED' && 'ubuntu-latest' || 'macos-15' }}
+    if: always() && github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && needs.native.result == 'success' && needs.assembly.result == 'success' && (inputs.rollout == '' || inputs.rollout == 'none')
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        if: needs.source-work.outputs.candidate == 'REUSED'
-        with:
-          name: reused-candidate-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/candidate/
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
-        if: needs.source-work.outputs.candidate != 'REUSED'
         with:
           distribution: liberica-nik
           java-version: '25.0.2+13'
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        if: needs.source-work.outputs.candidate != 'REUSED'
         with:
           python-version-file: .python-version
       - run: python3 -m pip install uv==0.12.9
-        if: needs.source-work.outputs.candidate != 'REUSED'
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        if: needs.source-work.outputs.candidate != 'REUSED'
         with:
           name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/handoff-input/
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
-        if: needs.source-work.outputs.candidate != 'REUSED'
         with:
           validate-wrappers: true
           cache-read-only: true
       - uses: ./.github/actions/jq-oracle
-        if: needs.source-work.outputs.candidate != 'REUSED'
-      - name: Exercise the assembled Mac product
-        if: needs.source-work.outputs.candidate != 'REUSED'
+      - name: Exercise the exact assembled Mac Control executable
         run: uv run --locked --script .github/scripts/ci/native_handoff.py qualify --version "0.0.$GITHUB_RUN_NUMBER"
-      - name: Verify cold RPC subprocesses on macOS
-        if: needs.source-work.outputs.candidate != 'REUSED'
-        run: >-
-          ./gradlew --no-daemon --no-parallel --max-workers=1
-          -Dorg.gradle.jvmargs=-Xmx5g -Pversion="0.0.$GITHUB_RUN_NUMBER"
-          :cli:test --tests io.github.amichne.kast.cli.rpc.KastToolRpcQuerySessionProcessTest
-          --console=plain
       - uses: actions/upload-artifact@v7.0.2
-        if: always() && needs.source-work.outputs.candidate != 'REUSED'
+        if: always()
         with:
           name: macos-query-session-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            cli/build/test-results/test/
             build/test-results/publicLauncherTest/
             build/reports/tests/publicLauncherTest/
           if-no-files-found: warn
           retention-days: 14
-      # This legacy component candidate is not a two-target private-runtime product.
-      # Product publication requires build-record.json and retained native evidence for both targets.
-      - name: Seal tested component candidate identity
-        if: needs.source-work.outputs.candidate != 'REUSED'
-        env:
-          CHECKOUT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: >-
-          python3 .github/scripts/release/build_candidate.py seal
-          --repository "$GITHUB_REPOSITORY" --revision "$CHECKOUT_SHA"
-          --run-id "$GITHUB_RUN_ID" --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT"
-          --event "$GITHUB_EVENT_NAME" --bundle build/candidate
-      - name: Retain immutable component candidate
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: ci-build-candidate-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-          path: build/candidate/
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 30
 
   composed-products:
     name: Linux complete-product qualification
@@ -434,7 +354,7 @@ jobs:
     needs: [scope, source-work, assembly]
     if: >-
       !cancelled() && needs.source-work.result == 'success' &&
-      (needs.source-work.outputs.candidate == 'REUSED' || needs.assembly.result == 'success') &&
+      needs.assembly.result == 'success' &&
       needs.scope.outputs.product == 'run' && vars.KAST_MACOS_CHECKS == 'true' &&
       vars.KAST_NATIVE_COMPILATION != 'false' && github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
@@ -444,7 +364,6 @@ jobs:
       version: 0.0.${{ github.run_number }}
       complete_product: true
       release_target: macos-aarch64
-      reuse_ci_release: ${{ needs.source-work.outputs.candidate != 'REUSED' }}
 
   sealed-product:
     name: Seal both native targets without rebuilding
@@ -530,7 +449,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TARGET: ${{ matrix.target }}
         run: |
-          PYTHONPATH=.github/scripts/release:packaging python3 - <<'PY'
+          PYTHONPATH=.github/scripts/release:packaging/internal/bootstrap:packaging python3 - <<'PY'
           import os, subprocess
           from pathlib import Path
           import product_candidate
@@ -553,7 +472,7 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
         run: >-
-          mise exec -- uv run --locked --project packaging python packaging/product_lifecycle_probe.py
+          mise exec -- uv run --locked --project packaging python packaging/internal/verification/product_lifecycle_probe.py
           --candidate build/product-candidate --baseline build/product-baseline
           --target "$TARGET" --private-python-archive build/private-python.tar.gz
           --private-dependency build/defusedxml.whl --evidence build/installed-evidence

@@ -28,7 +28,6 @@ enum class CliProductCommand(val usage: String) {
     INSPECT("product inspect"),
     CODEX_CLI("codex"),
     CODEX_DESKTOP("codex desktop"),
-    KNOWLEDGE("knowledge <query-or-resource>"),
     IDE_STATUS("ide status [--root <path>]"),
 }
 
@@ -40,8 +39,6 @@ sealed interface CliAction {
         data object Inspect : Local
 
         data object ProductInspect : Local
-
-        data class Knowledge(val selection: io.github.amichne.kast.cli.knowledge.KnowledgeSelection) : Local
 
         data class AppServer(val action: io.github.amichne.kast.appserver.AppServerAction) : Local
 

@@ -28,7 +28,7 @@ internal class KastRootCommand : KastCommand("kast") {
     }
 
     override fun help(context: Context): String =
-        "Query installed knowledge or the existing IDEA index; inspect and change a workspace through its Kast plugin."
+        "Query the existing IDEA index; inspect and change a workspace through its Kast plugin."
 
     override fun helpEpilog(context: Context): String =
         "Semantic results are one JSON document on stdout. Diagnostics are one JSON document on stderr. Bootstrap commands: kast config show|explain|validate|schema; kast installation inspect|recover-read-only|reset|remove. Use kast config --help or kast installation --help for options. The release bootstrap runs kast installation install; install.sh --force resets and reinstalls the complete suite."

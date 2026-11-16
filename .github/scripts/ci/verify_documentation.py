@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the product gate's parser and glossary proofs without provisioning Gradle."""
+"""Run the product gate's documentation integrity and assessment commands."""
 
 import os
 import subprocess
@@ -14,45 +14,52 @@ def readability_commands(root: Path) -> tuple[tuple[str, ...], ...]:
     directory = root / "config/vale/readability"
     if not any((directory / name).exists() for name in ("audit.py", "test_audit.py")):
         return ()
-    uv = ("uv", "run", "--locked", "--project", "docs/tooling")
+    uv = ("uv", "run", "--locked", "--project", "docs/internal/tooling")
     return (
         (*uv, "pytest", "-c", "config/vale/readability/pytest.ini", "config/vale/readability"),
         (*uv, "pyright", "--project", "config/vale/readability/pyrightconfig.json"),
-        (*uv, "ruff", "check", "--config", "docs/tooling/pyproject.toml",
+        (*uv, "ruff", "check", "--config", "docs/internal/tooling/pyproject.toml",
          "config/vale/readability/audit.py", "config/vale/readability/test_audit.py"),
-        (*uv, "ruff", "format", "--check", "--config", "docs/tooling/pyproject.toml",
+        (*uv, "ruff", "format", "--check", "--config", "docs/internal/tooling/pyproject.toml",
          "config/vale/readability/audit.py", "config/vale/readability/test_audit.py"),
     )
 
 
 def commands(guides: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
     return (
-        ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/tooling/markdown"),
-        ("npm", "run", "check", "--prefix", "docs/tooling/markdown"),
-        ("uv", "run", "--locked", "--project", "docs/tooling", "pytest", "docs/tooling"),
-        ("python3", "docs/tooling/callables/build.py", "--check"),
-        ("node", "--test", "docs/tooling/callables/loader.test.mjs"),
-        ("python3", "packaging/test-installer-entrypoint.py"),
-        ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/tooling/value-journey"),
-        ("npm", "run", "build", "--prefix", "docs/tooling/value-journey"),
+        ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/internal/tooling/markdown"),
+        ("npm", "run", "check", "--prefix", "docs/internal/tooling/markdown"),
+        ("uv", "run", "--locked", "--project", "docs/internal/tooling", "pytest", "-c", "docs/internal/tooling/pyproject.toml", "docs/internal/tooling", "docs/internal/tests"),
+        ("uv", "run", "--locked", "--project", "docs/internal/tooling", "pyright",
+         "--project", "docs/internal/tooling/pyproject.toml"),
+        ("uv", "run", "--locked", "--project", "docs/internal/tooling", "ruff", "check",
+         "--config", "docs/internal/tooling/pyproject.toml", "docs/internal/tooling",
+         "docs/internal/navigation.py", "docs/internal/tests/test_navigation.py", "bin/kast-repo"),
+        ("uv", "run", "--locked", "--project", "docs/internal/tooling", "ruff", "format", "--check",
+         "--config", "docs/internal/tooling/pyproject.toml", "docs/internal/tooling",
+         "docs/internal/navigation.py", "docs/internal/tests/test_navigation.py", "bin/kast-repo"),
+        ("python3", "docs/internal/tooling/callables/build.py", "--check"),
+        ("node", "--test", "docs/internal/tooling/callables/loader.test.mjs"),
+        ("uv", "run", "--locked", "--project", "packaging", "python", "packaging/tests/test-installer-entrypoint.py"),
+        ("npm", "ci", "--ignore-scripts", "--engine-strict", "--prefix", "docs/internal/tooling/value-journey"),
+        ("npm", "run", "build", "--prefix", "docs/internal/tooling/value-journey"),
         ("git", "diff", "--exit-code", "--", "docs/public/snippets/value-journey.jsx",
          "docs/public/images/value-journey.svg"),
-        ("uv", "run", "--locked", "--project", "docs/tooling", "python", ".github/scripts/code_kb.py",
-         "check-documentation-inputs", "--repo", ".", "--docs", "openwiki", "--strict", "--format", "json"),
-        ("uv", "run", "--locked", "--project", "docs/tooling", "python",
-         "docs/tooling/okf_public.py", "--check"),
+        ("./gradlew", "verifyKnowledgeBase"),
+        ("uv", "run", "--locked", "--project", "docs/internal/tooling", "python",
+         "docs/internal/tooling/okf_public.py", "--check"),
         ("./gradlew", "verifyKnowledgeClaims"),
-        ("uv", "run", "--locked", "--project", "docs/tooling", "python",
-         "docs/tooling/reader_contracts.py", "--report",
+        ("uv", "run", "--locked", "--project", "docs/internal/tooling", "python",
+         "docs/internal/tooling/reader_contracts.py", "--report",
          "build/reports/documentation/reader-contracts.json"),
         (
             "uv",
             "run",
             "--locked",
             "--project",
-            "docs/tooling",
+            "docs/internal/tooling",
             "python",
-            "docs/tooling/check_glossary.py",
+            "docs/internal/tooling/check_glossary.py",
             "docs/glossary.json",
             "README.md",
             "docs",

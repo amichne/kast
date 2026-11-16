@@ -78,8 +78,8 @@ class CliSurfaceContractTest {
         val helpText = help.document.value
 
         assertFalse(boundaryTouched)
-        assertTrue(helpText.contains("Query installed knowledge or the existing IDEA index"))
-        assertTrue(helpText.contains("knowledge"))
+        assertTrue(helpText.contains("Query the existing IDEA index"))
+        assertFalse(helpText.contains("knowledge"))
         assertTrue(helpText.contains("Show the installed IntelliJ plugin product version"))
         assertTrue(helpText.contains("product"))
         assertTrue(helpText.contains("Invoke a public search, diagnostic, or advanced symbol tool"))

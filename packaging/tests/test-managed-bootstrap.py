@@ -1,0 +1,523 @@
+"""Restricted-PATH contracts; scripted interpreters are not native qualification."""
+
+import hashlib
+import io
+import json
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import unittest
+import zipfile
+from contextlib import redirect_stderr
+from dataclasses import replace
+from pathlib import Path
+from unittest.mock import patch
+
+import defusedxml
+
+import generate_bootstrap as generator
+import mcp_environment as mcp
+import private_interpreter as private
+
+
+def script(path: Path, source: str) -> None:
+    _ = path.write_text(source)
+    path.chmod(0o755)
+
+
+class BootstrapTest(unittest.TestCase):
+    def test_private_source_paths_do_not_change_delivered_member_names(self) -> None:
+        files = dict(generator.support_files())
+        repository = files["install.sh"].parent
+        expected = {
+            "bootstrap_entry.py": "packaging/internal/bootstrap/bootstrap_entry.py",
+            "private_interpreter.py": "packaging/internal/bootstrap/private_interpreter.py",
+            "managed_installation.py": "packaging/internal/installation/managed_installation.py",
+            "managed_release.py": "packaging/internal/installation/managed_release.py",
+            "managed_product.py": "packaging/internal/product/managed_product.py",
+            "managed_product_installation.py": (
+                "packaging/internal/product/managed_product_installation.py"
+            ),
+            "managed_product_removal.py": "packaging/internal/product/managed_product_removal.py",
+            "legacy_purge.py": "packaging/internal/installation/legacy_purge.py",
+            "immutable_store.py": "packaging/internal/installation/immutable_store.py",
+            "product_removal_recovery.py": "packaging/internal/product/product_removal_recovery.py",
+            "product_mcp_removal.py": "packaging/internal/product/product_mcp_removal.py",
+            "mcp_environment.py": "packaging/internal/mcp/mcp_environment.py",
+            "managed_update_contract.py": (
+                "packaging/internal/installation/managed_update_contract.py"
+            ),
+            "managed_update_journal.py": (
+                "packaging/internal/installation/managed_update_journal.py"
+            ),
+            "reload_hosted.py": "packaging/internal/installation/reload_hosted.py",
+            "host-installation.py": "packaging/internal/installation/host-installation.py",
+            "installation-recovery.py": "packaging/internal/installation/installation-recovery.py",
+            "installation-lifecycle.py": (
+                "packaging/internal/installation/installation-lifecycle.py"
+            ),
+            "host_directory_exchange.py": (
+                "packaging/internal/installation/host_directory_exchange.py"
+            ),
+            "composed_bundle.py": "packaging/composed_bundle.py",
+            "composition_platform.py": "packaging/internal/composition/composition_platform.py",
+            "managed_headless.py": "packaging/managed_headless.py",
+            "runtime_archive.py": "packaging/internal/runtime/runtime_archive.py",
+            "runtime_base.py": "packaging/internal/runtime/runtime_base.py",
+            "install-candidate.sh": "packaging/internal/bootstrap/install-candidate.sh",
+            "managed_installation.py.lock": (
+                "packaging/internal/installation/managed_installation.py.lock"
+            ),
+            "prune-prior-installations.py": (
+                "packaging/internal/installation/prune-prior-installations.py"
+            ),
+            "codex-mcp-registration.py": (
+                "packaging/internal/installation/codex-mcp-registration.py"
+            ),
+            "mcp-requirements.txt": "packaging/mcp-requirements.txt",
+            "mcp-requirements.txt.lock": "packaging/mcp-requirements.txt.lock",
+            "managed-install-v1": "packaging/managed-install-v1",
+            "install-completion-v1": "packaging/install-completion-v1",
+            "install.sh": "install.sh",
+        }
+        self.assertEqual(
+            {name: repository / relative for name, relative in expected.items()}, files
+        )
+        with self.assertRaises(ValueError):
+            _ = generator.source_file("unknown.py")
+
+    def test_retained_support_has_one_exact_inventory(self) -> None:
+        expected = {
+            "bootstrap_entry.py",
+            "private_interpreter.py",
+            "managed_installation.py",
+            "managed_release.py",
+            "managed_product.py",
+            "managed_product_installation.py",
+            "managed_product_removal.py",
+            "legacy_purge.py",
+            "immutable_store.py",
+            "product_removal_recovery.py",
+            "product_mcp_removal.py",
+            "mcp_environment.py",
+            "managed_update_contract.py",
+            "managed_update_journal.py",
+            "reload_hosted.py",
+            "host-installation.py",
+            "installation-recovery.py",
+            "installation-lifecycle.py",
+            "host_directory_exchange.py",
+            "composed_bundle.py",
+            "composition_platform.py",
+            "managed_headless.py",
+            "runtime_archive.py",
+            "runtime_base.py",
+            "install.sh",
+            "install-candidate.sh",
+            "managed_installation.py.lock",
+            "mcp-requirements.txt",
+            "mcp-requirements.txt.lock",
+            "managed-install-v1",
+            "install-completion-v1",
+            "prune-prior-installations.py",
+            "codex-mcp-registration.py",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "support"
+            generator.stage_support(output)
+            self.assertEqual(expected, {path.name for path in output.iterdir()})
+            self.assertTrue(generator.check_support(output))
+            (output / "managed_release.py").unlink()
+            self.assertFalse(generator.check_support(output))
+            generator.stage_support(output)
+            _ = (output / "foreign").write_bytes(b"protected")
+            with self.assertRaises(ValueError):
+                generator.stage_support(output)
+            self.assertEqual(b"protected", (output / "foreign").read_bytes())
+
+    def test_support_inventory_rejects_duplicate_and_unsafe_paths(self) -> None:
+        for names in (("bootstrap_entry.py", "bootstrap_entry.py"), ("../outside",), ("/root",)):
+            with self.subTest(names=names), self.assertRaises(ValueError):
+                _ = generator.validate_members(names)
+
+    def test_dependency_production_preserves_finite_rejection(self) -> None:
+        for uv, failure in (
+            (None, mcp.Failure.PROCESS),
+            (Path("/producer/uv"), mcp.Failure.INSTALL),
+            (Path("/producer/uv"), mcp.Failure.TIMEOUT),
+        ):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary).resolve() / "support"
+                diagnostic = io.StringIO()
+                with (
+                    patch.object(generator.producer, "produce", return_value=mcp.Rejected(failure)),
+                    redirect_stderr(diagnostic),
+                    self.assertRaisesRegex(ValueError, failure.value),
+                ):
+                    generator.stage_support(output, mcp.DependencyTarget.MACOS_ARM64, uv)
+                self.assertEqual(
+                    {"status": "MCP_REJECTED", "failure": failure.value},
+                    json.loads(diagnostic.getvalue()),
+                )
+                self.assertFalse((output / "mcp-dependencies").exists())
+
+    def test_shipped_support_requires_exact_target_dependency_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary).resolve()
+            generator.stage_support(output)
+            target = mcp.DependencyTarget.MACOS_ARM64
+            self.assertFalse(generator.check_support(output, target))
+            site = output / "mcp-dependencies/site-packages"
+            site.mkdir(parents=True)
+            dependency = site / "native.so"
+            _ = dependency.write_bytes(b"native dependency fixture")
+            dependency.chmod(0o644)
+            scripts = generator.REPOSITORY / "agent-tools/skills/kast/scripts"
+            server, lock, requirements = (
+                "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in (
+                    scripts / "server.py",
+                    scripts / "server.py.lock",
+                    generator.PACKAGING / "mcp-requirements.txt",
+                )
+            )
+            export = mcp.RequirementsLock(server, lock, requirements)
+            artifact = mcp.DependencyArtifact(
+                target,
+                export,
+                mcp.Inventory(
+                    (
+                        mcp.File(
+                            "native.so",
+                            "sha256:" + hashlib.sha256(b"native dependency fixture").hexdigest(),
+                            0o644,
+                        ),
+                    ),
+                    (),
+                ),
+            )
+            _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(artifact))
+            self.assertTrue(generator.check_support(output, target))
+            self.assertFalse(generator.check_support(output, mcp.DependencyTarget.LINUX_X86_64))
+            dependency.chmod(0o755)
+            executable = replace(
+                artifact,
+                inventory=replace(
+                    artifact.inventory, files=(replace(artifact.inventory.files[0], mode=0o755),)
+                ),
+            )
+            _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(executable))
+            self.assertFalse(generator.check_support(output, target))
+            dependency.chmod(0o644)
+            _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(artifact))
+            _ = dependency.write_bytes(b"changed dependency")
+            self.assertFalse(generator.check_support(output, target))
+
+    def test_checked_in_bootstrap_is_the_exact_generated_inventory(self) -> None:
+        self.assertEqual(generator.render(), (generator.REPOSITORY / "install.sh").read_bytes())
+        # Linux limits each exec argument to 32 pages, including the terminating NUL.
+        self.assertLess(len(generator.render()), 131_072)
+        inventory = (generator.REPOSITORY / "build.gradle.kts").read_text()
+        self.assertIn("dependsOn(generateInstallerSupport)", inventory)
+        self.assertIn("from(installerSupportDirectory)", inventory)
+
+    def test_unsupported_platform_rejects_before_any_storage_or_transfer(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            tools = root / "tools"
+            tools.mkdir()
+            script(tools / "uname", '#!/bin/sh\nprintf "unsupported\\n"\n')
+            result = subprocess.run(
+                ["/bin/bash", str(generator.REPOSITORY / "install.sh")],
+                env={
+                    "HOME": str(root / "home"),
+                    "PATH": str(tools),
+                    "TMPDIR": str(root / "absent"),
+                },
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(1, result.returncode)
+            self.assertIn("supported complete products", result.stderr)
+            self.assertEqual([tools], list(root.iterdir()))
+
+    def test_local_artifact_conflicts_reject_before_downloads(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bootstrap = root / "install.sh"
+            _ = bootstrap.write_bytes(generator.render())
+            for arguments in (
+                ["--local-artifact", str(root), "--channel", "preview"],
+                ["--version", "1.2.3", "--local-artifact", str(root)],
+                ["--local-artifact"],
+            ):
+                with self.subTest(arguments=arguments):
+                    result = subprocess.run(
+                        ["/bin/bash", str(bootstrap), *arguments],
+                        env={"HOME": str(root), "PATH": ""},
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    self.assertEqual(1, result.returncode)
+                    self.assertIn("select exactly one build", result.stderr)
+                    self.assertEqual([bootstrap], list(root.iterdir()))
+
+    def test_both_target_bootstraps_run_the_engine_without_python_or_uv_on_path(self) -> None:
+        for system, machine in (("Darwin", "arm64"), ("Linux", "x86_64")):
+            with self.subTest(system=system), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                tools, home = root / "tools", root / "home"
+                tools.mkdir()
+                home.mkdir()
+                for name in ("tar", "gzip", "mktemp", "mkdir", "rm"):
+                    tool = shutil.which(name, path=os.defpath)
+                    assert tool is not None
+                    (tools / name).symlink_to(tool)
+                hasher = shutil.which("shasum", path=os.defpath)
+                assert hasher is not None
+                (tools / "shasum").symlink_to(hasher)
+                script(tools / "sha256sum", f'#!/bin/sh\nexec {shlex.quote(hasher)} -a 256 "$@"\n')
+                script(
+                    tools / "uname",
+                    f'#!/bin/sh\ncase "$1" in -s) echo {system};; '
+                    f"-m) echo {machine};; *) exit 91;; esac\n",
+                )
+                archive = root / "interpreter.tar.gz"
+                # External interpreter observation only; the real engine still runs.
+                raw = (
+                    f"#!{sys.executable}\nimport os,sys\n"
+                    "os.execv(sys.executable,[sys.executable,*sys.argv[1:]])\n"
+                ).encode()
+                with tarfile.open(archive, "w:gz") as incoming:
+                    entry = tarfile.TarInfo("python/bin/python3.12")
+                    entry.size, entry.mode = len(raw), 0o755
+                    incoming.addfile(entry, io.BytesIO(raw))
+                wheel = root / "dependency.whl"
+                dependency = Path(defusedxml.__file__).parent
+                with zipfile.ZipFile(wheel, "w") as output:
+                    for source in dependency.glob("*.py"):
+                        output.write(source, "defusedxml/" + source.name)
+                pins = tuple(replace(pin, sha256=private.digest(archive)) for pin in private.PINS)
+                with (
+                    patch.object(generator, "PINS", pins),
+                    patch.object(generator, "DEPENDENCY_SHA256", private.digest(wheel)),
+                ):
+                    bootstrap = root / "install.sh"
+                    _ = bootstrap.write_bytes(generator.render())
+                log = root / "transfers"
+                urls = "|".join(shlex.quote(pin.url) for pin in pins)
+                script(
+                    tools / "curl",
+                    "\n".join(
+                        (
+                            "#!/bin/sh",
+                            "destination=''",
+                            'while [ "$#" -gt 0 ]; do',
+                            'if [ "$1" = --output ]; then shift; destination=$1; fi',
+                            "url=$1; shift",
+                            "done",
+                            f'printf "%s\\n" "$url" >> {shlex.quote(str(log))}',
+                            'case "$url" in',
+                            f'{urls}) /bin/cp {shlex.quote(str(archive))} "$destination" ;;',
+                            f"{shlex.quote(private.DEPENDENCY_URL)}) "
+                            f'/bin/cp {shlex.quote(str(wheel))} "$destination" ;;',
+                            "*) exit 92 ;;",
+                            "esac",
+                            "",
+                        )
+                    ),
+                )
+                local = root / "local product ; literal"
+                local.mkdir()
+                result = subprocess.run(
+                    [
+                        "/bin/bash",
+                        str(bootstrap),
+                        "--local-artifact",
+                        str(local),
+                        "--recover-only",
+                        "--dry-run",
+                        "--json",
+                    ],
+                    env={"HOME": str(home), "PATH": str(tools), "TMPDIR": str(root)},
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertEqual("RECOVERY_REQUIRED", json.loads(result.stdout)["type"])
+                self.assertEqual(
+                    [pins[0 if system == "Darwin" else 1].url, private.DEPENDENCY_URL],
+                    log.read_text().splitlines(),
+                )
+                self.assertEqual([], list(home.iterdir()))
+                self.assertFalse(list(root.glob("kast-bootstrap.*")))
+                # Valid encoding is not integrity evidence. Reject changed engine bytes
+                # before extracting or running the installer, even after admitted downloads.
+                prefix, separator, body = bootstrap.read_text().partition("<<'KAST_ENGINE'\n")
+                self.assertTrue(separator)
+                bad_engine = root / "bad-engine.sh"
+                changed = ("0" if body[0] != "0" else "1") + body[1:]
+                _ = bad_engine.write_text(prefix + separator + changed)
+                log.unlink()
+                corrupt_engine = subprocess.run(
+                    ["/bin/bash", str(bad_engine), "--recover-only", "--json"],
+                    env={"HOME": str(home), "PATH": str(tools), "TMPDIR": str(root)},
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                self.assertEqual(1, corrupt_engine.returncode)
+                self.assertIn("bootstrap engine digest mismatch", corrupt_engine.stderr)
+                self.assertEqual("", corrupt_engine.stdout)
+                self.assertEqual([], list(home.iterdir()))
+                self.assertFalse(list(root.glob("kast-bootstrap.*")))
+                # A transfer can return bytes successfully without returning admitted bytes.
+                # Corruption must stop before interpreter execution or the dependency fetch.
+                _ = archive.write_bytes(b"not the pinned interpreter")
+                log.unlink()
+                corrupt = subprocess.run(
+                    ["/bin/bash", str(bootstrap), "--recover-only", "--json"],
+                    env={"HOME": str(home), "PATH": str(tools), "TMPDIR": str(root)},
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                self.assertEqual(1, corrupt.returncode)
+                self.assertIn("bootstrap artifact digest mismatch", corrupt.stderr)
+                self.assertEqual(
+                    [pins[0 if system == "Darwin" else 1].url], log.read_text().splitlines()
+                )
+                self.assertEqual([], list(home.iterdir()))
+                self.assertFalse(list(root.glob("kast-bootstrap.*")))
+
+    def test_installed_helper_without_private_support_never_falls_back_to_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            for mode in ("--json", "--remove-product"):
+                with self.subTest(mode=mode):
+                    result = subprocess.run(
+                        ["/bin/bash", str(generator.HERE / "install-candidate.sh"), mode],
+                        env={"HOME": str(root), "PATH": ""},
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    self.assertEqual(1, result.returncode)
+                    self.assertIn("private interpreter unavailable", result.stderr)
+                    self.assertEqual([], list(root.iterdir()))
+
+    def test_removal_helper_binds_retained_interpreter_and_literal_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            helper = root / "install-candidate.sh"
+            _ = shutil.copyfile(generator.HERE / helper.name, helper)
+            interpreter = root / "private-python/bin/python3.12"
+            interpreter.parent.mkdir(parents=True)
+            # Scripted process-boundary evidence, not native interpreter qualification.
+            script(interpreter, '#!/bin/bash\nprintf "%s\\n" "$@"\n')
+            arguments = [
+                "--remove-product",
+                "--install-root",
+                "/owned root ; literal",
+                "--uninstall-journal",
+                "/journal",
+            ]
+            result = subprocess.run(
+                ["/bin/bash", str(helper), *arguments],
+                env={"HOME": str(root), "PATH": ""},
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(
+                ["-I", "-B", str(root / "bootstrap_entry.py"), *arguments],
+                result.stdout.splitlines(),
+            )
+            normal = subprocess.run(
+                ["/bin/bash", str(helper), "--channel", "preview", "--json"],
+                env={"HOME": str(root), "PATH": ""},
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(0, normal.returncode, normal.stderr)
+            self.assertEqual(
+                [
+                    "-I",
+                    "-B",
+                    str(root / "bootstrap_entry.py"),
+                    "--private-python-archive",
+                    str(root / "private-python.tar.gz"),
+                    "--private-dependency",
+                    str(root / "defusedxml.whl"),
+                    "--channel",
+                    "preview",
+                    "--json",
+                ],
+                normal.stdout.splitlines(),
+            )
+
+    def test_legacy_ambient_selection_rejects_before_platform_or_transfer(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            result = subprocess.run(
+                ["/bin/bash", str(generator.REPOSITORY / "install.sh")],
+                env={"HOME": str(root), "PATH": "", "KAST_VERSION": "1.2.3"},
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(1, result.returncode)
+            self.assertIn("KAST_VERSION is not a public product input", result.stderr)
+            self.assertEqual([], list(root.iterdir()))
+
+    def test_private_interpreter_pins_reject_wrong_bytes_before_staging(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive, wheel = root / "archive", root / "dependency"
+            _ = archive.write_bytes(b"not the pinned interpreter")
+            _ = wheel.write_bytes(b"not the pinned dependency")
+            for target in ("macos-aarch64", "linux-x86_64", "linux-aarch64"):
+                with self.subTest(target=target), self.assertRaises(ValueError):
+                    _ = private.PrivateInterpreter.admit(archive, wheel, target)
+
+    def test_private_interpreter_materializes_only_admitted_internal_links(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            archive, wheel = root / "archive", root / "dependency"
+            _ = wheel.write_bytes(b"dependency fixture")
+            with tarfile.open(archive, "w:gz") as output:
+                member = tarfile.TarInfo("python/bin/python3.12")
+                member.size, member.mode = 7, 0o755
+                output.addfile(member, io.BytesIO(b"fixture"))
+                link = tarfile.TarInfo("python/bin/python3")
+                link.type, link.linkname = tarfile.SYMTYPE, "python3.12"
+                output.addfile(link)
+            pin = replace(private.PINS[0], sha256=private.digest(archive))
+            metadata = root / "metadata"
+            metadata.mkdir()
+            with (
+                patch.object(private, "PINS", (pin,)),
+                patch.object(
+                    private, "DEPENDENCY_SHA256", hashlib.sha256(wheel.read_bytes()).hexdigest()
+                ),
+            ):
+                admitted = private.PrivateInterpreter.admit(archive, wheel, pin.target)
+                admitted.stage(metadata)
+            self.assertEqual(b"fixture", (metadata / "private-python/bin/python3").read_bytes())
+            self.assertFalse((metadata / "private-python/bin/python3").is_symlink())
+            self.assertEqual(
+                archive.read_bytes(), (metadata / "private-python.tar.gz").read_bytes()
+            )
+
+
+if __name__ == "__main__":
+    _ = unittest.main()

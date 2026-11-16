@@ -34,7 +34,7 @@ class ManagedControlAdapterTest {
         val identity = observeInstallationFilesystemIdentity(environment)
         val next = request(temporary, "1.2.4", controlOnly = true)
         Files.copy(
-            Path.of("../packaging/installation-lifecycle.py"),
+            Path.of("../packaging/internal/installation/installation-lifecycle.py"),
             next.controlRoot.value.resolve("share/kast/installation-lifecycle.py"),
             java.nio.file.StandardCopyOption.REPLACE_EXISTING,
         )
@@ -91,7 +91,7 @@ class ManagedControlAdapterTest {
         val manifest = Files.readString(selected(prior).resolve("installation.json"))
         val next = request(temporary, "1.2.4")
         Files.copy(
-            Path.of("../packaging/installation-lifecycle.py"),
+            Path.of("../packaging/internal/installation/installation-lifecycle.py"),
             next.controlRoot.value.resolve("share/kast/installation-lifecycle.py"),
             java.nio.file.StandardCopyOption.REPLACE_EXISTING,
         )
