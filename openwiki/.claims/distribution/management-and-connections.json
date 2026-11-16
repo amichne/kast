@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:545b53e4971b44f7acf9933f81929f30b44cd5e5f6d080c1e7bc38557dbd84eb",
+  "pageVersion": "sha256:f99cb793e74b05745fcf0464cd4602dbbd9f706379c75968da30ef6c331f1b7c",
   "claims": [
     {
       "id": "claim_d60c4b147f224d3ea584e14dde77d04e",
@@ -82,15 +82,11 @@
       "evidence": [
         {
           "resource": "repo://cli/build.gradle.kts",
-          "version": "repo-file-v1:sha256:fced37f2407b186ceadfe06528c3db7109a4a7a3d323970b2a3c50c734c98bb8"
+          "version": "repo-file-v1:sha256:7e222c301a9ff150b51f473730c878f6ad727b4b547c3e98028de75eb67522ad"
         },
         {
           "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt",
           "version": "repo-file-v1:sha256:6ccb75e39b897cea90f090e5905fd44d52e40c4818e7df532b1fc66372284413"
-        },
-        {
-          "resource": "repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt#L14-L14",
-          "version": "repo-lines-v1:sha256:6744726e51deff20f57cd841e932e793fd46b90b3e4971f7ea2293405e121644:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjc0NDcyNmU1MWRlZmYyMGY1N2NkODQxZTkzMmU3OTNmZDQ2YjkwYjNlNDk3MWY3ZWEyMjkzNDA1ZTEyMTY0NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjc0NDcyNmU1MWRlZmYyMGY1N2NkODQxZTkzMmU3OTNmZDQ2YjkwYjNlNDk3MWY3ZWEyMjkzNDA1ZTEyMTY0NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjU2ZjA3M2QwMzc1Y2NlMmQwZWNlYWZhYjY1YzMzYzg3OWVkYTJkN2EyMDcyN2YzMTcxZDczMzI4YWFiYjczYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWJkYTVhNDUxMmNlY2I5YWEzOTkzMzI4MjJjYTAzZDMwOTA3YzM1NjA2YTA5M2Y4OGJmZjlhNjMwY2FlYWI0NyJ9"
         },
         {
           "resource": "repo://cli/src/main/native-launchers/bin/kast-mcp",
@@ -117,16 +113,16 @@
       "statement": "The upgrade wrapper resolves the temporary directory before creating its captured selection file, so an aliased temporary directory still yields a physical record path for the unchanged record-admission checks.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt#L94-L113",
-          "version": "repo-lines-v1:sha256:462dddbd32d3a9d92e1eb66d283f50e9766522131c4ad29b1e15821d01a86c78:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlYjMxNDEzOTUwN2M2MzcyZjFhMzg0NTFkM2Y5NDQ5OWRiMTFkZDNkYzUwZjVjOGEyYzI2OTQ5ZTFjYjZiMDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExZGY4N2E0NzMxNmM3MDhjNTUwMjA5OGU5YWY2YzQ0NTM0ZWI4MGJlYWRjZjYwNjMwMjhlZmNhODU5MzdhYmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNmYmE1NWU1NDljM2M0ZTg2M2Q3YTZmYWJiYmEyMmMwZGZkNjliOTM1OWNmNWE0MDM2MjBhMDMzZDEyZTJhOGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk2N2NiOTA1YzkwMTMzYzY5MzhjNjgwMjM4NzZlMmEwNTNiMTQ2MzNiMTdhZDUzODYyNjZmNzNiM2M4YzJjMjkifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgrade.kt",
+          "version": "repo-file-v1:sha256:20788cf4b9da0b354db2be74ed5cb6eef0d46fc8c963542986d84d443fa67515"
         },
         {
-          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt#L13-L30",
-          "version": "repo-lines-v1:sha256:167047777691c3563627648c1924869b1313f1696dadda1bdf0ebf869ae0a166:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1MzVjMmU0MGQ4NWY0YWI0ODM2ZmM0MjAwMDYxZDRkMDBlOTVmMzc4MWZiMjZkNDEyOTQ2ZmVmYTI1MTg0MDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt",
+          "version": "repo-file-v1:sha256:0eb36cc8824fc34f2863d5c37104e2bd97461590b3163566f66f2b16fcef1cba"
         },
         {
-          "resource": "repo://packaging/managed_installation.py#L304-L317",
-          "version": "repo-lines-v1:sha256:072dea805fe8cf7acaabe0cfa7d667f2ebfa232ea134dbd8c62ff6ae1c52a023:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3NzQ5OGFiMjA3MTY0Y2I5ZWM5M2U4NGNkODZhN2M1NjMwNjQ3Yjg1ZWQzNzU2ZGJiNTM3ZWRiMzg2NWIyYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3OWFjZmUwNGRjNzY2NGQ4MTY1NzY1MmFlMjFlOGNkZjY5OThjNWQwZWY3Mjk2MjFkZjMzY2EwMzhmOTg1M2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFiNzIwNDEwZTNjNGE1ZmM5MDkwMzNlNTBkMzg5NjMxMDY5M2EyOGFhNGIzMGEwZGFmYzI0NThlYzIwOTk3ZmIifQ"
+          "resource": "repo://packaging/internal/installation/managed_installation.py",
+          "version": "repo-file-v1:sha256:809457a3e1c42fa78e3b88077e51e2ff5ed19af07921820a4f440bc860b97884"
         }
       ]
     },
@@ -237,16 +233,16 @@
       "statement": "ProviderRegistration retains only CODEX/COPILOT routing intent before provider mutation; current provider inventories remain ownership authority. Harness uninstall forgets only its selected route after verified cleanup. Kotlin schema-2/schema-3 receipts and Python replacement preserve these records.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/CopilotPluginInstallation.kt#L47-L75",
-          "version": "repo-lines-v1:sha256:12c83202f5a55354ef8287df6a1125420e4d6c56cc1293c3a2fce7e5e484022c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYTBjODUwNjIwYWQ2MWUxZmUwZGU5NDdlMzRhNDJiOWYxMjVmODY1OTE5ZTMyNDVjOGRmNGRjYzU3NTcwYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyZTM4NzAxOWM5NDljOTRlMTJjYjU2M2JlNWQwMWVmYzFmNDZiM2VmZTI0Zjk2NDgxMzdmNWJjNmYzNTk1NmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM1Yjk1ZGMzYWMxYTZhMmZjZThlZjFmNzE2OTUwYjI4OWRjMGE1NjQxZWQyYzcwNWMzNzIzOGFlMjgyODljOTcifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/CopilotPluginInstallation.kt",
+          "version": "repo-file-v1:sha256:d7fba4ef4632ebc7c3e2b877b07efdc7184ab719f2795083ae1bbe2e6bd9e796"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/HarnessUninstall.kt#L23-L39",
-          "version": "repo-lines-v1:sha256:c0f88570671af84780a0307bc4b63b4b49a55d9d6c9b6832c260638753962cf0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1YTA0NjkwY2I4NGFhNGVkNGQ5MThlZWVlYmUwNzg4M2RiNzQ0YjUwZDJmZTE2ODJiOGNhY2Q3ODY4ZjIxZGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNlNmYzNjNjOGIwMjFiYzE2NjZhY2ExYTFlMjliNzQzYTY0YmFmZDBjZDBiNTZiYjU1OTA4OTk1NzUwZjVhMTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFlNzU1ZjRiZmQ1YzMyN2M0NTM3ZmNkMTg0MDZlOWY0MGE2ODQ4NTYzZjAwNjA0YTFhY2U0MTY1NTk1N2VlYWIifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/HarnessUninstall.kt",
+          "version": "repo-file-v1:sha256:61b4605982dae9b60e869c133f26e884d75e01f125bd41473141f8bc86512c98"
         },
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt#L180-L205",
-          "version": "repo-lines-v1:sha256:19784af14afe86b434031d53b2806144e4b10d7b62b24247cb561869a9ad51eb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjljOGZjZGI2ZTYxMTlmYjczNjA5ZDI1MzljMTAwN2IxZmFmODZkYzE3MWM0NThlOGJmYzEyMDljYTZkOTIxZjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVhNGFhZjljOGQyMWQwZmJmNTFiNTZkZjcwNmNmYjkwZTBiMDY2ZjJmZDg3MTQ4ZGNjMmIwZmY4Nzg2OTFlMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwYjc2ZmRlOGYxOTcwZWI0NjM2NWJiNjNkZDRlNGU1MjVjMmJkOTc1NGJjNDViNDk4NGJhNzgzZmQ4NDBkN2YifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt",
+          "version": "repo-file-v1:sha256:c79760eacad6955ec729d5da371a3e15d1014014a053ccb50ad7ca9609974c2b"
         },
         {
           "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ProductManagementReceipt.kt",
@@ -257,12 +253,12 @@
           "version": "repo-file-v1:sha256:7d2057b06673aaa3faa3446cb1ab6b8fa4b27295c8e283de7963ea7af852aafc"
         },
         {
-          "resource": "repo://packaging/managed_installation.py#L417-L439",
-          "version": "repo-lines-v1:sha256:bcb5e20473f6691ad46969c4f6ef44677904d15f94c32400c7ef920822249944:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMGUwMzQwYmNhZjk2NmRmYWIyN2ZhZDkwNmMxZTM2YzU0MTUxN2EyMjdjZjRlNTQxNDI4Nzk2MjI4MDNmODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzYjNmY2ZlYmU1ZDAwOWFiODgxMDA0MjBmYjMzNDY2YzQ4NTE3MDVmZTQzZjc2YjAwMWVhZmYwY2FiNThhZmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYxODI0NmY1ZjA5ZTI5MmM1YWE3ZjNhZDg3ZmUxNjA2N2YwYzFmOGNmODMzZTRmY2FiYmM2ODQ5NGM4MTQ3MGMifQ"
+          "resource": "repo://packaging/internal/installation/managed_installation.py",
+          "version": "repo-file-v1:sha256:809457a3e1c42fa78e3b88077e51e2ff5ed19af07921820a4f440bc860b97884"
         },
         {
-          "resource": "repo://packaging/managed_product_installation.py#L391-L447",
-          "version": "repo-lines-v1:sha256:49c337dd0de100a3ac8cfd0842ef5755c7ca02ee9ae507cbe37fc96b4fbe3b19:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0ODIxZTM3ZjBmZTE3YzNmNzhkYTAyZDc5ZThmNjQ4NWM3YmU4MDFkZTI3NjFhZTlhNWQ2NmY4YmI1NWIwZWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY1ODVlZGU0MjhkNGFlMmMyZDg4ODM1YjU1Y2Y1MzU5MzUyNjZjZThmMmI4MTIwMzUyNzdjZjUzM2U5MjgyYjcifQ"
+          "resource": "repo://packaging/internal/product/managed_product_installation.py",
+          "version": "repo-file-v1:sha256:151e2bb915ac3e38bdfb1f0bb50cc2c894be6f67b559c768fe1014bdccd74373"
         }
       ]
     },
@@ -271,42 +267,38 @@
       "statement": "Managed ProductInstalled and legacy installation results enter capability-marked harness guidance refresh. Failure or interruption retains HARNESS_REFRESH_REQUIRED; successful refresh removes that notice while preserving other notices. This source contract does not establish live provider success.",
       "evidence": [
         {
-          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt#L46-L71",
-          "version": "repo-lines-v1:sha256:d20480c52d14b060a00a51267685f4163d9dbd1dd60efc346b9d3230242e9e40:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0MDg1Y2FhYWYxNTU5MDhhYTAyZmZmZjIzOTZkNWRhMzk0MjU0MmMwM2Q2YWMyMmNjYzgwNjU0NmU0MmIyYWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NzlkZGFjNjg4MWU2MDY2NzIxNGMxM2I5ZjRlNjVkZDM2OTc0ZTQ5ZmNkNDA0ZjllNzExNGQxMDQ4MzU2OTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI2ZjNiODIxODA0ZTQ1NWM0NmQzMzg5ZWEwMzU1MTQ3Y2Y2ZjJiYjkwMWQ1YjUwM2I5MjZlNzM2OTY5YTNjYjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlYTc1MGNhNWVlMTQ0MWVmYWE4MTIzZTc1N2QzYmQ2MzlmOGUxNWFlZmEwOTgyZWUxMGU3MWE3ZmZlNDIyZjAifQ"
+          "resource": "repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InstalledGuidanceRefresh.kt",
+          "version": "repo-file-v1:sha256:52adf19f328b05a64f715b756b6d0e62c48d110cd197407529142befb2e0f7fb"
         },
         {
-          "resource": "repo://packaging/managed_installation.py#L2494-L2526",
-          "version": "repo-lines-v1:sha256:92d1b05dc68dfb812b73443fbaaf75308b7dd0c6b0f6adf9726793ac57912a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmNWNiY2JlNjlhYjRlNWJjN2I5YTg5ODc0Y2NhOTIyNTQzZTg0ZDhiZTFiOTY3OGY4YmZkNDFjNzAyZGJmMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJjNjdjNzgyNmY2MWJhYzM5ZGViZjE3YjJjZDNmMDlhOTdmYzZjNzgzNWQ4YWEzMGJhNTY0OTRhNWJhYWMxY2EiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3MGRhYTgxNjVlNDgyZmFmYzM0ZDQ4NTM4ZDQ3YTQyZDU2ZmQzMTQ0ZWRiNDhkODFmODkxYjA2NmFmMGJmYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiMDBkODA0ZGUzOWRkMGYxMWYwNDNhMWE4YWE1MmM5NmEzMmE4NjM1ZTg1OTVjOTRkYWE1MDhhM2Y0NjgyNWYifQ"
+          "resource": "repo://packaging/internal/installation/managed_installation.py",
+          "version": "repo-file-v1:sha256:809457a3e1c42fa78e3b88077e51e2ff5ed19af07921820a4f440bc860b97884"
         },
         {
-          "resource": "repo://packaging/managed_installation.py#L2666-L2697",
-          "version": "repo-lines-v1:sha256:19d1adfc3bef38320f095db00664659d5ec51c9e8b30bcc45a23e7fcbce6237c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2Y2E5M2EwMGViYTA3OTFiZDAwYzdkZThlZTM5NzI0ZWM3NzE2Njg4MjBkY2NiODI2NjU0YjRkZWZiZjUwZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3MjY2YTFkYTdlZGY0M2U3NWI1NjJmNzlmMWZjNzE0NDhiYzNjNjVmZjY0NTk4MGE0ZjljNzIzOTRkOGEzMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlMWQ1M2Y0N2NmODkwZTg0OTZhZDRmMWYzNTc3OGQ2NDI4NDQyNGRlMDdiNDdiMzMzZTljZDYwYzE3ZmE5OGIifQ"
-        },
-        {
-          "resource": "repo://packaging/managed_product_installation.py#L65-L73",
-          "version": "repo-lines-v1:sha256:7269e9a38b04b3e63615294d9ef5f1be403444247b8e52c769738b2bec62cff2:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjY5YTEzOTc1YzI1NmVjODMyMGUyMDE2MDgzYzk2ZGY2MzdjYTNkMzViZWJkZTIzMTRiZWUzYTQ3MTFiNTZjYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjQ5NTkyM2UwZTljMDAyNDhiZTViYzVkNWJmNWZiZmYxODlkNGNmMTQ5OWFlMjcxMmZiNTdiOTQ0YmI4NmI5ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWVkN2QxZDUwMTNjODkxMzYwNGY2MDRmZGFkYzQ2OTc3MGQxNmJlNjRlZDFhYTIxNTk4Y2NjMzc4ZWU2OGZiNCJ9"
+          "resource": "repo://packaging/internal/product/managed_product_installation.py",
+          "version": "repo-file-v1:sha256:151e2bb915ac3e38bdfb1f0bb50cc2c894be6f67b559c768fe1014bdccd74373"
         }
       ]
     },
     {
       "id": "claim_f95b224239494a78aabfb48a55f81a80",
-      "statement": "Component qualification uses the test-native ComponentHarness for exact runtime and Control inputs rather than retired public standalone or container commands; its COMPONENT_NATIVE receipt does not grant installed-product qualification.",
+      "statement": "Component qualification verifies exact archives and passive shipped-Control discovery without a test-only native executable. Schema 2 COMPONENT_ASSEMBLY receipts bind source, bundle, runtime, and Control; the producer independently hashes Control. Installed acceptance owns the six former compiler and Host probes. Published COMPONENT_NATIVE receipts retain their original admission contract.",
       "evidence": [
         {
-          "resource": "repo://packaging/component_probe.py#L61-L131",
-          "version": "repo-lines-v1:sha256:d2261d79ae80206ad427d9147afa7a9d12e0e25d68c3291f3c465e0c943c5c7f:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2MjFmNzZhZTQ3YjIyNWNkZTEyYWQ4M2MwN2I1MTljODU2NTcwNjllZjEzNWNmZWFmY2Q4ZmEwMWZjMzRkODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1NDk1ZDRlOWYxYWRjOTcwZTUxMjMzYjE2MjJmYTViMWJhNTE3Yzc2Njc0ODBhYjI4M2JmNGM5N2RjNTAxNjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcwY2UzZjI0YWI0N2MyZjVhOWQzMzdmMzc3ZWQ4NTczZmE1NjU4NDA3NjQwMmYxYWYwNTRhM2RlZDYxOTQ2MmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFmOTc1NTFmMTlhOWU5NTBiYzFkZjlkMDRiMjAwZjI4NDUyYmRhZGI2MTE3ZmUwOGMxMTI2NDJjM2M0NWI0YzUifQ"
+          "resource": "repo://.github/scripts/release/product_producer.py",
+          "version": "repo-file-v1:sha256:e989707edabe43e9c9908127e57460493093df65049cdca2a5b2a864a4ef57db"
         },
         {
-          "resource": "repo://packaging/composed_host_probe.py#L323-L405",
-          "version": "repo-lines-v1:sha256:5a61a87be2aa77595c32b5e3b65952b7acfad9812fd4cc590ebbbb993f8e24f5:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5ZDIwMGY0MGE2MWU4M2EzMTlmMGNmMDNlNmJjZTY1NmI5N2JkOTYyZTFmMTEzM2E1YmVhNGFjNGUyOGQwNTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ5NWQwM2ZlNTFhMzE4ZmRkNTg2M2VhMTZlNzE2ZmFjOGNiY2E1ZDYyNTE2MzkyMjZmYjA2MDM4MmU0Y2Y2NjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM0ZTc0OThkMGI0NjJlNDMxMzcyNzkzZDc5N2I0Yzg1ZjFlZTJhNjdhZGI0YTA2Yjg2OTAyOTJlZGVhMjA1MDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0MDIxMzZjZDdjNTUwYzhiNGIyOTdkODE0Y2FmMzhiYzA2YzNlY2IyNjAwZGMwYzlmYzYwOTliOTUyNjgzNGUifQ"
+          "resource": "repo://packaging/internal/composition/composed_release.py",
+          "version": "repo-file-v1:sha256:4c234a329309389144bb2b637bac66ee1a858272a67e4f5f69998a076695c79c"
         },
         {
-          "resource": "repo://packaging/composed_release.py#L421-L558",
-          "version": "repo-lines-v1:sha256:b216c99c68496b70eb988f4600c255090780ec6d7a6305e608524af380d19755:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhMmRiZjg5ZWRmYTZkMDIzOWU2YTEzMGNkOTZjNTgzMDg3ZjMzZDAwNTRmMGU3MjM1ZTZhM2RkNWQ1ZDMwNWQ1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIzOTNhNzlkYzE4MDZjZTQ2ODQwNDhjM2E0ZWVhZDZlODJkMWY3YmRkNzkzOWU4Y2U0OThiNTljNjFjNzkyNjE3IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmOTBmNDdmNDZhOTM5OTg4MDZiM2QyNjU0NjUwYjYxNzk0YzhmOTRlYTYyOTY5NDE3NzgwZTYxMzRhMTRiNGE0In0"
+          "resource": "repo://packaging/internal/installation/managed_release.py",
+          "version": "repo-file-v1:sha256:c669bd96c14cab328dc42ed8d2695bdba485dda8a9a8993f0249fd77febdac90"
         },
         {
-          "resource": "repo://packaging/container_probe.py#L46-L132",
-          "version": "repo-lines-v1:sha256:1ef545604a2efdc403e1a04766b54aa2ded965863550aaa861fdd1b7de185a28:eyJzZWxlY3RlZExpbmVDb3VudCI6ODcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkYzM5YmMwZDUyODdkMDAzODJhMzczZDQwMDJkYjE2YmRlODdkMzczYmUwZTRiZDc4NGU3YzhmMDQ5ZTY2MzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhMTFjMDU2N2QwYTVmOWU5YjEzNWY2NWNkMjUzNzJkZmQ2Mjg3NzVmN2MxZWQyNTNmOGJhZDQyZGQyZDY2NjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJkYTBlYjNkMTgzY2IzZDdhN2FiZDRmZWM3NTE2MDVlMjVkZWY4M2Y0NThlZjVjZTQyZDc4YzhhZTk1ZTE1ZjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
+          "version": "repo-file-v1:sha256:ee5555a6ce5be1bfd716c6fef7139966a378cb29bbdcab775692e6192c458258"
         }
       ]
     },
@@ -315,42 +307,34 @@
       "statement": "The producer seals both component-qualified targets into an immutable build record and joins detached installed-product receipts without changing that record; publication admission requires both receipts.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/product_candidate.py#L22-L49",
-          "version": "repo-lines-v1:sha256:b80d526a177c6cf9bfe93839373b4e7c4286651a39631077e2a68abecff00cbc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzNjAyM2I1ZWU5MzBjODU2NTEyNDg5YTgyNzM3YWJkOGQ5Zjg1MWMyODNlZTRjNjhhMjc4YjZmNjBhYTRjMzciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcwZTM0OTE0OWI4MTQ2ZjJlNjAzODY3MjVkODc4OGE3YmM1M2U5MThlOWE3OGQ2OTAyZDdmMmE2ODA3OTk0YTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUxMmI3YzNhOTAxMTUxMjRjMTA5MWI2NTI5ODEwZTJhODMwMTM2YjBmZGI5ZWQ0N2U0YTNhM2Q1Yjc3NjYyYmMifQ"
+          "resource": "repo://.github/scripts/release/product_candidate.py",
+          "version": "repo-file-v1:sha256:03cbb37a9ba42048c030405397da37270fa262cd2d4f9c083ffcfd0d132461de"
         },
         {
-          "resource": "repo://.github/scripts/release/product_candidate.py#L257-L263",
-          "version": "repo-lines-v1:sha256:ab3d8b5d12c665823971c9aea16d8c162df39c1764a28f2dddb2f5e6adf97de5:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWJjZmM3OWIzOGMzMDFhYWUxYWEyM2JkZTIwY2JkMTYxNGQ4YTk1NmViMzc2MzM4YzhmNThiMjljNmVhNWU3YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2RiMWFhYTkxMThkOGM0OThjM2JhMzZiMjhjNDE1YzVjYjMxODA2M2Q4NmM0MjBjZDc2YjZmYTQzZWI1ZjgzNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGNjNGE3ZDFjYzc5NmFiYTNlNDY3MjMzMjdmNTE3ZTlmODExOTgyZDI1MGYwNzAyOTg2ZTRiNTc2NGFkOTU4OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDdhODFjYmRhMDNiMjNkZDdhZTBiNDM0MGJhYzc2MzA1ZmY1NTE3NTI2ZGMzYzkzNjA2Mjk4MzllZjAwYjNkYyJ9"
+          "resource": "repo://.github/scripts/release/product_producer.py",
+          "version": "repo-file-v1:sha256:e989707edabe43e9c9908127e57460493093df65049cdca2a5b2a864a4ef57db"
         },
         {
-          "resource": "repo://.github/scripts/release/product_producer.py#L245-L344",
-          "version": "repo-lines-v1:sha256:af37e31fc2dd308c745de825ca05e9dcefbdb1ee3aa9cd27f3583ef00f9ae1be:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJiODAxNjY5NjZmMzJiZmUyNGNmZWRhZWY4ODc1OWI5YzRkOTc4NDRkOTRmYWQ5NzkzNDM5NWE0Mjc4NTVlZWRhIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJkOGVjZTU0NjRmMWQ3N2YyZGMxYjRmMTQ0NTQ2NGJhNjkyMThkMDY5MmY1NGY2OWYwOGVkNTE1NTU0OGQyN2Y4IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI2OTBmYmNlZTBlNjM4YTc0ZDY3MjMxZThjYjFjODc1MjgxNmU5YjAzODY3YWMwYjIwYjgyYWI5ZDllZTg1NTJjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI1NDhkNzQ4M2QwNjBmMTcyMmUyNDUzNjg4ODMzNDI1NmI1NDkwZThiYmU4Njk4MjA2NzZjYTllYWYzNTA5Y2M5In0"
-        },
-        {
-          "resource": "repo://.github/scripts/release/publish_developer.py#L194-L246",
-          "version": "repo-lines-v1:sha256:1ef0ef1f7f347e5a719d42adcb7e2e257919fa06db6e188c428c557625f8dd74:eyJzZWxlY3RlZExpbmVDb3VudCI6NTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1Zjg3NGI4ZGYzZjY1NWFlZjlkYzYxODU1OGMzN2FiNTMyYTI0ZGY2MWMzNzk3ODIyMzJmZDBhZTEyZTg0NGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhiZTczOTIyOTliM2Q0MjZjN2JiZTI0NjYwNjliMjE1YTQyYmEyNmRmZGNmNjY5YTY1YjQ4OTc3ZDY0YTZjNGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5OGYwOTVkZTRiMDFhNzg0ZjhmMTc3YzNjMjBmN2NlZDUwOGI2ODkzODk1MjllNjBjNjQ0Yjc2ODA2ZGVhYTAifQ"
+          "resource": "repo://.github/scripts/release/publish_developer.py",
+          "version": "repo-file-v1:sha256:edc1fbf6e445d6fd92f00ef19fa134c7a0b203c878f17d1ff7c503a8c9028e85"
         }
       ]
     },
     {
       "id": "claim_90341f7d389144e0a4018ca4220bdfa9",
-      "statement": "Installed acceptance uses an exact retained component-qualified baseline admitted through its successful sealing job, without requiring prior publication or installed acceptance. The baseline can share the candidate source revision but each target must have a different actual bundle/runtime/Control composition; exact repair is not upgrade evidence.",
+      "statement": "Installed acceptance admits an exact retained baseline through its successful sealing job. New assembly-qualified baselines also require installed acceptance; legacy native-qualified baselines remain admissible without it. Prior publication is not required. The baseline may share the candidate source revision but must differ in actual target composition; exact repair is not upgrade evidence.",
       "evidence": [
         {
-          "resource": "repo://.github/scripts/release/product_candidate.py#L167-L220",
-          "version": "repo-lines-v1:sha256:5320d2ba9a87329b2378c1e0f7129e456152230a9a0ef122e9f3b56d26014a7d:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNDBkMzVhMTI4ZTYyMjE5NjcxZTQ0OTE0N2Y5ZTFlNjQ2MTBiNzI2NGQyMmRmYWQ1Njg4YWMzMGQzMmIwMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ4ZWNlNTQ2NGYxZDc3ZjJkYzFiNGYxNDQ1NDY0YmE2OTIxOGQwNjkyZjU0ZjY5ZjA4ZWQ1MTU1NTQ4ZDI3ZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5N2M3NTQxMjk2NmE4ODZiNjM1YzA3YWI3MjhkOWY3M2VlYjM4ODYzZmEwYmFmMGNmMjcwNmFkYzgwZWZiMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwY2I3M2UyMzg2ZWM2NDFhYjY2YTcxYTViMjRmNzJiNWJlNzRjMjVkMTlkOTQyZDRmNDk3MDdiZWQ3NmI3ZTAifQ"
+          "resource": "repo://.github/scripts/release/product_candidate.py",
+          "version": "repo-file-v1:sha256:03cbb37a9ba42048c030405397da37270fa262cd2d4f9c083ffcfd0d132461de"
         },
         {
-          "resource": "repo://.github/workflows/ci.yml#L481-L560",
-          "version": "repo-lines-v1:sha256:e6e8ddd4430d6f482f564a8480af7b3afe3b33a6d6bdacd32deac1e00e38352d:eyJzZWxlY3RlZExpbmVDb3VudCI6ODAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzOGZkMmU1ZWFlYjE5YWU4ZjViNmJmNzY5MjYzMmQ1NDgyMjA3MWZlZjU5MmE1MjE3ZDBiZDZjMzc5YTNiNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0Yjg4MmEyYzc1MTdiMWM0NzljYTZhMDRmOTIyNzJlMzIzMGU5YzZlMDQ3MWNmY2E4ZDRlODNlMTM5M2I5NGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3MDM1ZDI4NTZhMjIwYjdjN2U2ZDE5ZTRhNDI1Y2Y0NjkwMjRmNjc2YWUzYTNmMmJlOWFiOGI5NmQxN2RiMGUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU4ZTcxMDIxMjgzNDkyM2E5ZTNlMzZhMWRlNjE2ZjZkZmNlMTlhOWI4OTU3OGI3Yjc5YWM2OGRmYzMwNDk0NmUifQ"
+          "resource": "repo://packaging/internal/verification/product_acceptance.py",
+          "version": "repo-file-v1:sha256:bfb749008e7194d86f3c458417aa3447157c33606193bab650bc8152be0e1584"
         },
         {
-          "resource": "repo://packaging/product_acceptance.py#L58-L113",
-          "version": "repo-lines-v1:sha256:9128fcd3c23e1ad118f567f27ce8a5e0d8cb03c756e9a77661067f647d026067:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4ZjhkODk1MTUzYzFhOTA0OWIxM2NlMjExOWMxMDY4ZjFjMmJiZWQ3N2M2ZWFlMWFhOTliODgyNjM1NzQ5MDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdlNTEwNjVmOTY3NDlhZWI2NDAwMzI0NGRmNjU1OGI3YWFiMzhjMmZhZjU0MDFhNDg4MjhjZjQwZWZjZDdkNDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4MjhjZjNmMzI1ZDZkOTZlZThlMjAzMmRmNmRiNzhjNzhlOWJlOGQ1MmZhODEwYjk5MDZkODNiMjAyMDc1MDYifQ"
-        },
-        {
-          "resource": "repo://packaging/product_lifecycle_probe.py#L366-L380",
-          "version": "repo-lines-v1:sha256:5baa0ee3daf07f43224098c247ef028e23e6fb8ba0c47a0f361328faeb619a53:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmZjg2ZTUzY2I3OThlN2ZjNTlhNjUzNDY4MTZmZDcyOTVhYzA3MjYzMGI4ZmMwMzVkMDkzMWJmMmMyYjk5ZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5Y2JmZjEwODVlYmEwMjdhYjBkYmRmMGQ1ZmI4ODllOGQxYmU0N2JmN2FhODUxZGI0YTJlNDg5NjhjYmUyYWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNhZTVhN2FlNmM5YzllYWRmZGUyNTAwOWI0YjAxOTk1ZDk2YTYwYjE0NDQwZDJiMDI3YjY2ZWJlODc4NTUxMzkifQ"
+          "resource": "repo://packaging/internal/verification/product_lifecycle_probe.py",
+          "version": "repo-file-v1:sha256:ee5555a6ce5be1bfd716c6fef7139966a378cb29bbdcab775692e6192c458258"
         }
       ]
     },
@@ -471,32 +455,24 @@
       "statement": "Production admits the target-specific MCP dependency inventory, normalizes its regular import-data files to 0644, then re-observes the inventory before recording artifact.json. Generated-support reuse requires all dependency files at 0644 and rejects self-consistent cached 0755 records. Explicit installed preparation still requires exact inventory bytes and modes, preserves native extensions and license files, and checks imports with the private interpreter without pip, uv, a solver or downloads. Ownership, target and requirement identities and finite failure handling remain required.",
       "evidence": [
         {
-          "resource": "repo://packaging/generate_bootstrap.py#L80-L94",
-          "version": "repo-lines-v1:sha256:231ca114b47145ae4645dbae826d7864475ef0d353274134bed34df883393236:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2NmQ3YmM4MmI2ZTg3ZDY5ZDFkYTIzYjEwNjkxYjc5YjZkYzhhMWI0YzM2MzZiZDAyMDI1YzE3MmQwODc3MTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNGM5N2EwMzRhN2Q5NGQ5MzEzYWZhMWYyMTlhOGJkMDAzMjlmYjYxMjk3YjI5OWNmZjI4ZDg3MDBjYTBmMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZhMDQ1MDRlYWQwZDg5NGZlYjBiYTE2NzU2NjI0NDcyZjQzOTA4NTJjMzNiYWQxNjJkMzRjMzAwYjUwZDM0MjMifQ"
+          "resource": "repo://packaging/internal/bootstrap/generate_bootstrap.py",
+          "version": "repo-file-v1:sha256:65905c296f7f77864e40af4d7c61ebbbed4ef7bba29b9d0a16633fa0147cf7f8"
         },
         {
-          "resource": "repo://packaging/mcp_dependency_artifact.py#L29-L129",
-          "version": "repo-lines-v1:sha256:b6c3be3b831e6560a101e351afd0ae3ca0198131ec857aa5d897c62da9619eee:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIyMjdhZjg5NzhlNTA1NTVkZDkwY2YxZGI0MmUxNjU3NGU4ZDcwYTVlMjM2ODZiZTBhNjQ2MTdmYTNlNDhiMzc3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5ZDAzNTkxNjJhMjY4ZmFkMGU5NzAxOGFlMTA5M2VkNDNkMmNjMWM5ZWQ5M2JlNTFhMmI4NzBmYzU1OWM2MjhiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwMzM5MmViYzBiZTU3ZDBjZjQ2YTM0YjU0YTk4ZTY2ZmFkNGE4YmNkYTA2YTRjOTJhZjA2ZGRhODgzODNjZWVmIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI0OTJkMzU2ZGU0YmE1NDJlNzMyOGJjMzM3NmJjMzQ4M2NmMTQ2ZDUxNTkzZjg5ZjJiNWY3ZWRmZTdkZTcwMDE2In0"
+          "resource": "repo://packaging/internal/mcp/mcp_dependency_artifact.py",
+          "version": "repo-file-v1:sha256:82b9c08687b01c682e1db54297b074dfed5edd1a9fc557902702d727be916e86"
         },
         {
-          "resource": "repo://packaging/mcp_environment.py#L273-L298",
-          "version": "repo-lines-v1:sha256:bfcb0a3517d502c0059daa81d4295b9625e0e4a61893ff33fbfab2611f0c3c46:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwZTUwZWNiNDZhMTJiNTRkNGUzYWZjYzE2YzRlNWM3NTRjZjJhM2E5OGIwZTNhZTQ4NWEyZjUyZjFjMzdhNzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI0MTQ3YTRhMTAyYzM5N2Y3YmIwMzU2MTdjNTcxOGRjMGZjZjJhOWEwMDhhYmQwNTU4NDk1NmJjOTExYjlhMDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1Y2I2YTI4ZmQwMTY5YTM5ODg4ZDNmNzAyY2MzZDFlYTgwOTE1NTA1YWFmMmE4ZmQ2OTFlODc5MjA1N2JhZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxOGQxMjAwYmQ2YTEzOGZkNmU5ZTM4NGRlN2RhMzIyMjk2Zjk1YWVkYjIwYTc1YTUxYmRlMzE2NGFhZWJmZjIifQ"
+          "resource": "repo://packaging/internal/mcp/mcp_environment.py",
+          "version": "repo-file-v1:sha256:a2abad332b18479ec93495af6bf3ca4da8ccd866a8a244ebb70faa2ad92503cf"
         },
         {
-          "resource": "repo://packaging/mcp_environment.py#L340-L377",
-          "version": "repo-lines-v1:sha256:ca94f7fe085f0cc35d7ec2101ef1f10c78448e8101c912b5eca889f017577d53:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1ZWQ3MWZkOWRiNWZlZThjNjk5ZjllMmVlNmMwZjZjYjBiNTZjY2MxNzMwZjIwZmE4OTVjNGJhY2VhMWJmN2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlYTJkZmQ4OTY5NDc0NThhOGRkMGRiZjVkZjZmZDM3ZTkzM2ViNjNhMDA5YWYwMjcwNTU0ZmE1MjZiYWZjODYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM0ZDQ1ZDg4YWY1MmMxZjgxMDQ3MWUwMjE1MmViMmI2ZGI2MjEwM2VhYmQxY2RhZDI1NzUwOGIwNDM5OWFkYzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJiNzZmNTU5NThjNTIwZGQwMmMwN2Q2MjdjMWExMzExYTVmMGNjZmJmYzdkYjBlOTM5ZDAwYTg5NWQ0MDEwNTAifQ"
+          "resource": "repo://packaging/tests/test-managed-bootstrap.py",
+          "version": "repo-file-v1:sha256:83e49df8b9ae8a4e9c0b4783d3dab928b0334e2b7fcce48d6e2e95a681a10a9b"
         },
         {
-          "resource": "repo://packaging/mcp_environment.py#L429-L505",
-          "version": "repo-lines-v1:sha256:522488935308d327aad3b0b679c36536c58d704628541c91b6f7b925c17da72a:eyJzZWxlY3RlZExpbmVDb3VudCI6NzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4ZDdkZDg0OWVmNjM2ZjAxZDk0NmFkYmMxMmJlMjJlYzM0YzMzNDk4NjE3ZjUzMWU3YjAyZWM4NTIxNDZmYTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5ZGNiNTI5ZGUyZTAzYmE1YmVlZDU3OThlMGY1YTUzOTZhMWExYzg1ZTRkMGYzZTRlNDU2MWNhMGU0ZDBhZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZlZmU0MGIyYjZkZWFjOGI2MzY4ZmY0OWVhOWFhYTRlODJjYzM1NDMzM2RmMDg5N2E4NGIxZjJiMDY5NDRmYTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ0OTI3NzQwOWY5NjdhMDU1Mzk5ZmJiYjEyNDNiYTAxNWFmNzFkNzg1Yzg0NzMxNTgyZDY3OTJkYmYxZWYzNzcifQ"
-        },
-        {
-          "resource": "repo://packaging/test-managed-bootstrap.py#L107-L157",
-          "version": "repo-lines-v1:sha256:66fb45352aa99e4f0116c633e6f60e6731ec3bd3e437b08688d44e194b1c715a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3MmQ5NzU4NzRmNDg0YTdiNWM0YjIzYWVkMjk2MGJjN2VlNDE1N2VhNGRlYmEwMTFmNGUyN2YwYmJjMzQzZmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4ZmVjODlhYTllZDJmNTA0NTRjNjEzYTM1ODM5ZTNmYjI5YzU1Zjc3ODQ4NDFjOTI5NTUwMWY1OTZlOTlkYjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAxODk2NWY0NWUwMTkwNWU3ZmNiOGNjZmU4ZTZiZTBjOTMzODM2ZjRkNGVkNjY2NmU5MzY4NGZiM2YwNDFjOGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1ZGVkNDE1OTc1YWI4ZjhiNjAyYjgxODIzYWMzYzEzYmExNDhiYmFlM2E2MGY1NDk3OWU2MjkwNzQ0N2U0MWUifQ"
-        },
-        {
-          "resource": "repo://packaging/test_mcp_dependency_artifact.py#L23-L110",
-          "version": "repo-lines-v1:sha256:f730e862923d48d69a399cd482e2f1b7fd0ee55822e83029226528e915f3db3b:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5OGNhMDQ0N2ZhMjZkNDBjNDc1ZDJjYTU4NTY1Y2IyNmM1YjBmYjU1MjIwYzZmNTgyNmFhMWNmZmQ1M2QxZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3MzM5MTE2ODdjMDUxNmVjZTgwMjY1OTU5ODI4NzY1ZTdiOGYxY2ZjNjllMzA0NmJiMWRlNzBhOTNjYTRkNTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjNGM0NDUyYzUxY2QyNWU2NGFlODVkYTBhODEyMTZmMTJhNDIyZmRmYmMyYzUyY2EzZjMwMTJmMGRlZDE4MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU2ODBiMGYyOTI4YWMwZGJmM2RkNGEzMWQ1YzE2ZTkxOThhMjlhNjA4NmQzOWNmYjU3YzIwZjYwYmUzM2E2NWQifQ"
+          "resource": "repo://packaging/tests/test_mcp_dependency_artifact.py",
+          "version": "repo-file-v1:sha256:325482b8ab6b486ae953bd8c2c7a04ad4346767aea410ee8cd3416808b912c58"
         }
       ]
     },
@@ -515,18 +491,18 @@
       "statement": "MCP dependency production passes --python sys.executable explicitly to uv while PATH is empty and UV_PYTHON_DOWNLOADS is never, avoiding ambient interpreter or virtual-environment discovery. This is a producer process contract, not installed-product or native Host qualification.",
       "evidence": [
         {
-          "resource": "repo://packaging/mcp_dependency_artifact.py#L59-L97",
-          "version": "repo-lines-v1:sha256:8ca68d0c285699a1093f90d6a61649d2c21dc37c6481a277f338beb4c4e0f896:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2NWFlZGIyZGQ5NjViOWVhOGU2YjYzMjJjZTYyMGUyYmU2YzllMmYxM2M2YmExNGZhMTdjYTAyYTRiY2IxZmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkNjQyZWJhMzE4NzUyMzUxOTA5YmZhZjQyYmFhOTRkNzVjNTljNzk3ZGFkZTgyYmY2NzMzYWE1ZjAxYWZlZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmZGQ1YmI1NjdkMDVlN2Q2OGUxYjBhNWI1ZmVhNzI5OGQxZDAzNzZkZjg1MGQ2OTRhZDE3NjY4MTdmYThhNWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ODMyYmNhZDJiNTAwYTEwOWZjZmUyYmZiNTdhNDRhNjFjOTU5YzRmYWU1OGI5NTlkOTZkNTYyZjNlNDg0ZGUifQ"
+          "resource": "repo://packaging/internal/mcp/mcp_dependency_artifact.py",
+          "version": "repo-file-v1:sha256:82b9c08687b01c682e1db54297b074dfed5edd1a9fc557902702d727be916e86"
         },
         {
-          "resource": "repo://packaging/test_mcp_dependency_artifact.py#L23-L58",
-          "version": "repo-lines-v1:sha256:91f6b2618326334d253aa024bb25971c04b8a6e3bc47c1312e3dc94ca6137d0e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM5OGNhMDQ0N2ZhMjZkNDBjNDc1ZDJjYTU4NTY1Y2IyNmM1YjBmYjU1MjIwYzZmNTgyNmFhMWNmZmQ1M2QxZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0YmUwY2Y3Y2M4NTJiZmQyMzJmY2Q4ZDRiMDE4MTBkYWI4NjE3ZWNmMTljN2NmZmVkZTFmNTRhZjkwZWFiYjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjNGM0NDUyYzUxY2QyNWU2NGFlODVkYTBhODEyMTZmMTJhNDIyZmRmYmMyYzUyY2EzZjMwMTJmMGRlZDE4MzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkZTU5YTRhOTMzZTg2MzNjZjVmNmFmMDJlNzNjZTRiZmFiY2E2YWM5MzZmNmYyYjZmYzNmMWUxNzcyZmE1YmQifQ"
+          "resource": "repo://packaging/tests/test_mcp_dependency_artifact.py",
+          "version": "repo-file-v1:sha256:325482b8ab6b486ae953bd8c2c7a04ad4346767aea410ee8cd3416808b912c58"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T23:15:42.491Z"
+    "at": "2026-11-16T18:00:35.258Z"
   }
 }

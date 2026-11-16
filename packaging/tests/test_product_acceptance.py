@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import sys
 import tempfile
 import unittest
+from collections.abc import Iterator
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from unittest.mock import patch
@@ -22,9 +25,48 @@ class Location:
 
 
 @dataclass(frozen=True)
+class Target:
+    qualifiedIdentity: str = "fixture.staticcallbacks.invocation.invokeCallback"
+
+
+@dataclass(frozen=True)
+class Edge:
+    target: Target = Target()
+    coverage: str = "exact-compiler-confirmed"
+    provenance: str = "k2-authored-source"
+
+
+@dataclass(frozen=True)
 class Row:
     name: str
     location: Location
+    connections: tuple[Edge, ...] = ()
+
+
+@dataclass(frozen=True)
+class Range:
+    startInclusive: int
+    endExclusive: int
+
+
+@dataclass(frozen=True)
+class Span:
+    file: str
+    range: Range
+
+
+@dataclass(frozen=True)
+class Occurrence:
+    occurrence: Span
+    context: str
+    target: Target = Target("fixture.reference.target.ReferenceOuter.Nested")
+    coverage: str = "exact-compiler-confirmed"
+    provenance: str = "k2-authored-source"
+
+
+@dataclass(frozen=True)
+class ReferenceRow:
+    occurrence: Occurrence
 
 
 @dataclass(frozen=True)
@@ -45,7 +87,7 @@ class Live:
 
 @dataclass(frozen=True)
 class Semantic:
-    items: tuple[Row, ...]
+    items: tuple[Row | ReferenceRow, ...]
     status: str = "complete"
     coverage: Coverage = Coverage()
     original_evidence_summary: Summary = Summary()
@@ -81,6 +123,17 @@ class RejectedReply:
 
 
 @dataclass(frozen=True)
+class Rejection:
+    reason: str = "UNKNOWN_REFERENCE"
+
+
+@dataclass(frozen=True)
+class RejectedDocument:
+    document: Rejection = Rejection()
+    type: str = "rejected_document"
+
+
+@dataclass(frozen=True)
 class ComponentBindings:
     runtimeSha256: str
     controlSha256: str
@@ -95,6 +148,31 @@ class ComponentReceiptFixture:
     qualificationStage: str = "COMPONENT_NATIVE"
     sourceRevision: str = "a" * 40
     harnessSha256: str = "9" * 64
+
+
+@dataclass(frozen=True)
+class WorkspaceRecord:
+    id: str
+    workspace: str
+    gradleHome: str
+    name: str = "acceptance"
+    schemaVersion: int = 2
+
+
+@dataclass(frozen=True)
+class Generation:
+    runtime: str
+    archiveSha256: str
+    schemaVersion: int = 1
+    generation: str | None = None
+
+
+@dataclass(frozen=True)
+class RuntimeReference:
+    """Only the installed-reference projection consumed by Host observation."""
+
+    runtimeRoot: str
+    runtimeArchiveSha256: str
 
 
 def record() -> product.ProductRecord:
@@ -126,6 +204,310 @@ def record() -> product.ProductRecord:
 
 
 class AcceptanceTest(unittest.TestCase):
+    def test_compiler_cases_reanalyse_the_existing_source_without_replacing_host(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            forwarding = root / (
+                "forwarding/src/main/kotlin/fixture/staticcallbacks/forwarding/Forwarding.kt"
+            )
+            java = root / "invocation/src/main/java/fixture/reference/usage/ReadJavaReferences.java"
+            for path in (forwarding, java):
+                path.parent.mkdir(parents=True)
+            source = (
+                "import fixture.reference.target.ReferenceOuter.Nested;\n"
+                "class ReadJavaReferences { Nested reference() { return new Nested(); } }\n"
+            )
+            _ = java.write_text(source)
+            names = ("forwardOnce", "mutualSecond", "aliasWrapper", "mutableAliasWrapper")
+            original_rows = tuple(Row(name, Location(str(forwarding)), (Edge(),)) for name in names)
+            edited_rows = (
+                *original_rows,
+                Row("freshExternalCaller", Location(str(forwarding)), (Edge(),)),
+            )
+            first = source.index("Nested")
+            second = source.index("Nested", first + 6)
+            third = source.index("Nested", second + 6)
+            references = tuple(
+                ReferenceRow(Occurrence(Span(str(java), Range(offset, offset + 6)), context))
+                for offset, context in zip(
+                    (first, second, third), ("IMPORT", "TYPE", "CODE"), strict=True
+                )
+            )
+            host = probe.HostIdentity(
+                1, 2, "app", str(root), "compiler-workspace-one", "runtime", "profile", "idea", ()
+            )
+            for stale in (False, True):
+                _ = forwarding.write_text("// original fixture\n")
+                runner = probe.Probe(root / "kast", root / "home", root, root, root, {})
+                replies = iter(
+                    (
+                        Reply(Semantic(original_rows)),
+                        Reply(Semantic(references)),
+                        RejectedDocument(),
+                        Reply(Semantic(original_rows if stale else edited_rows)),
+                    )
+                )
+                calls: list[str] = []
+
+                def run(
+                    case: str,
+                    workspace: Path,
+                    arguments: tuple[str, ...],
+                    *,
+                    rejected: bool = False,
+                    calls: list[str] = calls,
+                    replies: Iterator[Reply | RejectedDocument] = replies,
+                ) -> bytes:
+                    self.assertEqual(root, workspace)
+                    self.assertEqual(case == "unknown-result", rejected)
+                    if case == "external-edit":
+                        self.assertEqual(
+                            "// original fixture\n\nfun freshExternalCaller(block: () -> String): "
+                            "String = invokeCallback(block)\n",
+                            forwarding.read_text(),
+                        )
+                    calls.append(case)
+                    return json.dumps(asdict(next(replies))).encode()
+
+                with (
+                    self.subTest(stale=stale),
+                    patch.object(probe.Probe, "run", side_effect=run),
+                    patch.object(probe.Probe, "observe_host", return_value=host) as observe,
+                ):
+                    if stale:
+                        with self.assertRaisesRegex(ValueError, "expected edges"):
+                            _ = runner.compiler_cases(root, "compiler-workspace-one", "6" * 64)
+                        self.assertNotIn(acceptance.Case.REANALYSIS, runner.completed)
+                        self.assertEqual(1, observe.call_count)
+                    else:
+                        self.assertEqual(
+                            host, runner.compiler_cases(root, "compiler-workspace-one", "6" * 64)
+                        )
+                        self.assertEqual(
+                            {
+                                acceptance.Case.CALLERS,
+                                acceptance.Case.JAVA,
+                                acceptance.Case.UNKNOWN,
+                                acceptance.Case.HOST,
+                                acceptance.Case.REANALYSIS,
+                            },
+                            runner.completed,
+                        )
+                        self.assertEqual(2, observe.call_count)
+                self.assertEqual(
+                    ["callers", "java-references", "unknown-result", "external-edit"], calls
+                )
+                with self.assertRaises(StopIteration):
+                    _ = next(replies)
+
+    def test_expected_rejection_requires_an_unsuccessful_installed_child(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="rejected probe ") as temporary:
+            root = Path(temporary)
+            runner = probe.Probe(root / "kast", root / "home", root, root, root, {})
+            launcher = runner.home / ".local/bin/kast"
+            launcher.parent.mkdir(parents=True)
+            for status in (0, 7):
+                _ = launcher.write_text(f"#!{sys.executable}\nraise SystemExit({status})\n")
+                launcher.chmod(0o755)
+                with self.subTest(status=status):
+                    if status:
+                        self.assertEqual(b"", runner.run("unknown-result", root, (), rejected=True))
+                    else:
+                        with self.assertRaisesRegex(ValueError, "unknown-result"):
+                            _ = runner.run("unknown-result", root, (), rejected=True)
+            self.assertEqual(set[acceptance.Case](), runner.completed)
+
+    def test_stop_cleanup_rejects_remaining_or_dangling_endpoints_and_sockets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace, runtime = root / "workspace", root / "runtime"
+            host = probe.HostIdentity(
+                1,
+                2,
+                "application",
+                str(workspace),
+                "compiler",
+                str(runtime),
+                str(root / "state/home/.config/idea"),
+                "idea",
+                (),
+            )
+            lifecycle = root / "l/endpoint.json"
+            hosted = root / "h/endpoint.json"
+            for path in (lifecycle, hosted):
+                path.parent.mkdir()
+
+            def selected_endpoint(owner: Path, kind: str, identity: Path) -> Path:
+                self.assertEqual(root, owner)
+                self.assertEqual(runtime if kind == "ide-lifecycle" else workspace, identity)
+                return lifecycle if kind == "ide-lifecycle" else hosted
+
+            with patch.object(
+                probe,
+                "endpoint",
+                side_effect=selected_endpoint,
+            ) as endpoint:
+                probe.Probe.stopped_endpoints(host)
+                self.assertCountEqual(
+                    [(root, "ide-lifecycle", runtime), (root, "ide-hosted", workspace)],
+                    [call.args for call in endpoint.call_args_list],
+                )
+                for path in (
+                    lifecycle,
+                    hosted,
+                    lifecycle.with_name("host.sock"),
+                    hosted.with_name("host.sock"),
+                ):
+                    for dangling in (False, True):
+                        with self.subTest(path=path, dangling=dangling):
+                            if dangling:
+                                path.symlink_to(root / "absent")
+                            else:
+                                _ = path.write_bytes(b"")
+                            try:
+                                with self.assertRaisesRegex(ValueError, "endpoint or socket"):
+                                    probe.Probe.stopped_endpoints(host)
+                            finally:
+                                path.unlink()
+                probe.Probe.stopped_endpoints(host)
+
+    def test_callers_require_exact_edges_and_the_answering_compiler_lifetime(self) -> None:
+        workspace = Path("/owned/workspace")
+        forwarding = workspace / (
+            "forwarding/src/main/kotlin/fixture/staticcallbacks/forwarding/Forwarding.kt"
+        )
+        expected = frozenset({"forwardOnce", "mutualSecond", "aliasWrapper", "mutableAliasWrapper"})
+        rows = tuple(Row(name, Location(str(forwarding)), (Edge(),)) for name in sorted(expected))
+        document = Semantic(rows)
+        runner = probe.Probe(
+            Path("/owned/kast"), Path("/owned/home"), workspace, workspace, workspace, {}
+        )
+        for changed in (
+            document,
+            replace(document, live=Live("foreign-host")),
+            replace(document, items=rows[:3]),
+            replace(document, items=(*rows, rows[0])),
+            replace(
+                document, items=(replace(rows[0], location=Location("/foreign.kt")), *rows[1:])
+            ),
+            *(
+                replace(document, items=(replace(rows[0], connections=(edge,)), *rows[1:]))
+                for edge in (
+                    Edge(coverage="approximate"),
+                    Edge(provenance="text"),
+                    Edge(target=Target("foreign.invokeCallback")),
+                )
+            ),
+        ):
+            with (
+                self.subTest(changed=changed),
+                patch.object(
+                    probe.Probe, "run", return_value=json.dumps(asdict(Reply(changed))).encode()
+                ) as run,
+            ):
+                if changed == document:
+                    self.assertEqual(
+                        tuple(sorted(expected)),
+                        runner.callers("callers", workspace, expected, "compiler-workspace-one"),
+                    )
+                else:
+                    with self.assertRaises((ValueError, AssertionError)):
+                        _ = runner.callers("callers", workspace, expected, "compiler-workspace-one")
+                run.assert_called_once_with("callers", workspace, probe.CALLERS_QUERY)
+        self.assertEqual(set[acceptance.Case](), runner.completed)
+
+    def test_host_observation_binds_installed_runtime_generation_and_answering_lifetime(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            workspace = root / "workspace"
+            runner = probe.Probe(root / "kast", root / "home", root, root, root, {})
+            directory = (
+                root
+                / "kast-workspaces/containers"
+                / hashlib.sha256(os.fsencode(workspace)).hexdigest()
+            )
+            directory.mkdir(parents=True)
+            _ = (directory / "container.json").write_text(
+                json.dumps(
+                    asdict(
+                        WorkspaceRecord(
+                            directory.name, str(workspace), str(directory / "state/home/.gradle")
+                        )
+                    )
+                )
+            )
+            selection = runner.root / "installation/share/kast/product-selection.json"
+            selection.parent.mkdir(parents=True)
+            digest = "6" * 64
+            runtime = root / "kast-workspaces/runtimes" / digest
+            reference = RuntimeReference(str(runtime), digest)
+            home = runtime / "host"
+            identity = probe.HostIdentity(
+                123,
+                456,
+                "application-one",
+                str(workspace),
+                "compiler-workspace-one",
+                str(home),
+                str(directory / "state/home/.config/idea"),
+                str(home / "bin/idea"),
+                (str(home / "jbr/lib/server/libjvm.so"), "/usr/lib/x86_64-linux-gnu/libc.so.6"),
+            )
+            for generation in (
+                Generation(digest, digest),
+                Generation(digest, digest, 2, "00000000-0000-4000-8000-000000000001"),
+            ):
+                _ = (directory / "generation.json").write_text(json.dumps(asdict(generation)))
+                profile = (
+                    directory
+                    if generation.generation is None
+                    else (directory / "generations" / generation.generation)
+                )
+                for observed, installed, error in (
+                    (identity, reference, None),
+                    (replace(identity, workspaceLifetime="foreign-host"), reference, "lifetime"),
+                    (
+                        replace(identity, libraries=("/usr/lib/libforeign.so",)),
+                        reference,
+                        "shared library",
+                    ),
+                    (identity, replace(reference, runtimeArchiveSha256="f" * 64), "runtime"),
+                    (identity, replace(reference, runtimeRoot="/foreign/runtime"), "runtime"),
+                ):
+                    _ = selection.write_text(json.dumps(asdict(installed)))
+                    with (
+                        self.subTest(generation=generation, error=error),
+                        patch.object(
+                            probe, "host_platform", return_value=probe.HostPlatform.LINUX_X86_64
+                        ),
+                        patch.object(probe, "live_host", return_value=observed) as live,
+                    ):
+                        if error is None:
+                            self.assertEqual(
+                                identity,
+                                runner.observe_host(
+                                    "host", workspace, "compiler-workspace-one", digest
+                                ),
+                            )
+                            live.assert_called_once_with(
+                                profile,
+                                workspace,
+                                probe.HostPlatform.LINUX_X86_64,
+                                root,
+                                "host",
+                                runtime_home=home,
+                            )
+                        else:
+                            with self.assertRaisesRegex(ValueError, error):
+                                _ = runner.observe_host(
+                                    "host", workspace, "compiler-workspace-one", digest
+                                )
+                            if error == "runtime":
+                                live.assert_not_called()
+            self.assertEqual(set[acceptance.Case](), runner.completed)
+
     def test_rpc_catalog_uses_installed_launcher_and_rejects_unsuccessful_documents(self) -> None:
         # A real child is needed here: the selected launcher, not a scripted
         # semantic adapter, must produce the document that acceptance checks.
@@ -337,6 +719,12 @@ class AcceptanceTest(unittest.TestCase):
                 "DIFFERENT_BUILD_UPGRADE_QUERY",
                 "UNINSTALL",
                 "DELETION_SENTINELS",
+                "EXACT_CALLER_PROVENANCE",
+                "JAVA_REFERENCE_CONTEXTS_OFFSETS",
+                "UNKNOWN_RESULT_REJECTION",
+                "INSTALLED_HOST_RUNTIME_IDENTITY",
+                "STOP_ENDPOINT_SOCKET_CLEANUP",
+                "CALLER_REANALYSIS_AFTER_EDIT",
             ],
             [case.value for case in acceptance.Case],
         )
@@ -358,7 +746,39 @@ class AcceptanceTest(unittest.TestCase):
             receipt,
             acceptance.decode(acceptance.encode(receipt), selected, "c" * 64, "linux-x86_64"),
         )
+        self.assertEqual(2, receipt.schemaVersion)
+        legacy = replace(receipt, schemaVersion=1, completedCases=receipt.completedCases[:12])
+        self.assertEqual(
+            legacy,
+            acceptance.decode(acceptance.encode(legacy), selected, "c" * 64, "linux-x86_64"),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            (directory / "payload").mkdir()
+            _ = (directory / "build-record.json").write_bytes(b"original record bytes\n")
+            digest = product.file_digest(directory / "build-record.json")
+            component = ComponentReceiptFixture("5" * 64, ComponentBindings("6" * 64, "8" * 64))
+            for target in selected.targets:
+                _ = (directory / "payload" / acceptance.filename(target.target)).write_bytes(
+                    acceptance.encode(
+                        replace(legacy, target=target.target, buildRecordSha256=digest)
+                    )
+                )
+                _ = (directory / "payload" / target.qualification.receipt.name).write_text(
+                    json.dumps(asdict(component))
+                )
+            self.assertEqual(2, len(acceptance.assets(directory, selected)))
+            # Deliberately incompatible evidence: acceptance v1 cannot replace
+            # the missing native cases when the qualification stage changes.
+            _ = (directory / "payload" / selected.targets[0].qualification.receipt.name).write_text(
+                json.dumps(asdict(replace(component, qualificationStage="COMPONENT_ASSEMBLY")))
+            )
+            with self.assertRaisesRegex(ValueError, "requires installed acceptance v2"):
+                _ = acceptance.assets(directory, selected)
         for changed in (
+            replace(receipt, schemaVersion=3),
+            replace(receipt, completedCases=receipt.completedCases[:12]),
+            replace(legacy, completedCases=receipt.completedCases),
             replace(receipt, qualificationStage="COMPONENT_NATIVE"),
             replace(receipt, qualification="NOT_RUN"),
             replace(receipt, completedCases=()),
@@ -380,9 +800,9 @@ class AcceptanceTest(unittest.TestCase):
     def test_missing_baseline_and_same_build_repair_are_not_upgrade_evidence(self) -> None:
         selected = record()
         with tempfile.TemporaryDirectory() as temporary:
-            with self.assertRaisesRegex(ValueError, "component-qualified baseline"):
+            with self.assertRaisesRegex(ValueError, "qualified baseline"):
                 _ = probe.require_baseline(Path(temporary), selected)
-        with patch.object(probe.candidate, "read", return_value=selected) as read:
+        with patch.object(probe.candidate, "read_baseline", return_value=selected) as read:
             with self.assertRaisesRegex(ValueError, "repair is not upgrade"):
                 _ = probe.require_baseline(Path("unused"), selected)
             read.assert_called_once_with(Path("unused"))
@@ -393,7 +813,7 @@ class AcceptanceTest(unittest.TestCase):
                 for target in selected.targets
             ),
         )
-        with patch.object(probe.candidate, "read", return_value=changed):
+        with patch.object(probe.candidate, "read_baseline", return_value=changed):
             self.assertEqual(changed, probe.require_baseline(Path("unused"), selected))
 
     def test_local_asset_source_never_substitutes_or_queries_network(self) -> None:

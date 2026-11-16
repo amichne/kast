@@ -97,7 +97,6 @@ def fixture_record(
         or receipt.get("qualification") != "COMPLETE"
         or receipt.get("sourceRevision") != revision
         or receipt.get("bundleSha256") != native.bundle.sha256
-        or not product.mapping(receipt.get("probe"))
         or not product.native_receipt_matches(native, receipt)
     ):
         raise ValueError("exact full native component qualification required")

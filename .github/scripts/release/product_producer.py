@@ -105,8 +105,10 @@ def seal_target(
     producer: product.ProductProducer | product.LocalProductProducer,
     target: str,
     native_target: str,
+    *,
+    control: Path,
 ) -> TargetRecord:
-    """The caller must run native qualification first; this records rather than grants proof."""
+    """Seal admitted assembly bytes; installed acceptance is a later boundary."""
     if target not in product.PRODUCT_TARGETS or target != native_target:
         raise Rejected(Failure.INVALID_IDENTITY)
     if not product.revision(revision) or not product.revision(tree):
@@ -116,11 +118,17 @@ def seal_target(
     if regular(receipt).stat().st_size > 1_048_576:
         raise Rejected(Failure.INVALID_RECORD)
     evidence = product.document(receipt.read_bytes())
-    if not product.mapping(evidence) or not product.mapping(evidence.get("containers")):
+    if (
+        not product.mapping(evidence)
+        or type(evidence.get("schemaVersion")) is not int
+        or evidence.get("schemaVersion") != 2
+        or evidence.get("qualificationStage") != "COMPONENT_ASSEMBLY"
+        or evidence.get("qualification") != "COMPLETE"
+        or evidence.get("sourceRevision") != revision
+        or evidence.get("bundleSha256") != bundle.sha256
+    ):
         raise Rejected(Failure.GATE_NOT_COMPLETE)
-    containers = evidence["containers"]
-    assert product.mapping(containers)
-    control = containers.get("controlSha256")
+    control_digest = product.file_digest(regular(control))
     from runtime_base import read_reference
 
     base_reference = read_reference(directory / runtime.name)
@@ -141,19 +149,6 @@ def seal_target(
             or composition.runtimeSha256 != runtime.sha256
         ):
             raise Rejected(Failure.PAYLOAD_MISMATCH)
-    if (
-        evidence.get("qualification") != "COMPLETE"
-        or evidence.get("qualificationStage") != "COMPONENT_NATIVE"
-        or not isinstance(evidence.get("harnessSha256"), str)
-        or not product.DIGEST.fullmatch(str(evidence.get("harnessSha256")))
-        or evidence.get("sourceRevision") != revision
-        or evidence.get("bundleSha256") != bundle.sha256
-        or containers.get("runtimeSha256")
-        != (composition.nativeRuntimeSha256 if composition else runtime.sha256)
-        or not product.mapping(evidence.get("probe"))
-        or not isinstance(control, str)
-    ):
-        raise Rejected(Failure.GATE_NOT_COMPLETE)
     with tarfile.open(directory / bundle.name, "r:gz") as archive:
         manifests = [item for item in archive if item.name == "setup-kast/manifest.json"]
         if len(manifests) != 1 or not manifests[0].isreg() or manifests[0].size > 16_777_216:
@@ -174,7 +169,7 @@ def seal_target(
         producer,
         bundle.sha256,
         runtime.sha256,
-        control,
+        control_digest,
         composition=composition,
     )
     facts = product.ProductTarget(
@@ -192,6 +187,8 @@ def seal_target(
         qualification,
         base_reference.base if base_reference else None,
     )
+    if not product.native_receipt_matches(facts, evidence):
+        raise Rejected(Failure.PAYLOAD_MISMATCH)
     if isinstance(product.product_target(asdict(facts), version), product.Failure):
         raise Rejected(Failure.INVALID_RECORD)
     if facts.runtimeBase is not None:
@@ -354,6 +351,7 @@ def main() -> int:
     _ = parser.add_argument("--output", type=Path)
     _ = parser.add_argument("--receipt", type=Path)
     _ = parser.add_argument("--java-release", type=Path)
+    _ = parser.add_argument("--control", type=Path)
     _ = parser.add_argument("--target")
     args = parser.parse_args()
     try:
@@ -372,7 +370,12 @@ def main() -> int:
         tree = checkout(args.root, revision)
         version = f"0.0.{number}"
         if args.action == "target":
-            if args.receipt is None or args.java_release is None or args.target is None:
+            if (
+                args.receipt is None
+                or args.java_release is None
+                or args.target is None
+                or args.control is None
+            ):
                 raise Rejected(Failure.INVALID_IDENTITY)
             native = {
                 ("Darwin", "arm64"): "macos-aarch64",
@@ -389,6 +392,7 @@ def main() -> int:
                 product.ProductProducer(run, attempt, NATIVE_WORKFLOW),
                 args.target,
                 native,
+                control=args.control,
             )
         elif args.action == "accept":
             if args.output is None or args.receipt is None:

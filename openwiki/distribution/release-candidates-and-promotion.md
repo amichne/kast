@@ -51,30 +51,34 @@ sources:
     resource: repo://distribution/release/component_release.py
   - id: openwiki-source-8ac360e10edcbd99c75fa338
     resource: repo://distribution/release/component-release.schema.json
-  - id: openwiki-source-b58c179514e38986fca17024
-    resource: repo://packaging/local_product_install.py
-  - id: openwiki-source-eb518d021af0c0c5a9bcc85c
-    resource: repo://packaging/managed_product.py
-  - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
-    resource: repo://packaging/managed_release.py
-  - id: openwiki-source-e7484ccb9a72cd71aa938a2f
-    resource: repo://packaging/product_acceptance.py
-  - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
-    resource: repo://packaging/product_lifecycle_probe.py
-  - id: openwiki-source-fbdf7de26cc8b3b5b59b53a6
-    resource: repo://packaging/test_product_acceptance.py
-generated: { by: "unknown", at: "2026-11-16T04:06:28.637Z" }
+  - id: openwiki-source-714a256a14f92900e3bd2e7e
+    resource: repo://packaging/internal/composition/composed_release.py
+  - id: openwiki-source-496462e31bbb3fc9156abfe9
+    resource: repo://packaging/internal/installation/managed_release.py
+  - id: openwiki-source-68861fd33e9641882305aee3
+    resource: repo://packaging/internal/product/local_product_install.py
+  - id: openwiki-source-6470bb416dc031194fcb9bfb
+    resource: repo://packaging/internal/product/managed_product.py
+  - id: openwiki-source-ba9aa96ff29fd40c40dce826
+    resource: repo://packaging/internal/verification/product_acceptance.py
+  - id: openwiki-source-6904899612d0ede016a5965a
+    resource: repo://packaging/internal/verification/product_lifecycle_probe.py
+  - id: openwiki-source-56b11a0b6d3644e3f2024856
+    resource: repo://packaging/tests/test_product_acceptance.py
+generated: { by: "unknown", at: "2026-11-16T17:54:20.995Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-16T04:06:28.637Z
+    at: 2026-11-16T17:58:38.298Z
 ---
 
 # Release candidates and promotion
 
 ## Seal components before installed acceptance
 
-The complete-product producer runs the component-native harness before it seals each target.
-Each `COMPONENT_NATIVE` receipt binds the source, harness, Control, runtime, and bundle identities.
+The complete-product producer verifies component assembly before it seals each target.
+Each schema 2 `COMPONENT_ASSEMBLY` receipt binds source, Control, runtime, and bundle identities without a test-only native binary.
+The producer hashes the supplied shipped Control itself and requires the receipt to match it.
+Published schema 1 `COMPONENT_NATIVE` receipts retain their original admission contract.
 The join requires both macOS ARM64 and Linux x86-64 from the exact producer attempt.
 It records source revision, source tree, toolchain inputs, and asset names, sizes, and digests without rebuilding those assets.
 
@@ -83,7 +87,7 @@ Fresh Mac composition admits the same-attempt release assembled from the existin
 It checks the source revision, source tree, version, archive digest, platform, and compiler toolchain before extraction.
 A missing or rejected archive stops the job; it does not trigger a replacement build.
 The reused PR candidate path has no same-attempt native release and keeps its independent complete-product compilation.
-Both targets still build their native component harness and run qualification.
+Both targets run assembly qualification; compiler and Host lifecycle checks use the shipped Control during installed acceptance.
 Source success joins both qualified targets at sealing, so early Linux work cannot bypass a failed source check.
 
 The sealed build record then enters installed-product acceptance through normal managed admission.
@@ -91,7 +95,8 @@ Both detached `INSTALLED_PRODUCT_NATIVE` receipts are required before publicatio
 Joining those receipts does not rewrite the sealed build record.
 Neither schema decoding nor a successful seal alone establishes installed-product acceptance.
 
-The acceptance baseline needs sealed component qualification, not prior publication or installed acceptance.
+The acceptance baseline needs sealed component qualification, not prior publication.
+New assembly-qualified baselines also require installed acceptance. Legacy native-qualified baselines remain admissible without it.
 Its source revision may match the candidate, but each target needs a different actual bundle/runtime/Control composition.
 CI admits the exact retained baseline record, producer attempt, and successful sealing job.
 A later failed job in that baseline run does not erase its sealing evidence.
@@ -99,6 +104,10 @@ The probe upgrades the baseline, removes it, installs the fresh candidate, and c
 Three shipped public `kast query` callers start together from absent workspace state.
 Every response must succeed, and a later warm query must retain their compiler Host identity.
 It also checks both roots concurrently and protects external Gradle and foreign-profile sentinels.
+Schema 2 installed receipts require all 18 cases, including the six migrated component probes.
+Those probes check caller edge provenance, Java references, unknown-result rejection, runtime-only Linux shared libraries and answering-Host identity,
+endpoint/socket cleanup after stop, and re-analysis after an existing-file edit.
+Legacy schema 1 installed receipts retain their 12-case contract only for component-native-qualified records.
 
 The required aggregate examines the jobs selected by the scope decision.
 After those checks succeed, it seals the selected plan, exact source revision, source tree, and producer run identities.
@@ -189,8 +198,8 @@ This explanation records the source contract, not a completed two-target accepta
 - [build_candidate.py](../../.github/scripts/release/build_candidate.py)
 - [product_producer.py](../../.github/scripts/release/product_producer.py)
 - [product_candidate.py](../../.github/scripts/release/product_candidate.py)
-- [product_lifecycle_probe.py](../../packaging/product_lifecycle_probe.py)
-- [product_acceptance.py](../../packaging/product_acceptance.py)
+- [product_lifecycle_probe.py](../../packaging/internal/verification/product_lifecycle_probe.py)
+- [product_acceptance.py](../../packaging/internal/verification/product_acceptance.py)
 - [component_release.py](../../distribution/release/component_release.py)
 - [component-release.schema.json](../../distribution/release/component-release.schema.json)
 - [`plugin-release.gradle.kts`](../../distribution/release/plugin-release.gradle.kts)

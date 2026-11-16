@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import shutil
 import subprocess
@@ -48,6 +49,18 @@ class Jobs:
     total_count: int = 1
 
 
+@dataclass(frozen=True)
+class AssemblyReceipt:
+    sourceRevision: str
+    bundleSha256: str
+    runtimeSha256: str
+    controlSha256: str
+    composition: product.NativeCompositionEvidence | None = None
+    schemaVersion: int = 2
+    qualificationStage: str = "COMPONENT_ASSEMBLY"
+    qualification: str = "COMPLETE"
+
+
 def captured(root: Path, *, split: bool = False) -> tuple[Path, tuple[producer.TargetRecord, ...]]:
     original = root / "original"
     record = split_fixture(original) if split else fixture(original)
@@ -67,6 +80,8 @@ def captured(root: Path, *, split: bool = False) -> tuple[Path, tuple[producer.T
     java = root / "java-release"
     _ = java.write_bytes(b"JAVA_VERSION=25\n")
     inputs = root / "inputs"
+    control = root / "control"
+    _ = control.write_bytes(b"independently produced Control\n")
     records: list[producer.TargetRecord] = []
     for target in record.targets:
         destination = inputs / target.target
@@ -75,11 +90,27 @@ def captured(root: Path, *, split: bool = False) -> tuple[Path, tuple[producer.T
             if asset == target.qualification.receipt:
                 continue
             _ = shutil.copyfile(original / "payload" / asset.name, destination / asset.name)
+        receipt = root / f"assembly-{target.target}.json"
+        _ = receipt.write_text(
+            json.dumps(
+                asdict(
+                    AssemblyReceipt(
+                        "a" * 40,
+                        target.bundle.sha256,
+                        target.qualification.composition.nativeRuntimeSha256
+                        if target.qualification.composition
+                        else target.runtime.sha256,
+                        product.file_digest(control),
+                        composition=target.qualification.composition,
+                    )
+                )
+            )
+        )
         records.append(
             producer.seal_target(
                 repository,
                 destination,
-                original / "payload" / target.qualification.receipt.name,
+                receipt,
                 java,
                 "a" * 40,
                 "b" * 40,
@@ -87,13 +118,14 @@ def captured(root: Path, *, split: bool = False) -> tuple[Path, tuple[producer.T
                 product.ProductProducer(123, 1, ".github/workflows/composed-linux.yml"),
                 target.target,
                 target.target,
+                control=control,
             )
         )
     return inputs, tuple(records)
 
 
 class ProductProducerTest(unittest.TestCase):
-    def test_baseline_needs_successful_sealing_not_publication_or_installed_acceptance(
+    def test_assembly_baseline_needs_installed_acceptance_but_not_publication(
         self,
     ) -> None:
         import json
@@ -114,12 +146,15 @@ class ProductProducerTest(unittest.TestCase):
             run = asdict(ReusableRun(conclusion="failure"))
             jobs = product.document(json.dumps(asdict(Jobs())).encode())
             self.assertEqual(
+                producer.Failure.GATE_NOT_COMPLETE,
+                candidate.admit_baseline(directory, digest, "a" * 40, record.producer, run, jobs),
+            )
+            accepted_fixture(directory, record)
+            self.assertEqual(
                 record,
                 candidate.admit_baseline(directory, digest, "a" * 40, record.producer, run, jobs),
             )
-            self.assertEqual(
-                producer.Failure.GATE_NOT_COMPLETE, candidate.read(directory, accepted=True)
-            )
+            self.assertEqual(record, candidate.read(directory, accepted=True))
             for observed in (
                 Jobs((SealJob(conclusion="failure"),)),
                 Jobs(total_count=2),
@@ -222,6 +257,10 @@ class ProductProducerTest(unittest.TestCase):
             )
             self.assertEqual(3, sealed.schemaVersion)
             self.assertEqual(tuple(item.target for item in targets), sealed.targets)
+            self.assertEqual(
+                hashlib.sha256(b"independently produced Control\n").hexdigest(),
+                sealed.targets[0].qualification.controlSha256,
+            )
             self.assertEqual(8, len(sealed.assets()))
             self.assertEqual(sealed, candidate.read(output))
             assert sealed.targets[0].runtimeBase is not None
@@ -273,7 +312,7 @@ class ProductProducerTest(unittest.TestCase):
             )
             for item in sealed.assets():
                 self.assertEqual(
-                    (root / "original/payload" / item.name).read_bytes(),
+                    next(inputs.glob(f"*/{item.name}")).read_bytes(),
                     (output / "payload" / item.name).read_bytes(),
                 )
             self.assertEqual(
@@ -355,6 +394,28 @@ class ProductProducerTest(unittest.TestCase):
                 self.assertFalse(output.exists())
                 self.assertEqual([], list(root.glob("kast-product-seal-*")))
 
+    def test_target_capture_rejects_control_bytes_different_from_the_assembly_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            inputs, _ = captured(root)
+            target = "linux-x86_64"
+            _ = (root / "control").write_bytes(b"different produced Control\n")
+            with self.assertRaises(producer.Rejected) as rejection:
+                _ = producer.seal_target(
+                    root / "repository",
+                    inputs / target,
+                    root / f"assembly-{target}.json",
+                    root / "java-release",
+                    "a" * 40,
+                    "b" * 40,
+                    "0.0.123",
+                    product.ProductProducer(123, 1, producer.NATIVE_WORKFLOW),
+                    target,
+                    target,
+                    control=root / "control",
+                )
+            self.assertEqual(producer.Failure.PAYLOAD_MISMATCH, rejection.exception.failure)
+
     def test_incomplete_receipt_cannot_be_relabelled_by_target_capture(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -373,11 +434,12 @@ class ProductProducerTest(unittest.TestCase):
                     product.ProductProducer(123, 1, producer.NATIVE_WORKFLOW),
                     "linux-x86_64",
                     "linux-x86_64",
+                    control=root / "missing-control",
                 )
             self.assertEqual(producer.Failure.GATE_NOT_COMPLETE, rejection.exception.failure)
             self.assertFalse((root / "candidate/payload/target-record-linux-x86_64.json").exists())
 
-    def test_component_stage_and_actual_harness_digest_are_required(self) -> None:
+    def test_legacy_or_installed_receipts_cannot_be_relabelled_as_assembly(self) -> None:
         for original, replacement in (
             (b'"COMPONENT_NATIVE"', b'"INSTALLED_PRODUCT_NATIVE"'),
             (b'"harnessSha256": "' + b"d" * 64 + b'"', b'"harnessSha256": "unknown"'),
@@ -400,6 +462,7 @@ class ProductProducerTest(unittest.TestCase):
                         product.ProductProducer(123, 1, producer.NATIVE_WORKFLOW),
                         "linux-x86_64",
                         "linux-x86_64",
+                        control=root / "missing-control",
                     )
                 self.assertEqual(producer.Failure.GATE_NOT_COMPLETE, rejection.exception.failure)
 
@@ -505,11 +568,11 @@ class ProductProducerTest(unittest.TestCase):
             jobs["required"].index("validation_outcome.py"),
         )
         composed = (workflows / "composed-linux.yml").read_text()
-        self.assertLess(
-            composed.index(":cli:nativeComponentQualificationCompile"),
-            composed.index("packaging/internal/composition/composed_release.py qualify"),
+        self.assertNotIn("nativeComponentQualification", composed)
+        self.assertNotIn("--harness", composed)
+        self.assertIn(
+            "--control /tmp/kc/components/control/share/kast/libexec/kast-management", composed
         )
-        self.assertIn('--harness "$harness" --harness-sha256 "$harness_digest"', composed)
         self.assertLess(
             composed.index("packaging/internal/composition/composed_release.py qualify"),
             composed.index("product_producer.py target"),

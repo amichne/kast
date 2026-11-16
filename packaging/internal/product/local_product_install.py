@@ -45,7 +45,6 @@ EPOCH = 1_767_225_600  # 2026-01-01T00:00:00Z; versions count minutes after it.
 GRADLE_TASKS = (
     "assembleRelease",
     ":runtime:hosted:headlessBootstrapPlugin",
-    ":cli:nativeComponentQualificationCompile",
 )
 # Bound to the isolated root; every other inherited variable, including KAST_* settings,
 # passes through so the installed product reads the caller's configuration.
@@ -389,13 +388,6 @@ def build_product(arguments: argparse.Namespace) -> BuiltProduct:
     )
     bundle = product / f"kast-composed-setup-v{version}-macos-aarch64.tar.gz"
     runtime = product / f"kast-runtime-v{version}-macos-aarch64.zip"
-    harness = work / "kast-component-qualification"
-    _ = shutil.copy2(
-        checkout
-        / "cli/build/native/nativeComponentQualificationCompile"
-        / "kast-component-qualification",
-        harness,
-    )
     profile = work / "isolation.sb"
     _ = profile.write_text(sandbox_profile(Path.home().resolve()))
     run_logged(
@@ -414,18 +406,12 @@ def build_product(arguments: argparse.Namespace) -> BuiltProduct:
             digest(runtime),
             "--root",
             str(work / "qualification-root"),
-            "--fixture",
-            str(work / "qualification-fixture"),
             "--evidence",
             str(work / "qualification"),
             "--version",
             version,
             "--source-revision",
             source.revision,
-            "--harness",
-            str(harness),
-            "--harness-sha256",
-            digest(harness),
             "--sandbox",
             str(profile),
         ],
@@ -470,6 +456,10 @@ def export_product(built: BuiltProduct, destination: Path) -> BuildReceipt:
             release.LocalProductProducer(),
             "macos-aarch64",
             "macos-aarch64",
+            control=(
+                built.work
+                / "qualification-root/components/control/share/kast/libexec/kast-management"
+            ),
         ).target
     except product_producer.Rejected:
         raise Rejected(Stage.QUALIFICATION, Failure.INSTALLATION_REJECTED) from None

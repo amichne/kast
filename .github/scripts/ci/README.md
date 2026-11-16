@@ -204,10 +204,11 @@ The restore checks the source revision, source tree, version, archive digest, ta
 Artifact selection stays within the same workflow run and attempt.
 A missing or rejected archive fails the job; it never triggers a replacement build.
 
-Each target still builds its separate native component harness and runs native qualification.
+Each target verifies component archives and passive shipped-Control discovery without a separate native test binary.
 The two workflow calls execute one target each, so splitting their dependencies adds no target executions.
 Sealing waits for source validation and both qualified targets.
-Installed acceptance and the required-check aggregate keep their existing proofs and publication limits.
+Installed acceptance owns the compiler and Host lifecycle probes through the shipped Control.
+The required-check aggregate keeps its publication limits.
 Linux work can continue when source validation later fails, but that failure still blocks sealing.
 This trades some failed-run work for shorter turnaround.
 

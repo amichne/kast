@@ -8,7 +8,7 @@
 # url = "https://pypi.org/simple"
 # default = true
 # ///
-"""List stable release assets only after all runtime bytes match native qualification."""
+"""List stable release assets only after all runtime bytes match qualification."""
 
 from __future__ import annotations
 
@@ -51,12 +51,36 @@ def admit_runtime(
         or evidence.get("qualification") != "COMPLETE"
     ):
         raise ValueError("qualification receipt lacks COMPLETE for the release source")
-    containers = evidence.get("containers")
-    if not mapping(containers):
-        raise ValueError("qualification receipt lacks container evidence")
-    expected = containers.get("runtimeSha256")
+    schema = evidence.get("schemaVersion", 1)
+    if type(schema) is not int or schema not in (1, 2):
+        raise ValueError("unsupported qualification receipt version")
+    if schema == 2:
+        if evidence.get("qualificationStage") != "COMPONENT_ASSEMBLY":
+            raise ValueError("qualification receipt lacks assembly evidence")
+        expected = evidence.get("runtimeSha256")
+    else:
+        containers = evidence.get("containers")
+        if not mapping(containers):
+            raise ValueError("qualification receipt lacks container evidence")
+        expected = containers.get("runtimeSha256")
     if not isinstance(expected, str) or re.fullmatch(r"[0-9a-f]{64}", expected) is None:
         raise ValueError("qualification receipt lacks a runtime digest")
+    composition = evidence.get("composition")
+    if composition is not None:
+        if (
+            not mapping(composition)
+            or set(composition)
+            != {"baseSha256", "nativeRuntimeSha256", "nativeBundleSha256", "runtimeSha256"}
+            or composition.get("nativeRuntimeSha256") != expected
+            or any(
+                not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None
+                for value in composition.values()
+            )
+        ):
+            raise ValueError("qualification receipt lacks composition evidence")
+        published = composition["runtimeSha256"]
+        assert isinstance(published, str)
+        expected = published
     with checksum.open("rb") as stream:
         if stream.read(1025) != f"{expected}  {name}\n".encode("ascii"):
             raise ValueError("published checksum differs from qualification digest")

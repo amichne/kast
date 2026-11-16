@@ -283,9 +283,10 @@ Build a positive candidate version such as `0.0.1`. Assemble its matching Contro
 and Host with `packaging/internal/composition/composed_release.py assemble --full-native-archives`.
 Keep the other required assembly arguments. This option retains a full runtime
 archive instead of splitting a shared base; the default release path is unchanged.
-Run `packaging/internal/composition/composed_release.py qualify` with those exact archives and a native
-component harness. Supply `--sandbox` when a desktop IDEA process is running.
-Qualification verifies the archive comparison before discarding its expanded copies.
+Run `packaging/internal/composition/composed_release.py qualify` with those exact archives.
+Supply `--sandbox` when a desktop IDEA process is running.
+Qualification verifies archive identity and passive Control discovery; it does not start a compiler Host.
+Installed acceptance exercises compiler queries through the shipped Control, without a separate native test binary.
 
 Supply the resulting component receipt, pinned interpreter inputs, and an explicit
 macOS sandbox profile to the local probe. Use a fresh evidence directory.
@@ -327,7 +328,7 @@ The first semantic request in a workspace creates its private container automati
 
 The command admits the source with the release source check and rejects staged,
 uncommitted and untracked changes. It builds the checkout's own CI release tasks
-under a fresh `0.0.N` version and assembles full native archives. Native component
+under a fresh `0.0.N` version and assembles full native archives. Component assembly
 qualification runs in a macOS sandbox that denies access to your home directory.
 The command admits the source again, then installs through the production
 activation. Only release acquisition reads local files, as in the disposable probe.

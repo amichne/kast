@@ -73,12 +73,8 @@ def read(directory: Path, *, accepted: bool = False) -> product.ProductRecord | 
             if (
                 not product.mapping(evidence)
                 or evidence.get("qualification") != "COMPLETE"
-                or evidence.get("qualificationStage") != "COMPONENT_NATIVE"
-                or not isinstance(evidence.get("harnessSha256"), str)
-                or not product.DIGEST.fullmatch(str(evidence.get("harnessSha256")))
                 or evidence.get("sourceRevision") != record.sourceRevision
                 or evidence.get("bundleSha256") != target.bundle.sha256
-                or not product.mapping(evidence.get("probe"))
             ):
                 return candidate.Failure.GATE_NOT_COMPLETE
             if not product.native_receipt_matches(target, evidence):
@@ -131,6 +127,20 @@ def read(directory: Path, *, accepted: bool = False) -> product.ProductRecord | 
         zipfile.BadZipFile,
     ):
         return candidate.Failure.INVALID_RECORD
+
+
+def read_baseline(directory: Path) -> product.ProductRecord | candidate.Failure:
+    """Legacy native proof remains valid; assembly alone cannot qualify a baseline."""
+    record = read(directory)
+    if isinstance(record, candidate.Failure):
+        return record
+    for target in record.targets:
+        receipt = product.document(
+            (directory / "payload" / target.qualification.receipt.name).read_bytes()
+        )
+        if product.mapping(receipt) and receipt.get("schemaVersion") == 2:
+            return read(directory, accepted=True)
+    return record
 
 
 def remote_targets(
@@ -193,12 +203,12 @@ def admit_baseline(
     observed_run: object,
     observed_jobs: object,
 ) -> product.ProductRecord | candidate.Failure:
-    """Admit a retained sealed baseline, not a published or installed-accepted product.
+    """Admit exact retained baseline proof without requiring public release status.
 
-    The sealing job must have succeeded. The overall run may fail later at installed
-    acceptance because no baseline existed yet; this does not erase component proof.
+    Legacy native component receipts retain their original meaning. Assembly-only
+    products additionally need installed acceptance; successful sealing is not enough.
     """
-    record = read(directory)
+    record = read_baseline(directory)
     if isinstance(record, candidate.Failure):
         return record
     targets = remote_targets(record)

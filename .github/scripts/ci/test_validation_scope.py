@@ -611,7 +611,7 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertNotIn("run-id:", reuse)
         self.assertLess(
             jobs.index("Retain the assembled candidate"),
-            jobs.index("Install and qualify the exact candidate"),
+            jobs.index("Verify the exact component assembly"),
         )
 
     def test_isolated_candidate_source_guards_share_the_assembly_invocation(self):
