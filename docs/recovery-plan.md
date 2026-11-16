@@ -65,7 +65,7 @@ steps. Do not erase specific failures into a generic success or retry result.
   currently resolves configuration before destructive repair. Its repair path
   resets managed state and bootstraps the coordinator; it does not implement the
   full recovery sequence above.
-- [Offline recovery](../packaging/installation-recovery.py) and its
+- [Offline recovery](../packaging/internal/installation-recovery.py) and its
   [runbook](installation-recovery.md) provide independent ownership receipts,
   detachment, quarantine, and unresolved-state reporting. Retain these guarantees
   when adding restoration.

@@ -17,14 +17,15 @@ It also admits the reader-journey audit reports and Vale profiles from PR #1130.
 The frozen path inventory in `fixtures/pr1130-paths.txt` covers all 113 changed files at `d02373e8`.
 Tests reject broader validation skips when an installer script, Kotlin source, build file, or workflow joins that inventory.
 Before adding a path, inspect its consumers in Gradle, packaging, generators and tests.
-README, start, installation and compatibility examples run `packaging/test-installer-entrypoint.py` without Gradle.
+README, start, installation and compatibility examples run `packaging/tests/test-installer-entrypoint.py` without Gradle.
 When the readability runner or its test exists, the documentation job also runs its pytest, Pyright and Ruff checks.
 Most OpenWiki source inputs keep full validation.
-Reviewed documentation inputs instead run `check-documentation-inputs` for source paths and links.
-That mode emits `DOCUMENTATION_INPUTS` evidence and makes no Kotlin declaration claim.
-Full source validation keeps `verifyKnowledgeBase` and its declaration evidence.
-A source-inventory test checks the current literal source paths and inline links.
-New references to listed pages and unsupported reference forms require review before CI can pass.
+The documentation job runs `verifyKnowledgeBase` and `verifyKnowledgeClaims` with the isolated Kotlin parser.
+Source integrity rejects malformed references and broken document links.
+It reports current declaration drift as unresolved evidence without rewriting producer metadata.
+The assessment distinguishes integrity acceptance from current evidence and publication qualification.
+New or changed explanations still need coherent source attribution.
+Full publication qualification needs a complete current candidate and exact input-bound receipts.
 Generated callable schemas, product scripts, build configuration, unknown paths and mixed documentation/product changes select full validation.
 A reviewed documentation script keeps its direct tests instead of selecting Kotlin product qualification.
 Rejected affected plans report their finite failure code, such as `UNKNOWN_OWNER` or `STALE_GRAPH`.
@@ -218,7 +219,7 @@ Run the focused checks from the repository root:
 
 ```sh
 uv run --locked --script .github/scripts/ci/fast_checks.py
-uv run --locked --project docs/tooling pyright --project .github/scripts/ci/pyrightconfig.json
+uv run --locked --project docs/internal/tooling pyright --project .github/scripts/ci/pyrightconfig.json
 python3 .github/scripts/ci/verify_documentation.py
 actionlint .github/workflows/ci.yml .github/workflows/docs.yml .github/workflows/developer-release.yml
 ```

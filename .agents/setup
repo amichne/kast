@@ -73,12 +73,12 @@ if ! grep -Fqx "$profile_hook" "$HOME/.bash_profile"; then
 fi
 
 # Use the build-owned environments so later Gradle checks reuse these installs.
-step 'Schema test dependencies' python3 packaging/prepare-python-test-environment.py
+step 'Schema test dependencies' python3 packaging/internal/prepare-python-test-environment.py
 step 'Documentation Python dependencies' env UV_PROJECT_ENVIRONMENT="$repo_root/build/documentation/python" \
-    uv sync --locked --project docs/tooling --python "$(command -v python3)"
+    uv sync --locked --project docs/internal/tooling --python "$(command -v python3)"
 step 'Semantic coverage dependencies' uv sync --locked --project config/kotlin-semantic-coverage/tooling \
     --python "$(command -v python3)"
-step 'Documentation Markdown dependencies' npm ci --ignore-scripts --engine-strict --prefix docs/tooling/markdown
+step 'Documentation Markdown dependencies' npm ci --ignore-scripts --engine-strict --prefix docs/internal/tooling/markdown
 if ! command -v mint >/dev/null || [[ "$(mint --version)" != 4.2.841 ]]; then
     step 'Mintlify CLI (CI pin)' npm install --global mint@4.2.841
 fi

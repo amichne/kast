@@ -82,7 +82,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts",
-            "sha256": "1d54a1123da47b31f8feef85b2f1dcadb4a67743f9db79ed529af9fe593682ed"
+            "sha256": "edaf4567f91d4e778e5276729a26c7b3510e506dc4510428e6503577812cee1f"
         },
         {
             "path": "build-logic/src/main/kotlin/kast.runtime-app.gradle.kts",
@@ -329,12 +329,16 @@
             "sha256": "9b2059a5ff9bb35fc977950494c0d92bbfdf4d81f9d26ad5209a92202ea14c14"
         },
         {
+            "path": "build-logic/src/main/kotlin/support/tasks/verification/NativeElfLibrary.kt",
+            "sha256": "d49052fb30e9a7d45eed2ad9617974832238a4437b384e9beab1d66bb1600e1b"
+        },
+        {
             "path": "build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt",
-            "sha256": "0f2945322ee8b355539bdd10915977ac1cb4fb50defedccdd6c93cf8324bbfb6"
+            "sha256": "f4b158b8ab69b438c8bf1546e72886276d3f49961edf21d2984822a87cb08636"
         },
         {
             "path": "build.gradle.kts",
-            "sha256": "56f1904376d379a978a386ab3c2a7c9fa69f37baf7b29dc855096be6cd51a342"
+            "sha256": "093960640f1355291de5f149bfa6bc4d3c77bb8694fb77b2d018b6a69f363538"
         },
         {
             "path": "change/apply/build.gradle.kts",
@@ -366,7 +370,7 @@
         },
         {
             "path": "cli/build.gradle.kts",
-            "sha256": "fced37f2407b186ceadfe06528c3db7109a4a7a3d323970b2a3c50c734c98bb8"
+            "sha256": "19a372a9e768e4124ca521cd384fbf0998f993ead910cbfbaf85a709b0c9e0c0"
         },
         {
             "path": "diagnostic/contract/build.gradle.kts",

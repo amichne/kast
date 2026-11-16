@@ -8,7 +8,7 @@ mise install vale
 mise exec -- vale --no-global --config=.vale.ini --output=JSON README.md
 ```
 
-The [documentation policy](../../docs/documentation-structure.md#local-vale-integration) defines the assessment procedure and glossary ownership.
+The [documentation policy](../../docs/internal/documentation-structure.md#local-vale-integration) defines the assessment procedure and glossary ownership.
 
 ## Source and licenses
 
@@ -33,7 +33,7 @@ The import uses selected Google rules. It does not select the complete Google st
 
 `styles/config/vocabularies/Kast/accept.txt` records reviewed spellings. A spelling exception does not define a domain concept.
 
-`docs/glossary.json` owns canonical terms and rejected forms. The Kast exporter under `docs/tooling` generates `styles/Kast/Terminology.yml`.
+`docs/glossary.json` owns canonical terms and rejected forms. The Kast exporter under `docs/internal/tooling` generates `styles/Kast/Terminology.yml`.
 Edit the glossary first, then export and compare the rules through the documentation policy.
 
 The root configuration selects terminology only for current authored documentation and agent instructions.

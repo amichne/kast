@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "surfaces": [
+    {"scope": "public", "path": "README.md", "kind": "file"},
+    {"scope": "public", "path": "AGENTS.md", "kind": "file"},
+    {"scope": "public", "path": "install.sh", "kind": "file"},
+    {"scope": "public", "path": "docs/public", "kind": "tree"},
+    {"scope": "public", "path": "bin/kast-knowledge-refresh", "kind": "file"},
+    {"scope": "public", "path": "bin/kast-repo", "kind": "file"},
+    {"scope": "packaging", "path": "packaging/internal", "kind": "tree"},
+    {"scope": "packaging", "path": "packaging/tests", "kind": "tree"},
+    {"scope": "packaging", "path": "packaging/composed_bundle.py", "kind": "file"},
+    {"scope": "packaging", "path": "packaging/managed_headless.py", "kind": "file"},
+    {"scope": "documentation", "path": "docs/internal", "kind": "tree"},
+    {"scope": "knowledge", "path": "openwiki", "kind": "tree"}
+  ]
+}

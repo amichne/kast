@@ -9,7 +9,7 @@ source_revision: 99139245144ceee756556037c058e0f3b8c22983
 code_sources:
   - path: install.sh
   - path: docs/development.md
-  - path: docs/documentation-structure.md
+  - path: docs/internal/documentation-structure.md
   - path: docs/glossary.json
   - path: docs/hosted-read-configuration.md
   - path: docs/installation-recovery.md
@@ -20,11 +20,11 @@ code_sources:
   - path: docs/public/reference/source-map.mdx
   - path: docs/tool-rpc.md
   - path: docs/topology-impact.md
-  - path: docs/tooling/check_glossary.py
-  - path: docs/tooling/glossary_json.py
-  - path: docs/tooling/diagrams/render.mjs
-  - path: docs/tooling/diagrams/diagrams.json
-  - path: docs/tooling/value-journey/build.mts
+  - path: docs/internal/tooling/check_glossary.py
+  - path: docs/internal/tooling/glossary_json.py
+  - path: docs/internal/tooling/diagrams/render.mjs
+  - path: docs/internal/tooling/diagrams/diagrams.json
+  - path: docs/internal/tooling/value-journey/build.mts
 ---
 
 <!-- AGENTS.md: generated navigation; keep this file checked in -->
@@ -39,7 +39,7 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 ## Key Files
 
 - [docs.json](public/docs.json) - site navigation and reader tracks.
-- [documentation-structure.md](documentation-structure.md) - doc types, source owners, routes, and Vale commands.
+- [documentation-structure.md](internal/documentation-structure.md) - doc types, source owners, routes, and Vale commands.
 - [glossary.json](glossary.json) - terms, their source evidence, and the pages they govern.
 - [GLOSSARY.md](GLOSSARY.md) - generated view of the terms.
 - [development.md](development.md) - commands to change code and select a focused test.
@@ -58,14 +58,14 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - [public/reference/](public/reference/AGENTS.md) - contracts, models, and authored generation rules.
 - [public/explanation/](public/explanation/) - how Kast works and why.
 - [reviews/](reviews/) - reports with the scope of each result.
-- [tooling/](tooling/README.md) - tools that turn glossary terms into pages and Vale rules.
+- [internal/](internal/AGENTS.md) - tools that turn glossary terms into pages and Vale rules.
 
 ## Entry Points
 
 - From `docs/public`, run `mint validate` and `mint broken-links`.
-- Public diagrams use `docs/public/images/architecture/*.mmd` as source. Run `npm run render --prefix docs/tooling/diagrams`. Then run `npm run check --prefix docs/tooling/diagrams`.
+- Public diagrams use `docs/public/images/architecture/*.mmd` as source. Run `npm run render --prefix docs/internal/tooling/diagrams`. Then run `npm run check --prefix docs/internal/tooling/diagrams`.
 - Keep generated diagram snippets, SVG files, and `diagram-theme.css` with their source. Edit the shared renderer for SVG layout and colors. Edit `style.css` for figure layout.
-- The value explorer and README preview share `docs/tooling/value-journey` as their source. Run `npm run build --prefix docs/tooling/value-journey`. Commit both generated files.
+- The value explorer and README preview share `docs/internal/tooling/value-journey` as their source. Run `npm run build --prefix docs/internal/tooling/value-journey`. Commit both generated files.
 - Keep Guides, Architecture, and Reference visible in navigation. Group pages by reader goal.
 - Public setup starts with the remote installer's `--channel preview` option. Use `kast upgrade --channel preview` for updates; `main` remains a compatibility alias.
 - Use `kast install` for CLI guidance. Keep MCP setup explicit with `--mcp`. Do not restore retired connection commands.
@@ -75,8 +75,8 @@ This directory owns the Mintlify site, contributor guides, and glossary rules. R
 - After a navigation edit, examine group controls, sidebar state, keyboard access, and the native mobile menu.
 - Use the pinned Vale command and checked-in rules from the root guide.
 - Run `./gradlew verifyDocumentationGlossary` to examine terms and generated files.
-- Run `python3 .github/scripts/ci/verify_documentation.py` for parser, glossary, example, and knowledge-link obligations without Gradle.
-- `code_kb.py check-documentation-inputs` examines source paths and links. Full `check` also examines Kotlin declarations.
+- Run `python3 .github/scripts/ci/verify_documentation.py` for parser, glossary, example, and knowledge integrity obligations.
+- `code_kb.py check-source-integrity` rejects malformed metadata and reports current declaration drift. Publication qualification needs current evidence.
 - Before an edit to a generated callable contract, read the nested public reference guide.
 
 ## Navigation Hints

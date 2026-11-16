@@ -96,9 +96,9 @@ class VerificationPlanTest(unittest.TestCase):
 
     def test_query_delivery_guard_tools_keep_full_validation_fallback(self):
         for path in (
-            "packaging/query_delivery_contract.py",
-            "packaging/generate-public-query.py",
-            "packaging/test-public-query-generation.py",
+            "packaging/internal/query_delivery_contract.py",
+            "packaging/internal/generate-public-query.py",
+            "packaging/tests/test-public-query-generation.py",
             "build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts",
             "agent-tools/onboarding.template.md",
             "agent-tools/references/query-schema.json",
@@ -148,7 +148,7 @@ class VerificationPlanTest(unittest.TestCase):
             {":verifyDocumentationGlossary", ":verifyDocumentationMarkdown", ":documentationToolingTest"}
             .isdisjoint(plan.tasks)
         )
-        for path in ("docs/tooling/markdown/parse.ts", "docs/glossary.json", "README.md"):
+        for path in ("docs/internal/tooling/markdown/parse.ts", "docs/glossary.json", "README.md"):
             self.assertEqual(selection.Failure.UNKNOWN_OWNER, self.plan(path))
 
     def test_shared_fixture_keeps_direct_and_exported_fixture_consumers(self):

@@ -5,19 +5,19 @@ from __future__ import annotations
 
 import argparse
 import ast
-from dataclasses import asdict, dataclass
-from enum import Enum
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+from dataclasses import asdict, dataclass
+from enum import Enum
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Protocol, TypeGuard
 from urllib.parse import unquote
 
 import yaml
-
 
 RESERVED_FILENAMES = {"index.md", "log.md"}
 ISO_DATE_HEADING_RE = re.compile(r"^## \d{4}-\d{2}-\d{2}(?:\s|$)")
@@ -38,7 +38,7 @@ def concept_id(path: Path, docs: Path) -> str:
 
 
 def normalize_relative(value: str) -> str | None:
-    if not value:
+    if not value or "\\" in value or "\0" in value:
         return None
     if "://" in value:
         match = GITHUB_BLOB_PATH_RE.search(value)
@@ -46,7 +46,7 @@ def normalize_relative(value: str) -> str | None:
             return None
         value = match.group("path")
     pure = PurePosixPath(value)
-    if pure.is_absolute() or ".." in pure.parts:
+    if pure.is_absolute() or ".." in pure.parts or pure.as_posix() == ".":
         return None
     return pure.as_posix()
 
@@ -61,14 +61,38 @@ class UniqueKeyLoader(yaml.SafeLoader):
     """Safe YAML boundary that rejects duplicate keys instead of erasing facts."""
 
 
-def unique_mapping(loader: UniqueKeyLoader, node: yaml.MappingNode) -> dict[str, Any]:
-    mapping: dict[str, Any] = {}
+class YamlConstructor(Protocol):
+    def construct_object(self, node: yaml.Node, deep: bool = False) -> object: ...
+
+
+def _mapping(value: object) -> TypeGuard[dict[object, object]]:
+    return isinstance(value, dict)
+
+
+def _record(value: object) -> TypeGuard[dict[str, Any]]:
+    return _mapping(value) and all(isinstance(key, str) for key in value)
+
+
+def _objects(value: object) -> TypeGuard[list[object]]:
+    return isinstance(value, list)
+
+
+def _strings(value: object) -> TypeGuard[list[str]]:
+    return _objects(value) and all(isinstance(item, str) for item in value)
+
+
+def unique_mapping(loader: YamlConstructor, node: yaml.MappingNode) -> dict[str, object]:
+    mapping: dict[str, object] = {}
     for key_node, value_node in node.value:
         key = loader.construct_object(key_node, deep=True)
         if not isinstance(key, str):
-            raise yaml.constructor.ConstructorError(None, None, "YAML keys must be strings", key_node.start_mark)
+            raise yaml.constructor.ConstructorError(
+                None, None, "YAML keys must be strings", key_node.start_mark
+            )
         if key in mapping:
-            raise yaml.constructor.ConstructorError(None, None, f"duplicate YAML field: {key}", key_node.start_mark)
+            raise yaml.constructor.ConstructorError(
+                None, None, f"duplicate YAML field: {key}", key_node.start_mark
+            )
         mapping[key] = loader.construct_object(value_node, deep=True)
     return mapping
 
@@ -77,36 +101,51 @@ UniqueKeyLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, 
 
 
 def parse_frontmatter_mapping(lines: list[str]) -> tuple[dict[str, Any], list[str]]:
+    loader = UniqueKeyLoader("\n".join(lines))
     try:
-        mapping = yaml.load("\n".join(lines), Loader=UniqueKeyLoader)
+        mapping = loader.get_single_data()
     except yaml.YAMLError as error:
         return {}, [f"invalid YAML frontmatter: {error}"]
-    if not isinstance(mapping, dict):
+    finally:
+        loader.dispose()
+    if not _record(mapping):
         return {}, ["YAML frontmatter must be an object"]
     return mapping, []
 
 
-def openwiki_sources(frontmatter: dict[str, Any], repo: Path) -> tuple[list[str], list[str]]:
+def openwiki_sources(
+    frontmatter: dict[str, Any], repo: Path, resolution: list[str] | None = None
+) -> tuple[list[str], list[str]]:
     """Read OpenWiki's source resources for impact without owning Claims schemas."""
     sources = frontmatter.get("sources", [])
-    if not isinstance(sources, list):
+    if not _objects(sources):
         return [], ["sources must be a list"]
     paths: list[str] = []
     issues: list[str] = []
     for source in sources:
-        resource = source.get("resource") if isinstance(source, dict) else None
+        resource = source.get("resource") if _record(source) else None
         if not isinstance(resource, str) or not resource.startswith("repo://"):
             issues.append("sources resource must use repo://")
             continue
         raw_path, separator, span = resource[7:].partition("#")
         normalized = normalize_relative(raw_path)
-        if (normalized is None or normalized != raw_path or
-                (separator and not re.fullmatch(r"L[1-9][0-9]*-L[1-9][0-9]*", span))):
+        if (
+            normalized is None
+            or normalized != raw_path
+            or (separator and not re.fullmatch(r"L[1-9][0-9]*-L[1-9][0-9]*", span))
+        ):
             issues.append(f"sources resource is invalid: {resource}")
             continue
         paths.append(normalized)
-        if not (repo / normalized).is_file():
-            issues.append(f"sources path does not exist: {normalized}")
+        if separator and int(span.split("-")[0][1:]) > int(span.split("-")[1][1:]):
+            issues.append(f"sources resource is invalid: {resource}")
+            continue
+        if not (repo / normalized).resolve().is_relative_to(repo.resolve()):
+            issues.append(f"sources path escapes repository: {normalized}")
+        elif not (repo / normalized).is_file():
+            (issues if resolution is None else resolution).append(
+                f"sources path does not exist: {normalized}"
+            )
     return paths, issues
 
 
@@ -127,10 +166,23 @@ def kotlin_symbols(paths: list[Path]) -> dict[str, dict[str, Any]]:
         return {}
     classpath = os.environ.get("KAST_KNOWLEDGE_PARSER_CLASSPATH")
     if not classpath:
-        raise RuntimeError("Kotlin declaration checks require the PSI parser; run ./gradlew verifyKnowledgeBase")
+        raise RuntimeError(
+            "Kotlin declaration checks require the PSI parser; run ./gradlew verifyKnowledgeBase"
+        )
+    java = shutil.which("java")
+    if java is None:
+        raise RuntimeError("Java is unavailable for Kotlin declaration checks")
     result = subprocess.run(
-        ["java", "-cp", classpath, "conventions.jsoncontracts.KnowledgeSymbolsMain", *map(str, paths)],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False,
+        [
+            java,
+            "-cp",
+            classpath,
+            "conventions.jsoncontracts.KnowledgeSymbolsMain",
+            *map(str, paths),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if result.returncode:
         raise RuntimeError(f"Kotlin declaration parser failed: {result.stderr.strip()}")
@@ -146,50 +198,73 @@ def declared_symbols(path: Path, kotlin: dict[str, dict[str, Any]]) -> set[str]:
     if path.suffix == ".py":
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         return {
-            node.name for node in ast.walk(tree)
+            node.name
+            for node in ast.walk(tree)
             if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
         }
     raise ValueError("symbols require Kotlin or Python source")
 
 
-def code_sources(frontmatter: dict[str, Any] | None, repo: Path, kotlin: dict[str, dict[str, Any]] | None) -> tuple[list[str], list[str]]:
+def code_sources(
+    frontmatter: dict[str, Any] | None,
+    repo: Path,
+    kotlin: dict[str, dict[str, Any]] | None,
+    resolution: list[str] | None = None,
+) -> tuple[list[str], list[str]]:
     if not frontmatter:
         return [], []
     raw_sources = frontmatter.get("code_sources", [])
     if raw_sources in ("", None):
         return [], []
-    if not isinstance(raw_sources, list):
+    if not _objects(raw_sources):
         return [], ["code_sources must be a list"]
     paths: list[str] = []
     issues: list[str] = []
     for source in raw_sources:
-        if not isinstance(source, dict):
+        if not _record(source):
             issues.append("code_sources entry is not an object")
             continue
-        normalized = normalize_relative(str(source.get("path", "")))
+        raw_path = source.get("path")
+        normalized = normalize_relative(raw_path) if isinstance(raw_path, str) else None
         if normalized is None:
             issues.append(f"code_sources path is invalid: {source.get('path')!r}")
             continue
         paths.append(normalized)
         source_path = repo.joinpath(normalized)
-        if not source_path.is_file():
-            issues.append(f"code_sources path does not exist: {normalized}")
+        if not source_path.resolve().is_relative_to(repo.resolve()):
+            issues.append(f"code_sources path escapes repository: {normalized}")
             continue
-        if "symbols" in source and kotlin is not None:
-            symbols = source["symbols"]
-            if not isinstance(symbols, list) or not symbols or any(
-                not isinstance(symbol, str) or not IDENTIFIER_RE.fullmatch(symbol) for symbol in symbols
+        symbols: list[str] = []
+        if "symbols" in source:
+            raw_symbols: object = source["symbols"]
+            if (
+                not _strings(raw_symbols)
+                or not raw_symbols
+                or any(not IDENTIFIER_RE.fullmatch(symbol) for symbol in raw_symbols)
             ):
-                issues.append(f"code_sources symbols must be a non-empty identifier list: {normalized}")
+                issues.append(
+                    f"code_sources symbols must be a non-empty identifier list: {normalized}"
+                )
                 continue
+            symbols = raw_symbols
+        if not source_path.is_file():
+            (issues if resolution is None else resolution).append(
+                f"code_sources path does not exist: {normalized}"
+            )
+            continue
+        if symbols and kotlin is not None:
             try:
                 declared = declared_symbols(source_path, kotlin)
             except (ValueError, SyntaxError, OSError) as error:
-                issues.append(f"code_sources cannot parse {normalized}: {error}")
+                (issues if resolution is None else resolution).append(
+                    f"code_sources cannot parse {normalized}: {error}"
+                )
                 continue
             for symbol in symbols:
                 if symbol not in declared:
-                    issues.append(f"code_sources symbol is not declared in {normalized}: {symbol}")
+                    (issues if resolution is None else resolution).append(
+                        f"code_sources symbol is not declared in {normalized}: {symbol}"
+                    )
     return sorted(set(paths)), issues
 
 
@@ -200,7 +275,9 @@ def validate_index(path: Path, docs: Path, text: str) -> list[str]:
         frontmatter, _, issues = split_frontmatter(text)
         if frontmatter is not None:
             unknown = sorted(key for key in frontmatter if key != "okf_version")
-            issues.extend(f"root index frontmatter field is not OKF-defined: {key}" for key in unknown)
+            issues.extend(
+                f"root index frontmatter field is not OKF-defined: {key}" for key in unknown
+            )
         return issues
     return ["index.md frontmatter is only allowed at the bundle root for okf_version"]
 
@@ -215,8 +292,105 @@ def validate_log(text: str) -> list[str]:
     return issues
 
 
-def validate_markdown_links(path: Path, text: str) -> list[str]:
+@dataclass(frozen=True)
+class HistoricalSourceLinks:
+    revision: str
+    paths: frozenset[str]
+
+
+class HistoricalLinkFailure(str, Enum):
+    UNAVAILABLE = "history-unavailable"
+    INVALID = "invalid-history-evidence"
+    CHANGED_PAGE = "page-not-identical"
+
+
+def historical_source_links(
+    repo: Path, page: Path, content: bytes, targets: frozenset[str]
+) -> HistoricalSourceLinks | HistoricalLinkFailure:
+    """Read one page's immutable identity and exact regular-blob targets."""
+    git = shutil.which("git")
+    if git is None or page.resolve() != page or not page.is_relative_to(repo):
+        return HistoricalLinkFailure.UNAVAILABLE
+    command = [git, "--no-replace-objects", "--literal-pathspecs", "-C", str(repo)]
+    environment = {**os.environ, "GIT_NO_LAZY_FETCH": "1", "GIT_OPTIONAL_LOCKS": "0"}
+    relative = page.relative_to(repo).as_posix()
+    try:
+        shallow = subprocess.run(
+            [*command, "rev-parse", "--is-shallow-repository"],
+            capture_output=True,
+            check=True,
+            timeout=10,
+            env=environment,
+        )
+        if shallow.stdout.strip() != b"false":
+            return HistoricalLinkFailure.UNAVAILABLE
+        history = subprocess.run(
+            [*command, "log", "-1", "--format=%H", "HEAD", "--", relative],
+            capture_output=True,
+            check=True,
+            timeout=10,
+            env=environment,
+        )
+        revision = history.stdout.decode("ascii").strip()
+        if re.fullmatch(r"[a-f0-9]{40}", revision) is None:
+            return HistoricalLinkFailure.INVALID
+        tree = subprocess.run(
+            [*command, "ls-tree", "-z", revision, "--", relative, *sorted(targets)],
+            capture_output=True,
+            check=True,
+            timeout=10,
+            env=environment,
+        )
+        regular: dict[str, str] = {}
+        for entry in tree.stdout.split(b"\0"):
+            if not entry:
+                continue
+            header, separator, name = entry.partition(b"\t")
+            fields = header.split()
+            if (
+                not separator
+                or len(fields) != 3
+                or re.fullmatch(rb"[a-f0-9]{40}", fields[2]) is None
+            ):
+                return HistoricalLinkFailure.INVALID
+            if fields[0] in {b"100644", b"100755"} and fields[1] == b"blob":
+                regular[name.decode("utf-8")] = fields[2].decode("ascii")
+        if relative not in regular:
+            return HistoricalLinkFailure.INVALID
+        objects = tuple(sorted(set(regular.values())))
+        available = subprocess.run(
+            [*command, "cat-file", "--batch-check=%(objectname) %(objecttype)"],
+            input=("\n".join(objects) + "\n").encode("ascii"),
+            capture_output=True,
+            check=True,
+            timeout=10,
+            env=environment,
+        )
+        if available.stdout.splitlines() != [f"{oid} blob".encode("ascii") for oid in objects]:
+            return HistoricalLinkFailure.UNAVAILABLE
+        recorded = subprocess.run(
+            [*command, "cat-file", "blob", regular[relative]],
+            capture_output=True,
+            check=True,
+            timeout=10,
+            env=environment,
+        )
+        if recorded.stdout != content:
+            return HistoricalLinkFailure.CHANGED_PAGE
+        return HistoricalSourceLinks(revision, frozenset(targets & regular.keys()))
+    except (OSError, UnicodeError, subprocess.SubprocessError):
+        return HistoricalLinkFailure.UNAVAILABLE
+
+
+def validate_markdown_links(
+    path: Path,
+    text: str,
+    repo: Path | None = None,
+    source_paths: frozenset[str] = frozenset(),
+    resolution: list[str] | None = None,
+) -> list[str]:
     issues: list[str] = []
+    historical_candidates: list[tuple[str, str]] = []
     for match in MARKDOWN_LINK_RE.finditer(text):
         raw_target = match.group("target").strip()
         if raw_target.startswith("<") and ">" in raw_target:
@@ -228,21 +402,61 @@ def validate_markdown_links(path: Path, text: str) -> list[str]:
         target = unquote(target).split("#", 1)[0].split("?", 1)[0]
         if not target:
             continue
-        resolved = (path.parent / target).resolve()
+        if "\0" in target or "\\" in target:
+            issues.append(f"link target is invalid: {target!r}")
+            continue
+        try:
+            resolved = (path.parent / target).resolve()
+        except (OSError, RuntimeError):
+            issues.append(f"link target is unsafe: {target}")
+            continue
         if not resolved.exists():
-            issues.append(f"link target does not exist: {target}")
+            message = f"link target does not exist: {target}"
+            if (
+                resolution is not None
+                and repo is not None
+                and not Path(target).is_absolute()
+                and resolved.suffix.lower() not in {".md", ".mdx"}
+                and resolved.is_relative_to(repo)
+                and resolved == Path(os.path.abspath(path.parent / target))
+            ):
+                relative = resolved.relative_to(repo).as_posix()
+                if relative in source_paths:
+                    resolution.append(message)
+                else:
+                    historical_candidates.append((relative, message))
+            else:
+                issues.append(message)
+    if historical_candidates and repo is not None and resolution is not None:
+        historical = historical_source_links(
+            repo, path, text.encode("utf-8"), frozenset(name for name, _ in historical_candidates)
+        )
+        for name, message in historical_candidates:
+            if isinstance(historical, HistoricalSourceLinks) and name in historical.paths:
+                resolution.append(f"{message} (regular source blob at {historical.revision})")
+            elif isinstance(historical, HistoricalLinkFailure):
+                issues.append(f"{message} ({historical.value})")
+            else:
+                issues.append(f"{message} (not a recorded regular source blob)")
     return issues
 
 
-def parse_page(path: Path, repo: Path, docs: Path, kotlin: dict[str, dict[str, Any]] | None) -> dict[str, Any]:
-    text = path.read_text(encoding="utf-8")
+def parse_page(
+    path: Path,
+    repo: Path,
+    docs: Path,
+    kotlin: dict[str, dict[str, Any]] | None,
+    separate_resolution: bool = False,
+) -> dict[str, Any]:
+    text = path.read_bytes().decode("utf-8")
     relative = repo_relative(path, repo)
     docs_relative = path.relative_to(docs).as_posix()
     issues: list[str] = []
+    resolution: list[str] = []
+    resolution_sink = resolution if separate_resolution else None
     frontmatter: dict[str, Any] | None = None
     source_paths: list[str] = []
     kind = "concept"
-    issues.extend(validate_markdown_links(path, text))
 
     if path.name == "index.md":
         kind = "index"
@@ -257,13 +471,16 @@ def parse_page(path: Path, repo: Path, docs: Path, kotlin: dict[str, dict[str, A
             type_value = frontmatter.get("type")
             if not isinstance(type_value, str) or not type_value.strip():
                 issues.append("frontmatter type is required")
-            paths, source_issues = code_sources(frontmatter, repo, kotlin)
+            paths, source_issues = code_sources(frontmatter, repo, kotlin, resolution_sink)
             source_paths.extend(paths)
             issues.extend(source_issues)
-            paths, source_issues = openwiki_sources(frontmatter, repo)
+            paths, source_issues = openwiki_sources(frontmatter, repo, resolution_sink)
             source_paths.extend(paths)
             issues.extend(source_issues)
 
+    issues.extend(
+        validate_markdown_links(path, text, repo, frozenset(source_paths), resolution_sink)
+    )
     return {
         "path": relative,
         "docsPath": docs_relative,
@@ -272,20 +489,23 @@ def parse_page(path: Path, repo: Path, docs: Path, kotlin: dict[str, dict[str, A
         "frontmatter": frontmatter,
         "sourcePaths": sorted(set(source_paths)),
         "issues": issues,
+        "resolution": resolution,
     }
 
 
-def collect_pages(repo: Path, docs: Path, check_symbols: bool = False) -> list[dict[str, Any]]:
+def collect_pages(
+    repo: Path, docs: Path, check_symbols: bool = False, separate_resolution: bool = False
+) -> list[dict[str, Any]]:
     pages = markdown_files(docs)
     kotlin_paths: set[Path] = set()
     if check_symbols:
         for path in pages:
             frontmatter, _, _ = split_frontmatter(path.read_text(encoding="utf-8"))
             sources = (frontmatter or {}).get("code_sources", [])
-            if not isinstance(sources, list):
+            if not _objects(sources):
                 continue
             for source in sources:
-                if not isinstance(source, dict) or "symbols" not in source:
+                if not _record(source) or "symbols" not in source:
                     continue
                 normalized = normalize_relative(str(source.get("path", "")))
                 if normalized is not None:
@@ -293,14 +513,16 @@ def collect_pages(repo: Path, docs: Path, check_symbols: bool = False) -> list[d
                     if source_path.is_file() and source_path.suffix in {".kt", ".kts"}:
                         kotlin_paths.add(source_path)
     kotlin = kotlin_symbols(sorted(kotlin_paths)) if check_symbols else None
-    return [parse_page(path, repo, docs, kotlin) for path in pages]
+    return [parse_page(path, repo, docs, kotlin, separate_resolution) for path in pages]
 
 
 def changed_files_from_git(repo: Path) -> list[str]:
+    git = shutil.which("git")
+    if git is None:
+        raise RuntimeError("Git is unavailable for source impact")
     result = subprocess.run(
-        ["git", "-C", str(repo), "status", "--porcelain=v1", "-z", "--untracked-files=all"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        [git, "-C", str(repo), "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        capture_output=True,
         check=False,
     )
     if result.returncode != 0:
@@ -367,12 +589,25 @@ def write_output(payload: dict[str, Any], output_format: str) -> None:
 class KnowledgeEvidence(str, Enum):
     EXACT_DECLARATIONS = "EXACT_DECLARATIONS"
     DOCUMENTATION_INPUTS = "DOCUMENTATION_INPUTS"
+    SOURCE_INTEGRITY = "SOURCE_INTEGRITY"
+
+
+class AssessmentStatus(str, Enum):
+    CURRENT = "current"
+    UNRESOLVED = "unresolved"
+    NOT_ASSESSED = "not-assessed"
 
 
 @dataclass(frozen=True)
 class KnowledgeIssue:
     path: str
     message: str
+
+
+@dataclass(frozen=True)
+class CurrentAssessment:
+    status: AssessmentStatus
+    issues: tuple[KnowledgeIssue, ...]
 
 
 @dataclass(frozen=True)
@@ -386,13 +621,23 @@ class KnowledgeCheckReport:
     reservedFiles: int
     issueCount: int
     issues: list[KnowledgeIssue]
+    assessment: CurrentAssessment
 
 
 def command_check(args: argparse.Namespace) -> int:
     repo = args.repo.resolve()
     docs = (repo / args.docs).resolve()
-    evidence = KnowledgeEvidence.EXACT_DECLARATIONS if args.command == "check" else KnowledgeEvidence.DOCUMENTATION_INPUTS
-    pages = collect_pages(repo, docs, check_symbols=evidence is KnowledgeEvidence.EXACT_DECLARATIONS)
+    evidence = {
+        "check": KnowledgeEvidence.EXACT_DECLARATIONS,
+        "check-documentation-inputs": KnowledgeEvidence.DOCUMENTATION_INPUTS,
+        "check-source-integrity": KnowledgeEvidence.SOURCE_INTEGRITY,
+    }[args.command]
+    pages = collect_pages(
+        repo,
+        docs,
+        check_symbols=evidence is not KnowledgeEvidence.DOCUMENTATION_INPUTS,
+        separate_resolution=evidence is KnowledgeEvidence.SOURCE_INTEGRITY,
+    )
     bundle_issues: list[KnowledgeIssue] = []
     if args.strict:
         if not docs.is_dir():
@@ -408,14 +653,29 @@ def command_check(args: argparse.Namespace) -> int:
                 KnowledgeIssue(repo_relative(docs, repo), "at least one concept is required"),
             )
     issues = bundle_issues + [
-        KnowledgeIssue(page["path"], issue)
-        for page in pages
-        for issue in page["issues"]
+        KnowledgeIssue(page["path"], issue) for page in pages for issue in page["issues"]
     ]
+    resolution = tuple(
+        KnowledgeIssue(page["path"], item) for page in pages for item in page["resolution"]
+    )
     report = KnowledgeCheckReport(
-        "check", evidence, str(repo), repo_relative(docs, repo), len(pages),
+        args.command,
+        evidence,
+        str(repo),
+        repo_relative(docs, repo),
+        len(pages),
         sum(1 for page in pages if page["kind"] == "concept"),
-        sum(1 for page in pages if page["kind"] != "concept"), len(issues), issues,
+        sum(1 for page in pages if page["kind"] != "concept"),
+        len(issues),
+        issues,
+        CurrentAssessment(
+            AssessmentStatus.NOT_ASSESSED
+            if evidence is KnowledgeEvidence.DOCUMENTATION_INPUTS
+            else AssessmentStatus.UNRESOLVED
+            if resolution or issues
+            else AssessmentStatus.CURRENT,
+            resolution,
+        ),
     )
     write_output(asdict(report), args.format)
     return 1 if args.strict and issues else 0
@@ -451,12 +711,25 @@ def parser() -> argparse.ArgumentParser:
     check.add_argument("--strict", action="store_true")
     check.set_defaults(func=command_check)
 
-    documentation = subcommands.add_parser("check-documentation-inputs", help="Examine source paths and links without declaration claims.")
+    documentation = subcommands.add_parser(
+        "check-documentation-inputs",
+        help="Examine source paths and links without declaration claims.",
+    )
     documentation.add_argument("--repo", type=Path, default=Path("."))
     documentation.add_argument("--docs", default="openwiki")
     documentation.add_argument("--format", choices=["human", "json"], default="human")
     documentation.add_argument("--strict", action="store_true")
     documentation.set_defaults(func=command_check)
+
+    integrity = subcommands.add_parser(
+        "check-source-integrity",
+        help="Reject structural defects and report current declaration drift separately.",
+    )
+    integrity.add_argument("--repo", type=Path, default=Path("."))
+    integrity.add_argument("--docs", default="openwiki")
+    integrity.add_argument("--format", choices=["human", "json"], default="json")
+    integrity.add_argument("--strict", action="store_true")
+    integrity.set_defaults(func=command_check)
 
     impact = subcommands.add_parser("impact", help="Find OKF concepts affected by changed files.")
     impact.add_argument("--repo", type=Path, default=Path("."))

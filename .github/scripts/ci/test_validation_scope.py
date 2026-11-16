@@ -91,7 +91,7 @@ class ValidationScopeTest(unittest.TestCase):
             ".agents/tooling",
             "build-logic",
             "packaging/helper",
-            "docs/tooling",
+            "docs/internal/tooling",
             "gradle/plugins",
             "config",
             "build-policy",
@@ -134,9 +134,9 @@ class ValidationScopeTest(unittest.TestCase):
         paths = (
             ".github/scripts/ci/README.md", "README.md", "app-server/README.md",
             "app-server/docs/public-query-contract.md", "docs/development.md",
-            "docs/documentation-structure.md", "docs/hosted-read-configuration.md",
+            "docs/internal/documentation-structure.md", "docs/hosted-read-configuration.md",
             "docs/static-query-execution.md", "docs/okf-public.json",
-            "docs/tooling/okf_public.py", "docs/tooling/test_okf_public.py",
+            "docs/internal/tooling/okf_public.py", "docs/internal/tooling/test_okf_public.py",
             "docs/public/reference/AGENTS.md", "docs/public/start.mdx",
             "docs/public/reference/installation.mdx", "docs/public/reference/compatibility.mdx",
             "docs/public/explanation/value-journey-evidence.mdx",
@@ -164,7 +164,7 @@ class ValidationScopeTest(unittest.TestCase):
 
     def test_documentation_neighbors_cannot_inherit_reviewed_ownership(self):
         for path in (
-            ".github/scripts/ci/new.py", "docs/tooling/new.py",
+            ".github/scripts/ci/new.py", "docs/internal/tooling/new.py",
             "config/vale/readability/new.py", "config/vale/readability/src/main/kotlin/Probe.kt",
             "docs/reviews/readability-audit/build.gradle.kts",
             "experiments/host-observation/protocol.py", "experiments/host-observation/new.md",
@@ -183,7 +183,7 @@ class ValidationScopeTest(unittest.TestCase):
     def test_documentation_consumers_cover_navigation_and_generated_examples(self):
         for path in ("docs/public/docs.json", "docs/public/style.css", "docs/public/explanation/value-journey.mdx",
                      "docs/public/reference/responses.mdx", "docs/public/reference/symbols.mdx", "docs/public/search.mdx",
-                     "docs/public/snippets/value-journey.jsx", "docs/tooling/value-journey/src/trace.ts"):
+                     "docs/public/snippets/value-journey.jsx", "docs/internal/tooling/value-journey/src/trace.ts"):
             self.assertEqual(DOCS, classify_paths((path,)))
 
     def test_generated_callable_schema_keeps_product_and_portable_checks(self):
@@ -235,9 +235,9 @@ class ValidationScopeTest(unittest.TestCase):
             "new-config.json",
             "docs/public/reference/new-page.mdx",
             "install.sh",
-            "packaging/test-install-local.py",
+            "packaging/tests/test-install-local.py",
             "packaging/portable.Dockerfile",
-            "docs/tooling/check_glossary.py",
+            "docs/internal/tooling/check_glossary.py",
             "docs/glossary.json",
         ):
             with self.subTest(path=path):
@@ -378,7 +378,7 @@ class ExactDiffTest(unittest.TestCase):
 
     def test_readme_and_documentation_tooling_bypass_module_planning_for_prs_and_pushes(self):
         self.write("README.md", "# Reader journey\n")
-        self.write("docs/tooling/okf_public.py", "# documentation projector\n")
+        self.write("docs/internal/tooling/okf_public.py", "# documentation projector\n")
         self.write("config/vale/readability/test_audit.py", "# audit contract\n")
         head = self.commit("documentation consumers")
         for event in ("pull_request", "push"):
@@ -721,7 +721,7 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn('--version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"', candidate)
         self.assertIn("--receipt build/composed-evidence/qualification.json", candidate)
         self.assertLess(
-            candidate.index("packaging/composed_release.py qualify"),
+            candidate.index("packaging/internal/composed_release.py qualify"),
             candidate.index("product_producer.py target"),
         )
         self.assertLess(

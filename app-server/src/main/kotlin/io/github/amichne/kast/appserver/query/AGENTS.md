@@ -16,7 +16,7 @@ code_sources:
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionPolicyTest.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolTraceContractTest.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicRunnerControlledExecutionTest.kt
-  - path: packaging/generate-public-query.py
+  - path: packaging/internal/generate-public-query.py
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
 ---
 
@@ -132,5 +132,5 @@ It accepts an expansion scope, without arbitrary depth controls, and preserves g
 - [PublicToolTrace.kt](PublicToolTrace.kt)
 - [PublicToolCompletionPolicyTest.kt](../../../../../../../../test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionPolicyTest.kt)
 - [PublicToolTraceContractTest.kt](../../../../../../../../test/kotlin/io/github/amichne/kast/appserver/query/PublicToolTraceContractTest.kt)
-- [generate-public-query.py](../../../../../../../../../../packaging/generate-public-query.py)
+- [generate-public-query.py](../../../../../../../../../../packaging/internal/generate-public-query.py)
 - [QueryCompletionDocument.kt](../../../../../../../../../../protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt)
