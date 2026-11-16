@@ -356,9 +356,16 @@ def stage_product(
             result = source.download(
                 f"{release.RELEASE_URL}/{selected.releaseTag}/{asset.name}", path, asset.bytes
             )
+            if isinstance(result, release.TRANSFER_REJECTIONS):
+                observe(phase, "REJECTED")
+                return release.Rejected(
+                    release.Failure.ARTIFACT_INVALID,
+                    phase,
+                    selected.version,
+                    transfer=release.transfer(result),
+                )
             if (
-                isinstance(result, release.TransferFailure)
-                or result.path != path
+                result.path != path
                 or path.is_symlink()
                 or not path.is_file()
                 or path.stat().st_size != asset.bytes
