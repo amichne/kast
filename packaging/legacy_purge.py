@@ -27,6 +27,7 @@ import stat
 import subprocess
 import sys
 import time
+import uuid
 import zipfile
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -382,11 +383,38 @@ def socket_root_shape(path: Path) -> bool:
             for entry in scope.iterdir():
                 info = os.lstat(entry)
                 if (
-                    entry.name not in {"host.sock", "owner.lock"}
+                    entry.name not in {"host.sock", "owner.lock", "endpoint.json"}
                     or info.st_uid != os.getuid()
-                    or not (stat.S_ISSOCK(info.st_mode) or stat.S_ISREG(info.st_mode))
+                    or not (
+                        stat.S_ISSOCK(info.st_mode)
+                        if entry.name == "host.sock"
+                        else stat.S_ISREG(info.st_mode)
+                    )
                 ):
                     return False
+                if entry.name == "endpoint.json":
+                    if info.st_nlink != 1 or info.st_mode & 0o022:
+                        return False
+                    try:
+                        descriptor = json.loads(install.read_record(entry.resolve(), 16_384))
+                        root = descriptor.get("root")
+                        pid = descriptor.get("hostPid")
+                        host = descriptor.get("host")
+                        if (
+                            descriptor.get("type") != "KAST_IDE_ENDPOINT"
+                            or not isinstance(root, str)
+                            or not Path(root).is_absolute()
+                            or os.path.normpath(root) != root
+                            or hashlib.sha256(root.encode()).hexdigest()[:32] != scope.name
+                            or descriptor.get("socket") != str(scope.resolve() / "host.sock")
+                            or type(pid) is not int
+                            or pid <= 0
+                            or not isinstance(host, str)
+                            or str(uuid.UUID(host)) != host
+                        ):
+                            return False
+                    except (OSError, ValueError, AttributeError):
+                        return False
     return True
 
 
@@ -547,6 +575,7 @@ class SystemEffects:
 
     @staticmethod
     def observe_darwin() -> tuple[Observed, ...]:
+        before = SystemEffects.darwin_starts()
         try:
             result = subprocess.run(
                 ["/usr/sbin/lsof", "-n", "-P", "-w", "-F", "pn", "-u", str(os.getuid())],
@@ -573,7 +602,9 @@ class SystemEffects:
                 processes[pid].append(line[1:])
         starts = SystemEffects.darwin_starts()
         return tuple(
-            Observed(key, starts.get(key), tuple(value)) for key, value in processes.items()
+            Observed(key, start, tuple(value))
+            for key, value in processes.items()
+            if (start := before.get(key)) is not None and starts.get(key) == start
         )
 
     @staticmethod
@@ -619,11 +650,12 @@ class SystemEffects:
                     target = os.readlink(descriptor.path)
                     if target.startswith("/"):
                         names.append(target)
+                if start is not None and SystemEffects.linux_start(int(entry.name)) == start:
+                    observed.append(Observed(int(entry.name), start, tuple(names)))
             except (FileNotFoundError, ProcessLookupError):
                 continue  # The process exited during observation.
             except OSError:
                 raise Unproven(Failure.PROCESS_OBSERVATION_REJECTED) from None
-            observed.append(Observed(int(entry.name), start, tuple(names)))
         return tuple(observed)
 
     @staticmethod

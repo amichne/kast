@@ -375,6 +375,8 @@ sources:
     resource: repo://packaging/host-installation.py
   - id: openwiki-source-ab52e7c01cf17ee137f833e7
     resource: repo://packaging/immutable_store.py
+  - id: openwiki-source-9f35dd852280c48aacf8231c
+    resource: repo://packaging/legacy_purge.py
   - id: openwiki-source-b58c179514e38986fca17024
     resource: repo://packaging/local_product_install.py
   - id: openwiki-source-621afc296584eb4217553339
@@ -409,6 +411,8 @@ sources:
     resource: repo://packaging/test_product_acceptance.py
   - id: openwiki-source-25977fc13c4ddf2c0840d6fd
     resource: repo://packaging/test-install-checkout.py
+  - id: openwiki-source-a280306ff425ccc70bf7dd61
+    resource: repo://packaging/test-legacy-purge.py
   - id: openwiki-source-2cd23a68d0d65408a59d5b1a
     resource: repo://packaging/test-managed-bootstrap.py
   - id: openwiki-source-b3ca2d66028c874ac7b10e77
@@ -427,10 +431,10 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/OwnedHostedEndpoint.kt
   - id: openwiki-source-931b927626ea234f44ea20df
     resource: repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedQueryExecutor.kt
-generated: { by: "amp", at: "2026-11-15T23:15:42.491Z" }
+generated: { by: "pi", at: "2026-11-16T01:15:33.301Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T23:15:42.491Z
+    at: 2026-11-16T01:19:06.357Z
 ---
 
 # Distribution and packaging
@@ -445,6 +449,7 @@ Python published decoding and Kotlin `validProductRecord` reject local records; 
 `install.sh --local-artifact DIRECTORY` also admits a local `build-record.json` and recorded files under `payload/` into the canonical global installation.
 `LocalReleaseSource` supplies a pinned selection to the existing product admission and activation owners, without product HTTP fallback.
 The bootstrap still downloads pinned private Python and `defusedxml`; local input is not offline setup.
+Explicit `--purge-legacy` admits known pre-product schema-3 installations through `0.51.3`, excluding developer versions, only after replacement product admission. It requires successful legacy force uninstall before holder retirement and admitted residue removal; dry run reports the plan without destructive effects. See [installation and managed files](../distribution/installation-and-managed-files.md) for the operational consequences.
 `InstalledProductSelection` admits recorded identity for exact repair even when runtime bytes are missing.
 `installedRepairSelection` reuses that identity only for published products; a local product rejects with `LOCAL_ARTIFACT_REQUIRED` before installer or release effects.
 `InstalledProductRuntime` adds local runtime admission for semantic requests, without release-server access or desktop fallback.

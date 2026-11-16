@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dabce7d50d6c09ad7e37cc4ad295e87d6825bbe4b764e4112c6d468e6fdc609c",
+  "pageVersion": "sha256:0b8dc325dd77e7d91d0c61aa9beb8b3713996477692c064f553be2b32413c250",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -11,7 +11,7 @@
           "version": "repo-file-v1:sha256:b664763ec093af466ba893058ec2d7f7e72beee86c6eea9a9269cb772f0368ff"
         },
         {
-          "resource": "repo://build.gradle.kts#L757-L776",
+          "resource": "repo://build.gradle.kts#L761-L780",
           "version": "repo-lines-v1:sha256:49750b9bcf0a0e582bd76e22d0016b992efa169cd730b00d50f9384f6bc438d1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMjUzOGFhM2MyZWJkMDU4NzM3MTJiYjAwODRmYWFiNjVmYmNmNjUwNzhhZTQ4NzgxOWY2MTA4MDNjMmI3NTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhYmQ0ZjAwYjM2ZGVmNDAyZjMzNDY3ZDdlOGQ0MDJhZDZlYjI1NmJjYWI0YTI4OWU0M2FlYTU2YWQ4NDQzMDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRkN2I4YzBjMTk4NDgwNTRkMDNjMGYwNGM3ZThkOTRjMTE5ODI5MDJlMzc0NDFhMDRmOWVkZDU2OTI4NzYyNjgifQ"
         }
       ]
@@ -35,8 +35,8 @@
           "version": "repo-lines-v1:sha256:99649d8370ddfd034ca9b59ba695413e7090cf87b09dc1028578e4c1c245465a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ZTI3ZDQ2MGI0NTc3N2E3YTU1ZTRmMTFhM2UwM2ZlMGQ2NmM5ZDI4M2Q4NjJmMTBlN2RiNTIxMzAyNTBmYmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNGFlMTFkNzVlZmE5OWUyMTcyMWZlOGVlNjZmMWM5OTZhMzczODZlMmQ3NjMwMjMyYjEyMTcxZjczYjM1Y2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyNjg0NzhjODc2ZGNhMjFmMTUwYjQyYzliZjQxZWVkMmQ1NmJiYjg5NzA3MmEyMTNhMjY4Y2NkNGQwZTQ3YWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjYjhmNTA5NjZmMDU4MTEyNDEwNjJjZjhhOTFhNWJmMGJlNTY4MDBlZTQzOGZmOTAyMjc4NTc0MzRkYTJkN2QifQ"
         },
         {
-          "resource": "repo://AGENTS.md#L203-L210",
-          "version": "repo-lines-v1:sha256:831e864e2d2b37a3d042820d3da091b9f1fe5ef753dabef82f0be70227b01b3f:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM5YmFhZTczYWVkMzJiNGRhNTc3YTM5ZGRhNTJhYTMyMmFjOWQ4Mjc4NTE2NjM3NzM2Y2I3YTkyMGFhZTY0MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTVkM2M3MDg2ODBmZDBiYTIzZDJhOTk1YmNjY2E3YWExMmViMTU2MzQxZDNiNDc1YzM4NDJlMjcwNjEyYjRlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTNjYzRhNzEwYmYzMWEyN2Q3MTk2MDRmYTdkYTEyZWJhNGY5MTY4ZTZjYzRkOWY4NmQ4YjJjOTE5NTYzYzRjZCJ9"
+          "resource": "repo://AGENTS.md#L203-L219",
+          "version": "repo-lines-v1:sha256:76915c76644ab54055c15d16594f2d5cceb5838aeff474db3072797b7d541450:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzOWJhYWU3M2FlZDMyYjRkYTU3N2EzOWRkYTUyYWEzMjJhYzlkODI3ODUxNjYzNzczNmNiN2E5MjBhYWU2NDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1ZDNjNzA4NjgwZmQwYmEyM2QyYTk5NWJjY2NhN2FhMTJlYjE1NjM0MWQzYjQ3NWMzODQyZTI3MDYxMmI0ZWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzY2M0YTcxMGJmMzFhMjdkNzE5NjA0ZmE3ZGExMmViYTRmOTE2OGU2Y2M0ZDlmODZkOGIyYzkxOTU2M2M0Y2QifQ"
         }
       ]
     },
@@ -141,10 +141,50 @@
           "version": "repo-file-v1:sha256:813ef32cad1f30455dafc2b72474dee1d469bc9bab148e2c21af4922017c537b"
         }
       ]
+    },
+    {
+      "id": "claim_ae59b5be97b74f629b5f83d6387190b0",
+      "statement": "Repository guidance requires OpenWiki's published coding-agent integration and bundled skill for retrieval, updates, and Claims reconciliation, following the installed skill rather than recreating its internal workflow.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L209-L211",
+          "version": "repo-lines-v1:sha256:3d3100985232332dd8036d68b5e9274b759ed2d48668699f7669f2103d9c111f:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTc4ZWRkY2RmMTI1NWM5NmZlYmFhNTkwNGNmODNjMGI5NmMzZmY2OTA4Zjk1YzUwZjc0ZDczN2JlNmNmNmZhMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWUwZjhkZWQ2ZWZlMTdkNTRkNDkwN2I2YzM1MjI2Njg0MGU4ZTMzZDBhNmJlNjEzMTU5NTU0NDNmYzIwYmE3YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2UyZTEzNTZjMTk0YjNlY2JkNjQ1N2MzNTA4NTBhNTFkNTAwYmIwZGY2YmQzNzU5ZGU5MTM2NTlhNDJjOTYxOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGIyMjZkMGFjOTFmYjNmNzQxY2U1OWFiMTY3Mzk0M2JiNDRmZGFiZWQwN2YzNmUyYTNhZTU3MmQ1NGE3OTUzOCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_1e6e97a950c24d26be6ea63c349dd5b6",
+      "statement": "For updates from Amp, repository guidance defaults to Pi with openai-codex, gpt-6.1-terra, and medium thinking unless the user specifies another model, loading the installed OpenWiki extension and skill and using print mode with an affected-page task without changing persistent Pi settings.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L212-L212",
+          "version": "repo-lines-v1:sha256:f2fb9171d1810ea24765fc152d4c6b61c885e791863ccc75959ff63d926eca85:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjJmYjkxNzFkMTgxMGVhMjQ3NjVmYzE1MmQ0YzZiNjFjODg1ZTc5MTg2M2NjYzc1OTU5ZmY2M2Q5MjZlY2E4NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjJmYjkxNzFkMTgxMGVhMjQ3NjVmYzE1MmQ0YzZiNjFjODg1ZTc5MTg2M2NjYzc1OTU5ZmY2M2Q5MjZlY2E4NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2QzMTAwOTg1MjMyMzMyZGQ4MDM2ZDY4YjVlOTI3NGI3NTllZDJkNDg2Njg2OTlmNzY2OWYyMTAzZDljMTExZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjJiN2RlNjM2MDFjYzgzNGU4ODlhZmUxOGQzYmRlOTYwM2E4YmViNTQ1Mzg4MTI1YmUyMGQ0ZTkyMGUwNjI1YiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_7a37a26f91034b89a82ea20f8a12a142",
+      "statement": "Repository guidance requires source edits to finish before wiki updates, with Pi owning affected pages rather than source files, because concurrent source changes can invalidate plans or stale newly submitted Claims.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L213-L213",
+          "version": "repo-lines-v1:sha256:1ef08bbdcea47eb8afae33741b24a76605145b8c52db1f7362d475e098e4a5ff:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMWVmMDhiYmRjZWE0N2ViOGFmYWUzMzc0MWIyNGE3NjYwNTE0NWI4YzUyZGIxZjczNjJkNDc1ZTA5OGU0YTVmZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWVmMDhiYmRjZWE0N2ViOGFmYWUzMzc0MWIyNGE3NjYwNTE0NWI4YzUyZGIxZjczNjJkNDc1ZTA5OGU0YTVmZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTFkMzk0MTEwYmI4ODVmMDliZGUwY2YzY2M0MWJlZDVlZTYxOGFiOTc0MzY1ODE2Zjk4Y2ExMDk4ZmMzOTJhNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTQ5ZGJiZTAwYzI2NmFlMjczMTljZDhkNzE3MDU2NDI1NTc1NDdlOGY3ZGRiYmI1Yzk4MjA5MmMyZjUxNzRiNCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_3402a366d5fc4d6d82aa1d04075a42db",
+      "statement": "After native OpenWiki finalization, repository guidance requires canonical evidence assessment and the knowledge Claims and knowledge base Gradle gates; source changes during the run require affected Claims to be reconciled again.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md#L216-L216",
+          "version": "repo-lines-v1:sha256:ea22d009fd07c51616fad406fa0a5bd48f0bc6fb4dabc87879ed3134488e10cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWEyMmQwMDlmZDA3YzUxNjE2ZmFkNDA2ZmEwYTViZDQ4ZjBiYzZmYjRkYWJjODc4NzllZDMxMzQ0ODhlMTBjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWEyMmQwMDlmZDA3YzUxNjE2ZmFkNDA2ZmEwYTViZDQ4ZjBiYzZmYjRkYWJjODc4NzllZDMxMzQ0ODhlMTBjZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjJiN2RlNjM2MDFjYzgzNGU4ODlhZmUxOGQzYmRlOTYwM2E4YmViNTQ1Mzg4MTI1YmUyMGQ0ZTkyMGUwNjI1YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWIxYmM1YmM0YTIzN2Y1NzhlNmFmNGE0MTVkMDY0N2Y5OTEwYjAzYjM2NGUxZTI3YzFmMWRiYWE3NDNkMDNiYSJ9"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T20:10:47.711Z"
+    "at": "2026-11-16T01:21:40.622Z"
   }
 }

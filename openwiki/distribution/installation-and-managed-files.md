@@ -43,6 +43,8 @@ sources:
     resource: repo://packaging/immutable_store.py
   - id: openwiki-source-fd4b4980f80cb901046d8f0e
     resource: repo://packaging/installation-lifecycle.py
+  - id: openwiki-source-9f35dd852280c48aacf8231c
+    resource: repo://packaging/legacy_purge.py
   - id: openwiki-source-b58c179514e38986fca17024
     resource: repo://packaging/local_product_install.py
   - id: openwiki-source-1380068036b00bec817a6579
@@ -65,6 +67,8 @@ sources:
     resource: repo://packaging/test-install-checkout.py
   - id: openwiki-source-a219ab80b9383d47a0037637
     resource: repo://packaging/test-installation-lifecycle.py
+  - id: openwiki-source-a280306ff425ccc70bf7dd61
+    resource: repo://packaging/test-legacy-purge.py
   - id: openwiki-source-2cd23a68d0d65408a59d5b1a
     resource: repo://packaging/test-managed-bootstrap.py
   - id: openwiki-source-b3ca2d66028c874ac7b10e77
@@ -73,10 +77,10 @@ sources:
     resource: repo://packaging/test-managed-installation.py
   - id: openwiki-source-0bad4698830200151d28e110
     resource: repo://packaging/test-managed-release.py
-generated: { by: "amp", at: "2026-11-15T23:15:42.491Z" }
+generated: { by: "pi", at: "2026-11-16T01:15:33.301Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T23:15:42.491Z
+    at: 2026-11-16T01:19:06.357Z
 ---
 
 
@@ -103,6 +107,10 @@ This selects the canonical global installation, not a separate contributor root.
 Local records require `PinnedBuild`, no public version, and the matching developer tag and source revision.
 The bootstrap still downloads pinned private Python and `defusedxml`; local product selection does not make setup offline.
 The local selector cannot combine with channel, version, or commit selectors.
+
+### Explicit legacy purge
+
+`--purge-legacy` opts into removal of an admitted pre-product schema-3 installation from a published version through `0.51.3`; developer `0.0.N` versions are excluded. The installer first downloads and admits the replacement product. The purge then requires the old launcher's force uninstall to report `REMOVED` before retiring holders and removing admitted residue; a rejection prevents activation. A dry run reports the plan without destructive effects. Workspace state can be removed and desktop IDE work can be lost; agent registrations are left unchanged. Unknown residue remains protected.
 
 `python3 packaging/local_product_install.py build --source CLEAN_CHECKOUT --output DIRECTORY` builds an export without installing globally.
 The current builder supports macOS ARM64 and requires a clean committed source checkout.

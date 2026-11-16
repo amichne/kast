@@ -206,6 +206,15 @@ This guide owns repository rules and routes source investigation.
 - Treat OpenWiki pages as source-bound routing and explanation. Claims retain source versions; `code_sources` preserve exact declaration citations and impact. Source, schemas, generated contracts, tests and verified Gradle architecture remain stronger evidence.
 - After changing cited source, run `./gradlew knowledgeImpact`, refresh affected concepts through the OpenWiki page lifecycle when their Claims changed, and run `./gradlew verifyKnowledgeBase`.
 
+### OpenWiki integration and Claims updates
+
+- Use OpenWiki's published coding-agent integration and bundled `openwiki` skill for retrieval, page updates, and Claims reconciliation. Codex has a published integration; Pi has a published `npm` extension and skill. Follow the installed version's skill. Do not recreate its internal workflow.
+- For updates from Amp, invoke Pi with `--provider openai-codex --model gpt-6.1-terra --thinking medium`, unless the user specifies another model. Load the installed OpenWiki package's `dist/integrations/pi/openwiki.js` with `--extension` and `integrations/openwiki/SKILL.md` with `--skill`. Use `--print` with a task scoped to the affected pages. This works without changing persistent Pi settings.
+- Finish source edits before starting the update. Give Pi ownership of the affected wiki pages, not source files. Concurrent source edits can invalidate a plan or make newly submitted Claims stale.
+- Run the native lifecycle from the absolute Git root: `openwiki_begin`, `openwiki_submit_plan` when planning is required, then `openwiki_next_page` and `openwiki_submit_page` for each assigned page. Call `openwiki_finish` only after the queue completes. Resume an existing durable run rather than replacing it.
+- Recheck each affected Claim against current source. Confirm unchanged Claims, revise existing Claims with their stable IDs, and retract Claims only when their propositions no longer apply. Submit sparse decisions through `openwiki_submit_page`. Never edit evidence hashes, Claim sidecars, run state, generated provenance, or indexes by hand.
+- After native finalization, run `node docs/tooling/markdown/evidence-assess.ts --root "$PWD" --scope canonical` and `mise exec -- ./gradlew verifyKnowledgeClaims verifyKnowledgeBase`. A completed lifecycle alone does not prove current evidence. If source changed during the run, reconcile affected Claims again before reporting success.
+
 <!-- OPENWIKI:START -->
 
 ## OpenWiki

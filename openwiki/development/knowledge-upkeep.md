@@ -47,10 +47,10 @@ sources:
     resource: repo://docs/tooling/test_knowledge_refresh.py
   - id: openwiki-source-ed23841223cbb1f8ea2721ef
     resource: repo://docs/tooling/test_publication.py
-generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
+generated: { by: "pi", at: "2026-11-16T01:21:40.622Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:10:47.711Z
+    at: 2026-11-16T01:21:40.622Z
 ---
 
 # Knowledge upkeep and coverage assessment
@@ -69,6 +69,12 @@ A package row alone does not prove complete behavioral coverage.
 
 ## Update through one page owner
 
+Repository guidance requires the published coding-agent integration and bundled `openwiki` skill for retrieval, updates, and Claims reconciliation; follow the installed skill rather than recreating its internal workflow ([AGENTS.md](../../AGENTS.md#openwiki-integration-and-claims-updates)).
+For updates from Amp, the default is Pi with `--provider openai-codex --model gpt-6.1-terra --thinking medium`, unless the user specifies another model.
+Load the installed package's `dist/integrations/pi/openwiki.js` with `--extension` and `integrations/openwiki/SKILL.md` with `--skill`, and use `--print` with a task scoped to affected pages.
+This does not require changing persistent Pi settings.
+Finish source edits first and give Pi ownership of affected wiki pages, not source files; concurrent source edits can invalidate a plan or stale newly submitted Claims.
+
 Start or resume a native OpenWiki update before changing generated pages.
 During planning, use current source and focused tests to choose topic paths and useful neighboring pages.
 Keep one wiki with nested directories when those paths express the system structure.
@@ -84,6 +90,8 @@ OpenWiki owns Claim identifiers, evidence versions, indexes, and final provenanc
 Finish only after the queue completes and finalization succeeds.
 If source drift invalidates the plan, start from the current native run state and create a replacement plan.
 Do not repair a rejected lifecycle by editing sidecars or run metadata directly.
+After finalization, run `node docs/tooling/markdown/evidence-assess.ts --root "$PWD" --scope canonical` and `mise exec -- ./gradlew verifyKnowledgeClaims verifyKnowledgeBase`.
+A completed lifecycle alone does not prove current evidence; reconcile affected Claims again if source changed during the run.
 
 ## Repository gates and their limits
 

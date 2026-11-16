@@ -14,15 +14,30 @@ import unittest
 import uuid
 import zipfile
 from collections.abc import Callable
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import override
+from unittest.mock import patch as mock_patch
 
 import legacy_purge as purge
 import managed_product_installation as activation
 import managed_update_journal as journal
 
 RUNTIME = "0.51.3-" + ("macos-aarch64" if sys.platform == "darwin" else "linux-x86_64")
-CONTAINER = "3ebc085f2a74a0b2b8fe38a7d7e542ed"
+WORKSPACE = "/workspace/legacy"
+CONTAINER = hashlib.sha256(WORKSPACE.encode()).hexdigest()[:32]
+
+
+@dataclass(frozen=True)
+class EndpointDocument:
+    socket: str
+    type: str = "KAST_IDE_ENDPOINT"
+    root: str = WORKSPACE
+    hostPid: int = 4242
+    host: str = "2c682b44-1977-4b79-8d52-05ef3913b432"
+    protocol: int = 2
+    querySchema: str = "kast.public.query.v1"
+    operations: tuple[str, ...] = ("QUERY",)
 
 
 class ScriptedEffects:
@@ -172,6 +187,8 @@ class LegacyPurgeTest(unittest.TestCase):
         server = socket.socket(socket.AF_UNIX)
         server.bind(str(scope / "host.sock"))
         server.close()
+        descriptor = EndpointDocument(str(scope.resolve() / "host.sock"))
+        _ = (scope / "endpoint.json").write_text(json.dumps(asdict(descriptor)))
 
     def removed(self) -> subprocess.CompletedProcess[bytes]:
         # The legacy owner removes its root and launcher, then reports REMOVED.
@@ -246,6 +263,31 @@ class LegacyPurgeTest(unittest.TestCase):
         self.assertEqual([], effects.signals)
         self.assertEqual(before, self.snapshot())
         effects.finished()
+
+    def test_unproven_endpoint_descriptors_are_retained(self) -> None:
+        scope = self.sockets / "h" / CONTAINER
+        document = EndpointDocument(str(scope.resolve() / "host.sock"))
+        invalid = (
+            replace(document, socket="/tmp/unrelated/host.sock"),
+            replace(document, root="/workspace/other"),
+            replace(document, type="OTHER_ENDPOINT"),
+            replace(document, hostPid=0),
+            replace(document, host="not-a-host-identity"),
+        )
+        for descriptor in invalid:
+            with self.subTest(descriptor=descriptor):
+                _ = (scope / "endpoint.json").write_text(json.dumps(asdict(descriptor)))
+                before = self.snapshot()
+                effects = ScriptedEffects(self, observations=[(self.ide(),)])
+
+                result = purge.purge(self.root, self.home, True, effects)
+
+                self.assertEqual(
+                    purge.Rejected(purge.Stage.ADMISSION, purge.Failure.RESIDUE_UNPROVEN), result
+                )
+                self.assertEqual(before, self.snapshot())
+                self.assertTrue((scope / "endpoint.json").exists())
+                effects.finished()
 
     def test_only_published_releases_up_to_the_cutoff_are_known_too_old(self) -> None:
         accepted = {"0.51.3": (51, 3), "0.51.0": (51, 0), "0.1.0": (1, 0), "0.50.4": (50, 4)}
@@ -388,6 +430,50 @@ class LegacyPurgeTest(unittest.TestCase):
 
 
 class SystemEffectsTest(unittest.TestCase):
+    def test_linux_reused_pid_during_file_observation_is_not_a_holder(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="kast-legacy-proc-") as temporary:
+            proc = Path(temporary)
+            for pid in (4242, 4343):
+                (proc / str(pid) / "fd").mkdir(parents=True)
+                _ = (proc / str(pid) / "maps").write_text(
+                    "1000-2000 r--p 0 00:00 1 /legacy/plugin.jar\n"
+                )
+            scandir = os.scandir
+
+            def scan(path: str | Path):
+                return scandir(proc if path == "/proc" else path)
+
+            replaced = [True, False]
+
+            def start(pid: int) -> str:
+                return "new" if pid == 4242 and replaced.pop() else "old"
+
+            with (
+                mock_patch.object(purge.os, "scandir", side_effect=scan),
+                mock_patch.object(purge.SystemEffects, "linux_start", side_effect=start),
+            ):
+                observed = purge.SystemEffects.observe_linux()
+
+        selected, _ = purge.holders(observed, ("/legacy",))
+        self.assertEqual((purge.Observed(4343, "old", ("/legacy/plugin.jar",)),), selected)
+
+    def test_darwin_reused_pid_during_file_observation_is_not_a_holder(self) -> None:
+        listing = subprocess.CompletedProcess(
+            [], 0, b"p4242\nn/legacy/plugin.jar\np4343\nn/legacy/stable.jar\n", b""
+        )
+        with (
+            mock_patch.object(
+                purge.SystemEffects,
+                "darwin_starts",
+                side_effect=[{4242: "old", 4343: "stable"}, {4242: "new", 4343: "stable"}],
+            ),
+            mock_patch.object(purge.subprocess, "run", return_value=listing),
+        ):
+            observed = purge.SystemEffects.observe_darwin()
+
+        selected, _ = purge.holders(observed, ("/legacy",))
+        self.assertEqual((purge.Observed(4343, "stable", ("/legacy/stable.jar",)),), selected)
+
     def test_real_holder_is_observed_with_identity_and_retired_by_sigterm(self) -> None:
         with tempfile.TemporaryDirectory(prefix="kast-legacy-holder-") as temporary:
             plugin = Path(temporary).resolve() / "plugins/kast-ide-hosted"
