@@ -74,6 +74,28 @@ Do not combine `--local-artifact` with `--channel`, `--version`, or `--commit`.
   Use managed headless Hosts with private workspace state and automatic workspace creation instead.
 </Warning>
 
+### Replace a pre-product installation
+
+Releases 0.51.3 and older have no product selection record, so the installer rejects them and prints `LEGACY_PURGE_AVAILABLE`.
+To remove such an installation before the new product installs, add `--purge-legacy`:
+
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview --purge-legacy --dry-run --json
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview --purge-legacy --json
+```
+
+The dry run changes nothing. It reports the old version, the processes to stop, and the paths to delete.
+The purge runs only after the new product is downloaded and verified. It then takes these steps in order:
+
+1. It verifies the old payload, its `management.json` receipt, and the launcher digest. It then runs the launcher's `uninstall --force --json`. Any outcome other than `REMOVED` stops the purge.
+2. It stops desktop IDEs that still run the removed `kast-ide-hosted` plugin, and Hosts that run from an old runtime. Each process gets `SIGTERM`, then `SIGKILL` after 40 seconds. A process that survives both stops the purge.
+3. It deletes old runtimes, workspace containers, the reset lock, and socket roots under `/tmp`. It also deletes `kast-ide-hosted` copies in desktop JetBrains profiles.
+
+Unsaved IDE work can be lost, so save it first.
+The first semantic request afterward imports the workspace again, including a fresh private Gradle home, which can take several minutes.
+Agent registrations are left unchanged because the new product recreates the launcher paths they use.
+Developer `0.0.N` builds and unrecognized files reject without changes.
+
 Explicit MCP setup uses target-specific dependencies packaged with the selected Control build.
 It verifies the private interpreter and exact dependency inventory before preparation. It does not invoke pip, uv, or a dependency solver.
 Upgrade, recorded recovery, and product removal reuse admitted private support; missing or changed bytes reject without an ambient interpreter fallback.

@@ -43,6 +43,7 @@ class BootstrapTest(unittest.TestCase):
                 "packaging/internal/product/managed_product_installation.py"
             ),
             "managed_product_removal.py": "packaging/internal/product/managed_product_removal.py",
+            "legacy_purge.py": "packaging/internal/installation/legacy_purge.py",
             "immutable_store.py": "packaging/internal/installation/immutable_store.py",
             "product_removal_recovery.py": "packaging/internal/product/product_removal_recovery.py",
             "product_mcp_removal.py": "packaging/internal/product/product_mcp_removal.py",
@@ -98,6 +99,7 @@ class BootstrapTest(unittest.TestCase):
             "managed_product.py",
             "managed_product_installation.py",
             "managed_product_removal.py",
+            "legacy_purge.py",
             "immutable_store.py",
             "product_removal_recovery.py",
             "product_mcp_removal.py",
