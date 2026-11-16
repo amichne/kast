@@ -211,12 +211,7 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
       - name: Exercise macOS reset adapters
-        run: >-
-          ./gradlew --no-parallel --max-workers=2 -Dorg.gradle.jvmargs=-Xmx4g :distribution:cli:test
-          --tests '*NativeResetListenerTest'
-          --tests '*NativeResetPeerAcceptanceTest'
-          --tests '*ResetLaunchObservationTest'
-          --console=plain
+        run: uv run --locked --script .github/scripts/ci/macos_reset_checks.py
       - name: Release Gradle memory before native compilation
         run: ./gradlew --stop
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8

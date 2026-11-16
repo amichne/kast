@@ -7,6 +7,7 @@
     "test_push_policy.py",
     "gradle_graph.py",
     "gradle_diagnostics.py",
+    "macos_reset_checks.py",
     "native_handoff.py",
     "build_storage.py",
     "../release/finalize_assets.py",

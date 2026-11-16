@@ -16,6 +16,7 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import unquote
 
+import macos_reset_checks
 import verification_plan
 from validation_scope import (
     ALL_CHECKS,
@@ -777,8 +778,15 @@ class SourceInventoryTest(unittest.TestCase):
             body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
             self.assertIn("uses: gradle/actions/setup-gradle@", body)
             self.assertIn("cache-read-only: ${{ !(github.ref == 'refs/heads/main'", body)
-        for case in ("NativeResetListenerTest", "NativeResetPeerAcceptanceTest", "ResetLaunchObservationTest"):
-            self.assertIn(f"--tests '*{case}'", workflow)
+        self.assertIn("uv run --locked --script .github/scripts/ci/macos_reset_checks.py", body)
+        command = macos_reset_checks.COMMAND
+        self.assertIn(":distribution:cli:test", command)
+        self.assertIn("--info", command)
+        self.assertIn("--no-daemon", command)
+        self.assertEqual(
+            ("*NativeResetListenerTest", "*NativeResetPeerAcceptanceTest", "*ResetLaunchObservationTest"),
+            tuple(value for option, value in zip(command, command[1:]) if option == "--tests"),
+        )
 
     def test_mac_disable_preserves_linux_checks_and_blocks_new_preview_products(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
