@@ -23,6 +23,7 @@ from validation_scope import Scope
 import build_candidate as candidate
 import developer_catalog as catalog
 import publish_developer as publisher
+import qualified_runtime_assets as runtime_assets
 from test_developer_catalog import entry
 
 REPOSITORY = "amichne/kast"
@@ -31,6 +32,18 @@ MAIN = "b" * 40
 TREE = "c" * 40
 VERSION = "0.0.123"
 RUNTIME_TARGETS = ("linux-x86_64", "macos-aarch64")
+
+
+@dataclass(frozen=True)
+class RuntimeAssemblyReceipt:
+    sourceRevision: str
+    bundleSha256: str
+    runtimeSha256: str
+    controlSha256: str
+    composition: catalog.product.NativeCompositionEvidence | None = None
+    schemaVersion: int = 2
+    qualificationStage: str = "COMPONENT_ASSEMBLY"
+    qualification: str = "COMPLETE"
 
 
 def runtime_fixture(
@@ -315,6 +328,46 @@ def upload(asset: publisher.PublicationAsset, *, interrupted: bool = False) -> S
 
 
 class CandidateFixture(unittest.TestCase):
+    def test_runtime_asset_admission_preserves_legacy_and_versioned_receipts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = "linux-x86_64"
+            runtime_fixture(root, target, version=VERSION, revision=BUILD)
+            artifact = root / f"kast-release-runtime-v{VERSION}-{target}-{BUILD}"
+            name = f"kast-runtime-v{VERSION}-{target}.zip"
+            archive, checksum = runtime_assets.admit_runtime(artifact, name, VERSION, target, BUILD)
+            self.assertEqual(name, archive.name)
+            self.assertEqual(name + ".sha256", checksum.name)
+            digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+            receipt = RuntimeAssemblyReceipt(BUILD, "a" * 64, digest, "b" * 64)
+            path = artifact / "composed-evidence/qualification.json"
+            _ = path.write_text(json.dumps(asdict(receipt)))
+            self.assertEqual(
+                (archive, checksum),
+                runtime_assets.admit_runtime(artifact, name, VERSION, target, BUILD),
+            )
+            split = replace(
+                receipt,
+                runtimeSha256="e" * 64,
+                composition=catalog.product.NativeCompositionEvidence(
+                    "f" * 64, "e" * 64, "a" * 64, digest
+                ),
+            )
+            _ = path.write_text(json.dumps(asdict(split)))
+            self.assertEqual(
+                (archive, checksum),
+                runtime_assets.admit_runtime(artifact, name, VERSION, target, BUILD),
+            )
+            for invalid in (
+                replace(receipt, schemaVersion=3),
+                replace(receipt, qualificationStage="COMPONENT_NATIVE"),
+                replace(receipt, runtimeSha256="c" * 64),
+                replace(split, runtimeSha256="c" * 64),
+            ):
+                _ = path.write_text(json.dumps(asdict(invalid)))
+                with self.subTest(receipt=invalid), self.assertRaises(ValueError):
+                    _ = runtime_assets.admit_runtime(artifact, name, VERSION, target, BUILD)
+
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

@@ -1,7 +1,8 @@
 """Native installed-product acceptance in an exclusively owned disposable HOME.
 
-The baseline is an explicit complete component-qualified composition, never latest/main
-or a same-composition repair. Publication and prior installed acceptance are not required.
+The baseline is an explicit complete qualified composition, never latest/main
+or a same-composition repair. Legacy native receipts qualify old baselines;
+assembly-only baselines require detached installed acceptance. Publication is not required.
 No receipt is emitted unless every real lifecycle case completes.
 """
 
@@ -9,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import json
 import os
 import platform
@@ -17,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -32,6 +35,18 @@ if not sys.flags.isolated:
 import managed_installation as installation
 import managed_release as product
 import product_acceptance as acceptance
+from composed_host_probe import (
+    HostIdentity,
+    caller_names,
+    endpoint,
+    java_reference_contexts,
+    linux_core_library,
+    live_host,
+)
+from composed_host_probe import (
+    complete as compiler_complete,
+)
+from composition_platform import HostPlatform, host_platform
 from private_interpreter import PrivateInterpreter
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".github/scripts/release"))
@@ -39,6 +54,23 @@ import product_candidate as candidate
 
 INVOCATION_FILE = Path(
     "invocation/src/main/kotlin/fixture/staticcallbacks/invocation/Invocation.kt"
+)
+CALLERS = frozenset({"forwardOnce", "mutualSecond", "aliasWrapper", "mutableAliasWrapper"})
+CALLERS_QUERY = (
+    "query",
+    "--name",
+    "invokeCallback",
+    "--kind",
+    "function",
+    "--in",
+    "invocation",
+    "--source-set",
+    "main",
+    "--relation",
+    "callers",
+    "--fields",
+    "name,signature,location",
+    "--json",
 )
 
 
@@ -183,6 +215,7 @@ class Probe:
         raw: bytes | None = None,
         *,
         launcher: Path | None = None,
+        rejected: bool = False,
     ) -> bytes:
         prefix = (
             ["/usr/bin/sandbox-exec", "-f", str(self.sandbox)] if self.sandbox is not None else []
@@ -199,9 +232,160 @@ class Probe:
         )
         _ = (self.evidence / f"{case}.stdout").write_bytes(result.stdout)
         _ = (self.evidence / f"{case}.stderr").write_bytes(result.stderr)
-        if result.returncode:
+        if (result.returncode == 0) == rejected:
             raise ValueError(f"native case failed: {case}")
         return result.stdout
+
+    def observe_host(
+        self, case: str, workspace: Path, lifetime: str, runtime_digest: str
+    ) -> HostIdentity:
+        """Bind the answering compiler lifetime to this installation's runtime and profile."""
+        target = host_platform(platform.system(), platform.machine())
+        if not isinstance(target, HostPlatform):
+            raise ValueError("unsupported native Host platform")
+        store = self.root.parent / "kast-workspaces"
+        directory = store / "containers" / hashlib.sha256(os.fsencode(workspace)).hexdigest()
+        record = product.document((directory / "container.json").read_bytes())
+        generation = product.document((directory / "generation.json").read_bytes())
+        reference = product.document(
+            (self.root / "installation/share/kast/product-selection.json").read_bytes()
+        )
+        runtime = store / "runtimes" / runtime_digest
+        if (
+            not product.mapping(record)
+            or record.get("workspace") != str(workspace)
+            or record.get("id") != directory.name
+            or not product.mapping(generation)
+            or generation.get("archiveSha256") != runtime_digest
+            or generation.get("runtime") != runtime_digest
+            or not product.mapping(reference)
+            or reference.get("runtimeRoot") != str(runtime)
+            or reference.get("runtimeArchiveSha256") != runtime_digest
+            or runtime.resolve() != runtime
+        ):
+            raise ValueError("Host generation differs from installed runtime")
+        profile = directory
+        if generation.get("schemaVersion") == 2:
+            identity = generation.get("generation")
+            if not isinstance(identity, str) or str(uuid.UUID(identity)) != identity:
+                raise ValueError("invalid Host generation identity")
+            profile = directory / "generations" / identity
+        elif generation.get("schemaVersion") != 1 or generation.get("generation") is not None:
+            raise ValueError("invalid Host generation")
+        if profile.resolve() != profile:
+            raise ValueError("Host profile escaped private generation")
+        home = runtime / ("host" if target.is_linux else "host/Kast.app/Contents")
+        observed = live_host(profile, workspace, target, self.evidence, case, runtime_home=home)
+        if observed.workspaceLifetime != lifetime:
+            raise ValueError("answering compiler differs from installed Host lifetime")
+        if target.is_linux and any(
+            not Path(library).is_relative_to(home) and not linux_core_library(Path(library))
+            for library in observed.libraries
+        ):
+            raise ValueError("Host loaded a shared library outside the installed runtime")
+        return observed
+
+    def callers(
+        self, case: str, workspace: Path, expected: frozenset[str], lifetime: str
+    ) -> tuple[str, ...]:
+        document = self.compiler_document(self.run(case, workspace, CALLERS_QUERY), lifetime)
+        names = caller_names(document, workspace)
+        if names != tuple(sorted(expected)):
+            raise ValueError("callers differ from independent expected edges")
+        return names
+
+    @staticmethod
+    def compiler_document(raw: bytes, lifetime: str) -> dict[object, object]:
+        document = compiler_complete(product.document(raw))
+        live = document.get("live")
+        if (
+            document.get("status") != "complete"
+            or not product.mapping(live)
+            or live.get("host") != lifetime
+        ):
+            raise ValueError("compiler result differs from answering Host lifetime")
+        return document
+
+    def compiler_cases(self, workspace: Path, lifetime: str, runtime_digest: str) -> HostIdentity:
+        original = self.observe_host("answering-host", workspace, lifetime, runtime_digest)
+        _ = self.callers("callers", workspace, CALLERS, lifetime)
+        self.completed.add(acceptance.Case.CALLERS)
+        document = self.compiler_document(
+            self.run(
+                "java-references",
+                workspace,
+                (
+                    "query",
+                    "--name",
+                    "Nested",
+                    "--kind",
+                    "class",
+                    "--in",
+                    "invocation",
+                    "--source-set",
+                    "main",
+                    "--relation",
+                    "references",
+                    "--output",
+                    "occurrences",
+                    "--json",
+                ),
+            ),
+            lifetime,
+        )
+        _ = java_reference_contexts(document, workspace)
+        self.completed.add(acceptance.Case.JAVA)
+        unknown = product.document(
+            self.run(
+                "unknown-result",
+                workspace,
+                (
+                    "result",
+                    "read",
+                    "--ref",
+                    "result:v1:00000000-0000-4000-8000-000000000000",
+                    "--json",
+                ),
+                rejected=True,
+            )
+        )
+        if not product.mapping(unknown) or unknown.get("type") != "rejected_document":
+            raise ValueError("unknown retained result was not rejected")
+        self.completed.add(acceptance.Case.UNKNOWN)
+        fresh = "freshExternalCaller"
+        forwarding = workspace / (
+            "forwarding/src/main/kotlin/fixture/staticcallbacks/forwarding/Forwarding.kt"
+        )
+        with forwarding.open("a") as source:
+            _ = source.write(
+                f"\nfun {fresh}(block: () -> String): String = invokeCallback(block)\n"
+            )
+        _ = self.callers("external-edit", workspace, CALLERS | {fresh}, lifetime)
+        reused = self.observe_host("reanalysed-host", workspace, lifetime, runtime_digest)
+        if (reused.pid, reused.started, reused.lifetime, reused.workspaceLifetime) != (
+            original.pid,
+            original.started,
+            original.lifetime,
+            original.workspaceLifetime,
+        ):
+            raise ValueError("external edit replaced the answering Host")
+        self.completed.update((acceptance.Case.HOST, acceptance.Case.REANALYSIS))
+        return reused
+
+    @staticmethod
+    def stopped_endpoints(host: HostIdentity) -> None:
+        profile = Path(host.profile)
+        # The observed IDEA profile is below the generation's private HOME.
+        private_home = next((path for path in profile.parents if path.name == "home"), None)
+        if private_home is None or private_home.parent.name != "state":
+            raise ValueError("Host profile lost private HOME")
+        root = private_home.parent.parent
+        for path in (
+            endpoint(root, "ide-hosted", Path(host.workspace)),
+            endpoint(root, "ide-lifecycle", Path(host.runtimeHome)),
+        ):
+            if os.path.lexists(path) or os.path.lexists(path.with_name("host.sock")):
+                raise ValueError("stop retained endpoint or socket")
 
     def catalog(self, workspace: Path) -> None:
         raw = self.run(
@@ -304,7 +488,7 @@ class Probe:
         ):
             raise ValueError("native product installation rejected")
 
-    def mcp(self, workspace: Path) -> None:
+    def mcp(self, workspace: Path, lifetime: str) -> None:
         with (
             (self.evidence / "mcp.stderr").open("wb") as errors,
             subprocess.Popen(
@@ -355,11 +539,13 @@ class Probe:
                             document = product.document(str(content[0]["text"]).encode())
                             if result.get("structuredContent") != document:
                                 raise ValueError("MCP text and structured evidence differ")
-                            _ = semantic(
+                            observed = semantic(
                                 document,
                                 "invokeCallback",
                                 workspace / INVOCATION_FILE,
                             )
+                            if observed != lifetime:
+                                raise ValueError("MCP answered from a different Host lifetime")
                 process.stdin.close()
                 if process.wait(timeout=60):
                     raise ValueError("MCP child failed")
@@ -370,9 +556,9 @@ class Probe:
 
 
 def require_baseline(directory: Path, record: product.ProductRecord) -> product.ProductRecord:
-    baseline = candidate.read(directory)
+    baseline = candidate.read_baseline(directory)
     if isinstance(baseline, candidate.candidate.Failure):
-        raise ValueError("unmet input: complete component-qualified baseline product")
+        raise ValueError("unmet input: complete qualified baseline product")
     for target in record.targets:
         prior = next(item for item in baseline.targets if item.target == target.target)
         if (prior.bundle.sha256, prior.runtime.sha256, prior.qualification.controlSha256) == (
@@ -431,6 +617,11 @@ def execute(
             _ = shutil.copytree(
                 repository / "experiments/host-observation/static-callback-fixture", workspace
             )
+            _ = shutil.copytree(
+                repository / "experiments/host-observation/composed-host-fixture-overlay",
+                workspace,
+                dirs_exist_ok=True,
+            )
             _ = shutil.copytree(repository / "gradle/wrapper", workspace / "gradle/wrapper")
             _ = shutil.copy2(repository / "gradlew", workspace / "gradlew")
         sentinels = (
@@ -450,12 +641,22 @@ def execute(
         try:
             probe.install(baseline_directory, baseline)
             baseline_host = probe.query("baseline", roots[0])
+            prior = next(item for item in baseline.targets if item.target == target)
+            baseline_identity = probe.observe_host(
+                "baseline-host", roots[0], baseline_host, prior.runtime.sha256
+            )
             probe.install(directory, record)
             facts = next(item for item in record.targets if item.target == target)
             if product.file_digest(probe.control) != facts.qualification.controlSha256:
                 raise ValueError("installed Control differs from qualified bytes")
             upgraded_host = probe.query("upgrade", roots[0])
-            if upgraded_host == baseline_host:
+            upgraded_identity = probe.observe_host(
+                "upgraded-host", roots[0], upgraded_host, facts.runtime.sha256
+            )
+            if (
+                upgraded_host == baseline_host
+                or upgraded_identity.lifetime == baseline_identity.lifetime
+            ):
                 raise ValueError("upgrade retained the baseline compiler workspace lifetime")
             if (root / "installation/share/kast/build-record.json").read_bytes() != (
                 directory / "build-record.json"
@@ -466,6 +667,8 @@ def execute(
             if root.exists() or (root.parent / "kast-workspaces").exists():
                 raise ValueError("fresh-install prerequisite retained managed state")
             probe.install(directory, record)
+            if product.file_digest(probe.control) != facts.qualification.controlSha256:
+                raise ValueError("fresh installed Control differs from qualified bytes")
             containers = root.parent / "kast-workspaces/containers"
             if containers.exists():
                 raise ValueError("installation created semantic workspace state")
@@ -486,7 +689,8 @@ def execute(
             probe.completed.update(
                 (acceptance.Case.FRESH, acceptance.Case.CLI, acceptance.Case.PARALLEL)
             )
-            _ = complete(
+            observed_host = probe.compiler_cases(roots[0], current_host, facts.runtime.sha256)
+            rpc_host = complete(
                 probe.run(
                     "rpc",
                     roots[0],
@@ -497,13 +701,28 @@ def execute(
                 "invokeCallback",
                 roots[0] / INVOCATION_FILE,
             )
+            if rpc_host != current_host:
+                raise ValueError("RPC answered from a different Host lifetime")
             probe.completed.add(acceptance.Case.RPC)
-            probe.mcp(roots[0])
+            probe.mcp(roots[0], current_host)
             probe.completed.add(acceptance.Case.MCP)
             _ = probe.run("stop", roots[0], ("stop", "--all", "--json"))
+            probe.stopped_endpoints(observed_host)
+            probe.completed.add(acceptance.Case.CLEANUP)
             restarted = probe.query("restart", roots[0])
             if restarted == current_host:
                 raise ValueError("stop did not replace the compiler workspace lifetime")
+            restarted_host = probe.observe_host(
+                "restarted-host", roots[0], restarted, facts.runtime.sha256
+            )
+            if (
+                restarted_host.lifetime == observed_host.lifetime
+                or restarted_host.started <= observed_host.started
+            ):
+                raise ValueError("stop did not replace the native Host process incarnation")
+            _ = probe.callers(
+                "callers-after-restart", roots[0], CALLERS | {"freshExternalCaller"}, restarted
+            )
             probe.completed.add(acceptance.Case.RESTART)
             with ThreadPoolExecutor(max_workers=2) as executor:
                 second = executor.submit(probe.query, "second-root", roots[1])
@@ -514,7 +733,8 @@ def execute(
             probe.completed.add(acceptance.Case.ROOTS)
             source = roots[0] / "invocation/src/main/kotlin/AcceptanceEdited.kt"
             _ = source.write_text("fun acceptanceEditedDeclaration() = 42\n")
-            _ = probe.query("edited", roots[0], "acceptanceEditedDeclaration")
+            if probe.query("edited", roots[0], "acceptanceEditedDeclaration") != restarted:
+                raise ValueError("new-file edit replaced the compiler workspace lifetime")
             probe.completed.add(acceptance.Case.EDIT)
             _ = probe.run("uninstall", roots[0], ("uninstall",))
             if (
@@ -576,7 +796,7 @@ def main() -> int:
         with args.receipt.open("xb") as output:
             _ = output.write(acceptance.encode(receipt))
         return 0
-    except (OSError, ValueError, subprocess.SubprocessError) as failure:
+    except (OSError, ValueError, AssertionError, subprocess.SubprocessError) as failure:
         print(f"installed-product acceptance rejected: {failure}", file=sys.stderr)
         return 1
 

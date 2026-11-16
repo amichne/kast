@@ -277,7 +277,6 @@ def original(raw: bytes, record: bytes, qualification: bytes, manifest: bytes) -
         or receipt.get("qualification") != "COMPLETE"
         or receipt.get("sourceRevision") != parsed.sourceRevision
         or receipt.get("bundleSha256") != facts.bundle.sha256
-        or not release.mapping(receipt.get("probe"))
         or not release.native_receipt_matches(facts, receipt)
     ):
         raise ValueError("original qualification")

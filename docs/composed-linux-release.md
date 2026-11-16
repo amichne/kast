@@ -11,7 +11,7 @@ code_sources:
   - path: packaging/internal/composition/composed_release.py
   - path: packaging/composed_bundle.py
   - path: packaging/internal/composition/composed_host.py
-  - path: packaging/internal/verification/composed_host_probe.py
+  - path: packaging/internal/verification/product_lifecycle_probe.py
   - path: packaging/tests/test_composition_release.py
 ---
 
@@ -37,15 +37,21 @@ The setup archive supplies authenticated inputs to the complete product installe
    - The `.sha256` companion for each archive
    - `assembly.json`, with the source revision and archive digest
 4. Inspect `kast-composed-evidence-TARGET-SHA-RUN_ID-ATTEMPT` for the same run.
-   It keeps the installer logs, probe output, and `qualification.json` when qualification completes.
+   It keeps the archive checks, passive Control output, and `qualification.json` when qualification completes.
    Match the source revision and archive digest across the two artifacts.
 
-The qualification step installs the produced archive into a fresh private root on its target system.
-The probe uses a disposable fixture for compiler results and Host lifecycle evidence.
-Assembly records `NOT_RUN`. The native probe records `COMPLETE` when its checks pass.
+The qualification step extracts and verifies the produced archives in a fresh private root on the target system.
+It checks passive Control discovery without starting a compiler Host or installing a public product.
+Assembly records `NOT_RUN`. Successful qualification records schema 2 `COMPONENT_ASSEMBLY` with `COMPLETE`.
+The receipt binds source, bundle, runtime, and Control digests. It does not claim installed-product acceptance.
 Assembly does not install Control or create a mutable profile. It stages admitted components for archive production.
 The archive contains the canonical generated `install.sh`; it contains no standalone `.pyz` installer.
-Native qualification consumes exact component bytes separately from public installation.
+Installed acceptance uses the shipped Control for callers with edge provenance, Java references, and unknown-result rejection.
+It also checks Linux shared libraries and answering-Host identity, stop cleanup, and re-analysis after an edit.
+No separate test-only native executable is built.
+
+Published schema 1 `COMPONENT_NATIVE` receipts remain admissible under their original contract.
+New assembly-qualified acceptance baselines also require installed acceptance; an assembly receipt alone cannot replace compiler evidence.
 
 The workflow uses read-only repository permissions.
 Source admission runs before assembly and before archive upload.

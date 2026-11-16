@@ -351,64 +351,56 @@ sources:
     resource: repo://distribution/release/test_run_product_gate.py
   - id: openwiki-source-81d5f1627e19148569f46f81
     resource: repo://gradle/libs.versions.toml
-  - id: openwiki-source-74a7088da9d18da2237d9186
-    resource: repo://packaging/bootstrap.sh.in
-  - id: openwiki-source-245e3f9878cb2ef01a1fcbd1
-    resource: repo://packaging/component_probe.py
   - id: openwiki-source-d53edde1666c585216ff3c8d
     resource: repo://packaging/composed_bundle.py
-  - id: openwiki-source-3af59f4285e4c5ca70150126
-    resource: repo://packaging/composed_host_probe.py
-  - id: openwiki-source-e08b876ca00219319cbb81aa
-    resource: repo://packaging/composed_release.py
-  - id: openwiki-source-611b757652f80d3a33875855
-    resource: repo://packaging/container_probe.py
-  - id: openwiki-source-f499e8784ffe1f993e94d42d
-    resource: repo://packaging/generate_bootstrap.py
-  - id: openwiki-source-6fea3b3b86300de08664c4ee
-    resource: repo://packaging/host-installation.py
-  - id: openwiki-source-ab52e7c01cf17ee137f833e7
-    resource: repo://packaging/immutable_store.py
-  - id: openwiki-source-b58c179514e38986fca17024
-    resource: repo://packaging/local_product_install.py
+  - id: openwiki-source-a27b421c9c1d82b40bd5da73
+    resource: repo://packaging/internal/bootstrap/bootstrap.sh.in
+  - id: openwiki-source-9685c35bc7adaf6e5678720b
+    resource: repo://packaging/internal/bootstrap/generate_bootstrap.py
+  - id: openwiki-source-714a256a14f92900e3bd2e7e
+    resource: repo://packaging/internal/composition/composed_release.py
+  - id: openwiki-source-d49c64c0efdff5cd60ab7fde
+    resource: repo://packaging/internal/installation/host-installation.py
+  - id: openwiki-source-f819c9a16e09783f5c943c2d
+    resource: repo://packaging/internal/installation/immutable_store.py
+  - id: openwiki-source-9f2a730e7185b57c14ac08e8
+    resource: repo://packaging/internal/installation/managed_installation.py
+  - id: openwiki-source-496462e31bbb3fc9156abfe9
+    resource: repo://packaging/internal/installation/managed_release.py
+  - id: openwiki-source-d5f001f4e6d4079a98a98b0e
+    resource: repo://packaging/internal/mcp/mcp_dependency_artifact.py
+  - id: openwiki-source-2ee7084aa788108d645f937e
+    resource: repo://packaging/internal/mcp/mcp_environment.py
+  - id: openwiki-source-68861fd33e9641882305aee3
+    resource: repo://packaging/internal/product/local_product_install.py
+  - id: openwiki-source-07f32471b5605b546192361f
+    resource: repo://packaging/internal/product/managed_product_installation.py
+  - id: openwiki-source-543def007b531d23eaa51f66
+    resource: repo://packaging/internal/runtime/runtime_archive.py
+  - id: openwiki-source-e61c96fc4903a7ca5466593c
+    resource: repo://packaging/internal/runtime/runtime_base.py
+  - id: openwiki-source-ba9aa96ff29fd40c40dce826
+    resource: repo://packaging/internal/verification/product_acceptance.py
+  - id: openwiki-source-6904899612d0ede016a5965a
+    resource: repo://packaging/internal/verification/product_lifecycle_probe.py
+  - id: openwiki-source-27b11dfabcb3ca89e348f52d
+    resource: repo://packaging/internal/verification/run-installed-product.py
   - id: openwiki-source-621afc296584eb4217553339
     resource: repo://packaging/managed_headless.py
-  - id: openwiki-source-1380068036b00bec817a6579
-    resource: repo://packaging/managed_installation.py
-  - id: openwiki-source-7f5792fd36f508c6577b3562
-    resource: repo://packaging/managed_product_installation.py
-  - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
-    resource: repo://packaging/managed_release.py
-  - id: openwiki-source-b7b8ecfa241af4c2651f20bf
-    resource: repo://packaging/mcp_dependency_artifact.py
-  - id: openwiki-source-4cbbb1b86a2d8ec6765d827e
-    resource: repo://packaging/mcp_environment.py
-  - id: openwiki-source-e7484ccb9a72cd71aa938a2f
-    resource: repo://packaging/product_acceptance.py
-  - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
-    resource: repo://packaging/product_lifecycle_probe.py
-  - id: openwiki-source-8faf23d69764b95242de5e09
-    resource: repo://packaging/run-installed-product.py
-  - id: openwiki-source-5f93c137a1afcd8823606c72
-    resource: repo://packaging/runtime_archive.py
-  - id: openwiki-source-0b3a81cf548ab371bc04037e
-    resource: repo://packaging/runtime_base.py
-  - id: openwiki-source-86043bd644ea68991c4b7993
-    resource: repo://packaging/test_composition_bundle.py
-  - id: openwiki-source-84582271586e7e5586eb61c9
-    resource: repo://packaging/test_local_product_install.py
-  - id: openwiki-source-4f7923fe2058729f3c0b96fe
-    resource: repo://packaging/test_mcp_dependency_artifact.py
-  - id: openwiki-source-fbdf7de26cc8b3b5b59b53a6
-    resource: repo://packaging/test_product_acceptance.py
-  - id: openwiki-source-25977fc13c4ddf2c0840d6fd
-    resource: repo://packaging/test-install-checkout.py
-  - id: openwiki-source-2cd23a68d0d65408a59d5b1a
-    resource: repo://packaging/test-managed-bootstrap.py
-  - id: openwiki-source-b3ca2d66028c874ac7b10e77
-    resource: repo://packaging/test-managed-build-record.py
-  - id: openwiki-source-28da94aa4ff852ccd4226980
-    resource: repo://packaging/test-managed-headless.py
+  - id: openwiki-source-bcd37dcb7ef8ba1e7f516e0f
+    resource: repo://packaging/tests/test_composition_bundle.py
+  - id: openwiki-source-278ed736a68f237214fdc90e
+    resource: repo://packaging/tests/test_mcp_dependency_artifact.py
+  - id: openwiki-source-56b11a0b6d3644e3f2024856
+    resource: repo://packaging/tests/test_product_acceptance.py
+  - id: openwiki-source-12d7829bb8c1e9c898163e3a
+    resource: repo://packaging/tests/test-install-checkout.py
+  - id: openwiki-source-d4b63d273ed6048ab72eda6d
+    resource: repo://packaging/tests/test-managed-bootstrap.py
+  - id: openwiki-source-abab1b24f64b3271633d720d
+    resource: repo://packaging/tests/test-managed-build-record.py
+  - id: openwiki-source-ab43a673f10e05a8590d3331
+    resource: repo://packaging/tests/test-managed-headless.py
   - id: openwiki-source-7fa48d17b46dccf82f4b3238
     resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-d124e13c6fde72403a229a1e
@@ -424,7 +416,7 @@ sources:
 generated: { by: "unknown", at: "2026-11-16T04:06:28.637Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-16T04:06:28.637Z
+    at: 2026-11-16T17:58:38.298Z
 ---
 
 # Distribution and packaging
@@ -445,8 +437,8 @@ The bootstrap still downloads pinned private Python and `defusedxml`; local inpu
 Local installed records require `PinnedBuild`, no public version, and the matching developer tag; recorded source and artifact identities remain exact.
 
 `python3 packaging/local_product_install.py build --source CLEAN_CHECKOUT --output DIRECTORY` exports a local product without global installation.
-The current builder admits a clean committed checkout on macOS ARM64, shares actual assembly and component-native qualification, then calls `product_producer.seal_target`.
-It records real source, input, artifact and native evidence for that one target in `build-record.json`, `payload/` and `evidence/`.
+The current builder admits a clean committed checkout on macOS ARM64, verifies component assembly, then calls `product_producer.seal_target`.
+It records source, input, artifact and assembly evidence for that one target in `build-record.json`, `payload/` and `evidence/`.
 Its `LOCAL_PRODUCT_BUILT` receipt leaves `releaseQualification: NOT_ESTABLISHED`.
 Canonical installation remains a separate generated `install.sh --local-artifact DIRECTORY` invocation.
 
@@ -503,10 +495,11 @@ Control and Host retain separate component artifact ownership and reviewed `idea
 
 ## Component qualification and installed acceptance
 
-`composed_release._qualify_release` validates exact component inputs and invokes `ComponentHarness`, a test-native process boundary.
-The component probes exercise compiler behavior and private workspace retirement without first installing a public product.
-Their `COMPONENT_NATIVE` receipt binds source, bundle, and harness identity; it is not installed-product acceptance.
-The retained `container_probe.py` filename does not imply use of retired public container commands.
+`composed_release._qualify_release` validates exact component archives and passive discovery through the shipped Control.
+It does not start a compiler Host or build a test-only native executable.
+The schema 2 `COMPONENT_ASSEMBLY` receipt binds source, bundle, runtime, and Control identities, not installed-product acceptance.
+The producer hashes Control itself before sealing the build record; it does not take that identity on trust from the receipt.
+Published schema 1 `COMPONENT_NATIVE` receipts remain admissible under their original contract without relabelling them.
 
 The CI `product_producer.py target` command records one native target's evidence.
 Its `seal` operation requires both target inputs from the exact producer attempt and creates the immutable build record without rebuilding.
@@ -516,7 +509,8 @@ The later `accept` operation joins detached receipts without rewriting the seale
 Preview publication and stable promotion require those receipts and retain the original record and payload bytes.
 
 `product_lifecycle_probe.py` and `product_acceptance.py` own the installed acceptance scenarios and detached evidence contract.
-The baseline needs sealed component qualification, not prior publication or installed acceptance.
+The baseline needs sealed component qualification, not prior publication.
+New assembly-qualified baselines also need installed acceptance. Published native-qualified baselines retain their original admission contract.
 CI admits its exact record digest, source revision, producer attempt, and successful sealing job.
 A later failure in the baseline run does not erase that sealing evidence.
 The baseline can share the candidate's source revision, but each native target needs a different actual bundle/runtime/Control composition.
@@ -530,8 +524,11 @@ Three simultaneous shipped public first queries to one root must all succeed and
 This is a fresh-install check, not merely parallel requests to a warm Host.
 
 The probe also checks CLI, MCP, RPC, stop/restart, simultaneous requests across two roots, and edits.
+The six former component probes now use the installed Control: exact caller edges, Java references, unknown-result rejection,
+Linux runtime-only shared libraries and answering-Host identity, endpoint/socket cleanup, and re-analysis after an existing-file edit.
 Final uninstall must preserve sentinels in the private HOME, a foreign IDEA profile, the explicit external Gradle directory, and both repositories.
-The receipt inventory includes `FRESH_INSTALL`, `PASSIVE_DISCOVERY`, and `SAME_ROOT_PARALLEL_FIRST_QUERIES`.
+Schema 2 installed receipts require all 18 cases, including `FRESH_INSTALL`, `PASSIVE_DISCOVERY`, and `SAME_ROOT_PARALLEL_FIRST_QUERIES`.
+Schema 1 keeps its original 12 cases and is accepted only with legacy component-native evidence.
 It writes a detached receipt only after all required cases complete.
 The receipt binds the original build record, native target, Control digest, producer, baseline record, and baseline component digests.
 Both target receipts must name the same baseline record and source revision.
@@ -630,7 +627,7 @@ Linux complete-product composition starts after scope selection.
 Fresh Mac composition restores the exact same-attempt release from the existing native and assembly jobs rather than compiling Control twice.
 Admission retains source revision, tree, version, archive digest, platform, and compiler checks.
 The reused PR candidate path keeps independent compilation because it has no same-attempt native release.
-Both native component harnesses and target qualification remain required.
+Both targets require component assembly qualification. Installed acceptance owns compiler and lifecycle evidence through the shipped Control.
 Sealing joins successful source work and both qualified targets before installed acceptance.
 
 Successful main push CI requests developer promotion.

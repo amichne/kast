@@ -611,19 +611,43 @@ def decode_installed_product_record(raw: bytes) -> ProductRecord | LocalProductR
 def native_receipt_matches(target: ProductTarget, receipt: object) -> bool:
     from dataclasses import asdict
 
-    if (
-        not mapping(receipt)
-        or not mapping(containers := receipt.get("containers"))
-        or receipt.get("qualificationStage") != "COMPONENT_NATIVE"
-        or not isinstance(harness := receipt.get("harnessSha256"), str)
-        or not DIGEST.fullmatch(harness)
-    ):
+    if not mapping(receipt) or receipt.get("qualification") != "COMPLETE":
         return False
     composition = target.qualification.composition
     expected = composition.nativeRuntimeSha256 if composition else target.runtime.sha256
+    # Published component-native receipts remain admissible without relabelling
+    # their proof. New assembly receipts do not claim installed acceptance.
+    version = receipt.get("schemaVersion", 1)
+    if type(version) is not int:
+        return False
+    if version == 1:
+        if (
+            receipt.get("qualificationStage") != "COMPONENT_NATIVE"
+            or not isinstance(harness := receipt.get("harnessSha256"), str)
+            or not DIGEST.fullmatch(harness)
+            or not mapping(receipt.get("probe"))
+            or not mapping(containers := receipt.get("containers"))
+        ):
+            return False
+        runtime, control = containers.get("runtimeSha256"), containers.get("controlSha256")
+    elif version == 2:
+        if receipt.get("qualificationStage") != "COMPONENT_ASSEMBLY" or set(receipt) != {
+            "schemaVersion",
+            "qualificationStage",
+            "qualification",
+            "sourceRevision",
+            "bundleSha256",
+            "runtimeSha256",
+            "controlSha256",
+            "composition",
+        }:
+            return False
+        runtime, control = receipt.get("runtimeSha256"), receipt.get("controlSha256")
+    else:
+        return False
     return (
-        containers.get("runtimeSha256") == expected
-        and containers.get("controlSha256") == target.qualification.controlSha256
+        runtime == expected
+        and control == target.qualification.controlSha256
         and receipt.get("composition") == (asdict(composition) if composition else None)
     )
 

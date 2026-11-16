@@ -506,7 +506,21 @@ jobs:
             echo 'Unmet input: explicit different component-qualified baseline required; repair is not upgrade' >&2
             exit 1
           }
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+      # Schema-2 baselines qualify only with their detached acceptance receipts, which
+      # exist in the joined candidate. Legacy baselines predate that artifact; admission
+      # below still rejects a schema-2 sealed record that lacks acceptance.
+      - name: Download the accepted baseline candidate
+        id: accepted-baseline
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ci-product-candidate-${{ vars.KAST_ACCEPTANCE_BASELINE_REVISION }}-${{ vars.KAST_ACCEPTANCE_BASELINE_RUN_ATTEMPT }}
+          run-id: ${{ vars.KAST_ACCEPTANCE_BASELINE_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: build/product-baseline
+      - name: Download the legacy sealed baseline
+        if: steps.accepted-baseline.outcome != 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: ci-product-sealed-${{ vars.KAST_ACCEPTANCE_BASELINE_REVISION }}-${{ vars.KAST_ACCEPTANCE_BASELINE_RUN_ATTEMPT }}
           run-id: ${{ vars.KAST_ACCEPTANCE_BASELINE_RUN_ID }}

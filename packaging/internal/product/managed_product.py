@@ -378,7 +378,6 @@ def stage_product(
             or receipt.get("qualification") != "COMPLETE"
             or receipt.get("sourceRevision") != selected.record.sourceRevision
             or receipt.get("bundleSha256") != facts.bundle.sha256
-            or not release.mapping(receipt.get("probe"))
         ):
             raise ValueError("native qualification")
         if not release.native_receipt_matches(facts, receipt):

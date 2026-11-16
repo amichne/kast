@@ -28,8 +28,6 @@ sources:
     resource: repo://.github/scripts/release/product_producer.py
   - id: openwiki-source-f02c30e87f3db4d071a7be5b
     resource: repo://.github/scripts/release/publish_developer.py
-  - id: openwiki-source-164e2da859b5277df81c7d94
-    resource: repo://.github/workflows/ci.yml
   - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
     resource: repo://cli/build.gradle.kts
   - id: openwiki-source-581a5d52446c24f31ab1ed9d
@@ -106,36 +104,32 @@ sources:
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/BuildSelectionTest.kt
   - id: openwiki-source-d95d75ec0e14dda7faf63dbf
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/ManagedUpgradeSelectionFileTest.kt
-  - id: openwiki-source-245e3f9878cb2ef01a1fcbd1
-    resource: repo://packaging/component_probe.py
-  - id: openwiki-source-3af59f4285e4c5ca70150126
-    resource: repo://packaging/composed_host_probe.py
-  - id: openwiki-source-e08b876ca00219319cbb81aa
-    resource: repo://packaging/composed_release.py
-  - id: openwiki-source-611b757652f80d3a33875855
-    resource: repo://packaging/container_probe.py
-  - id: openwiki-source-f499e8784ffe1f993e94d42d
-    resource: repo://packaging/generate_bootstrap.py
-  - id: openwiki-source-1380068036b00bec817a6579
-    resource: repo://packaging/managed_installation.py
-  - id: openwiki-source-7f5792fd36f508c6577b3562
-    resource: repo://packaging/managed_product_installation.py
-  - id: openwiki-source-b7b8ecfa241af4c2651f20bf
-    resource: repo://packaging/mcp_dependency_artifact.py
-  - id: openwiki-source-4cbbb1b86a2d8ec6765d827e
-    resource: repo://packaging/mcp_environment.py
-  - id: openwiki-source-e7484ccb9a72cd71aa938a2f
-    resource: repo://packaging/product_acceptance.py
-  - id: openwiki-source-72a2e0c4bf1e54eeb4c8db6c
-    resource: repo://packaging/product_lifecycle_probe.py
-  - id: openwiki-source-4f7923fe2058729f3c0b96fe
-    resource: repo://packaging/test_mcp_dependency_artifact.py
-  - id: openwiki-source-2cd23a68d0d65408a59d5b1a
-    resource: repo://packaging/test-managed-bootstrap.py
-generated: { by: "amp", at: "2026-11-15T23:15:42.491Z" }
+  - id: openwiki-source-9685c35bc7adaf6e5678720b
+    resource: repo://packaging/internal/bootstrap/generate_bootstrap.py
+  - id: openwiki-source-714a256a14f92900e3bd2e7e
+    resource: repo://packaging/internal/composition/composed_release.py
+  - id: openwiki-source-9f2a730e7185b57c14ac08e8
+    resource: repo://packaging/internal/installation/managed_installation.py
+  - id: openwiki-source-496462e31bbb3fc9156abfe9
+    resource: repo://packaging/internal/installation/managed_release.py
+  - id: openwiki-source-d5f001f4e6d4079a98a98b0e
+    resource: repo://packaging/internal/mcp/mcp_dependency_artifact.py
+  - id: openwiki-source-2ee7084aa788108d645f937e
+    resource: repo://packaging/internal/mcp/mcp_environment.py
+  - id: openwiki-source-07f32471b5605b546192361f
+    resource: repo://packaging/internal/product/managed_product_installation.py
+  - id: openwiki-source-ba9aa96ff29fd40c40dce826
+    resource: repo://packaging/internal/verification/product_acceptance.py
+  - id: openwiki-source-6904899612d0ede016a5965a
+    resource: repo://packaging/internal/verification/product_lifecycle_probe.py
+  - id: openwiki-source-278ed736a68f237214fdc90e
+    resource: repo://packaging/tests/test_mcp_dependency_artifact.py
+  - id: openwiki-source-d4b63d273ed6048ab72eda6d
+    resource: repo://packaging/tests/test-managed-bootstrap.py
+generated: { by: "unknown", at: "2026-11-16T17:54:20.995Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T23:15:42.491Z
+    at: 2026-11-16T18:00:35.258Z
 ---
 
 # Native management and harness connections
@@ -296,11 +290,14 @@ It rechecks for new registrations under the registration lock and holds that loc
 Explicit harness removal forgets only the selected routing record after verified cleanup.
 Kotlin schema-2/schema-3 receipts and Python replacement preserve these records.
 
-Qualification separates component execution from installed-product acceptance.
-`composed_release._qualify_release` uses a test-native component harness, not retired public standalone or container commands.
+Qualification separates component assembly checks from installed-product acceptance.
+`composed_release._qualify_release` verifies exact archives and passive shipped-Control discovery, without a test-only native executable.
+Schema 2 `COMPONENT_ASSEMBLY` receipts bind source, bundle, runtime, and Control digests; the producer hashes Control itself.
+Installed acceptance owns compiler queries, result rejection, Host identity, Linux libraries, stop cleanup, and re-analysis after edits.
 The producer seals both component-qualified targets into one immutable build record before installed-product acceptance.
 Acceptance receipts remain detached from that record. Publication admission requires both receipts and preserves the sealed bytes.
-The acceptance baseline needs sealed component qualification, not prior publication or installed acceptance.
+The acceptance baseline needs sealed component qualification, not prior publication.
+Assembly-qualified baselines require installed acceptance; published native-qualified baselines retain their original admission contract.
 It can share the candidate's source revision, but each target needs a different actual bundle/runtime/Control composition.
 Exact repair cannot stand in for upgrade evidence. CI admits the baseline's exact retained record and successful sealing job before the native acceptance matrix.
 This staged source contract replaces the earlier circular setup route, but no successful native Host acceptance is established here.
@@ -325,14 +322,14 @@ These mechanisms alone do not establish that a running IDEA loaded the selected 
 
 ## Source owners
 
-- [mcp_environment.py](../../packaging/mcp_environment.py)
-- [mcp_dependency_artifact.py](../../packaging/mcp_dependency_artifact.py)
+- [mcp_environment.py](../../packaging/internal/mcp/mcp_environment.py)
+- [mcp_dependency_artifact.py](../../packaging/internal/mcp/mcp_dependency_artifact.py)
 - [KastManagementMain.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt)
 - [ManagementCommand.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt)
 - [ManagementStatus.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt)
 - [ConnectionConfiguration.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt)
 - [PluginInstallation.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt)
-- [`codex-mcp-registration.py`](../../packaging/codex-mcp-registration.py)
+- [`codex-mcp-registration.py`](../../packaging/internal/installation/codex-mcp-registration.py)
 - [ConfigurationSchemaDocument.kt](../../distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationSchemaDocument.kt)
 
 ## Read next

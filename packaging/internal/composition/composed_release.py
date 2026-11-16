@@ -30,7 +30,6 @@ sys.path.extend(
 import composed_bundle as bundle
 import managed_product
 import managed_release as release
-from component_probe import ComponentHarness
 from composed_bundle import (
     BundleFailure,
     BundleRejected,
@@ -38,10 +37,7 @@ from composed_bundle import (
     pack_bundle,
     sha256,
 )
-from composed_host_probe import ProbeReceipt, probe
 from composition_platform import HostPlatform, host_platform
-from container_probe import ContainerProbeReceipt
-from container_probe import probe as probe_containers
 from managed_headless import (
     Input,
     Rejected,
@@ -143,11 +139,11 @@ class ReleasePacked:
 class QualificationReceipt:
     sourceRevision: str
     bundleSha256: str
-    harnessSha256: str
-    probe: ProbeReceipt
-    containers: ContainerProbeReceipt | None = None
+    runtimeSha256: str
+    controlSha256: str
     qualification: Literal["COMPLETE"] = "COMPLETE"
-    qualificationStage: Literal["COMPONENT_NATIVE"] = "COMPONENT_NATIVE"
+    qualificationStage: Literal["COMPONENT_ASSEMBLY"] = "COMPONENT_ASSEMBLY"
+    schemaVersion: Literal[2] = 2
     composition: NativeCompositionEvidence | None = None
 
 
@@ -367,12 +363,9 @@ def qualify_release(
     version: str,
     revision: str,
     root: Path,
-    fixture: Path,
     evidence: Path,
     sandbox: Path | None = None,
     runtime: RuntimeCandidate | None = None,
-    harness: Path | None = None,
-    harness_sha256: str | None = None,
 ) -> QualificationReceipt | ReleaseRejected | BundleRejected:
     from runtime_base import project_native, read_reference
 
@@ -383,12 +376,9 @@ def qualify_release(
             version=version,
             revision=revision,
             root=root,
-            fixture=fixture,
             evidence=evidence,
             sandbox=sandbox,
             runtime=runtime,
-            harness=harness,
-            harness_sha256=harness_sha256,
         )
     if sha256(runtime.archive) != runtime.sha256 or sha256(archive) != expected:
         return BundleRejected(BundleFailure.DIGEST_MISMATCH, "split qualification inputs")
@@ -403,16 +393,13 @@ def qualify_release(
             version=version,
             revision=revision,
             root=root,
-            fixture=fixture,
             evidence=evidence,
             sandbox=sandbox,
             runtime=RuntimeCandidate(native_runtime, runtime_digest),
-            harness=harness,
-            harness_sha256=harness_sha256,
         )
         if not isinstance(result, QualificationReceipt):
             return result
-        if result.containers is None or result.containers.runtimeSha256 != runtime_digest:
+        if result.runtimeSha256 != runtime_digest:
             return BundleRejected(BundleFailure.DIGEST_MISMATCH, "native composition proof")
         qualified = replace(
             result,
@@ -434,14 +421,11 @@ def _qualify_release(
     version: str,
     revision: str,
     root: Path,
-    fixture: Path,
     evidence: Path,
     sandbox: Path | None = None,
     runtime: RuntimeCandidate | None = None,
-    harness: Path | None = None,
-    harness_sha256: str | None = None,
 ) -> QualificationReceipt | ReleaseRejected | BundleRejected:
-    """Qualify exact components without claiming installed-product admission."""
+    """Admit assembly bytes and passive Control discovery, not installed semantics."""
     observe(ReleaseStage.QUALIFICATION, StageOutcome.STARTED)
     if (
         not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version)
@@ -450,7 +434,7 @@ def _qualify_release(
     ):
         observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
         return ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "identity")
-    if any(path.exists() or path.is_symlink() for path in (root, fixture, evidence)):
+    if any(path.exists() or path.is_symlink() for path in (root, evidence)):
         observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
         return ReleaseRejected(ReleaseFailure.EXISTING_OUTPUT, "qualification paths")
     if not re.fullmatch("[a-f0-9]{64}", expected) or sha256(archive) != expected:
@@ -460,32 +444,15 @@ def _qualify_release(
     if isinstance(entry, BundleRejected):
         observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
         return entry
-    if (
-        runtime is None
-        or harness is None
-        or harness_sha256 is None
-        or harness.is_symlink()
-        or not harness.is_file()
-        or not os.access(harness, os.X_OK)
-        or not re.fullmatch("[a-f0-9]{64}", harness_sha256)
-    ):
+    if runtime is None:
         observe(ReleaseStage.QUALIFICATION, StageOutcome.REJECTED)
         return ReleaseRejected(ReleaseFailure.INVALID_IDENTITY, "native component inputs")
-    if sha256(harness) != harness_sha256 or sha256(runtime.archive) != runtime.sha256:
+    if sha256(runtime.archive) != runtime.sha256:
         return BundleRejected(BundleFailure.DIGEST_MISMATCH, "native component inputs")
     target = host_platform(platform.system(), platform.machine())
     if target not in (HostPlatform.MACOS_ARM64, HostPlatform.LINUX_X86_64):
         return ReleaseRejected(ReleaseFailure.WRONG_PLATFORM, "native component producer")
     assert isinstance(target, HostPlatform)
-    with harness.open("rb") as stream:
-        header = stream.read(20)
-    if (
-        target.is_linux
-        and (header[:8] != b"\x7fELF\x02\x01\x01\x00" or header[18:20] != b"\x3e\x00")
-        or not target.is_linux
-        and header[:8] != b"\xcf\xfa\xed\xfe\x0c\x00\x00\x01"
-    ):
-        return ReleaseRejected(ReleaseFailure.WRONG_PLATFORM, "native component harness")
     evidence.mkdir(parents=True)
     root.mkdir(mode=0o700, parents=True)
     for directory in ("home", "tmp", "bundle", "components"):
@@ -520,11 +487,13 @@ def _qualify_release(
     managed_product.verify_composed_runtime(
         extracted.source, metadata, components.host_archive, runtime_proof, manifest
     )
-    # Comparisons are complete; native execution uses the independent archives.
+    # Assembly checks are complete; installed acceptance owns semantic execution.
     _ = discard_assembly_inputs(root / "bundle", runtime_proof)
     control = components.control_root / "share/kast/libexec/kast-management"
+    control_digest = sha256(control)
+    prefix = ["/usr/bin/sandbox-exec", "-f", str(sandbox)] if sandbox is not None else []
     discovery = subprocess.run(
-        [str(control), "--internal-entrypoint=query", "describe", "--help"],
+        [*prefix, str(control), "--internal-entrypoint=query", "describe", "--help"],
         cwd=root,
         env={"PATH": os.defpath, "HOME": str(root / "home")},
         capture_output=True,
@@ -535,32 +504,9 @@ def _qualify_release(
     _ = (evidence / "control-discovery.stderr").write_bytes(discovery.stderr)
     if discovery.returncode != 0 or any((root / "home").iterdir()):
         return ReleaseRejected(ReleaseFailure.EFFECT_FAILED, "passive Control discovery")
-    _ = shutil.copytree(
-        REPOSITORY / "experiments/host-observation/static-callback-fixture", fixture
-    )
-    _ = shutil.copytree(
-        REPOSITORY / "experiments/host-observation/composed-host-fixture-overlay",
-        fixture,
-        dirs_exist_ok=True,
-    )
-    _ = shutil.copytree(REPOSITORY / "gradle/wrapper", fixture / "gradle/wrapper")
-    _ = shutil.copy2(REPOSITORY / "gradlew", fixture / "gradlew")
-    execution = ComponentHarness(
-        harness,
-        root,
-        runtime.archive,
-        runtime.sha256,
-        version,
-        control,
-        sha256(control),
-        revision,
-        sandbox,
-    )
-    native = probe(execution, fixture, evidence / "native")
-    containers = probe_containers(execution, fixture, control, evidence / "containers")
-    if sha256(harness) != harness_sha256:
-        return BundleRejected(BundleFailure.DIGEST_MISMATCH, "changed native harness")
-    result = QualificationReceipt(revision, expected, harness_sha256, native, containers)
+    if sha256(control) != control_digest:
+        return BundleRejected(BundleFailure.DIGEST_MISMATCH, "changed Control")
+    result = QualificationReceipt(revision, expected, runtime.sha256, control_digest)
     _ = (evidence / "qualification.json").write_text(json.dumps(asdict(result), indent=2) + "\n")
     observe(ReleaseStage.QUALIFICATION, StageOutcome.COMPLETE)
     return result
@@ -824,13 +770,10 @@ def main() -> int:
         _ = command.add_argument("--source-revision", required=True)
     for name in ("bootstrap", "assets", "output"):
         _ = assemble.add_argument("--" + name, type=Path, required=True)
-    for name in ("fixture", "evidence"):
-        _ = qualify.add_argument("--" + name, type=Path, required=True)
+    _ = qualify.add_argument("--evidence", type=Path, required=True)
     _ = qualify.add_argument("--archive-sha256", required=True)
     _ = qualify.add_argument("--runtime-archive", type=Path, required=True)
     _ = qualify.add_argument("--runtime-sha256", required=True)
-    _ = qualify.add_argument("--harness", type=Path, required=True)
-    _ = qualify.add_argument("--harness-sha256", required=True)
     _ = qualify.add_argument("--sandbox", type=Path)
     _ = assemble.add_argument("--linux-support", type=Path)
     _ = assemble.add_argument(
@@ -863,12 +806,9 @@ def main() -> int:
                 version=args.version,
                 revision=args.source_revision,
                 root=args.root,
-                fixture=args.fixture,
                 evidence=args.evidence,
                 sandbox=args.sandbox,
                 runtime=RuntimeCandidate(args.runtime_archive, args.runtime_sha256),
-                harness=args.harness,
-                harness_sha256=args.harness_sha256,
             )
     except (
         OSError,

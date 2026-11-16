@@ -611,7 +611,7 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertNotIn("run-id:", reuse)
         self.assertLess(
             jobs.index("Retain the assembled candidate"),
-            jobs.index("Install and qualify the exact candidate"),
+            jobs.index("Verify the exact component assembly"),
         )
 
     def test_isolated_candidate_source_guards_share_the_assembly_invocation(self):
@@ -686,6 +686,17 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("runner: macos-15", installed)
         self.assertIn("product_lifecycle_probe.py", installed)
         self.assertIn("KAST_ACCEPTANCE_BASELINE_RECORD_SHA256", installed)
+        # Schema-2 baselines carry acceptance only in the joined candidate; the sealed
+        # artifact is a fallback for legacy baselines, and admission still decides.
+        accepted_baseline = installed.index(
+            "name: ci-product-candidate-${{ vars.KAST_ACCEPTANCE_BASELINE_REVISION }}"
+        )
+        legacy_baseline = installed.index(
+            "name: ci-product-sealed-${{ vars.KAST_ACCEPTANCE_BASELINE_REVISION }}"
+        )
+        self.assertLess(accepted_baseline, legacy_baseline)
+        self.assertIn("if: steps.accepted-baseline.outcome != 'success'", installed)
+        self.assertLess(legacy_baseline, installed.index("candidate.admit_baseline("))
         self.assertIn(
             "name: ci-product-candidate-${{ github.sha }}-${{ github.run_attempt }}", accepted
         )

@@ -324,6 +324,18 @@ class ContainerFixture:
 
 
 @dataclass(frozen=True)
+class AssemblyQualificationFixture:
+    sourceRevision: str
+    bundleSha256: str
+    runtimeSha256: str
+    controlSha256: str
+    composition: release.NativeCompositionEvidence | None = None
+    schemaVersion: int = 2
+    qualificationStage: str = "COMPONENT_ASSEMBLY"
+    qualification: str = "COMPLETE"
+
+
+@dataclass(frozen=True)
 class ProbeFixture:
     evidence: str = "disposable test bytes; not native qualification"
 
@@ -1634,6 +1646,52 @@ class ProductActivationTest(unittest.TestCase):
         )
         self.assertIsInstance(activation.resume(self.root, self.home), contract.RecoveryRequired)
         self.assertTrue(fence.exists())
+
+    def test_versioned_assembly_receipt_admission_preserves_exact_control_identity(self) -> None:
+        native = self.qualification
+        assembly = AssemblyQualificationFixture(
+            native.sourceRevision,
+            native.bundleSha256,
+            native.containers.runtimeSha256,
+            native.containers.controlSha256,
+        )
+        for evidence, accepted in (
+            (assembly, True),
+            (replace(assembly, schemaVersion=3), False),
+            (replace(assembly, qualificationStage="COMPONENT_NATIVE"), False),
+            (replace(assembly, controlSha256="f" * 64), False),
+            (replace(assembly, runtimeSha256="e" * 64), False),
+        ):
+            with self.subTest(evidence=evidence):
+                raw = encoded_fixture(evidence)
+                target = self.record.targets[1]
+                receipt = replace(
+                    target.qualification.receipt,
+                    bytes=len(raw),
+                    sha256=hashlib.sha256(raw).hexdigest(),
+                )
+                target = replace(
+                    target, qualification=replace(target.qualification, receipt=receipt)
+                )
+                record = replace(self.record, targets=(self.record.targets[0], target))
+                record_raw = encoded_fixture(record)
+                selection = replace(
+                    self.selected,
+                    record=record,
+                    recordSha256=hashlib.sha256(record_raw).hexdigest(),
+                )
+                self.source.values[f"{release.RELEASE_URL}/v1.2.3/{receipt.name}"] = raw
+                self.source.values[f"{release.RELEASE_URL}/v1.2.3/build-record.json"] = record_raw
+                directory = Path(tempfile.mkdtemp(dir=self.home))
+                result = release.download_composition(selection, "262", directory, self.source)
+                if accepted:
+                    self.assertIsInstance(result, staging.AdmittedProduct, result)
+                    assert isinstance(result, staging.AdmittedProduct)
+                    self.assertEqual(
+                        native.containers.controlSha256, result.target.qualification.controlSha256
+                    )
+                else:
+                    self.assertIsInstance(result, release.Rejected, result)
 
     def test_incomplete_native_receipt_rejects_even_with_matching_asset_digest(self) -> None:
         cases = (

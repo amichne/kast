@@ -141,12 +141,6 @@ jobs:
             assembleRelease :runtime:hosted:headlessBootstrapPlugin \
             ${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}
 
-      - name: Compile the test-only native component harness
-        run: >-
-          mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
-          -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"
-          :cli:nativeComponentQualificationCompile :cli:nativeComponentQualificationTest
-
       - name: Download pinned donor and assemble the archive
         shell: bash
         env:
@@ -202,7 +196,7 @@ jobs:
           mise exec -- uv run --locked --project packaging python packaging/internal/composition/composed_release.py \
             discard-assembly-inputs --root "$scratch/kp" --inputs "$workspace/build/cloud-input"
 
-      - name: Install and qualify the exact candidate
+      - name: Verify the exact component assembly
         timeout-minutes: 60
         shell: bash
         env:
@@ -219,16 +213,13 @@ jobs:
           digest=$(cut -d ' ' -f1 "${archive}.sha256")
           runtime="$PWD/build/composed-release/kast-runtime-v${BUNDLE_VERSION}-$TARGET.zip"
           runtime_digest=$(cut -d ' ' -f1 "${runtime}.sha256")
-          harness="$PWD/cli/build/native/nativeComponentQualificationCompile/kast-component-qualification"
-          harness_digest=$("$python" -c 'import hashlib,sys; print(hashlib.file_digest(open(sys.argv[1], "rb"), "sha256").hexdigest())' "$harness")
           "$python" -E -s -B packaging/internal/composition/composed_release.py qualify \
-            --harness "$harness" --harness-sha256 "$harness_digest" \
             --archive "$archive" --archive-sha256 "$digest" \
             --runtime-archive "$runtime" --runtime-sha256 "$runtime_digest" \
-            --root "$scratch/kc" --fixture "$scratch/kw" --evidence "$PWD/build/composed-evidence" \
+            --root "$scratch/kc" --evidence "$PWD/build/composed-evidence" \
             --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
 
-      - name: Retain native receipt beside its exact product bytes
+      - name: Retain assembly receipt beside its exact product bytes
         if: '!inputs.complete_product'
         env:
           TARGET: ${{ matrix.target }}
@@ -242,6 +233,7 @@ jobs:
           mise exec -- python3 .github/scripts/release/product_producer.py target
           --directory build/composed-release
           --receipt build/composed-evidence/qualification.json
+          --control /tmp/kc/components/control/share/kast/libexec/kast-management
           --java-release "$(mise where java)/release" --target "$TARGET"
 
       - name: Retain target-local qualified product evidence

@@ -370,7 +370,7 @@
         },
         {
             "path": "cli/build.gradle.kts",
-            "sha256": "a3d46880f251b2b1d63d82ed7994ebc037bec7c2b69da5effd06d575cecf370c"
+            "sha256": "7e222c301a9ff150b51f473730c878f6ad727b4b547c3e98028de75eb67522ad"
         },
         {
             "path": "diagnostic/contract/build.gradle.kts",
@@ -386,7 +386,7 @@
         },
         {
             "path": "distribution/cli/build.gradle.kts",
-            "sha256": "c17407d5380fc6ac94784238444c54e7ca1a5aa75470fdbe1f27b091545673da"
+            "sha256": "36a3810b4b13926dc5281472e307e3a5e931fc88afc393ec89659ec6fde8409e"
         },
         {
             "path": "distribution/contract/build.gradle.kts",
@@ -788,10 +788,7 @@
                 "distribution/cli/src/main/resources",
                 "distribution/cli/src/test/java",
                 "distribution/cli/src/test/kotlin",
-                "distribution/cli/src/test/resources",
-                "distribution/cli/src/testFixtures/java",
-                "distribution/cli/src/testFixtures/kotlin",
-                "distribution/cli/src/testFixtures/resources"
+                "distribution/cli/src/test/resources"
             ]
         },
         {

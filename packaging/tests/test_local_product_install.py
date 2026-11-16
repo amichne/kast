@@ -211,7 +211,8 @@ def test_export_requires_native_evidence_and_records_only_the_built_platform(
         [str(Path(__file__).resolve().parents[2] / ".github/scripts/release"), *sys.path],
     )
     from product_producer import RESOLUTION_INPUTS
-    from test_product_candidate import ContainerReceipt, Receipt, fixture
+    from test_product_candidate import fixture
+    from test_product_producer import AssemblyReceipt
 
     import managed_release as release
 
@@ -227,6 +228,9 @@ def test_export_requires_native_evidence_and_records_only_the_built_platform(
     (work / "qualification").mkdir(parents=True)
     (work / "logs").mkdir()
     qualification = work / "qualification/qualification.json"
+    control = work / "qualification-root/components/control/share/kast/libexec/kast-management"
+    control.parent.mkdir(parents=True)
+    _ = control.write_bytes(b"produced Control\n")
     checkout = tmp_path / "source"
     for name in (*RESOLUTION_INPUTS, "packaging/internal/composition/composition_recipe.py"):
         path = checkout / name
@@ -247,9 +251,11 @@ def test_export_requires_native_evidence_and_records_only_the_built_platform(
         _ = qualification.write_text(
             json.dumps(
                 asdict(
-                    Receipt(
+                    AssemblyReceipt(
+                        "a" * 40,
                         hashlib.sha256(bundle.read_bytes()).hexdigest(),
-                        ContainerReceipt(hashlib.sha256(runtime.read_bytes()).hexdigest()),
+                        hashlib.sha256(runtime.read_bytes()).hexdigest(),
+                        hashlib.sha256(control.read_bytes()).hexdigest(),
                         qualification=outcome,
                     )
                 )

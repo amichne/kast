@@ -1,7 +1,6 @@
 import org.gradle.api.tasks.testing.Test
 
 plugins {
-    `java-test-fixtures`
     id("kast.runtime-serialization-app")
     id("kast.role.cli")
 }
@@ -29,9 +28,6 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.jupiter.engine)
     testRuntimeOnly(libs.junit.platform.launcher)
-    testFixturesApi(project(":kernel"))
-    testFixturesApi(project(":distribution:managed"))
-    testFixturesImplementation(libs.serialization.json)
 }
 
 tasks.named<Test>("test") {
