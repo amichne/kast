@@ -5,9 +5,6 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.generatedRequestSchema
-import io.github.amichne.kast.cli.installedPublicToolSemanticResultSchema
-import io.github.amichne.kast.protocol.contract.ChangeRunDocument
-import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -22,21 +19,7 @@ import kotlinx.serialization.json.jsonPrimitive
 internal object McpStructuredResults {
     private val registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
 
-    val healthSchema: JsonObject = healthResultSchema()
-
-    fun semanticSchemaFor(name: String): JsonObject =
-        rootedResultSchema(
-            when {
-                PublicToolIdentity.entries.any {
-                    it.toolName == name &&
-                        it !in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY)
-                } -> installedPublicToolSemanticResultSchema(PublicToolIdentity.entries.single { it.toolName == name })
-                name == "health_check" -> healthSchema
-                name == "add_declaration" || name == "replace_body" ->
-                    generatedRequestSchema(ChangeRunDocument.serializer())
-                else -> error("Unbound MCP tool result contract: $name")
-            }
-        )
+    fun semanticSchemaFor(name: String): JsonObject = McpResultSchemas.schemaFor(name)
 
     fun schemaFor(name: String): JsonObject {
         val semantic =

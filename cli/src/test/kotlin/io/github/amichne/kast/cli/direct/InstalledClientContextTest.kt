@@ -5,6 +5,7 @@ import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.installation.InstallationManifest
 import io.github.amichne.kast.cli.installation.PayloadFile
 import io.github.amichne.kast.cli.installation.installationManifestJson
+import io.github.amichne.kast.cli.installedHostedBootstrap
 import io.github.amichne.kast.cli.rpc.OneShotInvocationRecord
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.kernel.Refinement
@@ -130,6 +131,38 @@ class InstalledClientContextTest {
         assertEquals("managed_workspace", document.getValue("boundary").jsonPrimitive.content)
         assertEquals("INVALID_RECORD", document.getValue("failure").jsonPrimitive.content)
         assertFalse(Files.exists(payload.parent.parent.parent.resolveSibling("kast-workspaces")))
+    }
+
+    @Test
+    fun `installed catalogs preserve canonical contracts effects and selected grammar`(@TempDir temporary: Path) {
+        val payload = installedPayload(temporary.toRealPath(), "share/kast/libexec/kast-management")
+        val context = admitted(payload)
+        for (catalog in PublicToolCatalog.entries) {
+            val session = checkNotNull(KastDirectToolSession.installed(temporary, context, catalog))
+            val actual = session.catalog
+            val expected =
+                installedHostedBootstrap()
+                    .tools
+                    .filter { tool -> PublicToolIdentity.entries.any { it.toolName == tool.name } }
+                    .map { tool ->
+                        val identity = PublicToolIdentity.entries.single { it.toolName == tool.name }
+                        tool
+                            .directToolDocument()
+                            .copy(
+                                inputSchema = PublicToolContract.parameters(identity, catalog),
+                                description = identity.descriptionFor(catalog),
+                            )
+                    } + directSupportTools()
+            assertEquals(expected, actual, catalog.name)
+            assertEquals(
+                setOf("query_symbols", "check_diagnostics", "health_check"),
+                actual.filter { it.readOnly }.map { it.name }.toSet(),
+            )
+            assertEquals(
+                setOf("add_declaration", "replace_body"),
+                actual.filterNot { it.readOnly }.map { it.name }.toSet(),
+            )
+        }
     }
 
     private fun admitted(payload: Path, environment: Map<String, String> = emptyMap()): InstalledClientContext =
