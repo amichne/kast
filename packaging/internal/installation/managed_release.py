@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import stat
+import struct
 import tarfile
 import urllib.error
 import urllib.request
@@ -1310,7 +1311,7 @@ def integration_digest(control: Path) -> str:
     return digest.hexdigest()
 
 
-def native_dependency_library(header: bytes, target: str) -> bool:
+def native_dependency_library(stream: IO[bytes], header: bytes, target: str) -> bool:
     if len(header) != 32:
         return False
     if target == "macos-aarch64":
@@ -1319,13 +1320,92 @@ def native_dependency_library(header: bytes, target: str) -> bool:
             b"\x08\x00\x00\x00",
         )
     if target == "linux-x86_64":
-        return (
-            header[:6] == b"\x7fELF\x02\x01"
-            and header[16:20] == b"\x03\x00\x3e\x00"
-            # ET_DYN also describes PIE executables; a library has no entry point.
-            and header[24:32] == bytes(8)
-        )
+        return linux_dependency_library(stream, header)
     return False
+
+
+@dataclass(frozen=True, slots=True)
+class _ElfSegment:
+    kind: int
+    offset: int
+    address: int
+    size: int
+    memory_size: int
+
+
+def linux_dependency_library(stream: IO[bytes], header: bytes) -> bool:
+    if header[:6] != b"\x7fELF\x02\x01" or header[16:24] != b"\x03\x00\x3e\x00\x01\x00\x00\x00":
+        return False
+    rest = stream.read(32)
+    if len(rest) != 32:
+        return False
+    table_offset = int.from_bytes(rest[:8], "little")
+    count = int.from_bytes(rest[24:26], "little")
+    length = stream.seek(0, os.SEEK_END)
+    if (
+        rest[20:24] != b"\x40\x00\x38\x00"
+        or not 1 <= count <= 256
+        or not 64 <= table_offset <= length - count * 56
+    ):
+        return False
+    _ = stream.seek(table_offset)
+    table = stream.read(count * 56)
+    if len(table) != count * 56:
+        return False
+    segments = tuple(
+        _ElfSegment(
+            int.from_bytes(entry[:4], "little"),
+            int.from_bytes(entry[8:16], "little"),
+            int.from_bytes(entry[16:24], "little"),
+            int.from_bytes(entry[32:40], "little"),
+            int.from_bytes(entry[40:48], "little"),
+        )
+        for entry in (table[start : start + 56] for start in range(0, len(table), 56))
+    )
+    # ET_DYN also describes PIE. Match the Gradle Control archive guard.
+    if any(segment.kind == 3 or segment.offset + segment.size > length for segment in segments):
+        return False
+    if any(
+        segment.memory_size < segment.size or segment.address + segment.memory_size >= 2**63
+        for segment in segments
+        if segment.kind in (1, 2)
+    ):
+        return False
+    dynamic = tuple(segment for segment in segments if segment.kind == 2)
+    if len(dynamic) != 1:
+        return False
+    (segment,) = dynamic
+    if not 16 <= segment.size <= 65_536 or segment.size % 16:
+        return False
+    loads = tuple(
+        load
+        for load in segments
+        if load.kind == 1
+        and load.address <= segment.address
+        and segment.address + segment.memory_size <= load.address + load.memory_size
+    )
+    if len(loads) != 1:
+        return False
+    (load,) = loads
+    delta = segment.address - load.address
+    if segment.offset != load.offset + delta or delta + segment.size > load.size:
+        return False
+    _ = stream.seek(segment.offset)
+    entries = stream.read(segment.size)
+    if len(entries) != segment.size:
+        return False
+    flags_seen = False
+    terminated = False
+    for tag, value in struct.iter_unpack("<QQ", entries):
+        if terminated and (tag != 0 or value != 0):
+            return False
+        if tag == 0:
+            terminated = True
+        elif tag == 0x6FFFFFFB:
+            if flags_seen or value & 0x08000000:
+                return False
+            flags_seen = True
+    return terminated
 
 
 def inspect_control(
@@ -1408,7 +1488,7 @@ def inspect_control(
                                 path.is_relative_to(
                                     control / "share/kast/mcp-dependencies/site-packages"
                                 )
-                                and native_dependency_library(header, target)
+                                and native_dependency_library(stream, header, target)
                             ):
                                 native_files.append(path)
             if native_files != [executable]:
