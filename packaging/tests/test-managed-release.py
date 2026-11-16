@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import struct
 import tempfile
 import unittest
 import zipfile
@@ -446,6 +447,23 @@ class ReleaseAdmissionTest(unittest.TestCase):
         bundle = bytes.fromhex("cffaedfe0c0000010000000008000000") + bytes(16)
         executable = bytes.fromhex("cffaedfe0c0000010000000002000000") + bytes(16)
         elf = bytes.fromhex("7f454c4602010100000000000000000003003e0001000000") + bytes(8)
+
+        # CFFI's pinned Linux library has e_entry=0x9000 in the CI inventory.
+        def elf_dependency(*, interpreter: bool = False, pie: bool = False) -> bytes:
+            count = 3 if interpreter else 2
+            offset = 64 + count * 56
+            dynamic = struct.pack("<QQQQ", 0x6FFFFFFB, 0x08000000 if pie else 0, 0, 0)
+            size = offset + len(dynamic)
+            return (
+                elf[:24]
+                + struct.pack("<QQQIHHHHHH", 0x9000, 64, 0, 0, 64, 56, count, 0, 0, 0)
+                + struct.pack("<IIQQQQQQ", 1, 4, 0, 0, 0, size, size, 4096)
+                + struct.pack("<IIQQQQQQ", 2, 4, offset, offset, 0, 32, 32, 8)
+                + (struct.pack("<IIQQQQQQ", 3, 4, 0, 0, 0, 1, 1, 1) if interpreter else b"")
+                + dynamic
+            )
+
+        library = elf_dependency()
         dependency = "share/kast/mcp-dependencies/site-packages/native/module.so"
         for target, name, header, accepted in (
             ("macos-aarch64", dependency, dylib, True),
@@ -454,9 +472,11 @@ class ReleaseAdmissionTest(unittest.TestCase):
             ("macos-aarch64", "share/kast/foreign.so", dylib, False),
             ("macos-aarch64", dependency, elf, False),
             ("macos-aarch64", dependency, dylib[:16], False),
-            ("linux-x86_64", dependency, elf, True),
-            ("linux-x86_64", dependency, elf[:24] + b"\x01" + bytes(7), False),
-            ("linux-x86_64", dependency, elf[:18] + b"\xb7\x00" + elf[20:], False),
+            ("linux-x86_64", dependency, library, True),
+            ("linux-x86_64", dependency, elf_dependency(interpreter=True), False),
+            ("linux-x86_64", dependency, elf_dependency(pie=True), False),
+            ("linux-x86_64", dependency, library[:64], False),
+            ("linux-x86_64", dependency, library[:18] + b"\xb7\x00" + library[20:], False),
         ):
             with self.subTest(target=target, name=name, header=header.hex()):
                 management = admitted.control_root / "share/kast/libexec/kast-management"
