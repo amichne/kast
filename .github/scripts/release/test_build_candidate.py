@@ -392,39 +392,6 @@ class EffectBoundaryTest(unittest.TestCase):
             if len(artifacts) != 2 or artifacts[0] == artifacts[1]:
                 execute.assert_not_called()
 
-    def test_absent_or_foreign_pr_requires_fresh_build_without_download(self):
-        for pulls in ([], [{"merged_at": "now", "merge_commit_sha": MERGED,
-                           "head": {"sha": BUILD, "repo": {"full_name": "foreign/kast"}}}]):
-            with self.subTest(pulls=pulls), tempfile.TemporaryDirectory() as temporary, \
-                    patch.object(candidate, "observe", return_value=pulls) as observe, \
-                    patch.object(candidate, "tree", return_value=TREE), \
-                    patch.object(candidate, "download") as download:
-                bundle = Path(temporary) / "bundle"
-                self.assertEqual("MISSING", candidate.reuse(REPOSITORY, MERGED, bundle))
-                observe.assert_called_once()
-                download.assert_not_called()
-                self.assertFalse(bundle.exists())
-
-    def test_successful_same_tree_pr_reuses_only_its_exact_artifact(self):
-        run = asdict(Run())
-        pulls = [{"merged_at": "now", "merge_commit_sha": MERGED,
-                  "head": {"sha": BUILD, "repo": {"full_name": REPOSITORY}}}]
-        for actual_tree, expected in ((TREE, "REUSED"), ("e" * 40, "MISSING")):
-            with self.subTest(tree=actual_tree), tempfile.TemporaryDirectory() as temporary, \
-                    patch.object(candidate, "observe", side_effect=[pulls,
-                        {"total_count": 1, "workflow_runs": [run]},
-                        {"total_count": 1, "artifacts": [{"name": f"ci-build-candidate-{BUILD}-1", "expired": False}]}]) as observe, \
-                    patch.object(candidate, "tree", side_effect=[TREE, actual_tree]) as tree, \
-                    patch.object(candidate, "download", return_value=record()) as download:
-                bundle = Path(temporary) / "bundle"
-                self.assertEqual(expected, candidate.reuse(REPOSITORY, MERGED, bundle))
-                self.assertEqual(3, observe.call_count)
-                self.assertEqual(2, tree.call_count)
-                if expected == "REUSED":
-                    download.assert_called_once_with(REPOSITORY, run, BUILD, bundle)
-                else:
-                    download.assert_not_called()
-
     def test_transient_api_failure_retries_and_retains_bounded_stage_evidence(self):
         responses = [subprocess.CompletedProcess([], 1, "HTTP/2.0 503 Service Unavailable\r\n\r\nsecret body", "secret error"),
                      subprocess.CompletedProcess([], 0, "HTTP/2.0 200 OK\r\n\r\n" + json.dumps(asdict(Run())), "")]
@@ -439,19 +406,19 @@ class EffectBoundaryTest(unittest.TestCase):
             {"stage": "WORKFLOW_RUN", "outcome": "OBSERVED", "attempt": 2, "httpStatus": 200},
         ], [json.loads(line) for line in evidence.getvalue().splitlines()])
 
-    def test_api_rejection_never_becomes_a_missing_candidate(self):
+    def test_api_rejection_never_becomes_an_observation(self):
         for status, attempts in ((403, 1), (404, 1), (429, 3), (502, 3)):
             responses = [subprocess.CompletedProcess([], 1, f"HTTP/2.0 {status} Rejected\n\nsecret", "secret")] * attempts
             evidence = io.StringIO()
-            with self.subTest(status=status), tempfile.TemporaryDirectory() as temporary, \
+            with self.subTest(status=status), \
                     patch.object(candidate.subprocess, "run", side_effect=responses) as execute, \
                     patch.object(candidate.time, "sleep"), redirect_stderr(evidence), \
                     self.assertRaises(candidate.Rejected) as rejection:
-                candidate.reuse(REPOSITORY, MERGED, Path(temporary) / "bundle")
+                candidate.observe("repos/amichne/kast/actions/runs/123", candidate.ObservationStage.WORKFLOW_RUN)
             self.assertEqual(candidate.Failure.OBSERVATION_FAILED, rejection.exception.failure)
             self.assertEqual(attempts, execute.call_count)
             self.assertEqual([
-                {"stage": "ASSOCIATED_PULLS", "outcome": "HTTP_REJECTED", "attempt": attempt, "httpStatus": status}
+                {"stage": "WORKFLOW_RUN", "outcome": "HTTP_REJECTED", "attempt": attempt, "httpStatus": status}
                 for attempt in range(1, attempts + 1)
             ], [json.loads(line) for line in evidence.getvalue().splitlines()])
 

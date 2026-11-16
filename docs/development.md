@@ -362,11 +362,7 @@ The candidate contains the installable payload and a typed identity record.
 The record retains the build commit, Git tree, toolchain, platform, and every file digest.
 CI retains candidates for 30 days.
 
-After merge, main CI searches successful runs for the merged PR's exact head.
-It reuses a same-repository candidate only when its complete Git tree matches merged `main`.
-The candidate retains its original commit and version.
-Missing or expired candidates, changed trees, and fork producers require a fresh main build.
-Malformed records, damaged payloads, and incomplete observations reject reuse.
+Main CI builds a fresh candidate for every product run; it does not reuse pull-request payloads.
 
 Successful main CI from a push triggers the developer publication workflow automatically.
 A `DOCS_VALIDATED` result leaves the developer product pointer unchanged and publishes no candidate.
