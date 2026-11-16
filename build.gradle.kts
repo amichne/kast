@@ -355,6 +355,7 @@ tasks.withType<VerificationReportTask>().configureEach {
 val localPluginReloadTest = tasks.register<VerificationReportTask>("localPluginReloadTest") {
     group = "verification"
     description = "Examines local plugin replacement admission and atomic directory exchange."
+    environmentVariables.put("PYTHONPATH", packagingTestModulePath)
     inputs.files("packaging/internal/reload_hosted.py", "packaging/internal/reload_hosted.py.lock", "packaging/tests/test_reload_hosted.py")
     executableFile.set(validationExecutable("uv"))
     arguments.set(listOf("run", "--locked", "--script", layout.projectDirectory.file("packaging/internal/reload_hosted.py").asFile.absolutePath, "--self-test"))
