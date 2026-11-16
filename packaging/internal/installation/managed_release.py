@@ -1320,7 +1320,7 @@ def native_dependency_library(stream: IO[bytes], header: bytes, target: str) -> 
             b"\x08\x00\x00\x00",
         )
     if target == "linux-x86_64":
-        return linux_dependency_library(stream, header)
+        return _elf_library(stream, header)
     return False
 
 
@@ -1333,44 +1333,34 @@ class _ElfSegment:
     memory_size: int
 
 
-def linux_dependency_library(stream: IO[bytes], header: bytes) -> bool:
+def _elf_library(stream: IO[bytes], header: bytes) -> bool:
     if header[:6] != b"\x7fELF\x02\x01" or header[16:24] != b"\x03\x00\x3e\x00\x01\x00\x00\x00":
         return False
     rest = stream.read(32)
     if len(rest) != 32:
         return False
-    table_offset = int.from_bytes(rest[:8], "little")
-    count = int.from_bytes(rest[24:26], "little")
+    table_offset, header_size, entry_size, count = struct.unpack("<Q12xHHH6x", rest)
     length = stream.seek(0, os.SEEK_END)
     if (
-        rest[20:24] != b"\x40\x00\x38\x00"
+        header_size != 64
+        or entry_size != 56
         or not 1 <= count <= 256
-        or not 64 <= table_offset <= length - count * 56
+        or not 64 <= table_offset <= length - count * entry_size
     ):
         return False
     _ = stream.seek(table_offset)
-    table = stream.read(count * 56)
-    if len(table) != count * 56:
+    table = stream.read(count * entry_size)
+    if len(table) != count * entry_size:
         return False
-    segments = tuple(
-        _ElfSegment(
-            int.from_bytes(entry[:4], "little"),
-            int.from_bytes(entry[8:16], "little"),
-            int.from_bytes(entry[16:24], "little"),
-            int.from_bytes(entry[32:40], "little"),
-            int.from_bytes(entry[40:48], "little"),
-        )
-        for entry in (table[start : start + 56] for start in range(0, len(table), 56))
-    )
-    # ET_DYN also describes PIE. Match the Gradle Control archive guard.
-    if any(segment.kind == 3 or segment.offset + segment.size > length for segment in segments):
-        return False
-    if any(
-        segment.memory_size < segment.size or segment.address + segment.memory_size >= 2**63
-        for segment in segments
-        if segment.kind in (1, 2)
-    ):
-        return False
+    segments = tuple(_ElfSegment(*entry) for entry in struct.iter_unpack("<I4xQQ8xQQ8x", table))
+    # ET_DYN includes PIE. Reject PT_INTERP and inspect the mapped dynamic table.
+    for item in segments:
+        if item.kind == 3 or item.offset + item.size > length:
+            return False
+        if item.kind in (1, 2) and (
+            item.memory_size < item.size or item.address + item.memory_size >= 2**63
+        ):
+            return False
     dynamic = tuple(segment for segment in segments if segment.kind == 2)
     if len(dynamic) != 1:
         return False
