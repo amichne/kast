@@ -275,11 +275,25 @@ class Probe:
         if profile.resolve() != profile:
             raise ValueError("Host profile escaped private generation")
         home = runtime / ("host" if target.is_linux else "host/Kast.app/Contents")
-        observed = live_host(profile, workspace, target, self.evidence, case, runtime_home=home)
+        # The Gradle tooling API loads its native platform library from the declared
+        # Gradle user home; no other library outside the installed runtime is admitted.
+        gradle = self.environment.get("GRADLE_USER_HOME")
+        gradle_native = None if gradle is None else Path(gradle) / "native"
+        observed = live_host(
+            profile,
+            workspace,
+            target,
+            self.evidence,
+            case,
+            runtime_home=home,
+            gradle_native=gradle_native,
+        )
         if observed.workspaceLifetime != lifetime:
             raise ValueError("answering compiler differs from installed Host lifetime")
         if target.is_linux and any(
-            not Path(library).is_relative_to(home) and not linux_core_library(Path(library))
+            not Path(library).is_relative_to(home)
+            and not (gradle_native is not None and Path(library).is_relative_to(gradle_native))
+            and not linux_core_library(Path(library))
             for library in observed.libraries
         ):
             raise ValueError("Host loaded a shared library outside the installed runtime")

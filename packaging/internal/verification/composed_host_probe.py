@@ -178,6 +178,7 @@ def live_host(
     case: str,
     *,
     runtime_home: Path | None = None,
+    gradle_native: Path | None = None,
 ) -> HostIdentity:
     home = root / target.layout.home if runtime_home is None else runtime_home
     launcher = home / ("bin/idea" if target.is_linux else "MacOS/idea")
@@ -248,6 +249,7 @@ def live_host(
             for value in libraries
             if not Path(value).is_relative_to(root)
             and not Path(value).is_relative_to(home)
+            and not (gradle_native is not None and Path(value).is_relative_to(gradle_native))
             and not linux_core_library(Path(value))
         )
         assert not external, external

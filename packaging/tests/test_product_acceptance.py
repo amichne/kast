@@ -422,7 +422,10 @@ class AcceptanceTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
             workspace = root / "workspace"
-            runner = probe.Probe(root / "kast", root / "home", root, root, root, {})
+            gradle = root / "gradle"
+            runner = probe.Probe(
+                root / "kast", root / "home", root, root, root, {"GRADLE_USER_HOME": str(gradle)}
+            )
             directory = (
                 root
                 / "kast-workspaces/containers"
@@ -469,7 +472,23 @@ class AcceptanceTest(unittest.TestCase):
                     (identity, reference, None),
                     (replace(identity, workspaceLifetime="foreign-host"), reference, "lifetime"),
                     (
+                        replace(
+                            identity,
+                            libraries=(
+                                *identity.libraries,
+                                str(gradle / "native/abc/linux-amd64/libnative-platform.so"),
+                            ),
+                        ),
+                        reference,
+                        None,
+                    ),
+                    (
                         replace(identity, libraries=("/usr/lib/libforeign.so",)),
+                        reference,
+                        "shared library",
+                    ),
+                    (
+                        replace(identity, libraries=(str(gradle / "caches/libforeign.so"),)),
                         reference,
                         "shared library",
                     ),
@@ -486,7 +505,7 @@ class AcceptanceTest(unittest.TestCase):
                     ):
                         if error is None:
                             self.assertEqual(
-                                identity,
+                                observed,
                                 runner.observe_host(
                                     "host", workspace, "compiler-workspace-one", digest
                                 ),
@@ -498,6 +517,7 @@ class AcceptanceTest(unittest.TestCase):
                                 root,
                                 "host",
                                 runtime_home=home,
+                                gradle_native=gradle / "native",
                             )
                         else:
                             with self.assertRaisesRegex(ValueError, error):
