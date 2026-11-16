@@ -1,10 +1,14 @@
 package io.github.amichne.kast.distribution.cli
 
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.JsonContentPolymorphicSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
@@ -41,13 +45,27 @@ internal data class LocalProductProducer(
     @Required val kind: LocalProductProducerKind = LocalProductProducerKind.LOCAL
 ) : ProductProvenance
 
-internal object ProductProvenanceSerializer :
-    JsonContentPolymorphicSerializer<ProductProvenance>(ProductProvenance::class) {
-    override fun selectDeserializer(element: JsonElement): DeserializationStrategy<ProductProvenance> =
-        when (element) {
-            is JsonObject -> if ("kind" in element) LocalProductProducer.serializer() else ProductProducer.serializer()
-            else -> throw SerializationException("Product provenance must be an object")
+/** Dispatches on the sealed type in both directions; native images register no reflective serializer lookup. */
+internal object ProductProvenanceSerializer : KSerializer<ProductProvenance> {
+    override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: ProductProvenance) =
+        when (value) {
+            is ProductProducer -> encoder.encodeSerializableValue(ProductProducer.serializer(), value)
+            is LocalProductProducer -> encoder.encodeSerializableValue(LocalProductProducer.serializer(), value)
         }
+
+    override fun deserialize(decoder: Decoder): ProductProvenance {
+        val input = decoder as? JsonDecoder ?: throw SerializationException("Product provenance must be JSON")
+        val element = input.decodeJsonElement()
+        val strategy: DeserializationStrategy<ProductProvenance> =
+            when (element) {
+                is JsonObject ->
+                    if ("kind" in element) LocalProductProducer.serializer() else ProductProducer.serializer()
+                else -> throw SerializationException("Product provenance must be an object")
+            }
+        return input.json.decodeFromJsonElement(strategy, element)
+    }
 }
 
 @Serializable
