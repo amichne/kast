@@ -67,6 +67,7 @@ class LinuxIdeLifecycleTest {
                 IdeLifecycleDeployment.Headless(
                     root.resolve("missing"),
                     io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+                    io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
                 ),
             )
         assertEquals(

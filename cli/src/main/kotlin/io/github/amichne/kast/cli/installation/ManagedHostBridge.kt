@@ -27,12 +27,14 @@ internal fun executeManagedHost(
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault,
     idleShutdown: io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown =
         io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+    maxHeap: io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap =
+        io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
     processes: (SelectedIdeLaunch.Resolved) -> ManagedProcessInventory = ::observeManagedIdeProcesses,
     exchange: (Path, IdeLifecycleCommand) -> IdeLifecycleResult = { idea, command ->
         exchangeSelectedHost(home, idea, managedHeadlessState, command)
     },
     start: (SelectedIdeLaunch.Resolved) -> ManagedIdeLaunchOutcome = { launch ->
-        startSelectedManagedHost(launch, home, managedHeadlessState, idleShutdown)
+        startSelectedManagedHost(launch, home, managedHeadlessState, idleShutdown, maxHeap)
     },
     inspectLegacy: (SelectedIdeLaunch.Resolved, ManagedIdeProcess) -> LegacyProfileRead = ::inspectLegacyHostProfile,
     stopLegacy: (SelectedIdeLaunch.Resolved, ManagedIdeProcess) -> LegacyQuitOutcome = ::stopLegacyHostNormally,
@@ -305,6 +307,7 @@ private fun exchangeSelectedHost(
                         IdeLifecycleDeployment.Headless(
                             selection.path,
                             io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+                            io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
                         ),
                 )
                 .manageInstallation(command)
@@ -315,6 +318,7 @@ private fun startSelectedManagedHost(
     home: Path,
     selection: io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection,
     idleShutdown: io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown,
+    maxHeap: io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap,
 ): ManagedIdeLaunchOutcome =
     when (selection) {
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault ->
@@ -324,7 +328,7 @@ private fun startSelectedManagedHost(
                 IdeLifecycleClient(
                         home,
                         Path.of(launch.home),
-                        IdeLifecycleDeployment.Headless(selection.path, idleShutdown),
+                        IdeLifecycleDeployment.Headless(selection.path, idleShutdown, maxHeap),
                     )
                     .startInstallation()
             if (result is IdeLifecycleResult.Inspected) ManagedIdeLaunchOutcome.REQUESTED

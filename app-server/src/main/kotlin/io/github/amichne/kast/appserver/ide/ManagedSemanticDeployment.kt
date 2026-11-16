@@ -20,7 +20,11 @@ internal fun configuredSemanticDeployment(
                     when (
                         val selected =
                             selectLifecycleDeployment(
-                                IdeLifecycleDeployment.Headless(state.path, configuration.hostIdleShutdown),
+                                IdeLifecycleDeployment.Headless(
+                                    state.path,
+                                    configuration.hostIdleShutdown,
+                                    configuration.hostMaxHeap,
+                                ),
                                 home,
                                 idea.path,
                             )

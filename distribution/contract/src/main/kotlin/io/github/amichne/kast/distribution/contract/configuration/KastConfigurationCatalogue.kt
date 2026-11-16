@@ -345,6 +345,14 @@ enum class ConfigurationParameter(
         defaultValue = HostIdleShutdown.DISABLED_SETTING,
         children = setOf(ConfigurationChild.BROKER),
     ),
+    HOST_MAX_HEAP_MIB(
+        "KAST_HOST_MAX_HEAP_MIB",
+        ConfigurationSyntax.OWNER_INPUT,
+        ConfigurationScope.WORKSPACE,
+        ":app-server",
+        defaultValue = HostMaxHeap.DEFAULT_MEBIBYTES.toString(),
+        children = setOf(ConfigurationChild.BROKER),
+    ),
     DEBUG(
         "KAST_DEBUG",
         ConfigurationSyntax.SWITCH,
@@ -500,14 +508,19 @@ enum class ConfigurationParameter(
         children = setOf(ConfigurationChild.BROKER, ConfigurationChild.SIDECAR),
     )
 
-    val readLimit: ReadLimitParameter?
-        get() = ReadLimitParameter.entries.singleOrNull { it.environmentKey == key }
-
-    fun declaration(): ConfigurationDeclaration {
-        val base = baseDeclaration()
-        if (this == WORKSPACE_DEPENDENCY_SHARING) return workspaceDependencyDeclaration(base)
-        if (this == HOST_IDLE_SHUTDOWN)
-            return base.copy(
+    private fun hostLaunchDeclaration(base: ConfigurationDeclaration): ConfigurationDeclaration =
+        if (this == HOST_MAX_HEAP_MIB)
+            base.copy(
+                unit = ConfigurationUnit.MEBIBYTES,
+                admittedRange =
+                    ConfigurationAdmittedRange(
+                        minimum = HostMaxHeap.MINIMUM_MEBIBYTES.toLong(),
+                        maximum = HostMaxHeap.MAXIMUM_MEBIBYTES.toLong(),
+                        ownerAdmission = "HostMaxHeap.parseSetting; whole mebibytes from 1024 to 32768",
+                    ),
+            )
+        else
+            base.copy(
                 admittedRange =
                     ConfigurationAdmittedRange(
                         minimum = HostIdleShutdown.MINIMUM_MINUTES.toLong(),
@@ -516,6 +529,14 @@ enum class ConfigurationParameter(
                         ownerAdmission = "HostIdleShutdown.parseSetting; whole minutes from 5 to 1440 or off",
                     )
             )
+
+    val readLimit: ReadLimitParameter?
+        get() = ReadLimitParameter.entries.singleOrNull { it.environmentKey == key }
+
+    fun declaration(): ConfigurationDeclaration {
+        val base = baseDeclaration()
+        if (this == WORKSPACE_DEPENDENCY_SHARING) return workspaceDependencyDeclaration(base)
+        if (this == HOST_IDLE_SHUTDOWN || this == HOST_MAX_HEAP_MIB) return hostLaunchDeclaration(base)
         if (this == WORKSPACE_PREPARATION_WAIT)
             return base.copy(
                 admittedRange =

@@ -23,6 +23,7 @@ internal fun installedWorkspaceLifecycleClient(
                             IdeLifecycleDeployment.Headless(
                                 managedHeadlessState.path,
                                 configuration.hostIdleShutdown,
+                                configuration.hostMaxHeap,
                             ),
                     )
             }
