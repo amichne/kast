@@ -130,6 +130,29 @@ class Release:
     assets: tuple[RemoteAsset, ...]
     draft: bool = False
     prerelease: bool = True
+    id: int = 731
+    upload_url: str = (
+        "https://uploads.github.com/repos/amichne/kast/releases/731/assets{?name,label}"
+    )
+    body: str = ""
+
+
+@dataclass(frozen=True)
+class DiscoveryRelease:
+    id: int
+    tag_name: str
+    draft: bool
+
+
+@dataclass(frozen=True)
+class Permissions:
+    push: bool = True
+
+
+@dataclass(frozen=True)
+class RepositoryAccess:
+    full_name: str = REPOSITORY
+    permissions: Permissions = Permissions()
 
 
 @dataclass(frozen=True)
@@ -140,6 +163,23 @@ class Sha:
 @dataclass(frozen=True)
 class Ref:
     object: Sha
+
+
+@dataclass(frozen=True)
+class TagTarget:
+    sha: str = BUILD
+    type: str = "commit"
+
+
+@dataclass(frozen=True)
+class TagReference:
+    object: TagTarget = TagTarget()
+
+
+@dataclass(frozen=True)
+class AnnotatedTag:
+    sha: str
+    object: TagTarget
 
 
 @dataclass(frozen=True)
@@ -160,14 +200,30 @@ class Comparison:
     status: str
 
 
-type Response = Release | Sha | Ref | Commit | Contents | Comparison
+type Response = (
+    Release
+    | RemoteAsset
+    | Sha
+    | Ref
+    | Commit
+    | Contents
+    | Comparison
+    | RepositoryAccess
+    | TagReference
+    | AnnotatedTag
+    | tuple[Release | RemoteAsset | DiscoveryRelease, ...]
+)
 
 
 def response(document: Response, status: int = 200) -> publisher.ProcessResult:
     return publisher.ProcessResult(
         0 if status < 400 else 1,
         f"HTTP/2.0 {status}\r\nContent-Type: application/json\r\n\r\n".encode()
-        + json.dumps(asdict(document)).encode(),
+        + json.dumps(
+            tuple(asdict(item) for item in document)
+            if isinstance(document, tuple)
+            else asdict(document)
+        ).encode(),
     )
 
 
@@ -189,8 +245,18 @@ class Script:
         expected = self.steps.pop(0)
         if tuple(arguments[:5]) != ("gh", "api", "--include", "--method", expected.method):
             raise AssertionError(f"unexpected method: {arguments}")
-        if arguments[5] != f"repos/{REPOSITORY}/{expected.route}":
+        route = (
+            expected.route
+            if expected.route.startswith("https://")
+            else f"repos/{REPOSITORY}/{expected.route}".rstrip("/")
+        )
+        if arguments[5] != route:
             raise AssertionError(f"unexpected route: {arguments}")
+        if expected.route.startswith("releases?"):
+            if tuple(arguments[6:]) != ("--jq", "[.[] | {id,tag_name,draft}]"):
+                raise AssertionError(f"discovery projection missing: {arguments}")
+        elif "--jq" in arguments:
+            raise AssertionError(f"unexpected response projection: {arguments}")
         value: object = json.loads(payload) if payload is not None else None
         self.requests.append((arguments, value))
         return expected.result
@@ -198,6 +264,54 @@ class Script:
     def consumed(self) -> None:
         if self.steps:
             raise AssertionError(f"unconsumed remote effects: {self.steps}")
+
+
+def discovery(*releases: Release) -> tuple[Step, ...]:
+    return (
+        Step("GET", "", response(RepositoryAccess())),
+        Step("GET", "releases?per_page=100&page=1", discovery_page(*releases)),
+        *((Step("GET", "releases?per_page=100&page=2", response(())),) if releases else ()),
+    )
+
+
+def discovery_page(*releases: Release) -> publisher.ProcessResult:
+    return response(
+        tuple(DiscoveryRelease(item.id, item.tag_name, item.draft) for item in releases)
+    )
+
+
+def inspection(release: Release) -> tuple[Step, ...]:
+    route = f"releases/{release.id}"
+    return (
+        Step("GET", route, response(release)),
+        Step("GET", f"{route}/assets?per_page=100&page=1", response(release.assets)),
+        *(
+            (Step("GET", f"{route}/assets?per_page=100&page=2", response(())),)
+            if release.assets
+            else ()
+        ),
+    )
+
+
+def tag_target(tag: str, *, published: bool = False) -> Step:
+    return Step(
+        "GET",
+        f"git/ref/tags/{tag}",
+        response(TagReference())
+        if published
+        else publisher.ProcessResult(1, b"HTTP/2.0 404\n\n{}"),
+    )
+
+
+def upload(asset: publisher.PublicationAsset, *, interrupted: bool = False) -> Step:
+    return Step(
+        "POST",
+        f"https://uploads.github.com/repos/{REPOSITORY}/releases/731/assets?name="
+        + asset.source.name,
+        publisher.ProcessResult(1, b"")
+        if interrupted
+        else response(RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes), 201),
+    )
 
 
 class CandidateFixture(unittest.TestCase):
@@ -318,6 +432,140 @@ class CandidateFixture(unittest.TestCase):
         self.assertEqual(publisher.digest(self.record), prepared.build.candidate.sha256)
         self.assertEqual(publisher.digest(self.promotion), prepared.build.promotion.sha256)
 
+    def test_created_draft_survives_published_tag_404(self) -> None:
+        prepared = self.prepare()
+        assets = tuple(
+            RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes)
+            for asset in prepared.assets
+        )
+        created = False
+        uploaded = False
+        published = False
+
+        def run(arguments: Sequence[str], payload: bytes | None) -> publisher.ProcessResult:
+            nonlocal created, uploaded, published
+            if tuple(arguments[:3]) == ("gh", "release", "create"):
+                created = True
+                return response(Release(prepared.build.releaseTag, BUILD, (), draft=True), 201)
+            method, route = arguments[4], arguments[5]
+            if "releases/tags/" in route:
+                return publisher.ProcessResult(1, b"HTTP/2.0 404\n\n{}")
+            if method == "GET" and route == (
+                f"repos/{REPOSITORY}/git/ref/tags/{prepared.build.releaseTag}"
+            ):
+                return (
+                    response(TagReference())
+                    if published
+                    else publisher.ProcessResult(1, b"HTTP/2.0 404\n\n{}")
+                )
+            if method == "GET" and route.rstrip("/") == f"repos/{REPOSITORY}":
+                return response(RepositoryAccess())
+            if method == "GET" and route == f"repos/{REPOSITORY}/releases?per_page=100&page=1":
+                return response(())
+            if method == "POST" and route == f"repos/{REPOSITORY}/releases":
+                self.assertFalse(created)
+                created = True
+                return response(Release(prepared.build.releaseTag, BUILD, (), draft=True), 201)
+            if method == "GET" and route == f"repos/{REPOSITORY}/releases/731":
+                return response(
+                    Release(
+                        prepared.build.releaseTag,
+                        BUILD,
+                        assets if uploaded else (),
+                        draft=not published,
+                    )
+                )
+            if method == "GET" and "/releases/731/assets?" in route:
+                return response(assets if uploaded and route.endswith("page=1") else ())
+            if method == "POST" and route.startswith(
+                f"https://uploads.github.com/repos/{REPOSITORY}/releases/731/assets?name="
+            ):
+                uploaded = True
+                return response(assets[0], 201)
+            if method == "PATCH" and route == f"repos/{REPOSITORY}/releases/731":
+                published = True
+                return response(Release(prepared.build.releaseTag, BUILD, assets))
+            raise AssertionError(f"unexpected effect: {arguments}")
+
+        result = publisher.RemotePublisher(REPOSITORY, prepared.build, run).release(prepared)
+        self.assertNotIsInstance(result, catalog.Failure)
+        self.assertTrue(published)
+
+    def test_discovery_projection_precedes_output_guard_without_losing_pages(self) -> None:
+        prepared = self.prepare()
+        upstream = tuple(
+            Release(f"other-{number}", BUILD, (), id=number, body="x" * 4096)
+            for number in range(1, 81)
+        )
+        projected = tuple(DiscoveryRelease(item.id, item.tag_name, item.draft) for item in upstream)
+        full_response = response(upstream).output
+        projected_response = response(projected).output.replace(
+            b"\r\n\r\n",
+            b'\r\nLink: <https://api.github.com/repos/amichne/kast/releases?page=2>; rel="next"'
+            b"\r\n\r\n",
+        )
+        self.assertGreater(len(full_response), publisher.MAXIMUM_API_BYTES)
+        self.assertLess(len(projected_response), publisher.MAXIMUM_API_BYTES)
+        self.assertEqual(80, len(projected))
+        requests: list[tuple[str, ...]] = []
+
+        def execute(
+            arguments: Sequence[str],
+            *,
+            input: bytes | None,
+            capture_output: bool,
+            timeout: int,
+            check: bool,
+        ) -> subprocess.CompletedProcess[bytes]:
+            self.assertEqual((None, True, 180, False), (input, capture_output, timeout, check))
+            requests.append(tuple(arguments))
+            route = arguments[5]
+            if route == f"repos/{REPOSITORY}":
+                data = response(RepositoryAccess()).output
+            elif route == f"repos/{REPOSITORY}/releases?per_page=100&page=1":
+                data = (
+                    projected_response
+                    if tuple(arguments[6:])
+                    == (
+                        "--jq",
+                        "[.[] | {id,tag_name,draft}]",
+                    )
+                    else full_response
+                )
+            elif route == f"repos/{REPOSITORY}/releases?per_page=100&page=2":
+                self.assertEqual(("--jq", "[.[] | {id,tag_name,draft}]"), tuple(arguments[6:]))
+                data = response((DiscoveryRelease(919, prepared.build.releaseTag, True),)).output
+            elif route == f"repos/{REPOSITORY}/releases?per_page=100&page=3":
+                self.assertEqual(("--jq", "[.[] | {id,tag_name,draft}]"), tuple(arguments[6:]))
+                data = response(()).output
+            else:
+                raise AssertionError(f"unexpected request: {arguments}")
+            return subprocess.CompletedProcess(arguments, 0, data, b"")
+
+        with patch.object(publisher.subprocess, "run", side_effect=execute):
+            # The unprojected negative control still trips the real, unchanged guard.
+            self.assertEqual(
+                catalog.Failure.REMOTE_INVALID,
+                publisher.invoke(
+                    [
+                        "gh",
+                        "api",
+                        "--include",
+                        "--method",
+                        "GET",
+                        f"repos/{REPOSITORY}/releases?per_page=100&page=1",
+                    ],
+                    None,
+                ),
+            )
+            self.assertEqual(
+                publisher.ReleaseId(919),
+                publisher.RemotePublisher(REPOSITORY, prepared.build).discover(
+                    prepared.build.releaseTag
+                ),
+            )
+        self.assertEqual(5, len(requests))
+
     def test_source_only_receipt_cannot_strengthen_after_setting_change(self) -> None:
         source = SourceValidated(
             replace(self.validation, scope=Scope.SOURCE_FULL, outcome=Outcome.SOURCE_VALIDATED)
@@ -358,9 +606,7 @@ class CandidateFixture(unittest.TestCase):
             replace(valid, target_commitish=MAIN),
         ):
             with self.subTest(document=document):
-                script = Script(
-                    Step("GET", f"releases/tags/{prepared.build.releaseTag}", response(document))
-                )
+                script = Script(*discovery(document), *inspection(document))
                 remote = publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
                 self.assertEqual(
                     publisher.Rejected(
@@ -376,55 +622,44 @@ class CandidateFixture(unittest.TestCase):
             RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes)
             for asset in prepared.assets
         )
-        route = f"releases/tags/{prepared.build.releaseTag}"
         partial = Release(prepared.build.releaseTag, BUILD, assets[:-1], draft=True)
         complete = replace(partial, assets=assets)
         script = Script(
-            Step("GET", route, response(partial)),
-            Step("GET", route, response(complete)),
-            Step("GET", route, response(replace(complete, draft=False))),
+            *discovery(partial),
+            *inspection(partial),
+            tag_target(partial.tag_name),
+            upload(prepared.assets[-1], interrupted=True),
+            *inspection(complete),
+            Step("PATCH", "releases/731", response(replace(complete, draft=False))),
+            *inspection(replace(complete, draft=False)),
+            tag_target(partial.tag_name, published=True),
         )
-        effects: list[str] = []
-
-        def run(arguments: Sequence[str], payload: bytes | None) -> publisher.ProcessResult:
-            if tuple(arguments[:3]) == ("gh", "release", "upload"):
-                self.assertEqual(
-                    [
-                        "gh",
-                        "release",
-                        "upload",
-                        prepared.build.releaseTag,
-                        str(prepared.assets[-1].source),
-                        "--repo",
-                        REPOSITORY,
-                    ],
-                    list(arguments),
-                )
-                effects.append("upload")
-                # A lost response is not proof that the upload failed.
-                return publisher.ProcessResult(1, b"")
-            if tuple(arguments[:3]) == ("gh", "release", "edit"):
-                self.assertEqual(
-                    [
-                        "gh",
-                        "release",
-                        "edit",
-                        prepared.build.releaseTag,
-                        "--repo",
-                        REPOSITORY,
-                        "--draft=false",
-                        "--latest=false",
-                    ],
-                    list(arguments),
-                )
-                effects.append("publish")
-                return publisher.ProcessResult(0, b"")
-            return script.run(arguments, payload)
-
         before = tuple(publisher.digest(asset.source) for asset in prepared.assets)
-        result = publisher.RemotePublisher(REPOSITORY, prepared.build, run).release(prepared)
-        self.assertEqual(catalog.CommitResult.COMMITTED, result)
-        self.assertEqual(["upload", "publish"], effects)
+        remote = publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
+        result = remote.release(prepared)
+        self.assertEqual(
+            publisher.PublishedRelease(
+                publisher.ReleaseId(731), prepared, publisher.ReleaseEffect.RECONCILED
+            ),
+            result,
+        )
+        writes = [(args, value) for args, value in script.requests if args[4] != "GET"]
+        self.assertEqual(2, len(writes))
+        self.assertEqual(str(prepared.assets[-1].source), writes[0][0][-1])
+        self.assertEqual(
+            ("--header", "Content-Type: application/octet-stream", "--input"),
+            tuple(writes[0][0][-4:-1]),
+        )
+        self.assertIsNone(writes[0][1])
+        self.assertEqual({"draft": False, "make_latest": "false"}, writes[1][1])
+        self.assertEqual(
+            publisher.ReleaseEvent(
+                publisher.ReleaseOperation.UPLOAD,
+                publisher.ApiFailure.INVALID,
+                publisher.ReleaseId(731),
+            ),
+            remote.evidence[0],
+        )
         self.assertEqual(before, tuple(publisher.digest(asset.source) for asset in prepared.assets))
         script.consumed()
 
@@ -434,49 +669,68 @@ class CandidateFixture(unittest.TestCase):
             RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes)
             for asset in prepared.assets
         )
-        route = f"releases/tags/{prepared.build.releaseTag}"
         empty = Release(prepared.build.releaseTag, BUILD, (), draft=True)
         partial = replace(empty, assets=assets[:1])
         complete = replace(empty, assets=assets)
+        published = replace(complete, draft=False)
         script = Script(
-            Step("GET", route, publisher.ProcessResult(1, b"HTTP/2.0 404\n\n{}")),
-            Step("GET", route, response(empty)),
-            Step("GET", route, response(partial)),
-            Step("GET", route, response(partial)),
-            Step("GET", route, response(complete)),
-            Step("GET", route, response(replace(complete, draft=False))),
-            Step("GET", route, response(replace(complete, draft=False))),
+            *discovery(),
+            tag_target(empty.tag_name),
+            Step("POST", "releases", response(empty, 201)),
+            *inspection(empty),
+            tag_target(empty.tag_name),
+            upload(prepared.assets[0]),
+            upload(prepared.assets[1], interrupted=True),
+            *inspection(partial),
+            *discovery(partial),
+            *inspection(partial),
+            tag_target(empty.tag_name),
+            *(upload(asset) for asset in prepared.assets[1:]),
+            *inspection(complete),
+            Step("PATCH", "releases/731", response(published)),
+            *inspection(published),
+            tag_target(empty.tag_name, published=True),
+            *discovery(published),
+            *inspection(published),
+            tag_target(empty.tag_name, published=True),
         )
-        effects: list[tuple[str, ...]] = []
-
-        def run(arguments: Sequence[str], payload: bytes | None) -> publisher.ProcessResult:
-            if tuple(arguments[:2]) == ("gh", "release"):
-                effects.append(tuple(arguments))
-                if arguments[2] == "create":
-                    self.assertIn("--draft", arguments)
-                    self.assertFalse(
-                        any(str(asset.source) in arguments for asset in prepared.assets)
-                    )
-                elif arguments[2] == "upload":
-                    self.assertNotIn("--clobber", arguments)
-                elif arguments[2] != "edit":
-                    self.fail(f"unexpected release action: {arguments}")
-                # An ambiguous process failure always requires observation, never blind replay.
-                return publisher.ProcessResult(1, b"")
-            return script.run(arguments, payload)
-
-        remote = publisher.RemotePublisher(REPOSITORY, prepared.build, run)
+        remote = publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
         self.assertEqual(catalog.Failure.REMOTE_UNAVAILABLE, remote.release(prepared))
-        self.assertEqual(["create", "upload"], [effect[2] for effect in effects])
-        self.assertEqual(catalog.CommitResult.COMMITTED, remote.release(prepared))
-        self.assertEqual(["create", "upload", "upload", "edit"], [effect[2] for effect in effects])
+        result = remote.release(prepared)
         self.assertEqual(
-            tuple(str(asset.source) for asset in prepared.assets[1:]),
-            effects[2][4:-2],
+            publisher.PublishedRelease(
+                publisher.ReleaseId(731), prepared, publisher.ReleaseEffect.RECONCILED
+            ),
+            result,
+        )
+        writes = [(args, value) for args, value in script.requests if args[4] != "GET"]
+        self.assertEqual(1, sum(args[5].endswith("/releases") for args, _ in writes))
+        self.assertEqual(
+            [str(asset.source) for asset in prepared.assets[1:]],
+            [args[-1] for args, _ in writes[3:-1]],
+        )
+        creation = writes[0][1]
+        self.assertEqual(
+            {
+                "tag_name": f"developer-v{VERSION}",
+                "target_commitish": BUILD,
+                "name": f"Kast developer {VERSION}",
+                "body": f"Retained build {VERSION} from {BUILD}. "
+                "Publication does not rebuild or change archive bytes.",
+                "prerelease": True,
+                "draft": True,
+                "make_latest": "false",
+            },
+            creation,
         )
         # A retry after publication performs no write at all.
-        self.assertEqual(catalog.CommitResult.COMMITTED, remote.release(prepared))
-        self.assertEqual(4, len(effects))
+        self.assertEqual(
+            publisher.PublishedRelease(
+                publisher.ReleaseId(731), prepared, publisher.ReleaseEffect.UNCHANGED
+            ),
+            remote.release(prepared),
+        )
+        self.assertEqual(len(writes), sum(args[4] != "GET" for args, _ in script.requests))
         script.consumed()
 
     def test_conflicting_draft_never_uploads_or_publishes(self) -> None:
@@ -493,7 +747,7 @@ class CandidateFixture(unittest.TestCase):
             replace(draft, assets=(replace(assets[0], state="new"),)),
         ):
             with self.subTest(rejected=rejected):
-                script = Script(Step("GET", f"releases/tags/{draft.tag_name}", response(rejected)))
+                script = Script(*discovery(rejected), *inspection(rejected))
                 self.assertEqual(
                     catalog.Failure.ASSET_MISMATCH,
                     publisher.RemotePublisher(REPOSITORY, prepared.build, script.run).release(
@@ -501,6 +755,349 @@ class CandidateFixture(unittest.TestCase):
                     ),
                 )
                 script.consumed()
+
+    def test_discovery_rejects_unproven_visibility_pagination_and_identity_before_writes(
+        self,
+    ) -> None:
+        prepared = self.prepare()
+        draft = Release(prepared.build.releaseTag, BUILD, (), draft=True)
+        unavailable = publisher.ProcessResult(1, b"HTTP/2.0 503\n\n{}")
+        cases = (
+            (
+                (Step("GET", "", response(RepositoryAccess(permissions=Permissions(False)))),),
+                catalog.Failure.DRAFT_VISIBILITY_UNPROVEN,
+            ),
+            (
+                (
+                    Step("GET", "", response(RepositoryAccess())),
+                    Step("GET", "releases?per_page=100&page=1", discovery_page(draft)),
+                    Step("GET", "releases?per_page=100&page=2", unavailable),
+                ),
+                catalog.Failure.RELEASE_DISCOVERY_INCOMPLETE,
+            ),
+            (
+                discovery(draft, replace(draft, id=732)),
+                catalog.Failure.RELEASE_IDENTITY_CONFLICT,
+            ),
+            (
+                discovery(draft, replace(draft, tag_name="other")),
+                catalog.Failure.RELEASE_IDENTITY_CONFLICT,
+            ),
+            (discovery(replace(draft, id=0)), catalog.Failure.REMOTE_INVALID),
+            (
+                (
+                    Step("GET", "", response(RepositoryAccess())),
+                    Step(
+                        "GET",
+                        "releases?per_page=100&page=1",
+                        publisher.ProcessResult(
+                            0,
+                            b'HTTP/2.0 200\n\n[{"tag_name":"other","draft":false}]',
+                        ),
+                    ),
+                    Step("GET", "releases?per_page=100&page=2", response(())),
+                ),
+                catalog.Failure.REMOTE_INVALID,
+            ),
+            (
+                (
+                    Step("GET", "", response(RepositoryAccess())),
+                    Step(
+                        "GET",
+                        "releases?per_page=100&page=1",
+                        publisher.ProcessResult(
+                            0,
+                            b"HTTP/2.0 200\nLink: <https://api.github.com/repos/amichne/kast/"
+                            b'releases?page=2>; rel="next"\n\n[]',
+                        ),
+                    ),
+                ),
+                catalog.Failure.RELEASE_DISCOVERY_INCOMPLETE,
+            ),
+            (
+                (
+                    Step("GET", "", response(RepositoryAccess())),
+                    Step(
+                        "GET",
+                        "releases?per_page=100&page=1",
+                        publisher.ProcessResult(
+                            0,
+                            b'HTTP/2.0 200\n\n[{"id":true,"tag_name":"other","draft":false}]',
+                        ),
+                    ),
+                    Step("GET", "releases?per_page=100&page=2", response(())),
+                ),
+                catalog.Failure.REMOTE_INVALID,
+            ),
+        )
+        for steps, failure in cases:
+            with self.subTest(failure=failure, steps=steps):
+                script = Script(*steps)
+                self.assertEqual(
+                    publisher.Rejected(publisher.Stage.IMMUTABLE_RELEASE, failure),
+                    publisher.publish(
+                        prepared, publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
+                    ),
+                )
+                self.assertTrue(all(args[4] == "GET" for args, _ in script.requests))
+                script.consumed()
+
+    def test_lost_creation_response_discovers_draft_on_later_page_without_recreation(self) -> None:
+        prepared = self.prepare()
+        assets = tuple(
+            RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes)
+            for asset in prepared.assets
+        )
+        empty = Release(prepared.build.releaseTag, BUILD, (), draft=True)
+        complete = replace(empty, assets=assets)
+        published = replace(complete, draft=False)
+        script = Script(
+            *discovery(),
+            tag_target(empty.tag_name),
+            Step("POST", "releases", publisher.ProcessResult(1, b"HTTP/2.0 503\n\n{}")),
+            Step("GET", "", response(RepositoryAccess())),
+            Step(
+                "GET",
+                "releases?per_page=100&page=1",
+                discovery_page(replace(empty, tag_name="unrelated", id=730)),
+            ),
+            Step("GET", "releases?per_page=100&page=2", discovery_page(empty)),
+            Step("GET", "releases?per_page=100&page=3", response(())),
+            *inspection(empty),
+            tag_target(empty.tag_name),
+            *(upload(asset) for asset in prepared.assets),
+            *inspection(complete),
+            Step("PATCH", "releases/731", response(published)),
+            *inspection(published),
+            tag_target(empty.tag_name, published=True),
+        )
+        remote = publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
+        self.assertEqual(
+            publisher.PublishedRelease(
+                publisher.ReleaseId(731), prepared, publisher.ReleaseEffect.RECONCILED
+            ),
+            remote.release(prepared),
+        )
+        self.assertEqual(
+            1,
+            sum(args[4] == "POST" and args[5].endswith("/releases") for args, _ in script.requests),
+        )
+        self.assertEqual(
+            publisher.ReleaseEvent(
+                publisher.ReleaseOperation.CREATE, publisher.ApiFailure.UNAVAILABLE
+            ),
+            remote.evidence[0],
+        )
+        self.assertEqual(
+            {"operation": "CREATE", "outcome": "UNAVAILABLE", "identity": None},
+            json.loads(json.dumps(asdict(remote.evidence[0]))),
+        )
+        script.consumed()
+
+    def test_identity_mismatch_and_foreign_upload_endpoint_reject_before_upload(self) -> None:
+        prepared = self.prepare()
+        draft = Release(prepared.build.releaseTag, BUILD, (), draft=True)
+        for document, failure in (
+            (replace(draft, id=732), catalog.Failure.RELEASE_IDENTITY_CONFLICT),
+            (
+                replace(draft, upload_url="https://example.com/assets"),
+                catalog.Failure.REMOTE_INVALID,
+            ),
+        ):
+            with self.subTest(document=document):
+                script = Script(*discovery(draft), Step("GET", "releases/731", response(document)))
+                self.assertEqual(
+                    publisher.Rejected(publisher.Stage.IMMUTABLE_RELEASE, failure),
+                    publisher.publish(
+                        prepared, publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
+                    ),
+                )
+                script.consumed()
+
+    def test_lost_creation_response_with_proven_absence_does_not_retry_creation(self) -> None:
+        prepared = self.prepare()
+        script = Script(
+            *discovery(),
+            tag_target(prepared.build.releaseTag),
+            Step("POST", "releases", publisher.ProcessResult(1, b"HTTP/2.0 503\n\n{}")),
+            *discovery(),
+        )
+        remote = publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
+        result = publisher.publish(prepared, remote)
+        self.assertEqual(
+            publisher.Rejected(
+                publisher.Stage.IMMUTABLE_RELEASE,
+                catalog.Failure.REMOTE_UNAVAILABLE,
+                (
+                    publisher.ReleaseEvent(
+                        publisher.ReleaseOperation.CREATE,
+                        publisher.ApiFailure.UNAVAILABLE,
+                    ),
+                ),
+            ),
+            result,
+        )
+        script.consumed()
+
+    def test_final_draft_or_changed_identity_never_qualifies_catalog(self) -> None:
+        prepared = self.prepare()
+        assets = tuple(
+            RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes)
+            for asset in prepared.assets
+        )
+        complete = Release(prepared.build.releaseTag, BUILD, assets, draft=True)
+        published = replace(complete, draft=False)
+        for final, failure in (
+            (complete, catalog.Failure.REMOTE_UNAVAILABLE),
+            (replace(published, id=732), catalog.Failure.RELEASE_IDENTITY_CONFLICT),
+            (replace(published, assets=assets[:-1]), catalog.Failure.ASSET_MISMATCH),
+        ):
+            with self.subTest(final=final):
+                final_steps = (
+                    (Step("GET", "releases/731", response(final)),)
+                    if final.id != 731
+                    else inspection(final)
+                )
+                script = Script(
+                    *discovery(complete),
+                    *inspection(complete),
+                    tag_target(complete.tag_name),
+                    Step("PATCH", "releases/731", response(published)),
+                    *final_steps,
+                )
+                self.assertEqual(
+                    publisher.Rejected(publisher.Stage.IMMUTABLE_RELEASE, failure),
+                    publisher.publish(
+                        prepared, publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
+                    ),
+                )
+                script.consumed()
+
+    def test_existing_wrong_tag_target_prevents_creation(self) -> None:
+        prepared = self.prepare()
+        script = Script(
+            *discovery(),
+            Step(
+                "GET",
+                f"git/ref/tags/{prepared.build.releaseTag}",
+                response(
+                    TagReference(TagTarget(MAIN)),
+                ),
+            ),
+        )
+        self.assertEqual(
+            catalog.Failure.ASSET_MISMATCH,
+            publisher.RemotePublisher(REPOSITORY, prepared.build, script.run).release(prepared),
+        )
+        script.consumed()
+
+    def test_unavailable_final_inspection_records_stage_and_preserves_catalog(self) -> None:
+        prepared = self.prepare()
+        assets = tuple(
+            RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes)
+            for asset in prepared.assets
+        )
+        complete = Release(prepared.build.releaseTag, BUILD, assets, draft=True)
+        unavailable = publisher.ProcessResult(1, b"HTTP/2.0 503\n\n{}")
+        script = Script(
+            *discovery(complete),
+            *inspection(complete),
+            tag_target(complete.tag_name),
+            Step("PATCH", "releases/731", unavailable),
+            Step("GET", "releases/731", unavailable),
+        )
+        self.assertEqual(
+            publisher.Rejected(
+                publisher.Stage.IMMUTABLE_RELEASE,
+                catalog.Failure.REMOTE_UNAVAILABLE,
+                (
+                    publisher.ReleaseEvent(
+                        publisher.ReleaseOperation.PUBLISH,
+                        publisher.ApiFailure.UNAVAILABLE,
+                        publisher.ReleaseId(731),
+                    ),
+                    publisher.ReleaseEvent(
+                        publisher.ReleaseOperation.INSPECT,
+                        publisher.ApiFailure.UNAVAILABLE,
+                        publisher.ReleaseId(731),
+                    ),
+                ),
+            ),
+            publisher.publish(
+                prepared, publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
+            ),
+        )
+        script.consumed()
+
+    def test_discovery_capacity_exhaustion_never_establishes_absence(self) -> None:
+        prepared = self.prepare()
+        unrelated = Release("other", BUILD, (), draft=True)
+        script = Script(
+            Step("GET", "", response(RepositoryAccess())),
+            Step("GET", "releases?per_page=100&page=1", discovery_page(unrelated)),
+        )
+        with patch.object(publisher, "MAXIMUM_DISCOVERY_PAGES", 1):
+            self.assertEqual(
+                catalog.Failure.RELEASE_DISCOVERY_INCOMPLETE,
+                publisher.RemotePublisher(REPOSITORY, prepared.build, script.run).release(prepared),
+            )
+        script.consumed()
+
+    def test_published_release_and_matching_catalog_and_pointer_perform_zero_writes(self) -> None:
+        prepared = self.prepare()
+        assets = tuple(
+            RemoteAsset(asset.source.name, f"sha256:{asset.sha256}", asset.bytes)
+            for asset in prepared.assets
+        )
+        published = Release(prepared.build.releaseTag, BUILD, assets)
+        document = catalog.Catalog(1, (prepared.build,))
+        pointer = catalog.latest_pointer(document)
+        script = Script(
+            *discovery(published),
+            *inspection(published),
+            Step(
+                "GET",
+                f"git/ref/tags/{published.tag_name}",
+                response(
+                    TagReference(TagTarget(TREE, "tag")),
+                ),
+            ),
+            Step("GET", f"git/tags/{TREE}", response(AnnotatedTag(TREE, TagTarget(BUILD)))),
+            Step("GET", "git/ref/heads/developer-latest", response(Ref(Sha("c" * 40)))),
+            Step("GET", "git/commits/" + "c" * 40, response(Commit("c" * 40, Sha("d" * 40)))),
+            Step(
+                "GET",
+                "contents/builds.json?ref=" + "c" * 40,
+                response(
+                    Contents(
+                        base64.b64encode(catalog.encode(document).encode()).decode(),
+                    )
+                ),
+            ),
+            Step(
+                "GET",
+                "contents/latest.txt?ref=" + "c" * 40,
+                response(
+                    Contents(
+                        base64.b64encode(pointer.encode()).decode(),
+                    )
+                ),
+            ),
+            Step("GET", "git/ref/heads/main", response(Ref(Sha(MAIN)))),
+            Step(
+                "GET",
+                f"compare/{MAIN}...{MAIN}?per_page=1&page=2",
+                response(Comparison("identical")),
+            ),
+        )
+        self.assertEqual(
+            catalog.CommitResult.UNCHANGED,
+            publisher.publish(
+                prepared, publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
+            ),
+        )
+        self.assertTrue(all(args[4] == "GET" for args, _ in script.requests))
+        script.consumed()
 
     def run_stable_publisher(
         self, runtime_fault: str = ""
@@ -634,6 +1231,23 @@ class CandidateFixture(unittest.TestCase):
 
 
 class RemoteCatalogTest(unittest.TestCase):
+    def test_discovery_projection_cannot_hide_asset_fields_or_apply_to_writes(self) -> None:
+        script = Script()
+        remote = publisher.RemotePublisher(REPOSITORY, entry(1), script.run)
+        for method, route in (
+            ("GET", "releases/731/assets?per_page=100&page=1"),
+            ("POST", "releases?per_page=100&page=1"),
+            ("GET", "releases/731"),
+        ):
+            with self.subTest(method=method, route=route):
+                self.assertEqual(
+                    publisher.ApiFailure.INVALID,
+                    remote.api(
+                        method, route, projection=publisher.ResponseProjection.RELEASE_DISCOVERY
+                    ),
+                )
+        script.consumed()
+
     def test_catalog_and_legacy_pointer_share_one_commit_and_nonforced_ref_update(self) -> None:
         value = entry(3)
         document = catalog.Catalog(1, (value,))
@@ -673,6 +1287,7 @@ class RemoteCatalogTest(unittest.TestCase):
 
     def test_snapshot_reads_catalog_at_the_captured_ref(self) -> None:
         document = catalog.Catalog(1, (entry(2),))
+        pointer = catalog.latest_pointer(document)
         script = Script(
             Step("GET", "git/ref/heads/developer-latest", response(Ref(Sha("a" * 40)))),
             Step("GET", "git/commits/" + "a" * 40, response(Commit("a" * 40, Sha("b" * 40)))),
@@ -681,9 +1296,16 @@ class RemoteCatalogTest(unittest.TestCase):
                 "contents/builds.json?ref=" + "a" * 40,
                 response(Contents(base64.b64encode(catalog.encode(document).encode()).decode())),
             ),
+            Step(
+                "GET",
+                "contents/latest.txt?ref=" + "a" * 40,
+                response(Contents(base64.b64encode(pointer.encode()).decode())),
+            ),
         )
         remote = publisher.RemotePublisher(REPOSITORY, entry(3), script.run)
-        self.assertEqual(catalog.Snapshot("a" * 40, "b" * 40, document, False), remote.snapshot())
+        self.assertEqual(
+            catalog.Snapshot("a" * 40, "b" * 40, document, False, pointer), remote.snapshot()
+        )
         script.consumed()
 
     def test_main_ancestry_rejects_divergence_and_orders_without_job_time(self) -> None:

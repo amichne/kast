@@ -8,13 +8,55 @@ import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import java.nio.file.Files
+import java.security.DigestInputStream
+import java.security.MessageDigest
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+@Serializable
+private enum class NativeClassification { CONTROL, DEPENDENCY_LIBRARY, UNEXPECTED_DEPENDENCY_NATIVE, OUTSIDE_DEPENDENCIES }
+
+@Serializable
+private enum class NativeInventoryOutcome { ACCEPTED, REJECTED }
+
+@Serializable
+private data class NativeCandidate(
+    val path: String,
+    val bytes: Long,
+    val sha256: String,
+    val headerHex: String,
+    val classification: NativeClassification,
+)
+
+@Serializable
+private data class NativeInventoryReport(
+    val target: String,
+    val outcome: NativeInventoryOutcome,
+    val candidateCount: Int,
+    val executableCount: Int,
+    val omittedCandidates: Int,
+    val candidates: List<NativeCandidate>,
+    val schemaVersion: Int = 1,
+    val stage: String = "native-inventory",
+)
+
+private val nativeInventoryJson = Json { encodeDefaults = true; prettyPrint = true }
 
 @CacheableTask
 abstract class VerifyControlDistributionTask : DefaultTask() {
+    @get:OutputFile
+    abstract val nativeInventoryReport: RegularFileProperty
+
+    init {
+        nativeInventoryReport.convention(project.layout.buildDirectory.file("reports/distribution/control-native-inventory.json"))
+    }
+
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val controlDirectory: DirectoryProperty
@@ -66,18 +108,46 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         check(entries.none { entry -> retiredPayloadRoots.any { entry == it || entry.startsWith("$it/") } }) {
             "control product contains a retired payload"
         }
-        val nativeExecutables = paths.filter(Files::isRegularFile).filter { path ->
+        val nativeCandidates = paths.filter(Files::isRegularFile).mapNotNull { path ->
             Files.newInputStream(path).use { input ->
                 val header = input.readNBytes(32)
                 val native = java.util.HexFormat.of().formatHex(header.take(4).toByteArray()) in setOf(
                     "cffaedfe", "feedfacf", "cefaedfe", "feedface", "cafebabe", "bebafeca", "cafebabf", "bfbafeca", "7f454c46",
                 )
-                val dependencyLibrary = root.relativize(path).startsWith("share/kast/mcp-dependencies/site-packages") &&
-                    nativeLibraryHeaderMatches(header, targetPlatform.get())
-                native && !dependencyLibrary
+                val dependencyLibrary = native && root.relativize(path).startsWith("share/kast/mcp-dependencies/site-packages") &&
+                    nativeLibraryHeaderMatches(path, header, targetPlatform.get())
+                if (native) {
+                    val classification = when {
+                        path == executable -> NativeClassification.CONTROL
+                        dependencyLibrary -> NativeClassification.DEPENDENCY_LIBRARY
+                        root.relativize(path).startsWith("share/kast/mcp-dependencies/site-packages") ->
+                            NativeClassification.UNEXPECTED_DEPENDENCY_NATIVE
+                        else -> NativeClassification.OUTSIDE_DEPENDENCIES
+                    }
+                    Triple(path, header, classification)
+                } else null
             }
         }
+        val nativeExecutables = nativeCandidates.filter { it.third != NativeClassification.DEPENDENCY_LIBRARY }.map { it.first }
+        // Keep the evidence bounded while counting every admitted inventory entry.
+        val recorded = nativeCandidates.sortedBy { root.relativize(it.first).toString() }.take(64).map { (path, header, classification) ->
+            val digest = MessageDigest.getInstance("SHA-256")
+            DigestInputStream(Files.newInputStream(path), digest).use { it.transferTo(java.io.OutputStream.nullOutputStream()) }
+            NativeCandidate(
+                root.relativize(path).toString(), Files.size(path), java.util.HexFormat.of().formatHex(digest.digest()),
+                java.util.HexFormat.of().formatHex(header), classification,
+            )
+        }
+        val inventory = NativeInventoryReport(
+            targetPlatform.get(),
+            if (nativeExecutables == listOf(executable)) NativeInventoryOutcome.ACCEPTED else NativeInventoryOutcome.REJECTED,
+            nativeCandidates.size, nativeExecutables.size, nativeCandidates.size - recorded.size, recorded,
+        )
+        val report = nativeInventoryReport.get().asFile.toPath()
+        Files.createDirectories(report.parent)
+        Files.writeString(report, nativeInventoryJson.encodeToString(inventory) + "\n")
         logger.lifecycle("Control native inventory: executables={}", nativeExecutables.size)
+        logger.lifecycle("Control native inventory report: {}", report)
         check(nativeExecutables == listOf(executable)) {
             "control product must contain exactly one native executable"
         }
@@ -169,7 +239,7 @@ internal fun nativeQueryHeaderMatches(header: ByteArray, platform: String): Bool
         else -> false
     }
 
-private fun nativeLibraryHeaderMatches(header: ByteArray, platform: String): Boolean =
+private fun nativeLibraryHeaderMatches(path: java.nio.file.Path, header: ByteArray, platform: String): Boolean =
     when (platform) {
         "macos-aarch64", "macos-x86_64" -> {
             val cpu = if (platform == "macos-aarch64") 12 else 7
@@ -178,10 +248,7 @@ private fun nativeLibraryHeaderMatches(header: ByteArray, platform: String): Boo
                 header[12].toInt() in setOf(6, 8) && header.slice(13..15).all { it == 0.toByte() }
         }
         "linux-aarch64", "linux-x86_64" ->
-            header.size == 32 && nativeQueryHeaderMatches(header.copyOf(20), platform) &&
-                header[16].toInt() == 3 && header[17].toInt() == 0 &&
-                // ET_DYN alone also describes PIE executables; a library has no entry point.
-                header.slice(24..31).all { it == 0.toByte() }
+            admitElfLibrary(path, platform) == ElfLibraryAdmission.LIBRARY
         else -> false
     }
 

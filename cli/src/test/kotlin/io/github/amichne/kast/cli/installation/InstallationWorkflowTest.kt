@@ -390,8 +390,14 @@ private fun writeControlFiles(
 ) {
     Files.createDirectories(control.resolve("lib"))
     val bin = Files.createDirectories(control.resolve("bin"))
-    Files.copy(Path.of("../packaging/installation-recovery.py"), metadata.resolve("installation-recovery.py"))
-    Files.copy(Path.of("../packaging/managed_update_journal.py"), metadata.resolve("managed_update_journal.py"))
+    Files.copy(
+        Path.of("../packaging/internal/installation/installation-recovery.py"),
+        metadata.resolve("installation-recovery.py"),
+    )
+    Files.copy(
+        Path.of("../packaging/internal/installation/managed_update_journal.py"),
+        metadata.resolve("managed_update_journal.py"),
+    )
     val emptyDocument = Json.encodeToString(EmptyDocumentFixture)
     val executable = Files.writeString(bin.resolve("kast"), "#!/bin/sh\nexit 0\n")
     Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwxr-xr-x"))
@@ -399,7 +405,10 @@ private fun writeControlFiles(
     Files.copy(executable, bin.resolve("kast-mcp"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     Files.copy(executable, bin.resolve("kast-tool-rpc"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     Files.copy(executable, bin.resolve("kast-query"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-    Files.copy(Path.of("../packaging/codex-mcp-registration.py"), metadata.resolve("codex-mcp-registration.py"))
+    Files.copy(
+        Path.of("../packaging/internal/installation/codex-mcp-registration.py"),
+        metadata.resolve("codex-mcp-registration.py"),
+    )
     Files.writeString(metadata.resolve("operation-registry.json"), emptyDocument)
     Files.writeString(metadata.resolve("wire-schema.json"), emptyDocument)
     Files.writeString(

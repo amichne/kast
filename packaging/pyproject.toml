@@ -23,8 +23,33 @@ default = true
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = ["local_product_install.py", "test_local_product_install.py", "local_product_probe.py", "product_acceptance.py", "product_lifecycle_probe.py", "test_product_acceptance.py", "component_probe.py", "immutable_store.py", "product_removal_recovery.py", "product_mcp_removal.py", "mcp_environment.py", "test_mcp_environment.py", "mcp_dependency_artifact.py", "test_mcp_dependency_artifact.py", "managed_product_removal.py", "runtime_base.py", "private_interpreter.py", "bootstrap_entry.py", "generate_bootstrap.py", "test-managed-bootstrap.py", "managed_product.py", "managed_product_installation.py", "test-managed-build-record.py", "test_composition_platform.py", "composition_platform.py", "composed_bundle.py", "test_composition_bundle.py", "composed_host_probe.py", "test_composition_descriptors.py", "test_composition_host.py", "composed_host.py", "composition_descriptors.py", "composition_recipe.py", "composition_index.py", "test_composition_index.py", "composition_graph.py", "test_composition_graph.py", "managed_headless.py", "test-managed-headless.py", "managed_installation.py", "managed_release.py", "managed_update_journal.py", "managed_update_contract.py", "test-managed-installation.py", "test-managed-release.py", "test-managed-update-contract.py", "composed_release.py", "test_composition_release.py", "runtime_archive.py", "test_runtime_archive.py", "container_probe.py"]
-extraPaths = [".", "../.github/scripts/release", "../.github/scripts/ci"]
+include = [
+    "internal/product/local_product_install.py", "tests/test_local_product_install.py",
+    "internal/verification/local_product_probe.py", "internal/verification/product_acceptance.py",
+    "internal/verification/product_lifecycle_probe.py", "tests/test_product_acceptance.py",
+    "internal/verification/component_probe.py", "internal/installation/immutable_store.py",
+    "internal/product/product_removal_recovery.py", "internal/product/product_mcp_removal.py",
+    "internal/mcp/mcp_environment.py", "tests/test_mcp_environment.py",
+    "internal/mcp/mcp_dependency_artifact.py", "tests/test_mcp_dependency_artifact.py",
+    "internal/product/managed_product_removal.py", "internal/runtime/runtime_base.py",
+    "internal/bootstrap/private_interpreter.py", "internal/bootstrap/bootstrap_entry.py",
+    "internal/bootstrap/generate_bootstrap.py", "tests/test-managed-bootstrap.py",
+    "internal/product/managed_product.py", "internal/product/managed_product_installation.py",
+    "tests/test-managed-build-record.py", "tests/test_composition_platform.py",
+    "internal/composition/composition_platform.py", "composed_bundle.py", "tests/test_composition_bundle.py",
+    "internal/verification/composed_host_probe.py", "tests/test_composition_descriptors.py",
+    "tests/test_composition_host.py", "internal/composition/composed_host.py",
+    "internal/composition/composition_descriptors.py", "internal/composition/composition_recipe.py",
+    "internal/composition/composition_index.py", "tests/test_composition_index.py",
+    "internal/composition/composition_graph.py", "tests/test_composition_graph.py",
+    "managed_headless.py", "tests/test-managed-headless.py", "internal/installation/managed_installation.py",
+    "internal/installation/managed_release.py", "internal/installation/managed_update_journal.py",
+    "internal/installation/managed_update_contract.py", "tests/test-managed-installation.py",
+    "tests/test-managed-release.py", "tests/test-managed-update-contract.py",
+    "internal/composition/composed_release.py", "tests/test_composition_release.py",
+    "internal/runtime/runtime_archive.py", "tests/test_runtime_archive.py", "internal/verification/container_probe.py",
+]
+extraPaths = ["internal/bootstrap", "internal/composition", "internal/configuration", "internal/installation", "internal/mcp", "internal/product", "internal/query", "internal/runtime", "internal/verification", ".", "tests", "../.github/scripts/release", "../.github/scripts/ci"]
 reportUnusedCallResult = "error"
 reportMatchNotExhaustive = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
@@ -32,6 +57,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+src = [".", "internal/bootstrap", "internal/composition", "internal/configuration", "internal/installation", "internal/mcp", "internal/product", "internal/query", "internal/runtime", "internal/verification", "tests"]
 extend-include = ["**/local_product_install.py", "**/test_local_product_install.py", "**/local_product_probe.py", "**/product_acceptance.py", "**/product_lifecycle_probe.py", "**/test_product_acceptance.py", "**/component_probe.py", "**/runtime_base.py", "**/managed_product_removal.py", "**/immutable_store.py", "**/product_removal_recovery.py", "**/product_mcp_removal.py", "**/mcp_environment.py", "**/test_mcp_environment.py", "**/mcp_dependency_artifact.py", "**/test_mcp_dependency_artifact.py"]
 include = ["**/private_interpreter.py", "**/bootstrap_entry.py", "**/generate_bootstrap.py", "**/test-managed-bootstrap.py", "**/managed_product.py", "**/managed_product_installation.py", "**/test-managed-build-record.py", "**/test_composition_platform.py", "**/composition_platform.py", "**/composed_bundle.py", "**/test_composition_bundle.py", "**/composed_host_probe.py", "**/test_composition_descriptors.py", "**/test_composition_host.py", "**/composed_host.py", "**/composition_descriptors.py", "**/composition_recipe.py", "**/composition_index.py", "**/test_composition_index.py", "**/composition_graph.py", "**/test_composition_graph.py", "**/managed_headless.py", "**/test-managed-headless.py", "**/managed_installation.py", "**/managed_release.py", "**/managed_update_journal.py", "**/managed_update_contract.py", "**/test-managed-installation.py", "**/test-managed-release.py", "**/test-managed-update-contract.py", "**/composed_release.py", "**/test_composition_release.py", "**/runtime_archive.py", "**/test_runtime_archive.py", "**/container_probe.py"]
 
@@ -39,10 +65,10 @@ include = ["**/private_interpreter.py", "**/bootstrap_entry.py", "**/generate_bo
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.per-file-target-version]
-"managed_update_journal.py" = "py39"
+"internal/installation/managed_update_journal.py" = "py39"
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --import-mode=importlib -ra"
-pythonpath = ["."]
+pythonpath = ["internal/bootstrap", "internal/composition", "internal/configuration", "internal/installation", "internal/mcp", "internal/product", "internal/query", "internal/runtime", "internal/verification", ".", "tests"]
 python_files = ["test-managed-*.py", "test_local_product_install.py", "test_composition_*.py", "test_runtime_archive.py", "test_mcp_environment.py", "test_mcp_dependency_artifact.py", "test_product_acceptance.py"]
 testpaths = ["."]

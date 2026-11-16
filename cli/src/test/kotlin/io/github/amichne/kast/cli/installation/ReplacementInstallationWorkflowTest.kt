@@ -121,7 +121,7 @@ class ReplacementInstallationWorkflowTest {
         discardFixtureReplacementAfterSetup(installation)
         val next = releaseRequest(root, installation, commands, home, codexHome, "1.2.4")
         Files.copy(
-            Path.of("../packaging/installation-lifecycle.py"),
+            Path.of("../packaging/internal/installation/installation-lifecycle.py"),
             next.controlRoot.value.resolve("share/kast/installation-lifecycle.py"),
             java.nio.file.StandardCopyOption.REPLACE_EXISTING,
         )

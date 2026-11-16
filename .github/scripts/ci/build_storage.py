@@ -12,7 +12,7 @@ from pathlib import Path
 
 OUTPUTS = (
     "build", ".gradle", "runtime/hosted/build", "distribution/cli/build",
-    ".github/tools/mintlify/node_modules", "docs/tooling/rendered/node_modules",
+    ".github/tools/mintlify/node_modules", "docs/internal/tooling/rendered/node_modules",
 )
 
 

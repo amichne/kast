@@ -165,7 +165,7 @@ def run(
         if mode is not Mode.DECISIONS:
             result = run_stage(
                 Stage.PORTABLE,
-                (sys.executable, "packaging/run-portable-tests.py"),
+                (sys.executable, "packaging/internal/verification/run-portable-tests.py"),
                 root,
                 isolated,
                 executor,

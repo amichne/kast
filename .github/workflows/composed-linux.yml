@@ -88,7 +88,7 @@ jobs:
         if: startsWith(matrix.target, 'linux-')
         run: |
           mkdir -p build/cloud-input
-          python3 packaging/composed_release.py linux-support --output "$PWD/build/cloud-input/linux-support"
+          python3 packaging/internal/composition/composed_release.py linux-support --output "$PWD/build/cloud-input/linux-support"
 
       - name: Set up pinned tools
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
@@ -102,12 +102,12 @@ jobs:
       - name: Check shared composition Python source
         if: matrix.target == 'linux-x86_64'
         run: |
-          mise exec -- uv run --locked --project packaging ruff check packaging/composed_release.py packaging/composed_host_probe.py packaging/test_composition_release.py
-          mise exec -- uv run --locked --project packaging ruff format --check packaging/composed_release.py packaging/composed_host_probe.py packaging/test_composition_release.py
+          mise exec -- uv run --locked --project packaging ruff check packaging/internal/composition/composed_release.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py
+          mise exec -- uv run --locked --project packaging ruff format --check packaging/internal/composition/composed_release.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py
           mise exec -- uv run --locked --project packaging pyright --project packaging
 
       - name: Run composition tests on the target platform
-        run: mise exec -- uv run --locked --project packaging pytest packaging/test_composition_*.py packaging/test_runtime_archive.py packaging/test-managed-headless.py -q
+        run: mise exec -- uv run --locked --project packaging pytest packaging/tests/test_composition_*.py packaging/tests/test_runtime_archive.py packaging/tests/test-managed-headless.py -q
 
       - name: Download exact macOS release candidate
         if: inputs.release_target == 'macos-aarch64' && !inputs.complete_product
@@ -164,7 +164,7 @@ jobs:
             support=(--linux-support "$PWD/build/cloud-input/linux-support")
           fi
           curl --fail --location --retry 3 "https://download.jetbrains.com/idea/$DONOR" --output "build/cloud-input/$DONOR"
-          mise exec -- uv run --locked --project packaging python packaging/composed_release.py assemble \
+          mise exec -- uv run --locked --project packaging python packaging/internal/composition/composed_release.py assemble \
             --archive "$PWD/build/cloud-input/$DONOR" \
             --bootstrap "$PWD/runtime/hosted/build/distributions/kast-managed-headless-v${BUNDLE_VERSION}-idea-262.zip" \
             --assets "$PWD/build/release/v${BUNDLE_VERSION}" \
@@ -203,7 +203,7 @@ jobs:
         run: |
           scratch=$(cd /tmp && pwd -P)
           workspace=$(pwd -P)
-          mise exec -- uv run --locked --project packaging python packaging/composed_release.py \
+          mise exec -- uv run --locked --project packaging python packaging/internal/composition/composed_release.py \
             discard-assembly-inputs --root "$scratch/kp" --inputs "$workspace/build/cloud-input"
 
       - name: Install and qualify the exact candidate
@@ -225,7 +225,7 @@ jobs:
           runtime_digest=$(cut -d ' ' -f1 "${runtime}.sha256")
           harness="$PWD/cli/build/native/nativeComponentQualificationCompile/kast-component-qualification"
           harness_digest=$("$python" -c 'import hashlib,sys; print(hashlib.file_digest(open(sys.argv[1], "rb"), "sha256").hexdigest())' "$harness")
-          "$python" -E -s -B packaging/composed_release.py qualify \
+          "$python" -E -s -B packaging/internal/composition/composed_release.py qualify \
             --harness "$harness" --harness-sha256 "$harness_digest" \
             --archive "$archive" --archive-sha256 "$digest" \
             --runtime-archive "$runtime" --runtime-sha256 "$runtime_digest" \

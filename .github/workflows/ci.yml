@@ -96,7 +96,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Run offline packaging suites
-        run: ./packaging/run-portable-tests-container.sh
+        run: ./packaging/internal/verification/run-portable-tests-container.sh
 
   source-work:
     needs: scope
@@ -530,7 +530,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TARGET: ${{ matrix.target }}
         run: |
-          PYTHONPATH=.github/scripts/release:packaging python3 - <<'PY'
+          PYTHONPATH=.github/scripts/release:packaging/internal/bootstrap:packaging python3 - <<'PY'
           import os, subprocess
           from pathlib import Path
           import product_candidate
@@ -553,7 +553,7 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
         run: >-
-          mise exec -- uv run --locked --project packaging python packaging/product_lifecycle_probe.py
+          mise exec -- uv run --locked --project packaging python packaging/internal/verification/product_lifecycle_probe.py
           --candidate build/product-candidate --baseline build/product-baseline
           --target "$TARGET" --private-python-archive build/private-python.tar.gz
           --private-dependency build/defusedxml.whl --evidence build/installed-evidence

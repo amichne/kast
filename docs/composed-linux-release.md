@@ -8,11 +8,11 @@ timestamp: "2026-11-08T00:00:00Z"
 source_revision: aa550bd1b0dff38eb492d20df0658bb62cf44512
 code_sources:
   - path: .github/workflows/composed-linux.yml
-  - path: packaging/composed_release.py
+  - path: packaging/internal/composition/composed_release.py
   - path: packaging/composed_bundle.py
-  - path: packaging/composed_host.py
-  - path: packaging/composed_host_probe.py
-  - path: packaging/test_composition_release.py
+  - path: packaging/internal/composition/composed_host.py
+  - path: packaging/internal/verification/composed_host_probe.py
+  - path: packaging/tests/test_composition_release.py
 ---
 
 # Build isolated runtime candidates

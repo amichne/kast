@@ -64,9 +64,9 @@ DOCUMENTATION_CONSUMER_PATHS = frozenset({
     # verify_documentation.py retains those direct checks without product assembly.
     ".github/scripts/ci/README.md", "README.md", "app-server/README.md",
     "app-server/docs/public-query-contract.md", "docs/development.md",
-    "docs/documentation-structure.md", "docs/hosted-read-configuration.md",
+    "docs/internal/documentation-structure.md", "docs/hosted-read-configuration.md",
     "docs/static-query-execution.md", "docs/okf-public.json",
-    "docs/tooling/okf_public.py", "docs/tooling/test_okf_public.py",
+    "docs/internal/tooling/okf_public.py", "docs/internal/tooling/test_okf_public.py",
     "docs/public/reference/AGENTS.md", "docs/public/start.mdx",
     "docs/public/reference/installation.mdx", "docs/public/reference/compatibility.mdx",
     "docs/public/reference/responses.mdx", "docs/public/reference/symbols.mdx",
@@ -90,7 +90,7 @@ def documentation_input(path: str) -> bool:
     return (
         path in DOCUMENTATION_PATHS
         or path in DOCUMENTATION_CONSUMER_PATHS
-        or path.startswith("docs/tooling/value-journey/")
+        or path.startswith("docs/internal/tooling/value-journey/")
         or (path.startswith("docs/reviews/readability-audit/") and Path(path).suffix in {".md", ".json", ".txt"})
         or (path.startswith("config/vale/readability/") and Path(path).suffix in {".ini", ".yml", ".txt"})
     )

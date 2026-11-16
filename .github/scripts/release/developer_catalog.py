@@ -11,7 +11,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TypeGuard
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packaging"))
+if not sys.flags.isolated:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packaging/internal/installation"))
 import managed_release as product
 
 MAXIMUM_PUBLICATION_TRIES = 4
@@ -30,11 +31,15 @@ class Failure(StrEnum):
     REMOTE_UNAVAILABLE = "REMOTE_UNAVAILABLE"
     REMOTE_INVALID = "REMOTE_INVALID"
     ASSET_MISMATCH = "ASSET_MISMATCH"
+    DRAFT_VISIBILITY_UNPROVEN = "DRAFT_VISIBILITY_UNPROVEN"
+    RELEASE_DISCOVERY_INCOMPLETE = "RELEASE_DISCOVERY_INCOMPLETE"
+    RELEASE_IDENTITY_CONFLICT = "RELEASE_IDENTITY_CONFLICT"
 
 
 class CommitResult(StrEnum):
     COMMITTED = "COMMITTED"
     CONTENDED = "CONTENDED"
+    UNCHANGED = "UNCHANGED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +95,7 @@ class Snapshot:
     tree: str
     catalog: Catalog
     absent: bool
+    pointer: str | None = None
 
 
 def mapping(value: object) -> TypeGuard[dict[object, object]]:
@@ -284,6 +290,12 @@ def publish(
         merged = merge(snapshot.catalog, incoming, ordered)
         if isinstance(merged, Failure):
             return merged
+        if (
+            not snapshot.absent
+            and merged == snapshot.catalog
+            and snapshot.pointer == latest_pointer(merged)
+        ):
+            return CommitResult.UNCHANGED
         result = commit(snapshot, merged, latest_pointer(merged))
         if result is not CommitResult.CONTENDED:
             return result

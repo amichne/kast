@@ -238,8 +238,9 @@ internal fun pluginFixtureWithMcp(temporary: Path): Path {
     )
     val metadata = installation.resolve("share/kast")
     val support =
-        listOf("mcp_environment.py", "mcp-requirements.txt", "mcp-requirements.txt.lock").map { name ->
-            Files.copy(Path.of("../../packaging/$name"), metadata.resolve(name))
+        listOf("internal/mcp/mcp_environment.py", "mcp-requirements.txt", "mcp-requirements.txt.lock").map { relative ->
+            val source = Path.of("../../packaging").resolve(relative)
+            Files.copy(source, metadata.resolve(source.fileName))
         }
     val runtime = mcpRuntimeFixture(metadata)
     val manifest = (readBundledManifest(installation) as BundledManifestRead.Read).manifest
