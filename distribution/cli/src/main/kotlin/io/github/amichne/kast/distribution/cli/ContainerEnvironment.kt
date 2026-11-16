@@ -31,9 +31,7 @@ internal fun containerEnvironment(container: AdmittedContainer, inherited: Map<S
                 )
     }
     return retained +
-        inherited.filterKeys {
-            it == "KAST_OUTPUT_TOON" || it == "KAST_WORKSPACE_PREPARATION_WAIT" || it == "KAST_HOST_IDLE_SHUTDOWN"
-        } +
+        inherited.filterKeys { it in INHERITED_SETTINGS } +
         mapOf(
             "HOME" to home.toString(),
             "JAVA_HOME" to java.toString(),
@@ -50,3 +48,6 @@ internal fun containerEnvironment(container: AdmittedContainer, inherited: Map<S
             "PATH" to (java.resolve("bin").toString() + ":" + (inherited["PATH"] ?: "/usr/bin:/bin")),
         )
 }
+
+private val INHERITED_SETTINGS =
+    setOf("KAST_OUTPUT_TOON", "KAST_WORKSPACE_PREPARATION_WAIT", "KAST_HOST_IDLE_SHUTDOWN", "KAST_HOST_MAX_HEAP_MIB")

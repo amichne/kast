@@ -106,6 +106,7 @@ private constructor(
     val readLimits: ReadLimits,
     val workspacePreparationWait: io.github.amichne.kast.kernel.ElapsedTimeAllowance,
     val hostIdleShutdown: HostIdleShutdown,
+    val hostMaxHeap: HostMaxHeap,
     val workspaceDependencySharing: WorkspaceDependencySharing,
     private val delegatedEnvironment: GradleImportEnvironment,
 ) {
@@ -317,6 +318,20 @@ private constructor(
                             ConfigurationFailure.INVALID_VALUE,
                         )
                 }
+            val maxHeap =
+                when (
+                    val parsed =
+                        HostMaxHeap.parseSetting(
+                            byKey.getValue(ConfigurationParameter.HOST_MAX_HEAP_MIB).value.boundaryValue()
+                        )
+                ) {
+                    is Refinement.Refined -> parsed.value
+                    is Refinement.Rejected ->
+                        return rejected(
+                            ConfigurationParameter.HOST_MAX_HEAP_MIB.key,
+                            ConfigurationFailure.INVALID_VALUE,
+                        )
+                }
             val dependencySharing =
                 when (
                     val parsed =
@@ -371,6 +386,7 @@ private constructor(
                     readLimits,
                     preparationWait,
                     idleShutdown,
+                    maxHeap,
                     dependencySharing,
                     delegated,
                 )
