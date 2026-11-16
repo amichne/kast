@@ -19,7 +19,7 @@ class SkipPolicy(Protocol):
 
 
 def load_policy() -> SkipPolicy:
-    path = Path(__file__).parents[1] / "internal/run-portable-tests.py"
+    path = Path(__file__).parents[1] / "internal/verification/run-portable-tests.py"
     spec = importlib.util.spec_from_file_location("portable_runner", path)
     if spec is None or spec.loader is None:
         raise AssertionError("the portable runner has no import loader")
@@ -44,10 +44,10 @@ class PortableSkipInventoryTest(unittest.TestCase):
         ):
             with self.subTest(body=body), tempfile.TemporaryDirectory() as temporary:
                 packaging = Path(temporary) / "packaging"
-                (packaging / "internal").mkdir(parents=True)
+                (packaging / "internal/verification").mkdir(parents=True)
                 (packaging / "tests").mkdir()
-                runner = packaging / "internal/run-portable-tests.py"
-                _ = runner.write_bytes((Path(__file__).parents[1] / "internal" / runner.name).read_bytes())
+                runner = packaging / "internal/verification/run-portable-tests.py"
+                _ = runner.write_bytes((Path(__file__).parents[1] / "internal/verification" / runner.name).read_bytes())
                 _ = (packaging / "tests/test-empty.py").write_text(body)
                 result = subprocess.run(
                     [sys.executable, str(runner)],

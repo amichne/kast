@@ -14,7 +14,11 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+if not sys.flags.isolated:
+    sys.path[:0] = [
+        str(Path(__file__).resolve().parents[1] / "composition"),
+        str(Path(__file__).resolve().parents[2]),
+    ]
 
 from component_probe import ComponentHarness, WorkspacePaths
 from composition_platform import HostPlatform, host_platform

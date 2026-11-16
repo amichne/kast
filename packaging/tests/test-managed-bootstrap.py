@@ -33,9 +33,61 @@ class BootstrapTest(unittest.TestCase):
     def test_private_source_paths_do_not_change_delivered_member_names(self) -> None:
         files = dict(generator.support_files())
         repository = files["install.sh"].parent
-        for name in ("bootstrap_entry.py", "managed_update_journal.py", "installation-recovery.py"):
-            self.assertEqual(repository / "packaging/internal" / name, files[name])
-        self.assertEqual(repository / "packaging/managed-install-v1", files["managed-install-v1"])
+        expected = {
+            "bootstrap_entry.py": "packaging/internal/bootstrap/bootstrap_entry.py",
+            "private_interpreter.py": "packaging/internal/bootstrap/private_interpreter.py",
+            "managed_installation.py": "packaging/internal/installation/managed_installation.py",
+            "managed_release.py": "packaging/internal/installation/managed_release.py",
+            "managed_product.py": "packaging/internal/product/managed_product.py",
+            "managed_product_installation.py": (
+                "packaging/internal/product/managed_product_installation.py"
+            ),
+            "managed_product_removal.py": "packaging/internal/product/managed_product_removal.py",
+            "immutable_store.py": "packaging/internal/installation/immutable_store.py",
+            "product_removal_recovery.py": "packaging/internal/product/product_removal_recovery.py",
+            "product_mcp_removal.py": "packaging/internal/product/product_mcp_removal.py",
+            "mcp_environment.py": "packaging/internal/mcp/mcp_environment.py",
+            "managed_update_contract.py": (
+                "packaging/internal/installation/managed_update_contract.py"
+            ),
+            "managed_update_journal.py": (
+                "packaging/internal/installation/managed_update_journal.py"
+            ),
+            "reload_hosted.py": "packaging/internal/installation/reload_hosted.py",
+            "host-installation.py": "packaging/internal/installation/host-installation.py",
+            "installation-recovery.py": "packaging/internal/installation/installation-recovery.py",
+            "installation-lifecycle.py": (
+                "packaging/internal/installation/installation-lifecycle.py"
+            ),
+            "host_directory_exchange.py": (
+                "packaging/internal/installation/host_directory_exchange.py"
+            ),
+            "composed_bundle.py": "packaging/composed_bundle.py",
+            "composition_platform.py": "packaging/internal/composition/composition_platform.py",
+            "managed_headless.py": "packaging/managed_headless.py",
+            "runtime_archive.py": "packaging/internal/runtime/runtime_archive.py",
+            "runtime_base.py": "packaging/internal/runtime/runtime_base.py",
+            "install-candidate.sh": "packaging/internal/bootstrap/install-candidate.sh",
+            "managed_installation.py.lock": (
+                "packaging/internal/installation/managed_installation.py.lock"
+            ),
+            "prune-prior-installations.py": (
+                "packaging/internal/installation/prune-prior-installations.py"
+            ),
+            "codex-mcp-registration.py": (
+                "packaging/internal/installation/codex-mcp-registration.py"
+            ),
+            "mcp-requirements.txt": "packaging/mcp-requirements.txt",
+            "mcp-requirements.txt.lock": "packaging/mcp-requirements.txt.lock",
+            "managed-install-v1": "packaging/managed-install-v1",
+            "install-completion-v1": "packaging/install-completion-v1",
+            "install.sh": "install.sh",
+        }
+        self.assertEqual(
+            {name: repository / relative for name, relative in expected.items()}, files
+        )
+        with self.assertRaises(ValueError):
+            _ = generator.source_file("unknown.py")
 
     def test_retained_support_has_one_exact_inventory(self) -> None:
         expected = {

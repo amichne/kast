@@ -20,7 +20,7 @@ class ConfigurationIngressTest(unittest.TestCase):
         for altered in (None, 'INSTALL_DOWNLOAD_RETRIES', 'RETIREMENT_CHILD_TIMEOUT_MILLIS'):
             with self.subTest(altered=altered), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
-                (root / 'packaging/internal').mkdir(parents=True)
+                (root / 'packaging/internal/installation').mkdir(parents=True)
                 shell = {'INSTALL_DOWNLOAD_RETRIES': 5, 'INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS': 2000}
                 python = {'RETIREMENT_CHILD_TIMEOUT_MILLIS': 60000, 'STATE_MAXIMUM_ENTRIES': 100000}
                 keys = ['installation.download.retries', 'installation.download.retry_delay',
@@ -28,11 +28,11 @@ class ConfigurationIngressTest(unittest.TestCase):
                 schema = {'parameters': [], 'operationalLimits': [dict(key=key, value=value)
                     for key, value in zip(keys, [*shell.values(), *python.values()])]}
                 (root / 'install.sh').write_text('\n'.join(f'readonly {key}={value + (key == altered)}' for key, value in shell.items()))
-                (root / 'packaging/internal/installation-lifecycle.py').write_text('\n'.join(f'{key} = {value + (key == altered)}' for key, value in python.items()))
+                (root / 'packaging/internal/installation/installation-lifecycle.py').write_text('\n'.join(f'{key} = {value + (key == altered)}' for key, value in python.items()))
                 for name in ('generated.json', 'snapshot.json'):
                     (root / name).write_text(json.dumps(schema))
                 (root / 'policy.json').write_text('{"ingressOwners":[]}')
-                result = subprocess.run([sys.executable, str(Path(__file__).parents[1] / 'internal/configuration_ingress.py'),
+                result = subprocess.run([sys.executable, str(Path(__file__).parents[1] / 'internal/configuration/configuration_ingress.py'),
                     '--root', str(root), '--schema', str(root / 'generated.json'), '--snapshot', str(root / 'snapshot.json'),
                     '--policy', str(root / 'policy.json')], capture_output=True, text=True, timeout=10)
                 if altered is None:
@@ -50,7 +50,7 @@ class ConfigurationIngressTest(unittest.TestCase):
             generated.write_bytes(b'{"parameters":[]}\n')
             snapshot.write_bytes(b'{ "parameters": [] }\n')
             policy.write_text('{"ingressOwners":[]}')
-            command = [sys.executable, str(Path(__file__).parents[1] / "internal/configuration_ingress.py"),
+            command = [sys.executable, str(Path(__file__).parents[1] / "internal/configuration/configuration_ingress.py"),
                        "--root", str(root), "--schema", str(generated), "--policy", str(policy), "--snapshot", str(snapshot)]
             stale = subprocess.run(command, capture_output=True, text=True, timeout=10)
             self.assertNotEqual(0, stale.returncode, "stale generated snapshot was accepted")
@@ -69,24 +69,24 @@ class ConfigurationIngressTest(unittest.TestCase):
             packaging = root / 'packaging'
             packaging.mkdir()
             (packaging / 'tests').mkdir()
-            (packaging / 'internal').mkdir()
+            (packaging / 'internal/installation').mkdir(parents=True)
             for name in ('test-fixture.py', 'test_fixture.py'):
                 (packaging / name).write_text('os.environ.get("KAST_TEST_ONLY")')
                 (packaging / 'tests' / name).write_text('os.environ.get("KAST_TEST_ONLY")')
             for name in ('generated.json', 'snapshot.json'):
                 (root / name).write_text(json.dumps(asdict(EmptyCatalogue())))
             (root / 'policy.json').write_text(json.dumps(asdict(EmptyIngressPolicy())))
-            command = [sys.executable, str(Path(__file__).parents[1] / 'internal/configuration_ingress.py'),
+            command = [sys.executable, str(Path(__file__).parents[1] / 'internal/configuration/configuration_ingress.py'),
                        '--root', str(root), '--schema', str(root / 'generated.json'),
                        '--snapshot', str(root / 'snapshot.json'), '--policy', str(root / 'policy.json')]
             tests_only = subprocess.run(command, capture_output=True, text=True, timeout=10)
             self.assertEqual(0, tests_only.returncode, tests_only.stdout + tests_only.stderr)
-            (packaging / 'internal/fixture.py').write_text('os.environ.get("KAST_UNDECLARED")')
+            (packaging / 'internal/installation/fixture.py').write_text('os.environ.get("KAST_UNDECLARED")')
             production = subprocess.run(command, capture_output=True, text=True, timeout=10)
             self.assertNotEqual(0, production.returncode)
             findings = json.loads(production.stdout)['findings']
             self.assertEqual({'UNDECLARED_KEY', 'UNOWNED_INGRESS'}, {item['condition'] for item in findings})
-            self.assertEqual({'packaging/internal/fixture.py'}, {item['file'] for item in findings})
+            self.assertEqual({'packaging/internal/installation/fixture.py'}, {item['file'] for item in findings})
 
     def test_declared_input_cannot_add_an_ambient_reader_outside_named_ingress(self):
         result = violations('core/Pure.kt', 'System.getenv("KAST_INDEXER_MAX_HEAP")', {'KAST_INDEXER_MAX_HEAP'}, {'cli/Ingress.kt'})

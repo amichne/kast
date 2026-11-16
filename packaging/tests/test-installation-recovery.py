@@ -15,7 +15,7 @@ import sys
 import tempfile
 import unittest
 
-SCRIPT = Path(__file__).parents[1] / 'internal/installation-recovery.py'
+SCRIPT = Path(__file__).parents[1] / 'internal/installation/installation-recovery.py'
 
 @dataclass(frozen=True)
 class PayloadFileFixture:

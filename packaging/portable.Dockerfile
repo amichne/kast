@@ -9,4 +9,4 @@ RUN python3 -m pip install --no-cache-dir --disable-pip-version-check \
 
 WORKDIR /src
 ENV PYTHONDONTWRITEBYTECODE=1
-CMD ["python3", "packaging/internal/run-portable-tests.py"]
+CMD ["python3", "packaging/internal/verification/run-portable-tests.py"]

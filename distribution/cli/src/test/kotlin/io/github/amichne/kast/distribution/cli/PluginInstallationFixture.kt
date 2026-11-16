@@ -238,7 +238,7 @@ internal fun pluginFixtureWithMcp(temporary: Path): Path {
     )
     val metadata = installation.resolve("share/kast")
     val support =
-        listOf("internal/mcp_environment.py", "mcp-requirements.txt", "mcp-requirements.txt.lock").map { relative ->
+        listOf("internal/mcp/mcp_environment.py", "mcp-requirements.txt", "mcp-requirements.txt.lock").map { relative ->
             val source = Path.of("../../packaging").resolve(relative)
             Files.copy(source, metadata.resolve(source.fileName))
         }

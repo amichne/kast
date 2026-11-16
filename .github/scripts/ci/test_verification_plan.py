@@ -96,8 +96,8 @@ class VerificationPlanTest(unittest.TestCase):
 
     def test_query_delivery_guard_tools_keep_full_validation_fallback(self):
         for path in (
-            "packaging/internal/query_delivery_contract.py",
-            "packaging/internal/generate-public-query.py",
+            "packaging/internal/query/query_delivery_contract.py",
+            "packaging/internal/query/generate-public-query.py",
             "packaging/tests/test-public-query-generation.py",
             "build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts",
             "agent-tools/onboarding.template.md",

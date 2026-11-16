@@ -59,7 +59,7 @@ def fixture(
 
 class LocalReloadTest(unittest.TestCase):
     def test_legacy_command_warns_on_stderr_before_argument_admission(self) -> None:
-        script = Path(__file__).parents[1] / "internal/reload_hosted.py"
+        script = Path(__file__).parents[1] / "internal/installation/reload_hosted.py"
         with tempfile.TemporaryDirectory() as directory:
             result = subprocess.run(
                 [sys.executable, str(script)],

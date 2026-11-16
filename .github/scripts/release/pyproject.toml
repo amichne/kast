@@ -21,7 +21,19 @@ default = true
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
 include = ["developer_catalog.py", "publish_developer.py", "product_candidate.py", "product_producer.py", "test_product_producer.py", "test_product_candidate.py", "qualified_runtime_assets.py", "test_developer_catalog.py", "test_developer_publication.py"]
-extraPaths = ["../ci", "../../../packaging/internal", "../../../packaging"]
+extraPaths = [
+    "../ci",
+    "../../../packaging/internal/bootstrap",
+    "../../../packaging/internal/composition",
+    "../../../packaging/internal/installation",
+    "../../../packaging/internal/product",
+    "../../../packaging/internal/mcp",
+    "../../../packaging/internal/runtime",
+    "../../../packaging/internal/query",
+    "../../../packaging/internal/verification",
+    "../../../packaging/internal/configuration",
+    "../../../packaging",
+]
 reportMatchNotExhaustive = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
 
@@ -38,6 +50,19 @@ known-first-party = ["build_candidate", "developer_catalog", "product_candidate"
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers --import-mode=importlib -ra"
-pythonpath = [".", "../ci", "../../../packaging/internal", "../../../packaging"]
+pythonpath = [
+    ".",
+    "../ci",
+    "../../../packaging/internal/bootstrap",
+    "../../../packaging/internal/composition",
+    "../../../packaging/internal/installation",
+    "../../../packaging/internal/product",
+    "../../../packaging/internal/mcp",
+    "../../../packaging/internal/runtime",
+    "../../../packaging/internal/query",
+    "../../../packaging/internal/verification",
+    "../../../packaging/internal/configuration",
+    "../../../packaging",
+]
 testpaths = ["."]
 python_files = ["test_*.py"]

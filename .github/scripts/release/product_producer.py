@@ -182,7 +182,9 @@ def seal_target(
         product.ProductInputs(
             product.file_digest(regular(java_release)),
             resolution_digest(root),
-            product.file_digest(regular(root / "packaging/internal/composition_recipe.py")),
+            product.file_digest(
+                regular(root / "packaging/internal/composition/composition_recipe.py")
+            ),
             donor,
         ),
         bundle,

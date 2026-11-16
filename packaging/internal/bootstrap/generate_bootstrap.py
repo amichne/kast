@@ -11,15 +11,55 @@ import tarfile
 from collections.abc import Iterable
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.extend(
+    [
+        str(Path(__file__).resolve().parents[1] / family)
+        for family in ("composition", "installation", "mcp", "product", "runtime")
+    ]
+    + [str(Path(__file__).resolve().parents[2])]
+)
 
 import mcp_dependency_artifact as producer
 import mcp_environment as mcp
 from private_interpreter import DEPENDENCY_SHA256, DEPENDENCY_URL, PINS
 
 HERE = Path(__file__).resolve().parent
-PACKAGING = HERE.parent
+INTERNAL = HERE.parent
+PACKAGING = INTERNAL.parent
 REPOSITORY = PACKAGING.parent
+
+SOURCE_PATHS = {
+    "bootstrap_entry.py": "bootstrap/bootstrap_entry.py",
+    "codex-mcp-registration.py": "installation/codex-mcp-registration.py",
+    "composed_host.py": "composition/composed_host.py",
+    "composition_descriptors.py": "composition/composition_descriptors.py",
+    "composition_graph.py": "composition/composition_graph.py",
+    "composition_index.py": "composition/composition_index.py",
+    "composition_platform.py": "composition/composition_platform.py",
+    "composition_recipe.py": "composition/composition_recipe.py",
+    "host-installation.py": "installation/host-installation.py",
+    "host_directory_exchange.py": "installation/host_directory_exchange.py",
+    "immutable_store.py": "installation/immutable_store.py",
+    "install-candidate.sh": "bootstrap/install-candidate.sh",
+    "installation-lifecycle.py": "installation/installation-lifecycle.py",
+    "installation-recovery.py": "installation/installation-recovery.py",
+    "managed_installation.py": "installation/managed_installation.py",
+    "managed_installation.py.lock": "installation/managed_installation.py.lock",
+    "managed_product.py": "product/managed_product.py",
+    "managed_product_installation.py": "product/managed_product_installation.py",
+    "managed_product_removal.py": "product/managed_product_removal.py",
+    "managed_release.py": "installation/managed_release.py",
+    "managed_update_contract.py": "installation/managed_update_contract.py",
+    "managed_update_journal.py": "installation/managed_update_journal.py",
+    "mcp_environment.py": "mcp/mcp_environment.py",
+    "private_interpreter.py": "bootstrap/private_interpreter.py",
+    "product_mcp_removal.py": "product/product_mcp_removal.py",
+    "product_removal_recovery.py": "product/product_removal_recovery.py",
+    "prune-prior-installations.py": "installation/prune-prior-installations.py",
+    "reload_hosted.py": "installation/reload_hosted.py",
+    "runtime_archive.py": "runtime/runtime_archive.py",
+    "runtime_base.py": "runtime/runtime_base.py",
+}
 
 SOURCES = (
     "bootstrap_entry.py",
@@ -87,7 +127,10 @@ def source_file(name: str) -> Path:
     # Moving them needs a separately authorized bootstrap-byte change.
     if name in FIXED or name in {"composed_bundle.py", "managed_headless.py", "uv.lock"}:
         return PACKAGING / name
-    return HERE / name
+    relative = SOURCE_PATHS.get(name)
+    if relative is None:
+        raise ValueError("unknown installer source member")
+    return INTERNAL / relative
 
 
 def stage_recipe(destination: Path) -> None:

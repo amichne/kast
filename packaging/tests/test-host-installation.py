@@ -15,7 +15,7 @@ import unittest
 from unittest.mock import patch
 import zipfile
 
-spec = importlib.util.spec_from_file_location('host_installation', Path(__file__).parents[1] / 'internal/host-installation.py')
+spec = importlib.util.spec_from_file_location('host_installation', Path(__file__).parents[1] / 'internal/installation/host-installation.py')
 host = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = host
 spec.loader.exec_module(host)

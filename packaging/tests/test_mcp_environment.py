@@ -48,7 +48,7 @@ def installation(tmp_path: Path) -> Path:
     for name in ("server.py", "server.py.lock"):
         _ = shutil.copyfile(SOURCES / name, root / mcp.SCRIPTS / name)
     for name in ("mcp_environment.py", "mcp-requirements.txt", "mcp-requirements.txt.lock"):
-        source = HERE / "internal" / name if name.endswith(".py") else HERE / name
+        source = HERE / "internal/mcp" / name if name.endswith(".py") else HERE / name
         _ = shutil.copyfile(source, root / mcp.METADATA / name)
     site = root / mcp.DEPENDENCY_SITE
     site.mkdir(parents=True)

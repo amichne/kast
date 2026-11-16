@@ -32,11 +32,11 @@
     "packaging/install-checkout.sh",
     "packaging/install-legacy.sh",
     "packaging/install-local.sh",
-    "packaging/internal/installation-lifecycle.py",
+    "packaging/internal/installation/installation-lifecycle.py",
     "packaging/tests/test-installer-fixture.py",
     "packaging/tests/test-install-checkout.py",
     "packaging/tests/test-installer-entrypoint.py",
-    "packaging/internal/run-installed-product.py",
+    "packaging/internal/verification/run-installed-product.py",
     "settings.gradle.kts",
     "workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/HostedReadConfiguration.kt",
     "runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt"

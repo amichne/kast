@@ -69,7 +69,7 @@ class FastChecksTest(unittest.TestCase):
                 self.assertEqual(os.devnull, environment["GIT_CONFIG_GLOBAL"])
                 self.assertFalse(Path(environment["HOME"]).exists(), "owned home was not removed")
             if expected_count >= 4:
-                self.assertEqual("packaging/internal/run-portable-tests.py", observed[3][0][-1])
+                self.assertEqual("packaging/internal/verification/run-portable-tests.py", observed[3][0][-1])
             if mode is fast.Mode.PRE_PUSH:
                 self.assertEqual(caller, observed[-1][1])
 

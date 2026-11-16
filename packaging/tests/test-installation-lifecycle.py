@@ -15,7 +15,7 @@ import tempfile
 import unittest
 import uuid
 
-SCRIPT = Path(__file__).parents[1] / 'internal/installation-lifecycle.py'
+SCRIPT = Path(__file__).parents[1] / 'internal/installation/installation-lifecycle.py'
 spec = importlib.util.spec_from_file_location('lifecycle_under_test', SCRIPT)
 lifecycle = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = lifecycle

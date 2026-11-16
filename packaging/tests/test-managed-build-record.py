@@ -603,7 +603,7 @@ class ProductActivationTest(unittest.TestCase):
             inputs=replace(
                 facts.inputs,
                 compositionRecipeSha256=release.file_digest(
-                    Path(__file__).parents[1] / "internal/composition_recipe.py"
+                    Path(__file__).parents[1] / "internal/composition/composition_recipe.py"
                 ),
             ),
             qualification=replace(

@@ -11,8 +11,15 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packaging"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packaging" / "internal"))
+if not sys.flags.isolated:
+    sys.path[:0] = [
+        str(Path(__file__).resolve().parents[3] / "packaging/internal/verification"),
+        str(Path(__file__).resolve().parents[3] / "packaging/internal/installation"),
+        str(Path(__file__).resolve().parents[3] / "packaging/internal/runtime"),
+        str(Path(__file__).resolve().parents[3] / "packaging/internal/composition"),
+        str(Path(__file__).resolve().parents[3] / "packaging/internal/product"),
+        str(Path(__file__).resolve().parents[3] / "packaging"),
+    ]
 import product_acceptance as acceptance
 
 import build_candidate as candidate

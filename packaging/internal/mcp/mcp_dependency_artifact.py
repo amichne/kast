@@ -12,7 +12,7 @@ from pathlib import Path
 import mcp_environment as mcp
 
 HERE = Path(__file__).resolve().parent
-PACKAGING = HERE.parent
+PACKAGING = HERE.parent.parent
 SOURCES = PACKAGING.parent / "agent-tools/skills/kast/scripts"
 
 

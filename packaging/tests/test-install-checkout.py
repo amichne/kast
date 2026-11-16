@@ -15,7 +15,7 @@ CONTROL_LIMITS = (
     / "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract"
     / "ControlDistributionLimits.kt"
 )
-INSTALLATION_LIFECYCLE = ROOT / "packaging/internal/installation-lifecycle.py"
+INSTALLATION_LIFECYCLE = ROOT / "packaging/internal/installation/installation-lifecycle.py"
 
 
 class InstallerRetirementTest(unittest.TestCase):

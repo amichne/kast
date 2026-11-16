@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Literal, Never, override
 from unittest.mock import patch
 
+import generate_bootstrap as generator
 import host_directory_exchange as host_exchange
 import managed_installation as install
 import managed_update_contract as contract
@@ -76,11 +77,7 @@ class BootstrapImportTest(unittest.TestCase):
                 "host_directory_exchange.py",
             )
             for name in names:
-                source = Path(__file__).parents[1] / (
-                    name
-                    if name in {"composed_bundle.py", "managed_headless.py"}
-                    else "internal/" + name
-                )
+                source = generator.source_file(name)
                 _ = shutil.copyfile(source, bundle / name)
             before = {
                 name: hashlib.sha256((bundle / name).read_bytes()).hexdigest() for name in names
@@ -840,7 +837,12 @@ raise SystemExit('interrupt was lost')
 """
         _ = harness.write_text(script)
         environment = dict(
-            os.environ, HOME=str(self.home), PYTHONPATH=str(Path(install.__file__).parent)
+            os.environ,
+            HOME=str(self.home),
+            PYTHONPATH=os.pathsep.join(
+                str(Path(install.__file__).parents[1] / family)
+                for family in ("installation", "product", "mcp", "bootstrap", "runtime")
+            ),
         )
         child = subprocess.run(
             [sys.executable, str(harness), str(pid_file)],

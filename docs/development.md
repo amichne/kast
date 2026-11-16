@@ -185,7 +185,7 @@ Live installation and release-catalog reads keep their existing freshness rules.
 Run all offline packaging suites in an isolated Linux container with:
 
 ```shell
-./packaging/internal/run-portable-tests-container.sh
+./packaging/internal/verification/run-portable-tests-container.sh
 ```
 
 The runner mounts the checkout read-only, disables network access, and gives each
@@ -200,7 +200,7 @@ CI runs this container suite on a disposable Ubuntu runner for every pull reques
 and main push, alongside the macOS product checks.
 
 Run the same offline inventory without Docker using
-`python3 packaging/internal/run-portable-tests.py`. A container pass proves the offline installer contract
+`python3 packaging/internal/verification/run-portable-tests.py`. A container pass proves the offline installer contract
 and process tests on Linux. It does not establish native IDEA or Codex behavior.
 
 Report the command, observed result and evidence level: pure policy, private
@@ -275,15 +275,15 @@ their own explicit version and qualification.
 
 ### Disposable local installed acceptance
 
-On macOS ARM64, use `packaging/internal/local_product_probe.py` to exercise the installed
+On macOS ARM64, use `packaging/internal/verification/local_product_probe.py` to exercise the installed
 product without a published two-target release candidate. This contributor path
 does not change release admission or grant release qualification.
 
 Build a positive candidate version such as `0.0.1`. Assemble its matching Control
-and Host with `packaging/internal/composed_release.py assemble --full-native-archives`.
+and Host with `packaging/internal/composition/composed_release.py assemble --full-native-archives`.
 Keep the other required assembly arguments. This option retains a full runtime
 archive instead of splitting a shared base; the default release path is unchanged.
-Run `packaging/internal/composed_release.py qualify` with those exact archives and a native
+Run `packaging/internal/composition/composed_release.py qualify` with those exact archives and a native
 component harness. Supply `--sandbox` when a desktop IDEA process is running.
 Qualification verifies the archive comparison before discarding its expanded copies.
 
@@ -291,7 +291,7 @@ Supply the resulting component receipt, pinned interpreter inputs, and an explic
 macOS sandbox profile to the local probe. Use a fresh evidence directory.
 
 ```shell
-mise exec -- uv run --locked --project packaging python packaging/internal/local_product_probe.py \
+mise exec -- uv run --locked --project packaging python packaging/internal/verification/local_product_probe.py \
   --bundle "$BUNDLE" --runtime "$RUNTIME" --qualification "$QUALIFICATION" \
   --private-python-archive "$PRIVATE_PYTHON_ARCHIVE" \
   --private-dependency "$PRIVATE_DEPENDENCY" --sandbox "$SANDBOX" \
@@ -313,12 +313,12 @@ disposable root named in `disposable-root.txt`; inspect it before cleanup.
 
 ### Install a checkout as an isolated managed product
 
-On macOS ARM64, `packaging/internal/local_product_install.py` installs one clean committed
+On macOS ARM64, `packaging/internal/product/local_product_install.py` installs one clean committed
 checkout as a managed product you can keep using. Use it to run a branch with
 private workspace containers before release. It never replaces the user installation.
 
 ```shell
-mise exec -- uv run --locked --project packaging python packaging/internal/local_product_install.py \
+mise exec -- uv run --locked --project packaging python packaging/internal/product/local_product_install.py \
   install --root ~/.local/share/kast-local/my-branch --source /path/to/clean/checkout
 cd /path/to/workspace && ~/.local/share/kast-local/my-branch/bin/kast query --name MyClass --json
 ```
@@ -505,7 +505,7 @@ For a damaged installation, use the [recovery runbook](installation-recovery.md)
 
 ### Installer development inputs
 
-`packaging/internal/generate_bootstrap.py` owns the generated root `install.sh` and retained installer support membership.
+`packaging/internal/bootstrap/generate_bootstrap.py` owns the generated root `install.sh` and retained installer support membership.
 Gradle's `generateInstallerSupport` projects that support and produces target-specific MCP dependencies before packaging.
 The producer uses uv with locked hashes and binary wheels. Installed setup copies admitted dependency files; it never runs a package manager.
 

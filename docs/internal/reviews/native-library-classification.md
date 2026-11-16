@@ -8,7 +8,7 @@ timestamp: "2026-11-16T02:15:34Z"
 source_revision: 4be6d202b911c7bd1553eada7a4714e848436707
 code_sources:
   - path: packaging/mcp-requirements.txt
-  - path: packaging/internal/mcp_dependency_artifact.py
+  - path: packaging/internal/mcp/mcp_dependency_artifact.py
   - path: build-logic/src/main/kotlin/support/tasks/verification/NativeElfLibrary.kt
   - path: build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
   - path: build-logic/src/test/kotlin/VerifyControlDistributionTaskTest.kt

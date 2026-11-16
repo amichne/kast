@@ -721,7 +721,7 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn('--version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"', candidate)
         self.assertIn("--receipt build/composed-evidence/qualification.json", candidate)
         self.assertLess(
-            candidate.index("packaging/internal/composed_release.py qualify"),
+            candidate.index("packaging/internal/composition/composed_release.py qualify"),
             candidate.index("product_producer.py target"),
         )
         self.assertLess(

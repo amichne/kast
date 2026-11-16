@@ -13,7 +13,7 @@ import tempfile
 import unittest
 
 
-SCRIPT = Path(__file__).parents[1] / 'internal/prune-prior-installations.py'
+SCRIPT = Path(__file__).parents[1] / 'internal/installation/prune-prior-installations.py'
 spec = importlib.util.spec_from_file_location('prior_cleanup_under_test', SCRIPT)
 cleanup = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = cleanup

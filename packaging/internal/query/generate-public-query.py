@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 from query_delivery_contract import MODULE as DELIVERY_MODULE, SCHEMA as DELIVERY_SCHEMA, SEMANTIC_KOTLIN, PRESENTATION_SCHEMA, embed_contract, render_contract, render_semantic_kotlin, render_presentation_schema
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 RESOURCES = ROOT / 'app-server/src/main/resources/io/github/amichne/kast/appserver/query'
 KOTLIN = ROOT / 'app-server/src/main/kotlin/io/github/amichne/kast/appserver/query'
 HEADER = '''// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.

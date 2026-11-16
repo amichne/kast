@@ -9,7 +9,7 @@ import sys
 import tempfile
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 SKIP_SUMMARY = re.compile(r'\bskipped=([0-9]+)\b')
 CASE_SUMMARY = re.compile(r'\bRan ([0-9]+) tests? in\b')
 
@@ -39,7 +39,11 @@ def main() -> int:
             'XDG_STATE_HOME': str(owned / 'state'), 'XDG_CACHE_HOME': str(owned / 'cache'),
             'PYTHONDONTWRITEBYTECODE': '1', 'LC_ALL': 'C', 'TZ': 'UTC',
             'PYTHONPATH': os.pathsep.join(str(ROOT / path) for path in (
-                'packaging/internal', 'packaging', 'packaging/tests',
+                'packaging/internal/bootstrap', 'packaging/internal/composition',
+                'packaging/internal/configuration', 'packaging/internal/installation',
+                'packaging/internal/mcp', 'packaging/internal/product',
+                'packaging/internal/query', 'packaging/internal/runtime',
+                'packaging/internal/verification', 'packaging', 'packaging/tests',
             )),
         }
         for path in tests:

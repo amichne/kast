@@ -391,11 +391,11 @@ private fun writeControlFiles(
     Files.createDirectories(control.resolve("lib"))
     val bin = Files.createDirectories(control.resolve("bin"))
     Files.copy(
-        Path.of("../packaging/internal/installation-recovery.py"),
+        Path.of("../packaging/internal/installation/installation-recovery.py"),
         metadata.resolve("installation-recovery.py"),
     )
     Files.copy(
-        Path.of("../packaging/internal/managed_update_journal.py"),
+        Path.of("../packaging/internal/installation/managed_update_journal.py"),
         metadata.resolve("managed_update_journal.py"),
     )
     val emptyDocument = Json.encodeToString(EmptyDocumentFixture)
@@ -406,7 +406,7 @@ private fun writeControlFiles(
     Files.copy(executable, bin.resolve("kast-tool-rpc"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     Files.copy(executable, bin.resolve("kast-query"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     Files.copy(
-        Path.of("../packaging/internal/codex-mcp-registration.py"),
+        Path.of("../packaging/internal/installation/codex-mcp-registration.py"),
         metadata.resolve("codex-mcp-registration.py"),
     )
     Files.writeString(metadata.resolve("operation-registry.json"), emptyDocument)

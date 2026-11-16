@@ -6,11 +6,11 @@ explicit root. Only release acquisition is virtualized, as in `local_product_pro
 This never replaces the user's installation and never establishes release qualification.
 
     mise exec -- uv run --locked --project packaging \
-      python packaging/internal/local_product_install.py \
+      python packaging/internal/product/local_product_install.py \
       install --root ~/.local/share/kast-local/pr-1226 [--source CHECKOUT]
     cd WORKSPACE && ~/.local/share/kast-local/pr-1226/bin/kast query --name MyClass --json
     mise exec -- uv run --locked --project packaging \
-      python packaging/internal/local_product_install.py \
+      python packaging/internal/product/local_product_install.py \
       remove --root ~/.local/share/kast-local/pr-1226
 """
 
@@ -312,7 +312,13 @@ def build_product(arguments: argparse.Namespace) -> BuiltProduct:
 
     # Pins and adapters come from the checkout being installed, never from this script's copy.
     sys.path[:0] = [
-        str(checkout / "packaging/internal"),
+        str(checkout / "packaging/internal/bootstrap"),
+        str(checkout / "packaging/internal/composition"),
+        str(checkout / "packaging/internal/installation"),
+        str(checkout / "packaging/internal/mcp"),
+        str(checkout / "packaging/internal/product"),
+        str(checkout / "packaging/internal/runtime"),
+        str(checkout / "packaging/internal/verification"),
         str(checkout / "packaging"),
         str(checkout / ".github/scripts/release"),
     ]
@@ -356,7 +362,7 @@ def build_product(arguments: argparse.Namespace) -> BuiltProduct:
         Stage.ASSEMBLY,
         [
             sys.executable,
-            str(checkout / "packaging/internal/composed_release.py"),
+            str(checkout / "packaging/internal/composition/composed_release.py"),
             "assemble",
             "--archive",
             str(donor),
@@ -396,7 +402,7 @@ def build_product(arguments: argparse.Namespace) -> BuiltProduct:
         Stage.QUALIFICATION,
         [
             sys.executable,
-            str(checkout / "packaging/internal/composed_release.py"),
+            str(checkout / "packaging/internal/composition/composed_release.py"),
             "qualify",
             "--archive",
             str(bundle),

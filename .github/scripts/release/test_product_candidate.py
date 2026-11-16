@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -287,6 +288,38 @@ def split_fixture(directory: Path) -> product.ProductRecord:
 
 
 class ProductCandidateTest(unittest.TestCase):
+    def test_isolated_release_helpers_keep_shipped_owner_and_reject_source_fallback(self) -> None:
+        repository = Path(__file__).resolve().parents[3]
+        assert product.__file__ is not None
+        owner = Path(product.__file__)
+        with tempfile.TemporaryDirectory(prefix="kast isolated release ") as temporary:
+            coordinator = Path(temporary)
+            for name in ("managed_release.py", "managed_update_journal.py"):
+                _ = (coordinator / name).write_bytes(owner.with_name(name).read_bytes())
+            command = (
+                sys.executable,
+                "-I",
+                "-B",
+                "-c",
+                "import pathlib,sys; c,r=sys.argv[1:3]; "
+                "v=str(pathlib.Path(r)/'packaging/internal/verification'); "
+                "sys.path[:0]=[c,v,str(pathlib.Path(r)/'.github/scripts/release')]; "
+                "import product_candidate as candidate; "
+                "assert pathlib.Path(candidate.product.__file__).parent == pathlib.Path(c); "
+                "assert not any(pathlib.Path(p).is_relative_to(pathlib.Path(r)/'packaging') "
+                "for p in sys.path if p != v); "
+                "print('shipped owner retained')",
+                str(coordinator),
+                str(repository),
+            )
+            accepted = subprocess.run(command, capture_output=True, check=False, timeout=30)
+            self.assertEqual(0, accepted.returncode, accepted.stderr.decode())
+            self.assertEqual(b"shipped owner retained\n", accepted.stdout)
+            (coordinator / "managed_release.py").unlink()
+            rejected = subprocess.run(command, capture_output=True, check=False, timeout=30)
+            self.assertNotEqual(0, rejected.returncode)
+            self.assertIn(b"No module named 'managed_release'", rejected.stderr)
+
     def test_remote_targets_preserve_owners_and_reject_local_qualifications(self) -> None:
         targets = tuple(
             product.ProductTarget(

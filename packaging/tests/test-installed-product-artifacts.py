@@ -10,7 +10,7 @@ import unittest
 import warnings
 import zipfile
 
-spec = importlib.util.spec_from_file_location('installed_product', Path(__file__).parents[1] / 'internal/run-installed-product.py')
+spec = importlib.util.spec_from_file_location('installed_product', Path(__file__).parents[1] / 'internal/verification/run-installed-product.py')
 product = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = product
 spec.loader.exec_module(product)

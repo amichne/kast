@@ -39,7 +39,7 @@ class CodexResetPreflightTest(unittest.TestCase):
         home.mkdir(exist_ok=True)
         install = home / '.local/share/kast'
         environment = {'HOME': str(home), 'PATH': str(binary.parent) + os.pathsep + os.defpath}
-        result = subprocess.run([sys.executable, str(Path(__file__).parents[1] / 'internal/codex-mcp-registration.py'),
+        result = subprocess.run([sys.executable, str(Path(__file__).parents[1] / 'internal/installation/codex-mcp-registration.py'),
             action, str(install)], env=environment, text=True, capture_output=True, timeout=10)
         self.assertEqual(['mcp list --json'], log.read_text().splitlines())
         return result

@@ -23,14 +23,18 @@ from pathlib import Path
 from threading import Barrier
 from typing import override
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+if not sys.flags.isolated:
+    sys.path[:0] = [
+        str(Path(__file__).resolve().parents[1] / family)
+        for family in ("bootstrap", "composition", "installation", "mcp", "product", "runtime")
+    ] + [str(Path(__file__).resolve().parents[2])]
 
 import managed_installation as installation
 import managed_release as product
 import product_acceptance as acceptance
 from private_interpreter import PrivateInterpreter
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / ".github/scripts/release"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".github/scripts/release"))
 import product_candidate as candidate
 
 INVOCATION_FILE = Path(
@@ -401,7 +405,7 @@ def execute(
     if evidence.exists():
         raise ValueError("evidence destination exists")
     evidence.mkdir(parents=True)
-    repository = Path(__file__).resolve().parents[2]
+    repository = Path(__file__).resolve().parents[3]
     # Failed native retirement retains its owned tree for investigation. Never
     # recursively erase a runtime under a Host whose exit was not established.
     with tempfile.TemporaryDirectory(prefix="kast-installed-native-", delete=False) as temporary:

@@ -10,31 +10,31 @@ code_sources:
   - path: packaging/tests/test_composition_platform.py
   - path: packaging/composed_bundle.py
   - path: packaging/tests/test_composition_bundle.py
-  - path: packaging/internal/composition_platform.py
-  - path: packaging/internal/composed_host.py
-  - path: packaging/internal/composed_host_probe.py
-  - path: packaging/internal/composition_recipe.py
+  - path: packaging/internal/composition/composition_platform.py
+  - path: packaging/internal/composition/composed_host.py
+  - path: packaging/internal/verification/composed_host_probe.py
+  - path: packaging/internal/composition/composition_recipe.py
   - path: packaging/managed_headless.py
   - path: packaging/pyproject.toml
-  - path: packaging/internal/generate-public-query.py
-  - path: packaging/internal/host-installation.py
-  - path: packaging/internal/generate_bootstrap.py
-  - path: packaging/internal/local_product_install.py
-  - path: packaging/internal/mcp_dependency_artifact.py
-  - path: packaging/internal/mcp_environment.py
-  - path: packaging/internal/installation-lifecycle.py
-  - path: packaging/internal/installation-recovery.py
-  - path: packaging/internal/run-installed-product.py
-  - path: packaging/internal/run-portable-tests.py
+  - path: packaging/internal/query/generate-public-query.py
+  - path: packaging/internal/installation/host-installation.py
+  - path: packaging/internal/bootstrap/generate_bootstrap.py
+  - path: packaging/internal/product/local_product_install.py
+  - path: packaging/internal/mcp/mcp_dependency_artifact.py
+  - path: packaging/internal/mcp/mcp_environment.py
+  - path: packaging/internal/installation/installation-lifecycle.py
+  - path: packaging/internal/installation/installation-recovery.py
+  - path: packaging/internal/verification/run-installed-product.py
+  - path: packaging/internal/verification/run-portable-tests.py
   - path: packaging/tests/test-host-installation.py
-  - path: packaging/internal/reload_hosted.py
+  - path: packaging/internal/installation/reload_hosted.py
   - path: packaging/tests/test_reload_hosted.py
-  - path: packaging/internal/install-candidate.sh
-  - path: packaging/internal/managed_installation.py
-  - path: packaging/internal/managed_release.py
-  - path: packaging/internal/managed_update_contract.py
-  - path: packaging/internal/managed_update_journal.py
-  - path: packaging/internal/host_directory_exchange.py
+  - path: packaging/internal/bootstrap/install-candidate.sh
+  - path: packaging/internal/installation/managed_installation.py
+  - path: packaging/internal/installation/managed_release.py
+  - path: packaging/internal/installation/managed_update_contract.py
+  - path: packaging/internal/installation/managed_update_journal.py
+  - path: packaging/internal/installation/host_directory_exchange.py
   - path: packaging/tests/test-installer-entrypoint.py
 ---
 
@@ -49,26 +49,26 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 
 ## Key Files
 
-- [generate_bootstrap.py](internal/generate_bootstrap.py) - canonical bootstrap and retained support membership.
-- [local_product_install.py](internal/local_product_install.py) - contributor assembly, qualification, and canonical product activation.
-- [host-installation.py](internal/host-installation.py) - Host plugin installation and receipts.
+- [generate_bootstrap.py](internal/bootstrap/generate_bootstrap.py) - canonical bootstrap and retained support membership.
+- [local_product_install.py](internal/product/local_product_install.py) - contributor assembly, qualification, and canonical product activation.
+- [host-installation.py](internal/installation/host-installation.py) - Host plugin installation and receipts.
 - [managed_headless.py](managed_headless.py) - archive assembly without product installation.
-- [composed_host.py](internal/composed_host.py) - module-based assembly from a pinned donor inventory.
+- [composed_host.py](internal/composition/composed_host.py) - module-based assembly from a pinned donor inventory.
 - [composed_bundle.py](composed_bundle.py) - authenticated product input archives.
-- [mcp_dependency_artifact.py](internal/mcp_dependency_artifact.py) - producer-only target-specific dependency materialization.
-- [mcp_environment.py](internal/mcp_environment.py) - admitted dependency copying and isolated MCP preparation without a package manager.
-- [composition_platform.py](internal/composition_platform.py) - pinned macOS ARM64 and Linux x86-64 donors.
-- [composition_recipe.py](internal/composition_recipe.py) - pinned roots and plugin provider candidates.
-- [composed_host_probe.py](internal/composed_host_probe.py) - native callers, Java references, and result rejection.
-- [installation-lifecycle.py](internal/installation-lifecycle.py) - selected-installation retirement and removal.
-- [installation-recovery.py](internal/installation-recovery.py) - Control recovery and update sealing.
-- [generate-public-query.py](internal/generate-public-query.py) - Kotlin and harness projections from the authored public schema.
-- [run-installed-product.py](internal/run-installed-product.py) - complete-product native lifecycle acceptance with explicit qualified inputs.
-- [run-portable-tests.py](internal/run-portable-tests.py) - the offline packaging test inventory.
+- [mcp_dependency_artifact.py](internal/mcp/mcp_dependency_artifact.py) - producer-only target-specific dependency materialization.
+- [mcp_environment.py](internal/mcp/mcp_environment.py) - admitted dependency copying and isolated MCP preparation without a package manager.
+- [composition_platform.py](internal/composition/composition_platform.py) - pinned macOS ARM64 and Linux x86-64 donors.
+- [composition_recipe.py](internal/composition/composition_recipe.py) - pinned roots and plugin provider candidates.
+- [composed_host_probe.py](internal/verification/composed_host_probe.py) - native callers, Java references, and result rejection.
+- [installation-lifecycle.py](internal/installation/installation-lifecycle.py) - selected-installation retirement and removal.
+- [installation-recovery.py](internal/installation/installation-recovery.py) - Control recovery and update sealing.
+- [generate-public-query.py](internal/query/generate-public-query.py) - Kotlin and harness projections from the authored public schema.
+- [run-installed-product.py](internal/verification/run-installed-product.py) - complete-product native lifecycle acceptance with explicit qualified inputs.
+- [run-portable-tests.py](internal/verification/run-portable-tests.py) - the offline packaging test inventory.
 
 ## Subdirectories
 
-- [internal/](internal/) - private implementation and contributor tooling.
+- [internal/](internal/) - private bootstrap, composition, installation, MCP, product, query, runtime, verification, and configuration families.
 - [tests/](tests/) - packaging tests and their fixture adapter.
 - [topology/](topology/) - explicit Git byte attribution for supplied historical paths.
 
@@ -77,7 +77,7 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - Public installation starts at the root `install.sh`.
 - `install-candidate.sh` invokes the candidate coordinator. It does not replace the current public bootstrap.
 - Candidate admission reads `managed-install-v1`, component manifests, and immutable selected assets before active installation effects.
-- For offline packaging tests, run `python3 packaging/internal/run-portable-tests.py` from the repository root.
+- For offline packaging tests, run `python3 packaging/internal/verification/run-portable-tests.py` from the repository root.
 - For managed and composition cases, run `mise exec -- uv run --locked --project packaging pytest packaging -q`.
 - The portable runner selects `test-*.py`. The project command also selects `test_composition_*.py`.
 - Use the [isolated runtime instructions](../docs/public/reference/installation.mdx#isolated-runtime) for archive installation.
@@ -102,7 +102,9 @@ Owns installer adapters, isolated runtime archives, offline lifecycle helpers, c
 - `packaging/uv.lock` owns the project test and tool dependencies.
 - `composed_bundle.py` and `managed_headless.py` stay at this level to preserve embedded bootstrap bytes and their repository-relative assembly paths.
 - The bootstrap generator maps source paths to unchanged delivered names. Keep installed recovery modules beside their sibling imports.
-- Source-level script callers need `packaging/internal` and `packaging` on `PYTHONPATH`. Direct test callers also need `packaging/tests`.
+- Source-level callers use the explicit family search paths in `pyproject.toml` or the portable runner. Direct test callers also need `packaging/tests`.
+- Source entrypoints add only their named family paths. Isolated product probes use the delivered flat coordinator modules without a source fallback.
+- Keep source moves in the generator's explicit mapping. Unknown source names must fail rather than select a directory by convention.
 
 - Managed Host replacement uses `prepare_managed`, `commit_managed`, `rollback_managed`, and `seal_managed` from `host-installation.py`.
 - `prepare_managed` stages and validates complete bytes before publishing its Host record paths.

@@ -82,7 +82,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/kast.public-query-contract.gradle.kts",
-            "sha256": "edaf4567f91d4e778e5276729a26c7b3510e506dc4510428e6503577812cee1f"
+            "sha256": "532d105759c197cc2200c3e8a91f17883902858b5591d8a5857a3c8107ff5c7d"
         },
         {
             "path": "build-logic/src/main/kotlin/kast.runtime-app.gradle.kts",
@@ -338,7 +338,7 @@
         },
         {
             "path": "build.gradle.kts",
-            "sha256": "72d88de38c1725378f93906af4f397feadd38c6251c2b39f95f07d51d9e13981"
+            "sha256": "fbc6a2cdac2149c23a72e5cebbe73c1c818e462bb631c7636d109ccc87ebd469"
         },
         {
             "path": "change/apply/build.gradle.kts",
@@ -370,7 +370,7 @@
         },
         {
             "path": "cli/build.gradle.kts",
-            "sha256": "19a372a9e768e4124ca521cd384fbf0998f993ead910cbfbaf85a709b0c9e0c0"
+            "sha256": "fb45d09c629ed7990a7af65836f52902c27dbc873bbffa97b84257f298b9cf07"
         },
         {
             "path": "diagnostic/contract/build.gradle.kts",

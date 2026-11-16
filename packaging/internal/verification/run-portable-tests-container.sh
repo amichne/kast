@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd -P)
+repo=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd -P)
 image=kast-portable-tests:local
 docker build --file "$repo/packaging/portable.Dockerfile" --tag "$image" \
   "$repo/packaging"

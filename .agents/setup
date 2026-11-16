@@ -73,7 +73,7 @@ if ! grep -Fqx "$profile_hook" "$HOME/.bash_profile"; then
 fi
 
 # Use the build-owned environments so later Gradle checks reuse these installs.
-step 'Schema test dependencies' python3 packaging/internal/prepare-python-test-environment.py
+step 'Schema test dependencies' python3 packaging/internal/verification/prepare-python-test-environment.py
 step 'Documentation Python dependencies' env UV_PROJECT_ENVIRONMENT="$repo_root/build/documentation/python" \
     uv sync --locked --project docs/internal/tooling --python "$(command -v python3)"
 step 'Semantic coverage dependencies' uv sync --locked --project config/kotlin-semantic-coverage/tooling \

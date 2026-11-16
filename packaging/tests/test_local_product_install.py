@@ -228,7 +228,7 @@ def test_export_requires_native_evidence_and_records_only_the_built_platform(
     (work / "logs").mkdir()
     qualification = work / "qualification/qualification.json"
     checkout = tmp_path / "source"
-    for name in (*RESOLUTION_INPUTS, "packaging/internal/composition_recipe.py"):
+    for name in (*RESOLUTION_INPUTS, "packaging/internal/composition/composition_recipe.py"):
         path = checkout / name
         path.parent.mkdir(parents=True, exist_ok=True)
         _ = path.write_bytes(b"declared source input\n")

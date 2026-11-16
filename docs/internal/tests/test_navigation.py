@@ -52,7 +52,7 @@ def repository(tmp_path: Path) -> Path:
         ("docs/public/.env", "never read"),
         ("docs/public/secrets.json", "never read"),
         ("docs/public/cache/ignored.md", "never read"),
-        ("packaging/internal/private.py", "private source\n"),
+        ("packaging/internal/mcp/private.py", "private source\n"),
         ("openwiki/overview.md", "native managed knowledge\n"),
         ("openwiki/.run.json", "native checkpoint"),
         ("unowned.md", "not declared"),
@@ -80,7 +80,7 @@ def test_expansion_and_native_knowledge_are_explicit(repository: Path) -> None:
         "README.md",
         "docs/public/guide.md",
         "openwiki/overview.md",
-        "packaging/internal/private.py",
+        "packaging/internal/mcp/private.py",
     )
     result = nav.navigate(repository, ["list", "--internal", "--scope", "knowledge"])
     assert isinstance(result, nav.Listing)
@@ -102,7 +102,7 @@ def test_read_carries_scope_and_exact_utf8_byte_limit(repository: Path) -> None:
     result = nav.navigate(repository, ["read", "docs/public/guide.md", "--max-bytes", "2"])
     assert isinstance(result, nav.Rejected)
     assert result.reason is nav.Failure.READ_LIMIT
-    private = nav.navigate(repository, ["read", "packaging/internal/private.py", "--internal"])
+    private = nav.navigate(repository, ["read", "packaging/internal/mcp/private.py", "--internal"])
     assert isinstance(private, nav.Document)
     assert private.scope is nav.Scope.PACKAGING
 
@@ -128,7 +128,7 @@ def test_noncanonical_paths_reject(repository: Path, path: str) -> None:
 @pytest.mark.parametrize(
     "path",
     [
-        "packaging/internal/private.py",
+        "packaging/internal/mcp/private.py",
         "unowned.md",
         "docs/public/.env",
         "docs/public/secrets.json",
@@ -251,7 +251,7 @@ def test_list_prefix_limits_and_read_rejections(repository: Path) -> None:
     for arguments, expected in (
         (["list", "--scope", "unknown"], nav.Failure.UNKNOWN_SCOPE),
         (["list", "--limit", "0"], nav.Failure.INVALID_ARGUMENTS),
-        (["read", "packaging/internal/private.py", "--int"], nav.Failure.INVALID_ARGUMENTS),
+        (["read", "packaging/internal/mcp/private.py", "--int"], nav.Failure.INVALID_ARGUMENTS),
         (["read"], nav.Failure.INVALID_ARGUMENTS),
         (["read", "docs/public"], nav.Failure.NOT_FILE),
         (["read", "docs/public/missing.md"], nav.Failure.NOT_FOUND),

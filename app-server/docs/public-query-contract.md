@@ -5,7 +5,7 @@ The agent supplies intent; Kast establishes semantic evidence. Each public tool 
 ## Current intent surface
 
 `tools.schema.json` is the authored authority for four intent tools.
-`packaging/internal/generate-public-query.py` generates their DTOs, defaults, identities, descriptions, and admission parameters.
+`packaging/internal/query/generate-public-query.py` generates their DTOs, defaults, identities, descriptions, and admission parameters.
 It also generates Codex parameters and separate Responses strict registrations.
 Edit the authored schema. Run the generator after authored changes converge.
 The installed catalog governs the tools and schemas for the installed release.

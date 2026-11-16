@@ -13,7 +13,7 @@ from installer_fixture import InstallerFixture, admitted_tools
 
 ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "install.sh"
-ACCEPTANCE = Path(__file__).parents[1] / "internal/run-installed-product.py"
+ACCEPTANCE = Path(__file__).parents[1] / "internal/verification/run-installed-product.py"
 DOCUMENTS = (
     ROOT / "README.md",
     ROOT / "docs/public/start.mdx",

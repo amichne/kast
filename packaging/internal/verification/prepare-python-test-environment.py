@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 ENVIRONMENT = ROOT / "build/python-tests/env"
 REQUIREMENTS = ROOT / "experiments/host-observation/requirements-test.txt"
 

@@ -30,7 +30,7 @@ def run(binary: Path) -> None:
         (root / 'management.json').write_text('corrupt receipt')
         public = task_home / '.codex/app-server-control/app-server-control.sock'
         public.parent.mkdir(parents=True)
-        source = Path(__file__).resolve().parents[2] / 'distribution/cli/src/test/resources/lifecycle/codex-listener.c'
+        source = Path(__file__).resolve().parents[3] / 'distribution/cli/src/test/resources/lifecycle/codex-listener.c'
         subprocess.run(['/usr/bin/cc', str(source), '-o', str(daemon)], check=True, timeout=15)
         label = 'io.github.amichne.kast.broker.' + hashlib.sha256(str(root / 'installation').encode()).hexdigest()[:32]
         plist = owned / 'job.plist'

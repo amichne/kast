@@ -19,7 +19,13 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.extend(
+    [
+        str(Path(__file__).resolve().parents[1] / family)
+        for family in ("bootstrap", "installation", "mcp", "product", "runtime", "verification")
+    ]
+    + [str(Path(__file__).resolve().parents[2])]
+)
 
 import composed_bundle as bundle
 import managed_product
@@ -52,7 +58,7 @@ if TYPE_CHECKING:
     from composition_graph import GraphRejected
     from composition_index import IndexRejected
 
-REPOSITORY = Path(__file__).resolve().parents[2]
+REPOSITORY = Path(__file__).resolve().parents[3]
 LINUX_PACKAGES = {
     "gcc-12-base": (),
     "libstdc++6": ("libstdc++.so.6",),

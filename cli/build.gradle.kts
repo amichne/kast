@@ -288,7 +288,7 @@ val queryDeliverySchemaTest =
         dependsOn(":preparePythonTestEnvironment")
         inputs.files("src/main/resources/query-delivery.schema.json")
         inputs.files(
-            File(repositoryRoot.asFile, "packaging/internal/query_delivery_contract.py"),
+            File(repositoryRoot.asFile, "packaging/internal/query/query_delivery_contract.py"),
             File(repositoryRoot.asFile, "packaging/tests/test-query-delivery-contract.py"),
         )
         inputs.file(File(repositoryRoot.asFile, "experiments/host-observation/pi-fixtures/query-delivery-cases.json"))
@@ -297,7 +297,7 @@ val queryDeliverySchemaTest =
             repositoryRoot.file("build/python-tests/env/bin/python3").asFile,
             "packaging/tests/test-query-delivery-contract.py",
         )
-        environment("PYTHONPATH", repositoryRoot.dir("packaging/internal").asFile.absolutePath)
+        environment("PYTHONPATH", repositoryRoot.dir("packaging/internal/query").asFile.absolutePath)
     }
 
 tasks.named("check") {

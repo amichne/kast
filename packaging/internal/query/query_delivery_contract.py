@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 SCHEMA = ROOT / 'cli/src/main/resources/query-delivery.schema.json'
 MODULE = ROOT / 'cli/src/main/js/query-delivery-contract.mjs'
 SEMANTIC_KOTLIN = ROOT / 'protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QuerySemanticHeaderDocument.kt'

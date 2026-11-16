@@ -59,7 +59,7 @@ def captured(root: Path, *, split: bool = False) -> tuple[Path, tuple[producer.T
         "gradle/wrapper/gradle-wrapper.properties",
         "mise.toml",
         "packaging/uv.lock",
-        "packaging/internal/composition_recipe.py",
+        "packaging/internal/composition/composition_recipe.py",
     ):
         path = repository / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -507,11 +507,11 @@ class ProductProducerTest(unittest.TestCase):
         composed = (workflows / "composed-linux.yml").read_text()
         self.assertLess(
             composed.index(":cli:nativeComponentQualificationCompile"),
-            composed.index("packaging/internal/composed_release.py qualify"),
+            composed.index("packaging/internal/composition/composed_release.py qualify"),
         )
         self.assertIn('--harness "$harness" --harness-sha256 "$harness_digest"', composed)
         self.assertLess(
-            composed.index("packaging/internal/composed_release.py qualify"),
+            composed.index("packaging/internal/composition/composed_release.py qualify"),
             composed.index("product_producer.py target"),
         )
         self.assertLess(

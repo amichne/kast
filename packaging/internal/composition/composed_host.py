@@ -16,13 +16,19 @@ from enum import StrEnum
 from pathlib import Path
 from xml.etree.ElementTree import tostring
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.extend(
+    [
+        str(Path(__file__).resolve().parents[1] / "bootstrap"),
+        str(Path(__file__).resolve().parents[2]),
+    ]
+)
 
 from composition_descriptors import DescriptorRejected, DescriptorSelection, parse_xml
 from composition_graph import GraphRejected, ModuleId
 from composition_index import IndexRejected, PluginIndex, encode_plugin_index
 from composition_platform import HostPlatform, UnsupportedHost, host_platform
 from composition_recipe import BUILD, ROOTS, plan, support_resources
+from generate_bootstrap import source_file
 from managed_headless import (
     Assembled,
     AssemblyEntryKind,
@@ -407,14 +413,13 @@ def compose(
             "lib/kast-product.jar",
         )
     )
-    code = Path(__file__).resolve().parent
     receipt = CompositionReceipt(
         1,
         inputs.archive_sha256,
         manifest_sha256,
         inputs.bootstrap_sha256,
         tuple(
-            file_record(code / name, code)
+            file_record(source_file(name), source_file(name).parent)
             for name in (
                 "composed_host.py",
                 "composition_graph.py",

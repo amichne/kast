@@ -11,7 +11,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-GENERATOR = ROOT / "packaging/internal/generate-public-query.py"
+GENERATOR = ROOT / "packaging/internal/query/generate-public-query.py"
 SCHEMA = ROOT / "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json"
 module_spec = importlib.util.spec_from_file_location("public_query_generator", GENERATOR)
 generator = importlib.util.module_from_spec(module_spec)

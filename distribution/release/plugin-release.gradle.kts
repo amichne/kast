@@ -49,7 +49,7 @@ tasks.register<Sync>("assembleHostRelease") {
     dependsOn(hostRecord)
     into(layout.buildDirectory.dir("release/host-v$hostVersion"))
     from(pluginArchive)
-    from(layout.projectDirectory.file("packaging/internal/host-installation.py"))
+    from(layout.projectDirectory.file("packaging/internal/installation/host-installation.py"))
     from(layout.buildDirectory.dir("generated/host-release"))
     if (includeHost263) {
         dependsOn("generateHost263ReleaseRecord")
@@ -70,7 +70,7 @@ val assembleRelease = tasks.register<Sync>("assembleRelease") {
     from(marketplaceArchive.flatMap(Zip::getArchiveFile))
     from(layout.buildDirectory.dir("generated/host-release"))
     from(layout.buildDirectory.dir("generated/control-release"))
-    from(layout.projectDirectory.file("packaging/internal/host-installation.py"))
+    from(layout.projectDirectory.file("packaging/internal/installation/host-installation.py"))
     if (includeHost263) {
         dependsOn("generateHost263ReleaseRecord")
         from(configurations.named("hosted263PluginFiles"))

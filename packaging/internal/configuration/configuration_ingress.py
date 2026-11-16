@@ -24,7 +24,7 @@ _INSTALLATION_PROJECTIONS = {
         'INSTALL_DOWNLOAD_RETRIES': 'installation.download.retries',
         'INSTALL_DOWNLOAD_RETRY_DELAY_MILLIS': 'installation.download.retry_delay',
     },
-    'packaging/internal/installation-lifecycle.py': {
+    'packaging/internal/installation/installation-lifecycle.py': {
         'RETIREMENT_CHILD_TIMEOUT_MILLIS': 'installation.retirement.child_timeout',
         'STATE_MAXIMUM_ENTRIES': 'installation.state.maximum_entries',
     },

@@ -21,7 +21,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+if not sys.flags.isolated:
+    sys.path[:0] = [
+        str(Path(__file__).resolve().parents[1] / family)
+        for family in ("bootstrap", "composition", "installation", "mcp", "product", "runtime")
+    ] + [str(Path(__file__).resolve().parents[2])]
 
 import managed_installation as installation
 import managed_product_installation as activation
@@ -136,6 +140,8 @@ def asset(path: Path, name: str) -> product.ProductAsset:
 def prepare_inputs(
     bundle: Path, runtime: Path, qualification: Path, work: Path
 ) -> product.ProductRecord:
+    from generate_bootstrap import source_file
+
     with zipfile.ZipFile(runtime) as archive:
         raw = product.document(archive.read("manifest.json"))
         if not product.mapping(raw) or not isinstance(version := raw.get("version"), str):
@@ -179,7 +185,7 @@ def prepare_inputs(
         product.ProductInputs(
             java,
             "0" * 64,
-            product.file_digest(Path(__file__).with_name("composition_recipe.py")),
+            product.file_digest(source_file("composition_recipe.py")),
             metadata.distributionSha256,
         ),
         asset(bundle, f"kast-composed-setup-v{version}-macos-aarch64.tar.gz"),
@@ -344,7 +350,7 @@ def execute(args: argparse.Namespace) -> LocalReport:
     root = home / ".local/share/kast"
     desktop_before = desktop_processes(work, HostPlatform.MACOS_ARM64)
     workspace = work / "workspace"
-    repository = Path(__file__).resolve().parents[2]
+    repository = Path(__file__).resolve().parents[3]
     _ = shutil.copytree(
         repository / "experiments/host-observation/static-callback-fixture", workspace
     )

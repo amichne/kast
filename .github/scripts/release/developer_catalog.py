@@ -11,8 +11,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TypeGuard
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packaging"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packaging" / "internal"))
+if not sys.flags.isolated:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packaging/internal/installation"))
 import managed_release as product
 
 MAXIMUM_PUBLICATION_TRIES = 4
