@@ -8,6 +8,7 @@ import io
 import shutil
 import sys
 import tarfile
+import tokenize
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -218,11 +219,25 @@ def stage_support(
         raise ValueError("installer support projection changed")
 
 
+def engine_member(name: str) -> bytes:
+    """Omit comments from the transient engine copy; code and line numbers stay unchanged."""
+    raw = source_file(name).read_bytes()
+    if not name.endswith(".py"):
+        return raw
+    text = raw.decode()
+    lines = text.splitlines(keepends=True)
+    for token in tokenize.generate_tokens(io.StringIO(text).readline):
+        if token.type == tokenize.COMMENT:
+            row, column = token.start
+            lines[row - 1] = lines[row - 1][:column].rstrip() + "\n"
+    return "".join(lines).encode()
+
+
 def render() -> bytes:
     payload = io.BytesIO()
     with tarfile.open(fileobj=payload, mode="w", format=tarfile.USTAR_FORMAT) as archive:
         for name in sorted(validate_members(SOURCES)):
-            raw = source_file(name).read_bytes()
+            raw = engine_member(name)
             member = tarfile.TarInfo(name)
             member.mode, member.size = 0o600, len(raw)
             archive.addfile(member, io.BytesIO(raw))

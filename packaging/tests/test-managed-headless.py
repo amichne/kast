@@ -75,6 +75,7 @@ class ManagedHeadlessTest(unittest.TestCase):
                         "requested": "0.0.0",
                         "platform": "macos-aarch64",
                         "selectable": (),
+                        "transfer": None,
                     },
                 }
                 assert not (candidate.root / "components/plugins").exists()

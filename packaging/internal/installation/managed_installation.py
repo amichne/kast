@@ -133,6 +133,7 @@ class SelectionRejected:
     requested: str
     platform: str
     selectable: tuple[str, ...]
+    transfer: release.TransferRejected | None = None
     type: Literal["REJECTED"] = "REJECTED"
 
 
@@ -293,6 +294,26 @@ class StageRejected(Exception):
     def __init__(self, failure: contract.Rejected) -> None:
         self.failure = failure
         super().__init__(failure.reason.value)
+
+
+def transfer_message(failure: release.TransferRejected) -> str:
+    cause = release.TransferFailure
+    roots = f" (trust roots: {failure.trust})" if failure.trust is not None else ""
+    if failure.cause is cause.TLS_CERTIFICATE_UNTRUSTED and (
+        failure.trust is release.TrustRoots.ENVIRONMENT
+    ):
+        return (
+            f"kast: TLS certificate verification failed{roots}. The configured SSL_CERT_FILE "
+            "or SSL_CERT_DIR must include the root CA of any proxy that inspects HTTPS."
+        )
+    if failure.cause is cause.TLS_CERTIFICATE_UNTRUSTED:
+        return (
+            f"kast: TLS certificate verification failed{roots}. If a proxy inspects HTTPS, "
+            "set SSL_CERT_FILE to a PEM bundle that includes its root CA and retry."
+        )
+    if failure.cause is cause.HTTP_STATUS:
+        return f"kast: release transfer failed with HTTP status {failure.httpStatus}{roots}."
+    return f"kast: release transfer failed: {failure.cause}{roots}."
 
 
 def encoded(value: object) -> bytes:
@@ -2308,7 +2329,7 @@ def recorded_bridge(
         release.MAXIMUM_PAYLOAD_BYTES,
     )
     if (
-        isinstance(downloaded, release.TransferFailure)
+        isinstance(downloaded, release.TRANSFER_REJECTIONS)
         or downloaded.path != archive
         or downloaded.sha256 != reservation.controlSha256
         or release.file_digest(archive) != reservation.controlSha256
@@ -2624,6 +2645,7 @@ def main(
                     selection.requested,
                     selection.platform,
                     selection.selectable,
+                    selection.transfer,
                 )
             else:
                 with tempfile.TemporaryDirectory(prefix="kast-managed-install-") as temporary:
@@ -2638,6 +2660,7 @@ def main(
                             admitted.requested,
                             admitted.platform,
                             admitted.selectable,
+                            admitted.transfer,
                         )
                     else:
                         interpreter = (
@@ -2722,6 +2745,8 @@ def main(
             )
         elif not isinstance(outcome, (contract.Planned, ProductPlanned)):
             print(encoded(outcome).decode().rstrip(), file=sys.stderr)
+        if isinstance(outcome, SelectionRejected) and outcome.transfer is not None:
+            print(transfer_message(outcome.transfer), file=sys.stderr)
         if (
             isinstance(
                 outcome, (contract.Activated, contract.InstalledNotRunning, ProductInstalled)
