@@ -2548,17 +2548,30 @@ def main(
     _ = parser.add_argument("--dry-run", action="store_true")
     _ = parser.add_argument("--restart-ide", action="store_true")
     _ = parser.add_argument("--recover-only", action="store_true")
+    _ = parser.add_argument(
+        "--purge-legacy",
+        action="store_true",
+        help="Remove a known-too-old pre-product installation, its workspace state, and "
+        "IDE processes still running its plugin, before installing",
+    )
     _ = parser.add_argument("--json", action="store_true")
     _ = parser.add_argument("--private-python-archive", type=Path, help=argparse.SUPPRESS)
     _ = parser.add_argument("--private-dependency", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(arguments)
+    import legacy_purge
     from managed_product_installation import ProductInstalled, ProductPlanned, activate, resume
     from private_interpreter import PrivateInterpreter
 
     state = interrupt if interrupt is not None else InterruptState()
     home = Path(os.environ["HOME"]).resolve()
     root = home / ".local/share/kast"
-    outcome: contract.Outcome | SelectionRejected | ProductInstalled | ProductPlanned
+    outcome: (
+        contract.Outcome
+        | SelectionRejected
+        | ProductInstalled
+        | ProductPlanned
+        | legacy_purge.Rejected
+    )
     try:
         provider = (
             release.LocalReleaseSource(args.local_artifact)
@@ -2641,7 +2654,31 @@ def main(
                             args.private_dependency is None
                         ):
                             raise ValueError("private interpreter inputs must be paired")
-                        outcome = activate(root, home, admitted, args.dry_run, interpreter, runner)
+                        # Purge only after the replacement is admitted, so a failed download
+                        # never leaves the machine without either installation.
+                        purged = (
+                            legacy_purge.purge(root, home, args.dry_run)
+                            if args.purge_legacy
+                            else None
+                        )
+                        if isinstance(purged, (legacy_purge.Planned, legacy_purge.Purged)):
+                            print(encoded(purged).decode().rstrip(), file=sys.stderr)
+                        outcome = (
+                            purged
+                            if isinstance(purged, legacy_purge.Rejected)
+                            else activate(root, home, admitted, args.dry_run, interpreter, runner)
+                        )
+                        legacy = (
+                            legacy_purge.known_legacy(root, home)
+                            if purged is None and isinstance(outcome, contract.Rejected)
+                            else None
+                        )
+                        if legacy is not None:
+                            print(
+                                f"LEGACY_PURGE_AVAILABLE: Kast {legacy} predates managed products; "
+                                "rerun the installer with --purge-legacy to remove it.",
+                                file=sys.stderr,
+                            )
     except (
         StageRejected,
         OSError,
