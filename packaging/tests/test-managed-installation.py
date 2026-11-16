@@ -895,7 +895,7 @@ class UntrustedReleaseSource:
         self.reads.append(url.rsplit("/", 1)[-1])
         return install.release.TransferRejected(
             install.release.TransferFailure.TLS_CERTIFICATE_UNTRUSTED,
-            install.release.TrustRoots.KEYCHAIN_EXPORT_FAILED,
+            install.release.TrustRoots.KEYCHAIN,
         )
 
     def download(
@@ -932,7 +932,7 @@ class TransferRejectionPresentationTest(unittest.TestCase):
                 "selectable": [],
                 "transfer": {
                     "cause": "TLS_CERTIFICATE_UNTRUSTED",
-                    "trust": "KEYCHAIN_EXPORT_FAILED",
+                    "trust": "KEYCHAIN",
                     "httpStatus": None,
                 },
                 "type": "REJECTED",
@@ -946,7 +946,7 @@ class TransferRejectionPresentationTest(unittest.TestCase):
         self.assertEqual("REJECTED\n", stdout)
         self.assertIn('"cause":"TLS_CERTIFICATE_UNTRUSTED"', stderr)
         self.assertIn("TLS certificate verification failed", stderr)
-        self.assertIn("trust roots: KEYCHAIN_EXPORT_FAILED", stderr)
+        self.assertIn("trust roots: KEYCHAIN", stderr)
         self.assertIn("SSL_CERT_FILE", stderr)
         self.assertNotIn("https://", stderr)
 

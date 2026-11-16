@@ -5,10 +5,10 @@ from __future__ import annotations
 import hashlib
 import io
 import json
-import os
 import socket
 import ssl
 import struct
+import subprocess
 import tempfile
 import unittest
 import urllib.error
@@ -668,33 +668,13 @@ class ReleaseAdmissionTest(unittest.TestCase):
         self.assertEqual(release.Failure.SELECTOR_INVALID, result.reason)
 
 
-INSPECTION_ROOT = """-----BEGIN CERTIFICATE-----
-MIIBUzCB+qADAgECAgkAl++VsKRqLQcwCgYIKoZIzj0EAwIwJDEiMCAGA1UEAwwZ
-S2FzdCBUZXN0IEluc3BlY3Rpb24gUm9vdDAgFw0yNjExMTYyMjIwNTRaGA8yMTI2
-MTAyMzIyMjA1NFowJDEiMCAGA1UEAwwZS2FzdCBUZXN0IEluc3BlY3Rpb24gUm9v
-dDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABK1CTlTDefQqSmopUhg2v7SdC6j6
-ZCmO9LbgpxDvKG5lUg5eybEItpUMq2jOhlailITyJfrO3tYMZaLmTmrXotGjEzAR
-MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIgKPy/Wx0DH0YaAYRi
-wcMid8PLMsgX1+j0CBlZecUCUiMCIQCFRyPNxLQvCSTECfuXrRt+MI2pxB/3u37j
-pfa5qC+VoQ==
------END CERTIFICATE-----
-"""
-INSPECTION_SUBJECT = ((("commonName", "Kast Test Inspection Root"),),)
-
-
-def trusts_inspection_root(context: ssl.SSLContext) -> bool:
-    return any(item.get("subject") == INSPECTION_SUBJECT for item in context.get_ca_certs())
-
-
-def unexpected_export() -> bytes | release.TrustRoots:
-    raise AssertionError("unexpected Keychain export")
-
-
 class FailingTransport(release.HttpReleaseSource):
     """Inject one urllib observation at the opener boundary; production maps it."""
 
     def __init__(self, failure: OSError | None, body: bytes = b"") -> None:
-        super().__init__(lambda: (ssl.create_default_context(), release.TrustRoots.KEYCHAIN))
+        super().__init__(
+            lambda: (ssl.create_default_context(), release.TrustRoots.KEYCHAIN), system="Linux"
+        )
         self.failure, self.body = failure, body
 
     @override
@@ -825,86 +805,105 @@ class TransferCauseTest(unittest.TestCase):
         )
 
 
-class TrustContextTest(unittest.TestCase):
-    def test_openssl_environment_selects_its_roots_without_keychain_export(self) -> None:
-        for variable in ("SSL_CERT_FILE", "SSL_CERT_DIR"):
-            with self.subTest(variable=variable):
-                context, trust = release.trust_context(
-                    "Darwin", {variable: "/private/roots.pem"}, unexpected_export
-                )
-                self.assertEqual(release.TrustRoots.ENVIRONMENT, trust)
-                self.assertFalse(trusts_inspection_root(context))
+class NativeTransportTest(unittest.TestCase):
+    def test_native_reads_and_downloads_keep_limits_digests_and_protected_files(self) -> None:
+        calls: list[tuple[str, ...]] = []
 
-    def test_linux_keeps_the_platform_context_without_export(self) -> None:
-        context, trust = release.trust_context("Linux", {}, unexpected_export)
-        self.assertEqual(release.TrustRoots.PLATFORM, trust)
-        self.assertFalse(trusts_inspection_root(context))
+        def run(command: tuple[str, ...], output: IO[bytes]) -> subprocess.CompletedProcess[bytes]:
+            calls.append(command)
+            _ = output.write(b"native bytes")
+            return subprocess.CompletedProcess(command, 0, stderr=b"200")
 
-    def test_darwin_adds_exported_keychain_roots(self) -> None:
-        context, trust = release.trust_context("Darwin", {}, lambda: INSPECTION_ROOT.encode())
-        self.assertEqual(release.TrustRoots.KEYCHAIN, trust)
-        self.assertTrue(trusts_inspection_root(context))
-        self.assertEqual(ssl.CERT_REQUIRED, context.verify_mode)
-        self.assertTrue(context.check_hostname)
-
-    def test_export_failures_keep_the_default_context_and_their_finite_outcome(self) -> None:
-        rejected = b"-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n"
-        roots = release.TrustRoots
-        cases: tuple[tuple[bytes | release.TrustRoots, release.TrustRoots], ...] = (
-            (roots.KEYCHAIN_EXPORT_FAILED, roots.KEYCHAIN_EXPORT_FAILED),
-            (roots.KEYCHAIN_EXPORT_TIMEOUT, roots.KEYCHAIN_EXPORT_TIMEOUT),
-            (roots.KEYCHAIN_LIMIT_EXCEEDED, roots.KEYCHAIN_LIMIT_EXCEEDED),
-            (INSPECTION_ROOT.encode() + rejected, roots.KEYCHAIN_REJECTED),
-        )
-        for exported, expected in cases:
-            with self.subTest(expected=expected):
-                context, trust = release.trust_context(
-                    "Darwin", {}, lambda observed=exported: observed
-                )
-                self.assertEqual(expected, trust)
-                self.assertFalse(trusts_inspection_root(context))
-                self.assertEqual(ssl.CERT_REQUIRED, context.verify_mode)
-
-    def test_security_export_admits_only_successful_certificate_output(self) -> None:
+        source = release.HttpReleaseSource(system="Darwin", environment={}, native=run)
+        self.assertEqual(b"native bytes", source.read("https://example.test/data", 12))
         self.assertEqual(
-            INSPECTION_ROOT.encode(),
-            release.export_keychains(("/bin/sh", "-c", 'printf "%s" "$0"', INSPECTION_ROOT)),
+            release.TransferFailure.LIMIT_EXCEEDED, source.read("https://example.test/data", 11)
         )
-        for command in (
-            ("/bin/sh", "-c", 'printf "%s" "$0"; exit 1', INSPECTION_ROOT),
-            ("/bin/sh", "-c", "printf 'no certificates'"),
-            ("/nonexistent/security",),
-        ):
-            with self.subTest(command=command[-1][:20]):
-                self.assertEqual(
-                    release.TrustRoots.KEYCHAIN_EXPORT_FAILED, release.export_keychains(command)
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "asset"
+            self.assertEqual(
+                release.DownloadedFile(target, hashlib.sha256(b"native bytes").hexdigest(), 12),
+                source.download("https://example.test/data", target, 12),
+            )
+            self.assertEqual(b"native bytes", target.read_bytes())
+            self.assertEqual(
+                release.TransferRejected(
+                    release.TransferFailure.UNAVAILABLE, release.TrustRoots.KEYCHAIN
+                ),
+                source.download("https://example.test/data", target, 12),
+            )
+            self.assertEqual(b"native bytes", target.read_bytes())
+        self.assertEqual(3, len(calls))
+        for command in calls:
+            self.assertEqual(("/usr/bin/curl", "--disable"), command[:2])
+            for option in ("--proto", "--proto-redir"):
+                self.assertEqual("=https", command[command.index(option) + 1])
+            self.assertEqual("1800", command[command.index("--max-time") + 1])
+            self.assertNotIn("--insecure", command)
+            self.assertNotIn("--cacert", command)
+
+    def test_native_failures_are_finite_and_do_not_fall_back_to_exported_anchors(self) -> None:
+        failure = release.TransferFailure
+        cases = (
+            (60, b"000", failure.TLS_CERTIFICATE_UNTRUSTED, None),
+            (35, b"000", failure.TLS_FAILED, None),
+            (28, b"000", failure.TIMEOUT, None),
+            (6, b"000", failure.CONNECTION_FAILED, None),
+            (63, b"200", failure.LIMIT_EXCEEDED, None),
+            (22, b"403", failure.HTTP_STATUS, 403),
+            (56, b"503", failure.HTTP_STATUS, 503),
+            (22, b"404", failure.NOT_FOUND, None),
+            (56, b"404", failure.NOT_FOUND, None),
+            (22, b"malformed", failure.UNAVAILABLE, None),
+        )
+        for code, status, cause, expected_status in cases:
+            with self.subTest(code=code):
+                calls: list[None] = []
+
+                def run(
+                    command: tuple[str, ...],
+                    output: IO[bytes],
+                    observations: list[None] = calls,
+                    exit_code: int = code,
+                    http_status: bytes = status,
+                ) -> subprocess.CompletedProcess[bytes]:
+                    observations.append(None)
+                    return subprocess.CompletedProcess(command, exit_code, stderr=http_status)
+
+                def forbidden_context() -> tuple[ssl.SSLContext, release.TrustRoots]:
+                    self.fail("native failures must not fall back to OpenSSL anchors")
+
+                source = release.HttpReleaseSource(
+                    forbidden_context, system="Darwin", environment={}, native=run
                 )
+                self.assertEqual(
+                    failure.NOT_FOUND
+                    if cause is failure.NOT_FOUND
+                    else release.TransferRejected(
+                        cause, release.TrustRoots.KEYCHAIN, expected_status
+                    ),
+                    source.read("https://example.test/data", 12),
+                )
+                self.assertEqual([None], calls)
 
-    def test_process_trust_exports_the_keychain_once(self) -> None:
-        exports: list[None] = []
+    def test_linux_and_explicit_openssl_roots_do_not_invoke_native_transport(self) -> None:
+        for system, environment in (
+            ("Linux", {}),
+            ("Darwin", {"SSL_CERT_FILE": "/private/roots.pem"}),
+            ("Darwin", {"SSL_CERT_DIR": "/private/roots"}),
+        ):
+            with self.subTest(system=system, environment=environment):
 
-        def export() -> bytes:
-            exports.append(None)
-            return INSPECTION_ROOT.encode()
+                def forbidden_native(
+                    command: tuple[str, ...], output: IO[bytes]
+                ) -> subprocess.CompletedProcess[bytes]:
+                    self.fail("Linux and explicit OpenSSL roots must not invoke native transport")
 
-        environment = {
-            key: value
-            for key, value in os.environ.items()
-            if key not in ("SSL_CERT_FILE", "SSL_CERT_DIR")
-        }
-        release.process_trust.cache_clear()
-        try:
-            with (
-                patch.dict(os.environ, environment, clear=True),
-                patch.object(release.platform, "system", return_value="Darwin"),
-                patch.object(release, "export_keychains", export),
-            ):
-                first, second = release.process_trust(), release.process_trust()
-        finally:
-            release.process_trust.cache_clear()
-        self.assertEqual([None], exports)
-        self.assertIs(first, second)
-        self.assertEqual(release.TrustRoots.KEYCHAIN, first[1])
+                source = release.HttpReleaseSource(
+                    system=system, environment=environment, native=forbidden_native
+                )
+                with patch.object(source, "open", return_value=io.BytesIO(b"openssl bytes")):
+                    self.assertEqual(b"openssl bytes", source.read("https://example.test/data", 13))
 
 
 if __name__ == "__main__":
