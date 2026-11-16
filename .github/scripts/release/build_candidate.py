@@ -7,16 +7,12 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 import importlib.util
 import json
-import os
 from pathlib import Path
-import platform
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
 import time
-from urllib.parse import urlencode
 
 SPEC = importlib.util.spec_from_file_location("ci_candidate", Path(__file__).with_name("ci-candidate.py"))
 legacy = importlib.util.module_from_spec(SPEC)
@@ -30,11 +26,6 @@ sys.path.insert(0, str(ROOT / ".github/scripts/ci"))
 import validation_outcome as validation
 
 
-class CandidateState(str, Enum):
-    REUSED = "REUSED"
-    MISSING = "MISSING"
-
-
 class PublicationState(str, Enum):
     PUBLISH = "PUBLISH"
     DOCS_VALIDATED = "DOCS_VALIDATED"
@@ -46,9 +37,7 @@ class MainState(str, Enum):
 
 
 class ObservationStage(str, Enum):
-    ASSOCIATED_PULLS = "ASSOCIATED_PULLS"
     SOURCE_TREE = "SOURCE_TREE"
-    WORKFLOW_RUNS = "WORKFLOW_RUNS"
     RUN_ARTIFACTS = "RUN_ARTIFACTS"
     WORKFLOW_RUN = "WORKFLOW_RUN"
     MAIN_HEAD = "MAIN_HEAD"
@@ -83,7 +72,6 @@ class Failure(str, Enum):
     DESTINATION_NOT_EMPTY = "DESTINATION_NOT_EMPTY"
     OBSERVATION_FAILED = "OBSERVATION_FAILED"
     DOWNLOAD_FAILED = "DOWNLOAD_FAILED"
-    UNSUPPORTED_PLATFORM = "UNSUPPORTED_PLATFORM"
     GATE_NOT_COMPLETE = "GATE_NOT_COMPLETE"
     SELECTION_MISMATCH = "SELECTION_MISMATCH"
     CHECKOUT_MISMATCH = "CHECKOUT_MISMATCH"
@@ -321,65 +309,6 @@ def reusable_run(run: dict, repository: str, revision: str) -> bool:
             and run.get("conclusion") == "success" and positive(run.get("id")) and positive(run.get("run_attempt")))
 
 
-def reuse(repository: str, revision: str, bundle: Path) -> CandidateState:
-    """Only same-repository merged PRs authorize pre-merge payload reuse."""
-    identity(repository, revision)
-    empty(bundle)
-    pulls = observe(f"repos/{repository}/commits/{revision}/pulls?per_page=100", ObservationStage.ASSOCIATED_PULLS)
-    if not isinstance(pulls, list) or len(pulls) >= 100 or any(not isinstance(pull, dict) for pull in pulls):
-        raise Rejected(Failure.INCOMPLETE_OBSERVATION)
-    sources = tuple(pull["head"]["sha"] for pull in pulls
-                    if pull.get("merged_at") and pull.get("merge_commit_sha") == revision
-                    and isinstance(pull.get("head"), dict)
-                    and isinstance(pull["head"].get("repo"), dict)
-                    and pull["head"]["repo"].get("full_name") == repository)
-    expected_tree = tree(repository, revision)
-    for source in sources:
-        identity(repository, source)
-        query = urlencode({"head_sha": source, "event": "pull_request", "per_page": 100})
-        runs = listing(observe(f"repos/{repository}/actions/workflows/ci.yml/runs?{query}", ObservationStage.WORKFLOW_RUNS), "workflow_runs")
-        for run in sorted(runs, key=lambda value: value.get("id", 0), reverse=True):
-            if not reusable_run(run, repository, source):
-                continue
-            artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100", ObservationStage.RUN_ARTIFACTS), "artifacts")
-            if not any(item.get("name") == f"ci-build-candidate-{source}-{run['run_attempt']}" and item.get("expired") is False for item in artifacts):
-                continue
-            # A changed integration tree authorizes a fresh build, never promotion.
-            if tree(repository, source) != expected_tree:
-                continue
-            candidate = download(repository, run, source, bundle)
-            admitted = refine(candidate, run, repository, expected_tree)
-            if isinstance(admitted, Failure):
-                raise Rejected(admitted)
-            return CandidateState.REUSED
-    return CandidateState.MISSING
-
-
-def seal(repository: str, revision: str, run_id: int, number: int, attempt: int, event: str, bundle: Path) -> Candidate:
-    identity(repository, revision)
-    if not positive(run_id) or not positive(number) or number > 2147483647 or not positive(attempt) or platform.system() != "Darwin" or platform.machine() != "arm64":
-        raise Rejected(Failure.UNSUPPORTED_PLATFORM)
-    empty(bundle)
-    execute(["bash", ".github/scripts/release/admit-source.sh", "--repository-root", str(ROOT),
-             "--expected-source-revision", revision], Failure.INVALID_IDENTITY, cwd=ROOT)
-    version = f"0.0.{number}"
-    payload = ROOT / f"build/release/v{version}"
-    legacy.validate(payload, version, revision)
-    release = Path(os.environ["JAVA_HOME"]) / "release"
-    properties = dict(re.findall(r'^([A-Z_]+)="([^\n"]*)"$', release.read_text(), re.MULTILINE))
-    local_tree = execute(["git", "rev-parse", "HEAD^{tree}"], Failure.OBSERVATION_FAILED,
-                         cwd=ROOT, text=True, capture_output=True).stdout.strip()
-    candidate = Candidate(1, repository, revision, local_tree, version, run_id, number, attempt, event,
-                          "macos-aarch64", Toolchain(properties["JAVA_VERSION"], properties["IMPLEMENTOR"], legacy.digest(release)),
-                          tuple(Asset(path.name, legacy.digest(path), path.stat().st_size) for path in sorted(payload.iterdir())))
-    decode(asdict(candidate))
-    bundle.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(payload, bundle / "payload")
-    (bundle / "candidate.json").write_text(json.dumps(asdict(candidate), indent=2) + "\n")
-    read(bundle)
-    return candidate
-
-
 def admit_validation(repository: str, revision: str, run: dict[object, object], expected_tree: str):
     name = f"ci-validation-outcome-{revision}-{run['run_attempt']}"
     artifacts = listing(observe(f"repos/{repository}/actions/runs/{run['id']}/artifacts?per_page=100", ObservationStage.RUN_ARTIFACTS), "artifacts")
@@ -534,14 +463,12 @@ def promote_product(repository: str, revision: str, run_id: int, run_attempt: in
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("seal", "reuse", "promote", "promote-product", "verify-publication", "current-main"))
+    parser.add_argument("action", choices=("promote", "promote-product", "verify-publication", "current-main"))
     parser.add_argument("--repository", required=True)
     parser.add_argument("--revision", required=True)
     parser.add_argument("--bundle", type=Path)
     parser.add_argument("--run-id", type=int)
-    parser.add_argument("--run-number", type=int)
     parser.add_argument("--run-attempt", type=int)
-    parser.add_argument("--event")
     parser.add_argument("--version")
     parser.add_argument("--promotion-record", type=Path)
     parser.add_argument("--github-output")
@@ -561,24 +488,16 @@ def main() -> None:
             promotion = verify_publication(args.repository, args.revision, args.version, args.bundle, args.promotion_record)
             print(promotion.mergedRevision)
             return
-        if args.action == "reuse":
-            state = reuse(args.repository, args.revision, args.bundle)
-            output(args.github_output, candidate=state.value)
-            print(f"build-candidate: {state.value}")
+        if args.promotion_record is None:
+            raise Rejected(Failure.INVALID_IDENTITY)
+        candidate = promote(args.repository, args.revision, args.run_id, args.bundle, args.promotion_record)
+        if isinstance(candidate, validation.DocumentationValidated):
+            output(args.github_output, publication=PublicationState.DOCS_VALIDATED.value)
+            print("build-candidate: DOCS_VALIDATED; no product publication")
         else:
-            if args.action == "seal":
-                candidate = seal(args.repository, args.revision, args.run_id, args.run_number, args.run_attempt, args.event, args.bundle)
-            else:
-                if args.promotion_record is None:
-                    raise Rejected(Failure.INVALID_IDENTITY)
-                candidate = promote(args.repository, args.revision, args.run_id, args.bundle, args.promotion_record)
-            if isinstance(candidate, validation.DocumentationValidated):
-                output(args.github_output, publication=PublicationState.DOCS_VALIDATED.value)
-                print("build-candidate: DOCS_VALIDATED; no product publication")
-            else:
-                output(args.github_output, publication=PublicationState.PUBLISH.value,
-                       version=candidate.version, source_revision=candidate.sourceRevision)
-                print("build-candidate: ADMITTED")
+            output(args.github_output, publication=PublicationState.PUBLISH.value,
+                   version=candidate.version, source_revision=candidate.sourceRevision)
+            print("build-candidate: ADMITTED")
     except Rejected as rejection:
         raise SystemExit(f"build-candidate: {rejection.failure.value}") from None
     except (OSError, KeyError, TypeError, ValueError, AttributeError, legacy.CandidateError):
