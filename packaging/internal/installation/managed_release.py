@@ -162,10 +162,6 @@ class TrustRoots(StrEnum):
     PLATFORM = "PLATFORM"
     ENVIRONMENT = "ENVIRONMENT"
     KEYCHAIN = "KEYCHAIN"
-    KEYCHAIN_EXPORT_FAILED = "KEYCHAIN_EXPORT_FAILED"
-    KEYCHAIN_EXPORT_TIMEOUT = "KEYCHAIN_EXPORT_TIMEOUT"
-    KEYCHAIN_LIMIT_EXCEEDED = "KEYCHAIN_LIMIT_EXCEEDED"
-    KEYCHAIN_REJECTED = "KEYCHAIN_REJECTED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,62 +188,31 @@ class ReleaseSource(Protocol):
     ) -> DownloadedFile | TransferRejection: ...
 
 
-KEYCHAINS = (
-    "/Library/Keychains/System.keychain",
-    "/System/Library/Keychains/SystemRootCertificates.keychain",
-)
-MAXIMUM_KEYCHAIN_BYTES = 16_777_216
-
-
-def export_keychains(
-    command: tuple[str, ...] = ("/usr/bin/security", "find-certificate", "-a", "-p", *KEYCHAINS),
-) -> bytes | TrustRoots:
-    """The only Keychain effect: one bounded `security` export of PEM certificates."""
-    try:
-        with tempfile.TemporaryFile() as output:
-            done = subprocess.run(
-                command,
-                stdin=subprocess.DEVNULL,
-                stdout=output,
-                stderr=subprocess.DEVNULL,
-                timeout=20,
-                check=False,
-            )
-            _ = output.seek(0)
-            exported = output.read(MAXIMUM_KEYCHAIN_BYTES + 1)
-    except subprocess.TimeoutExpired:
-        return TrustRoots.KEYCHAIN_EXPORT_TIMEOUT
-    except OSError:
-        return TrustRoots.KEYCHAIN_EXPORT_FAILED
-    if done.returncode != 0 or b"-----BEGIN CERTIFICATE-----" not in exported:
-        return TrustRoots.KEYCHAIN_EXPORT_FAILED
-    if len(exported) > MAXIMUM_KEYCHAIN_BYTES:
-        return TrustRoots.KEYCHAIN_LIMIT_EXCEEDED
-    return exported
-
-
-def trust_context(
-    system: str, environment: Mapping[str, str], export: Callable[[], bytes | TrustRoots]
-) -> tuple[ssl.SSLContext, TrustRoots]:
-    """Add macOS System keychain roots unless OpenSSL's environment selects its own."""
-    if "SSL_CERT_FILE" in environment or "SSL_CERT_DIR" in environment:
-        return ssl.create_default_context(), TrustRoots.ENVIRONMENT
-    if system != "Darwin":
-        return ssl.create_default_context(), TrustRoots.PLATFORM
-    exported = export()
-    if isinstance(exported, TrustRoots):
-        return ssl.create_default_context(), exported
-    context = ssl.create_default_context()
-    try:
-        context.load_verify_locations(cadata=exported.decode("ascii"))
-    except (ssl.SSLError, ValueError):
-        return ssl.create_default_context(), TrustRoots.KEYCHAIN_REJECTED
-    return context, TrustRoots.KEYCHAIN
-
-
 @cache
 def process_trust() -> tuple[ssl.SSLContext, TrustRoots]:
-    return trust_context(platform.system(), os.environ, export_keychains)
+    return ssl.create_default_context(), (
+        TrustRoots.ENVIRONMENT
+        if "SSL_CERT_FILE" in os.environ or "SSL_CERT_DIR" in os.environ
+        else TrustRoots.PLATFORM
+    )
+
+
+def run_native_https(
+    command: tuple[str, ...], output: IO[bytes]
+) -> subprocess.CompletedProcess[bytes]:
+    """Apple curl delegates certificate evaluation to SecureTransport, not exported anchors."""
+    return subprocess.run(
+        command,
+        stdin=subprocess.DEVNULL,
+        stdout=output,
+        stderr=subprocess.PIPE,
+        timeout=1800,
+        check=False,
+        env={
+            **{key: value for key, value in os.environ.items() if key != "CURL_CA_BUNDLE"},
+            "CURL_SSL_BACKEND": "secure-transport",
+        },
+    )
 
 
 def transfer_failure(error: OSError, trust: TrustRoots) -> TransferRejection:
@@ -291,9 +256,23 @@ class HttpsRedirects(urllib.request.HTTPRedirectHandler):
 
 class HttpReleaseSource:
     def __init__(
-        self, trust: Callable[[], tuple[ssl.SSLContext, TrustRoots]] = process_trust
+        self,
+        trust: Callable[[], tuple[ssl.SSLContext, TrustRoots]] = process_trust,
+        *,
+        system: str | None = None,
+        environment: Mapping[str, str] | None = None,
+        native: Callable[
+            [tuple[str, ...], IO[bytes]], subprocess.CompletedProcess[bytes]
+        ] = run_native_https,
     ) -> None:
         self.trust = trust
+        environment = os.environ if environment is None else environment
+        self.native = native
+        self.use_native = (
+            (platform.system() if system is None else system) == "Darwin"
+            and "SSL_CERT_FILE" not in environment
+            and "SSL_CERT_DIR" not in environment
+        )
 
     def open(self, url: str) -> IO[bytes]:
         context, _ = self.trust()
@@ -308,6 +287,15 @@ class HttpReleaseSource:
 
     def read(self, url: str, limit: int) -> bytes | TransferRejection:
         try:
+            if self.use_native:
+                with tempfile.TemporaryDirectory() as directory:
+                    destination = Path(directory) / "response"
+                    result = self.native_download(url, destination, limit)
+                    return (
+                        result
+                        if isinstance(result, TRANSFER_REJECTIONS)
+                        else destination.read_bytes()
+                    )
             with self.open(url) as stream:
                 data: bytes = stream.read(limit + 1)
             return data if len(data) <= limit else TransferFailure.LIMIT_EXCEEDED
@@ -317,6 +305,8 @@ class HttpReleaseSource:
     def download(
         self, url: str, destination: Path, limit: int
     ) -> DownloadedFile | TransferRejection:
+        if self.use_native:
+            return self.native_download(url, destination, limit)
         digest, size = hashlib.sha256(), 0
         try:
             with self.open(url) as stream, destination.open("xb") as output:
@@ -329,6 +319,75 @@ class HttpReleaseSource:
             return DownloadedFile(destination, digest.hexdigest(), size)
         except OSError as failure:
             return transfer_failure(failure, self.trust()[1])
+
+    def native_download(
+        self, url: str, destination: Path, limit: int
+    ) -> DownloadedFile | TransferRejection:
+        # Disable curlrc, pin Apple's transport and prohibit cleartext redirects.
+        # No PEM export can retain SecTrust's deny, policy and hostname constraints.
+        command = (
+            "/usr/bin/curl",
+            "--disable",
+            "--silent",
+            "--fail",
+            "--location",
+            "--proto",
+            "=https",
+            "--proto-redir",
+            "=https",
+            "--max-redirs",
+            "10",
+            "--connect-timeout",
+            "30",
+            "--speed-time",
+            "30",
+            "--speed-limit",
+            "1",
+            "--max-time",
+            "1800",
+            "--max-filesize",
+            str(limit),
+            "--header",
+            "Cache-Control: no-cache",
+            "--user-agent",
+            "kast-install",
+            "--write-out",
+            "%{stderr}%{http_code}",
+            "--url",
+            url,
+        )
+        try:
+            with destination.open("xb") as output:
+                result = self.native(command, output)
+            if result.returncode != 0:
+                return native_transfer_failure(result.returncode, result.stderr)
+            size = destination.stat().st_size
+            if size > limit:
+                return TransferFailure.LIMIT_EXCEEDED
+            return DownloadedFile(destination, file_digest(destination), size)
+        except subprocess.TimeoutExpired:
+            return TransferRejected(TransferFailure.TIMEOUT, TrustRoots.KEYCHAIN)
+        except OSError:
+            return TransferRejected(TransferFailure.UNAVAILABLE, TrustRoots.KEYCHAIN)
+
+
+def native_transfer_failure(code: int, status: bytes) -> TransferRejection:
+    if len(status) == 3 and status.isdigit() and 400 <= int(status) <= 599:
+        return (
+            TransferFailure.NOT_FOUND
+            if status == b"404"
+            else TransferRejected(TransferFailure.HTTP_STATUS, TrustRoots.KEYCHAIN, int(status))
+        )
+    cause = {
+        5: TransferFailure.CONNECTION_FAILED,
+        6: TransferFailure.CONNECTION_FAILED,
+        7: TransferFailure.CONNECTION_FAILED,
+        28: TransferFailure.TIMEOUT,
+        35: TransferFailure.TLS_FAILED,
+        60: TransferFailure.TLS_CERTIFICATE_UNTRUSTED,
+        63: TransferFailure.LIMIT_EXCEEDED,
+    }.get(code, TransferFailure.UNAVAILABLE)
+    return TransferRejected(cause, TrustRoots.KEYCHAIN)
 
 
 class LocalReleaseSource:
