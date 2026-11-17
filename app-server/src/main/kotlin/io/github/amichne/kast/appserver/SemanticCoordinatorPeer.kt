@@ -6,6 +6,8 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
+import java.time.Instant
+import java.time.format.DateTimeParseException
 import kotlinx.serialization.Serializable
 
 /** Published only after this process binds the coordinator's private socket. */
@@ -25,18 +27,7 @@ internal data class SemanticCoordinatorPeer(
         return capture(process, observedSocket, installationId) == this
     }
 
-    /** Only a vanished process or a different start at this pid proves that the recorded incarnation exited. */
-    fun incarnation(): SemanticPeerIncarnation {
-        if (pid <= 0) return SemanticPeerIncarnation.UNPROVEN
-        val process = ProcessHandle.of(pid).orElse(null) ?: return SemanticPeerIncarnation.EXITED
-        val started = process.info().startInstant().orElse(null)
-        return when {
-            started != null && started.toString() != startedAt -> SemanticPeerIncarnation.EXITED
-            !process.isAlive -> SemanticPeerIncarnation.EXITED
-            started == null -> SemanticPeerIncarnation.UNPROVEN
-            else -> SemanticPeerIncarnation.LIVE
-        }
-    }
+    fun incarnation(): SemanticPeerIncarnation = ServiceProcessIncarnation(pid, startedAt).observe()
 
     companion object {
         fun capture(
@@ -69,6 +60,38 @@ internal data class SemanticCoordinatorPeer(
                 installationId,
             )
         }
+    }
+}
+
+/** The process that wrote a service publication, identified by its pid and operating-system start instant. */
+@Serializable
+internal data class ServiceProcessIncarnation(val pid: Long, val startedAt: String) {
+    /**
+     * Only an admitted record followed by a vanished process or a different start at this pid proves that the recorded
+     * incarnation exited.
+     */
+    fun observe(): SemanticPeerIncarnation {
+        if (pid <= 0 || !canonicalStart()) return SemanticPeerIncarnation.UNPROVEN
+        val process = ProcessHandle.of(pid).orElse(null) ?: return SemanticPeerIncarnation.EXITED
+        val started = process.info().startInstant().orElse(null)
+        return when {
+            started != null && started.toString() != startedAt -> SemanticPeerIncarnation.EXITED
+            !process.isAlive -> SemanticPeerIncarnation.EXITED
+            started == null -> SemanticPeerIncarnation.UNPROVEN
+            else -> SemanticPeerIncarnation.LIVE
+        }
+    }
+
+    private fun canonicalStart(): Boolean =
+        try {
+            Instant.parse(startedAt).toString() == startedAt
+        } catch (_: DateTimeParseException) {
+            false
+        }
+
+    companion object {
+        fun capture(process: ProcessHandle): ServiceProcessIncarnation? =
+            process.info().startInstant().orElse(null)?.let { ServiceProcessIncarnation(process.pid(), it.toString()) }
     }
 }
 

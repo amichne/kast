@@ -83,7 +83,7 @@ internal object BrokerServiceStartLock {
     private fun retireStalePublication(state: SemanticPublicationState.Stale): Boolean {
         return try {
             val key = admittedServiceStateFileKey(state.path, state.document) ?: return false
-            if (!retireStaleSocket(state.installation.resolve("state/run/c.sock"), state.peer.socketKey)) return false
+            if (!retireStaleSocket(state.installation.resolve("state/run/c.sock"), state.socket)) return false
             if (admittedServiceStateFileKey(state.path, state.document) != key) return false
             Files.delete(state.path)
             true
@@ -98,13 +98,15 @@ internal object BrokerServiceStartLock {
         }
     }
 
-    private fun retireStaleSocket(socket: Path, expectedKey: String): Boolean =
+    /** The free lease excludes only a cooperating coordinator; unlinking also needs the exact recorded inode. */
+    private fun retireStaleSocket(socket: Path, evidence: StaleSocket): Boolean =
         when (val lease = UnixSocketPathOwnership.acquireLease(socket)) {
             is UnixSocketOwnershipLeaseAcquisition.Acquired ->
                 lease.lease.use {
                     if (Files.notExists(socket, NOFOLLOW_LINKS)) return true
+                    if (evidence !is StaleSocket.Recorded) return false
                     val attributes = Files.readAttributes(socket, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
-                    if (!attributes.isOther || attributes.fileKey()?.toString() != expectedKey) return false
+                    if (!attributes.isOther || attributes.fileKey()?.toString() != evidence.key) return false
                     Files.delete(socket)
                     true
                 }
