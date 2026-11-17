@@ -2,6 +2,9 @@ package io.github.amichne.kast.distribution.contract
 
 import kotlinx.serialization.Serializable
 
+private const val SIGINT_EXIT = 130
+private const val SIGTERM_EXIT = 143
+
 @Serializable
 enum class ContainerFailure(val exit: Int = 1) {
     INVALID_NAME,
@@ -32,6 +35,6 @@ enum class ContainerFailure(val exit: Int = 1) {
     DOWNLOAD_FAILED,
     PREPARATION_FAILED,
     SHUTDOWN_FAILED,
-    CANCELLED_INTERRUPT(130),
-    CANCELLED_TERMINATE(143),
+    CANCELLED_INTERRUPT(SIGINT_EXIT),
+    CANCELLED_TERMINATE(SIGTERM_EXIT),
 }

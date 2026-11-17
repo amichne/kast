@@ -124,7 +124,7 @@ def encoded(value: Arguments | McpRequest | product.ProductSelection) -> bytes:
 class LocalSource(product.ReleaseSource):
     """Exact retained URLs only; no network fallback or dependency resolution."""
 
-    def __init__(self, directory: Path, record: product.ProductRecord | product.LocalProductRecord):
+    def __init__(self, directory: Path, record: product.ProductRecord):
         base = f"{product.RELEASE_URL}/developer-v{record.version}"
         self.files = {
             f"{base}/{asset.name}": directory / "payload" / asset.name for asset in record.assets()
@@ -628,22 +628,27 @@ class Probe:
     def install(
         self, directory: Path, record: product.ProductRecord | product.LocalProductRecord
     ) -> None:
-        selection = product.ProductSelection(
-            f"developer-v{record.version}",
-            record,
-            product.file_digest(directory / "build-record.json"),
-            "PinnedBuild",
-            None,
-            record.sourceRevision,
-        )
-        path = self.evidence / f"selection-{selection.recordSha256}.json"
-        _ = path.write_bytes(encoded(selection))
+        source = None
+        if isinstance(record, product.LocalProductRecord):
+            arguments = ["--local-artifact", str(directory)]
+        else:
+            selection = product.ProductSelection(
+                f"developer-v{record.version}",
+                record,
+                product.file_digest(directory / "build-record.json"),
+                "PinnedBuild",
+                None,
+                record.sourceRevision,
+            )
+            path = self.evidence / f"selection-{selection.recordSha256}.json"
+            _ = path.write_bytes(encoded(selection))
+            arguments = ["--resolved-selection", str(path)]
+            source = LocalSource(directory, record)
         # Production activation and its retirement journal, with only acquisition virtualized.
         if (
             installation.main(
                 [
-                    "--resolved-selection",
-                    str(path),
+                    *arguments,
                     "--install-root",
                     str(self.root),
                     "--private-python-archive",
@@ -652,7 +657,7 @@ class Probe:
                     str(self.dependency),
                     "--json",
                 ],
-                source=LocalSource(directory, record),
+                source=source,
             )
             != 0
         ):
