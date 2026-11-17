@@ -4,7 +4,9 @@ import io.github.amichne.kast.kernel.Validation
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -38,6 +40,34 @@ class RetiredSemanticStateTest {
                 assertEquals(SemanticCoordinatorRetirement.ABSENT, retireFencedSemanticCoordinator(root, root))
             }
         }
+
+    @Test
+    fun `retirement consumes an abandoned startup and preserves a live one`() = withCoordinatorPayload { root, _ ->
+        runBlocking {
+            val command = semanticLaunchFixture(root)
+            Files.writeString(command.log, "coordinator log")
+            Files.createFile(root.resolve(".lifecycle-transition.json"))
+            val live = checkNotNull(ServiceProcessIncarnation.capture(ProcessHandle.current()))
+            writeServiceState(command.readiness, starting(root, live))
+            val retained = Files.readAllBytes(command.readiness)
+            assertEquals(SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN, retireFencedSemanticCoordinator(root, root))
+            assertArrayEquals(retained, Files.readAllBytes(command.readiness))
+
+            Files.delete(command.readiness)
+            writeServiceState(command.readiness, starting(root, exitedProcess()))
+            assertEquals(SemanticCoordinatorRetirement.EXITED, retireFencedSemanticCoordinator(root, root))
+            assertFalse(Files.exists(command.state))
+        }
+    }
+
+    private fun starting(root: Path, process: ServiceProcessIncarnation) =
+        BrokerServiceStateDocument.Starting(
+            BROKER_SERVICE_STATE_SCHEMA_VERSION,
+            semanticServiceIdentity(root),
+            UUID.randomUUID().toString(),
+            VENDORED_BROKER_VERSION,
+            process,
+        )
 
     @Test
     fun `retirement completes after the exact alias was already detached`() = withCoordinatorPayload { root, _ ->

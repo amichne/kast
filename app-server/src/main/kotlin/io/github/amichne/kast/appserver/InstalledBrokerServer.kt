@@ -704,6 +704,7 @@ internal sealed interface BrokerServiceReadiness {
         val identity: BrokerServiceIdentity,
         val instanceId: BrokerServiceGeneration,
         val path: Path,
+        val process: ServiceProcessIncarnation,
     ) : BrokerServiceReadiness {
         companion object {
             internal fun admit(
@@ -713,7 +714,8 @@ internal sealed interface BrokerServiceReadiness {
             ): Managed? {
                 val admittedIdentity = BrokerServiceIdentity.admit(identity) ?: return null
                 if (path != expected || !path.isAbsolute || path.normalize() != path) return null
-                return Managed(admittedIdentity, BrokerServiceGeneration.fresh(), path)
+                val process = ServiceProcessIncarnation.capture(ProcessHandle.current()) ?: return null
+                return Managed(admittedIdentity, BrokerServiceGeneration.fresh(), path, process)
             }
         }
     }
@@ -902,6 +904,7 @@ private fun beginManagedReadiness(managed: BrokerServiceReadiness.Managed): Brok
             managed.identity.value,
             managed.instanceId.toString(),
             VENDORED_BROKER_VERSION,
+            managed.process,
         )
     try {
         Files.createDirectories(
@@ -954,6 +957,8 @@ internal sealed interface BrokerServiceStateDocument {
         override val serviceIdentity: String,
         override val serviceInstanceId: String,
         override val brokerVersion: String,
+        /** The publishing process; absent only in older records, which never prove an abandoned startup. */
+        val startupProcess: ServiceProcessIncarnation? = null,
     ) : BrokerServiceStateDocument
 
     @Serializable

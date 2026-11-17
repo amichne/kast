@@ -45,18 +45,21 @@ internal sealed interface SemanticPublicationState {
     /** Neither a readiness document nor a socket exists; a submission may start the first generation. */
     data object Missing : SemanticPublicationState
 
-    /** This installation's service is publishing [generation]; clients wait for it instead of submitting. */
+    /**
+     * This installation's service is publishing [generation] from a live or unrecorded startup process; clients wait
+     * for it instead of submitting.
+     */
     data class Starting(val generation: String) : SemanticPublicationState
 
     class Published internal constructor(val publication: SemanticPublication) : SemanticPublicationState
 
-    /** This installation's ready publication whose recorded process incarnation provably exited. */
+    /** This installation's ready or starting publication whose recorded process incarnation provably exited. */
     class Stale
     internal constructor(
         val installation: Path,
         val path: Path,
-        val document: BrokerServiceStateDocument.Ready,
-        val peer: SemanticCoordinatorPeer,
+        val document: BrokerServiceStateDocument,
+        val socket: StaleSocket,
     ) : SemanticPublicationState
 
     data class Rejected(val rejection: SemanticPublicationRejection) : SemanticPublicationState
@@ -84,12 +87,13 @@ internal sealed interface SemanticPublicationState {
             )
                 return Rejected(SemanticPublicationRejection.OWNERSHIP_REJECTED)
             return when (document) {
-                is BrokerServiceStateDocument.Starting -> Starting(document.serviceInstanceId)
+                is BrokerServiceStateDocument.Starting -> inspectStarting(installation, path, document)
                 is BrokerServiceStateDocument.Rejected -> Rejected(SemanticPublicationRejection.STARTUP_REJECTED)
                 is BrokerServiceStateDocument.Ready -> {
                     val peer = document.semanticPeer ?: return Rejected(SemanticPublicationRejection.OWNERSHIP_REJECTED)
                     when (peer.incarnation()) {
-                        SemanticPeerIncarnation.EXITED -> Stale(installation, path, document, peer)
+                        SemanticPeerIncarnation.EXITED ->
+                            Stale(installation, path, document, StaleSocket.Recorded(peer.socketKey))
                         SemanticPeerIncarnation.UNPROVEN -> Rejected(SemanticPublicationRejection.OWNERSHIP_REJECTED)
                         SemanticPeerIncarnation.LIVE ->
                             SemanticPublication.read(installation, path, document, executable)?.let(::Published)
@@ -98,7 +102,32 @@ internal sealed interface SemanticPublicationState {
                 }
             }
         }
+
+        /** A legacy record without startup evidence keeps waiting; an exited startup is stale only without a socket. */
+        private fun inspectStarting(
+            installation: Path,
+            path: Path,
+            document: BrokerServiceStateDocument.Starting,
+        ): SemanticPublicationState =
+            when (document.startupProcess?.observe()) {
+                null,
+                SemanticPeerIncarnation.LIVE -> Starting(document.serviceInstanceId)
+                SemanticPeerIncarnation.EXITED ->
+                    if (Files.notExists(installation.resolve(SEMANTIC_SOCKET), NOFOLLOW_LINKS))
+                        Stale(installation, path, document, StaleSocket.Unrecorded)
+                    else Rejected(SemanticPublicationRejection.OWNERSHIP_REJECTED)
+                SemanticPeerIncarnation.UNPROVEN -> Rejected(SemanticPublicationRejection.OWNERSHIP_REJECTED)
+            }
     }
+}
+
+/** What an exited generation proves about a socket left at the private coordinator path. */
+internal sealed interface StaleSocket {
+    /** The ready generation published this exact socket file identity. */
+    data class Recorded(val key: String) : StaleSocket
+
+    /** The startup exited before publishing a socket identity, so any file at the socket path stays unretired. */
+    data object Unrecorded : StaleSocket
 }
 
 internal class SemanticPublication
