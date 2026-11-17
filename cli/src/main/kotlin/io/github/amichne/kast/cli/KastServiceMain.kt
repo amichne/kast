@@ -60,8 +60,12 @@ object KastServiceMain {
             }
             exitProcess(exit.code)
         }
-        if (arguments.toList() == listOf("disable")) retireSemanticOwner()
         if (tryManagedHeadlessShutdown(arguments.toList())) return
+        if (arguments.toList() == listOf("retire-semantic")) {
+            retireSemanticOwner(requireFence = true)
+            return
+        }
+        if (arguments.toList() == listOf("disable")) retireSemanticOwner(requireFence = false)
         val outcome = runServiceControl(selectServiceControl(arguments.toList()))
         when (outcome) {
             ServiceControlOutcome.Completed -> Unit
@@ -239,24 +243,35 @@ internal val serviceControlJson = Json { encodeDefaults = true }
 
 private const val SERVICE_CONTROL_REJECTED_EXIT_CODE = 64
 
-private fun retireSemanticOwner() {
-    val executable = (installedKastExecutable() as? Refinement.Refined)?.value ?: return
-    val home = Path.of(System.getProperty("user.home"))
-    when (val retired = runBlocking { retireFencedSemanticCoordinator(executable.parent.parent, home) }) {
+private fun retireSemanticOwner(requireFence: Boolean) {
+    val retired =
+        when (val installed = installedKastExecutable()) {
+            is Refinement.Rejected -> SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN
+            is Refinement.Refined ->
+                runBlocking {
+                    retireFencedSemanticCoordinator(
+                        installed.value.parent.parent,
+                        Path.of(System.getProperty("user.home")),
+                    )
+                }
+        }
+    when (retired) {
         SemanticCoordinatorRetirement.ABSENT,
-        SemanticCoordinatorRetirement.EXITED,
-        SemanticCoordinatorRetirement.UNFENCED -> Unit
+        SemanticCoordinatorRetirement.EXITED -> Unit
+        SemanticCoordinatorRetirement.UNFENCED -> if (requireFence) semanticRetirementRejected(retired)
         SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN,
         SemanticCoordinatorRetirement.SHUTDOWN_UNOBSERVED,
-        SemanticCoordinatorRetirement.EXIT_UNOBSERVED -> {
-            System.err.println(
-                serviceControlJson.encodeToString<ServiceControlFailureDocument>(
-                    ServiceControlFailureDocument.SemanticCoordinator(retired)
-                )
-            )
-            exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
-        }
+        SemanticCoordinatorRetirement.EXIT_UNOBSERVED -> semanticRetirementRejected(retired)
     }
+}
+
+private fun semanticRetirementRejected(retired: SemanticCoordinatorRetirement): Nothing {
+    System.err.println(
+        serviceControlJson.encodeToString<ServiceControlFailureDocument>(
+            ServiceControlFailureDocument.SemanticCoordinator(retired)
+        )
+    )
+    exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
 }
 
 private fun tryManagedHeadlessShutdown(arguments: List<String>): Boolean {

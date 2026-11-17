@@ -62,12 +62,21 @@ private constructor(
 
     /** Managed Host retirement excludes semantic effects through generation leases. */
     fun retireManagedCoordinator(): Refinement<Unit, ContainerFailure> =
-        when (
-            step(LifecycleOperation.STOP_FORCE, LifecycleStage.COORDINATOR) { service(LifecycleServiceAction.DISABLE) }
-        ) {
+        when (step(LifecycleOperation.STOP_FORCE, LifecycleStage.COORDINATOR, ::retireSemanticService)) {
             LifecycleEffect.Completed -> Refinement.Refined(Unit)
             is LifecycleEffect.Rejected -> Refinement.Rejected(ContainerFailure.SHUTDOWN_FAILED)
         }
+
+    private fun retireSemanticService(): LifecycleEffect {
+        val state = installation.resolve("state")
+        // Service startup must publish under state/broker before it creates its socket.
+        if (
+            Files.notExists(state.resolve("broker"), NOFOLLOW_LINKS) &&
+                Files.notExists(state.resolve("run/c.sock"), NOFOLLOW_LINKS)
+        )
+            return LifecycleEffect.Completed
+        return service(LifecycleServiceAction.RETIRE_SEMANTIC)
+    }
 
     /** Only a committed removal journal may retain a fence created by this uninstall attempt. */
     fun <T> duringUninstallPreparation(action: () -> T): T {
@@ -397,5 +406,6 @@ internal fun installationLifecycleEnvironment(
         )
 
 private enum class LifecycleServiceAction(val command: String) {
-    DISABLE("disable")
+    RETIRE_SEMANTIC("retire-semantic"),
+    DISABLE("disable"),
 }
