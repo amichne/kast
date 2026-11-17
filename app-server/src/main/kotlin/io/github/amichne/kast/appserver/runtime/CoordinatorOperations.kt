@@ -166,7 +166,8 @@ internal class CoordinatorOperations(
                             }
                         )
                     is DaemonOperationClientRejection.Command,
-                    is DaemonOperationClientRejection.Coordinator -> reject(DaemonOperationProtocolFailure.UNAVAILABLE)
+                    is DaemonOperationClientRejection.Coordinator,
+                    is DaemonOperationClientRejection.Startup -> reject(DaemonOperationProtocolFailure.UNAVAILABLE)
                 }
         }
     }

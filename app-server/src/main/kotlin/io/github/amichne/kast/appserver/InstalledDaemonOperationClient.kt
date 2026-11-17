@@ -51,6 +51,9 @@ sealed interface DaemonOperationClientRejection {
 
     data class Coordinator(val failure: WorkerControlFailure) : DaemonOperationClientRejection
 
+    /** Starting or joining the installed coordinator rejected before any operation was sent. */
+    data class Startup(val failure: SemanticCoordinatorStartupFailure) : DaemonOperationClientRejection
+
     data class Transport(val failure: DaemonOperationClientFailure) : DaemonOperationClientRejection
 }
 
@@ -179,6 +182,7 @@ fun DaemonOperationClientRejection.diagnosticCode(): String =
     when (this) {
             is DaemonOperationClientRejection.Command -> "daemon-operation-command-${failure.name}"
             is DaemonOperationClientRejection.Coordinator -> "daemon-operation-coordinator-${failure.name}"
+            is DaemonOperationClientRejection.Startup -> "daemon-operation-startup-${failure.diagnosticCode()}"
             is DaemonOperationClientRejection.Transport -> "daemon-operation-${failure.name}"
             is DaemonOperationClientRejection.Server ->
                 when (val reason = failure) {
@@ -203,6 +207,16 @@ fun DaemonOperationClientRejection.diagnosticCode(): String =
         }
         .lowercase()
         .replace('_', '-')
+
+private fun SemanticCoordinatorStartupFailure.diagnosticCode(): String =
+    when (this) {
+        SemanticCoordinatorStartupFailure.InstallationFenced -> "installation-fenced"
+        SemanticCoordinatorStartupFailure.OwnershipRejected -> "ownership-rejected"
+        SemanticCoordinatorStartupFailure.StartupRejected -> "rejected"
+        SemanticCoordinatorStartupFailure.GenerationReplaced -> "generation-replaced"
+        SemanticCoordinatorStartupFailure.StartupTimedOut -> "timed-out"
+        is SemanticCoordinatorStartupFailure.SubmissionRejected -> "submission-${failure.name}"
+    }
 
 private fun DaemonOperationInputFailure.diagnosticCode(): String =
     when (this) {

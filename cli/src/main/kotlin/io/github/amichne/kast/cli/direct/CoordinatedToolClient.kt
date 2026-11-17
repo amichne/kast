@@ -47,9 +47,17 @@ internal class CoordinatedToolClient(private val binding: InstalledClientBinding
         if (binding.observe() != InstalledToolAdmission.AVAILABLE) return@runBlocking unavailable
         val requestSettings = projectSettings()
         val started = System.nanoTime()
-        val coordinator = selected.get() ?: connectOnce()
-        ControlStageTrace.record(ControlStage.COORDINATOR_CONNECTION, outcome(coordinator == null), started)
-        if (coordinator == null) return@runBlocking unavailable
+        val connected = selected.get()?.let { Refinement.Refined(it) } ?: connectOnce()
+        ControlStageTrace.record(
+            ControlStage.COORDINATOR_CONNECTION,
+            outcome(connected is Refinement.Rejected),
+            started,
+        )
+        val coordinator =
+            when (connected) {
+                is Refinement.Refined -> connected.value
+                is Refinement.Rejected -> return@runBlocking DaemonOperationResult.Rejected(connected.failure)
+            }
         val invoking = System.nanoTime()
         val result = coordinator.execute(root, call, requestSettings)
         // No call retries the exchange. The next request can observe a newly available coordinator.
@@ -64,16 +72,18 @@ internal class CoordinatedToolClient(private val binding: InstalledClientBinding
         result
     }
 
-    private suspend fun connectOnce(): InstalledSemanticCoordinator? = connection.withLock {
-        selected.get() ?: connect().also(selected::set)
-    }
+    private suspend fun connectOnce(): Refinement<InstalledSemanticCoordinator, DaemonOperationClientRejection> =
+        connection.withLock {
+            selected.get()?.let { Refinement.Refined(it) }
+                ?: connect().also { if (it is Refinement.Refined) selected.set(it.value) }
+        }
 
-    private suspend fun connect(): InstalledSemanticCoordinator? {
+    private suspend fun connect(): Refinement<InstalledSemanticCoordinator, DaemonOperationClientRejection> {
         val home =
             try {
-                Path.of(binding.environment["HOME"] ?: return null).toRealPath()
+                Path.of(binding.environment["HOME"] ?: return Refinement.Rejected(unavailable.failure)).toRealPath()
             } catch (_: IOException) {
-                return null
+                return Refinement.Rejected(unavailable.failure)
             }
         val result =
             InstalledSemanticCoordinator.connect(binding.installation, home) {
@@ -86,7 +96,10 @@ internal class CoordinatedToolClient(private val binding: InstalledClientBinding
                         }
                 }
             }
-        return (result as? Refinement.Refined)?.value
+        return when (result) {
+            is Refinement.Refined -> result
+            is Refinement.Rejected -> Refinement.Rejected(DaemonOperationClientRejection.Startup(result.failure))
+        }
     }
 }
 
