@@ -139,11 +139,6 @@ internal fun admitWorkspaceLifecycleHost(
         is Refinement.Rejected -> return admission
         is Refinement.Refined -> Unit
     }
-    if (
-        deployment is SelectedLifecycleDeployment.Headless &&
-            !deployment.gradleEnvironment.matches(host.runtimeIdentity?.gradleImportEnvironmentIdentity)
-    )
-        return Refinement.Rejected(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
     if (host.home != home.toString()) return Refinement.Rejected(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
     if (host.protocol != 1) return Refinement.Rejected(IdeLifecycleFailure.UNSUPPORTED_PROTOCOL)
     if (!host.capabilities.containsAll(WORKSPACE_CAPABILITIES))

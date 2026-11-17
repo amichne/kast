@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.contract.HostedEndpointPaths
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ApprovedProjectCloseInvocation
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
@@ -159,6 +161,11 @@ internal constructor(
             is Refinement.Rejected -> return blocked(admitted.failure)
             is Refinement.Refined -> Unit
         }
+        if (
+            selectedDeployment is SelectedLifecycleDeployment.Headless &&
+                !transport.admitsWorkspaceLaunch(home, host, selectedDeployment.gradleEnvironment)
+        )
+            return blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
         return if (command == IdeLifecycleCommand.Inspect) host else exchange(home, command)
     }
 
@@ -255,14 +262,32 @@ internal class LifecycleSocketExchange(
 ) {
     private val json = Json { encodeDefaults = true }
 
+    fun admitsWorkspaceLaunch(
+        home: Path,
+        host: IdeLifecycleResult.Inspected,
+        expected: GradleImportEnvironment,
+    ): Boolean {
+        if (expected.identity == GradleImportEnvironment.Empty.identity) return true
+        val directory = lifecycleDirectory(home)
+        return try {
+            val owner = readHostedOwner(userHome, directory)
+            owner is Refinement.Refined &&
+                owner.value.lifecycleApplication(directory.resolve("host.sock"), host)?.let {
+                    expected.matches(it.gradleImportEnvironmentIdentity)
+                } == true
+        } catch (_: java.io.IOException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
+    private fun lifecycleDirectory(home: Path): Path =
+        HostedEndpointPaths.directory(userHome, HostedEndpointPaths.Family.LIFECYCLE, home.toString())
+
     fun exchange(home: Path, command: IdeLifecycleCommand): IdeLifecycleResult {
         val attempt = LifecycleExchangeAttempt(command, nanoTime)
-        val directory =
-            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
-                userHome,
-                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
-                home.toString(),
-            )
+        val directory = lifecycleDirectory(home)
         val socket = directory.resolve("host.sock")
         if (!Files.exists(socket)) return attempt.reject(IdeLifecycleExchangeCause.SOCKET_MISSING)
         var ancestor: Path? = directory

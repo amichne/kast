@@ -55,12 +55,7 @@ class HostedManagedApplicationEncodingTest {
         assertTrue(schema.validate(encoded, InputFormat.JSON).isEmpty(), encoded)
         val delegated =
             json.encodeToString(
-                document.copy(
-                    application =
-                        application.copy(
-                            runtimeIdentity = identity.copy(gradleImportEnvironmentIdentity = "f".repeat(64))
-                        )
-                )
+                document.copy(application = application.copy(gradleImportEnvironmentIdentity = "f".repeat(64)))
             )
         assertTrue(schema.validate(delegated, InputFormat.JSON).isEmpty(), delegated)
         val invalidDelegation = delegated.replace("f".repeat(64), "invalid-digest")

@@ -84,7 +84,8 @@
       "required": ["runtimeIdentity", "compatibility"],
       "properties": {
         "runtimeIdentity": { "$ref": "#/$defs/managedRuntimeIdentity" },
-        "compatibility": { "$ref": "#/$defs/hostedCompatibility" }
+        "compatibility": { "$ref": "#/$defs/hostedCompatibility" },
+        "gradleImportEnvironmentIdentity": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     },
     "managedRuntimeIdentity": {
@@ -97,7 +98,6 @@
         "pid": { "type": "integer", "minimum": 1 },
         "processStartEpochMillis": { "type": "integer", "minimum": 1 },
         "hostLifetime": { "$ref": "#/$defs/hostLifetime" },
-        "gradleImportEnvironmentIdentity": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "autoReload": { "const": "DISABLED" },
         "mode": { "const": "MANAGED_HEADLESS" },
         "buildIdentity": {

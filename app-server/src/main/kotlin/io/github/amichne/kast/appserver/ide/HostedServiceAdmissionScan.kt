@@ -126,7 +126,7 @@ private fun selectionRejected(
     return HostedEndpointSelection.Rejected(failure)
 }
 
-private fun readHostedOwner(
+internal fun readHostedOwner(
     home: Path,
     entry: Path,
 ): Refinement<RecordedHostedEndpointOwner, ExistingIdeFailure> {
