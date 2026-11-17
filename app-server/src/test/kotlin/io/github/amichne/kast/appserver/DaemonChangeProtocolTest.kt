@@ -34,7 +34,7 @@ class DaemonChangeProtocolTest {
             assertEquals(kind, operation.kind)
             assertEquals(identity, operation.identity.value)
         }
-        assertEquals(3, DaemonOperationProtocol.version)
+        assertEquals(4, DaemonOperationProtocol.version)
     }
 
     @Test

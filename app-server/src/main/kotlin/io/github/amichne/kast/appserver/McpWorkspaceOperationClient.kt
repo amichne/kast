@@ -244,6 +244,7 @@ internal fun mcpOperation(call: DaemonOperationCall): Refinement<ExistingIdeOper
                     is DaemonCanonicalRead.SourceRead -> mcpPreparers.sourceRead.prepare(read.request)
                 }
             DaemonOperationCall.WorkspaceStatus -> return Refinement.Refined(ExistingIdeOperation.Status)
+            DaemonOperationCall.PrepareWorkspace -> return Refinement.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
             is DaemonOperationCall.Change ->
                 when (val action = call.action) {
                     is DaemonChangeAction.Plan -> mcpPreparers.changePlan.prepare(action.request)

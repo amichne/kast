@@ -109,6 +109,20 @@ class ManagedCoordinatorOperationsTest {
         }
 
     @Test
+    fun `existing authority rejects a conflicting explicit setting`() = runBlocking {
+        val workspaces = ScriptedWorkspaces()
+        ManagedCoordinatorOperations(SERVICE, workspaces).use { operations ->
+            assertEquals("a#1", host(operations.execute(rootA, defaults, prepareRead)))
+            assertEquals(
+                managedFailure(ContainerFailure.CONFIGURATION_CONFLICT),
+                operations.execute(rootA, smallerHeap, retainedRead),
+            )
+            assertEquals("existing", host(operations.execute(rootA, defaults, retainedRead)))
+            assertEquals(listOf(rootA), workspaces.preparations.toList())
+        }
+    }
+
+    @Test
     fun `a conflicting caller neither joins nor waits for another caller's preparation`() = runBlocking {
         val workspaces = ScriptedWorkspaces().blockPreparation(rootA)
         ManagedCoordinatorOperations(SERVICE, workspaces).use { operations ->
@@ -314,7 +328,10 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
         root: CanonicalRoot,
         environment: Map<String, String>,
         operation: DaemonOperationCall,
+        expected: WorkspaceHostIdentity?,
     ): DaemonOperationResult = leased {
+        if (expected != null && identity(root, environment) != expected)
+            return@leased rejectedOperation(configurationConflict)
         if (existingUnavailable)
             DaemonOperationResult.Rejected(
                 DaemonOperationClientRejection.Server(

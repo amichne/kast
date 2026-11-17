@@ -22,6 +22,7 @@ import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.Required
+import kotlinx.serialization.Serializable
 
 internal enum class WorkspacePhase {
     PREPARING,
@@ -97,7 +100,10 @@ internal class ManagedCoordinatorOperations(
         suspend fun read(): DaemonOperationResult {
             if (synchronized(monitor) { closed || entries[root] !== slot || slot?.state is WorkspaceEntry.Draining })
                 return rejectedOperation(lifecycleTransition)
-            return runInterruptible(Dispatchers.IO) { acquisition.existing(root, request, operation) }
+            val ready = synchronized(monitor) { slot?.state as? WorkspaceEntry.Ready }
+            return runInterruptible(Dispatchers.IO) {
+                acquisition.existing(root, request, operation, ready?.binding?.identity)
+            }
         }
         return if (slot == null) read() else slot.permit.withLock { read() }
     }
@@ -143,6 +149,7 @@ internal class ManagedCoordinatorOperations(
                     val leased =
                         acquisition.withRequestLease(root, request) { observed ->
                             if (observed != ready.binding.identity) rejectedOperation(configurationConflict)
+                            else if (operation == DaemonOperationCall.PrepareWorkspace) preparedWorkspace
                             else ready.binding.read(root, operation)
                         }
                 ) {
@@ -373,4 +380,11 @@ private fun DaemonOperationResult.hostUnavailable(): DaemonOperationFailure.Work
 }
 
 private val lifecycleTransition = DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION)
-private val configurationConflict = DaemonOperationFailure.ManagedWorkspace(ContainerFailure.CONFIGURATION_CONFLICT)
+internal val configurationConflict = DaemonOperationFailure.ManagedWorkspace(ContainerFailure.CONFIGURATION_CONFLICT)
+
+@Serializable internal data class PreparedWorkspaceDocument(@Required val ready: Boolean = true)
+
+private val preparedWorkspace =
+    DaemonOperationResult.Complete(
+        CanonicalJsonDocument.generated(PreparedWorkspaceDocument.serializer()).create(PreparedWorkspaceDocument())
+    )
