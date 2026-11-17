@@ -124,7 +124,7 @@ def encoded(value: Arguments | McpRequest | product.ProductSelection) -> bytes:
 class LocalSource(product.ReleaseSource):
     """Exact retained URLs only; no network fallback or dependency resolution."""
 
-    def __init__(self, directory: Path, record: product.ProductRecord):
+    def __init__(self, directory: Path, record: product.ProductRecord | product.LocalProductRecord):
         base = f"{product.RELEASE_URL}/developer-v{record.version}"
         self.files = {
             f"{base}/{asset.name}": directory / "payload" / asset.name for asset in record.assets()
@@ -613,7 +613,9 @@ class Probe:
         first, second = ((self.evidence / f"{case}.stderr").read_bytes() for case in cases)
         require_warm_coordinator_reuse(first, second)
 
-    def install(self, directory: Path, record: product.ProductRecord) -> None:
+    def install(
+        self, directory: Path, record: product.ProductRecord | product.LocalProductRecord
+    ) -> None:
         selection = product.ProductSelection(
             f"developer-v{record.version}",
             record,
