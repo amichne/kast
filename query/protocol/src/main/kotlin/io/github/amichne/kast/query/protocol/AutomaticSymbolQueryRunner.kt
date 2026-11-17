@@ -33,6 +33,13 @@ class QueryInvocationPolicy(
     val cancelled: () -> Boolean = { false },
     val inlinePresentation: (QueryPublishedPage) -> QueryInlinePresentation = { QueryInlinePresentation.FITS },
     val retentionObservation: QueryInvocationRetentionObservation = QueryInvocationRetentionObservation.None,
+    val deferRow:
+        ((
+            QueryResultItemDocument,
+            io.github.amichne.kast.protocol.contract.QueryResultReference,
+            Int,
+        ) -> QueryResultItemDocument.DeferredDetail)? =
+        null,
 )
 
 enum class QueryInlinePresentation {

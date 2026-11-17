@@ -63,7 +63,8 @@ class NativeTransportCompositionTest {
             assertEquals("2025-06-18", initialization.protocolVersion)
             val catalog = mcpWire.decodeFromJsonElement<McpToolList>(checkNotNull(responses[1].result))
             assertEquals(
-                PublicToolIdentity.entries.map { it.toolName }.toSet() + "health_check",
+                PublicToolIdentity.entries.map { it.toolName }.toSet() +
+                    setOf("health_check", "producer_invocations", "impact"),
                 catalog.tools.map { it.name }.toSet(),
             )
             val rejection = mcpWire.decodeFromJsonElement<McpCallResult>(checkNotNull(responses[2].result))

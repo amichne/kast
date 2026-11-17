@@ -61,7 +61,7 @@ class InstalledQueryMetadataSchemaTest {
         val definitions = installedServerOutputSchema(CanonicalOperation.QUERY_RUN).getValue("\$defs").jsonObject
         val summary = definitions.getValue("queryOriginalEvidenceSummary").jsonObject
         val properties = summary.getValue("properties").jsonObject
-        assertEquals(summaryReasonFields + summary.requiredNames(), properties.keys)
+        assertEquals(summaryReasonFields + summary.requiredNames() + "first_unproven_callback", properties.keys)
         for (name in summaryReasonFields) {
             val reason = properties.getValue(name).jsonObject
             assertEquals(JsonPrimitive("array"), reason.getValue("type"), name)

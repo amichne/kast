@@ -15,6 +15,8 @@ enum class QueryPresentationAdmissionFailure {
 class QueryPresentationExecution private constructor() {
     private var evaluating = true
 
+    fun admitOversizedEntry(): Refinement<Unit, QueryPresentationAdmissionFailure> = admit()
+
     fun admitValuePath(): Refinement<Unit, QueryPresentationAdmissionFailure> = admit()
 
     fun admitCallbackEvidence(): Refinement<Unit, QueryPresentationAdmissionFailure> = admit()

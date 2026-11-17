@@ -28,9 +28,8 @@ internal fun QueryInvocationPolicy.fitPreview(
     stop: QueryInvocationStop,
     failure: QueryOriginalFailureDocument?,
 ): Refinement<QueryInvocationPreview, QueryRunRejection> {
-    var end = 0
-    while (end < candidates.size && previewBytes(candidates.take(end + 1)) <= previewBytesLimit.value) end++
-    val rows = candidates.take(end)
+    val rows = previewRows(candidates, issuance)
+    val end = rows.size
     val bytes = previewBytes(rows)
     if (bytes !in 2..previewBytesLimit.value)
         return Refinement.Rejected(
@@ -64,4 +63,24 @@ internal fun QueryInvocationPolicy.fitPreview(
             summary,
         )
     )
+}
+
+private fun QueryInvocationPolicy.previewRows(
+    candidates: List<QueryResultItemDocument>,
+    issuance: QueryResultIssuance.Issued?,
+): List<QueryResultItemDocument> {
+    val prefix = mutableListOf<QueryResultItemDocument>()
+    for ((ordinal, row) in candidates.withIndex()) {
+        val fitted =
+            when {
+                previewBytes(prefix + row) <= previewBytesLimit.value -> row
+                issuance == null || previewBytes(listOf(row)) <= previewBytesLimit.value -> null
+                else ->
+                    deferRow?.invoke(row, issuance.reference, ordinal)?.takeIf {
+                        previewBytes(prefix + it) <= previewBytesLimit.value
+                    }
+            }
+        prefix += fitted ?: break
+    }
+    return prefix
 }

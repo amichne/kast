@@ -131,7 +131,8 @@ class QueryImpactSourceAdmissionTest {
             shifted.admitImpact(owner.lease, references, compiler, budget).failure().admissionCode(),
         )
         val oldLease = SemanticReadLease(owner.lease.workspaceRoot, EvidenceGeneration.parse(6).refined())
-        val oldCandidate = references.issueRangeCandidate(oldLease, owner.file, 20, 35) as CandidateSelectorTokenIssuance.Issued
+        val oldCandidate =
+            references.issueRangeCandidate(oldLease, owner.file, 20, 35) as CandidateSelectorTokenIssuance.Issued
         val stale = input.copy(seeds = bounded(listOf(producer.copy(candidateRef = oldCandidate.selector))))
         assertEquals(
             QueryImpactSourceFailureCode.STALE_REQUESTED_SITE,
@@ -478,7 +479,6 @@ class QueryImpactSourceAdmissionTest {
 
     private fun QueryRunRejection.admissionCode() =
         ((this as QueryRunRejection.ImpactSourceRejected).cause as QueryImpactSourceFailureDocument.Admission).cause
-
 }
 
 private fun endpoint(name: String, start: Int, end: Int, fileName: String = "File.kt"): RelationEndpoint.Resolved {

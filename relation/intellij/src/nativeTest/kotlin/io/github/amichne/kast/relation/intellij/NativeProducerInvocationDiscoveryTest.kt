@@ -35,24 +35,26 @@ class NativeProducerInvocationDiscoveryTest : NativeReferenceFixtureTest() {
                 val owner = fact.source as RelationEndpoint.Resolved
                 val selection =
                     ValueProducerSeedRequest.create(
-                            enclosing = SymbolSelector.issue(
-                        lease = owner.lease,
-                        scope = owner.scope,
-                        evidence = owner.evidence,
-                        constraints = owner.constraints,
-                    ),
+                            enclosing =
+                                SymbolSelector.issue(
+                                    lease = owner.lease,
+                                    scope = owner.scope,
+                                    evidence = owner.evidence,
+                                    constraints = owner.constraints,
+                                ),
                             anchor = range,
                             expectedCallable = (fact.target as RelationEndpoint.Subject).selector,
                             budget = fixture.request.budget,
                             boundary = RelationSearchBoundary.WORKSPACE_EXPANSION,
                         )
                         .nativeRefined()
-                val seed = IntellijValueFlowCompilerAdapter().seed(
-                    project = project,
-                    current = owner.lease,
-                    request = selection,
-                    model = fixture.model,
-                )
+                val seed =
+                    IntellijValueFlowCompilerAdapter().seed(
+                        project = project,
+                        current = owner.lease,
+                        request = selection,
+                        model = fixture.model,
+                    )
                 assertTrue(
                     "Issued range must select its exact compiler call: $seed",
                     seed is ValueProducerSeedRead.Seeded,

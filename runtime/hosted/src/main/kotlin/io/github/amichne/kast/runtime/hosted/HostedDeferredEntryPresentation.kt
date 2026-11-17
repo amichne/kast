@@ -194,8 +194,7 @@ private fun QueryRunResult.firstDeferredEntry(): QueryDeferredDetailDocument? {
     val retained = retention as? QueryResultRetention.Retained ?: return null
     val row = items.values.firstOrNull()
     if (row is QueryResultItemDocument.DeferredDetail) return row.detail
-    if (row != null)
-        return deferredRowSummary(row, retained.reference, presentationWindow?.start?.value ?: 0).detail
+    if (row != null) return deferredRowSummary(row, retained.reference, presentationWindow?.start?.value ?: 0).detail
     val start = evidenceWindow?.start?.value ?: 0
     val first = deferredEvidence.values.firstOrNull()
     if (first?.selector?.ordinal?.value == start) return first

@@ -218,7 +218,7 @@ class PublicQueryGenerationTest(unittest.TestCase):
             schema = json.loads(generated[generator.RESOURCES / name])
             definitions = schema["$defs"]
             # Issued producer candidates add a strict, epoch-bound invocation range to IMPACT input.
-            candidate = {"$ref": "#/$defs/SourceCandidateReference"}
+            candidate = {"$ref": "#/$defs/ImpactReferenceText"}
             expected_candidate = {"anyOf": [candidate, {"type": "null"}]}
             self.assertEqual(expected_candidate, definitions["ImpactProducer"]["properties"].pop("candidateRef"))
             if "candidateRef" in definitions["ImpactProducer"]["required"]:

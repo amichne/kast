@@ -42,7 +42,11 @@ private fun outputLimit(document: JsonObject): McpTransportRejection.OutputLimit
     if (document["type"] == JsonPrimitive("QUERY_PRESENTATION_HEADER")) {
         val header = headerJson.decodeFromJsonElement(QueryPresentationHeaderDocument.serializer(), document)
         return McpTransportRejection.OutputLimit(
-            MCP_RESPONSE_LIMIT_BYTES, header.semantic, header.headline, header.deferredEntry, header.nextQuery
+            MCP_RESPONSE_LIMIT_BYTES,
+            header.semantic,
+            header.headline,
+            header.deferredEntry,
+            header.nextQuery,
         )
     }
     val semantic = querySemanticHeader(document, document.originalOutcome())
@@ -63,10 +67,12 @@ private fun queryOutputLimit(
     document: JsonObject,
     semantic: io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocument,
 ): McpTransportRejection.OutputLimit {
-    val evidence = ((document["rejection"] as? JsonObject)?.get("detail") as? JsonObject)?.get("evidence") as? JsonObject
-    val issued = ((document["nextQuery"] ?: evidence?.get("nextQuery")) as? JsonObject)?.let {
-        headerJson.decodeFromJsonElement(QueryCompletionPublicReadQuery.serializer(), it)
-    }
+    val evidence =
+        ((document["rejection"] as? JsonObject)?.get("detail") as? JsonObject)?.get("evidence") as? JsonObject
+    val issued =
+        ((document["nextQuery"] ?: evidence?.get("nextQuery")) as? JsonObject)?.let {
+            headerJson.decodeFromJsonElement(QueryCompletionPublicReadQuery.serializer(), it)
+        }
     val entry = firstDeferredEntry(document, evidence)
     val read = issued?.selectDeferred(entry)
     return McpTransportRejection.OutputLimit(
@@ -79,14 +85,17 @@ private fun queryOutputLimit(
     )
 }
 
-private fun QueryCompletionPublicReadQuery.selectDeferred(entry: QueryDeferredDetailDocument?): QueryCompletionPublicReadQuery? =
+private fun QueryCompletionPublicReadQuery.selectDeferred(
+    entry: QueryDeferredDetailDocument?
+): QueryCompletionPublicReadQuery? =
     when {
         entry == null -> this
         request.result != entry.selector.result -> null
         request.detail == entry.selector -> this
-        else -> QueryCompletionPublicReadQuery(
-            QueryCompletionPublicReadRequest.detail(request.result, request.output, entry.selector)
-        )
+        else ->
+            QueryCompletionPublicReadQuery(
+                QueryCompletionPublicReadRequest.detail(request.result, request.output, entry.selector)
+            )
     }
 
 private fun firstDeferredEntry(document: JsonObject, evidence: JsonObject?): QueryDeferredDetailDocument? {

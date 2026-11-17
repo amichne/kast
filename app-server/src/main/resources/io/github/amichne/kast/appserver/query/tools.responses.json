@@ -1353,7 +1353,7 @@
             "candidateRef": {
               "anyOf": [
                 {
-                  "$ref": "#/$defs/SourceCandidateReference"
+                  "$ref": "#/$defs/ImpactReferenceText"
                 },
                 {
                   "type": "null"

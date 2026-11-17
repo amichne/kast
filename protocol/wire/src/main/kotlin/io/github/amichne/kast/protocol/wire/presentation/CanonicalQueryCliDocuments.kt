@@ -294,8 +294,10 @@ internal fun QueryRunResult.traceHeadline(): QueryTraceHeadline? =
 /** Replays the selected output, including a retained witness section or symbol-field projection. */
 private fun QueryRunResult.deferredEntryRead(): QueryCompletionPublicReadQuery? {
     val retained = retention as? QueryResultRetention.Retained ?: return null
-    val entry = items.values.firstNotNullOfOrNull { (it as? QueryResultItemDocument.DeferredDetail)?.detail }
-        ?: deferredEvidence.values.firstOrNull() ?: return null
+    val entry =
+        items.values.firstNotNullOfOrNull { (it as? QueryResultItemDocument.DeferredDetail)?.detail }
+            ?: deferredEvidence.values.firstOrNull()
+            ?: return null
     require(entry.selector.result == retained.reference)
     return QueryCompletionPublicReadQuery(
         QueryCompletionPublicReadRequest.detail(

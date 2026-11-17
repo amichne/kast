@@ -124,7 +124,8 @@ class PublicCliProcessTest {
             } finally {
                 if (process.isAlive) process.destroyForcibly().waitFor()
             }
-        assertEquals(1, text.count { it == '\n' })
+        assertTrue(text.startsWith("{\n  \""))
+        assertTrue(text.endsWith("\n}\n"))
         val descriptor = Json.parseToJsonElement(text).jsonObject
         assertEquals(catalog.name, descriptor.getValue("catalog").jsonPrimitive.content)
         val validator =

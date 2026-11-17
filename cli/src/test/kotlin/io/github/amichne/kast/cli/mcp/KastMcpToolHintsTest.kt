@@ -28,15 +28,16 @@ class KastMcpToolHintsTest {
         val installed = installedHostedBootstrap().tools
         val reads = installed.filter { it.name in readNames }
         assertEquals(readNames, reads.mapTo(linkedSetOf()) { it.name })
+        val nativeReads = readNames + setOf("producer_invocations", "impact")
         val changes = installed.filter { it.name in setOf("add_declaration", "replace_body") }
         val tools = listedTools((reads + changes).map { it.directToolDocument() })
         assertEquals(
-            readNames + setOf("add_declaration", "replace_body"),
+            nativeReads + setOf("add_declaration", "replace_body"),
             tools.mapTo(linkedSetOf()) { it.jsonObject.getValue("name").jsonPrimitive.content },
         )
         for (tool in tools) {
             val document = tool.jsonObject
-            val read = document.getValue("name").jsonPrimitive.content in readNames
+            val read = document.getValue("name").jsonPrimitive.content in nativeReads
             val hints = document.getValue("annotations").jsonObject
             assertEquals("false", hints.getValue("readOnlyHint").jsonPrimitive.content)
             assertEquals("true", hints.getValue("destructiveHint").jsonPrimitive.content)

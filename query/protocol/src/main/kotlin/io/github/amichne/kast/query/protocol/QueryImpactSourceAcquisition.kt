@@ -4,12 +4,10 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.AdmittedImpactModelSyntax
 import io.github.amichne.kast.protocol.contract.ImpactBoundaryPositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument
-import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryImpactDeclarationDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument
 import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureCode
-import io.github.amichne.kast.protocol.contract.QueryImpactSourceFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.query.contract.QueryBudget
 import io.github.amichne.kast.query.contract.QueryImpactProducer
@@ -19,7 +17,6 @@ import io.github.amichne.kast.query.contract.QueryImpactSource
 import io.github.amichne.kast.relation.contract.BoundaryPosition
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
-import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.RevalidatedRelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueModelDeclarationRead
@@ -28,7 +25,6 @@ import io.github.amichne.kast.relation.contract.ValueProducerSeedCompilerPort
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequestFailure
-import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 import io.github.amichne.kast.symbol.contract.SymbolSelector
 import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 
@@ -112,10 +108,11 @@ internal class QueryImpactSourceAcquisition(
             }
         if (enclosing.lease.identity != lease.identity || callable.lease.identity != lease.identity)
             return impactFailure(QueryImpactSourceFailureCode.BASIS_MISMATCH, position)
-        val anchor = when (val admitted = seed.admitProducerAnchor(enclosing, authority, position)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return admitted
-        }
+        val anchor =
+            when (val admitted = seed.admitProducerAnchor(enclosing, authority, position)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
         val grant =
             when (val admitted = remaining(position)) {
                 is Refinement.Refined -> admitted.value
@@ -334,69 +331,4 @@ internal class QueryImpactSourceAcquisition(
             flow,
             budget,
         )
-}
-
-private fun restoreImpactDeclaration(
-    authority: QueryReferenceAuthority,
-    token: ProtocolText,
-    lease: SemanticReadAuthority,
-    position: Int,
-): Refinement<SymbolSelector, QueryRunRejection> =
-    when (val restored = authority.restoreExact(token, lease)) {
-        is CanonicalSelectorDecoding.Decoded -> Refinement.Refined(restored.value)
-        is CanonicalSelectorDecoding.Rejected ->
-            Refinement.Rejected(
-                QueryRunRejection.ImpactSourceRejected(
-                    QueryImpactSourceFailureDocument.Reference.fromReference(
-                        restored.queryReferenceRejection(position, token)
-                    )
-                )
-            )
-    }
-
-private fun matchImpactDeclaration(
-    declaration: QueryImpactDeclarationDocument,
-    selected: SymbolSelector,
-    endpoint: RelationEndpoint,
-    lease: SemanticReadAuthority,
-    position: Int,
-): Refinement<Unit, QueryRunRejection> {
-    if (
-        endpoint.compilerIdentity != selected.compilerIdentity ||
-            endpoint.file != selected.file ||
-            endpoint.range != selected.range
-    )
-        return impactFailure(QueryImpactSourceFailureCode.DECLARATION_MISMATCH, position)
-    if (!declaration.declaration.matchesDeclaration(endpoint))
-        return impactFailure(QueryImpactSourceFailureCode.DECLARATION_MISMATCH, position)
-    if (endpoint.lease.identity != lease.identity || !declaration.declaration.basis.matchesBasis(lease.identity))
-        return impactFailure(QueryImpactSourceFailureCode.STALE_DECLARATION, position)
-    return Refinement.Refined(Unit)
-}
-
-
-private fun QueryImpactProducerDocument.admitProducerAnchor(
-    enclosing: SymbolSelector,
-    authority: QueryReferenceAuthority,
-    position: Int,
-): Refinement<ExactDeclarationTextRange, QueryRunRejection> {
-        val anchor =
-            when (val parsed = ExactDeclarationTextRange.parse(this.anchor.start.value, this.anchor.end.value)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return impactFailure(QueryImpactSourceFailureCode.INVALID_ANCHOR, position)
-            }
-        candidateRef?.let { reference ->
-            val restored = authority.restoreCandidate(reference, enclosing.lease)
-            val selected =
-                (restored as? CanonicalSelectorDecoding.Decoded)?.value
-                    as? io.github.amichne.kast.symbol.contract.CandidateSelector.Range
-                    ?: return impactFailure(QueryImpactSourceFailureCode.STALE_REQUESTED_SITE, position)
-            if (
-                selected.file != enclosing.file ||
-                    selected.startInclusive.value != anchor.startInclusive ||
-                    selected.endExclusive.value != anchor.endExclusive
-            )
-                return impactFailure(QueryImpactSourceFailureCode.ANCHOR_MISMATCH, position)
-        }
-    return Refinement.Refined(anchor)
 }

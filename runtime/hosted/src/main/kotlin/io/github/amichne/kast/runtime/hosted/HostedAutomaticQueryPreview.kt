@@ -6,7 +6,9 @@ import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.ReturnedByteLimit
+import io.github.amichne.kast.protocol.contract.PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES
 import io.github.amichne.kast.protocol.contract.QueryPreviewDocument
+import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.presentationPrefix
 import io.github.amichne.kast.protocol.contract.presentationUnitCount
@@ -96,7 +98,7 @@ private class HostedAutomaticQueryPreview(
     }
 
     private fun prepareDeferrals() {
-        if (original.retention !is io.github.amichne.kast.protocol.contract.QueryResultRetention.Retained) return
+        if (original.retention !is QueryResultRetention.Retained) return
         deferOversizedRows()
         deferOversizedEvidence()
         if (original.presentationUnitCount > 0 && encode(1).second is HostedResponse.Oversized) deferFirstUnit()
@@ -136,8 +138,11 @@ private class HostedAutomaticQueryPreview(
 
     fun fit(): HostedResponse {
         prepareDeferrals()
-        // A retained read must advance a cursor; an initial invocation may return an empty preview.
-        val minimumPrefix = if (invocation == null && original.presentationUnitCount > 0) 1 else 0
+        // At the public minimum, a compact header can publish the first selector if a full page cannot.
+        val offersDetail =
+            original.retention is QueryResultRetention.Retained &&
+                maximumBytes.value >= PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES
+        val minimumPrefix = if (original.presentationUnitCount > 0 && (invocation == null || offersDetail)) 1 else 0
         var lower = minimumPrefix
         var upper = original.presentationUnitCount
         var best: Pair<HostedQueryOutcome, HostedResponse>? = null

@@ -1310,7 +1310,7 @@
           "$ref": "#/$defs/ImpactReferenceText"
         },
         "candidateRef": {
-          "$ref": "#/$defs/SourceCandidateReference"
+          "$ref": "#/$defs/ImpactReferenceText"
         },
         "anchor": {
           "$ref": "#/$defs/ImpactSourceRange"

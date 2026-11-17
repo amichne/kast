@@ -268,8 +268,18 @@ class QueryService(
             }
 
         private fun emit(bytes: Long, append: () -> Unit): Boolean {
-            if (!state.consumeOutput(bytes)) {
-                if (bytes > request.budget.returnedBytes.value) terminal = QueryTerminalReason.OUTPUT_ITEM_TOO_LARGE
+            val allowance = request.budget.returnedBytes.value
+            // An individually oversized retained entry occupies its own page. The paired publisher fits its selector.
+            val charge =
+                if (bytes > allowance && request.budget.storage.permits(bytes)) {
+                    when (presentation?.admitOversizedEntry()) {
+                        null -> bytes
+                        is Refinement.Refined -> allowance
+                        is Refinement.Rejected -> return contractViolation()
+                    }
+                } else bytes
+            if (!state.consumeOutput(charge)) {
+                if (charge > allowance) terminal = QueryTerminalReason.OUTPUT_ITEM_TOO_LARGE
                 return false
             }
             append()

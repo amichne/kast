@@ -37,8 +37,7 @@ internal fun producerTools(catalog: List<DirectToolDocument>, selected: PublicTo
         ),
         query.copy(
             name = IMPACT,
-            description =
-                "Trace an issued producerSeed in this workspace. Return findings with their qualifications.",
+            description = "Trace an issued producerSeed in this workspace. Return findings with their qualifications.",
             inputSchema = generatedRequestSchema(ImpactSelection.serializer()),
         ),
     )

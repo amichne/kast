@@ -95,6 +95,52 @@ class QueryServiceSourceTest {
     }
 
     @Test
+    fun `paired output keeps a source row larger than the response for retained detail`() = runTest {
+        with(fixture) {
+            val selected = selector(selection())
+            val sourceText = "fun example() = " + "x".repeat(9_400)
+            val snapshot = snapshotFor(selected, sourceText)
+            val range =
+                SourceRange.create(
+                        snapshot,
+                        Utf16CodeUnitOffset.parse(0).refined(),
+                        Utf16CodeUnitOffset.parse(sourceText.length).refined(),
+                    )
+                    .refined()
+            val file = SourceSelector.issueRoot(range, SourceRegionKind.FILE)
+            val body =
+                SourceReadResult.Complete.create(
+                        snapshot,
+                        SourceRegion.create(SourceRegionKind.FILE, file).refined(),
+                        emptyList(),
+                        SourceTextProjection.returned(file, sourceText).refined(),
+                    )
+                    .refined()
+            val request = request(sourcePlan(selected), 8L, returnedBytes = 4_096)
+            suspend fun run(owner: io.github.amichne.kast.query.contract.QueryPresentationExecution?) =
+                service(
+                        exact =
+                            exactOperations(
+                                describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+                                resolve = { error("Unexpected discovery") },
+                            ),
+                        source = SourceReadOperations { body },
+                        presentation = owner,
+                    )
+                    .run(request)
+            val standalone = assertInstanceOf(QueryExecutionResult.Qualified::class.java, run(null))
+            assertTrue(standalone.result.symbolRows().isEmpty())
+            val fitted =
+                io.github.amichne.kast.query.contract.QueryPresentationExecution.evaluateAndFit(
+                    evaluate = { run(it) },
+                    fit = { it },
+                )
+            val row = assertInstanceOf(QueryExecutionResult.Complete::class.java, fitted).result.symbolRows().single()
+            assertEquals(sourceText, (row.source as QuerySymbolSource.Returned).value.text)
+        }
+    }
+
+    @Test
     fun `source rejection qualifies the symbol and retains its finite cause`() = runTest {
         with(fixture) {
             val selected = selector(selection())
