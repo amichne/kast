@@ -3,9 +3,16 @@ package io.github.amichne.kast.runtime.hosted
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ReturnedByteLimit
+import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.QueryInvocationDocument
+import io.github.amichne.kast.protocol.contract.QueryInvocationStop
+import io.github.amichne.kast.protocol.contract.QueryPreviewDocument
 import io.github.amichne.kast.protocol.contract.QueryResultItemDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QueryRunResult
+import io.github.amichne.kast.protocol.contract.QueryStepDocument
+import io.github.amichne.kast.protocol.contract.presentationPrefix
+import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.query.contract.QuerySymbolSource
 import io.github.amichne.kast.query.protocol.RelationPagingFixture
 import io.github.amichne.kast.source.contract.SourceRange
@@ -22,6 +29,9 @@ import io.github.amichne.kast.symbol.contract.SymbolDiscoveryFileIdentity
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.WorkspaceStateIdentity
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -63,6 +73,49 @@ class HostedOversizedSymbolPreviewTest {
         assertTrue(fragment.total.value >= subject.length)
         assertTrue(fragment.text.value.isNotEmpty())
         assertEquals(1, fixture.providerCalls())
+    }
+
+    @Test
+    fun `a public allowance that fits only the empty preview still presents the first retained selector`() {
+        val base = HostedQueryRetainedPresentationTest().page(0, 1, 1)
+        val payload = base.evidence.payload
+        val question =
+            payload.question.copy(
+                steps = BoundedProtocolList.create<QueryStepDocument>(List(300) { QueryStepDocument.Distinct }).value()
+            )
+        val preview = QueryPreviewDocument.Inline(1, 100)
+        val invocation =
+            QueryInvocationDocument.create(
+                    1,
+                    preview,
+                    QueryInvocationStop.COMPLETED,
+                )
+                .value()
+        val original =
+            base.copy(
+                evidence = base.evidence.copy(payload = payload.copy(question = question, invocation = invocation))
+            )
+        val empty =
+            original.evidence.payload
+                .presentationPrefix(0)
+                .value()
+                .copy(invocation = invocation.withPreview(QueryPreviewDocument.Prefix(0, 2)).value())
+        val encoded =
+            HostedResponse.Canonical.encode(
+                CanonicalOperationWireBindings.queryRun,
+                base.copy(evidence = base.evidence.copy(payload = empty)),
+            ) as HostedResponse.Canonical<*, *, *>
+        val allowance = ReturnedByteLimit.parse(encoded.document.toByteArray().size.toLong()).value()
+        assertTrue(allowance.value >= 4096)
+        val response = encodeHostedQueryResponse(original, maximumBytes = allowance)
+        val document = Json.parseToJsonElement(response.document).jsonObject
+        assertEquals("QUERY_PRESENTATION_HEADER", document["type"]?.jsonPrimitive?.content)
+        val entry = document.getValue("deferred_entry").jsonObject
+        assertEquals(
+            entry.getValue("selector"),
+            document.getValue("nextQuery").jsonObject.getValue("request").jsonObject["detail"],
+        )
+        assertTrue(response.document.toByteArray().size <= allowance.value)
     }
 
     private fun source(owner: RelationPagingFixture, text: String): QuerySymbolSource.Returned {

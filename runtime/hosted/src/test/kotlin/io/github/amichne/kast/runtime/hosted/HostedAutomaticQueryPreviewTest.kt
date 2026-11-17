@@ -168,58 +168,6 @@ class HostedAutomaticQueryPreviewTest {
     }
 
     @Test
-    fun `a public allowance that fits only the empty preview still presents the first retained selector`() {
-        val base = HostedQueryRetainedPresentationTest().page(0, 1, 1)
-        val payload = base.evidence.payload
-        val question =
-            payload.question.copy(
-                steps =
-                    BoundedProtocolList.create<io.github.amichne.kast.protocol.contract.QueryStepDocument>(
-                            List(300) { io.github.amichne.kast.protocol.contract.QueryStepDocument.Distinct }
-                        )
-                        .refined()
-            )
-        val preview = io.github.amichne.kast.protocol.contract.QueryPreviewDocument.Inline(1, 100)
-        val invocation =
-            io.github.amichne.kast.protocol.contract.QueryInvocationDocument.create(
-                    1,
-                    preview,
-                    io.github.amichne.kast.protocol.contract.QueryInvocationStop.COMPLETED,
-                )
-                .refined()
-        val original =
-            base.copy(
-                evidence = base.evidence.copy(payload = payload.copy(question = question, invocation = invocation))
-            )
-        val empty =
-            original.evidence.payload
-                .presentationPrefix(0)
-                .refined()
-                .copy(
-                    invocation =
-                        invocation
-                            .withPreview(io.github.amichne.kast.protocol.contract.QueryPreviewDocument.Prefix(0, 2))
-                            .refined()
-                )
-        val encoded =
-            HostedResponse.Canonical.encode(
-                CanonicalOperationWireBindings.queryRun,
-                base.copy(evidence = base.evidence.copy(payload = empty)),
-            ) as HostedResponse.Canonical<*, *, *>
-        val allowance = ReturnedByteLimit.parse(encoded.document.toByteArray().size.toLong()).refined()
-        assertTrue(allowance.value >= 4096)
-        val response = encodeHostedQueryResponse(original, maximumBytes = allowance)
-        val document = Json.parseToJsonElement(response.document).jsonObject
-        assertEquals("QUERY_PRESENTATION_HEADER", document["type"]?.jsonPrimitive?.content)
-        val entry = document.getValue("deferred_entry").jsonObject
-        assertEquals(
-            entry.getValue("selector"),
-            document.getValue("nextQuery").jsonObject.getValue("request").jsonObject["detail"],
-        )
-        assertTrue(response.document.toByteArray().size <= allowance.value)
-    }
-
-    @Test
     fun `evidence only retained read fits bytes and advances only its evidence cursor`() {
         val semantic = evidenceOnlyRead()
         val failures = semantic.evidence.payload.failures
