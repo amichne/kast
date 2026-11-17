@@ -23,6 +23,7 @@ permissions:
 
 jobs:
   replay:
+    if: inputs.action_revision != 'check-release-visibility'
     name: Replay sealed Linux release acceptance
     runs-on: ubuntu-24.04
     timeout-minutes: 28
@@ -182,3 +183,19 @@ jobs:
           path: build/installed-evidence/
           if-no-files-found: warn
           retention-days: 14
+
+  observe-release-visibility:
+    if: inputs.action_revision == 'check-release-visibility'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Read draft visibility under the publication token
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY" | jq '{repository: .full_name, push_reported: (.permissions.push == true)}'
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -e '{draft_visible: any(.[][]; .draft == true)} | select(.draft_visible)'
