@@ -12,13 +12,7 @@ import io.github.amichne.kast.distribution.managed.InstalledWorkspaceConfigurati
 import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
 import io.github.amichne.kast.distribution.managed.SavedConfigurationObservation
 import io.github.amichne.kast.kernel.Refinement
-import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 
@@ -120,7 +114,7 @@ private fun editWorkspaceOverlay(
             is Refinement.Refined -> candidate.value.configurationSources(emptyMap())
         }
     resolveSources(loaded.sources.copy(savedWorkspace = parsed.savedInstallation))
-    if (original != updated) replaceWorkspaceOverlay(installation, file, updated)
+    if (original != updated) WorkspaceOverlayFile.replace(installation, workspace, updated)
 }
 
 // UNIX_LINES matches the literal LF separator admitted by SavedConfigurationDocument.
@@ -143,34 +137,5 @@ private fun editSharingAssignment(original: String, edit: WorkspaceConfigAction.
                 else -> original + "\n" + assignment + "\n"
             }
         }
-    }
-}
-
-private fun replaceWorkspaceOverlay(installation: Path, file: Path, content: String) {
-    try {
-        createOverlayDirectories(installation, file.parent)
-        val privateMode = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"))
-        val temporary = Files.createTempFile(file.parent, ".environment-", ".tmp", privateMode)
-        try {
-            Files.writeString(temporary, content)
-            Files.move(temporary, file, ATOMIC_MOVE, REPLACE_EXISTING)
-        } finally {
-            Files.deleteIfExists(temporary)
-        }
-    } catch (_: IOException) {
-        throw ManagementRejected("workspace-config", "WRITE_UNAVAILABLE")
-    } catch (_: SecurityException) {
-        throw ManagementRejected("workspace-config", "WRITE_UNAVAILABLE")
-    }
-}
-
-private fun createOverlayDirectories(installation: Path, parent: Path) {
-    var directory = installation
-    for (component in installation.relativize(parent)) {
-        directory = directory.resolve(component)
-        if (Files.notExists(directory, NOFOLLOW_LINKS))
-            Files.createDirectory(directory, PosixFilePermissions.asFileAttribute(containerDirectoryMode))
-        if (!Files.isDirectory(directory, NOFOLLOW_LINKS) || directory.toRealPath() != directory)
-            throw ManagementRejected("workspace-config", "NOT_REGULAR")
     }
 }
