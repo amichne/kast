@@ -43,6 +43,7 @@ internal fun containerEnvironment(container: AdmittedContainer, inherited: Map<S
             "XDG_RUNTIME_DIR" to state.resolve("tmp").toString(),
             "CODEX_HOME" to home.resolve(".codex").toString(),
             "GRADLE_USER_HOME" to container.gradleHome.toString(),
+            "KAST_WORKSPACE_DEPENDENCY_SHARING" to container.owned.dependencySharing.name,
             "KAST_CONFIGURATION_FILE" to container.configuration.toString(),
             "KAST_MANAGED_HEADLESS_STATE" to state.toString(),
             "PATH" to (java.resolve("bin").toString() + ":" + (inherited["PATH"] ?: "/usr/bin:/bin")),

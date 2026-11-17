@@ -120,7 +120,7 @@ internal class QueryOutcomeProjection(
                 is Refinement.Refined -> admitted.value
                 is Refinement.Rejected -> return admitted
             }
-        val summary = presentation.result.originalEvidenceSummary()
+        val summary = presentation.result.originalEvidenceSummary(restored.request)
         val evidence =
             when (val admitted = retainedEvidence(selectedRequest, presentation.result, selectedMaximum)) {
                 is Refinement.Refined -> admitted.value

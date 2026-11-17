@@ -1,18 +1,26 @@
 package io.github.amichne.kast.query.protocol
 
+import io.github.amichne.kast.kernel.EvidenceEnvelope
 import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.protocol.contract.QueryExpansionScopeDocument
 import io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument
 import io.github.amichne.kast.protocol.contract.QueryResultRetention
 import io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument
 import io.github.amichne.kast.protocol.contract.QueryRunRequest
+import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.protocol.contract.ToolOutputDetail
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalQueryCliDocuments
+import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.query.contract.QueryResult
 import io.github.amichne.kast.query.contract.QueryRows
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackResultProjection
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -61,9 +69,27 @@ internal class TraceSourceRelationshipCompletionTest : CompleteOnlyCallbackQuery
         assertTrue(emptyEvidence is OperationOutcome.Complete)
         val emptyPage = (emptyEvidence as OperationOutcome.Complete).evidence.payload
         assertTrue(emptyPage.relationObservations.values.isEmpty())
+        assertStoredCallbackHeadline(outcome.evidence)
+        assertStoredCallbackHeadline(outcome.evidence.copy(payload = emptyPage))
         assertEquals(result.interpretation, emptyPage.interpretation)
         assertEquals(1, script.calls)
         script.assertDrained()
+    }
+
+    private fun assertStoredCallbackHeadline(evidence: EvidenceEnvelope<QueryRunResult>) {
+        val projected =
+            CanonicalQueryCliDocuments.project(OperationOutcome.Complete(evidence))
+                as ProjectedOperationOutcome.Complete
+        for (detail in ToolOutputDetail.entries) {
+            val document = Json.parseToJsonElement(projected.document.present(detail).value).jsonObject
+            assertEquals(
+                "Source relationships complete. Callback execution unproven.",
+                document["headline"]?.jsonPrimitive?.content,
+            )
+            val summary = document.getValue("original_evidence_summary").jsonObject
+            val gap = summary.getValue("first_unproven_callback").jsonObject
+            assertEquals("STORED_CALLBACK", gap.getValue("cause").jsonPrimitive.content)
+        }
     }
 
     @Test

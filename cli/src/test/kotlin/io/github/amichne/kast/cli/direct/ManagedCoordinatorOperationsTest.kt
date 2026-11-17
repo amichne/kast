@@ -9,6 +9,8 @@ import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.distribution.cli.WorkspaceQueryEnvironment
 import io.github.amichne.kast.distribution.contract.ContainerFailure
+import io.github.amichne.kast.distribution.contract.HostSettingsComparison
+import io.github.amichne.kast.distribution.contract.WorkspaceConfigurationConflict
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.distribution.managed.canonicalRootFixture
 import io.github.amichne.kast.kernel.Refinement
@@ -120,7 +122,7 @@ class ManagedCoordinatorOperationsTest {
                 assertEquals("a#1", host(operations.execute(rootA, defaults, prepareRead)))
 
                 assertEquals(
-                    managedFailure(ContainerFailure.CONFIGURATION_CONFLICT),
+                    hostConflict(HostSettingsComparison.PREPARED),
                     operations.execute(rootA, smallerHeap, prepareRead),
                 )
                 val output = WorkspaceSettings.explicit(mapOf("KAST_OUTPUT_TOON" to "1"))
@@ -137,7 +139,7 @@ class ManagedCoordinatorOperationsTest {
         ManagedCoordinatorOperations(SERVICE, workspaces).use { operations ->
             assertEquals("a#1", host(operations.execute(rootA, defaults, prepareRead)))
             assertEquals(
-                managedFailure(ContainerFailure.CONFIGURATION_CONFLICT),
+                hostConflict(HostSettingsComparison.PREPARED),
                 operations.execute(rootA, smallerHeap, retainedRead),
             )
             assertEquals("existing", host(operations.execute(rootA, defaults, retainedRead)))
@@ -153,7 +155,7 @@ class ManagedCoordinatorOperationsTest {
             workspaces.awaitPreparationStart()
 
             assertEquals(
-                managedFailure(ContainerFailure.CONFIGURATION_CONFLICT),
+                hostConflict(HostSettingsComparison.PREPARING),
                 withTimeout(WAIT) { operations.execute(rootA, smallerHeap, prepareRead) },
             )
             workspaces.releasePreparation(rootA)
@@ -300,9 +302,9 @@ class ManagedCoordinatorOperationsTest {
     private fun host(result: DaemonOperationResult): String =
         Json.decodeFromString(HostDocument.serializer(), (result as DaemonOperationResult.Complete).document.value).host
 
-    private fun managedFailure(failure: ContainerFailure): DaemonOperationResult =
-        DaemonOperationResult.Rejected(
-            DaemonOperationClientRejection.Server(DaemonOperationFailure.ManagedWorkspace(failure))
+    private fun hostConflict(stage: HostSettingsComparison) =
+        rejectedOperation(
+            DaemonOperationFailure.ManagedWorkspace(WorkspaceConfigurationConflict.HostSettings(stage, listOf(HEAP)))
         )
 
     private val lifecycleTransition =
@@ -411,8 +413,10 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
         expected: WorkspaceHostIdentity,
         action: () -> T,
     ): Refinement<T, DaemonOperationFailure> = leased {
-        if (identity(root, environment) == expected) Refinement.Refined(action())
-        else Refinement.Rejected(configurationConflict)
+        identity(root, environment).conflictWith(expected)?.let {
+            return@leased Refinement.Rejected(it)
+        }
+        Refinement.Refined(action())
     }
 
     override fun existing(
@@ -421,8 +425,10 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
         operation: DaemonOperationCall,
         expected: WorkspaceHostIdentity?,
     ): DaemonOperationResult = leased {
-        if (expected != null && identity(root, environment) != expected)
-            return@leased rejectedOperation(configurationConflict)
+        if (expected != null)
+            identity(root, environment).conflictWith(expected)?.let {
+                return@leased rejectedOperation(it)
+            }
         if (existingUnavailable)
             DaemonOperationResult.Rejected(
                 DaemonOperationClientRejection.Server(

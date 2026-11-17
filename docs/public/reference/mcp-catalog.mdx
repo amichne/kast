@@ -71,6 +71,20 @@ Decode both the MCP wrapper and the RPC outcome.
 A successful exchange does not prove that the semantic answer is complete.
 Cancellation stops the child, but submission or effects can remain uncertain. Never retry automatically.
 
+## Select a producer invocation
+
+The native MCP server exposes `producer_invocations` and `impact` with its complete query catalog.
+Pass an issued exact callable reference as `callable` to `producer_invocations`.
+Each eligible Kotlin call has a `producerSeed` with its enclosing declaration, target callable, and full invocation range.
+Choose the occurrence for the intended call.
+Pass its `producerSeed` unchanged to `impact`.
+
+The default response presents retained findings for that workspace.
+Set `section` to another impact witness section to select different evidence.
+A stale range rejects before the compiler examines the call.
+Repeat discovery after a stale selection.
+For custom domains, requested sites, or models, pass the same seed to the full `IMPACT` query.
+
 ## Source and integration
 
 The plugin owns `skills/kast/scripts/tasks.py` and `service.py`.

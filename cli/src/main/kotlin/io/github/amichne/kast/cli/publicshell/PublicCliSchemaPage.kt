@@ -204,7 +204,7 @@ private fun schemaPageFits(
     value: DescribeDocument<PublicSchemaPageReply>,
     maxBytes: Int,
 ): Refinement<Unit, PublicSchemaPageFailure> {
-    val json = discoveryJson.encodeToString(value)
+    val json = schemaDisplayJson.encodeToString(value)
     for (format in CliOutputFormat.entries) {
         when (val rendered = renderCliOutput(json, format)) {
             is Refinement.Rejected -> return Refinement.Rejected(PublicSchemaPageFailure.OUTPUT_ENCODING)

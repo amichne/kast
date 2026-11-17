@@ -104,6 +104,44 @@ class QueryImpactSourceAdmissionTest {
         )
 
     @Test
+    fun `issued invocation rejects a stale candidate and a different selected range before compiler work`() = runTest {
+        val input = document()
+        val producer = input.seeds.values.single()
+        val issued =
+            references.issueRangeCandidate(owner.lease, owner.file, 20, 35) as CandidateSelectorTokenIssuance.Issued
+        var calls = 0
+        val compiler =
+            object : ValueProducerSeedCompilerPort {
+                override suspend fun seed(request: ValueProducerSeedRequest): ValueProducerSeedRead {
+                    calls++
+                    return ValueProducerSeedRead.Seeded(proof(request), work(1))
+                }
+
+                override suspend fun revalidate(
+                    selector: SymbolSelector,
+                    budget: RelationBudget,
+                ): ValueModelDeclarationRead = error("No model was requested")
+            }
+        val selection = producer.copy(candidateRef = issued.selector)
+        val current = input.copy(seeds = bounded(listOf(selection)))
+        assertTrue(current.admitImpact(owner.lease, references, compiler, budget) is Refinement.Refined)
+        val shifted = input.copy(seeds = bounded(listOf(selection.copy(anchor = anchor(60, 75)))))
+        assertEquals(
+            QueryImpactSourceFailureCode.ANCHOR_MISMATCH,
+            shifted.admitImpact(owner.lease, references, compiler, budget).failure().admissionCode(),
+        )
+        val oldLease = SemanticReadLease(owner.lease.workspaceRoot, EvidenceGeneration.parse(6).refined())
+        val oldCandidate =
+            references.issueRangeCandidate(oldLease, owner.file, 20, 35) as CandidateSelectorTokenIssuance.Issued
+        val stale = input.copy(seeds = bounded(listOf(producer.copy(candidateRef = oldCandidate.selector))))
+        assertEquals(
+            QueryImpactSourceFailureCode.STALE_REQUESTED_SITE,
+            stale.admitImpact(owner.lease, references, compiler, budget).failure().admissionCode(),
+        )
+        assertEquals(1, calls)
+    }
+
+    @Test
     fun `exact invocation producers and fresh models retain one domain and consume successive grants`() = runTest {
         val source = document(listOf(anchor(20, 35), anchor(60, 75)), model = true)
         val grants = mutableListOf<Long>()
@@ -441,70 +479,70 @@ class QueryImpactSourceAdmissionTest {
 
     private fun QueryRunRejection.admissionCode() =
         ((this as QueryRunRejection.ImpactSourceRejected).cause as QueryImpactSourceFailureDocument.Admission).cause
+}
 
-    private fun endpoint(name: String, start: Int, end: Int, fileName: String = "File.kt"): RelationEndpoint.Resolved {
-        val lease =
-            SemanticReadLease(
-                CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
-                EvidenceGeneration.parse(7).refined(),
-            )
-        val file =
-            (SymbolDiscoveryCandidate.fromBoundary(
-                        SymbolDiscoveryKind.SYMBOL,
-                        name,
-                        lease,
-                        Path.of("/workspace/$fileName"),
-                        "file:///workspace/$fileName",
-                        start,
-                    )
-                    .refined()
-                    .location as SymbolDiscoveryCandidateLocation.Declaration)
-                .file
-        val evidence =
-            CompilerGroundedSymbolEvidence.fromBoundary(
-                    file,
-                    start,
-                    end,
+private fun endpoint(name: String, start: Int, end: Int, fileName: String = "File.kt"): RelationEndpoint.Resolved {
+    val lease =
+        SemanticReadLease(
+            CanonicalWorkspaceRoot.fromCanonicalPath(Path.of("/workspace")).refined(),
+            EvidenceGeneration.parse(7).refined(),
+        )
+    val file =
+        (SymbolDiscoveryCandidate.fromBoundary(
+                    SymbolDiscoveryKind.SYMBOL,
                     name,
-                    "fixture.$name",
-                    CompilerSymbolKind.FUNCTION,
-                    CanonicalCompilerSignature.function("fixture.$name", null, emptyList(), emptyList(), 0).refined(),
+                    lease,
+                    Path.of("/workspace/$fileName"),
+                    "file:///workspace/$fileName",
+                    start,
                 )
                 .refined()
-        return RelationEndpoint.resolve(
-                lease,
-                SymbolSearchScope.Workspace(
-                    SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
-                    SymbolGeneratedSourcePolicy.EXCLUDE,
-                    SymbolLibraryPolicy.EXCLUDE,
-                ),
-                evidence,
+                .location as SymbolDiscoveryCandidateLocation.Declaration)
+            .file
+    val evidence =
+        CompilerGroundedSymbolEvidence.fromBoundary(
+                file,
+                start,
+                end,
+                name,
+                "fixture.$name",
+                CompilerSymbolKind.FUNCTION,
+                CanonicalCompilerSignature.function("fixture.$name", null, emptyList(), emptyList(), 0).refined(),
             )
-            .refined() as RelationEndpoint.Resolved
+            .refined()
+    return RelationEndpoint.resolve(
+            lease,
+            SymbolSearchScope.Workspace(
+                SymbolSourceKindPolicy.PRODUCTION_AND_TEST,
+                SymbolGeneratedSourcePolicy.EXCLUDE,
+                SymbolLibraryPolicy.EXCLUDE,
+            ),
+            evidence,
+        )
+        .refined() as RelationEndpoint.Resolved
+}
+
+private fun anchor(start: Int, end: Int) =
+    ImpactSourceRangeDocument(ProtocolOffset.parse(start).refined(), ProtocolOffset.parse(end).refined())
+
+private fun range(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).refined()
+
+private fun work(value: Long) = RelationWorkCount.parse(value).refined()
+
+private fun id(value: String) = ImpactModelIdentifierDocument.parse(value).refined()
+
+private fun text(value: String) = ProtocolText.parse(value).refined()
+
+private fun <T> bounded(values: List<T>) = BoundedProtocolList.create(values).refined()
+
+private fun <V, F> Refinement<V, F>.refined(): V =
+    when (this) {
+        is Refinement.Refined -> value
+        is Refinement.Rejected -> error(failure.toString())
     }
 
-    private fun anchor(start: Int, end: Int) =
-        ImpactSourceRangeDocument(ProtocolOffset.parse(start).refined(), ProtocolOffset.parse(end).refined())
-
-    private fun range(start: Int, end: Int) = ExactDeclarationTextRange.parse(start, end).refined()
-
-    private fun work(value: Long) = RelationWorkCount.parse(value).refined()
-
-    private fun id(value: String) = ImpactModelIdentifierDocument.parse(value).refined()
-
-    private fun text(value: String) = ProtocolText.parse(value).refined()
-
-    private fun <T> bounded(values: List<T>) = BoundedProtocolList.create(values).refined()
-
-    private fun <V, F> Refinement<V, F>.refined(): V =
-        when (this) {
-            is Refinement.Refined -> value
-            is Refinement.Rejected -> error(failure.toString())
-        }
-
-    private fun <V, F> Refinement<V, F>.failure(): F =
-        when (this) {
-            is Refinement.Refined -> error("expected rejection")
-            is Refinement.Rejected -> failure
-        }
-}
+private fun <V, F> Refinement<V, F>.failure(): F =
+    when (this) {
+        is Refinement.Refined -> error("expected rejection")
+        is Refinement.Rejected -> failure
+    }

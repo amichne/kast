@@ -31,7 +31,8 @@ abstract class NativeReferenceFixtureTest : HeavyPlatformTestCase() {
     override fun getModuleType() = JavaModuleType.getModuleType()
 
     protected fun prepareReferenceFixture(
-        targetSource: String = "package proof\nfun target() = 1\n"
+        targetSource: String = "package proof\nfun target() = 1\n",
+        callerSource: String = "package consumer\nfun caller() = proof.target()\n",
     ): NativeReferenceFixture {
         val base = getOrCreateProjectBaseDir()
         val source =
@@ -49,7 +50,7 @@ abstract class NativeReferenceFixtureTest : HeavyPlatformTestCase() {
                 source.createChildData(this, name).also { it.setBinaryContent(text.toByteArray()) }
             }
         val targetFile = file("Target.kt", targetSource)
-        val callerFile = file("Caller.kt", "package consumer\nfun caller() = proof.target()\n")
+        val callerFile = file("Caller.kt", callerSource)
         PsiDocumentManager.getInstance(project).commitAllDocuments()
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         val target = (psiManager.findFile(targetFile) as KtFile).declarations.single() as KtNamedDeclaration
@@ -107,7 +108,7 @@ internal constructor(
     val target: KtNamedDeclaration,
     val callerFile: VirtualFile,
     val request: RelationRequest,
-    private val model: WorkspaceSearchScopeModelCompilation,
+    internal val model: WorkspaceSearchScopeModelCompilation,
 ) {
     internal suspend fun read(
         meaning: io.github.amichne.kast.relation.contract.RelationMeaning,

@@ -37,6 +37,7 @@ internal fun hostedSymbolInvocationPolicy(
                 QueryByteLimit.parse(context.limits[ReadLimitParameter.QUERY_CONTINUATION_BYTES].value.toLong())
             ),
         previewBytes = CanonicalQueryCliDocuments::previewBytes,
+        deferRow = ::deferredRowSummary,
         cancelled = { !caller.isActive },
         inlinePresentation = { outcome ->
             hostedInlineQueryPresentation(

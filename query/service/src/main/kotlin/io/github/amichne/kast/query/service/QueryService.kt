@@ -52,7 +52,7 @@ class QueryService(
     private val walkStage = QueryWalkStage(traversal, traversalCeiling)
 
     override suspend fun run(request: QueryExecutionRequest): QueryExecutionResult {
-        if (presentation?.admitValuePath() is Refinement.Rejected) {
+        if (presentation?.admitOversizedEntry() is Refinement.Rejected) {
             return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
         }
         val checkpoint = request.checkpoint
@@ -69,7 +69,7 @@ class QueryService(
     @Suppress("LargeClass")
     private inner class Execution(private val request: QueryExecutionRequest, checkpoint: PipelineCheckpoint?) {
         private val emittedBefore = checkpoint?.emittedCount ?: 0.queryCount()
-        private val state = QueryExecutionState(request, clock, branchObservation)
+        private val state = QueryExecutionState(request, clock, branchObservation, presentation)
         private var seed: PipelineSeed = checkpoint?.seed ?: PipelineSeed.Unmeasured
         private val tasks = ArrayDeque(checkpoint?.tasks ?: initialTasks(request.plan))
         private val identityRows = QueryIdentityRows(checkpoint?.identityRows.orEmpty())
@@ -267,15 +267,20 @@ class QueryService(
                 }
             }
 
-        private fun emit(bytes: Long, append: () -> Unit): Boolean {
-            if (!state.consumeOutput(bytes)) {
-                if (bytes > request.budget.returnedBytes.value) terminal = QueryTerminalReason.OUTPUT_ITEM_TOO_LARGE
-                return false
+        private fun emit(bytes: Long, append: () -> Unit): Boolean =
+            when (state.admitOutput(bytes)) {
+                QueryEntryAdmission.ADMITTED -> {
+                    append()
+                    tasks.removeFirst()
+                    true
+                }
+                QueryEntryAdmission.PAGE_FULL -> false
+                QueryEntryAdmission.OWNER_EXPIRED -> contractViolation()
+                QueryEntryAdmission.ITEM_TOO_LARGE -> {
+                    terminal = QueryTerminalReason.OUTPUT_ITEM_TOO_LARGE
+                    false
+                }
             }
-            append()
-            tasks.removeFirst()
-            return true
-        }
 
         private suspend fun candidate(task: PipelineTask.Candidate): Boolean {
             if (!state.consumeUnit()) return false

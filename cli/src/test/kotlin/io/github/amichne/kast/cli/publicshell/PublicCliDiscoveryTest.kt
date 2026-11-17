@@ -26,6 +26,25 @@ import org.junit.jupiter.api.Test
 
 class PublicCliDiscoveryTest {
     @Test
+    fun `query schema JSON gives each property its own indented line`() {
+        val schema =
+            describePublicCli(
+                PublicCliCommand.Describe(
+                    PublicToolCatalog.COMPLETE,
+                    PublicCliCommandId.QUERY,
+                    PublicCliDescribeSection.INPUT,
+                )
+            )
+        val encoded = encodePublicCliDescriptor(schema)
+        assertTrue(encoded.startsWith("{\n  \""))
+        assertTrue(encoded.lineSequence().any { it.trimStart().startsWith("\"properties\": {") })
+        assertEquals(
+            PublicToolContract.parameters(PublicToolIdentity.QUERY_SYMBOLS, PublicToolCatalog.COMPLETE),
+            Json.parseToJsonElement(encoded).jsonObject.getValue("content"),
+        )
+    }
+
+    @Test
     fun `operation boundaries are available before schema browsing or semantic effects`() {
         val inventory = document(null, PublicCliDescribeSection.INVENTORY)
         val query =

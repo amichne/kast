@@ -5,7 +5,7 @@ icon: "folder-open"
 hideFooterPagination: true
 ---
 
-The public management verbs are `install`, `status`, `stop`, `versions`, `upgrade`, and `uninstall`.
+The public management verbs are `config`, `install`, `status`, `stop`, `versions`, `upgrade`, and `uninstall`.
 Semantic commands use the same installed managed runtime across CLI, MCP, and tool RPC.
 See [installation limits](/reference/installation) for the current implementation and native acceptance status.
 
@@ -41,6 +41,29 @@ Its verified value is `MATCHES_CREATION` or `DIFFERS_FROM_CREATION`; failed comp
 A difference does not convert or re-seed the workspace. Legacy records without a sharing field keep `PRIVATE`.
 The `seed` observation contains the [creation receipt](/reference/lifecycles#seed-outcomes), or an unavailable reason when the receipt cannot be admitted.
 An unavailable receipt does not prove that seeding was not requested.
+
+### Inspect or edit workspace settings
+
+Use `show` to see the resolved configuration and the exact workspace file.
+Use `explain` to see one setting and its source.
+
+```shell
+kast config show --workspace . --json
+kast config explain KAST_WORKSPACE_DEPENDENCY_SHARING --workspace . --json
+```
+
+To save the shared policy for this workspace, use `set`.
+To remove the workspace override, use `unset`.
+
+```shell
+kast config set KAST_WORKSPACE_DEPENDENCY_SHARING SHARED --workspace . --json
+kast config unset KAST_WORKSPACE_DEPENDENCY_SHARING --workspace . --json
+```
+
+Each edit reports the resolved setting after Kast reads the file again.
+The `DEFAULT` source names the policy for a new workspace.
+For an existing workspace, `workspaceAccess` reports the recorded policy or the conflict that blocks reuse.
+This comparison reads the workspace record without a Host.
 
 <a id="upgrade" />
 

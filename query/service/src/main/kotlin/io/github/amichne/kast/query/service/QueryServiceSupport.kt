@@ -120,7 +120,7 @@ internal fun sourceWindowRequest(
                 LineCount.parse(SOURCE_CONTEXT_LINES).refined(),
             ),
         entityLimit = SourceEntityLimit.parse(1).refined(),
-        textByteLimit = SourceTextByteLimit.parse(state.request.budget.returnedBytes.value).refined(),
+        textByteLimit = SourceTextByteLimit.parse(state.sourceWindowBytes.value).refined(),
         page = SourceReadPage.First,
         resources = resources,
     )

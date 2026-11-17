@@ -90,17 +90,7 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
                     document,
                 )
             }
-            is QueryOccurrence.Declaration -> {
-                val token =
-                    when (val issued = authority.issueExact(value.symbol.selector)) {
-                        is ExactSelectorIssuance.Issued -> issued.selector
-                        is ExactSelectorIssuance.Rejected -> return null
-                    }
-                QueryResultItemDocument.Occurrence(
-                    QueryReferenceDocument.ExactSymbol(token),
-                    value.fact.protocolDocument(authority) ?: return null,
-                )
-            }
+            is QueryOccurrence.Declaration -> projectOccurrence(value.symbol, value.fact)
         }
     }
 
@@ -157,14 +147,43 @@ internal class QueryItemProjector(private val authority: QueryReferenceAuthority
         items.mapProjected { symbol ->
             val fact =
                 (symbol.arrival as? QueryArrivalEvidence.Proven)?.facts?.singleOrNull() ?: return@mapProjected null
-            val token =
-                when (val issued = authority.issueExact(symbol.selector)) {
-                    is ExactSelectorIssuance.Issued -> issued.selector
-                    is ExactSelectorIssuance.Rejected -> return@mapProjected null
-                }
-            val relation = fact.protocolDocument(authority) ?: return@mapProjected null
-            QueryResultItemDocument.Occurrence(QueryReferenceDocument.ExactSymbol(token), relation)
+            projectOccurrence(symbol, fact)
         }
+
+    private fun projectOccurrence(
+        symbol: QuerySymbol,
+        fact: io.github.amichne.kast.relation.contract.RelationFact,
+    ): QueryResultItemDocument.Occurrence? {
+        val token =
+            when (val issued = authority.issueExact(symbol.selector)) {
+                is ExactSelectorIssuance.Issued -> issued.selector
+                is ExactSelectorIssuance.Rejected -> return null
+            }
+        val relation = fact.protocolDocument(authority) ?: return null
+        val seed =
+            fact.producerRange?.let { range ->
+                val anchor = range.impactDocument().refinedForQueryOrNull() ?: return null
+                val issued =
+                    authority.issueRangeCandidate(
+                        fact.subject.lease,
+                        fact.occurrence.file,
+                        range.startInclusive,
+                        range.endExclusive,
+                    )
+                if (issued !is CandidateSelectorTokenIssuance.Issued) return null
+                io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument(
+                    relation.source.selector,
+                    relation.target.selector,
+                    anchor,
+                    issued.selector,
+                )
+            }
+        return QueryResultItemDocument.Occurrence(
+            QueryReferenceDocument.ExactSymbol(token),
+            relation,
+            producerSeed = seed,
+        )
+    }
 
     private fun projectSymbols(
         output: QueryOutputDocument.Symbols,

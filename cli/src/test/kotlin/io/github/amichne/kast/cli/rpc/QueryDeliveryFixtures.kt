@@ -16,6 +16,11 @@ import io.github.amichne.kast.protocol.contract.QueryCompletionCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionCoverageDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
 import io.github.amichne.kast.protocol.contract.QueryCompletionLimitationsDocument
+import io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument
+import io.github.amichne.kast.protocol.contract.QueryEntryDetailKind
+import io.github.amichne.kast.protocol.contract.QueryEntryDetailSection
+import io.github.amichne.kast.protocol.contract.QueryEntryDetailSelectorDocument
+import io.github.amichne.kast.protocol.contract.QueryEntryDetailTarget
 import io.github.amichne.kast.protocol.contract.QueryEvidenceCursor
 import io.github.amichne.kast.protocol.contract.QueryEvidenceWindowDocument
 import io.github.amichne.kast.protocol.contract.QueryExactFailureDocument
@@ -44,6 +49,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunQualification
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.QueryStaticModelDocument
+import io.github.amichne.kast.protocol.contract.QueryStepDocument
 import io.github.amichne.kast.protocol.contract.QuerySymbolFieldDocument
 import io.github.amichne.kast.protocol.contract.QueryTerminalReasonDocument
 import io.github.amichne.kast.protocol.contract.ReadResumeActionDocument
@@ -151,6 +157,33 @@ internal object QueryDeliveryFixtures {
             "expiredOutput" to unavailable(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),
             "disposedOutput" to unavailable(QueryExecutionRejectionDocument.CONTINUATION_UNAVAILABLE),
         )
+
+    fun deferredTrace(): JsonObject {
+        val selector =
+            QueryEntryDetailSelectorDocument(
+                reference,
+                QueryEntryDetailSection.CANONICAL_ENTRY_JSON,
+                QueryEntryDetailTarget.ROW,
+                QueryResultCursor.Start,
+                QueryEntryDetailKind.EXACT_SYMBOL,
+                text("a".repeat(64)),
+                ProtocolOffset.parse(0).refined(),
+            )
+        val row =
+            QueryResultItemDocument.DeferredDetail(
+                QueryDeferredDetailDocument(selector, text("FUNCTION function0")),
+                null,
+            )
+        val result =
+            QueryRunResult(
+                question.copy(steps = bounded(listOf(QueryStepDocument.Trace()))),
+                bounded(listOf(row)),
+                bounded(emptyList()),
+                interpretation = QueryResultInterpretationDocument.SourceRelationships(),
+                retention = QueryResultRetention.Retained(reference),
+            )
+        return project(OperationOutcome.Complete(EvidenceEnvelope(CanonicalOperation.QUERY_RUN.id, basis, result)))
+    }
 
     fun presentationHeaders(): List<ToolRpcReply> =
         listOf(

@@ -12,6 +12,9 @@ import io.github.amichne.kast.distribution.cli.ContainerFailure
 import io.github.amichne.kast.distribution.cli.InstalledProductRuntime
 import io.github.amichne.kast.distribution.cli.ManagedWorkspaceQuery
 import io.github.amichne.kast.distribution.cli.WorkspaceQueryEnvironment
+import io.github.amichne.kast.distribution.contract.HostSettingsComparison
+import io.github.amichne.kast.distribution.contract.WorkspaceAdmissionFailure
+import io.github.amichne.kast.distribution.contract.WorkspaceConfigurationConflict
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationDisclosure
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
@@ -148,8 +151,7 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
     ): Refinement<PreparedWorkspaceBinding, DaemonOperationFailure> {
         val workspace =
             when (val opened = open(root, environment, WorkspaceOperationAdmission.PREPARE)) {
-                is Refinement.Rejected ->
-                    return Refinement.Rejected(DaemonOperationFailure.ManagedWorkspace(opened.failure))
+                is Refinement.Rejected -> return Refinement.Rejected(opened.failure.daemonFailure())
                 is Refinement.Refined -> opened.value
             }
         return workspace.use {
@@ -182,15 +184,16 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
     ): Refinement<T, DaemonOperationFailure> {
         val workspace =
             when (val opened = open(root, environment, WorkspaceOperationAdmission.EXISTING_AUTHORITY)) {
-                is Refinement.Rejected ->
-                    return Refinement.Rejected(DaemonOperationFailure.ManagedWorkspace(opened.failure))
+                is Refinement.Rejected -> return Refinement.Rejected(opened.failure.daemonFailure())
                 is Refinement.Refined -> opened.value
             }
         return workspace.use {
             admitInstallation()?.let {
                 return@use Refinement.Rejected(it)
             }
-            if (workspace.hostIdentity() != expected) return@use Refinement.Rejected(configurationConflict)
+            workspace.hostIdentity().conflictWith(expected)?.let {
+                return@use Refinement.Rejected(it)
+            }
             Refinement.Refined(action())
         }
     }
@@ -203,16 +206,17 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
     ): DaemonOperationResult {
         val workspace =
             when (val opened = open(root, environment, WorkspaceOperationAdmission.EXISTING_AUTHORITY)) {
-                is Refinement.Rejected ->
-                    return rejectedOperation(DaemonOperationFailure.ManagedWorkspace(opened.failure))
+                is Refinement.Rejected -> return rejectedOperation(opened.failure.daemonFailure())
                 is Refinement.Refined -> opened.value
             }
         return workspace.use {
             admitInstallation()?.let {
                 return@use rejectedOperation(it)
             }
-            if (expected != null && workspace.hostIdentity() != expected)
-                return@use rejectedOperation(configurationConflict)
+            if (expected != null)
+                workspace.hostIdentity().conflictWith(expected)?.let {
+                    return@use rejectedOperation(it)
+                }
             when (
                 val selected = ManagedToolClient.admit(root, workspace, WorkspaceOperationAdmission.EXISTING_AUTHORITY)
             ) {
@@ -226,7 +230,7 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
         root: CanonicalRoot,
         environment: WorkspaceQueryEnvironment,
         admission: WorkspaceOperationAdmission,
-    ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+    ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> =
         when (val admitted = product) {
             is Refinement.Rejected -> admitted
             is Refinement.Refined ->
@@ -251,6 +255,32 @@ private fun ManagedWorkspaceQuery.hostIdentity(): WorkspaceHostIdentity {
         environment.filterKeys { it !in REQUEST_LOCAL_KEYS && it !in names },
         gradleImportEnvironment.identity,
     )
+}
+
+private fun WorkspaceAdmissionFailure.daemonFailure(): DaemonOperationFailure.ManagedWorkspace =
+    when (this) {
+        is ContainerFailure -> DaemonOperationFailure.ManagedWorkspace(this)
+        is WorkspaceConfigurationConflict -> DaemonOperationFailure.ManagedWorkspace(this)
+    }
+
+internal fun WorkspaceHostIdentity.conflictWith(
+    expected: WorkspaceHostIdentity
+): DaemonOperationFailure.ManagedWorkspace? {
+    if (this == expected) return null
+    val differences = buildList {
+        if (home != expected.home) add("workspaceHome")
+        addAll(changedHostSettings(environment, expected.environment))
+        if (delegated != expected.delegated) add("gradleImportEnvironmentIdentity")
+    }
+    return DaemonOperationFailure.ManagedWorkspace(
+        WorkspaceConfigurationConflict.HostSettings(HostSettingsComparison.PREPARED, differences)
+    )
+}
+
+internal fun changedHostSettings(actual: Map<String, String>, expected: Map<String, String>): List<String> {
+    val changed = (actual.keys + expected.keys).filter { actual[it] != expected[it] }
+    return changed.filter { it in CALLER_CONFIGURATION_KEYS }.sorted() +
+        if (changed.any { it !in CALLER_CONFIGURATION_KEYS }) listOf("processEnvironment") else emptyList()
 }
 
 internal fun ManagedToolFailure.daemonFailure(): DaemonOperationFailure =

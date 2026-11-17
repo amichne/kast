@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.OperationOutcome
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.contract.QueryCompletionEvidenceDocument
+import io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument
 import io.github.amichne.kast.protocol.contract.QueryEntryDetailDocument
 import io.github.amichne.kast.protocol.contract.QueryOutputDocument
 import io.github.amichne.kast.protocol.contract.QueryResultCursor
@@ -67,8 +68,35 @@ data class QueryPresentationHeaderDocument(
     @SerialName("delivery_stop")
     val deliveryStop: QueryPresentationHeaderStop = QueryPresentationHeaderStop.BYTE_LIMIT,
     val status: QueryPresentationHeaderStatus = semantic.originalOutcome.presentationStatus(),
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val headline: QueryTraceHeadline? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("deferred_entry")
+    val deferredEntry: QueryDeferredDetailDocument? = null,
 ) {
-    fun hasConsistentOutcome(): Boolean = status == semantic.originalOutcome.presentationStatus()
+    fun hasConsistentOutcome(): Boolean =
+        status == semantic.originalOutcome.presentationStatus() &&
+            (headline == null ||
+                (status == QueryPresentationHeaderStatus.COMPLETE &&
+                    semantic.completion.interpretation?.value == "SOURCE_RELATIONSHIPS")) &&
+            (deferredEntry == null ||
+                (detail == null &&
+                    deferredEntry.selector == nextQuery?.request?.detail &&
+                    deferredEntry.selector.result ==
+                        (semantic.recovery as? QuerySemanticHeaderDocumentRecoveryReadResult)?.result))
+
+    fun withDeferredEntry(entry: QueryDeferredDetailDocument): QueryPresentationHeaderDocument {
+        val read = requireNotNull(nextQuery).request
+        require(detail == null && entry.selector.result == read.result)
+        return copy(
+            deferredEntry = entry,
+            nextQuery =
+                QueryCompletionPublicReadQuery(
+                    QueryCompletionPublicReadRequest.detail(read.result, read.output, entry.selector)
+                ),
+            semantic = semantic.copy(presentation = semantic.presentation.copy(deferredCount = 1)),
+        )
+    }
 
     fun project(): ProjectedOperationOutcome {
         val document = CanonicalJsonDocument.generated(serializer()).create(this)
@@ -108,6 +136,7 @@ private class HeaderPresentationProjection(
             binding,
             nextQuery(),
             detail,
+            headline = (outcome as? OperationOutcome.Complete)?.evidence?.payload?.traceHeadline(),
             deliveryStop =
                 if (detail == null) QueryPresentationHeaderStop.BYTE_LIMIT
                 else QueryPresentationHeaderStop.DETAIL_SECTION,

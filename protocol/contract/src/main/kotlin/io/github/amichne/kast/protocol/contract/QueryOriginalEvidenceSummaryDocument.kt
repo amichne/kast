@@ -71,6 +71,9 @@ data class QueryOriginalEvidenceSummaryDocument(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("walk_reasons")
     val walkReasons: BoundedProtocolList<QueryEvidenceWalkFailureKind> = finite(emptyList()),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("first_unproven_callback")
+    val firstUnprovenCallback: QueryCallbackGraphCauseDocument? = null,
 ) {
     companion object {
         fun from(result: QueryRunResult): QueryOriginalEvidenceSummaryDocument {
@@ -94,6 +97,15 @@ data class QueryOriginalEvidenceSummaryDocument(
                 finite(failures.filterIsInstance<QueryItemFailureDocument.Relation>().map { it.reason }),
                 finite(walks.filterIsInstance<QueryWalkFailureDocument.OneHop>().map { it.reason }),
                 finite(walks.map { it.summaryKind() }),
+                (result.relationObservations.values.asSequence().flatMap { it.callbackObservations.values } +
+                        result.walkObservations.values
+                            .asSequence()
+                            .flatMap { it.callbackObservations.values }
+                            .map { it.observation })
+                    .map { it.navigation }
+                    .filterIsInstance<QueryCallbackNavigationDocument.Unproven>()
+                    .firstOrNull()
+                    ?.cause,
             )
         }
     }

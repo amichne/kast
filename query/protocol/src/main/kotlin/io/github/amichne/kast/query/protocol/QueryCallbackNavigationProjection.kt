@@ -25,21 +25,33 @@ import io.github.amichne.kast.traversal.contract.CallbackTraversalStep
 internal fun RelationCallbackObservation.projectNavigation(
     projection: CallbackProjection
 ): QueryCallbackNavigationDocument? =
-    when (val admitted = CompleteStaticCallbackGraph.admit(this)) {
+    when (val path = navigationPath()) {
         is Refinement.Rejected ->
-            when (val cause = admitted.failure.protocolGraphCause()) {
-                is Refinement.Refined ->
-                    provenOwnerPrefix(projection)?.let { QueryCallbackNavigationDocument.Unproven(cause.value, it) }
-                is Refinement.Rejected ->
-                    provenOwnerPrefix(projection)?.let {
-                        QueryCallbackNavigationDocument.Unproven(
-                            QueryCallbackGraphCauseDocument.InvalidGraphFailure(cause.failure),
-                            it,
-                        )
-                    }
-            }
-        is Refinement.Refined -> CallbackTraversal.walk(admitted.value).projectNavigation(projection)
+            provenOwnerPrefix(projection)?.let { QueryCallbackNavigationDocument.Unproven(path.failure, it) }
+        is Refinement.Refined -> path.value.projectNavigation(projection)
     }
+
+private fun RelationCallbackObservation.navigationPath():
+    Refinement<CallbackTraversal, QueryCallbackGraphCauseDocument> =
+    when (val graph = CompleteStaticCallbackGraph.admit(this)) {
+        is Refinement.Refined -> Refinement.Refined(CallbackTraversal.walk(graph.value))
+        is Refinement.Rejected ->
+            when (val cause = graph.failure.protocolGraphCause()) {
+                is Refinement.Refined -> Refinement.Rejected(cause.value)
+                is Refinement.Rejected ->
+                    Refinement.Rejected(QueryCallbackGraphCauseDocument.InvalidGraphFailure(cause.failure))
+            }
+    }
+
+internal fun RelationCallbackObservation.unprovenNavigationCause(): QueryCallbackGraphCauseDocument? =
+    when (val path = navigationPath()) {
+        is Refinement.Rejected -> path.failure
+        is Refinement.Refined -> path.value.unprovenCause()
+    }
+
+private fun CallbackTraversal.unprovenCause(): QueryCallbackGraphCauseDocument? =
+    if (unsupported.isEmpty() && frontier.isEmpty()) null
+    else QueryCallbackGraphCauseDocument.Unavailable(QueryCallbackFlowCauseDocument.UNSUPPORTED_CALLBACK_SUPPLY)
 
 private fun List<CallbackTraversalStep>.projectSteps(
     projection: CallbackProjection
@@ -58,12 +70,10 @@ private fun CallbackTraversalStep.projectStep(projection: CallbackProjection): Q
 
 private fun CallbackTraversal.projectNavigation(projection: CallbackProjection): QueryCallbackNavigationDocument? =
     steps.projectSteps(projection)?.let { steps ->
-        if (unsupported.isEmpty() && frontier.isEmpty()) QueryCallbackNavigationDocument.Proven(steps)
-        else
-            QueryCallbackNavigationDocument.Unproven(
-                QueryCallbackGraphCauseDocument.Unavailable(QueryCallbackFlowCauseDocument.UNSUPPORTED_CALLBACK_SUPPLY),
-                steps,
-            )
+        when (val cause = unprovenCause()) {
+            null -> QueryCallbackNavigationDocument.Proven(steps)
+            else -> QueryCallbackNavigationDocument.Unproven(cause, steps)
+        }
     }
 
 /** A failed inner proof does not erase independently admitted enclosing execution routes. */

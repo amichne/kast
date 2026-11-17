@@ -50,6 +50,7 @@ sealed interface QueryResultItemDocument {
         val ref: QueryReferenceDocument.ExactSymbol,
         val relation: RelationFactDocument,
         override val rowId: QueryResultRowReference? = null,
+        val producerSeed: QueryImpactProducerDocument? = null,
     ) : QueryResultItemDocument
 
     data class ReferenceOccurrence(

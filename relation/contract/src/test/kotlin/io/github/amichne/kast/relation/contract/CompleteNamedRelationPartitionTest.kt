@@ -153,6 +153,7 @@ class CompleteNamedRelationPartitionTest {
                             target,
                             fixture.occurrence(20 + index, 80 + index),
                             RelationProvenance.K2_AUTHORED_SOURCE,
+                            if (meaning == RelationMeaning.Callers) fixture.range(15 + index, 85 + index) else null,
                         )
                         .value()
                 }

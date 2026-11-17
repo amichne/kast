@@ -19,6 +19,7 @@ internal sealed interface ManagedWorkspaceStatus {
         val gradleHome: String,
         val savedDependencyConfiguration: Observation<WorkspaceDependencyMatch>,
         val seed: Observation<WorkspaceSeedRecord>,
+        val hostStages: PassiveHostStages,
     ) : ManagedWorkspaceStatus
 
     @Serializable
@@ -77,18 +78,22 @@ private fun workspaceStatus(
                         entry.workspace.gradleHome.toString(),
                         savedDependencyMatch(store, entry.workspace, installation),
                         Observation.unavailable(generation.failure.name),
+                        PassiveHostStages.at(PassiveHostStep.GENERATION),
                     )
-                is Refinement.Refined ->
+                is Refinement.Refined -> {
+                    val host = readWorkspaceApplicationHost(generation.value)
                     ManagedWorkspaceStatus.Recorded(
                         entry.workspace.id.text,
                         entry.workspace.workspace.toString(),
                         Observation.verified(generation.value.runtime.archiveSha256),
-                        readWorkspaceApplicationHost(generation.value),
+                        host.observation,
                         entry.workspace.dependencySharing,
                         entry.workspace.gradleHome.toString(),
                         savedDependencyMatch(store, entry.workspace, installation),
                         workspaceSeedStatus(generation.value),
+                        PassiveHostStages.at(host.stage),
                     )
+                }
             }
     }
 
@@ -103,7 +108,7 @@ private fun savedDependencyMatch(
                 is Refinement.Rejected -> return@containerFiles selected
                 is Refinement.Refined -> selected.value
             }
-        val policy = resolved.workspaceDependencySharing
+        val policy = resolved.dependencySharingFor(workspace.dependencySharing)
         val explicit = resolved.launchEnvironment().variables["GRADLE_USER_HOME"]
         val gradle =
             if (explicit != null) Path.of(explicit).toRealPath()

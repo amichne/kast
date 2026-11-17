@@ -15,6 +15,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class QueryCompleteCliDocument(
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val headline: QueryTraceHeadline? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val nextQuery: QueryCompletionPublicReadQuery? = null,
     @SerialName("original_evidence_summary")
     val originalEvidenceSummary: io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument?,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
@@ -72,6 +76,8 @@ internal data class QueryCompleteCliDocument(
 
 @Serializable
 internal data class QueryQualifiedCliDocument(
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val nextQuery: QueryCompletionPublicReadQuery? = null,
     @SerialName("original_evidence_summary")
     val originalEvidenceSummary: io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument?,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)

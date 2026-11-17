@@ -2,6 +2,9 @@ import io.github.amichne.kast.cli.KotlinxRequestJsonSchemaKt;
 import io.github.amichne.kast.cli.InstalledServerProjectionDocumentsKt;
 import io.github.amichne.kast.cli.CanonicalSchemaReferences;
 import io.github.amichne.kast.protocol.contract.CanonicalOperation;
+import io.github.amichne.kast.protocol.contract.ImpactCallFrameDocument;
+import io.github.amichne.kast.protocol.contract.ImpactDeclarationReferenceDocument;
+import io.github.amichne.kast.protocol.contract.ImpactValueConditionOriginDocument;
 import io.github.amichne.kast.protocol.contract.ImpactCaptureInvocationDocument;
 import io.github.amichne.kast.protocol.contract.ImpactInvocationReferenceDocument;
 import io.github.amichne.kast.protocol.contract.ImpactValueSiteReferenceDocument;
@@ -28,6 +31,8 @@ import java.util.Map;
 import kotlinx.serialization.KSerializer;
 import kotlinx.serialization.builtins.BuiltinSerializersKt;
 import kotlinx.serialization.json.Json;
+import kotlinx.serialization.json.JsonKt;
+import kotlin.Unit;
 import kotlinx.serialization.json.JsonElement;
 import kotlinx.serialization.json.JsonObject;
 import kotlin.jvm.internal.StringCompanionObject;
@@ -37,12 +42,21 @@ import java.nio.file.Path;
 /** Offline schema export using the actual canonical serializer and schema owner. */
 public class PiQuestionSchema {
     public static void main(String[] args) throws Exception {
-        var schema = recursiveSchema(QueryQuestionDocument.Companion.serializer());
-        Files.writeString(Path.of(args[0]), schema.toString() + "\n");
-        var qualification = recursiveSchema(CanonicalQueryCliDocuments.INSTANCE.getQualificationSerializer());
+        Json readable = JsonKt.Json(Json.Default, options -> {
+            options.setPrettyPrint(true);
+            options.setPrettyPrintIndent("  ");
+            return Unit.INSTANCE;
+        });
+        var sharedQuestionProofs = Map.<String, KSerializer<?>>of(
+                "impactCallFrame", ImpactCallFrameDocument.Companion.serializer(),
+                "impactDeclarationReference", ImpactDeclarationReferenceDocument.Companion.serializer(),
+                "impactValueConditionOrigin", ImpactValueConditionOriginDocument.Companion.serializer());
+        var schema = recursiveSchema(QueryQuestionDocument.Companion.serializer(), sharedQuestionProofs);
+        Files.writeString(Path.of(args[0]), readable.encodeToString(JsonObject.Companion.serializer(), schema) + "\n");
+        var qualification = recursiveSchema(CanonicalQueryCliDocuments.INSTANCE.getQualificationSerializer(), Map.of());
         Files.writeString(Path.of(args[1]), qualification.toString() + "\n");
         var result = InstalledServerProjectionDocumentsKt.installedSemanticResultSchema(CanonicalOperation.QUERY_RUN);
-        Files.writeString(Path.of(args[2]), result.toString() + "\n");
+        Files.writeString(Path.of(args[2]), readable.encodeToString(JsonObject.Companion.serializer(), result) + "\n");
         if (args.length > 3) {
             var strings = BuiltinSerializersKt.serializer(StringCompanionObject.INSTANCE);
             var values = Arrays.stream(QueryLimitation.values()).map(Enum::name).toList();
@@ -50,8 +64,8 @@ public class PiQuestionSchema {
         }
     }
 
-    private static JsonObject recursiveSchema(KSerializer<?> serializer) {
-        Map<String, KSerializer<?>> shared = Map.ofEntries(
+    private static JsonObject recursiveSchema(KSerializer<?> serializer, Map<String, KSerializer<?>> extra) {
+        Map<String, KSerializer<?>> shared = new LinkedHashMap<>(Map.ofEntries(
                 Map.entry("impactInvocationReference", ImpactInvocationReferenceDocument.Companion.serializer()),
                 Map.entry("impactCaptureInvocation", ImpactCaptureInvocationDocument.Companion.serializer()),
                 Map.entry("impactValueSiteReference", ImpactValueSiteReferenceDocument.Companion.serializer()),
@@ -68,7 +82,8 @@ public class PiQuestionSchema {
                 Map.entry("impactReviewedEntryReadOrder", ImpactReviewedEntryReadOrderDocument.Companion.serializer()),
                 Map.entry("impactReviewedEntryComponentInvocation", ImpactReviewedEntryComponentInvocationDocument.Companion.serializer()),
                 Map.entry("impactReviewedMappedEntryOrigin", ImpactReviewedMappedEntryOriginDocument.Companion.serializer()),
-                Map.entry("impactReviewedCallbackParent", ImpactReviewedCallbackParentDocument.Companion.serializer()));
+                Map.entry("impactReviewedCallbackParent", ImpactReviewedCallbackParentDocument.Companion.serializer())));
+        shared.putAll(extra);
         var references = CanonicalSchemaReferences.Companion.from(shared);
         var root = new LinkedHashMap<String, JsonElement>(KotlinxRequestJsonSchemaKt.generatedOutputSchema(serializer, references));
         var definitions = new LinkedHashMap<String, JsonElement>();

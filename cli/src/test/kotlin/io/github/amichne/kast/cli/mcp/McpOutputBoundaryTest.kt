@@ -73,6 +73,9 @@ class McpOutputBoundaryTest {
                 result.getValue("content").jsonArray.single().jsonObject.getValue("text").jsonPrimitive.content
             ),
         )
+        val evidence = document.getValue("rejection").jsonObject.getValue("detail").jsonObject.getValue("evidence")
+        val issued = evidence.jsonObject.getValue("nextQuery")
+        assertEquals(issued, structured["nextQuery"])
         val header = structured.getValue("semantic").jsonObject
         assertEquals(
             setOf(
@@ -100,6 +103,29 @@ class McpOutputBoundaryTest {
         )
         assertEquals("READ_RESULT", header.getValue("recovery").jsonObject.getValue("type").jsonPrimitive.content)
         assertTrue(McpStructuredResults.validates("query_symbols", structured))
+    }
+
+    @Test
+    fun `outer byte cap keeps the trace headline and issued detail read`() {
+        val document = QueryDeliveryFixtures.deferredTrace()
+        val response =
+            success(
+                JsonPrimitive(19),
+                McpCallResult(listOf(McpTextContent("x".repeat(MCP_RESPONSE_LIMIT_BYTES))), false, document),
+            )
+        val control =
+            Json.parseToJsonElement(encodeBoundedMcpResponse(response))
+                .jsonObject
+                .getValue("result")
+                .jsonObject
+                .getValue("structuredContent")
+                .jsonObject
+        val entry = document.getValue("items").jsonArray.single().jsonObject.getValue("detail")
+        assertEquals(document.getValue("headline"), control["headline"])
+        assertEquals(entry, control["deferred_entry"])
+        val read = control.getValue("nextQuery").jsonObject.getValue("request").jsonObject
+        assertEquals(entry.jsonObject.getValue("selector"), read["detail"])
+        assertTrue(McpStructuredResults.validates("query_symbols", control))
     }
 
     private fun queryFixture(name: String): JsonObject =

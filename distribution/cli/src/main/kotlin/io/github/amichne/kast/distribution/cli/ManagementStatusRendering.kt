@@ -38,6 +38,10 @@ private fun workspaceStatusLines(workspace: ManagedWorkspaceStatus): List<String
                 "Workspace: ${workspace.workspace}",
                 "Workspace runtime: ${workspace.runtimeArchiveSha256.value ?: workspace.runtimeArchiveSha256.reason}",
                 "Workspace Host: ${workspace.host.value ?: workspace.host.reason}",
+                "Workspace Host stage: ${workspace.hostStages.stage}",
+                "Descriptor: ${workspace.hostStages.descriptor}, process: ${workspace.hostStages.process}, " +
+                    "transport: ${workspace.hostStages.transport}, " +
+                    "semantic readiness: ${workspace.hostStages.semanticReadiness}",
                 "Workspace dependencies: ${workspace.dependencySharing}; Gradle home: ${workspace.gradleHome}",
                 "Saved dependency configuration: " +
                     "${workspace.savedDependencyConfiguration.value ?: workspace.savedDependencyConfiguration.reason}",

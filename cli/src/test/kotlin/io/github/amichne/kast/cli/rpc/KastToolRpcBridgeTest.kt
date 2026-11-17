@@ -97,7 +97,7 @@ class KastToolRpcBridgeTest {
             )
         val rpc = (KastToolRpcBridge(session).catalog() as ToolRpcReply.Catalog).catalog.tools.associateBy { it.name }
         val mcp = mcpCatalog(session)
-        assertEquals(rpc.keys, mcp.keys)
+        assertEquals(rpc.keys + setOf("producer_invocations", "impact"), mcp.keys)
         assertEquals(false, "validate_workspace" in rpc)
         assertEquals(false, "read_source" in rpc)
         rpc.forEach { (name, tool) ->

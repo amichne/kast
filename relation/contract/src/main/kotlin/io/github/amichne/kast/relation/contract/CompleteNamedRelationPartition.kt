@@ -148,7 +148,8 @@ private class NamedRelationReadmissions(
             }
         val source = if (request.meaning == RelationMeaning.Callees) request.subject else restored
         val target = if (request.meaning == RelationMeaning.Callees) restored else request.subject
-        return when (val fact = RelationFact.create(request, source, target, old.occurrence, old.provenance)) {
+        val fact = RelationFact.create(request, source, target, old.occurrence, old.provenance, old.producerRange)
+        return when (fact) {
             is Refinement.Refined -> fact
             is Refinement.Rejected -> Refinement.Rejected(NamedRelationReadmissionFailure.Fact(fact.failure))
         }

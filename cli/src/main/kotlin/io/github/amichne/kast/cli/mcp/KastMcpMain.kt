@@ -25,6 +25,7 @@ object KastMcpMain {
                     catalog = tools.catalog,
                     invoke = tools::invoke,
                     root = tools.root,
+                    queryCatalog = tools.queryCatalog,
                 )
                 .run(BufferedInputStream(System.`in`), System.out)
         }

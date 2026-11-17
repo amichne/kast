@@ -479,6 +479,7 @@ class QueryServiceTest {
             error("Exact refinement was not expected")
         },
         clock: QueryNanoClock = QueryNanoClock(System::nanoTime),
+        presentation: io.github.amichne.kast.query.contract.QueryPresentationExecution? = null,
         source: SourceReadOperations = SourceReadOperations { error("Source read was not expected") },
         checkpointObservation: io.github.amichne.kast.query.contract.QueryCheckpointStorageObservation =
             io.github.amichne.kast.query.contract.QueryCheckpointStorageObservation.None,
@@ -491,6 +492,7 @@ class QueryServiceTest {
             traversal = unexpectedQueryTraversal(),
             traversalCeiling = queryTestTraversalCeiling(),
             clock = clock,
+            presentation = presentation,
             checkpointObservation = checkpointObservation,
         )
 

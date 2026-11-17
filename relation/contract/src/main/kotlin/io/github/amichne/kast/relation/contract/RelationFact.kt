@@ -186,41 +186,6 @@ class RevalidatedRelationEndpoint private constructor(val endpoint: RelationEndp
     }
 }
 
-enum class RelationOccurrenceFailure {
-    INVALID_RANGE
-}
-
-@ConsistentCopyVisibility
-data class RelationOccurrence
-private constructor(
-    val file: SymbolDiscoveryFileIdentity,
-    val range: ExactDeclarationTextRange,
-) {
-    companion object {
-        fun fromSource(
-            file: SymbolDiscoveryFileIdentity,
-            range: ExactDeclarationTextRange,
-        ): RelationOccurrence = RelationOccurrence(file, range)
-
-        /**
-         * Proof transition: `(SymbolDiscoveryFileIdentity, Int, Int) -> Refinement< RelationOccurrence,
-         * RelationOccurrenceFailure>`.
-         *
-         * Establishes an exact detached file and non-empty absolute source range. [RelationOccurrenceFailure] is the
-         * closed expected failure. Raw offsets may enter only from a request-local K2-confirmed PSI occurrence.
-         */
-        fun fromBoundary(
-            file: SymbolDiscoveryFileIdentity,
-            rawStartInclusive: Int,
-            rawEndExclusive: Int,
-        ): Refinement<RelationOccurrence, RelationOccurrenceFailure> =
-            when (val range = ExactDeclarationTextRange.parse(rawStartInclusive, rawEndExclusive)) {
-                is Refinement.Refined -> Refinement.Refined(RelationOccurrence(file, range.value))
-                is Refinement.Rejected -> Refinement.Rejected(RelationOccurrenceFailure.INVALID_RANGE)
-            }
-    }
-}
-
 /** Compiler authority plus source-root provenance for one exact occurrence. */
 enum class RelationProvenance {
     K2_AUTHORED_SOURCE,
@@ -237,6 +202,7 @@ enum class RelationFactFailure {
     ENDPOINT_LEASE_MISMATCH,
     ENDPOINT_SCOPE_MISMATCH,
     SUBJECT_ORIENTATION_MISMATCH,
+    INVOCATION_SCOPE_MISMATCH,
 }
 
 @ConsistentCopyVisibility
@@ -250,6 +216,7 @@ private constructor(
     val authority: SemanticReadIdentity,
     val provenance: RelationProvenance,
     val coverage: RelationFactCoverage,
+    val producerRange: ExactDeclarationTextRange?,
 ) : Comparable<RelationFact> {
     override fun compareTo(other: RelationFact): Int = RELATION_FACT_ORDER.compare(this, other)
 
@@ -263,6 +230,10 @@ private constructor(
         appendFactField(authority.revisionKey.value)
         appendFactField(provenance.name)
         appendFactField(coverage.name)
+        producerRange?.let {
+            appendFactField(it.startInclusive.toString())
+            appendFactField(it.endExclusive.toString())
+        }
     }
 
     companion object {
@@ -280,6 +251,7 @@ private constructor(
             target: RelationEndpoint,
             occurrence: RelationOccurrence,
             provenance: RelationProvenance,
+            producerRange: ExactDeclarationTextRange? = null,
         ): Refinement<RelationFact, RelationFactFailure> {
             if (source.lease != request.subject.lease || target.lease != request.subject.lease) {
                 return Refinement.Rejected(RelationFactFailure.ENDPOINT_LEASE_MISMATCH)
@@ -287,6 +259,8 @@ private constructor(
             if (!request.admitsEndpoint(source) || !request.admitsEndpoint(target)) {
                 return Refinement.Rejected(RelationFactFailure.ENDPOINT_SCOPE_MISMATCH)
             }
+            if (producerRange != null && !producerRange.isCallerInvocation(request, source, occurrence))
+                return Refinement.Rejected(RelationFactFailure.INVOCATION_SCOPE_MISMATCH)
             val oriented =
                 when (request.meaning) {
                     RelationMeaning.Callees -> source === request.subject
@@ -310,6 +284,7 @@ private constructor(
                     authority = request.subject.lease.identity,
                     provenance = provenance,
                     coverage = RelationFactCoverage.EXACT_COMPILER_CONFIRMED,
+                    producerRange = producerRange,
                 )
             )
         }
@@ -325,6 +300,18 @@ private constructor(
             )
     }
 }
+
+private fun ExactDeclarationTextRange.isCallerInvocation(
+    request: RelationRequest,
+    source: RelationEndpoint,
+    occurrence: RelationOccurrence,
+): Boolean {
+    if (request.meaning != RelationMeaning.Callers || occurrence.file != source.file) return false
+    return source.range.containsInvocation(this) && containsInvocation(occurrence.range)
+}
+
+private fun ExactDeclarationTextRange.containsInvocation(inner: ExactDeclarationTextRange): Boolean =
+    startInclusive <= inner.startInclusive && endExclusive >= inner.endExclusive
 
 private fun relationEndpointFingerprint(
     lease: SemanticReadAuthority,

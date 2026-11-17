@@ -46,10 +46,16 @@ class HostedQueryPresentationHeaderTest {
         assertEquals("COMPLETE", header.getValue("coverage").jsonObject.getValue("type").jsonPrimitive.content)
         assertEquals("READ_RESULT", header.getValue("recovery").jsonObject.getValue("type").jsonPrimitive.content)
         assertZeroPresented(header)
+        val entry = document["deferred_entry"]?.jsonObject
+        assertEquals("ROW", entry?.get("selector")?.jsonObject?.get("target")?.jsonPrimitive?.content)
         assertEquals(
-            header.getValue("recovery").jsonObject.getValue("cursor"),
-            document.getValue("nextQuery").jsonObject.getValue("request").jsonObject.getValue("cursor"),
+            header.getValue("recovery").jsonObject.getValue("result"),
+            entry?.get("selector")?.jsonObject?.get("result"),
         )
+        assertTrue(entry?.get("meaning")?.jsonPrimitive?.content.orEmpty().isNotBlank())
+        val next = document.getValue("nextQuery").jsonObject.getValue("request").jsonObject
+        assertEquals(entry?.get("selector"), next["detail"])
+        assertEquals(header.getValue("recovery").jsonObject.getValue("result"), next["result"])
         assertTrue(!document.containsKey("question"))
     }
 
@@ -112,6 +118,7 @@ class HostedQueryPresentationHeaderTest {
             )
         val document = encodeHeader(unretained)
         assertEquals(JsonNull, document.getValue("nextQuery"))
+        assertTrue("deferred_entry" !in document)
         val header = document.getValue("semantic").jsonObject
         assertEquals("complete", header.getValue("original_outcome").jsonPrimitive.content)
         assertEquals("UNAVAILABLE", header.getValue("recovery").jsonObject.getValue("type").jsonPrimitive.content)

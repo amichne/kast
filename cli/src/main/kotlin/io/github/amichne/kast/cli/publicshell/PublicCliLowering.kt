@@ -135,6 +135,7 @@ private fun parseTerminal(
             when (output) {
                 is CliOutput.Symbols,
                 null -> Refinement.Refined(CliTerminal.Trace(output))
+                is CliOutput.Witness,
                 CliOutput.Occurrences -> Refinement.Rejected(PublicCliArgumentFailure.IRRELEVANT_OPTION)
             }
         else -> Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)

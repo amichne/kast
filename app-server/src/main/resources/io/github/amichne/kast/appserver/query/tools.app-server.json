@@ -1389,16 +1389,20 @@
             "additionalProperties": false,
             "properties": {
               "enclosing": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 1048576,
-                "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                "$ref": "#/$defs/ImpactReferenceText"
               },
               "callable": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 1048576,
-                "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                "$ref": "#/$defs/ImpactReferenceText"
+              },
+              "candidateRef": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/ImpactReferenceText"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "anchor": {
                 "$ref": "#/$defs/ImpactSourceRange"
@@ -1415,10 +1419,7 @@
             "additionalProperties": false,
             "properties": {
               "reference": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 1048576,
-                "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                "$ref": "#/$defs/ImpactReferenceText"
               },
               "declaration": {
                 "$ref": "#/$defs/ImpactDeclarationReference"
@@ -3259,10 +3260,7 @@
                 ]
               },
               "file": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 1048576,
-                "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                "$ref": "#/$defs/ImpactReferenceText"
               },
               "range": {
                 "$ref": "#/$defs/ImpactSourceRange"
@@ -3501,6 +3499,12 @@
               "offset"
             ],
             "additionalProperties": false
+          },
+          "ImpactReferenceText": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1048576,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*"
           }
         }
       },

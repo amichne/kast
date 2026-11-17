@@ -6,7 +6,7 @@ private const val SIGINT_EXIT = 130
 private const val SIGTERM_EXIT = 143
 
 @Serializable
-enum class ContainerFailure(val exit: Int = 1) {
+enum class ContainerFailure(val exit: Int = 1) : WorkspaceAdmissionFailure {
     INVALID_NAME,
     INVALID_ID,
     INVALID_WORKSPACE,

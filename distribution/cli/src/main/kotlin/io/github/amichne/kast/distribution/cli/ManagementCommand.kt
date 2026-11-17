@@ -39,6 +39,8 @@ internal sealed interface ManagementCommand {
 
     data class Status(val json: Boolean, val scope: WorkspaceScope = WorkspaceScope.Current) : ManagementCommand
 
+    data class Config(val workspace: Path, val action: WorkspaceConfigAction, val json: Boolean) : ManagementCommand
+
     data class Stop(val scope: WorkspaceScope, val json: Boolean) : ManagementCommand
 
     data object Version : ManagementCommand

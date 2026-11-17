@@ -78,7 +78,7 @@ class HostedOversizedWitnessTest {
         val summary = fitted.items.values.first() as QueryResultItemDocument.DeferredDetail
         assertEquals(case.small, fitted.items.values[1])
         assertEquals(case.semantic.qualification, (response.semantic as OperationOutcome.Qualified).qualification)
-        assertTrue(summary.detail.meaning.value.contains("READ_REJECTIONS"))
+        assertEquals("READ_REJECTIONS ordinal 0: AUTHORITY_MOVED (500 receipts)", summary.detail.meaning.value)
         val expected = Json {
             encodeDefaults = true
         }

@@ -278,10 +278,12 @@ class HostedQueryRetainedPresentationTest {
         owner: RelationPagingFixture = RelationPagingFixture.live(),
         connections: List<io.github.amichne.kast.relation.contract.RelationFact> = emptyList(),
         rowCount: Int = 150,
+        source: io.github.amichne.kast.query.contract.QuerySymbolSource =
+            io.github.amichne.kast.query.contract.QuerySymbolSource.Pending,
     ): RetainedFixture {
         val symbols =
             List(rowCount) {
-                QuerySymbol(SymbolDescription.from(owner.selector), connections)
+                QuerySymbol(SymbolDescription.from(owner.selector), connections, source)
             }
         val store = QueryStateStore(clock = clock, ttlMillis = ttlMillis)
         var providerCalls = 0
@@ -298,7 +300,11 @@ class HostedQueryRetainedPresentationTest {
                 owner.references,
                 store,
             )
-        val output = QueryOutputDocument.Symbols(bounded(listOf(QuerySymbolFieldDocument.NAME)))
+        val fields =
+            if (source is io.github.amichne.kast.query.contract.QuerySymbolSource.Returned)
+                listOf(QuerySymbolFieldDocument.NAME, QuerySymbolFieldDocument.SOURCE)
+            else listOf(QuerySymbolFieldDocument.NAME)
+        val output = QueryOutputDocument.Symbols(bounded(fields))
         val request = retainedRequest(output)
         val budget = retainedBudget()
         return RetainedFixture(owner, protocol, request, output, budget, store) { providerCalls }
@@ -329,12 +335,13 @@ class HostedQueryRetainedPresentationTest {
             QueryByteLimit.parse(100_000).refined(),
         )
 
-    internal fun retainedPolicy(retainedBytes: Long = 10_000_000) =
+    internal fun retainedPolicy(retainedBytes: Long = 10_000_000, previewBytes: Long = 100_000) =
         QueryInvocationPolicy(
             previewRows = ResultLimit.parse(200).refined(),
-            previewBytesLimit = QueryByteLimit.parse(100_000).refined(),
+            previewBytesLimit = QueryByteLimit.parse(previewBytes).refined(),
             retainedBytes = QueryByteLimit.parse(retainedBytes).refined(),
             previewBytes = CanonicalQueryCliDocuments::previewBytes,
+            deferRow = ::deferredRowSummary,
             nanoTime = { 0L },
         )
 

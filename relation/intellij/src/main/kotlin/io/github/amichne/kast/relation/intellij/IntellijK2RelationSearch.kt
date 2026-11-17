@@ -477,7 +477,9 @@ internal class IntellijK2RelationSearch(
                     is Refinement.Rejected ->
                         return incompleteItem(result.failure, reference.element, reference.rangeInElement)
                 }
-            return factEmitter.emit(related, reference.element, reference.rangeInElement, callback)
+            val range =
+                if (request.meaning == RelationMeaning.Callers) producerInvocationRange(reference, target) else null
+            return factEmitter.emit(related, reference.element, reference.rangeInElement, callback, range)
         }
 
         private fun incompleteCallee(candidate: CalleeProviderItem, limitation: RelationLimitation): Boolean =
@@ -552,4 +554,21 @@ internal class IntellijK2RelationSearch(
                 else -> IntellijRelationTermination.Terminal
             }
     }
+}
+
+private fun producerInvocationRange(
+    reference: PsiReference,
+    target: PsiNamedElement,
+): io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange? {
+    if (target !is org.jetbrains.kotlin.psi.KtNamedFunction && target !is org.jetbrains.kotlin.psi.KtConstructor<*>)
+        return null
+    val element = reference.element
+    val call =
+        com.intellij.psi.util.PsiTreeUtil.getParentOfType(
+            element,
+            org.jetbrains.kotlin.psi.KtCallExpression::class.java,
+            false,
+        ) ?: return null
+    if (element !== call && call.calleeExpression?.textRange?.contains(element.textRange) != true) return null
+    return sourceValueRange(call.valueInvocationExpression())
 }

@@ -5,12 +5,14 @@ from __future__ import annotations
 import errno
 import hashlib
 import os
+import re
 import shutil
 import stat
 import subprocess
 import tempfile
 import uuid
 import zipfile
+from collections.abc import Iterator
 from contextlib import ExitStack
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -333,20 +335,44 @@ def admit_prior(root: Path) -> journal.NoPrevious | journal.PhysicalPrevious:
     )
 
 
-def verify_client_configuration(control: Path, *, partial: bool = False) -> None:
-    configuration = control / "config"
-    if not os.path.lexists(configuration):
+def workspace_overlays(configuration: Path) -> Iterator[tuple[Path, bytes | None]]:
+    """Admit only Kast's canonical per-root directory and its bounded literal environment file."""
+    workspaces = configuration / "workspaces"
+    if not os.path.lexists(workspaces):
         return
+    immutable_store.physical(workspaces)
+    for workspace in workspaces.iterdir():
+        if re.fullmatch(r"[0-9a-f]{64}", workspace.name) is None:
+            raise ValueError("unrecognized workspace configuration directory")
+        immutable_store.physical(workspace)
+        names = {entry.name for entry in workspace.iterdir()}
+        if names - {"environment"}:
+            raise ValueError("unrecognized workspace configuration")
+        # A failed first save or interrupted removal can leave the owned directory empty.
+        yield workspace, install.read_record(workspace / "environment", 65_536) if names else None
+
+
+def verify_client_configuration(control: Path, *, partial: bool = False) -> set[Path]:
+    configuration = control / "config"
+    directories = {Path("config")}
+    if not os.path.lexists(configuration):
+        return directories
     immutable_store.physical(configuration)
     entries = {path.name for path in configuration.iterdir()}
-    if entries != {"environment"} and not (partial and not entries):
+    if entries - {"environment", "workspaces"} or (not partial and "environment" not in entries):
         raise ValueError("unrecognized installation configuration")
-    if entries:
+    if "environment" in entries:
         _ = install.read_record(configuration / "environment", 262_144)
+    if "workspaces" in entries:
+        directories.add(Path("config/workspaces"))
+        directories.update(
+            workspace.relative_to(control) for workspace, _ in workspace_overlays(configuration)
+        )
+    return directories
 
 
 def verify_replacement_state(control: Path) -> None:
-    verify_client_configuration(control)
+    _ = verify_client_configuration(control)
     _ = product_mcp_removal.empty_invocation_directories(control)
     state = control / "state"
     if os.path.lexists(state) and {child.name for child in state.iterdir()} - {"run"}:
@@ -366,6 +392,15 @@ def materialize_client_entries(stage: Path, active: Path) -> None:
     with configuration.open("xb") as output:
         _ = output.write(content)
     configuration.chmod(0o600)
+    for workspace, overlay in workspace_overlays(prior.parent):
+        if overlay is None:
+            continue
+        directory = configuration.parent / "workspaces" / workspace.name
+        private_directory(directory)
+        target = directory / "environment"
+        with target.open("xb") as output:
+            _ = output.write(overlay)
+        target.chmod(0o600)
     # These are host-interface adapters, not a second semantic dispatch owner.
     # Raw launchers retain their internal entrypoint and native-image arguments.
     for executable in ("kast", "kast-query", "kast-mcp", "kast-tool-rpc", "kast-codex"):

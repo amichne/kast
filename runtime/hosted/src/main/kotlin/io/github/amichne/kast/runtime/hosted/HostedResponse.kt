@@ -79,6 +79,7 @@ internal sealed interface HostedResponse {
                 limits: ReadLimits,
                 maximumBytes: ReturnedByteLimit,
                 detail: io.github.amichne.kast.protocol.contract.QueryEntryDetailDocument? = null,
+                deferred: io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument? = null,
             ): HostedResponse {
                 if (maximumBytes.value < io.github.amichne.kast.protocol.contract.PUBLIC_QUERY_OUTPUT_MINIMUM_BYTES)
                     return Oversized(CanonicalOperation.QUERY_RUN, semantic)
@@ -87,19 +88,29 @@ internal sealed interface HostedResponse {
                         semantic,
                         detail,
                     )
-                val document =
+                val factory =
                     io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument.generated(
-                            io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument
-                                .serializer()
+                        io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument.serializer()
+                    )
+                val limit = minOf(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong(), maximumBytes.value)
+                fun encode(
+                    value: io.github.amichne.kast.protocol.wire.presentation.QueryPresentationHeaderDocument
+                ): HostedResponse {
+                    val document = factory.create(value).value
+                    return if (document.toByteArray(Charsets.UTF_8).size <= limit)
+                        Canonical(
+                            CanonicalOperation.QUERY_RUN,
+                            semantic,
+                            document,
+                            HostedCanonicalPresentation.HEADER_ONLY,
                         )
-                        .create(header)
-                        .value
-                return if (
-                    document.toByteArray(Charsets.UTF_8).size <=
-                        minOf(limits[ReadLimitParameter.HOST_RESPONSE_BYTES].value.toLong(), maximumBytes.value)
-                )
-                    Canonical(CanonicalOperation.QUERY_RUN, semantic, document, HostedCanonicalPresentation.HEADER_ONLY)
-                else Oversized(CanonicalOperation.QUERY_RUN, semantic)
+                    else Oversized(CanonicalOperation.QUERY_RUN, semantic)
+                }
+                if (deferred != null) {
+                    val withEntry = encode(header.withDeferredEntry(deferred))
+                    if (withEntry !is Oversized) return withEntry
+                }
+                return encode(header)
             }
 
             fun <

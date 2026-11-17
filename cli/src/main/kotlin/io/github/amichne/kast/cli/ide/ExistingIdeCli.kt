@@ -230,7 +230,7 @@ private fun semanticOperationRejected(rejection: DaemonOperationClientRejection)
     val server = (rejection as? DaemonOperationClientRejection.Server)?.failure
     return when (server) {
         is io.github.amichne.kast.appserver.DaemonOperationFailure.ManagedWorkspace ->
-            io.github.amichne.kast.cli.direct.managedWorkspaceRejected(server.reason)
+            io.github.amichne.kast.cli.direct.managedWorkspaceRejected(server)
         is io.github.amichne.kast.appserver.DaemonOperationFailure.Preparation,
         is io.github.amichne.kast.appserver.DaemonOperationFailure.Workspace ->
             io.github.amichne.kast.cli.direct.managedPreparationRejected(server)

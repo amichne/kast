@@ -1,12 +1,10 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
-import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
 
 private const val EXECUTABLE_PERMISSION_MASK = 73
@@ -373,22 +371,3 @@ internal fun connectHarness(
                 prior == record && !replace
             }
     }
-
-@Suppress("ThrowsCount")
-internal fun <T> withRegistrationLock(root: Path, action: () -> T): T {
-    val lock = root.resolve("management.lock")
-    if (Files.isSymbolicLink(lock)) throw ManagementRejected("registration-lock", "lock path is untrusted")
-    try {
-        FileChannel.open(lock, StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { channel ->
-            val acquired =
-                channel.tryLock() ?: throw ManagementRejected("registration-lock", "another operation is active")
-            acquired.use {
-                return action()
-            }
-        }
-    } catch (failure: ManagementRejected) {
-        throw failure
-    } catch (_: Exception) {
-        throw ManagementRejected("registration-lock", "lock is unavailable")
-    }
-}

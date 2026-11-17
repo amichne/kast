@@ -97,7 +97,9 @@ private fun DaemonOperationClientRejection.hookFailure(diagnostic: (String) -> U
     when (this) {
         is DaemonOperationClientRejection.Server ->
             when (val reason = failure) {
-                is DaemonOperationFailure.ManagedWorkspace -> HookPreparationFailure.Managed(reason.reason)
+                is DaemonOperationFailure.ManagedWorkspace ->
+                    if (reason.conflict == null) HookPreparationFailure.Managed(reason.reason)
+                    else HookPreparationFailure.Native(reason)
                 else -> HookPreparationFailure.Native(reason)
             }
         is DaemonOperationClientRejection.Startup -> {

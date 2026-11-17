@@ -1,5 +1,11 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package io.github.amichne.kast.cli.mcp
 
+import io.github.amichne.kast.protocol.contract.QueryDeferredDetailDocument
+import io.github.amichne.kast.protocol.wire.presentation.QueryCompletionPublicReadQuery
+import io.github.amichne.kast.protocol.wire.presentation.QueryTraceHeadline
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -13,6 +19,11 @@ internal sealed interface McpTransportRejection {
     data class OutputLimit(
         val limitBytes: Int,
         val semantic: io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocument,
+        @EncodeDefault(EncodeDefault.Mode.NEVER) val headline: QueryTraceHeadline? = null,
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        @SerialName("deferred_entry")
+        val deferredEntry: QueryDeferredDetailDocument? = null,
+        @EncodeDefault(EncodeDefault.Mode.NEVER) val nextQuery: QueryCompletionPublicReadQuery? = null,
         @Required val status: McpRejectedStatus = McpRejectedStatus.REJECTED,
     ) : McpTransportRejection
 

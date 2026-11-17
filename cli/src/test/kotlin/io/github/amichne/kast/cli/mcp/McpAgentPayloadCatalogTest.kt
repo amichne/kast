@@ -1,6 +1,7 @@
 package io.github.amichne.kast.cli.mcp
 
 import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.cli.direct.DirectToolDocument
 import io.github.amichne.kast.cli.direct.directSupportTools
 import io.github.amichne.kast.cli.direct.directToolDocument
 import io.github.amichne.kast.cli.installedHostedBootstrap
@@ -29,17 +30,7 @@ class McpAgentPayloadCatalogTest {
     @Test
     fun `each session exposes exactly one generated query projection`() {
         for (profile in PublicToolCatalog.entries) {
-            val installed = installedHostedBootstrap().tools.associateBy { it.name }
-            val catalog =
-                PublicToolIdentity.entries.map { identity ->
-                    val tool = installed.getValue(identity.toolName)
-                    tool
-                        .directToolDocument()
-                        .copy(
-                            inputSchema = PublicToolContract.parameters(identity, profile),
-                            description = identity.descriptionFor(profile),
-                        )
-                } + directSupportTools()
+            val catalog = catalog(profile)
             val request =
                 McpRequest(
                     id = JsonPrimitive(1),
@@ -50,6 +41,7 @@ class McpAgentPayloadCatalogTest {
             val output = ByteArrayOutputStream()
             KastMcpServer(
                     catalog,
+                    queryCatalog = profile,
                     invoke = { _, _ -> error("Catalog capture must not invoke a tool") },
                     root = { CanonicalRootDiscovery.Rejected(CanonicalRootFailure.ROOT_MARKER_NOT_FOUND) },
                     diagnostic = PrintStream(ByteArrayOutputStream()),
@@ -63,7 +55,15 @@ class McpAgentPayloadCatalogTest {
                     .getValue("tools")
                     .jsonArray
             val query = actual.single { it.jsonObject.getValue("name").jsonPrimitive.content == "query_symbols" }
-            assertEquals(catalog.size, actual.size)
+            val nativeTools =
+                when (profile) {
+                    PublicToolCatalog.COMMON -> emptySet()
+                    PublicToolCatalog.COMPLETE -> setOf("producer_invocations", "impact")
+                }
+            assertEquals(
+                (catalog.map { it.name } + nativeTools).sorted(),
+                actual.map { it.jsonObject.getValue("name").jsonPrimitive.content },
+            )
             assertEquals(
                 PublicToolContract.parameters(PublicToolIdentity.QUERY_SYMBOLS, profile),
                 query.jsonObject["inputSchema"],
@@ -72,6 +72,19 @@ class McpAgentPayloadCatalogTest {
             Files.createDirectories(directory)
             Files.write(directory.resolve(profile.name.lowercase() + "-tools-list.json"), output.toByteArray())
         }
+    }
+
+    private fun catalog(profile: PublicToolCatalog): List<DirectToolDocument> {
+        val installed = installedHostedBootstrap().tools.associateBy { it.name }
+        return PublicToolIdentity.entries.map { identity ->
+            installed
+                .getValue(identity.toolName)
+                .directToolDocument()
+                .copy(
+                    inputSchema = PublicToolContract.parameters(identity, profile),
+                    description = identity.descriptionFor(profile),
+                )
+        } + directSupportTools()
     }
 }
 
