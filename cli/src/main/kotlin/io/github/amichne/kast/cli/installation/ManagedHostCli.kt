@@ -51,6 +51,7 @@ private fun executeSelectedManagedHost(
             io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter.MANAGED_HEADLESS_STATE
                 .key,
             io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter.HOST_IDLE_SHUTDOWN.key,
+            io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter.HOST_MAX_HEAP_MIB.key,
         )
     val sources =
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources(
@@ -68,6 +69,7 @@ private fun executeSelectedManagedHost(
                 home,
                 configuration.value.managedHeadlessState,
                 configuration.value.hostIdleShutdown,
+                configuration.value.hostMaxHeap,
             )
     }
 }

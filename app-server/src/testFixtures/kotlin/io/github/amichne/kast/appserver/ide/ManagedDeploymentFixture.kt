@@ -26,6 +26,7 @@ class ManagedDeploymentFixture(root: Path) {
         IdeLifecycleDeployment.Headless(
             state,
             io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+            io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
         )
     val configuration: ResolvedKastConfiguration
     internal val selected: SelectedLifecycleDeployment.Headless

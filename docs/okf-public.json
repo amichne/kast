@@ -6327,7 +6327,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "ac4eb09ee484fad0e4a72cf748d0ce7dbe7dd52e5d56531eb45a2be25a565c5e"
+          "sha256": "700b2d55fd36f90ffebf4cc0a87000e359b15694c37350e91d7728a4de1cec04"
         }
       ],
       "claims": [
@@ -6644,15 +6644,51 @@
       ],
       "generatedOwners": [
         {
+          "path": "app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt",
+          "sha256": "68ccf26afe13fb3967b43acd16c17fc1b92e3f1cbb283dc888df57fb0a0e906c"
+        },
+        {
           "path": "app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json",
           "sha256": "0601bef852a7157b3303fc5532ede0ba27465c04ef3fc0b5a053509354399330"
         },
         {
+          "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/HostMaxHeap.kt",
+          "sha256": "b13ec645310bc5a1c79f15d482cec7841d254078553b202b88e4f84eeef662a6"
+        },
+        {
+          "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt",
+          "sha256": "8a128b665b68475e6d7949c195571a2d316ae43f8731597dc218b561f67aa326"
+        },
+        {
+          "path": "distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationResolution.kt",
+          "sha256": "28c9a9d4ff123bd78537da5959618c3e7d99fea4848f628f1fdfe4aeb518f224"
+        },
+        {
+          "path": "distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/HostMaxHeapTest.kt",
+          "sha256": "5023d5ef31a1388f074eb69f906f22254da00e1a6dd025507839986eec56c274"
+        },
+        {
+          "path": "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstalledWorkspaceConfigurationIngress.kt",
+          "sha256": "8b51b36ca25b4776a5401de0cc5181209edbc6654ef49392d03f4b3910855325"
+        },
+        {
+          "path": "distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessLaunch.kt",
+          "sha256": "509851855fae4c0e2fa6d4a43b0dc06b04b3ae8342a26334eec13e9bc2e4a194"
+        },
+        {
+          "path": "distribution/managed/src/test/kotlin/io/github/amichne/kast/distribution/managed/ManagedHeadlessInstallationTest.kt",
+          "sha256": "e3d66e4ef151f01ba57e33aa02905d7bc98e44453c9446644e17e6d4ffee1a10"
+        },
+        {
           "path": "docs/public/reference/callables.openapi.json",
           "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+        },
+        {
+          "path": "packaging/configuration-schema.json",
+          "sha256": "2abdeaa93df37df8071da847a00cf39c310c6bce22ccbea73209b0f418e3c690"
         }
       ],
-      "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
+      "reviewedSourceRevision": "36f9d76d6fd45001e706bbf0cd80345639833e56"
     },
     {
       "route": "reference/integrations",

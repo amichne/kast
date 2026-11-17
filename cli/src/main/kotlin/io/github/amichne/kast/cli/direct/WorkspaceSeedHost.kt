@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
 import io.github.amichne.kast.appserver.ide.IdeLifecycleDeployment
 import io.github.amichne.kast.distribution.cli.WorkspaceSeedEndpoint
 import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
+import io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import java.nio.file.Path
@@ -14,7 +15,7 @@ internal fun inspectWorkspaceSeedHost(runtime: Path, state: Path, home: Path): W
         IdeLifecycleClient(
             home,
             runtime,
-            deployment = IdeLifecycleDeployment.Headless(state, HostIdleShutdown.Disabled),
+            deployment = IdeLifecycleDeployment.Headless(state, HostIdleShutdown.Disabled, HostMaxHeap.DEFAULT),
         )
     val inspected = client.inspectForInstallation()
     return if (inspected is IdeLifecycleResult.Blocked && inspected.reason == IdeLifecycleFailure.HOST_UNAVAILABLE)

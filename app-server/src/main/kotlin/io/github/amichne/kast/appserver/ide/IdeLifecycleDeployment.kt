@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver.ide
 
 import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
+import io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessLaunch
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessLaunchFailure
@@ -17,13 +18,20 @@ import io.github.amichne.kast.protocol.contract.SupportedIdeReleaseLine
 import java.nio.file.Path
 
 sealed interface IdeLifecycleDeployment {
-    /** [idleShutdown] applies only when this client launches the Host; a running Host keeps its own policy. */
-    data class Headless(val state: Path, val idleShutdown: HostIdleShutdown) : IdeLifecycleDeployment
+    /**
+     * [idleShutdown] and [maxHeap] apply only when this client launches the Host; a running Host keeps the policy it
+     * started with.
+     */
+    data class Headless(val state: Path, val idleShutdown: HostIdleShutdown, val maxHeap: HostMaxHeap) :
+        IdeLifecycleDeployment
 }
 
 internal sealed interface SelectedLifecycleDeployment {
-    data class Headless(val installation: ManagedHeadlessInstallation, val idleShutdown: HostIdleShutdown) :
-        SelectedLifecycleDeployment
+    data class Headless(
+        val installation: ManagedHeadlessInstallation,
+        val idleShutdown: HostIdleShutdown,
+        val maxHeap: HostMaxHeap,
+    ) : SelectedLifecycleDeployment
 }
 
 internal fun selectLifecycleDeployment(
@@ -33,12 +41,19 @@ internal fun selectLifecycleDeployment(
 ): Refinement<SelectedLifecycleDeployment, IdeLifecycleFailure> =
     when (deployment) {
         is IdeLifecycleDeployment.Headless ->
-            selectManagedLifecycleDeployment(deployment.state, deployment.idleShutdown, userHome, selectedHome)
+            selectManagedLifecycleDeployment(
+                deployment.state,
+                deployment.idleShutdown,
+                deployment.maxHeap,
+                userHome,
+                selectedHome,
+            )
     }
 
 private fun selectManagedLifecycleDeployment(
     state: Path,
     idleShutdown: HostIdleShutdown,
+    maxHeap: HostMaxHeap,
     home: Path,
     idea: Path,
 ): Refinement<SelectedLifecycleDeployment, IdeLifecycleFailure> {
@@ -50,7 +65,8 @@ private fun selectManagedLifecycleDeployment(
         }
     return when (val admitted = ManagedHeadlessInstallation.resolve(launch, state, home)) {
         is Refinement.Rejected -> Refinement.Rejected(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE)
-        is Refinement.Refined -> Refinement.Refined(SelectedLifecycleDeployment.Headless(admitted.value, idleShutdown))
+        is Refinement.Refined ->
+            Refinement.Refined(SelectedLifecycleDeployment.Headless(admitted.value, idleShutdown, maxHeap))
     }
 }
 
@@ -75,7 +91,12 @@ internal fun launchManagedHeadless(
 ): Refinement<IdeLaunchLifetime, IdeLifecycleFailure> =
     when (
         val specification =
-            ManagedHeadlessLaunch.prepare(deployment.installation, platform.executablePath(), deployment.idleShutdown)
+            ManagedHeadlessLaunch.prepare(
+                deployment.installation,
+                platform.executablePath(),
+                deployment.idleShutdown,
+                deployment.maxHeap,
+            )
     ) {
         is Refinement.Rejected ->
             Refinement.Rejected(

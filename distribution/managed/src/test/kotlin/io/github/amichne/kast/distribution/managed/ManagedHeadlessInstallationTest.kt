@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.managed
 
+import io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
@@ -89,6 +90,7 @@ class ManagedHeadlessInstallationTest {
                         installation,
                         "/cloud/python/bin:/cloud/node/bin:/usr/bin:/bin",
                         io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+                        io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
                     )
                 )
                 .value
@@ -102,7 +104,7 @@ class ManagedHeadlessInstallationTest {
                 as Refinement.Refined
         val limited =
             assertInstanceOf<Refinement.Refined<ManagedHeadlessLaunch>>(
-                    ManagedHeadlessLaunch.prepare(installation, "/usr/bin:/bin", idle.value)
+                    ManagedHeadlessLaunch.prepare(installation, "/usr/bin:/bin", idle.value, HostMaxHeap.DEFAULT)
                 )
                 .value
         org.junit.jupiter.api.Assertions.assertTrue(
@@ -127,6 +129,37 @@ class ManagedHeadlessInstallationTest {
     }
 
     @Test
+    fun `the configured heap replaces the vendor heap as the only -Xmx option`(@TempDir directory: Path) {
+        val fixture = fixture(directory)
+        val installation =
+            assertInstanceOf<Refinement.Refined<ManagedHeadlessInstallation>>(
+                    ManagedHeadlessInstallation.resolve(fixture.launch, fixture.state, fixture.state.resolve("home"))
+                )
+                .value
+        fun heapOptions(heap: io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap): List<String> =
+            assertInstanceOf<Refinement.Refined<ManagedHeadlessLaunch>>(
+                    ManagedHeadlessLaunch.prepare(
+                        installation,
+                        "/usr/bin:/bin",
+                        io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+                        heap,
+                    )
+                )
+                .value
+                .options
+                .lines()
+                .filter { it.startsWith("-Xmx") || it.startsWith("-Xms") }
+        val configured =
+            io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.parseSetting("8192")
+                as Refinement.Refined
+        assertEquals(listOf("-Xmx8192m"), heapOptions(configured.value))
+        assertEquals(
+            listOf("-Xmx1536m"),
+            heapOptions(io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT),
+        )
+    }
+
+    @Test
     fun `launch input deletes the previous exit record and fails closed when it cannot`(@TempDir directory: Path) {
         val fixture = fixture(directory)
         val installation =
@@ -140,6 +173,7 @@ class ManagedHeadlessInstallationTest {
                         installation,
                         "/usr/bin:/bin",
                         io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+                        io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
                     )
                 )
                 .value

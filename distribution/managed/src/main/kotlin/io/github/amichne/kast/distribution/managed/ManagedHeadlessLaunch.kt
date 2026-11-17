@@ -2,6 +2,7 @@ package io.github.amichne.kast.distribution.managed
 
 import io.github.amichne.kast.distribution.contract.HostExitRecord
 import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
+import io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
@@ -55,6 +56,7 @@ private constructor(
             runtime: ManagedHeadlessInstallation,
             executablePath: String?,
             idleShutdown: HostIdleShutdown,
+            maxHeap: HostMaxHeap,
         ): Refinement<ManagedHeadlessLaunch, ManagedHeadlessLaunchFailure> {
             val search =
                 when (
@@ -67,7 +69,7 @@ private constructor(
                 val path =
                     vendorOptions(runtime) ?: return Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
                 val vendor = Files.readAllLines(path).filterNot { it.startsWith("-Xmx") || it.startsWith("-Xms") }
-                val lines = vendor + overrides(runtime) + HostIdleShutdown.jvmOptions(idleShutdown)
+                val lines = vendor + overrides(runtime, maxHeap) + HostIdleShutdown.jvmOptions(idleShutdown)
                 if (lines.any { it.contains('\n') || it.contains('\r') })
                     Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
                 else
@@ -100,9 +102,9 @@ private constructor(
             else null
         }
 
-        private fun overrides(runtime: ManagedHeadlessInstallation): List<String> =
+        private fun overrides(runtime: ManagedHeadlessInstallation, maxHeap: HostMaxHeap): List<String> =
             listOf(
-                "-Xmx1536m",
+                maxHeap.jvmOption,
                 "-Djava.awt.headless=true",
                 "-Didea.trust.headless.disabled=false",
                 "-Didea.trust.disabled=false",
