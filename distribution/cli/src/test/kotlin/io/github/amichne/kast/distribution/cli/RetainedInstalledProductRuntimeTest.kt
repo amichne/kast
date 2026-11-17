@@ -10,7 +10,7 @@ import org.junit.jupiter.api.io.TempDir
 
 class RetainedInstalledProductRuntimeTest {
     @Test
-    fun `retained installation admission rejects changed runtime bytes with the same size and mtime`(@TempDir temporary: Path) {
+    fun `runtime admission rejects changed bytes with the same size and mtime`(@TempDir temporary: Path) {
         val fixture = productFixture(temporary)
         val receipt = fixture.runtime.root.resolve("runtime.json")
         Files.setPosixFilePermissions(receipt, PosixFilePermissions.fromString("rw-------"))
