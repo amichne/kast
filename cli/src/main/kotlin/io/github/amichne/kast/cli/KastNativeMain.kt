@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.cli.mcp.KastMcpMain
 import io.github.amichne.kast.cli.publicshell.KastPublicCliMain
 import io.github.amichne.kast.cli.publicshell.PublicJqWorker
+import io.github.amichne.kast.cli.publicshell.nativeControlEnvironment
 import io.github.amichne.kast.cli.rpc.KastToolRpcMain
 import io.github.amichne.kast.distribution.cli.ControlStage
 import io.github.amichne.kast.distribution.cli.ControlStageOutcome
@@ -18,7 +19,8 @@ object KastNativeMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
         val started = System.nanoTime()
-        ControlStageTrace.configure(System.getenv())
+        val environment = nativeControlEnvironment()
+        ControlStageTrace.configure(environment)
         ControlStageTrace.record(ControlStage.PROCESS_START, ControlStageOutcome.CREATED, started)
         when (val admitted = admitNativeControlInvocation(arguments.toList())) {
             is Refinement.Rejected -> {
@@ -30,8 +32,8 @@ object KastNativeMain {
                 val args = invocation.arguments.toTypedArray()
                 when (invocation.entry) {
                     NativeControlEntry.MANAGEMENT -> {
-                        val installation = coordinatedQueryInstallation(invocation.arguments)
-                        if (installation != null) KastPublicCliMain.coordinated(args, installation)
+                        val installation = coordinatedQueryInstallation(invocation.arguments, environment)
+                        if (installation != null) KastPublicCliMain.coordinated(args, installation, environment)
                         runManagement(args)
                     }
                     NativeControlEntry.QUERY -> KastPublicCliMain.main(args)
@@ -48,10 +50,13 @@ object KastNativeMain {
     }
 }
 
-private fun coordinatedQueryInstallation(args: List<String>): java.nio.file.Path? {
+private fun coordinatedQueryInstallation(
+    args: List<String>,
+    environment: Map<String, String>,
+): java.nio.file.Path? {
     if (System.getProperty("org.graalvm.nativeimage.imagecode") != "runtime") return null
     val namespace = args.firstOrNull()
     if (namespace != "workspace" && !io.github.amichne.kast.distribution.cli.isPublicQueryNamespace(namespace))
         return null
-    return io.github.amichne.kast.distribution.cli.selectedPublicQueryInstallation(System.getenv())
+    return io.github.amichne.kast.distribution.cli.selectedPublicQueryInstallation(environment)
 }

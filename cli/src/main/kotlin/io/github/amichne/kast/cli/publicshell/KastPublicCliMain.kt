@@ -50,7 +50,11 @@ object KastPublicCliMain {
         )
     }
 
-    internal fun coordinated(args: Array<String>, installation: Path): Nothing {
+    internal fun coordinated(
+        args: Array<String>,
+        installation: Path,
+        environment: Map<String, String>,
+    ): Nothing {
         val started = System.nanoTime()
         val exit =
             run(args) { input, directory ->
@@ -58,7 +62,9 @@ object KastPublicCliMain {
                     args.toList(),
                     input,
                     directory,
-                    session = { workspace, catalog -> coordinatedPublicSession(installation, workspace, catalog) },
+                    session = { workspace, catalog ->
+                        coordinatedPublicSession(installation, workspace, catalog, environment)
+                    },
                     invoke = ::invokePublicSession,
                     diagnostic = System.err::println,
                 )
@@ -101,6 +107,8 @@ object KastPublicCliMain {
             .code
     }
 }
+
+internal fun nativeControlEnvironment(): Map<String, String> = System.getenv()
 
 internal sealed interface PublicOutputContent {
     data object DOCUMENT : PublicOutputContent

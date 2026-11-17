@@ -10,12 +10,13 @@ internal fun coordinatedPublicSession(
     installation: Path,
     directory: Path,
     catalog: PublicToolCatalog,
+    environment: Map<String, String>,
 ): KastDirectToolSession? =
     when (
         val selected =
             InstalledClientBinding.locate(
                 installation.resolve("share/kast/libexec/kast-management"),
-                System.getenv(),
+                environment,
             )
     ) {
         is Refinement.Rejected -> null

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
@@ -51,7 +52,7 @@ object ControlStageTrace {
     @Volatile private var enabled = false
 
     fun configure(environment: Map<String, String>) {
-        enabled = environment["KAST_DEBUG"] == "1"
+        enabled = environment[ConfigurationParameter.DEBUG.key] == "1"
     }
 
     fun record(
