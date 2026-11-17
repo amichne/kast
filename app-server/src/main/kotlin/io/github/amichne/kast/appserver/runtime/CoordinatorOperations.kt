@@ -31,6 +31,8 @@ import io.ktor.websocket.readText
 import io.ktor.websocket.send
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.selects.select
@@ -46,31 +48,46 @@ internal class CoordinatorOperations(
     private val available: () -> Boolean,
     private val execution: CoordinatorExecution?,
 ) {
+    private val admissions = OperationAdmissions()
+
     suspend fun handle(session: DefaultWebSocketServerSession) {
         val frame =
             withTimeoutOrNull(BrokerOperationalLimits.workerControlHandshake.value) {
                 session.incoming.receiveCatching().getOrNull()
             } ?: return
-        val response =
-            coroutineScope {
-                val invocation = async { exchange(frame) }
-                try {
-                    select<DaemonOperationResponse?> {
-                        invocation.onAwait { it }
-                        session.incoming.onReceiveCatching { null }
+        val lease = OperationLease(admissions)
+        try {
+            val response =
+                coroutineScope {
+                    val invocation = async { exchange(frame, lease) }
+                    try {
+                        select<DaemonOperationResponse?> {
+                            invocation.onAwait { it }
+                            session.incoming.onReceiveCatching { null }
+                        }
+                    } finally {
+                        invocation.cancel()
                     }
-                } finally {
-                    invocation.cancel()
-                }
-            } ?: return
-        val encoded = encode(response)
-        session.send(
-            if (encoded.toByteArray(Charsets.UTF_8).size <= DaemonOperationProtocol.maximumResponseBytes) encoded
-            else encode(reject(DaemonOperationProtocolFailure.OUTCOME_UNOBSERVED))
-        )
+                } ?: return
+            val encoded = encode(response)
+            session.send(
+                if (encoded.toByteArray(Charsets.UTF_8).size <= DaemonOperationProtocol.maximumResponseBytes) encoded
+                else encode(reject(DaemonOperationProtocolFailure.OUTCOME_UNOBSERVED))
+            )
+        } finally {
+            lease.release()
+        }
     }
 
-    private suspend fun exchange(frame: Frame): DaemonOperationResponse {
+    /**
+     * Closes admission, then waits for admitted operations to deliver or abandon their replies. Remaining operations
+     * are cancelled by the server shutdown that follows; their callers observe an unobserved outcome.
+     */
+    suspend fun settle(allowance: Long): OperationSettlement =
+        if (withTimeoutOrNull(allowance) { admissions.close().await() } == null) OperationSettlement.UNSETTLED
+        else OperationSettlement.SETTLED
+
+    private suspend fun exchange(frame: Frame, lease: OperationLease): DaemonOperationResponse {
         val request =
             when (val admitted = admitFrame(frame)) {
                 is Refinement.Rejected -> return reject(admitted.failure)
@@ -98,7 +115,7 @@ internal class CoordinatorOperations(
                     return DaemonOperationResponse.Rejected(DaemonOperationFailure.Input(admitted.failure))
                 is Refinement.Refined -> admitted.value
             }
-        if (!available()) return reject(DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION)
+        if (!available() || !lease.acquire()) return reject(DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION)
         val result =
             when (execute) {
                 is CoordinatorExecution.LaunchBound -> execute.executor.execute(root, call)
@@ -152,6 +169,49 @@ internal class CoordinatorOperations(
                     is DaemonOperationClientRejection.Coordinator -> reject(DaemonOperationProtocolFailure.UNAVAILABLE)
                 }
         }
+    }
+}
+
+internal enum class OperationSettlement {
+    SETTLED,
+    UNSETTLED,
+}
+
+/** Admission and closure share one monitor, so no operation is admitted after settlement begins. */
+private class OperationAdmissions {
+    private var active = 0
+    private var closed = false
+    private val settled = CompletableDeferred<Unit>()
+
+    @Synchronized
+    fun admit(): Boolean {
+        if (closed) return false
+        active++
+        return true
+    }
+
+    @Synchronized
+    fun release() {
+        active--
+        if (closed && active == 0) settled.complete(Unit)
+    }
+
+    @Synchronized
+    fun close(): CompletableDeferred<Unit> {
+        closed = true
+        if (active == 0) settled.complete(Unit)
+        return settled
+    }
+}
+
+/** One admitted operation per connection, released after its reply is delivered or abandoned. */
+private class OperationLease(private val admissions: OperationAdmissions) {
+    private val held = AtomicBoolean(false)
+
+    fun acquire(): Boolean = admissions.admit().also { held.set(it) }
+
+    fun release() {
+        if (held.compareAndSet(true, false)) admissions.release()
     }
 }
 

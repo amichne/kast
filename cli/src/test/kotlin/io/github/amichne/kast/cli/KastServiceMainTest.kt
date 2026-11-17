@@ -155,6 +155,9 @@ class KastServiceMainTest {
         val cases =
             listOf(
                 ServiceControlFailureDocument.Arguments to "arguments",
+                ServiceControlFailureDocument.SemanticCoordinator(
+                    io.github.amichne.kast.appserver.SemanticCoordinatorRetirement.EXIT_UNOBSERVED
+                ) to "semantic_coordinator",
                 ServiceControlFailureDocument.Headless(
                     io.github.amichne.kast.cli.installation.ManagedHeadlessShutdownFailure.HOST_NOT_SETTLED
                 ) to "MANAGED_HEADLESS_SHUTDOWN_REJECTED",
@@ -194,6 +197,10 @@ class KastServiceMainTest {
             is ServiceControlFailureDocument.Headless -> {
                 assertEquals(setOf("type", "failure"), encoded.keys)
                 assertEquals("HOST_NOT_SETTLED", encoded.getValue("failure").jsonPrimitive.content)
+            }
+            is ServiceControlFailureDocument.SemanticCoordinator -> {
+                assertEquals(setOf("type", "failure"), encoded.keys)
+                assertEquals("EXIT_UNOBSERVED", encoded.getValue("failure").jsonPrimitive.content)
             }
             ServiceControlFailureDocument.Arguments -> assertEquals(setOf("type"), encoded.keys)
             is ServiceControlFailureDocument.Host -> {

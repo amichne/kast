@@ -264,6 +264,10 @@ internal sealed interface SemanticPublicationState {
         fun inspect(installation: Path, path: Path, executable: Path): SemanticPublicationState {
             if (InstallationLifecycleFence.observe(installation) != InstallationLifecycleStartAdmission.AVAILABLE)
                 return Rejected(SemanticPublicationRejection.INSTALLATION_FENCED)
+            return inspectOwned(installation, path, executable)
+        }
+
+        fun inspectOwned(installation: Path, path: Path, executable: Path): SemanticPublicationState {
             val document =
                 when (val read = privateDocument(installation, path)) {
                     PrivateServiceDocument.Absent ->
@@ -307,8 +311,11 @@ private constructor(
     val generation: String
         get() = service.serviceInstanceId
 
+    val peer: SemanticCoordinatorPeer
+        get() = checkNotNull(service.semanticPeer)
+
     val processId: Long
-        get() = checkNotNull(service.semanticPeer).pid
+        get() = peer.pid
 
     fun admits(snapshot: CoordinatorStatusSnapshot): Boolean {
         val owner =
@@ -322,12 +329,13 @@ private constructor(
                 is Refinement.Rejected -> return false
                 is Refinement.Refined -> admitted.value
             }
-        return snapshot.belongsTo(owner, service) && current()
+        return snapshot.belongsTo(owner, service) &&
+            InstallationLifecycleFence.observe(installation) == InstallationLifecycleStartAdmission.AVAILABLE &&
+            current()
     }
 
-    private fun current(): Boolean =
-        InstallationLifecycleFence.observe(installation) == InstallationLifecycleStartAdmission.AVAILABLE &&
-            (privateDocument(installation, path) as? PrivateServiceDocument.Admitted)?.document == service &&
+    fun current(): Boolean =
+        (privateDocument(installation, path) as? PrivateServiceDocument.Admitted)?.document == service &&
             privateSocket(installation, socket.physicalPath) &&
             service.semanticPeer?.owns(socket, executable) == true
 
@@ -413,6 +421,6 @@ private fun ownedMode(path: Path, owner: UserPrincipal, mode: Set<PosixFilePermi
 private val privateDirectory = PosixFilePermissions.fromString("rwx------")
 private val privateFile = PosixFilePermissions.fromString("rw-------")
 
-private const val MANAGEMENT_EXECUTABLE = "share/kast/libexec/kast-management"
+internal const val MANAGEMENT_EXECUTABLE = "share/kast/libexec/kast-management"
 private const val SEMANTIC_SOCKET = "state/run/c.sock"
 private const val READINESS_POLL_MILLIS = 25L

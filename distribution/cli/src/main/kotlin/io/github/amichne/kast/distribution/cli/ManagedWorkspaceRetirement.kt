@@ -27,8 +27,14 @@ internal fun retireManagedProduct(
         retireManagedWorkspaces(store, lifecycle::fenceManagedProduct) { container ->
             shutdownContainerHost(container, selectedEnvironment, session)
         }
-    if (outcome is Refinement.Refined) reclaimVanishedWorkspaces(store)
-    return outcome
+    if (outcome is Refinement.Rejected) return outcome
+    return when (val retired = lifecycle.retireManagedCoordinator()) {
+        is Refinement.Rejected -> retired
+        is Refinement.Refined -> {
+            reclaimVanishedWorkspaces(store)
+            retired
+        }
+    }
 }
 
 /** No fence or Host effect is allowed until every known workspace has an exclusive lease. */

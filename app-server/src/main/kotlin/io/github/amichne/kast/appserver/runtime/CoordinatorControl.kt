@@ -54,6 +54,7 @@ private constructor(
     private val hostedServices: () -> List<HostedServiceStatus>,
     val privateEndpoint: Boolean,
     semantic: CoordinatorExecution?,
+    private val requestRetirement: (() -> Unit)?,
 ) {
     private val closed = AtomicBoolean(false)
     // Capture once: replacing installed bytes cannot change this process's loaded version.
@@ -74,6 +75,7 @@ private constructor(
             sessions,
             ManagedDaemonWorkspacePreparation(preparations),
             ::managementProjection,
+            requestRetirement?.let { ::retire },
             { root ->
                 when (val discovered = FilesystemCanonicalRootDiscovery.discover(root.path)) {
                     is CanonicalRootDiscovery.Discovered ->
@@ -112,12 +114,34 @@ private constructor(
             withTimeoutOrNull(BrokerOperationalLimits.managementExchange.value) {
                 session.incoming.receiveCatching().getOrNull()
             }
-        if (frame is Frame.Text) session.send(management.exchange(frame.readText()))
+        if (frame !is Frame.Text) return
+        val reply = management.respond(frame.readText())
+        try {
+            session.send(reply.text)
+            session.flush()
+        } finally {
+            if (reply.requestsRetirement) requestRetirement?.invoke()
+        }
+    }
+
+    /** Only an installation lifecycle transition retires this generation; ordinary workspace stop never does. */
+    private fun retire(): DaemonRetirementAdmission {
+        if (
+            InstallationLifecycleFence.observe(installationRoot) !=
+                InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
+        )
+            return DaemonRetirementAdmission.UNFENCED
+        closed.set(true)
+        return DaemonRetirementAdmission.ACCEPTED
     }
 
     suspend fun drain() {
         closed.set(true)
-        preparations.close()
+        try {
+            operations.settle(BrokerOperationalLimits.serviceRetirement.value)
+        } finally {
+            preparations.close()
+        }
     }
 
     suspend fun handleSemantic(session: DefaultWebSocketServerSession) = operations.handle(session)
@@ -186,6 +210,7 @@ private constructor(
             hostedServices: () -> List<HostedServiceStatus> = { emptyList() },
             privateEndpoint: Boolean,
             semantic: CoordinatorExecution? = null,
+            requestRetirement: (() -> Unit)? = null,
         ): Refinement<CoordinatorControl, WorkerControlFailure> =
             try {
                 val legacy = installationRoot.resolve("state/workers")
@@ -212,6 +237,7 @@ private constructor(
                                 hostedServices,
                                 privateEndpoint,
                                 semantic,
+                                requestRetirement,
                             )
                         )
                 }

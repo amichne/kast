@@ -17,6 +17,12 @@ import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.serialization.SerializationException
 
+/** Retirement closes admission only while the installation lifecycle fence is observed. */
+internal enum class DaemonRetirementAdmission {
+    ACCEPTED,
+    UNFENCED,
+}
+
 /** The existing coordinator owns lifecycle admission; enrollment owns filesystem admission and atomic writes. */
 internal class DaemonManagement(
     private val target: DaemonManagementTarget,
@@ -25,10 +31,13 @@ internal class DaemonManagement(
     private val sessions: DaemonSessions,
     private val preparation: DaemonWorkspacePreparation = DaemonWorkspacePreparation.Unavailable,
     private val projection: () -> io.github.amichne.kast.appserver.ManagementRuntimeProjection? = { null },
+    private val retire: (() -> DaemonRetirementAdmission)? = null,
     private val enroll:
         (CanonicalBrokerDirectory) -> Refinement<WorkspaceRegistrationAcknowledgement, EnrollmentFailure>,
 ) {
-    fun exchange(raw: String): String {
+    fun exchange(raw: String): String = respond(raw).text
+
+    fun respond(raw: String): ManagementReply {
         val response =
             if (raw.toByteArray(Charsets.UTF_8).size > DaemonManagementProtocol.maximumBytes) {
                 reject(DaemonManagementFailure.CAPACITY_EXCEEDED)
@@ -40,19 +49,29 @@ internal class DaemonManagement(
                 }
             }
         val encoded = DaemonManagementProtocol.json.encodeToString(DaemonManagementResponse.serializer(), response)
-        return if (encoded.toByteArray(Charsets.UTF_8).size <= DaemonManagementProtocol.maximumBytes) encoded
+        return if (encoded.toByteArray(Charsets.UTF_8).size <= DaemonManagementProtocol.maximumBytes)
+            ManagementReply(encoded, response is DaemonManagementResponse.Retiring)
         else
-            DaemonManagementProtocol.json.encodeToString(
-                DaemonManagementResponse.serializer(),
-                reject(DaemonManagementFailure.CAPACITY_EXCEEDED),
+            ManagementReply(
+                DaemonManagementProtocol.json.encodeToString(
+                    DaemonManagementResponse.serializer(),
+                    reject(DaemonManagementFailure.CAPACITY_EXCEEDED),
+                ),
+                false,
             )
     }
 
     internal fun execute(request: DaemonManagementRequest): DaemonManagementResponse {
         if (request.version != DaemonManagementProtocol.version)
             return reject(DaemonManagementFailure.UNSUPPORTED_VERSION)
+        // The installation fence already closed ordinary admission; retirement is admitted only through it.
+        if (request is DaemonManagementRequest.Retire) return retirement(request)
         if (!available()) return reject(DaemonManagementFailure.LIFECYCLE_TRANSITION)
-        return when (request) {
+        return executeAvailable(request)
+    }
+
+    private fun executeAvailable(request: DaemonManagementRequest): DaemonManagementResponse =
+        when (request) {
             is DaemonManagementRequest.Status -> DaemonManagementResponse.Status(status(), projection())
             is DaemonManagementRequest.RegisterWorkspace -> manage { register(request) }
             is DaemonManagementRequest.Sessions ->
@@ -72,6 +91,16 @@ internal class DaemonManagement(
             is DaemonManagementRequest.WorkspacePreparationStatus ->
                 if (request.target != target) reject(DaemonManagementFailure.IDENTITY_REJECTED)
                 else preparation.observe(request.requestId).response(target)
+            is DaemonManagementRequest.Retire -> retirement(request)
+        }
+
+    private fun retirement(request: DaemonManagementRequest.Retire): DaemonManagementResponse {
+        if (request.serviceGeneration != target.serviceGeneration)
+            return reject(DaemonManagementFailure.IDENTITY_REJECTED)
+        val admit = retire ?: return reject(DaemonManagementFailure.UNAVAILABLE)
+        return when (admit()) {
+            DaemonRetirementAdmission.ACCEPTED -> DaemonManagementResponse.Retiring(target)
+            DaemonRetirementAdmission.UNFENCED -> reject(DaemonManagementFailure.LIFECYCLE_UNFENCED)
         }
     }
 
@@ -182,3 +211,5 @@ internal class DaemonManagement(
     private fun reject(failure: DaemonManagementFailure) =
         DaemonManagementResponse.Rejected(DaemonManagementRejection.Protocol(failure))
 }
+
+internal data class ManagementReply(val text: String, val requestsRetirement: Boolean)
