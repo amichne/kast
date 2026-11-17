@@ -307,6 +307,7 @@ internal class MacOsPersistentBrokerServiceHost(
     private val startupTimeoutNanos: Long = DEFAULT_STARTUP_TIMEOUT_NANOS,
     private val retirementTimeoutNanos: Long = DEFAULT_RETIREMENT_TIMEOUT_NANOS,
     private val desktopDiscovery: DesktopDaemonDiscovery = DesktopDaemonDiscovery(),
+    private val semanticJob: (String) -> String? = ::readSemanticLaunchdJob,
 ) : PersistentBrokerServiceHost {
     internal fun observeLifecycle(command: BrokerServiceLaunchCommand): BrokerLifecycleObservation =
         when (observeService(command.serviceLabel)) {
@@ -329,13 +330,16 @@ internal class MacOsPersistentBrokerServiceHost(
                 LaunchctlExitContract.CompletionOrAbsent(LAUNCHCTL_SERVICE_NOT_FOUND),
             )
         val result =
-            if (existing == LaunchctlInvocation.Absent)
-                submitLaunchdJob(
-                    command.state.resolve("semantic-service.plist"),
-                    command.home,
-                    BrokerLaunchdServiceDocument.renderSemantic(command),
-                )
-            else existing
+            when (existing) {
+                LaunchctlInvocation.Absent ->
+                    submitLaunchdJob(
+                        command.state.resolve("semantic-service.plist"),
+                        command.home,
+                        BrokerLaunchdServiceDocument.renderSemantic(command),
+                    )
+                LaunchctlInvocation.Completed -> kickstartSemanticJob(command)
+                else -> existing
+            }
         return when (result) {
             LaunchctlInvocation.Completed -> Refinement.Refined(Unit)
             LaunchctlInvocation.Interrupted -> Refinement.Rejected(PersistentBrokerServiceFailure.INTERRUPTED)
@@ -918,6 +922,22 @@ internal class MacOsPersistentBrokerServiceHost(
             val uid = Files.getAttribute(home, "unix:uid") as? Number ?: return LaunchctlInvocation.Rejected
             launchctl.invoke(
                 listOf(LAUNCHCTL_EXECUTABLE, "bootstrap", "gui/${uid.toLong()}", plist.toString()),
+                LaunchctlExitContract.CompletionOnly,
+            )
+        } catch (_: IOException) {
+            LaunchctlInvocation.Rejected
+        } catch (_: SecurityException) {
+            LaunchctlInvocation.Rejected
+        }
+
+    private fun kickstartSemanticJob(command: SemanticServiceLaunch): LaunchctlInvocation =
+        try {
+            val uid = Files.getAttribute(command.home, "unix:uid") as? Number ?: return LaunchctlInvocation.Rejected
+            val target = "gui/${uid.toLong()}/${command.label}"
+            val job = semanticJob(target) ?: return LaunchctlInvocation.Rejected
+            if (!ownsSemanticLaunchdJob(job, target, command)) return LaunchctlInvocation.Rejected
+            launchctl.invoke(
+                listOf(LAUNCHCTL_EXECUTABLE, "kickstart", target),
                 LaunchctlExitContract.CompletionOnly,
             )
         } catch (_: IOException) {

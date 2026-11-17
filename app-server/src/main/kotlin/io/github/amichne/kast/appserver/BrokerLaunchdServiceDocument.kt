@@ -43,7 +43,8 @@ internal object BrokerLaunchdServiceDocument {
                     "<key>ThrottleInterval</key><integer>10</integer>"
             else
                 "<key>WorkingDirectory</key><string>${xml(directory)}</string>" +
-                    "<key>StandardInPath</key><string>/dev/null</string>"
+                    "<key>StandardInPath</key><string>/dev/null</string>" +
+                    "<key>AbandonProcessGroup</key><true/>"
         return """<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0"><dict><key>Label</key><string>${xml(label)}</string>
 <key>ProgramArguments</key><array>${arguments.joinToString("") { "<string>${xml(it)}</string>" }}</array>

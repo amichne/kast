@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -59,6 +60,63 @@ class SemanticServiceLaunchTest {
             assertEquals(io.github.amichne.kast.kernel.Refinement.Refined(Unit), host.submitSemantic(command))
             assertEquals(listOf("list", "bootstrap"), launches)
         }
+
+    @Test
+    fun `semantic startup starts a loaded launchd job that has no live publication`() =
+        withCoordinatorPayload { root, _ ->
+            val executable = root.resolve("share/kast/libexec/kast-management")
+            Files.createDirectories(executable.parent)
+            Files.writeString(executable, "fixture")
+            Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
+            val command = checkNotNull(SemanticServiceLaunch.admit(root, root, emptyMap()))
+            val calls = mutableListOf<List<String>>()
+            val target = "gui/${Files.getAttribute(root, "unix:uid")}/${command.label}"
+            var publishedJob = launchdOutput(target, command)
+            val host =
+                MacOsPersistentBrokerServiceHost(
+                    semanticJob = { selected -> publishedJob.takeIf { selected == target } },
+                    launchctl =
+                        LaunchctlInvoker { arguments, _ ->
+                            calls += arguments
+                            when (arguments[1]) {
+                                "list",
+                                "kickstart" -> LaunchctlInvocation.Completed
+                                else -> error("Unexpected launchctl action: ${arguments[1]}")
+                            }
+                        },
+                )
+            publishedJob = publishedJob.replace(command.executable.toString(), "/foreign/kast-management")
+            assertEquals(
+                Refinement.Rejected(PersistentBrokerServiceFailure.SERVICE_SUBMISSION_REJECTED),
+                host.submitSemantic(command),
+            )
+            assertEquals(listOf(listOf("/bin/launchctl", "list", command.label)), calls)
+            calls.clear()
+            publishedJob = launchdOutput(target, command)
+            assertEquals(Refinement.Refined(Unit), host.submitSemantic(command))
+            assertEquals(
+                listOf(
+                    listOf("/bin/launchctl", "list", command.label),
+                    listOf(
+                        "/bin/launchctl",
+                        "kickstart",
+                        "gui/${Files.getAttribute(root, "unix:uid")}/${command.label}",
+                    ),
+                ),
+                calls,
+            )
+        }
+
+    private fun launchdOutput(target: String, command: SemanticServiceLaunch): String = buildString {
+        appendLine("$target = {")
+        appendLine("\tpath = ${command.state.resolve("semantic-service.plist")}")
+        appendLine("\tprogram = /usr/bin/env")
+        appendLine("\targuments = {")
+        command.arguments.forEach { appendLine("\t\t$it") }
+        appendLine("\t}")
+        appendLine("\tworking directory = ${command.installation}")
+        appendLine("}")
+    }
 
     @Test
     fun `semantic startup submits an independent systemd user service`() = withCoordinatorPayload { root, _ ->
