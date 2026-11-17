@@ -99,6 +99,7 @@ private fun DaemonOperationClientRejection.hookFailure(): HookPreparationFailure
             }
         is DaemonOperationClientRejection.Command,
         is DaemonOperationClientRejection.Coordinator,
+        is DaemonOperationClientRejection.Startup,
         is DaemonOperationClientRejection.Transport -> HookPreparationFailure.Unproven
     }
 

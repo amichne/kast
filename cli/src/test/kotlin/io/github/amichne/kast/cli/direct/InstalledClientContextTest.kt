@@ -152,6 +152,50 @@ class InstalledClientContextTest {
     }
 
     @Test
+    fun `installed semantic entry preserves the exact coordinator startup rejection`(@TempDir temporary: Path) {
+        val cases =
+            mapOf<String, (Path) -> Unit>(
+                "daemon-operation-startup-installation-fenced" to
+                    { installation ->
+                        Files.writeString(installation.resolve(".lifecycle-transition.json"), "transition")
+                    },
+                "daemon-operation-startup-ownership-rejected" to
+                    { installation ->
+                        Files.createDirectories(installation.resolve("state/run"))
+                        Files.writeString(installation.resolve("state/run/c.sock"), "foreign")
+                    },
+                // The digest check rejects the submission before any supervisor or process effect.
+                "daemon-operation-startup-submission-kast-qualification-rejected" to
+                    { installation ->
+                        Files.writeString(installation.resolve("bin/kast-query"), "unqualified bytes")
+                    },
+            )
+        for ((expected, prepare) in cases) {
+            val home = Files.createDirectory(temporary.resolve(expected)).toRealPath()
+            val payload = installedPayload(home, "bin/kast-query")
+            val installation = payload.parent.parent
+            prepare(installation)
+            val workspace = Files.createDirectory(home.resolve("workspace"))
+            Files.writeString(workspace.resolve("settings.gradle.kts"), "")
+            val binding =
+                when (val located = InstalledClientBinding.locate(payload, mapOf("HOME" to home.toString()))) {
+                    is Refinement.Refined -> located.value
+                    is Refinement.Rejected -> error("Fixture binding rejected: ${located.failure}")
+                }
+            val session = checkNotNull(KastDirectToolSession.installed(workspace, binding, PublicToolCatalog.COMPLETE))
+            val identity = PublicToolIdentity.QUERY_SYMBOLS
+            val request = PublicToolContract.examples(identity).examples.getValue("runByName").value.jsonObject
+            val rejection =
+                assertInstanceOf(CliExit.BoundaryRejected::class.java, session.invoke(identity.toolName, request))
+            val document = Json.parseToJsonElement(rejection.document.value).jsonObject
+            assertEquals(setOf("status", "boundary", "reason"), document.keys, expected)
+            assertEquals("runtime", document.getValue("boundary").jsonPrimitive.content, expected)
+            assertEquals(expected, document.getValue("reason").jsonPrimitive.content)
+            assertFalse(Files.exists(installation.resolve("state/broker")), expected)
+        }
+    }
+
+    @Test
     fun `installed catalogs preserve canonical contracts effects and selected grammar`(@TempDir temporary: Path) {
         val payload = installedPayload(temporary.toRealPath(), "share/kast/libexec/kast-management")
         val context = admitted(payload)
