@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.publicshell
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
@@ -87,7 +89,7 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
             IdeHostBuildIdentity("0.0.0", "a".repeat(40), "b".repeat(40)),
             mode = IdeHostMode.MANAGED_HEADLESS,
         )
-    private val application = IdeHostApplicationAdvertisement(identity, compatibility)
+    private val application = IdeHostApplicationAdvertisement(identity, compatibility, defaultGradleIdentity())
     private val endpointRoot =
         Files.createDirectory(
             io.github.amichne.kast.distribution.contract.HostedEndpointPaths.root(deployment.userHome)
@@ -132,13 +134,32 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
     }
 
     init {
-        val socket = (hosted.localAddress as UnixDomainSocketAddress).path
-        Files.writeString(
-            socket.parent.resolve("endpoint.json"),
-            json.encodeToString(
-                PeerDescriptor(target.root, socket.toString(), target.project, application, hostPid = identity.pid)
-            ),
-        )
+        writeDescriptor(hosted) { socket ->
+            PeerDescriptor(target.root, socket.toString(), target.project, application, hostPid = identity.pid)
+        }
+        writeDescriptor(lifecycle) { socket ->
+            PeerDescriptor(
+                identity.ideaHome,
+                socket.toString(),
+                target.host,
+                application,
+                hostPid = identity.pid,
+                querySchema = "kast.workspace.lifecycle.v2",
+                operations = listOf("WORKSPACE_LIFECYCLE"),
+            )
+        }
+    }
+
+    private fun writeDescriptor(listener: ServerSocketChannel, descriptor: (Path) -> PeerDescriptor) {
+        val socket = (listener.localAddress as UnixDomainSocketAddress).path
+        Files.writeString(socket.parent.resolve("endpoint.json"), json.encodeToString(descriptor(socket)))
+    }
+
+    private fun defaultGradleIdentity(): String {
+        val gradleHome = deployment.gradleHome.toString()
+        val selected = GradleImportEnvironment.admit("GRADLE_USER_HOME", "", mapOf("GRADLE_USER_HOME" to gradleHome))
+        check(selected is Refinement.Refined)
+        return selected.value.identity.value
     }
 
     fun awaitQuery() {
