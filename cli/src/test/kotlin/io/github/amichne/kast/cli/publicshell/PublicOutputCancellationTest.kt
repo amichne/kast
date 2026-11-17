@@ -61,7 +61,7 @@ class PublicOutputCancellationTest {
         val bytes = Files.readAllBytes(temporary.resolve("control.stdout"))
         val text = bytes.toString(Charsets.UTF_8)
         assertTrue(bytes.size > 1_048_576, "Output control no longer exceeds a pipe's capacity")
-        assertEquals(1, text.count { it == '\n' })
+        assertTrue(text.startsWith("{\n  \""))
         assertTrue(text.endsWith("\n"))
         assertEquals(
             "kast.cli.describe.v1",

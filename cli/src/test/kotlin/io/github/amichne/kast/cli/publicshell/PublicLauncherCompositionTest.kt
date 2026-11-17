@@ -94,7 +94,7 @@ class PublicLauncherCompositionTest {
                 if (arguments.contains("--help")) {
                     assertTrue(text.contains("kast ${arguments.first()}"), text)
                 } else {
-                    val document = oneDocument(text)
+                    val document = oneDocument(text, schema = arguments.first() == "describe" && "input" in arguments)
                     when {
                         arguments.first() == "describe" ->
                             assertEquals("kast.cli.describe.v1", document.getValue("schema").jsonPrimitive.content)
@@ -236,9 +236,9 @@ class PublicLauncherCompositionTest {
         Files.list(records).use { assertEquals(0L, it.count()) }
     }
 
-    private fun oneDocument(text: String): JsonObject {
+    private fun oneDocument(text: String, schema: Boolean = false): JsonObject {
         assertTrue(text.endsWith("\n"))
-        assertEquals(1, text.count { it == '\n' })
+        if (schema) assertTrue(text.startsWith("{\n  \"")) else assertEquals(1, text.count { it == '\n' })
         return Json.parseToJsonElement(text).jsonObject
     }
 }
