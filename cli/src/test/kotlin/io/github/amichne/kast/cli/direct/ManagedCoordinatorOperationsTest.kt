@@ -91,6 +91,28 @@ class ManagedCoordinatorOperationsTest {
     }
 
     @Test
+    fun `closing the coordinator interrupts a preparation whose only caller was cancelled`() = runBlocking {
+        val workspaces = ScriptedWorkspaces().blockPreparation(rootA)
+        val operations = ManagedCoordinatorOperations(SERVICE, workspaces)
+        val cancelled = async(Dispatchers.Default) { operations.execute(rootA, defaults, prepareRead) }
+        workspaces.awaitPreparationStart()
+        cancelled.cancelAndJoin()
+
+        val closing = CompletableFuture.runAsync(operations::close)
+        try {
+            closing.get(WAIT.inWholeSeconds, TimeUnit.SECONDS)
+        } finally {
+            workspaces.releasePreparation(rootA)
+            closing.get(WAIT.inWholeSeconds, TimeUnit.SECONDS)
+        }
+
+        assertEquals(1, workspaces.interruptedPreparations.get())
+        assertEquals(null, operations.phase(rootA))
+        assertEquals(lifecycleTransition, operations.execute(rootA, defaults, prepareRead))
+        assertEquals(listOf(rootA), workspaces.preparations.toList())
+    }
+
+    @Test
     fun `explicit conflicting Host settings reject before a read and request-local settings reuse the Host`() =
         runBlocking {
             val workspaces = ScriptedWorkspaces()
