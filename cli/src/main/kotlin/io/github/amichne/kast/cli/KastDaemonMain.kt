@@ -8,6 +8,8 @@ import io.github.amichne.kast.appserver.BrokerServerRun
 import io.github.amichne.kast.appserver.BrokerServerRunner
 import io.github.amichne.kast.appserver.InstalledAppServerManager
 import io.github.amichne.kast.appserver.InstalledBrokerServerRunner
+import io.github.amichne.kast.cli.direct.InstalledClientContext
+import io.github.amichne.kast.cli.direct.ManagedCoordinatorOperations
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlin.system.exitProcess
@@ -20,6 +22,7 @@ object KastDaemonMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
         val environment = System.getenv()
+        if (arguments.toList() == listOf("--semantic")) return presentDaemonRun(runSemanticDaemon(environment))
         if (arguments.isNotEmpty() && arguments.toList() != listOf("--login")) {
             System.err.println(Json.encodeToString(DaemonBootstrapRejection(BrokerServerFailure.ARGUMENTS_REJECTED)))
             exitProcess(DAEMON_REJECTED_EXIT_CODE)
@@ -53,15 +56,37 @@ object KastDaemonMain {
                 System.err.println(serviceControlJson.encodeToString<ServiceControlFailureDocument>(failure))
                 exitProcess(DAEMON_REJECTED_EXIT_CODE)
             }
-            is DaemonEntryOutcome.Ran ->
-                when (val result = outcome.run) {
-                    BrokerServerRun.Stopped -> Unit
-                    is BrokerServerRun.Rejected -> {
-                        System.err.println(Json.encodeToString(DaemonBootstrapRejection(result.failure)))
-                        exitProcess(DAEMON_REJECTED_EXIT_CODE)
-                    }
-                }
+            is DaemonEntryOutcome.Ran -> presentDaemonRun(outcome.run)
         }
+    }
+}
+
+private fun presentDaemonRun(result: BrokerServerRun) {
+    if (result is BrokerServerRun.Rejected) {
+        System.err.println(Json.encodeToString(DaemonBootstrapRejection(result.failure)))
+        exitProcess(DAEMON_REJECTED_EXIT_CODE)
+    }
+}
+
+private fun runSemanticDaemon(environment: Map<String, String>): BrokerServerRun {
+    val context =
+        when (val admitted = InstalledClientContext.current(environment)) {
+            is Refinement.Rejected -> return BrokerServerRun.Rejected(BrokerServerFailure.KAST_EXECUTABLE_REJECTED)
+            is Refinement.Refined -> admitted.value
+        }
+    val home = Path.of(System.getProperty("user.home")).toRealPath()
+    val semantic =
+        environment +
+            mapOf(
+                "KAST_APP_SERVER_PUBLIC_ENDPOINT" to "private",
+                "CODEX_HOME" to home.resolve(".codex").toString(),
+            )
+    return ManagedCoordinatorOperations(context).use {
+        runDaemonBootstrap(
+            emptyList(),
+            semantic,
+            InstalledBrokerServerRunner(context.installation.resolve("bin/kast"), home, semantic, it),
+        )
     }
 }
 

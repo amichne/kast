@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
+import io.github.amichne.kast.distribution.contract.ContainerFailure
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
@@ -150,6 +151,10 @@ sealed interface DaemonOperationFailure {
     @Serializable
     @SerialName("workspace")
     data class Workspace(val id: String, val cause: WorkspaceDemandCause) : DaemonOperationFailure
+
+    @Serializable
+    @SerialName("managed_workspace")
+    data class ManagedWorkspace(val reason: ContainerFailure) : DaemonOperationFailure
 
     @Serializable @SerialName("host") data class Host(val reason: ExistingIdeFailure) : DaemonOperationFailure
 }

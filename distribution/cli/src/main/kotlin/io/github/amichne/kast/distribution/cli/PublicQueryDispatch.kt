@@ -112,6 +112,21 @@ internal fun selectPublicQueryLauncher(environment: Map<String, String>): Public
         PublicQueryLauncher.Unavailable
     }
 
+/** Selects the same physical installation as the public query launcher without hashing the payload. */
+fun selectedPublicQueryInstallation(environment: Map<String, String>): Path? =
+    try {
+        when (val selected = resolveManagementRoot(environment)) {
+            is ManagementRootResolution.Rejected -> null
+            is ManagementRootResolution.Selected -> selectedInstallation(selected.root)
+        }
+    } catch (_: ManagementRejected) {
+        null
+    } catch (_: IOException) {
+        null
+    } catch (_: SecurityException) {
+        null
+    }
+
 @Serializable
 private data class PublicQueryStartupRejection(
     val failure: PublicQueryStartupFailure,

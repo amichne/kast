@@ -59,6 +59,7 @@ object ControlStageTrace {
         startedNanos: Long,
         bytes: Long? = null,
         generation: String? = null,
+        processId: Long = ProcessHandle.current().pid(),
     ) {
         if (!enabled) return
         val event =
@@ -66,7 +67,7 @@ object ControlStageTrace {
                 stage,
                 outcome,
                 System.nanoTime() - startedNanos,
-                ProcessHandle.current().pid(),
+                processId,
                 bytes,
                 generation,
             )

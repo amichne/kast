@@ -33,6 +33,7 @@ private fun classifyServerFailure(cause: DaemonOperationFailure): PublicShellExi
         is DaemonOperationFailure.Root -> PublicShellExit.WORKSPACE
         is DaemonOperationFailure.Input -> PublicShellExit.INPUT
         is DaemonOperationFailure.Preparation,
+        is DaemonOperationFailure.ManagedWorkspace,
         is DaemonOperationFailure.Workspace -> PublicShellExit.RUNTIME
         is DaemonOperationFailure.Protocol ->
             when (cause.reason) {

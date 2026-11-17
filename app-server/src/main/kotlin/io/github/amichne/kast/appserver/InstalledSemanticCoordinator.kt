@@ -18,11 +18,17 @@ class InstalledSemanticCoordinator
 private constructor(
     private val client: InstalledDaemonOperationClient,
     val generation: String,
+    val processId: Long,
 ) {
     suspend fun execute(root: CanonicalRoot, call: DaemonOperationCall): DaemonOperationResult =
         client.exchange(root, call)
 
     companion object {
+        fun readinessPath(installation: Path, home: Path): Path =
+            BrokerInstallationLayout.from(installation.resolve("bin/kast"), home.resolve(".codex"))
+                .broker
+                .resolve("service-readiness.json")
+
         suspend fun observe(
             installation: Path,
             readiness: Path,
@@ -48,6 +54,7 @@ private constructor(
                 InstalledSemanticCoordinator(
                     InstalledDaemonOperationClient(publication.socket.path, target) { publication.admits(snapshot) },
                     target.serviceGeneration,
+                    publication.processId,
                 )
             )
         }
@@ -70,6 +77,9 @@ private constructor(
     private val executable: Path,
     val socket: BrokerSocketPath,
 ) {
+    val processId: Long
+        get() = checkNotNull(service.semanticPeer).pid
+
     fun admits(snapshot: CoordinatorStatusSnapshot): Boolean {
         val owner =
             when (

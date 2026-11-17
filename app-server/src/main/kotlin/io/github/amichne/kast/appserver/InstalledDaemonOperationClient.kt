@@ -185,6 +185,7 @@ fun DaemonOperationClientRejection.diagnosticCode(): String =
                             is DaemonOperationInputFailure.SourceAnchor -> "daemon-operation-${input.cause.name}"
                         }
                     is DaemonOperationFailure.Preparation -> "daemon-operation-preparation-${reason.reason.name}"
+                    is DaemonOperationFailure.ManagedWorkspace -> "daemon-operation-workspace-${reason.reason.name}"
                     is DaemonOperationFailure.Workspace ->
                         when (val cause = reason.cause) {
                             is io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause.Preparation ->

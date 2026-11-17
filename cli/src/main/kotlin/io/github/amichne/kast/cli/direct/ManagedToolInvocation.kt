@@ -94,7 +94,7 @@ internal fun <Result> invokeManagedTool(
     }
 }
 
-private class ManagedToolClient
+internal class ManagedToolClient
 private constructor(
     private val owner: McpWorkspaceOperationClient,
     val capabilities: ExistingIdeCliCapabilities,
@@ -183,7 +183,7 @@ private fun managedToolRejected(failure: ManagedToolFailure): CliExit.BoundaryRe
             io.github.amichne.kast.cli.boundaryExit(CliBoundaryExitStatus.RUNTIME, "installation-shutdown")
     }
 
-private fun managedWorkspaceRejected(failure: ContainerFailure): CliExit.BoundaryRejected =
+internal fun managedWorkspaceRejected(failure: ContainerFailure): CliExit.BoundaryRejected =
     CliExit.BoundaryRejected(
         CliBoundaryExitStatus.RUNTIME,
         managedWorkspaceRejection.create(

@@ -29,7 +29,11 @@ object KastNativeMain {
                 val invocation = admitted.value
                 val args = invocation.arguments.toTypedArray()
                 when (invocation.entry) {
-                    NativeControlEntry.MANAGEMENT -> runManagement(args)
+                    NativeControlEntry.MANAGEMENT -> {
+                        val installation = coordinatedQueryInstallation(invocation.arguments)
+                        if (installation != null) KastPublicCliMain.coordinated(args, installation)
+                        runManagement(args)
+                    }
                     NativeControlEntry.QUERY -> KastPublicCliMain.main(args)
                     NativeControlEntry.JQ -> PublicJqWorker.main(args)
                     NativeControlEntry.MCP -> KastMcpMain.main(args)
@@ -42,4 +46,11 @@ object KastNativeMain {
             }
         }
     }
+}
+
+private fun coordinatedQueryInstallation(args: List<String>): java.nio.file.Path? {
+    if (System.getProperty("org.graalvm.nativeimage.imagecode") != "runtime") return null
+    if (args.firstOrNull() != "query" || args.drop(1).none { it == "--name" || it.startsWith("--name=") })
+        return null
+    return io.github.amichne.kast.distribution.cli.selectedPublicQueryInstallation(System.getenv())
 }
