@@ -809,6 +809,56 @@ class CandidateFixture(unittest.TestCase):
                 )
                 script.consumed()
 
+    def test_installation_token_discovers_drafts_with_false_repository_push_permission(
+        self,
+    ) -> None:
+        prepared = self.prepare()
+        draft = Release(prepared.build.releaseTag, BUILD, (), draft=True)
+        for tag, expected in (
+            (draft.tag_name, publisher.ReleaseId(draft.id)),
+            ("new-release", publisher.DiscoveryState.ABSENT),
+        ):
+            with self.subTest(tag=tag):
+                script = Script(
+                    Step("GET", "", response(RepositoryAccess(permissions=Permissions(False)))),
+                    Step("GET", "releases?per_page=100&page=1", discovery_page(draft)),
+                    Step("GET", "releases?per_page=100&page=2", response(())),
+                )
+                remote = publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
+                self.assertEqual(expected, remote.discover(tag))
+                self.assertEqual(
+                    [
+                        publisher.ReleaseEvent(
+                            publisher.ReleaseOperation.DISCOVER, publisher.DraftVisibility.OBSERVED
+                        )
+                    ],
+                    remote.evidence,
+                )
+                script.consumed()
+
+    def test_discovery_rejects_public_only_listing_before_writes(self) -> None:
+        prepared = self.prepare()
+        release = Release(prepared.build.releaseTag, BUILD, ())
+        script = Script(
+            Step("GET", "", response(RepositoryAccess(permissions=Permissions(False)))),
+            Step("GET", "releases?per_page=100&page=1", discovery_page(release)),
+            Step("GET", "releases?per_page=100&page=2", response(())),
+        )
+        remote = publisher.RemotePublisher(REPOSITORY, prepared.build, script.run)
+        self.assertEqual(
+            publisher.Rejected(
+                publisher.Stage.IMMUTABLE_RELEASE,
+                catalog.Failure.DRAFT_VISIBILITY_UNPROVEN,
+                (
+                    publisher.ReleaseEvent(
+                        publisher.ReleaseOperation.DISCOVER, publisher.DraftVisibility.UNPROVEN
+                    ),
+                ),
+            ),
+            publisher.publish(prepared, remote),
+        )
+        script.consumed()
+
     def test_discovery_rejects_unproven_visibility_pagination_and_identity_before_writes(
         self,
     ) -> None:
@@ -816,10 +866,6 @@ class CandidateFixture(unittest.TestCase):
         draft = Release(prepared.build.releaseTag, BUILD, (), draft=True)
         unavailable = publisher.ProcessResult(1, b"HTTP/2.0 503\n\n{}")
         cases = (
-            (
-                (Step("GET", "", response(RepositoryAccess(permissions=Permissions(False)))),),
-                catalog.Failure.DRAFT_VISIBILITY_UNPROVEN,
-            ),
             (
                 (
                     Step("GET", "", response(RepositoryAccess())),
