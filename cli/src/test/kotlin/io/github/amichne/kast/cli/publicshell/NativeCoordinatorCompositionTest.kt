@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
+import io.github.amichne.kast.appserver.InstalledSemanticCoordinator
 import io.github.amichne.kast.appserver.NativeCoordinatorProbe
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -14,10 +15,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardWatchEventKinds.ENTRY_CREATE
 import java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY
+import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -29,6 +34,29 @@ import org.junit.jupiter.api.io.TempDir
 /** Actual native startup, management status, readiness, and shutdown in an owned private installation. */
 @Tag("public-launcher")
 class NativeCoordinatorCompositionTest {
+    @Test
+    fun `public query reports an unadmitted coordinator publication`(@TempDir evidence: Path) {
+        NativePublicFixture(evidence).use { fixture ->
+            val readiness = InstalledSemanticCoordinator.readinessPath(fixture.installation, fixture.home)
+            Files.createDirectories(readiness.parent, PosixFilePermissions.asFileAttribute(privateDirectory))
+            Files.writeString(readiness, "{")
+            Files.setPosixFilePermissions(readiness, PosixFilePermissions.fromString("rw-------"))
+
+            val arguments =
+                listOf("query", "--workspace", fixture.workspace.toString(), "--name", "OrderService", "--json")
+            fixture.assertExit(fixture.start("unadmitted", arguments), 5, "unadmitted")
+            val reply = Json.parseToJsonElement(Files.readString(evidence.resolve("unadmitted.stdout"))).jsonObject
+            assertEquals("rejected_document", reply.getValue("type").jsonPrimitive.content)
+            val document = reply.getValue("document").jsonObject
+            assertEquals("runtime", document.getValue("boundary").jsonPrimitive.content)
+            assertEquals(
+                "daemon-operation-startup-ownership-rejected",
+                document.getValue("reason").jsonPrimitive.content,
+            )
+            assertEquals("{", Files.readString(readiness))
+        }
+    }
+
     @Test
     fun `native daemon serves management before optional host admission and removes its state on termination`(
         @TempDir evidence: Path
@@ -135,3 +163,5 @@ class NativeCoordinatorCompositionTest {
         val error: Path,
     )
 }
+
+private val privateDirectory = PosixFilePermissions.fromString("rwx------")
