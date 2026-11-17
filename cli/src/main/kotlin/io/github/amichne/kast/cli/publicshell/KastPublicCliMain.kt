@@ -65,7 +65,6 @@ object KastPublicCliMain {
                     session = { workspace, catalog ->
                         coordinatedPublicSession(installation, workspace, catalog, environment)
                     },
-                    invoke = ::invokePublicSession,
                     diagnostic = System.err::println,
                 )
             }

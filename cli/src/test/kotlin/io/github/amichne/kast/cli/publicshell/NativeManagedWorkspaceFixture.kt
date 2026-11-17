@@ -129,11 +129,25 @@ internal class NativeManagedWorkspaceFixture(installation: Path, workspace: Path
             .map { (relative, content) ->
                 val file = runtime.resolve(relative)
                 Files.createDirectories(file.parent)
-                Files.writeString(file, content)
+                if (relative == launcher) copyFixtureHost(file, mac) else Files.writeString(file, content)
                 val executable = relative.endsWith("/idea") || relative.endsWith("/java")
                 if (executable) Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rwx------"))
                 NativeRuntimeFile(relative, Files.size(file), nativeDigest(file), executable)
             }
+    }
+
+    private fun copyFixtureHost(file: Path, mac: Boolean) {
+        Files.copy(Path.of("/bin/cat"), file)
+        if (!mac) return
+        val signature =
+            ProcessBuilder("/usr/bin/codesign", "--force", "--sign", "-", file.toString())
+                .redirectError(ProcessBuilder.Redirect.INHERIT)
+                .start()
+        try {
+            check(signature.waitFor(10, java.util.concurrent.TimeUnit.SECONDS) && signature.exitValue() == 0)
+        } finally {
+            stopNativeProcess(signature)
+        }
     }
 }
 

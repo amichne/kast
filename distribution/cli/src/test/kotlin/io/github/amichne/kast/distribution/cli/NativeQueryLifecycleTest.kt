@@ -23,9 +23,13 @@ class NativeQueryLifecycleTest {
                 )
             assertInstanceOf(ShutdownProcessAdmission.Owned::class.java, fixture.admit(observed))
         }
+        val publicQuery = fixture.snapshot.copy(arguments = listOf("query", "--name", "StringFeed"))
+        assertInstanceOf(ShutdownProcessAdmission.Owned::class.java, fixture.admit(publicQuery))
         for (arguments in
             listOf(
                 emptyList(),
+                listOf("status", "--json"),
+                listOf("uninstall"),
                 listOf("--internal-entrypoint=service"),
                 listOf("--internal-entrypoint=daemon"),
                 listOf("--internal-entrypoint=unknown"),
