@@ -58,15 +58,20 @@ object KastPublicCliMain {
         val started = System.nanoTime()
         val exit =
             run(args) { input, directory ->
-                preparePublicCli(
-                    args.toList(),
-                    input,
-                    directory,
-                    session = { workspace, catalog ->
-                        coordinatedPublicSession(installation, workspace, catalog, environment)
-                    },
-                    diagnostic = System.err::println,
-                )
+                if (args.firstOrNull() == "workspace")
+                    preparePublicHook(args.toList(), input, System.err::println) { root, wait ->
+                        coordinatedHookPreparation(installation, environment, root, wait, System.err::println)
+                    }
+                else
+                    preparePublicCli(
+                        args.toList(),
+                        input,
+                        directory,
+                        session = { workspace, catalog ->
+                            coordinatedPublicSession(installation, workspace, catalog, environment)
+                        },
+                        diagnostic = System.err::println,
+                    )
             }
         io.github.amichne.kast.distribution.cli.ControlStageTrace.record(
             io.github.amichne.kast.distribution.cli.ControlStage.END_TO_END,

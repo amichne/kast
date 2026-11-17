@@ -612,6 +612,18 @@ class Probe:
                 raise ValueError("warm coordinator read changed compiler workspace lifetime")
         first, second = ((self.evidence / f"{case}.stderr").read_bytes() for case in cases)
         require_warm_coordinator_reuse(first, second)
+        raw = self.run(
+            "coordinator-workspace-wait",
+            workspace,
+            ("workspace", "wait", "--wait", "60000"),
+            trace=True,
+        )
+        output = product.document(raw)
+        preparation = output.get("preparation") if product.mapping(output) else None
+        if preparation != {"type": "ready", "wait": {"mode": "BOUNDED", "timeoutMillis": 60000}}:
+            raise ValueError("Workspace wait did not report readiness with the selected wait")
+        waited = (self.evidence / "coordinator-workspace-wait.stderr").read_bytes()
+        require_warm_coordinator_reuse(second, waited)
 
     def install(
         self, directory: Path, record: product.ProductRecord | product.LocalProductRecord

@@ -389,22 +389,6 @@ internal fun payloadOwned(
         entry.sha256 == "sha256:${sha256(path)}"
 }
 
-/** Only the selected lifecycle home crosses into the private JVM's system properties. */
-internal fun installationLifecycleEnvironment(
-    home: Path,
-    installation: Path,
-    environment: Map<String, String>,
-): Map<String, String> =
-    environment.filterKeys {
-        it in setOf("PATH", "JAVA_HOME", "CODEX_EXECUTABLE", "TMPDIR", "KAST_MANAGED_HEADLESS_STATE")
-    } +
-        mapOf(
-            "HOME" to home.toString(),
-            "KAST_CONFIGURATION_FILE" to installation.resolve("config/environment").toString(),
-            // JVM option quoting, not shell evaluation: preserve one property even for quotes or newlines.
-            "JAVA_TOOL_OPTIONS" to "'-Duser.home=${home.toString().replace("'", "'\"'\"'")}'",
-        )
-
 private enum class LifecycleServiceAction(val command: String) {
     RETIRE_SEMANTIC("retire-semantic"),
     DISABLE("disable"),
