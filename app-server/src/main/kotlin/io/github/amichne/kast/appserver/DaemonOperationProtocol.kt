@@ -6,7 +6,6 @@ import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
 import io.github.amichne.kast.distribution.contract.ContainerFailure
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
@@ -72,6 +71,8 @@ internal sealed interface DaemonOperationSelection {
     data class Canonical(val read: DaemonCanonicalRead) : DaemonOperationSelection
 
     @Serializable @SerialName("change") data class Change(val action: DaemonChangeAction) : DaemonOperationSelection
+
+    @Serializable @SerialName("workspace_status") data object WorkspaceStatus : DaemonOperationSelection
 }
 
 /** A change call retains its exact typed plan, application or recovery request. */
@@ -84,30 +85,11 @@ sealed interface DaemonChangeAction {
     @Serializable @SerialName("recover") data class Recover(val request: ChangeRecoverRequest) : DaemonChangeAction
 }
 
-internal fun DaemonChangeAction.operation(): CanonicalOperation =
-    when (this) {
-        is DaemonChangeAction.Plan -> CanonicalOperation.CHANGE_PLAN
-        is DaemonChangeAction.Apply -> CanonicalOperation.CHANGE_APPLY
-        is DaemonChangeAction.Recover -> CanonicalOperation.CHANGE_RECOVER
-    }
-
 /** The canonical request keeps its concrete type across the RPC boundary. */
 @Serializable
 sealed interface DaemonCanonicalRead {
     @Serializable @SerialName("source_read") data class SourceRead(val request: SourceReadRequest) : DaemonCanonicalRead
 }
-
-internal fun DaemonCanonicalRead.operation(): CanonicalOperation =
-    when (this) {
-        is DaemonCanonicalRead.SourceRead -> CanonicalOperation.SOURCE_READ
-    }
-
-internal fun DaemonOperationSelection.operation(): CanonicalOperation =
-    when (this) {
-        is DaemonOperationSelection.PublicTool -> tool.identity.operation
-        is DaemonOperationSelection.Canonical -> read.operation()
-        is DaemonOperationSelection.Change -> action.operation()
-    }
 
 @Serializable
 internal sealed interface DaemonOperationResponse {

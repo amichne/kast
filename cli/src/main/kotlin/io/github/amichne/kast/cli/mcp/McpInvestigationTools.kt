@@ -28,10 +28,32 @@ import kotlinx.serialization.json.JsonObject
 
 internal class McpInvestigationTools(
     private val directory: Path,
-    private val capabilities: ExistingIdeCliCapabilities,
     private val expectedOperations: Set<String>,
-    private val prepare: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure>,
+    private val observeStatus: (CanonicalRoot) -> CliExit,
 ) {
+    constructor(
+        directory: Path,
+        expectedOperations: Set<String>,
+        capabilities: ExistingIdeCliCapabilities,
+    ) : this(directory, expectedOperations, { status(it, capabilities) })
+
+    constructor(
+        directory: Path,
+        capabilities: ExistingIdeCliCapabilities,
+        expectedOperations: Set<String>,
+        prepare: (CanonicalRoot) -> Refinement<Unit, DaemonOperationFailure>,
+    ) : this(
+        directory,
+        expectedOperations,
+        { root ->
+            when (prepare(root)) {
+                is Refinement.Refined -> status(root, capabilities)
+                is Refinement.Rejected ->
+                    healthRejected(McpHealthErrorCode.HOST_UNAVAILABLE, "The existing IDE host is unavailable")
+            }
+        },
+    )
+
     fun invoke(identity: SupportToolIdentity, arguments: JsonObject): CliExit =
         when (identity) {
             SupportToolIdentity.HEALTH_CHECK ->
@@ -46,21 +68,12 @@ internal class McpInvestigationTools(
         val workspace =
             canonicalRoot()
                 ?: return healthRejected(McpHealthErrorCode.OUT_OF_SCOPE, "No Gradle workspace owns this directory")
-        when (prepare(workspace)) {
-            is Refinement.Refined -> Unit
-            is Refinement.Rejected ->
-                return healthRejected(McpHealthErrorCode.HOST_UNAVAILABLE, "The existing IDE host is unavailable")
-        }
-        return nativeHealth(workspace.path, request)
+        return nativeHealth(workspace, request)
     }
 
-    private fun nativeHealth(root: Path, request: McpHealthInput): CliExit {
-        val exit =
-            executeExistingIdeCli(
-                argv = listOf("ide", "status"),
-                start = root,
-                capabilities = capabilities,
-            )
+    private fun nativeHealth(workspace: CanonicalRoot, request: McpHealthInput): CliExit {
+        val root = workspace.path
+        val exit = observeStatus(workspace)
         if (exit !is CliExit.Complete)
             return healthRejected(McpHealthErrorCode.HOST_UNAVAILABLE, "The existing IDE host is unavailable")
         val observed =
@@ -93,6 +106,9 @@ internal class McpInvestigationTools(
     private fun canonicalRoot(): CanonicalRoot? =
         (FilesystemCanonicalRootDiscovery.discover(directory) as? CanonicalRootDiscovery.Discovered)?.root
 }
+
+private fun status(root: CanonicalRoot, capabilities: ExistingIdeCliCapabilities): CliExit =
+    executeExistingIdeCli(argv = listOf("ide", "status"), start = root.path, capabilities = capabilities)
 
 private fun healthRejected(code: McpHealthErrorCode, message: String): CliExit.OperationRejected =
     CliExit.OperationRejected(healthRejectedFactory.create(McpHealthRejected(error = McpHealthError(code, message))))

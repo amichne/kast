@@ -183,6 +183,7 @@ private fun exactRoot(raw: String): Refinement<CanonicalRoot, CanonicalRootFailu
 private fun DaemonOperationSelection.admit(): Refinement<DaemonOperationCall, DaemonOperationInputFailure> =
     when (this) {
         is DaemonOperationSelection.Canonical -> Refinement.Refined(DaemonOperationCall.Canonical(read))
+        DaemonOperationSelection.WorkspaceStatus -> Refinement.Refined(DaemonOperationCall.WorkspaceStatus)
         is DaemonOperationSelection.Change -> Refinement.Refined(DaemonOperationCall.Change(action))
         is DaemonOperationSelection.PublicTool ->
             when (val admitted = PublicToolContract.admit(tool.identity, arguments, catalog)) {

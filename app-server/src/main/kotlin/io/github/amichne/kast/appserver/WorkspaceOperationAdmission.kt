@@ -14,6 +14,7 @@ fun DaemonOperationCall.workspaceAdmission(): WorkspaceOperationAdmission =
     when (this) {
         is DaemonOperationCall.Canonical -> WorkspaceOperationAdmission.EXISTING_AUTHORITY
         is DaemonOperationCall.Change -> WorkspaceOperationAdmission.EXISTING_AUTHORITY
+        DaemonOperationCall.WorkspaceStatus -> WorkspaceOperationAdmission.PREPARE
         is DaemonOperationCall.PublicTool -> tool.canonical.workspaceAdmission()
     }
 

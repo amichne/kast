@@ -139,6 +139,7 @@ class ExistingIdeSemanticReadTest {
                                 assertEquals(publicIdentity(command), call.tool.identity)
                             is DaemonOperationCall.Canonical -> assertEquals(operation, canonicalKind(call.read))
                             is DaemonOperationCall.Change -> fail("Read command selected a change")
+                            DaemonOperationCall.WorkspaceStatus -> fail("Read command selected workspace status")
                         }
                         daemonCalls++
                         DaemonOperationResult.Rejected(

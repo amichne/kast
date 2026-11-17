@@ -137,15 +137,17 @@ class InstalledClientContextTest {
         val workspace = Files.createDirectory(temporary.resolve("workspace"))
         Files.writeString(workspace.resolve("settings.gradle.kts"), "")
         val session =
-            checkNotNull(KastDirectToolSession.installed(workspace, admitted(payload), PublicToolCatalog.COMPLETE))
+            checkNotNull(
+                KastDirectToolSession.installed(workspace, admitted(payload).binding, PublicToolCatalog.COMPLETE)
+            )
         val identity = PublicToolIdentity.QUERY_SYMBOLS
         val request = PublicToolContract.examples(identity).examples.getValue("runByName").value.jsonObject
         val rejection =
             assertInstanceOf(CliExit.BoundaryRejected::class.java, session.invoke(identity.toolName, request))
         val document = Json.parseToJsonElement(rejection.document.value).jsonObject
         assertEquals("rejected", document.getValue("status").jsonPrimitive.content)
-        assertEquals("managed_workspace", document.getValue("boundary").jsonPrimitive.content)
-        assertEquals("INVALID_RECORD", document.getValue("failure").jsonPrimitive.content)
+        assertEquals("runtime", document.getValue("boundary").jsonPrimitive.content)
+        assertEquals("daemon-operation-unavailable", document.getValue("reason").jsonPrimitive.content)
         assertFalse(Files.exists(payload.parent.parent.parent.resolveSibling("kast-workspaces")))
     }
 
@@ -154,7 +156,7 @@ class InstalledClientContextTest {
         val payload = installedPayload(temporary.toRealPath(), "share/kast/libexec/kast-management")
         val context = admitted(payload)
         for (catalog in PublicToolCatalog.entries) {
-            val session = checkNotNull(KastDirectToolSession.installed(temporary, context, catalog))
+            val session = checkNotNull(KastDirectToolSession.installed(temporary, context.binding, catalog))
             val actual = session.catalog
             val expected =
                 installedHostedBootstrap()

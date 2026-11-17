@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.rpc
 
+import io.github.amichne.kast.cli.direct.InstalledClientBinding
 import io.github.amichne.kast.cli.direct.InstalledClientContext
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
@@ -29,10 +30,16 @@ internal class OneShotInvocationRecord private constructor(private val path: Pat
         fun begin(
             context: InstalledClientContext,
             kind: InvocationRecordKind = InvocationRecordKind.RPC,
+        ): OneShotInvocationRecord? = begin(context.binding, kind)
+
+        /** Retirement needs only the process and installation identities; no payload digest is required. */
+        fun begin(
+            binding: InstalledClientBinding,
+            kind: InvocationRecordKind = InvocationRecordKind.RPC,
         ): OneShotInvocationRecord? =
             try {
-                val installation = context.installation
-                if (context.observe() != InstalledToolAdmission.AVAILABLE) return null
+                val installation = binding.installation
+                if (binding.observe() != InstalledToolAdmission.AVAILABLE) return null
                 val marker = installation.resolve("share/kast/one-shot-observation-v1")
                 if (!Files.isRegularFile(marker, LinkOption.NOFOLLOW_LINKS) || Files.readString(marker) != "1\n")
                     return null
@@ -61,7 +68,7 @@ internal class OneShotInvocationRecord private constructor(private val path: Pat
                         Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
                     val key = identity.fileKey() ?: return null
                     val record = OneShotInvocationRecord(path, key)
-                    if (context.observe() != InstalledToolAdmission.AVAILABLE) {
+                    if (binding.observe() != InstalledToolAdmission.AVAILABLE) {
                         record.close()
                         return null
                     }

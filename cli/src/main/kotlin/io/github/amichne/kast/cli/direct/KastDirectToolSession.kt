@@ -1,12 +1,18 @@
 package io.github.amichne.kast.cli.direct
 
-import io.github.amichne.kast.appserver.WorkspaceOperationAdmission
+import io.github.amichne.kast.appserver.DaemonOperationCall
+import io.github.amichne.kast.appserver.DaemonOperationClient
+import io.github.amichne.kast.appserver.DaemonOperationResult
+import io.github.amichne.kast.appserver.ide.ExistingIdeClient
+import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
+import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
+import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.appserver.query.PublicToolContract
-import io.github.amichne.kast.appserver.workspaceAdmission
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliExit
 import io.github.amichne.kast.cli.boundaryExit
+import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.cli.ide.executeAdmittedPublicTool
 import io.github.amichne.kast.cli.mcp.McpInvestigationTools
 import io.github.amichne.kast.cli.mcp.McpSingleChangeTool
@@ -78,14 +84,14 @@ internal class KastDirectToolSession(
             environment: Map<String, String>,
             queryCatalog: PublicToolCatalog = PublicToolCatalog.COMMON,
         ): KastDirectToolSession? =
-            when (val admitted = InstalledClientContext.current(environment)) {
+            when (val admitted = InstalledClientBinding.current(environment)) {
                 is Refinement.Rejected -> null
                 is Refinement.Refined -> installed(directory, admitted.value, queryCatalog)
             }
 
         fun installed(
             directory: Path,
-            context: InstalledClientContext,
+            binding: InstalledClientBinding,
             queryCatalog: PublicToolCatalog,
         ): KastDirectToolSession? {
             val selected =
@@ -94,12 +100,18 @@ internal class KastDirectToolSession(
                 }
             if (selected.size != PublicToolIdentity.entries.size) return null
             val root = { FilesystemCanonicalRootDiscovery.discover(directory) }
+            val read = CoordinatedToolClient(binding)
+            val capabilities =
+                ExistingIdeCliCapabilities(
+                    FilesystemCanonicalRootDiscovery,
+                    coordinatedStatus(read),
+                    read,
+                )
+            val changes = McpSingleChangeTool.installed(root = directory, capabilities = capabilities)
             val invokePublic: (AdmittedPublicTool) -> CliExit = { request ->
-                invokeManagedTool(context, directory, request.canonical.workspaceAdmission()) { bound, capabilities ->
-                    if (request.identity in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY))
-                        McpSingleChangeTool.installed(root = bound.path, capabilities = capabilities).invoke(request)
-                    else executeAdmittedPublicTool(request, bound.path, capabilities)
-                }
+                if (request.identity in setOf(PublicToolIdentity.ADD_DECLARATION, PublicToolIdentity.REPLACE_BODY))
+                    changes.invoke(request)
+                else executeAdmittedPublicTool(request, directory, capabilities)
             }
             val expectedOperations =
                 selected
@@ -115,13 +127,13 @@ internal class KastDirectToolSession(
             return KastDirectToolSession(
                 registration = installedToolRegistration(selected, queryCatalog),
                 root = root,
-                admission = context::observe,
+                admission = binding::observe,
                 invokePublic = invokePublic,
                 invokeSupport = { identity, arguments ->
-                    invokeManagedSupport(context, directory, identity, arguments, expectedOperations)
+                    invokeCoordinatedSupport(directory, capabilities, identity, arguments, expectedOperations)
                 },
                 queryCatalog = queryCatalog,
-                beginInvocation = { kind -> OneShotInvocationRecord.begin(context, kind) },
+                beginInvocation = { kind -> OneShotInvocationRecord.begin(binding, kind) },
             )
         }
     }
@@ -145,9 +157,9 @@ private fun installedToolRegistration(selected: List<AgentToolDefinition>, query
         }
     }
 
-private fun invokeManagedSupport(
-    context: InstalledClientContext,
+private fun invokeCoordinatedSupport(
     directory: Path,
+    capabilities: ExistingIdeCliCapabilities,
     identity: SupportToolIdentity,
     arguments: JsonObject,
     expectedOperations: Set<String>,
@@ -158,20 +170,22 @@ private fun invokeManagedSupport(
             when (val admitted = admitMcpHealthInput(arguments)) {
                 is Refinement.Rejected -> admitted.failure
                 is Refinement.Refined ->
-                    invokeManagedTool(context, directory, WorkspaceOperationAdmission.PREPARE) { bound, capabilities ->
-                        McpInvestigationTools(
-                                bound.path,
-                                capabilities,
-                                expectedOperations,
-                                prepare = { selected ->
-                                    check(selected == bound)
-                                    Refinement.Refined(Unit)
-                                },
-                            )
-                            .health(admitted.value)
-                    }
+                    McpInvestigationTools(directory, expectedOperations, capabilities).health(admitted.value)
             }
     }
+
+private fun coordinatedStatus(read: DaemonOperationClient): ExistingIdeClient = ExistingIdeClient { root, operation ->
+    if (operation != ExistingIdeOperation.Status) {
+        ExistingIdeExchange.Rejected(ExistingIdeFailure.OPERATION_UNSUPPORTED)
+    } else
+        when (val status = read.read(root, DaemonOperationCall.WorkspaceStatus)) {
+            is DaemonOperationResult.Complete -> ExistingIdeExchange.Received(status.document)
+            is DaemonOperationResult.Hosted -> ExistingIdeExchange.Received(status.document)
+            is DaemonOperationResult.OperationRejected -> ExistingIdeExchange.HostRejected(status.document)
+            is DaemonOperationResult.Qualified -> ExistingIdeExchange.HostRejected(status.document)
+            is DaemonOperationResult.Rejected -> ExistingIdeExchange.Rejected(ExistingIdeFailure.HOST_UNAVAILABLE)
+        }
+}
 
 private fun admitAndInvokePublic(
     name: String,

@@ -50,6 +50,6 @@ object KastNativeMain {
 
 private fun coordinatedQueryInstallation(args: List<String>): java.nio.file.Path? {
     if (System.getProperty("org.graalvm.nativeimage.imagecode") != "runtime") return null
-    if (args.firstOrNull() != "query" || args.drop(1).none { it == "--name" || it.startsWith("--name=") }) return null
+    if (!io.github.amichne.kast.distribution.cli.isPublicQueryNamespace(args.firstOrNull())) return null
     return io.github.amichne.kast.distribution.cli.selectedPublicQueryInstallation(System.getenv())
 }

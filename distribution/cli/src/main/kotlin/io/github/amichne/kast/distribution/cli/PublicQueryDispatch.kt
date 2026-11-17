@@ -12,6 +12,8 @@ import sun.misc.Signal
 
 internal val publicQueryNamespaces = setOf("query", "result", "source", "diagnostic", "describe")
 
+fun isPublicQueryNamespace(name: String?): Boolean = name in publicQueryNamespaces
+
 internal class PublicQueryNamespace(private val namespace: String) : ManagementNode(namespace) {
     override fun help(context: Context) =
         when (namespace) {

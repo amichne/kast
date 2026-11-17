@@ -233,6 +233,7 @@ internal fun mcpOperation(call: DaemonOperationCall): Refinement<ExistingIdeOper
                 when (val read = call.read) {
                     is DaemonCanonicalRead.SourceRead -> mcpPreparers.sourceRead.prepare(read.request)
                 }
+            DaemonOperationCall.WorkspaceStatus -> return Refinement.Refined(ExistingIdeOperation.Status)
             is DaemonOperationCall.Change ->
                 when (val action = call.action) {
                     is DaemonChangeAction.Plan -> mcpPreparers.changePlan.prepare(action.request)
