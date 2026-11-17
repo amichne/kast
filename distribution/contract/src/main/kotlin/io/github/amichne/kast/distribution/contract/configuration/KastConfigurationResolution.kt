@@ -153,6 +153,9 @@ private constructor(
         )
     }
 
+    fun gradleImportVariableSelection(): String =
+        assignments.single { it.parameter == ConfigurationParameter.GRADLE_IMPORT_VARIABLES }.value.boundaryValue()
+
     /** Complete non-secret runtime configuration, including catalogue defaults, for launch evidence. */
     fun launchEnvironment(): ResolvedLaunchEnvironment =
         ResolvedLaunchEnvironment(

@@ -11,6 +11,7 @@ import io.github.amichne.kast.appserver.WorkspaceOperationAdmission
 import io.github.amichne.kast.distribution.cli.ContainerFailure
 import io.github.amichne.kast.distribution.cli.InstalledProductRuntime
 import io.github.amichne.kast.distribution.cli.ManagedWorkspaceQuery
+import io.github.amichne.kast.distribution.cli.WorkspaceQueryEnvironment
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationDisclosure
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
@@ -34,27 +35,34 @@ private constructor(
         get() = local[ConfigurationParameter.WORKSPACE_PREPARATION_WAIT.key]
 
     /** Replaces the service's caller configuration with this overlay; [local] selects the request-local part. */
-    fun applyTo(service: Map<String, String>, local: Map<String, String> = this.local): Map<String, String> =
-        service.filterKeys { it !in CALLER_CONFIGURATION_KEYS } + host.values + local + delegated.processVariables()
+    fun applyTo(service: Map<String, String>, local: Map<String, String> = this.local): WorkspaceQueryEnvironment =
+        WorkspaceQueryEnvironment(
+            service.filterKeys { it !in CALLER_CONFIGURATION_KEYS } + host.values + local,
+            delegated,
+        )
 
     companion object {
         /** Selects the non-secret configuration overlay from one caller's environment. */
-        fun explicit(environment: Map<String, String>): WorkspaceSettings {
+        fun explicit(
+            environment: Map<String, String>,
+            delegated: GradleImportEnvironment? = null,
+        ): WorkspaceSettings {
             val explicit = environment.filterKeys { it in CALLER_CONFIGURATION_KEYS }
             return WorkspaceSettings(
                 explicit.filterKeys { it !in REQUEST_LOCAL_KEYS },
                 explicit.filterKeys { it in REQUEST_LOCAL_KEYS },
-                when (
-                    val admitted =
-                        GradleImportEnvironment.admit(
-                            environment[GradleImportEnvironment.VARIABLES_SETTING].orEmpty(),
-                            "",
-                            environment,
-                        )
-                ) {
-                    is Refinement.Rejected -> GradleImportEnvironment.Empty
-                    is Refinement.Refined -> admitted.value
-                },
+                delegated
+                    ?: when (
+                        val admitted =
+                            GradleImportEnvironment.admit(
+                                environment[GradleImportEnvironment.VARIABLES_SETTING].orEmpty(),
+                                "",
+                                environment,
+                            )
+                    ) {
+                        is Refinement.Rejected -> GradleImportEnvironment.Empty
+                        is Refinement.Refined -> admitted.value
+                    },
             )
         }
     }
@@ -89,20 +97,21 @@ internal interface ManagedWorkspaceAcquisition {
     /** Opens a preparation-scoped lease, prepares one Host binding, and closes that lease before returning. */
     fun prepare(
         root: CanonicalRoot,
-        environment: Map<String, String>,
+        environment: WorkspaceQueryEnvironment,
     ): Refinement<PreparedWorkspaceBinding, DaemonOperationFailure>
 
     /** Runs [action] under one request-scoped lease of an existing workspace generation. */
     fun <T> withRequestLease(
         root: CanonicalRoot,
-        environment: Map<String, String>,
-        action: (WorkspaceHostIdentity) -> T,
+        environment: WorkspaceQueryEnvironment,
+        expected: WorkspaceHostIdentity,
+        action: () -> T,
     ): Refinement<T, DaemonOperationFailure>
 
     /** Executes one existing-authority operation with its own lease and client. It never prepares a Host. */
     fun existing(
         root: CanonicalRoot,
-        environment: Map<String, String>,
+        environment: WorkspaceQueryEnvironment,
         operation: DaemonOperationCall,
         expected: WorkspaceHostIdentity?,
     ): DaemonOperationResult
@@ -114,7 +123,7 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
 
     override fun prepare(
         root: CanonicalRoot,
-        environment: Map<String, String>,
+        environment: WorkspaceQueryEnvironment,
     ): Refinement<PreparedWorkspaceBinding, DaemonOperationFailure> {
         val workspace =
             when (val opened = open(root, environment, WorkspaceOperationAdmission.PREPARE)) {
@@ -143,8 +152,9 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
 
     override fun <T> withRequestLease(
         root: CanonicalRoot,
-        environment: Map<String, String>,
-        action: (WorkspaceHostIdentity) -> T,
+        environment: WorkspaceQueryEnvironment,
+        expected: WorkspaceHostIdentity,
+        action: () -> T,
     ): Refinement<T, DaemonOperationFailure> {
         val workspace =
             when (val opened = open(root, environment, WorkspaceOperationAdmission.EXISTING_AUTHORITY)) {
@@ -156,13 +166,14 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
             admitInstallation()?.let {
                 return@use Refinement.Rejected(it)
             }
-            Refinement.Refined(action(workspace.hostIdentity()))
+            if (workspace.hostIdentity() != expected) return@use Refinement.Rejected(configurationConflict)
+            Refinement.Refined(action())
         }
     }
 
     override fun existing(
         root: CanonicalRoot,
-        environment: Map<String, String>,
+        environment: WorkspaceQueryEnvironment,
         operation: DaemonOperationCall,
         expected: WorkspaceHostIdentity?,
     ): DaemonOperationResult {
@@ -189,7 +200,7 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
 
     private fun open(
         root: CanonicalRoot,
-        environment: Map<String, String>,
+        environment: WorkspaceQueryEnvironment,
         admission: WorkspaceOperationAdmission,
     ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
         when (val admitted = product) {

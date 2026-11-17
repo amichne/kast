@@ -7,6 +7,7 @@ import io.github.amichne.kast.appserver.DaemonOperationProtocolFailure
 import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
+import io.github.amichne.kast.distribution.cli.WorkspaceQueryEnvironment
 import io.github.amichne.kast.distribution.contract.ContainerFailure
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.distribution.managed.canonicalRootFixture
@@ -320,7 +321,7 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
 
     override fun prepare(
         root: CanonicalRoot,
-        environment: Map<String, String>,
+        environment: WorkspaceQueryEnvironment,
     ): Refinement<PreparedWorkspaceBinding, DaemonOperationFailure> = leased {
         preparations += root
         preparationStarts.release()
@@ -340,13 +341,17 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
 
     override fun <T> withRequestLease(
         root: CanonicalRoot,
-        environment: Map<String, String>,
-        action: (WorkspaceHostIdentity) -> T,
-    ): Refinement<T, DaemonOperationFailure> = leased { Refinement.Refined(action(identity(root, environment))) }
+        environment: WorkspaceQueryEnvironment,
+        expected: WorkspaceHostIdentity,
+        action: () -> T,
+    ): Refinement<T, DaemonOperationFailure> = leased {
+        if (identity(root, environment) == expected) Refinement.Refined(action())
+        else Refinement.Rejected(configurationConflict)
+    }
 
     override fun existing(
         root: CanonicalRoot,
-        environment: Map<String, String>,
+        environment: WorkspaceQueryEnvironment,
         operation: DaemonOperationCall,
         expected: WorkspaceHostIdentity?,
     ): DaemonOperationResult = leased {
@@ -386,8 +391,11 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
     }
 
     /** The fake Host identity is derived only from the explicit heap setting that reaches the lease. */
-    private fun identity(root: CanonicalRoot, environment: Map<String, String>) =
-        WorkspaceHostIdentity(root.path.resolve(".home"), environment.filterKeys { it == "KAST_HOST_MAX_HEAP_MIB" })
+    private fun identity(root: CanonicalRoot, environment: WorkspaceQueryEnvironment) =
+        WorkspaceHostIdentity(
+            root.path.resolve(".home"),
+            environment.values.filterKeys { it == "KAST_HOST_MAX_HEAP_MIB" },
+        )
 
     private inline fun <T> leased(action: () -> T): T {
         openLeases.incrementAndGet()

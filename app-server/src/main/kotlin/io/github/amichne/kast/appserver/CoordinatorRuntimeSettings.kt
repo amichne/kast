@@ -8,6 +8,7 @@ import io.github.amichne.kast.distribution.contract.configuration.KastConfigurat
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
+import io.github.amichne.kast.distribution.managed.InstalledWorkspaceConfigurationIngress
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.serialization.Required
@@ -16,6 +17,7 @@ import kotlinx.serialization.Serializable
 
 private val workspaceSettings =
     setOf(
+        ConfigurationParameter.CONFIGURATION_FILE,
         ConfigurationParameter.RUNTIME_DIRECTORY,
         ConfigurationParameter.GRADLE_JAVA_HOME,
         ConfigurationParameter.GRADLE_IMPORT_VARIABLES,
@@ -105,11 +107,25 @@ class RequestedRuntimeSettings private constructor(internal val wire: DaemonRunt
     companion object {
         val Unstated = RequestedRuntimeSettings(DaemonRuntimeSettings(emptyList(), emptyList()))
 
-        fun fromEnvironment(environment: Map<String, String>): RequestedRuntimeSettings {
+        fun fromWorkspace(
+            installation: Path,
+            root: Path,
+            environment: Map<String, String>,
+        ): RequestedRuntimeSettings {
+            val selected = environment[GradleImportEnvironment.VARIABLES_SETTING]
+            if (selected != null) return project(environment, selected)
+            val resolved = InstalledWorkspaceConfigurationIngress.resolve(installation, root, environment)
+            val names = (resolved as? Refinement.Refined)?.value?.gradleImportVariableSelection().orEmpty()
+            return project(environment, names)
+        }
+
+        fun fromEnvironment(environment: Map<String, String>): RequestedRuntimeSettings =
+            project(environment, environment[GradleImportEnvironment.VARIABLES_SETTING].orEmpty())
+
+        private fun project(environment: Map<String, String>, names: String): RequestedRuntimeSettings {
             val assignments = statedParameters.mapNotNull { parameter ->
                 environment[parameter.key]?.let { DaemonRuntimeAssignment(parameter.key, it) }
             }
-            val names = environment[GradleImportEnvironment.VARIABLES_SETTING].orEmpty()
             // An unadmissible selection sends no values; the coordinator rejects the inconsistent statement.
             val delegated =
                 when (val admitted = GradleImportEnvironment.admit(names, "", environment)) {
@@ -126,7 +142,7 @@ class RequestedRuntimeSettings private constructor(internal val wire: DaemonRunt
 class AdmittedRuntimeSettings
 private constructor(
     private val values: Map<ConfigurationParameter, String>,
-    private val delegated: GradleImportEnvironment,
+    val gradleImportEnvironment: GradleImportEnvironment,
 ) {
     val parameters: Set<ConfigurationParameter>
         get() = values.keys
@@ -139,7 +155,7 @@ private constructor(
             .filter { parameter ->
                 values[parameter] != coordinator.values[parameter] ||
                     (parameter == ConfigurationParameter.GRADLE_IMPORT_VARIABLES &&
-                        delegated.identity != coordinator.delegated.identity)
+                        gradleImportEnvironment.identity != coordinator.gradleImportEnvironment.identity)
             }
             .map { DaemonRuntimeSettingConflict(it, statement(this, it), statement(coordinator, it)) }
     }
@@ -147,16 +163,20 @@ private constructor(
     /** Request settings replace the service tier. Saved settings can still supply unstated values. */
     fun environmentOver(launch: Map<String, String>): Map<String, String> {
         val stated = statedParameters.map { it.key }.toSet()
-        return launch.filterKeys { it !in stated } + values.mapKeys { it.key.key } + delegated.processVariables()
+        return launch.filterKeys { it !in stated } +
+            values.mapKeys { it.key.key } +
+            gradleImportEnvironment.processVariables()
     }
 
     override fun equals(other: Any?): Boolean =
-        other is AdmittedRuntimeSettings && other.values == values && other.delegated.identity == delegated.identity
+        other is AdmittedRuntimeSettings &&
+            other.values == values &&
+            other.gradleImportEnvironment.identity == gradleImportEnvironment.identity
 
-    override fun hashCode(): Int = 31 * values.hashCode() + delegated.identity.hashCode()
+    override fun hashCode(): Int = 31 * values.hashCode() + gradleImportEnvironment.identity.hashCode()
 
     override fun toString(): String =
-        "AdmittedRuntimeSettings(keys=${values.keys.map { it.key }.sorted()}, delegated=${delegated.evidence.map { it.name.value }})"
+        "AdmittedRuntimeSettings(keys=${values.keys.map { it.key }.sorted()}, delegated=${gradleImportEnvironment.evidence.map { it.name.value }})"
 
     companion object {
         fun fromEnvironment(
@@ -225,11 +245,12 @@ private constructor(
                         ConfigurationFailure.DELEGATED_ENVIRONMENT_REJECTED,
                     )
                 )
-            val selected = if (names.isNullOrEmpty()) emptyList() else names.split(',')
-            if (selected.toSet().size != selected.size) return rejected
             val values = wire.delegated.associate { it.name to it.value }
-            if (values.size != wire.delegated.size || values.keys != selected.toSet()) return rejected
-            return when (val admitted = GradleImportEnvironment.admit(names.orEmpty(), "", values)) {
+            if (values.size != wire.delegated.size) return rejected
+            val selected = names ?: values.keys.joinToString(",")
+            val keys = if (selected.isEmpty()) emptyList() else selected.split(',')
+            if (keys.toSet().size != keys.size || values.keys != keys.toSet()) return rejected
+            return when (val admitted = GradleImportEnvironment.admit(selected, "", values)) {
                 is Refinement.Refined -> admitted
                 is Refinement.Rejected -> rejected
             }

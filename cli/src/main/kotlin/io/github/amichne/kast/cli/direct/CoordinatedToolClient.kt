@@ -27,17 +27,25 @@ import kotlinx.coroutines.sync.withLock
 internal class CoordinatedToolClient(private val binding: InstalledClientBinding) : DaemonOperationClient {
     private val selected = AtomicReference<InstalledSemanticCoordinator?>()
     private val connection = Mutex()
-    private val settings = RequestedRuntimeSettings.fromEnvironment(binding.environment)
 
     override fun read(root: CanonicalRoot, call: DaemonOperationCall): DaemonOperationResult =
-        read(root, call, settings)
+        exchange(root, call) {
+            RequestedRuntimeSettings.fromWorkspace(binding.installation, root.path, binding.environment)
+        }
 
     fun read(
         root: CanonicalRoot,
         call: DaemonOperationCall,
         requestSettings: RequestedRuntimeSettings,
+    ): DaemonOperationResult = exchange(root, call) { requestSettings }
+
+    private fun exchange(
+        root: CanonicalRoot,
+        call: DaemonOperationCall,
+        projectSettings: () -> RequestedRuntimeSettings,
     ): DaemonOperationResult = runBlocking {
         if (binding.observe() != InstalledToolAdmission.AVAILABLE) return@runBlocking unavailable
+        val requestSettings = projectSettings()
         val started = System.nanoTime()
         val coordinator = selected.get() ?: connectOnce()
         ControlStageTrace.record(ControlStage.COORDINATOR_CONNECTION, outcome(coordinator == null), started)

@@ -15,6 +15,7 @@ import io.github.amichne.kast.distribution.cli.ContainerFailure
 import io.github.amichne.kast.distribution.cli.ControlStage
 import io.github.amichne.kast.distribution.cli.ControlStageOutcome
 import io.github.amichne.kast.distribution.cli.ControlStageTrace
+import io.github.amichne.kast.distribution.cli.WorkspaceQueryEnvironment
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
@@ -64,7 +65,14 @@ internal class ManagedCoordinatorOperations(
         execute(root, WorkspaceSettings.explicit(environment), operation)
 
     override suspend fun execute(request: CoordinatorOperationRequest): DaemonOperationResult =
-        execute(request.root, WorkspaceSettings.explicit(request.settings.environmentOver(environment)), request.call)
+        execute(
+            request.root,
+            WorkspaceSettings.explicit(
+                request.settings.environmentOver(environment),
+                request.settings.gradleImportEnvironment,
+            ),
+            request.call,
+        )
 
     suspend fun execute(
         root: CanonicalRoot,
@@ -82,7 +90,7 @@ internal class ManagedCoordinatorOperations(
 
     private suspend fun existing(
         root: CanonicalRoot,
-        request: Map<String, String>,
+        request: WorkspaceQueryEnvironment,
         operation: DaemonOperationCall,
     ): DaemonOperationResult {
         val slot = synchronized(monitor) { entries[root] }
@@ -100,7 +108,7 @@ internal class ManagedCoordinatorOperations(
     private suspend fun preparedRead(
         root: CanonicalRoot,
         settings: WorkspaceSettings,
-        request: Map<String, String>,
+        request: WorkspaceQueryEnvironment,
         operation: DaemonOperationCall,
     ): DaemonOperationResult {
         val ticket =
@@ -118,7 +126,7 @@ internal class ManagedCoordinatorOperations(
 
     private suspend fun read(
         root: CanonicalRoot,
-        request: Map<String, String>,
+        request: WorkspaceQueryEnvironment,
         operation: DaemonOperationCall,
         slot: WorkspaceSlot,
         ready: WorkspaceEntry.Ready,
@@ -136,9 +144,8 @@ internal class ManagedCoordinatorOperations(
             runInterruptible(Dispatchers.IO) {
                 when (
                     val leased =
-                        acquisition.withRequestLease(root, request) { observed ->
-                            if (observed != ready.binding.identity) rejectedOperation(configurationConflict)
-                            else if (operation == DaemonOperationCall.PrepareWorkspace) preparedWorkspace
+                        acquisition.withRequestLease(root, request, ready.binding.identity) {
+                            if (operation == DaemonOperationCall.PrepareWorkspace) preparedWorkspace
                             else ready.binding.read(root, operation)
                         }
                 ) {
@@ -147,7 +154,7 @@ internal class ManagedCoordinatorOperations(
                 }
             }
         val failure = result.workspaceRejection() ?: return result
-        if (failure.cause != hostUnavailable && failure.cause != WorkspaceDemandCause.HostChanged) return result
+        if (!failure.cause.invalidatesBinding()) return result
         if (revoke(slot, ready, failure)) ready.binding.close()
         return result
     }
@@ -364,6 +371,9 @@ private fun DaemonOperationResult.workspaceRejection(): DaemonOperationFailure.W
     val rejection = (this as? DaemonOperationResult.Rejected)?.failure as? DaemonOperationClientRejection.Server
     return rejection?.failure as? DaemonOperationFailure.Workspace
 }
+
+private fun WorkspaceDemandCause.invalidatesBinding(): Boolean =
+    this == hostUnavailable || this == WorkspaceDemandCause.HostChanged
 
 // A HostChanged result can also follow a readiness retry. Revoke its binding without replaying the operation.
 private val hostUnavailable = WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE)

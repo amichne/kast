@@ -66,7 +66,11 @@ private constructor(
             ConfigurationParameter.entries
                 .filter {
                     it.declaration().disclosure != ConfigurationDisclosure.SECRET_PRESENCE &&
-                        it != ConfigurationParameter.GRADLE_IMPORT_VARIABLES
+                        it !in
+                            setOf(
+                                ConfigurationParameter.CONFIGURATION_FILE,
+                                ConfigurationParameter.GRADLE_IMPORT_VARIABLES,
+                            )
                 }
                 .map { it.key }
                 .toSet() +

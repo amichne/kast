@@ -51,7 +51,8 @@ internal fun prepareInstalledHook(
                     (ConfigurationParameter.WORKSPACE_PREPARATION_WAIT.key to
                         (wait.allowance.protocolMillis()?.toString() ?: "indefinite"))
         }
-    val reply = read(root, DaemonOperationCall.PrepareWorkspace, RequestedRuntimeSettings.fromEnvironment(environment))
+    val settings = RequestedRuntimeSettings.fromWorkspace(installed.installation, root.path, environment)
+    val reply = read(root, DaemonOperationCall.PrepareWorkspace, settings)
     return when (reply) {
         is DaemonOperationResult.Rejected -> Refinement.Rejected(reply.failure.hookFailure())
         is DaemonOperationResult.Complete ->

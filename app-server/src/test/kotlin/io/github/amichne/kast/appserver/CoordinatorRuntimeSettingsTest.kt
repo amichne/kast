@@ -8,6 +8,9 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
+import java.util.HexFormat
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
@@ -15,6 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 class CoordinatorRuntimeSettingsTest {
     @Test
@@ -112,6 +116,52 @@ class CoordinatorRuntimeSettingsTest {
                 }
             }
         }
+
+    @Test
+    fun `the request selector replaces the service selector and an omitted selector uses the default`(
+        @TempDir directory: Path
+    ) {
+        val key = ConfigurationParameter.CONFIGURATION_FILE.key
+        val service = mapOf(key to directory.resolve("service").toString())
+        val caller = mapOf(key to directory.resolve("caller").toString())
+        val requested = RequestedRuntimeSettings.fromEnvironment(caller)
+        val admitted = AdmittedRuntimeSettings.admit(requested.wire) as Refinement.Refined
+        assertEquals(caller, admitted.value.environmentOver(service))
+        val default = AdmittedRuntimeSettings.admit(RequestedRuntimeSettings.Unstated.wire) as Refinement.Refined
+        assertEquals(emptyMap<String, String>(), default.value.environmentOver(service))
+    }
+
+    @Test
+    fun `saved workspace selection delegates only its inputs and preserves precedence`(@TempDir directory: Path) {
+        val root = directory.toRealPath()
+        val installation = Files.createDirectory(root.resolve("installation"))
+        val workspace = Files.createDirectory(root.resolve("workspace"))
+        val names = ConfigurationParameter.GRADLE_IMPORT_VARIABLES.key
+        val selector = ConfigurationParameter.CONFIGURATION_FILE.key
+        val file = Files.writeString(root.resolve("selected"), "$names=INSTALLATION_TOKEN\n")
+        val workspaceId =
+            HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(workspace.toString().toByteArray()))
+        val overlay = Files.createDirectories(installation.resolve("config/workspaces/$workspaceId"))
+        Files.writeString(overlay.resolve("environment"), "$names=WORKSPACE_TOKEN\n")
+        val caller =
+            mapOf(
+                selector to file.toString(),
+                "INSTALLATION_TOKEN" to "installation-value",
+                "WORKSPACE_TOKEN" to "workspace-value",
+                "ENV_TOKEN" to "explicit-value",
+            )
+
+        val saved = RequestedRuntimeSettings.fromWorkspace(installation, workspace, caller)
+        assertEquals(listOf(DaemonDelegatedVariable("WORKSPACE_TOKEN", "workspace-value")), saved.wire.delegated)
+        assertFalse(saved.wire.assignments.any { it.key == names })
+        val admitted = AdmittedRuntimeSettings.admit(saved.wire) as Refinement.Refined
+        assertEquals(
+            mapOf(selector to file.toString(), "WORKSPACE_TOKEN" to "workspace-value"),
+            admitted.value.environmentOver(emptyMap()),
+        )
+        val explicit = RequestedRuntimeSettings.fromWorkspace(installation, workspace, caller + (names to "ENV_TOKEN"))
+        assertEquals(listOf(DaemonDelegatedVariable("ENV_TOKEN", "explicit-value")), explicit.wire.delegated)
+    }
 
     private fun admittedRead(): DaemonOperationCall {
         val tool = PublicToolIdentity.QUERY_SYMBOLS
