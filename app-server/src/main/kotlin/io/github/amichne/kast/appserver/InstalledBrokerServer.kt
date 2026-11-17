@@ -612,12 +612,28 @@ internal object InstalledBrokerHost {
     }
 }
 
-class InstalledBrokerServerRunner(
+class InstalledBrokerServerRunner
+private constructor(
     private val kastExecutable: Path,
     private val userHome: Path,
-    private val environment: Map<String, String> = System.getenv(),
-    private val semantic: CoordinatorOperationExecutor? = null,
+    private val environment: Map<String, String>,
+    private val semantic: CoordinatorSemantic?,
 ) : BrokerServerRunner {
+    constructor(
+        kastExecutable: Path,
+        userHome: Path,
+        environment: Map<String, String> = System.getenv(),
+        semantic: CoordinatorOperationExecutor? = null,
+    ) : this(kastExecutable, userHome, environment, semantic?.let { CoordinatorSemantic.LaunchBound(it) })
+
+    /** Each request's admitted runtime settings reach [requests], which owns conflicts with its bindings. */
+    constructor(
+        kastExecutable: Path,
+        userHome: Path,
+        environment: Map<String, String>,
+        requests: CoordinatorRequestExecutor,
+    ) : this(kastExecutable, userHome, environment, CoordinatorSemantic.RequestBound(requests))
+
     override fun serve(): BrokerServerRun {
         val options =
             when (val admission = InstalledCoordinatorConfiguration.admit(kastExecutable, userHome, environment)) {
@@ -627,7 +643,7 @@ class InstalledBrokerServerRunner(
         return try {
             runBlocking {
                 val running =
-                    when (val started = InstalledCoordinator.start(options, semantic = semantic)) {
+                    when (val started = InstalledCoordinator.start(options, DesktopDaemonDiscovery(), semantic)) {
                         is InstalledCoordinatorStart.Started -> started.coordinator
                         is InstalledCoordinatorStart.Rejected ->
                             return@runBlocking BrokerServerRun.Rejected(started.failure)

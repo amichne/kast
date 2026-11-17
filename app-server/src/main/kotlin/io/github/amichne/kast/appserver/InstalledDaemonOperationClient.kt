@@ -68,10 +68,14 @@ internal class InstalledDaemonOperationClient(
     private val target: DaemonManagementTarget,
     private val peerCurrent: () -> Boolean = { true },
 ) {
-    suspend fun exchange(root: CanonicalRoot, call: DaemonOperationCall): DaemonOperationResult {
+    suspend fun exchange(
+        root: CanonicalRoot,
+        call: DaemonOperationCall,
+        settings: RequestedRuntimeSettings = RequestedRuntimeSettings.Unstated,
+    ): DaemonOperationResult {
         val selection =
             call.selection() ?: return protocolRejection(DaemonOperationProtocolFailure.OPERATION_UNSUPPORTED)
-        val request = DaemonOperationRequest(target, root.path.toString(), selection)
+        val request = DaemonOperationRequest(target, root.path.toString(), selection, settings.wire)
         val message = DaemonOperationProtocol.json.encodeToString(DaemonOperationRequest.serializer(), request)
         if (message.toByteArray(Charsets.UTF_8).size > DaemonOperationProtocol.maximumRequestBytes)
             return protocolRejection(DaemonOperationProtocolFailure.CAPACITY_EXCEEDED)
@@ -174,16 +178,7 @@ fun DaemonOperationClientRejection.diagnosticCode(): String =
                 when (val reason = failure) {
                     is DaemonOperationFailure.Protocol -> "daemon-operation-${reason.reason.name}"
                     is DaemonOperationFailure.Root -> "daemon-operation-root-${reason.reason.name}"
-                    is DaemonOperationFailure.Input ->
-                        when (val input = reason.reason) {
-                            DaemonOperationInputFailure.SchemaMismatch -> "daemon-operation-schema-mismatch"
-                            DaemonOperationInputFailure.SchemaRejected -> "daemon-operation-schema-rejected"
-                            DaemonOperationInputFailure.SyntaxRejected -> "daemon-operation-syntax-rejected"
-                            is DaemonOperationInputFailure.Parameter ->
-                                "daemon-operation-${input.parameter.name}-${input.rule.name}"
-                            is DaemonOperationInputFailure.Constraint -> "daemon-operation-${input.rule.name}"
-                            is DaemonOperationInputFailure.SourceAnchor -> "daemon-operation-${input.cause.name}"
-                        }
+                    is DaemonOperationFailure.Input -> reason.reason.diagnosticCode()
                     is DaemonOperationFailure.Preparation -> "daemon-operation-preparation-${reason.reason.name}"
                     is DaemonOperationFailure.ManagedWorkspace -> "daemon-operation-workspace-${reason.reason.name}"
                     is DaemonOperationFailure.Workspace ->
@@ -200,3 +195,22 @@ fun DaemonOperationClientRejection.diagnosticCode(): String =
         }
         .lowercase()
         .replace('_', '-')
+
+private fun DaemonOperationInputFailure.diagnosticCode(): String =
+    when (this) {
+        DaemonOperationInputFailure.SchemaMismatch -> "daemon-operation-schema-mismatch"
+        DaemonOperationInputFailure.SchemaRejected -> "daemon-operation-schema-rejected"
+        DaemonOperationInputFailure.SyntaxRejected -> "daemon-operation-syntax-rejected"
+        is DaemonOperationInputFailure.Parameter -> "daemon-operation-${parameter.name}-${rule.name}"
+        is DaemonOperationInputFailure.Constraint -> "daemon-operation-${rule.name}"
+        is DaemonOperationInputFailure.SourceAnchor -> "daemon-operation-${cause.name}"
+        is DaemonOperationInputFailure.RuntimeSettings -> "daemon-operation-runtime-settings-${reason.diagnosticCode()}"
+    }
+
+private fun DaemonRuntimeSettingsFailure.diagnosticCode(): String =
+    when (this) {
+        DaemonRuntimeSettingsFailure.CapacityExceeded -> "capacity-exceeded"
+        is DaemonRuntimeSettingsFailure.NotGoverned -> "not-governed"
+        is DaemonRuntimeSettingsFailure.Configuration -> reason.name
+        is DaemonRuntimeSettingsFailure.Conflict -> "conflict"
+    }

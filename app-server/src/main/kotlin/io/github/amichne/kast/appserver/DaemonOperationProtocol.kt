@@ -22,7 +22,7 @@ import kotlinx.serialization.json.JsonElement
 
 /** One typed semantic operation on the installed daemon's owned Unix socket. */
 internal object DaemonOperationProtocol {
-    const val version = 3
+    const val version = 4
     const val maximumRequestBytes = BrokerOperationalLimits.maximumToolArgumentBytes + 4096
     const val maximumResponseBytes = BrokerOperationalLimits.maximumToolResultBytes + 4096
     val json = Json {
@@ -31,7 +31,10 @@ internal object DaemonOperationProtocol {
     }
 }
 
-/** Coordinator-owned semantic execution, after transport and exact workspace admission. */
+/**
+ * Coordinator-owned semantic execution, after transport and exact workspace admission. It applies only the
+ * coordinator's launch settings, so the ingress rejects every request whose stated runtime settings differ.
+ */
 fun interface CoordinatorOperationExecutor {
     suspend fun execute(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult
 }
@@ -48,6 +51,8 @@ internal data class DaemonOperationRequest(
     val target: DaemonManagementTarget,
     val root: String,
     val selection: DaemonOperationSelection,
+    /** The caller's environment-tier runtime settings; admitted before any root or workspace effect. */
+    @Required val settings: DaemonRuntimeSettings = RequestedRuntimeSettings.Unstated.wire,
     @Required val version: Int = DaemonOperationProtocol.version,
 )
 
@@ -198,4 +203,9 @@ sealed interface DaemonOperationInputFailure {
     @Serializable
     @SerialName("source_anchor")
     data class SourceAnchor(val cause: SourceReadAnchorDocumentFailure) : DaemonOperationInputFailure
+
+    /** The request's runtime settings were malformed, not governed by this route, or conflict with its execution. */
+    @Serializable
+    @SerialName("runtime_settings")
+    data class RuntimeSettings(val reason: DaemonRuntimeSettingsFailure) : DaemonOperationInputFailure
 }

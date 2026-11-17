@@ -20,8 +20,15 @@ private constructor(
     val generation: String,
     val processId: Long,
 ) {
+    /** States this process's environment-tier settings. Persistent adapters pass their admitted environment. */
     suspend fun execute(root: CanonicalRoot, call: DaemonOperationCall): DaemonOperationResult =
-        client.exchange(root, call)
+        execute(root, call, RequestedRuntimeSettings.fromEnvironment(System.getenv()))
+
+    suspend fun execute(
+        root: CanonicalRoot,
+        call: DaemonOperationCall,
+        settings: RequestedRuntimeSettings = RequestedRuntimeSettings.Unstated,
+    ): DaemonOperationResult = client.exchange(root, call, settings)
 
     companion object {
         fun readinessPath(installation: Path, home: Path): Path =
