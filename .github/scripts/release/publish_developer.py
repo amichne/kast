@@ -126,6 +126,7 @@ class TagState(StrEnum):
 
 
 class ReleaseOperation(StrEnum):
+    DISCOVER = "DISCOVER"
     CREATE = "CREATE"
     UPLOAD = "UPLOAD"
     PUBLISH = "PUBLISH"
@@ -151,10 +152,15 @@ class ApiFailure(StrEnum):
     INVALID = "INVALID"
 
 
+class DraftVisibility(StrEnum):
+    OBSERVED = "DRAFT_OBSERVED"
+    UNPROVEN = "DRAFT_VISIBILITY_UNPROVEN"
+
+
 @dataclass(frozen=True, slots=True)
 class ReleaseEvent:
     operation: ReleaseOperation
-    outcome: ApiFailure | ReleaseState
+    outcome: ApiFailure | ReleaseState | DraftVisibility
     identity: ReleaseId | None = None
 
 
@@ -454,19 +460,20 @@ class RemotePublisher:
     def discover(self, tag: str) -> ReleaseId | DiscoveryState | catalog.Failure:
         repository = self.api("GET", "")
         if not isinstance(repository, ApiDocument) or not catalog.mapping(repository.value):
+            failure = repository if isinstance(repository, ApiFailure) else ApiFailure.INVALID
+            self.evidence.append(ReleaseEvent(ReleaseOperation.DISCOVER, failure))
+            return catalog.Failure.DRAFT_VISIBILITY_UNPROVEN
+        if repository.value.get("full_name") != self.repository:
+            self.evidence.append(ReleaseEvent(ReleaseOperation.DISCOVER, ApiFailure.INVALID))
             return catalog.Failure.DRAFT_VISIBILITY_UNPROVEN
         permissions = repository.value.get("permissions")
-        if (
-            repository.value.get("full_name") != self.repository
-            or not catalog.mapping(permissions)
-            or permissions.get("push") is not True
-        ):
-            return catalog.Failure.DRAFT_VISIBILITY_UNPROVEN
+        reports_push = catalog.mapping(permissions) and permissions.get("push") is True
         releases = self.listing("releases", projection=ResponseProjection.RELEASE_DISCOVERY)
         if isinstance(releases, catalog.Failure):
             return releases
         seen: set[ReleaseId] = set()
         matches: list[ReleaseId] = []
+        saw_draft = False
         for release in releases:
             admitted = discovered_release(release)
             if isinstance(admitted, catalog.Failure):
@@ -474,10 +481,17 @@ class RemotePublisher:
             if admitted.identity in seen:
                 return catalog.Failure.RELEASE_IDENTITY_CONFLICT
             seen.add(admitted.identity)
+            saw_draft |= admitted.draft
             if admitted.tag_name == tag:
                 matches.append(admitted.identity)
         if len(matches) > 1:
             return catalog.Failure.RELEASE_IDENTITY_CONFLICT
+        if not reports_push:
+            # Actions tokens can list drafts even when repository metadata reports push=false.
+            visibility = DraftVisibility.OBSERVED if saw_draft else DraftVisibility.UNPROVEN
+            self.evidence.append(ReleaseEvent(ReleaseOperation.DISCOVER, visibility))
+            if visibility is DraftVisibility.UNPROVEN:
+                return catalog.Failure.DRAFT_VISIBILITY_UNPROVEN
         return matches[0] if matches else DiscoveryState.ABSENT
 
     def inspect(
