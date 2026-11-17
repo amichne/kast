@@ -31,7 +31,7 @@ code_sources:
 # Native management CLI
 
 This module owns management commands. `cli` composes them into the single native Control executable.
-The public management verbs are `install`, `status`, `stop`, `versions`, `upgrade`, and `uninstall`.
+The public management verbs are `config`, `install`, `status`, `stop`, `versions`, `upgrade`, and `uninstall`.
 Route `query`, `result`, `source`, and `describe` through the selected `bin/kast-query-complete` launcher with unchanged argv.
 Hooks use the internal query entry point, not a public management verb.
 The query process mode owns semantic options, admission, output, and public-shell exit policy.

@@ -51,8 +51,7 @@ class Rejected:
 def payload_directories(root: Path, document: object, *, owned_state: bool = False) -> None:
     if not release.mapping(document) or not release.sequence(files := document.get("payloadFiles")):
         raise ValueError("payload inventory")
-    activation.verify_client_configuration(root, partial=True)
-    directories: set[Path] = {Path("config")}
+    directories = activation.verify_client_configuration(root, partial=True)
     for item in files:
         if not release.mapping(item) or not isinstance(name := item.get("path"), str):
             raise ValueError("payload entry")

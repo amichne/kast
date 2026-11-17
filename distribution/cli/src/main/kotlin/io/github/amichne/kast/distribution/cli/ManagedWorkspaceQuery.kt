@@ -1,5 +1,8 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.WorkspaceAdmissionFailure
+import io.github.amichne.kast.distribution.contract.WorkspaceConfigurationConflict
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
@@ -43,14 +46,14 @@ private constructor(
             root: CanonicalRoot,
             inherited: Map<String, String>,
             seedHostProbe: WorkspaceSeedHostProbe,
-        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+        ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> =
             open(installation, root, inherited, WorkspaceAccess.PREPARE, seedHostProbe)
 
         fun openExisting(
             installation: Path,
             root: CanonicalRoot,
             inherited: Map<String, String>,
-        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+        ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> =
             open(
                 installation,
                 root,
@@ -64,14 +67,14 @@ private constructor(
             root: CanonicalRoot,
             request: WorkspaceQueryEnvironment,
             seedHostProbe: WorkspaceSeedHostProbe,
-        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+        ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> =
             open(product, root, request.values, WorkspaceAccess.PREPARE, seedHostProbe, request.delegated)
 
         fun openExisting(
             product: InstalledProductRuntime,
             root: CanonicalRoot,
             request: WorkspaceQueryEnvironment,
-        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+        ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> =
             open(product, root, request.values, WorkspaceAccess.RETAINED, unexpectedSeed, request.delegated)
 
         private fun open(
@@ -80,7 +83,7 @@ private constructor(
             inherited: Map<String, String>,
             access: WorkspaceAccess,
             seedHostProbe: WorkspaceSeedHostProbe,
-        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+        ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> =
             when (val product = InstalledProductRuntime.admit(installation)) {
                 is Refinement.Rejected -> product
                 is Refinement.Refined -> open(product.value, root, inherited, access, seedHostProbe)
@@ -93,10 +96,16 @@ private constructor(
             access: WorkspaceAccess,
             seedHostProbe: WorkspaceSeedHostProbe,
             delegated: GradleImportEnvironment? = null,
-        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> = containerFiles {
-            val waiting = ManagedWorkspaceWait()
-            ContainerQueryLease.duringStoreAdmission(product.runtime.root.parent.parent) {
-                openSelected(product, root, inherited, waiting, access, seedHostProbe, delegated)
+        ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> {
+            val guarded =
+                ContainerQueryLease.duringStoreAdmission(product.runtime.root.parent.parent) {
+                    Refinement.Refined(
+                        openSelected(product, root, inherited, ManagedWorkspaceWait(), access, seedHostProbe, delegated)
+                    )
+                }
+            return when (guarded) {
+                is Refinement.Rejected -> guarded
+                is Refinement.Refined -> guarded.value
             }
         }
 
@@ -108,7 +117,7 @@ private constructor(
             access: WorkspaceAccess,
             seedHostProbe: WorkspaceSeedHostProbe,
             delegated: GradleImportEnvironment?,
-        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> {
+        ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> {
             val store =
                 ContainerStore(product.runtime.root.parent.parent, product.runtime.manifest.platform, seedHostProbe)
             if ("KAST_MANAGED_HEADLESS_STATE" in inherited) return Refinement.Rejected(ContainerFailure.FOREIGN_STATE)
@@ -122,10 +131,16 @@ private constructor(
                     is Refinement.Refined -> parsed.value
                 }
             if (delegated != null && !delegated.matchesSelection(configuration.gradleImportVariableSelection()))
-                return Refinement.Rejected(ContainerFailure.CONFIGURATION_CONFLICT)
+                return Refinement.Rejected(
+                    WorkspaceConfigurationConflict.GradleSelection(
+                        delegated.evidence.map { it.name.value }.sorted(),
+                        configuration.gradleImportVariableSelection().split(',').filter { it.isNotEmpty() }.sorted(),
+                        configuration.sourceOf(ConfigurationParameter.GRADLE_IMPORT_VARIABLES),
+                    )
+                )
             if (access == WorkspaceAccess.PREPARE) reclaimVanishedWorkspaces(store)
             val workspace =
-                when (val selected = admitWorkspace(store, root, product, configuration, waiting, access)) {
+                when (val selected = admitWorkspace(store, root, product, configuration, waiting, access, inherited)) {
                     is Refinement.Rejected -> return selected
                     is Refinement.Refined -> selected.value
                 }
@@ -202,17 +217,29 @@ private fun admitWorkspace(
     configuration: ResolvedKastConfiguration,
     waiting: ContainerPreparationWait,
     access: WorkspaceAccess,
-): Refinement<AdmittedWorkspace, ContainerFailure> =
-    when (val current = store.workspace(root.path)) {
-        is Refinement.Refined ->
-            when (access) {
-                WorkspaceAccess.PREPARE -> migrateLegacyWorkspace(store, current.value)
-                WorkspaceAccess.RETAINED -> current
-            }
-        is Refinement.Rejected ->
-            if (current.failure != ContainerFailure.NOT_FOUND || access == WorkspaceAccess.RETAINED) current
-            else createWorkspace(store, root, product, configuration, waiting)
+    inherited: Map<String, String>,
+): Refinement<AdmittedWorkspace, WorkspaceAdmissionFailure> {
+    val selected =
+        when (val current = store.workspace(root.path)) {
+            is Refinement.Refined -> current
+            is Refinement.Rejected ->
+                if (current.failure != ContainerFailure.NOT_FOUND || access == WorkspaceAccess.RETAINED) return current
+                else createWorkspace(store, root, product, configuration, waiting)
+        }
+    val workspace =
+        when (selected) {
+            is Refinement.Rejected -> return selected
+            is Refinement.Refined -> selected.value
+        }
+    when (val sharing = admitWorkspaceSharing(product.installation, workspace, configuration, inherited)) {
+        is Refinement.Rejected -> return sharing
+        is Refinement.Refined -> Unit
     }
+    return when (access) {
+        WorkspaceAccess.PREPARE -> migrateLegacyWorkspace(store, workspace)
+        WorkspaceAccess.RETAINED -> selected
+    }
+}
 
 private fun createWorkspace(
     store: ContainerStore,

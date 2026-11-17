@@ -153,6 +153,14 @@ private constructor(
         )
     }
 
+    fun sourceOf(parameter: ConfigurationParameter): ConfigurationSource =
+        assignments.single { it.parameter == parameter }.source
+
+    /** Omission selects the default only during creation. An existing workspace keeps its recorded policy. */
+    fun dependencySharingFor(recorded: WorkspaceDependencySharing): WorkspaceDependencySharing =
+        if (sourceOf(ConfigurationParameter.WORKSPACE_DEPENDENCY_SHARING) == ConfigurationSource.DEFAULT) recorded
+        else workspaceDependencySharing
+
     fun gradleImportVariableSelection(): String =
         assignments.single { it.parameter == ConfigurationParameter.GRADLE_IMPORT_VARIABLES }.value.boundaryValue()
 

@@ -22,6 +22,16 @@ class PublicQueryGenerationTest(unittest.TestCase):
     def setUp(self):
         self.authority = json.loads(SCHEMA.read_text())
 
+    def test_agent_schema_references_use_the_indented_public_schema(self):
+        outputs = generator.render_tools(self.authority)
+        for reference, resource in (
+            ('query-schema.json', 'query_symbols.parameters.json'),
+            ('query-common-schema.json', 'query_symbols.common.parameters.json'),
+        ):
+            text = outputs[ROOT / 'agent-tools/references' / reference]
+            self.assertTrue(text.startswith('{\n  "'), reference)
+            self.assertTrue(text == outputs[generator.RESOURCES / resource], reference)
+
     def test_detail_selector_reuses_typed_authority_in_both_catalogs(self):
         outputs = generator.render_tools(self.authority)
         for name in ('query_symbols.parameters.json', 'query_symbols.common.parameters.json'):
@@ -207,6 +217,12 @@ class PublicQueryGenerationTest(unittest.TestCase):
         for name, digest in expected.items():
             schema = json.loads(generated[generator.RESOURCES / name])
             definitions = schema["$defs"]
+            # Issued producer candidates add a strict, epoch-bound invocation range to IMPACT input.
+            candidate = {"$ref": "#/$defs/SourceCandidateReference"}
+            expected_candidate = {"anyOf": [candidate, {"type": "null"}]}
+            self.assertEqual(expected_candidate, definitions["ImpactProducer"]["properties"].pop("candidateRef"))
+            if "candidateRef" in definitions["ImpactProducer"]["required"]:
+                definitions["ImpactProducer"]["required"].remove("candidateRef")
             # Optional detail syntax and three source-backed descriptions form the intentional delta.
             # Remove that exact delta to keep the prior complete grammar pinned byte-for-byte.
             definitions['ReadResultAction']['properties'].pop('detail')

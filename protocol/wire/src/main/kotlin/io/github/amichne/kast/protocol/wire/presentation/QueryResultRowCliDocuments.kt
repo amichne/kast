@@ -100,6 +100,8 @@ internal sealed interface QueryResultItemCliDocument {
         @SerialName("row_id")
         @ProtocolStringConstraint(pattern = QueryResultRowReference.SERIALIZED_PATTERN)
         val rowId: String? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val producerSeed: io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument? = null,
     ) : QueryResultItemCliDocument
 
     @Serializable
@@ -170,7 +172,12 @@ internal fun QueryResultItemDocument.toCliDocument(): QueryResultItemCliDocument
         is QueryResultItemDocument.ValuePath -> QueryResultItemCliDocument.ValuePath(path, rowId?.value)
         is QueryResultItemDocument.ExactSymbol -> toExactCliDocument()
         is QueryResultItemDocument.Occurrence ->
-            QueryResultItemCliDocument.Occurrence(ref.toCliDocument(), relation.toCliDocument(), rowId?.value)
+            QueryResultItemCliDocument.Occurrence(
+                ref.toCliDocument(),
+                relation.toCliDocument(),
+                rowId?.value,
+                producerSeed,
+            )
         is QueryResultItemDocument.ReferenceOccurrence ->
             QueryResultItemCliDocument.ReferenceOccurrence(
                 ref.toCliDocument(),

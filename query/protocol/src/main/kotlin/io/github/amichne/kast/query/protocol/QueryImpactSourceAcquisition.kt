@@ -112,11 +112,10 @@ internal class QueryImpactSourceAcquisition(
             }
         if (enclosing.lease.identity != lease.identity || callable.lease.identity != lease.identity)
             return impactFailure(QueryImpactSourceFailureCode.BASIS_MISMATCH, position)
-        val anchor =
-            when (val parsed = ExactDeclarationTextRange.parse(seed.anchor.start.value, seed.anchor.end.value)) {
-                is Refinement.Refined -> parsed.value
-                is Refinement.Rejected -> return impactFailure(QueryImpactSourceFailureCode.INVALID_ANCHOR, position)
-            }
+        val anchor = when (val admitted = seed.admitProducerAnchor(enclosing, authority, position)) {
+            is Refinement.Refined -> admitted.value
+            is Refinement.Rejected -> return admitted
+        }
         val grant =
             when (val admitted = remaining(position)) {
                 is Refinement.Refined -> admitted.value
@@ -373,4 +372,31 @@ private fun matchImpactDeclaration(
     if (endpoint.lease.identity != lease.identity || !declaration.declaration.basis.matchesBasis(lease.identity))
         return impactFailure(QueryImpactSourceFailureCode.STALE_DECLARATION, position)
     return Refinement.Refined(Unit)
+}
+
+
+private fun QueryImpactProducerDocument.admitProducerAnchor(
+    enclosing: SymbolSelector,
+    authority: QueryReferenceAuthority,
+    position: Int,
+): Refinement<ExactDeclarationTextRange, QueryRunRejection> {
+        val anchor =
+            when (val parsed = ExactDeclarationTextRange.parse(this.anchor.start.value, this.anchor.end.value)) {
+                is Refinement.Refined -> parsed.value
+                is Refinement.Rejected -> return impactFailure(QueryImpactSourceFailureCode.INVALID_ANCHOR, position)
+            }
+        candidateRef?.let { reference ->
+            val restored = authority.restoreCandidate(reference, enclosing.lease)
+            val selected =
+                (restored as? CanonicalSelectorDecoding.Decoded)?.value
+                    as? io.github.amichne.kast.symbol.contract.CandidateSelector.Range
+                    ?: return impactFailure(QueryImpactSourceFailureCode.STALE_REQUESTED_SITE, position)
+            if (
+                selected.file != enclosing.file ||
+                    selected.startInclusive.value != anchor.startInclusive ||
+                    selected.endExclusive.value != anchor.endExclusive
+            )
+                return impactFailure(QueryImpactSourceFailureCode.ANCHOR_MISMATCH, position)
+        }
+    return Refinement.Refined(anchor)
 }

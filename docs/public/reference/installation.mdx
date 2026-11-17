@@ -169,9 +169,12 @@ Inherited credentials remain available to the build. Treat an external Gradle ho
 
 ### Optional dependency sharing and index seeding
 
-`KAST_WORKSPACE_DEPENDENCY_SHARING` accepts exactly `PRIVATE` (the default) or `SHARED`.
-It supports saved installation and workspace configuration and takes effect only when a workspace container is first created.
-Changing it does not convert an existing container. Upgrades, generation rebuilds, and repair do not seed existing containers.
+`KAST_WORKSPACE_DEPENDENCY_SHARING` accepts `PRIVATE` or `SHARED`. New workspaces default to `PRIVATE`.
+If a request omits the setting, Kast reuses the recorded policy for an existing workspace.
+An explicit setting must match that policy. A mismatch returns `CONFIGURATION_CONFLICT` before the semantic query.
+The response includes the recorded policy, the requested value, and its source.
+Use [workspace configuration](/reference/management) to inspect or change a saved override.
+Upgrades, generation rebuilds, and repair preserve the recorded Gradle home.
 
 | Policy | `GRADLE_USER_HOME` | Gradle home recorded at creation | Index seeding |
 | --- | --- | --- | --- |

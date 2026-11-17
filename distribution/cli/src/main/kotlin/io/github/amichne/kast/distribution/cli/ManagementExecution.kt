@@ -17,6 +17,7 @@ internal fun perform(command: ManagementCommand, output: ManagementOutput = Mana
         }
     when (command) {
         is ManagementCommand.PublicQuery -> error("Public query dispatch already returned")
+        is ManagementCommand.Config -> publishWorkspaceConfig(root, command, environment, output)
         is ManagementCommand.Status -> printManagementStatus(root, command.json, output, command.scope)
         is ManagementCommand.Stop -> executeWorkspaceStop(root, command, environment, output)
         is ManagementCommand.Install ->

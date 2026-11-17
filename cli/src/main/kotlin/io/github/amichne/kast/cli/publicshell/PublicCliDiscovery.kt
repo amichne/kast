@@ -132,8 +132,8 @@ internal fun encodePublicCliDescriptor(descriptor: PublicCliDescriptor): String 
     when (descriptor) {
         is PublicCliDescriptor.Inventory -> discoveryJson.encodeToString(descriptor.value)
         is PublicCliDescriptor.Summary -> discoveryJson.encodeToString(descriptor.value)
-        is PublicCliDescriptor.Schema -> discoveryJson.encodeToString(descriptor.value)
-        is PublicCliDescriptor.SchemaPage -> discoveryJson.encodeToString(descriptor.value)
+        is PublicCliDescriptor.Schema -> schemaDisplayJson.encodeToString(descriptor.value)
+        is PublicCliDescriptor.SchemaPage -> schemaDisplayJson.encodeToString(descriptor.value)
         is PublicCliDescriptor.Examples -> discoveryJson.encodeToString(descriptor.value)
     }
 
@@ -319,6 +319,13 @@ internal val discoveryJson = Json {
     encodeDefaults = true
     explicitNulls = false
 }
+
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+internal val schemaDisplayJson =
+    Json(discoveryJson) {
+        prettyPrint = true
+        prettyPrintIndent = "  "
+    }
 
 /** Purpose is available in inventory and help without schema navigation or a semantic session. */
 internal fun publicCliDescription(command: PublicCliCommandId, catalog: PublicToolCatalog): String =

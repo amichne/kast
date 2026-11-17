@@ -12,6 +12,8 @@ data class QueryImpactProducerDocument(
     val enclosing: ProtocolText,
     val callable: ProtocolText,
     val anchor: ImpactSourceRangeDocument,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val candidateRef: ProtocolText? = null,
 )
 
 /** A locator for fresh revalidation, separate from the supplied model's identity claim. */

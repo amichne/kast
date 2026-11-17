@@ -758,7 +758,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
         outputs[RESOURCES / (tool['name'] + '.examples.json')] = examples
         if tool['name'] == 'query_symbols':
             reference = ROOT / 'agent-tools/references'
-            outputs[reference / 'query-schema.json'] = json.dumps(full, separators=(',', ':')) + '\n'
+            outputs[reference / 'query-schema.json'] = outputs[RESOURCES / 'query_symbols.parameters.json']
             outputs[reference / 'query-examples.json'] = json.dumps([
                 {'name': name, 'summary': example['summary'], 'arguments': example['value']}
                 for name, example in tool.get('examples', {}).items()
@@ -793,7 +793,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
     outputs[RESOURCES / 'tools.common.app-server.json'] = json.dumps(
         dict(type='namespace', name='kast', description=authority['namespaceDescription'], tools=common_registrations), indent=2) + '\n'
     outputs[RESOURCES / 'tools.common.responses.json'] = json.dumps(common_responses, indent=2) + '\n'
-    outputs[ROOT / 'agent-tools/references/query-common-schema.json'] = json.dumps(common, separators=(',', ':')) + '\n'
+    outputs[ROOT / 'agent-tools/references/query-common-schema.json'] = outputs[RESOURCES / 'query_symbols.common.parameters.json']
     return outputs
 
 

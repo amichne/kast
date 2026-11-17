@@ -51,16 +51,12 @@ object InstalledWorkspaceConfigurationIngress {
                 is SavedConfigurationIngress.Rejected -> return read
                 is SavedConfigurationIngress.Loaded -> read
             }
-        val identity =
-            MessageDigest.getInstance("SHA-256")
-                .digest(workspaceRoot.toString().toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it) }
         val overlay =
             when (
                 val read =
                     optional(
                         installationRoot,
-                        installationRoot.resolve("config/workspaces/$identity/environment"),
+                        workspaceFile(installationRoot, workspaceRoot),
                         emptyMap(),
                     )
             ) {
@@ -72,6 +68,14 @@ object InstalledWorkspaceConfigurationIngress {
             installation.observation,
             overlay.observation,
         )
+    }
+
+    fun workspaceFile(installationRoot: Path, workspaceRoot: Path): Path {
+        val identity =
+            MessageDigest.getInstance("SHA-256")
+                .digest(workspaceRoot.toString().toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+        return installationRoot.resolve("config/workspaces/$identity/environment")
     }
 
     /** Inspect every existing component without following aliases; only a proven missing component means absent. */

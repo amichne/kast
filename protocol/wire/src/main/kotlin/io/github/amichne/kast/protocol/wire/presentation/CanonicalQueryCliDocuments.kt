@@ -122,6 +122,8 @@ object CanonicalQueryCliDocuments {
 private fun projectComplete(result: QueryRunResult, live: LiveReadCliEvidence?): CanonicalJsonDocument =
     completeFactory.create(
         QueryCompleteCliDocument(
+            headline = result.traceHeadline(),
+            nextQuery = result.deferredEntryRead(),
             originalEvidenceSummary = result.originalEvidenceSummaryDocument,
             deferredEvidence = result.deferredEvidence.values,
             detail = result.detail,
@@ -159,6 +161,7 @@ private fun projectQualified(
 ): CanonicalJsonDocument =
     qualifiedFactory.create(
         QueryQualifiedCliDocument(
+            nextQuery = result.deferredEntryRead(),
             originalEvidenceSummary = result.originalEvidenceSummaryDocument,
             deferredEvidence = result.deferredEvidence.values,
             detail = result.detail,
@@ -272,3 +275,33 @@ private fun QueryQualifiedCliDocument.compactGraph(): QueryQualifiedCliDocument 
 }
 
 internal fun QueryReferenceDocument.toCliDocument(): String = token.value
+
+@kotlinx.serialization.Serializable
+enum class QueryTraceHeadline {
+    @kotlinx.serialization.SerialName("Source relationships complete.") SOURCE_RELATIONSHIPS_COMPLETE,
+    @kotlinx.serialization.SerialName("Source relationships complete. Callback execution unproven.")
+    CALLBACK_EXECUTION_UNPROVEN,
+}
+
+internal fun QueryRunResult.traceHeadline(): QueryTraceHeadline? =
+    when {
+        interpretation !is
+            io.github.amichne.kast.protocol.contract.QueryResultInterpretationDocument.SourceRelationships -> null
+        originalEvidenceSummaryDocument?.firstUnprovenCallback != null -> QueryTraceHeadline.CALLBACK_EXECUTION_UNPROVEN
+        else -> QueryTraceHeadline.SOURCE_RELATIONSHIPS_COMPLETE
+    }
+
+/** Replays the selected output, including a retained witness section or symbol-field projection. */
+private fun QueryRunResult.deferredEntryRead(): QueryCompletionPublicReadQuery? {
+    val retained = retention as? QueryResultRetention.Retained ?: return null
+    val entry = items.values.firstNotNullOfOrNull { (it as? QueryResultItemDocument.DeferredDetail)?.detail }
+        ?: deferredEvidence.values.firstOrNull() ?: return null
+    require(entry.selector.result == retained.reference)
+    return QueryCompletionPublicReadQuery(
+        QueryCompletionPublicReadRequest.detail(
+            retained.reference,
+            (presentationOutput ?: question.output).toCompletionPublicOutput(),
+            entry.selector,
+        )
+    )
+}

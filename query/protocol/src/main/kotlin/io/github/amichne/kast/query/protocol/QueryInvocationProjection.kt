@@ -59,9 +59,9 @@ internal class QueryInvocationProjection(
         private val originalEvidenceSummary =
             when (val result = execution) {
                 is QueryExecutionResult.Complete ->
-                    QueryEvidenceSummaryState.Captured(result.result.originalEvidenceSummary())
+                    QueryEvidenceSummaryState.Captured(result.result.originalEvidenceSummary(request))
                 is QueryExecutionResult.Qualified ->
-                    QueryEvidenceSummaryState.Captured(result.result.originalEvidenceSummary())
+                    QueryEvidenceSummaryState.Captured(result.result.originalEvidenceSummary(request))
                 is QueryExecutionResult.Rejection -> QueryEvidenceSummaryState.Uncaptured
             }
         private val witnessOutput = request.output as? QueryOutputDocument.ImpactWitness

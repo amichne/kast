@@ -69,6 +69,8 @@ internal sealed interface QueryResultItemWireDocument {
         @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
         @SerialName("row_id")
         val rowId: String? = null,
+        @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+        val producerSeed: io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument? = null,
     ) : QueryResultItemWireDocument
 
     @Serializable
@@ -133,6 +135,7 @@ internal fun QueryResultItemDocument.toWire(): QueryResultItemWireDocument =
                 QueryReferenceWireDocument.ExactSymbol(ref.token.value),
                 relation.toWireDocument(),
                 rowId?.value,
+                producerSeed,
             )
         is QueryResultItemDocument.ReferenceOccurrence ->
             QueryResultItemWireDocument.ReferenceOccurrence(
@@ -193,7 +196,12 @@ internal fun QueryResultItemWireDocument.toContract(): WireDocumentConversion<Qu
             ref.token.queryItemText().flatMapConverted { token ->
                 relation.toContract().flatMapConverted { fact ->
                     optionalRowId(rowId).mapConverted { id ->
-                        QueryResultItemDocument.Occurrence(QueryReferenceDocument.ExactSymbol(token), fact, id)
+                        QueryResultItemDocument.Occurrence(
+                            QueryReferenceDocument.ExactSymbol(token),
+                            fact,
+                            id,
+                            producerSeed,
+                        )
                     }
                 }
             }

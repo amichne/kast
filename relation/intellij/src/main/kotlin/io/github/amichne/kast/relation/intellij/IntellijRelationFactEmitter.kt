@@ -13,6 +13,7 @@ import io.github.amichne.kast.relation.contract.RelationMeaning
 import io.github.amichne.kast.relation.contract.RelationOccurrence
 import io.github.amichne.kast.relation.contract.RelationProvenance
 import io.github.amichne.kast.relation.contract.RelationRequest
+import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 
 /** Named graph facts preserve endpoint, occurrence, provenance, and callback admission together. */
 internal class IntellijRelationFactEmitter(
@@ -38,6 +39,7 @@ internal class IntellijRelationFactEmitter(
         occurrenceElement: PsiElement,
         relativeRange: com.intellij.openapi.util.TextRange,
         callback: io.github.amichne.kast.relation.contract.RelationCallbackObservation? = null,
+        producerRange: ExactDeclarationTextRange? = null,
     ): Boolean {
         val endpoint =
             when (
@@ -69,7 +71,7 @@ internal class IntellijRelationFactEmitter(
                     return omit(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
             }
         val fact =
-            when (val result = fact(endpoint, occurrence, provenance)) {
+            when (val result = fact(endpoint, occurrence, provenance, producerRange)) {
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected ->
                     return omit(RelationLimitation.UNSUPPORTED_ITEM, occurrenceElement, relativeRange)
@@ -81,10 +83,11 @@ internal class IntellijRelationFactEmitter(
         endpoint: RelationEndpoint.Resolved,
         occurrence: RelationOccurrence,
         provenance: RelationProvenance,
+        producerRange: ExactDeclarationTextRange?,
     ) =
         if (request.meaning == RelationMeaning.Callees)
             RelationFact.create(request, request.subject, endpoint, occurrence, provenance)
-        else RelationFact.create(request, endpoint, request.subject, occurrence, provenance)
+        else RelationFact.create(request, endpoint, request.subject, occurrence, provenance, producerRange)
 
     private fun detachOccurrence(
         file: VirtualFile,

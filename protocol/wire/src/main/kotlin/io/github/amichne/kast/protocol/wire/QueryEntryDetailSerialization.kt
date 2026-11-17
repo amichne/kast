@@ -1,6 +1,11 @@
 package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.ImpactFindingTerminalDocument
+import io.github.amichne.kast.protocol.contract.ImpactNativeReadRejectionDocument
+import io.github.amichne.kast.protocol.contract.ImpactReadRejectionDocument
+import io.github.amichne.kast.protocol.contract.ImpactWitnessDocument
+import io.github.amichne.kast.protocol.contract.ImpactWitnessItemDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryEntryDetailKind
 import io.github.amichne.kast.protocol.contract.QueryExecutionRejectionDocument
@@ -29,8 +34,7 @@ object QueryEntryDetailSerialization {
             when (value) {
                 is QueryResultItemDocument.ExactSymbol ->
                     value.kind.name + " " + (value.name?.value?.detailLabel() ?: "")
-                is QueryResultItemDocument.ImpactWitness ->
-                    value.item.section.name + " ordinal " + value.item.ordinal.value
+                is QueryResultItemDocument.ImpactWitness -> value.item.detailMeaning()
                 is QueryResultItemDocument.DeferredDetail -> value.detail.meaning.value
                 else -> value.detailKind().name
             },
@@ -166,3 +170,50 @@ private fun QueryRelationObservationDocument.detailMeaning(): String {
     while (shown < owners.size && meaning(shown + 1).length <= DETAIL_MEANING_CHARACTERS) shown++
     return meaning(shown)
 }
+
+private fun ImpactWitnessItemDocument.detailMeaning(): String {
+    val entry = "${section.name} ordinal ${ordinal.value}"
+    return when (val detail = witness) {
+        is ImpactWitnessDocument.ReadRejection ->
+            "$entry: ${detail.rejection.reason()} (${detail.receipts.values.size} receipts)"
+        is ImpactWitnessDocument.FlowObligation -> "$entry: ${detail.cause.name}"
+        is ImpactWitnessDocument.NativeRead ->
+            "$entry: ${detail.terminal.name} (${detail.transferCount.value} transfers, ${detail.obligationCount.value} obligations)"
+        is ImpactWitnessDocument.Finding -> "$entry: ${detail.finding.terminal.meaning()}"
+        else -> entry
+    }
+}
+
+private fun ImpactFindingTerminalDocument.meaning(): String =
+    when (this) {
+        is ImpactFindingTerminalDocument.Consumer -> outcome.name
+        is ImpactFindingTerminalDocument.UnresolvedFlow -> cause.name
+        is ImpactFindingTerminalDocument.UnresolvedRead -> rejection.reason()
+        is ImpactFindingTerminalDocument.UnresolvedBoundary -> reason.name
+        is ImpactFindingTerminalDocument.UnresolvedPeerContinuation -> reason.name
+        is ImpactFindingTerminalDocument.SupportedDomainEnd -> "SUPPORTED_DOMAIN_END"
+        is ImpactFindingTerminalDocument.ExecutionStop -> "EXECUTION_STOP"
+        is ImpactFindingTerminalDocument.ExplicitScopeExclusion -> cause.name
+        is ImpactFindingTerminalDocument.ModeledTerminal -> meaning.name
+    }
+
+private fun ImpactReadRejectionDocument.reason(): String =
+    when (this) {
+        is ImpactReadRejectionDocument.Contract -> cause.name
+        is ImpactReadRejectionDocument.Native ->
+            when (val reason = cause) {
+                is ImpactNativeReadRejectionDocument.HostUnavailable -> "HOST_UNAVAILABLE ${reason.prerequisite.name}"
+                is ImpactNativeReadRejectionDocument.Unexpected -> "UNEXPECTED_NATIVE_FAILURE ${reason.kind.name}"
+                is ImpactNativeReadRejectionDocument.RelationRejected ->
+                    "NESTED_RELATION_REJECTED ${reason.rejection.name}"
+                is ImpactNativeReadRejectionDocument.PortUnconfigured -> "PORT_UNCONFIGURED ${reason.operation.name}"
+                ImpactNativeReadRejectionDocument.STALE_SITE,
+                ImpactNativeReadRejectionDocument.OUTSIDE_DOMAIN,
+                ImpactNativeReadRejectionDocument.OWNER_UNAVAILABLE,
+                ImpactNativeReadRejectionDocument.AUTHORITY_MOVED,
+                ImpactNativeReadRejectionDocument.UNSUPPORTED_SEED,
+                ImpactNativeReadRejectionDocument.UNRESOLVED_SEED,
+                ImpactNativeReadRejectionDocument.GRANT_TOO_SMALL,
+                ImpactNativeReadRejectionDocument.NESTED_EXECUTION -> reason.toString()
+            }
+    }

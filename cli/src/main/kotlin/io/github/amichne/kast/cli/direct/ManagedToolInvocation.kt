@@ -16,6 +16,7 @@ import io.github.amichne.kast.distribution.cli.ContainerFailure
 import io.github.amichne.kast.distribution.cli.ControlStage
 import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.cli.ManagedWorkspaceQuery
+import io.github.amichne.kast.distribution.contract.WorkspaceConfigurationConflict
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
 import io.github.amichne.kast.kernel.ElapsedTimeAllowance
@@ -115,18 +116,18 @@ private constructor(
     }
 }
 
-internal fun managedWorkspaceRejected(failure: ContainerFailure): CliExit.BoundaryRejected =
+internal fun managedWorkspaceRejected(rejection: DaemonOperationFailure.ManagedWorkspace): CliExit.BoundaryRejected =
     CliExit.BoundaryRejected(
         CliBoundaryExitStatus.RUNTIME,
         managedWorkspaceRejection.create(
             ManagedWorkspaceRejection(
-                failure,
-                if (failure == ContainerFailure.RUNTIME_UNAVAILABLE) "kast upgrade --repair" else null,
+                rejection.reason,
+                rejection.conflict?.recovery()
+                    ?: if (rejection.reason == ContainerFailure.RUNTIME_UNAVAILABLE) "kast upgrade --repair" else null,
+                rejection.conflict,
             )
         ),
-        CliFailureCause.Runtime(
-            DaemonOperationClientRejection.Server(DaemonOperationFailure.ManagedWorkspace(failure))
-        ),
+        CliFailureCause.Runtime(DaemonOperationClientRejection.Server(rejection)),
     )
 
 internal fun managedPreparationRejected(failure: DaemonOperationFailure): CliExit.BoundaryRejected =
@@ -140,6 +141,7 @@ internal fun managedPreparationRejected(failure: DaemonOperationFailure): CliExi
 private data class ManagedWorkspaceRejection(
     val failure: ContainerFailure,
     val recovery: String?,
+    val conflict: WorkspaceConfigurationConflict?,
     @Required val status: String = "rejected",
     @Required val boundary: String = "managed_workspace",
 )

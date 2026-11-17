@@ -18,7 +18,13 @@ internal fun fitHostedQueryPresentationHeader(
     published: ((io.github.amichne.kast.query.protocol.QueryPublicationPageCharge.Encoded) -> Unit)?,
 ): HostedResponse {
     if (fitted !is HostedResponse.Oversized || semantic.hasSelectedDetail()) return fitted
-    val response = HostedResponse.Canonical.queryPresentation(semantic, limits, maximumBytes)
+    val response =
+        HostedResponse.Canonical.queryPresentation(
+            semantic,
+            limits,
+            maximumBytes,
+            deferred = semantic.firstDeferredEntry(),
+        )
     if (response is HostedResponse.Canonical<*, *, *>)
         published?.invoke(encodedPublication(semantic.publicationPage(), response))
     return response

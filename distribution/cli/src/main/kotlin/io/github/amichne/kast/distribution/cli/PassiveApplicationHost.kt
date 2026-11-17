@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import io.github.amichne.kast.distribution.managed.InstalledHostPluginTarget
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
@@ -18,6 +19,8 @@ import kotlinx.serialization.json.Json
 internal data class LoadedApplicationHost(
     val runtimeIdentity: ApplicationRuntimeIdentity,
     val compatibility: ApplicationHostCompatibility,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val gradleImportEnvironmentIdentity: GradleImportEnvironmentIdentity? = null,
 )
 
 @Serializable
@@ -88,14 +91,14 @@ private data class ApplicationEndpointDocument(
     val application: LoadedApplicationHost,
 )
 
-private enum class ApplicationHostFailure {
-    INSTALLATION_UNAVAILABLE,
-    SELECTION_UNAVAILABLE,
-    PROFILE_UNAVAILABLE,
-    DESCRIPTOR_UNAVAILABLE,
-    DESCRIPTOR_REJECTED,
-    PROCESS_UNAVAILABLE,
-    PROCESS_IDENTITY_MISMATCH,
+internal enum class ApplicationHostFailure(val step: PassiveHostStep) {
+    INSTALLATION_UNAVAILABLE(PassiveHostStep.SELECTION),
+    SELECTION_UNAVAILABLE(PassiveHostStep.SELECTION),
+    PROFILE_UNAVAILABLE(PassiveHostStep.SELECTION),
+    DESCRIPTOR_UNAVAILABLE(PassiveHostStep.DESCRIPTOR_READ),
+    DESCRIPTOR_REJECTED(PassiveHostStep.DESCRIPTOR_ADMISSION),
+    PROCESS_UNAVAILABLE(PassiveHostStep.PROCESS_LOOKUP),
+    PROCESS_IDENTITY_MISMATCH(PassiveHostStep.PROCESS_IDENTITY),
 }
 
 private val applicationJson = Json { ignoreUnknownKeys = false }
@@ -122,31 +125,43 @@ internal fun readApplicationHost(
     root: Path,
     home: Path,
     observeProcess: (Long) -> ApplicationProcessObservation = ::observeApplicationProcess,
-): Observation<LoadedApplicationHost> =
+): Observation<LoadedApplicationHost> = inspectApplicationHost(root, home, observeProcess).observation
+
+internal fun inspectApplicationHost(
+    root: Path,
+    home: Path,
+    observeProcess: (Long) -> ApplicationProcessObservation,
+): PassiveHostInspection =
     observeSelectedApplication(home, observeProcess) {
         readApplicationSelection(selectedInstallation(root).resolve("config/selected-ide.json"), home)
     }
 
 // This compatibility read rejects desktop advertisements; it does not select a desktop Host.
-@Suppress("DEPRECATION")
-internal fun readWorkspaceApplicationHost(container: AdmittedContainer): Observation<LoadedApplicationHost> {
-    val observed =
-        observeSelectedApplication(container.home, ::observeApplicationProcess) {
-            readApplicationSelection(container.profile.resolve("config/selected-ide.json"), container.home)
-        }
-    return if (observed.value?.runtimeIdentity?.mode == ApplicationHostMode.DESKTOP)
-        unavailable(ApplicationHostFailure.DESCRIPTOR_REJECTED)
-    else observed
-}
+internal fun readWorkspaceApplicationHost(container: AdmittedContainer): PassiveHostInspection =
+    observeSelectedApplication(container.home, ::observeApplicationProcess, managedOnly = true) {
+        readApplicationSelection(container.profile.resolve("config/selected-ide.json"), container.home)
+    }
 
 private fun observeSelectedApplication(
     home: Path,
     observeProcess: (Long) -> ApplicationProcessObservation,
+    managedOnly: Boolean = false,
     readSelection: () -> ApplicationSelection,
-): Observation<LoadedApplicationHost> {
+): PassiveHostInspection {
     return try {
-        when (val selection = readSelection()) {
-            is ApplicationSelection.Admitted -> readApplicationAdvertisement(selection, home, observeProcess)
+        val selected =
+            try {
+                readSelection()
+            } catch (_: IllegalArgumentException) {
+                return unavailable(ApplicationHostFailure.SELECTION_UNAVAILABLE)
+            } catch (_: IOException) {
+                return unavailable(ApplicationHostFailure.SELECTION_UNAVAILABLE)
+            } catch (_: SecurityException) {
+                return unavailable(ApplicationHostFailure.SELECTION_UNAVAILABLE)
+            }
+        when (val selection = selected) {
+            is ApplicationSelection.Admitted ->
+                readApplicationAdvertisement(selection, home, observeProcess, managedOnly)
             is ApplicationSelection.Rejected -> unavailable(selection.reason)
         }
     } catch (_: ManagementRejected) {
@@ -210,7 +225,8 @@ private fun readApplicationAdvertisement(
     selection: ApplicationSelection.Admitted,
     home: Path,
     observeProcess: (Long) -> ApplicationProcessObservation,
-): Observation<LoadedApplicationHost> {
+    managedOnly: Boolean,
+): PassiveHostInspection {
     val descriptor = selection.directory.resolve("endpoint.json")
     if (!physicalFile(descriptor)) return unavailable(ApplicationHostFailure.DESCRIPTOR_UNAVAILABLE)
     val attributes = Files.readAttributes(descriptor, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
@@ -223,25 +239,56 @@ private fun readApplicationAdvertisement(
     val raw =
         readBoundedFile(descriptor, MAXIMUM_APPLICATION_DESCRIPTOR_BYTES)
             ?: return unavailable(ApplicationHostFailure.DESCRIPTOR_UNAVAILABLE)
-    val document = applicationJson.decodeFromString<ApplicationEndpointDocument>(raw)
+    val document =
+        try {
+            applicationJson.decodeFromString<ApplicationEndpointDocument>(raw)
+        } catch (_: IllegalArgumentException) {
+            return unavailable(ApplicationHostFailure.DESCRIPTOR_REJECTED, PassiveHostStep.DESCRIPTOR_DECODE)
+        }
+    if (managedOnly && document.application.runtimeIdentity.mode != ApplicationHostMode.MANAGED_HEADLESS)
+        return unavailable(ApplicationHostFailure.DESCRIPTOR_REJECTED)
     if (!validApplicationDescriptor(document, selection)) return unavailable(ApplicationHostFailure.DESCRIPTOR_REJECTED)
-    val identity = document.application.runtimeIdentity
-    val process = observeProcess(identity.pid)
+    val inspection = inspectApplicationProcess(document.application, selection.launch.executable, observeProcess)
+    if (inspection is PassiveHostInspection.Rejected) return inspection
+    return if (stableApplicationFiles(descriptor, attributes, selection)) inspection
+    else unavailable(ApplicationHostFailure.DESCRIPTOR_REJECTED, PassiveHostStep.DESCRIPTOR_RECHECK)
+}
+
+private fun inspectApplicationProcess(
+    application: LoadedApplicationHost,
+    executable: String,
+    observeProcess: (Long) -> ApplicationProcessObservation,
+): PassiveHostInspection {
+    val identity = application.runtimeIdentity
+    val process =
+        try {
+            observeProcess(identity.pid)
+        } catch (_: SecurityException) {
+            return unavailable(ApplicationHostFailure.PROCESS_UNAVAILABLE)
+        }
     if (process !is ApplicationProcessObservation.Present)
         return unavailable(ApplicationHostFailure.PROCESS_UNAVAILABLE)
     if (
         process.pid != identity.pid ||
             process.processStartEpochMillis != identity.processStartEpochMillis ||
-            process.executable != selection.launch.executable
+            process.executable != executable
     )
         return unavailable(ApplicationHostFailure.PROCESS_IDENTITY_MISMATCH)
-    if (
-        !sameApplicationFile(descriptor, attributes) ||
-            !sameApplicationFile(selection.record, selection.recordAttributes)
-    )
-        return unavailable(ApplicationHostFailure.DESCRIPTOR_REJECTED)
-    return Observation.verified(document.application)
+    return PassiveHostInspection.Loaded(application)
 }
+
+private fun stableApplicationFiles(
+    descriptor: Path,
+    attributes: BasicFileAttributes,
+    selection: ApplicationSelection.Admitted,
+): Boolean =
+    try {
+        sameApplicationFile(descriptor, attributes) && sameApplicationFile(selection.record, selection.recordAttributes)
+    } catch (_: IOException) {
+        false
+    } catch (_: SecurityException) {
+        false
+    }
 
 private fun sameApplicationFile(path: Path, before: BasicFileAttributes): Boolean {
     val after = Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
@@ -324,8 +371,8 @@ private fun validApplicationContract(contract: ApplicationHostedContract): Boole
 
 private fun physicalFile(path: Path): Boolean = Files.isRegularFile(path, NOFOLLOW_LINKS) && path.toRealPath() == path
 
-private fun unavailable(reason: ApplicationHostFailure): Observation<LoadedApplicationHost> =
-    Observation.unavailable(reason.name)
+private fun unavailable(reason: ApplicationHostFailure, step: PassiveHostStep = reason.step): PassiveHostInspection =
+    PassiveHostInspection.Rejected(reason, step)
 
 private const val MAXIMUM_APPLICATION_DESCRIPTOR_BYTES = 65_536L
 private const val SOURCE_REVISION_LENGTH = 40

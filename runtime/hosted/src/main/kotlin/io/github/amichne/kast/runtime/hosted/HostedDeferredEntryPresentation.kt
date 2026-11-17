@@ -23,6 +23,7 @@ import io.github.amichne.kast.protocol.contract.QueryRunFailure
 import io.github.amichne.kast.protocol.contract.QueryRunRejection
 import io.github.amichne.kast.protocol.contract.QueryRunResult
 import io.github.amichne.kast.protocol.contract.presentationUnitCount
+import io.github.amichne.kast.protocol.contract.reason
 import io.github.amichne.kast.protocol.wire.CanonicalOperationWireBindings
 import io.github.amichne.kast.protocol.wire.QueryEntryDetailSerialization
 
@@ -173,3 +174,32 @@ internal fun <Value, Failure> Refinement<Value, Failure>.detailValue(): Value =
         is Refinement.Refined -> value
         is Refinement.Rejected -> error("An admitted retained detail lost its constrained value: $failure")
     }
+
+/** A byte-limited header can address the first retained entry even when the question itself cannot fit. */
+internal fun HostedQueryOutcome.firstDeferredEntry(): QueryDeferredDetailDocument? {
+    return when (this) {
+        is OperationOutcome.Complete -> evidence.payload.firstDeferredEntry()
+        is OperationOutcome.Qualified -> evidence.payload.firstDeferredEntry()
+        is OperationOutcome.Rejected -> {
+            val completion = reason.reason() as? QueryRunRejection.CompletionUnproven ?: return null
+            val retained = completion.evidence as? QueryCompletionEvidenceDocument.Retained ?: return null
+            val row = retained.preview.values.firstOrNull() ?: return null
+            if (row is QueryResultItemDocument.DeferredDetail) row.detail
+            else deferredRowSummary(row, retained.result, 0).detail
+        }
+    }
+}
+
+private fun QueryRunResult.firstDeferredEntry(): QueryDeferredDetailDocument? {
+    val retained = retention as? QueryResultRetention.Retained ?: return null
+    val row = items.values.firstOrNull()
+    if (row is QueryResultItemDocument.DeferredDetail) return row.detail
+    if (row != null)
+        return deferredRowSummary(row, retained.reference, presentationWindow?.start?.value ?: 0).detail
+    val start = evidenceWindow?.start?.value ?: 0
+    val first = deferredEvidence.values.firstOrNull()
+    if (first?.selector?.ordinal?.value == start) return first
+    val evidence = QueryEntryDetailSerialization.evidence(this, 0)
+    if (evidence !is Refinement.Refined) return null
+    return deferredEvidence(0, evidence.value).deferredEvidence.values.first()
+}

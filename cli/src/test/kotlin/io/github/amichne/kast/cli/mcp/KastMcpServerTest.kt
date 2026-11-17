@@ -112,6 +112,31 @@ class KastMcpServerTest {
     }
 
     @Test
+    fun `query catalog exposes producer invocation discovery`() {
+        val output = ByteArrayOutputStream()
+        val query = installedHostedBootstrap().tools.single { it.name == "query_symbols" }.directToolDocument()
+        KastMcpServer(
+                catalog = listOf(query),
+                invoke = { _, _ -> error("Listing tools must not invoke a query") },
+                root = { error("Listing tools must not prepare a workspace") },
+            )
+            .run(
+                BufferedInputStream(
+                    ByteArrayInputStream(testMcpJson.encodeToString(TestModernRequest(1, "tools/list")).toByteArray())
+                ),
+                PrintStream(output),
+            )
+        val listed =
+            Json.parseToJsonElement(output.toString(Charsets.UTF_8))
+                .jsonObject
+                .getValue("result")
+                .jsonObject
+                .getValue("tools")
+                .jsonArray
+        assertTrue(listed.any { it.jsonObject.getValue("name").jsonPrimitive.content == "producer_invocations" })
+    }
+
+    @Test
     fun `modern request requires both metadata fields and rejects unsupported version`() {
         val output = ByteArrayOutputStream()
         val requests =
@@ -287,19 +312,11 @@ class KastMcpServerTest {
         assertTrue(instructions.contains("continuation"))
         assertTrue(instructions.contains("UNSUPPORTED_ITEM"))
         assertTrue(instructions.contains("MODEL_CAPTURE_REJECTED"))
-        assertEquals(
-            "query_symbols",
-            replies[1]
-                .getValue("result")
-                .jsonObject
-                .getValue("tools")
-                .jsonArray
-                .single()
-                .jsonObject
-                .getValue("name")
-                .jsonPrimitive
-                .content,
-        )
+        val catalogNames =
+            replies[1].getValue("result").jsonObject.getValue("tools").jsonArray.map {
+                it.jsonObject.getValue("name").jsonPrimitive.content
+            }
+        assertEquals(listOf("impact", "producer_invocations", "query_symbols"), catalogNames)
         assertTrue(replies[2].getValue("result").jsonObject.getValue("isError").jsonPrimitive.content.toBoolean())
         assertEquals(0, calls)
         assertTrue(diagnostics.toString(Charsets.UTF_8).contains("\"outcome\":\"REJECTED\""))

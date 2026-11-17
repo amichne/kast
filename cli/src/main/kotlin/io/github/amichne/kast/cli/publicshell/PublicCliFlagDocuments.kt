@@ -66,10 +66,25 @@ internal sealed interface CliSource {
         val scope: CliDirectory?,
     ) : CliSource
 
+    @Serializable
+    @SerialName("IMPACT")
+    data class Impact(
+        val seeds: List<io.github.amichne.kast.protocol.contract.QueryImpactProducerDocument>,
+        @Required val domain: CliWorkspaceScope = CliWorkspaceScope(),
+        @Required
+        val flow: io.github.amichne.kast.protocol.contract.QueryImpactFlowDocument =
+            io.github.amichne.kast.protocol.contract.QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+        @Required
+        val declarations: List<io.github.amichne.kast.protocol.contract.QueryImpactDeclarationDocument> = emptyList(),
+        @Required val models: List<io.github.amichne.kast.protocol.contract.ImpactRequestedModelDocument> = emptyList(),
+    ) : CliSource
+
     @Serializable @SerialName("SYMBOL_REFS") data class References(val symbolRefs: List<String>) : CliSource
 
     @Serializable @SerialName("AT_LOCATION") data class Location(val file: String, val offset: Long) : CliSource
 }
+
+@Serializable internal data class CliWorkspaceScope(@Required val type: String = "WORKSPACE")
 
 @Serializable
 internal data class CliDirectory(
@@ -98,6 +113,10 @@ internal sealed interface CliTerminal {
 @Serializable
 internal sealed interface CliOutput {
     @Serializable @SerialName("SYMBOLS") data class Symbols(val fields: List<CliField>) : CliOutput
+
+    @Serializable
+    @SerialName("IMPACT_WITNESS")
+    data class Witness(val section: io.github.amichne.kast.protocol.contract.ImpactWitnessSectionDocument) : CliOutput
 
     @Serializable @SerialName("OCCURRENCES") data object Occurrences : CliOutput
 }

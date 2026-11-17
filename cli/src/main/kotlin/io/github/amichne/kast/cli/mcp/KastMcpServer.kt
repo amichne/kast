@@ -17,12 +17,15 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
 internal class KastMcpServer(
-    private val catalog: List<DirectToolDocument>,
+    catalog: List<DirectToolDocument>,
     private val invoke: (String, JsonObject) -> CliExit,
     private val root: () -> CanonicalRootDiscovery,
     private val diagnostic: PrintStream = System.err,
+    queryCatalog: io.github.amichne.kast.protocol.registry.PublicToolCatalog =
+        io.github.amichne.kast.protocol.registry.PublicToolCatalog.COMPLETE,
 ) {
-    private val tools = catalog.associateBy { it.name }
+    private val catalog = catalog + producerTools(catalog, queryCatalog)
+    private val tools = this.catalog.associateBy { it.name }
     private val report = McpCallReporter(diagnostic)
     private var era: McpProtocolEra? = null
 
@@ -181,7 +184,13 @@ internal class KastMcpServer(
             report(call.name, McpCallStage.ADMISSION, McpCallOutcome.REJECTED)
             return responseRejected(id, McpCallFailure.NOT_GRADLE_WORKSPACE, modern)
         }
-        return McpDispatch.Invocation(id, call, modern, call.executionPolicy())
+        val admitted =
+            try {
+                call.asProducerQuery()
+            } catch (_: SerializationException) {
+                return responseRejected(id, McpCallFailure.INVALID_ARGUMENTS, modern)
+            }
+        return McpDispatch.Invocation(id, admitted, modern, admitted.executionPolicy())
     }
 
     @Suppress("CognitiveComplexMethod", "CyclomaticComplexMethod", "LongMethod")

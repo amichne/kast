@@ -6327,7 +6327,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "c9f3f71b58772063f95b468555f0f2834a8c74ded2a26addc100286d9343211c"
+          "sha256": "412a5913a50fabf2c93a6deec07791e7f9670305d2d85a47c726ddd4e5a0e0c1"
         }
       ],
       "claims": [
@@ -7624,7 +7624,7 @@
       "content": [
         {
           "path": "docs/public/reference/management.mdx",
-          "sha256": "0f8e3f982a03c8f59c035398a64e8fe23362137d9ab1312c35f900344186bb9e"
+          "sha256": "4602ea15d20740da58dc09a7fde0a8763f778f44453a46d36e807662804d7037"
         }
       ],
       "claims": [
@@ -7841,7 +7841,7 @@
       "content": [
         {
           "path": "docs/public/reference/mcp-catalog.mdx",
-          "sha256": "ad8a905fee3a325c533fb37ce0401c331eb4e05396655290cfd6d5b681c9a033"
+          "sha256": "291c036ed0bd476c85c89a404548fb693a5274b4ea345e156c01785ded0b701d"
         }
       ],
       "claims": [

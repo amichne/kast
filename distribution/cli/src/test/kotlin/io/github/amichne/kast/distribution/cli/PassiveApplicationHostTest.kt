@@ -17,7 +17,8 @@ class PassiveApplicationHostTest {
     @Test
     fun `263 passive identity is admitted while unreviewed and mixed lines reject`() {
         val fixture = fixture()
-        val original = managementJson.decodeFromString<Advertisement>(Files.readString(fixture.descriptor))
+        val original =
+            managementJson.decodeFromString<Advertisement<LoadedApplicationHost>>(Files.readString(fixture.descriptor))
         for (line in listOf("262", "263", "261", "264")) {
             val build = "$line.7307.200"
             val loaded =
@@ -44,7 +45,8 @@ class PassiveApplicationHostTest {
     @Test
     fun `passive status keeps managed ownership and rejects an unknown mode`() {
         val fixture = fixture()
-        val original = managementJson.decodeFromString<Advertisement>(Files.readString(fixture.descriptor))
+        val original =
+            managementJson.decodeFromString<Advertisement<LoadedApplicationHost>>(Files.readString(fixture.descriptor))
         val identity =
             fixture.loaded.runtimeIdentity.copy(
                 mode = ApplicationHostMode.MANAGED_HEADLESS,
@@ -111,7 +113,8 @@ class PassiveApplicationHostTest {
     @Test
     fun `a different profile or lifetime rejects before process inspection`() {
         val fixture = fixture()
-        val original = managementJson.decodeFromString<Advertisement>(Files.readString(fixture.descriptor))
+        val original =
+            managementJson.decodeFromString<Advertisement<LoadedApplicationHost>>(Files.readString(fixture.descriptor))
         for (document in
             listOf(
                 original.copy(host = UUID(0, 99).toString()),
@@ -130,6 +133,44 @@ class PassiveApplicationHostTest {
             assertEquals(ObservationState.UNAVAILABLE, status.state)
             assertEquals("DESCRIPTOR_REJECTED", status.reason)
         }
+    }
+
+    @Test
+    fun `managed Host advertisement with Gradle identity admits the exact process`() {
+        val fixture = fixture()
+        val descriptor =
+            managementJson.decodeFromString<
+                Advertisement<io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement>
+            >(
+                Files.readString(fixture.descriptor)
+            )
+        val application =
+            descriptor.application.copy(
+                runtimeIdentity =
+                    descriptor.application.runtimeIdentity.copy(
+                        mode = io.github.amichne.kast.protocol.contract.IdeHostMode.MANAGED_HEADLESS,
+                        autoReload = io.github.amichne.kast.protocol.contract.HostAutoReload.DISABLED,
+                    ),
+                gradleImportEnvironmentIdentity = "e".repeat(64),
+            )
+        Files.writeString(fixture.descriptor, managementJson.encodeToString(descriptor.copy(application = application)))
+        val admitted = inspectApplicationHost(fixture.root, fixture.home) { fixture.process }
+        assertEquals(ObservationState.VERIFIED, admitted.observation.state)
+        val stages = PassiveHostStages.at(admitted.stage)
+        assertEquals(PassiveDescriptorState.ADMITTED, stages.descriptor)
+        assertEquals(PassiveProcessState.MATCHED, stages.process)
+        assertEquals(PassiveProbeState.UNEXAMINED, stages.semanticReadiness)
+        assertEquals(PassiveProbeState.UNEXAMINED, stages.transport)
+        Files.writeString(
+            fixture.descriptor,
+            managementJson.encodeToString(
+                descriptor.copy(application = application.copy(gradleImportEnvironmentIdentity = "invalid"))
+            ),
+        )
+        val rejected =
+            inspectApplicationHost(fixture.root, fixture.home) { error("Unadmitted descriptor supplied a PID") }
+        assertEquals(PassiveHostStep.DESCRIPTOR_DECODE, rejected.stage)
+        assertEquals(PassiveProcessState.UNEXAMINED, PassiveHostStages.at(rejected.stage).process)
     }
 
     private fun fixture(): Fixture {
@@ -217,7 +258,7 @@ class PassiveApplicationHostTest {
     @Serializable private data class Launch(val os: String, val arch: String, val launcherPath: String)
 
     @Serializable
-    private data class Advertisement(
+    private data class Advertisement<T>(
         val type: String,
         val protocol: Int,
         val root: String,
@@ -226,6 +267,6 @@ class PassiveApplicationHostTest {
         val host: String,
         val querySchema: String,
         val operations: List<String>,
-        val application: LoadedApplicationHost,
+        val application: T,
     )
 }

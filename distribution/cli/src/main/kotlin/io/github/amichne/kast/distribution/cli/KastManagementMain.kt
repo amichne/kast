@@ -55,7 +55,10 @@ internal fun selectManagementEntryOutputFormat(
     arguments: List<String>,
     environmentSetting: String?,
 ): Refinement<CliOutputFormat, CliOutputFailure> =
-    if (arguments.firstOrNull() in publicQueryNamespaces && "--json" in arguments)
+    if (
+        (arguments.firstOrNull() in publicQueryNamespaces || arguments.firstOrNull() == "config") &&
+            "--json" in arguments
+    )
         Refinement.Refined(CliOutputFormat.JSON)
     else selectCliOutputFormat(environmentSetting)
 
@@ -73,6 +76,7 @@ internal fun parseManagementCommand(arguments: List<String>): ManagementParsing 
     val root =
         ManagementRoot()
             .subcommands(
+                workspaceConfigCommand(),
                 StatusCommand(),
                 StopCommand(),
                 InstallCommand(),

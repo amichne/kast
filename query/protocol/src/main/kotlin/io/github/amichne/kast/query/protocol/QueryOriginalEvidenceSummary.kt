@@ -7,7 +7,9 @@ import io.github.amichne.kast.protocol.contract.QueryEvidenceWalkFailureKind
 import io.github.amichne.kast.protocol.contract.QueryExactFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryOriginalEvidenceSummaryDocument
 import io.github.amichne.kast.protocol.contract.QueryPredicateFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryQuestionDocument
 import io.github.amichne.kast.protocol.contract.QueryRelationFailureDocument
+import io.github.amichne.kast.protocol.contract.QueryRunRequest
 import io.github.amichne.kast.protocol.contract.QuerySourceFailureDocument
 import io.github.amichne.kast.protocol.contract.RelationLimitationDocument
 import io.github.amichne.kast.protocol.contract.SourceReadLimitationDocument
@@ -17,7 +19,7 @@ import io.github.amichne.kast.query.contract.QuerySourceFailure
 import io.github.amichne.kast.traversal.contract.TraversalRejection
 
 /** Pure metadata over original facts, before presentation selection or issued-reference effects. */
-internal fun QueryResult.originalEvidenceSummary(): QueryOriginalEvidenceSummaryDocument {
+internal fun QueryResult.originalEvidenceSummary(request: QueryRunRequest.Run): QueryOriginalEvidenceSummaryDocument {
     val sourceFailures = failures.filterIsInstance<QueryItemFailure.Source>().map { it.reason }
     val walks = failures.filterIsInstance<QueryItemFailure.Walk>().map { it.reason }
     return QueryOriginalEvidenceSummaryDocument(
@@ -54,6 +56,14 @@ internal fun QueryResult.originalEvidenceSummary(): QueryOriginalEvidenceSummary
             }
         ),
         finite(walks.map { it.summaryKind() }),
+        if (
+            QueryCallbackCompletion.from(QueryQuestionDocument.from(request)) ==
+                QueryCallbackCompletion.SOURCE_RELATIONSHIPS
+        )
+            (relationObservations.asSequence().flatMap { it.callbackObservations } +
+                    walkObservations.asSequence().flatMap { it.callbackObservations }.map { it.observation })
+                .firstNotNullOfOrNull { it.unprovenNavigationCause() }
+        else null,
     )
 }
 

@@ -11,11 +11,12 @@ import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.WorkspaceOperationAdmission
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.workspaceAdmission
-import io.github.amichne.kast.distribution.cli.ContainerFailure
 import io.github.amichne.kast.distribution.cli.ControlStage
 import io.github.amichne.kast.distribution.cli.ControlStageOutcome
 import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.cli.WorkspaceQueryEnvironment
+import io.github.amichne.kast.distribution.contract.HostSettingsComparison
+import io.github.amichne.kast.distribution.contract.WorkspaceConfigurationConflict
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
@@ -171,17 +172,33 @@ internal class ManagedCoordinatorOperations(
                 is WorkspaceEntry.Failed -> Refinement.Refined(beginPreparation(root, slot, settings))
                 is WorkspaceEntry.Draining -> Refinement.Rejected(lifecycleTransition)
                 is WorkspaceEntry.Ready -> Refinement.Refined(WorkspaceTicket(slot, entry))
-                is WorkspaceEntry.Preparing ->
-                    if (entry.settings == settings.host) {
-                        ControlStageTrace.record(
-                            ControlStage.WORKSPACE_PREPARATION_JOIN,
-                            ControlStageOutcome.REUSED,
-                            System.nanoTime(),
-                        )
-                        Refinement.Refined(WorkspaceTicket(slot, entry))
-                    } else Refinement.Rejected(configurationConflict)
+                is WorkspaceEntry.Preparing -> joinPreparation(slot, entry, settings.host)
             }
         }
+
+    private fun joinPreparation(
+        slot: WorkspaceSlot,
+        entry: WorkspaceEntry.Preparing,
+        requested: WorkspaceSettingsIdentity,
+    ): Refinement<WorkspaceTicket, DaemonOperationFailure> {
+        if (entry.settings == requested) {
+            ControlStageTrace.record(
+                ControlStage.WORKSPACE_PREPARATION_JOIN,
+                ControlStageOutcome.REUSED,
+                System.nanoTime(),
+            )
+            return Refinement.Refined(WorkspaceTicket(slot, entry))
+        }
+        val differences =
+            changedHostSettings(requested.values, entry.settings.values) +
+                if (requested.delegated != entry.settings.delegated) listOf("gradleImportEnvironmentIdentity")
+                else emptyList()
+        return Refinement.Rejected(
+            DaemonOperationFailure.ManagedWorkspace(
+                WorkspaceConfigurationConflict.HostSettings(HostSettingsComparison.PREPARING, differences)
+            )
+        )
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun beginPreparation(
@@ -322,4 +339,3 @@ private fun WorkspaceDemandCause.reprepares(operation: DaemonOperationCall): Boo
 // A HostChanged result can also follow a readiness retry. Revoke its binding without replaying the operation.
 private val hostUnavailable = WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE)
 private val lifecycleTransition = DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION)
-internal val configurationConflict = DaemonOperationFailure.ManagedWorkspace(ContainerFailure.CONFIGURATION_CONFLICT)

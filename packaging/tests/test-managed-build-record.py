@@ -793,6 +793,31 @@ class ProductActivationTest(unittest.TestCase):
             all(url.startswith(f"{release.RELEASE_URL}/v1.2.3/") for url in self.source.calls)
         )
 
+    def test_workspace_overlay_survives_replacement_and_is_admitted_for_removal(self) -> None:
+        admitted = self.admitted()
+        result = activation.activate(self.root, self.home, admitted)
+        assert isinstance(result, activation.ProductInstalled), result
+        active = self.root / "installation"
+        workspace = active / "config/workspaces" / ("c" * 64)
+        workspace.mkdir(parents=True, mode=0o700)
+        overlay = workspace / "environment"
+        saved = b"# saved by user\nKAST_WORKSPACE_DEPENDENCY_SHARING=SHARED\n"
+        _ = overlay.write_bytes(saved)
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted, runner=self.retire),
+            activation.ProductInstalled,
+        )
+        self.assertEqual(saved, overlay.read_bytes())
+        self.assertEqual(0o600, stat.S_IMODE(overlay.stat().st_mode))
+        path, _ = self.removal_journal(result)
+        unknown = workspace / "foreign"
+        _ = unknown.write_bytes(b"keep")
+        self.assertEqual(1, self.remove_product(path))
+        self.assertEqual(b"keep", unknown.read_bytes())
+        unknown.unlink()
+        self.assertEqual(0, self.remove_product(path))
+        self.assertFalse(active.exists())
+
     def test_corrupt_qualified_archive_rejects_before_installation_effects(self) -> None:
         name = self.record.targets[1].runtime.name
         self.source.values[f"{release.RELEASE_URL}/v1.2.3/{name}"] = b"wrong bytes"
