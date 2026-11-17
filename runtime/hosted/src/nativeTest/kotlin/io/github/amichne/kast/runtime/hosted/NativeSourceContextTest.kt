@@ -54,6 +54,21 @@ import kotlinx.coroutines.runBlocking
 class NativeSourceContextTest : NativeSmartModeFixtureTest() {
     override fun getModuleType() = JavaModuleType.getModuleType()
 
+    fun testRetainedSourceExceedsResponseGrant() = runBlocking {
+        val content = "x".repeat(9_400)
+        val (fixture, _) = prepare("package scoped\nfun evidenceLargeDeclaration() = \"$content\"\n")
+        val request =
+            search("evidenceLargeDeclaration")
+                .copy(
+                    output =
+                        QueryOutputDocument.Symbols(
+                            bounded(listOf(QuerySymbolFieldDocument.NAME, QuerySymbolFieldDocument.SOURCE))
+                        ),
+                    retention = io.github.amichne.kast.protocol.contract.QueryRetentionModeDocument.RETAIN,
+                )
+        assertNativeOversizedSource(fixture.valueServices(), request, content)
+    }
+
     fun testExactOverloadOccurrenceBodyExcerptAndRegionReentry() = runBlocking {
         val (fixture, _) = prepare()
         val protocol = fixture.protocol()

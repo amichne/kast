@@ -5,6 +5,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.kernel.ResultLimit
 import io.github.amichne.kast.kernel.WorkUnitLimit
+import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
@@ -28,6 +29,7 @@ internal class QueryExecutionState(
     private val clock: QueryNanoClock,
     branchObservation: io.github.amichne.kast.query.contract.QueryBranchObservation =
         io.github.amichne.kast.query.contract.QueryBranchObservation.None,
+    val sourceWindowBytes: QueryByteLimit = request.budget.returnedBytes,
 ) {
     private val startedAt = clock.now()
     private var usedWork = 0L

@@ -4,6 +4,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
 import io.github.amichne.kast.query.contract.ExactQueryStage
 import io.github.amichne.kast.query.contract.QueryBranchObservation
+import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryCheckpointStorageObservation
 import io.github.amichne.kast.query.contract.QueryCompositionInput
 import io.github.amichne.kast.query.contract.QueryContinuationState
@@ -52,9 +53,14 @@ class QueryService(
     private val walkStage = QueryWalkStage(traversal, traversalCeiling)
 
     override suspend fun run(request: QueryExecutionRequest): QueryExecutionResult {
-        if (presentation?.admitValuePath() is Refinement.Rejected) {
-            return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
-        }
+        val sourceWindowBytes =
+            when (presentation?.admitOversizedEntry()) {
+                null -> request.budget.returnedBytes
+                is Refinement.Rejected ->
+                    return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
+                is Refinement.Refined ->
+                    maxOf(request.budget.returnedBytes, request.budget.checkpointBytes, compareBy { it.value })
+            }
         val checkpoint = request.checkpoint
         if (checkpoint != null && checkpoint !is PipelineCheckpoint) {
             return QueryExecutionResult.Rejected(QueryExecutionRejection.INTERNAL_CONTRACT_VIOLATION)
@@ -62,14 +68,18 @@ class QueryService(
         if (request.plan.exceedsTraversalDepth(traversalCeiling.extent)) {
             return QueryExecutionResult.Rejected(QueryExecutionRejection.BUDGET_REJECTED)
         }
-        return Execution(request, checkpoint).run()
+        return Execution(request, checkpoint, sourceWindowBytes).run()
     }
 
     /** The single evaluator keeps task order, page accounting, and continuation construction in one owner. */
     @Suppress("LargeClass")
-    private inner class Execution(private val request: QueryExecutionRequest, checkpoint: PipelineCheckpoint?) {
+    private inner class Execution(
+        private val request: QueryExecutionRequest,
+        checkpoint: PipelineCheckpoint?,
+        sourceWindowBytes: QueryByteLimit,
+    ) {
         private val emittedBefore = checkpoint?.emittedCount ?: 0.queryCount()
-        private val state = QueryExecutionState(request, clock, branchObservation)
+        private val state = QueryExecutionState(request, clock, branchObservation, sourceWindowBytes)
         private var seed: PipelineSeed = checkpoint?.seed ?: PipelineSeed.Unmeasured
         private val tasks = ArrayDeque(checkpoint?.tasks ?: initialTasks(request.plan))
         private val identityRows = QueryIdentityRows(checkpoint?.identityRows.orEmpty())
