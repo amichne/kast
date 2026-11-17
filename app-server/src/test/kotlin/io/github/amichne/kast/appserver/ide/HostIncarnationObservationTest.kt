@@ -25,13 +25,16 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertInstanceOf
 
@@ -87,9 +90,7 @@ class HostIncarnationObservationTest {
     @Test
     fun `a surviving Host is adopted only by exact process, executable, Host and project`() = hostFixture { fixture ->
         val launcher = fixture.deployment.idea.resolve("bin/idea")
-        Files.copy(Path.of("/bin/sleep"), launcher, StandardCopyOption.REPLACE_EXISTING)
-        launcher.toFile().setExecutable(true)
-        val survivor = ProcessBuilder(launcher.toString(), "60").start()
+        val survivor = startAdoptableChild(launcher)
         try {
             val identity = identityOf(fixture, survivor.toHandle())
             val target = target(fixture)
@@ -115,7 +116,7 @@ class HostIncarnationObservationTest {
                 )
             assertEquals(expected, observed.incarnation)
             assertEquals(target, observed.target)
-            survivor.destroy()
+            survivor.outputStream.close()
             assertEquals(
                 HostExit.Adopted(expected, HostExitCause.Unknown),
                 observed.exit.toCompletableFuture().get(EXIT_WAIT_SECONDS, TimeUnit.SECONDS),
@@ -123,6 +124,38 @@ class HostIncarnationObservationTest {
             fixture.server.assertOnlyInspections()
         } finally {
             survivor.destroyForcibly()
+        }
+    }
+
+    private fun startAdoptableChild(launcher: Path): Process {
+        Files.copy(Path.of("/bin/cat"), launcher, StandardCopyOption.REPLACE_EXISTING)
+        assertTrue(launcher.toFile().setExecutable(true))
+        signAdoptionFixtureOnMac(launcher)
+        val child = ProcessBuilder(launcher.toString()).start()
+        try {
+            val marker = "adoption-fixture-ready\n".encodeToByteArray()
+            child.outputStream.write(marker)
+            child.outputStream.flush()
+            val echo = CompletableFuture.supplyAsync { child.inputStream.readNBytes(marker.size) }
+            assertArrayEquals(marker, echo.get(EXIT_WAIT_SECONDS, TimeUnit.SECONDS))
+            return child
+        } catch (failure: Throwable) {
+            child.destroyForcibly()
+            throw failure
+        }
+    }
+
+    private fun signAdoptionFixtureOnMac(launcher: Path) {
+        if (System.getProperty("os.name") != "Mac OS X") return
+        val signature =
+            ProcessBuilder("/usr/bin/codesign", "--force", "--sign", "-", launcher.toString())
+                .redirectError(ProcessBuilder.Redirect.INHERIT)
+                .start()
+        try {
+            assertTrue(signature.waitFor(EXIT_WAIT_SECONDS, TimeUnit.SECONDS))
+            assertEquals(0, signature.exitValue())
+        } finally {
+            if (signature.isAlive) signature.destroyForcibly()
         }
     }
 
