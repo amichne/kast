@@ -21,6 +21,8 @@ enum class ContainerFailure(val exit: Int = 1) {
     LEASE_CLOSED,
     PREPARATION_WAIT_EXPIRED,
     INVALID_CONFIGURATION,
+    /** Explicit caller settings select a Host other than the workspace's registered Host. */
+    CONFIGURATION_CONFLICT,
     CAPACITY_EXCEEDED,
     STOPPED,
     RUNTIME_UNAVAILABLE,
