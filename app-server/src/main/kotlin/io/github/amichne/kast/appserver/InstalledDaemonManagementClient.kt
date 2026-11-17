@@ -329,7 +329,8 @@ private fun admitDaemonRegistration(
         is DaemonManagementResponse.WorkspacePreparation,
         is DaemonManagementResponse.Status,
         is DaemonManagementResponse.Sessions,
-        is DaemonManagementResponse.Controlled -> reject()
+        is DaemonManagementResponse.Controlled,
+        is DaemonManagementResponse.Retiring -> reject()
         is DaemonManagementResponse.Registered -> {
             val workspace = WorkspaceRegistration(root)
             val revision =

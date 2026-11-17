@@ -12,6 +12,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.selects.select
 
 internal class InstalledCoordinatorOptions(
     val kast: Path,
@@ -121,11 +122,16 @@ internal class InstalledCoordinator
 private constructor(
     private val server: KtorBrokerServer,
     private val readiness: OwnedBrokerServiceReadiness?,
+    private val retirement: CompletableDeferred<Unit>,
 ) {
     private val closed = AtomicBoolean(false)
     private val stopped = CompletableDeferred<Unit>()
 
-    suspend fun awaitTermination() = stopped.await()
+    /** Completes after close, or once an accepted lifecycle retirement asks the owner to close. */
+    suspend fun awaitTermination() = select {
+        stopped.onAwait {}
+        retirement.onAwait {}
+    }
 
     suspend fun close() {
         if (!closed.compareAndSet(false, true)) {
@@ -208,6 +214,7 @@ private constructor(
                 InstalledWorkspacePreparation(options.userHome, options.configuration, owner.installationId.value)
             val registryPath = options.installationRoot.resolve("config/workspaces.json")
             val frontend = deferredFrontend(options, preparation, activity)
+            val retirement = CompletableDeferred<Unit>()
             stage = BrokerStartupStage.WORKER_CONTROL
             activity.started(stage)
             val control =
@@ -225,6 +232,7 @@ private constructor(
                             hostedServices = { preparation.hostedServices(registryPath) },
                             privateEndpoint = options.publicEndpoint is BrokerPublicEndpoint.Private,
                             semantic = semantic,
+                            requestRetirement = { retirement.complete(Unit) },
                         )
                 ) {
                     is Refinement.Refined -> admission.value
@@ -247,7 +255,7 @@ private constructor(
                     }
                 }
             activity.completed(stage)
-            return completeStartup(options, server, readiness, activity, desktopDiscovery, semantic != null)
+            return completeStartup(options, server, readiness, activity, desktopDiscovery, semantic != null, retirement)
         }
 
         private fun deferredFrontend(
@@ -298,6 +306,7 @@ private constructor(
             activity: BrokerStartupActivityPublisher,
             desktopDiscovery: DesktopDaemonDiscovery,
             semantic: Boolean,
+            retirement: CompletableDeferred<Unit>,
         ): InstalledCoordinatorStart {
             val peer =
                 if (semantic && readiness != null) {
@@ -332,6 +341,7 @@ private constructor(
                 DesktopDiscoveryTarget.from(options),
                 desktopDiscovery,
                 peer,
+                retirement,
             )
         }
 
@@ -386,10 +396,11 @@ private constructor(
             target: DesktopDiscoveryTarget,
             discovery: DesktopDaemonDiscovery,
             peer: SemanticCoordinatorPeer?,
+            retirement: CompletableDeferred<Unit>,
         ): InstalledCoordinatorStart =
             when (val outcome = CoordinatorReadinessPublisher.publish(readiness, target, discovery, activity, peer)) {
                 CoordinatorReadinessPublication.Ready ->
-                    InstalledCoordinatorStart.Started(InstalledCoordinator(server, readiness))
+                    InstalledCoordinatorStart.Started(InstalledCoordinator(server, readiness, retirement))
                 is CoordinatorReadinessPublication.Rejected -> {
                     server.close()
                     InstalledCoordinatorStart.Rejected(outcome.failure)

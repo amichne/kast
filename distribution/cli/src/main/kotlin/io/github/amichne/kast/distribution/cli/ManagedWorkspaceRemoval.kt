@@ -54,6 +54,7 @@ internal fun prepareProductWorkspaceRemoval(
                 shutdownContainerHost(it, selectedEnvironment, session)
             }
         )
+        requireWorkspaceRemoval(lifecycle.retireManagedCoordinator())
         val removals = captureWorkspaceRemovals(store, observe)
         persist(removals)
         removals

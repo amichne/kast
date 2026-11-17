@@ -60,6 +60,15 @@ private constructor(
             is LifecycleEffect.Rejected -> Refinement.Rejected(ContainerFailure.FENCE_REJECTED)
         }
 
+    /** Managed Host retirement excludes semantic effects through generation leases. */
+    fun retireManagedCoordinator(): Refinement<Unit, ContainerFailure> =
+        when (
+            step(LifecycleOperation.STOP_FORCE, LifecycleStage.COORDINATOR) { service(LifecycleServiceAction.DISABLE) }
+        ) {
+            LifecycleEffect.Completed -> Refinement.Refined(Unit)
+            is LifecycleEffect.Rejected -> Refinement.Rejected(ContainerFailure.SHUTDOWN_FAILED)
+        }
+
     /** Only a committed removal journal may retain a fence created by this uninstall attempt. */
     fun <T> duringUninstallPreparation(action: () -> T): T {
         val absent = Files.notExists(root.resolve(SHUTDOWN_FENCE), NOFOLLOW_LINKS)
