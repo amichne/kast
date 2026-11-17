@@ -76,6 +76,20 @@ internal object BrokerInstallationState {
         }
     }
 
+    /** The private semantic service publishes its generation. Only legacy thread bindings persist an epoch. */
+    fun admitSemantic(
+        root: Path,
+        generation: BrokerServiceGeneration,
+    ): Refinement<ThreadBindingOwner.Installation, InstallationStateFailure> =
+        when (val payload = identity(root, ControlInventoryAccepted::report)) {
+            is Refinement.Rejected -> payload
+            is Refinement.Refined ->
+                when (val owner = ThreadBindingOwner.admit(payload.value, generation.toString())) {
+                    is Refinement.Refined -> owner
+                    is Refinement.Rejected -> Refinement.Rejected(InstallationStateFailure.EPOCH_REJECTED)
+                }
+        }
+
     /**
      * Passive proof against the physical immutable payload; it never creates state or epochs. Successful counters reach
      * only an explicit diagnostic sink. Rejected inventory diagnostics remain on stderr.

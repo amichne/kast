@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.runtime.BrokerSocketPath
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
@@ -107,37 +108,24 @@ private constructor(
     private val service: BrokerServiceStateDocument.Ready,
     private val executable: Path,
     val socket: BrokerSocketPath,
+    val peer: SemanticCoordinatorPeer,
+    private val owner: ThreadBindingOwner.Installation,
 ) {
     val generation: String
         get() = service.serviceInstanceId
 
-    val peer: SemanticCoordinatorPeer
-        get() = checkNotNull(service.semanticPeer)
-
     val processId: Long
         get() = peer.pid
 
-    fun admits(snapshot: CoordinatorStatusSnapshot): Boolean {
-        val owner =
-            when (
-                val admitted =
-                    BrokerInstallationState.observeCopiedEpoch(
-                        installation.resolve("state"),
-                        snapshot.observed.installationId,
-                    )
-            ) {
-                is Refinement.Rejected -> return false
-                is Refinement.Refined -> admitted.value
-            }
-        return snapshot.belongsTo(owner, service) &&
+    fun admits(snapshot: CoordinatorStatusSnapshot): Boolean =
+        snapshot.belongsTo(owner, service) &&
             InstallationLifecycleFence.observe(installation) == InstallationLifecycleStartAdmission.AVAILABLE &&
             current()
-    }
 
     fun current(): Boolean =
         (privateDocument(installation, path) as? PrivateServiceDocument.Admitted)?.document == service &&
             privateSocket(installation, socket.physicalPath) &&
-            service.semanticPeer?.owns(socket, executable) == true
+            peer.owns(socket, executable)
 
     companion object {
         fun read(
@@ -146,6 +134,12 @@ private constructor(
             service: BrokerServiceStateDocument.Ready,
             executable: Path,
         ): SemanticPublication? {
+            val peer = service.semanticPeer ?: return null
+            val owner =
+                when (val admitted = ThreadBindingOwner.admit(peer.installationId, service.serviceInstanceId)) {
+                    is Refinement.Rejected -> return null
+                    is Refinement.Refined -> admitted.value
+                }
             val physical = installation.resolve(SEMANTIC_SOCKET)
             val endpoint = BrokerEndpointAliases.transportPath(physical)
             val socket =
@@ -154,7 +148,7 @@ private constructor(
                     is Validation.Validated -> admitted.value
                 }
             if (socket.physicalPath != physical) return null
-            val publication = SemanticPublication(installation, path, service, executable, socket)
+            val publication = SemanticPublication(installation, path, service, executable, socket, peer, owner)
             return publication.takeIf { it.current() }
         }
     }

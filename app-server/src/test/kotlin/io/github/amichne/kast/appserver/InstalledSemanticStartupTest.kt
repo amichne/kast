@@ -145,6 +145,7 @@ class InstalledSemanticStartupTest {
                         command.executable.toString(),
                         checkNotNull(CoordinatorExecutableRevision.capture(command.executable)),
                         "foreign",
+                        "sha256:" + "1".repeat(64),
                     )
                 for (document in listOf(live to identity(root), exitedPeer(command.executable) to FOREIGN_IDENTITY)) {
                     writeReady(root, document.first, document.second)
@@ -245,6 +246,7 @@ class InstalledSemanticStartupTest {
             executable.toString(),
             checkNotNull(CoordinatorExecutableRevision.capture(executable)),
             "stale",
+            "sha256:" + "1".repeat(64),
         )
     }
 

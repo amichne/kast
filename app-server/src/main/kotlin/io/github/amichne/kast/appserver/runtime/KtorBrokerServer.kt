@@ -237,8 +237,8 @@ private constructor(
     private val frontend: BrokerFrontend,
     private val runtimeControl: CoordinatorControl?,
 ) {
-    internal fun semanticPeer(): SemanticCoordinatorPeer? =
-        SemanticCoordinatorPeer.capture(ProcessHandle.current(), ownedSocket)
+    internal fun semanticPeer(installationId: String): SemanticCoordinatorPeer? =
+        SemanticCoordinatorPeer.capture(ProcessHandle.current(), ownedSocket, installationId)
 
     internal suspend fun close() {
         try {

@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.provider.BrokerExecutable
 import io.github.amichne.kast.appserver.runtime.*
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
@@ -172,17 +173,21 @@ private constructor(
             }
             stage = BrokerStartupStage.INSTALLATION_OWNERSHIP
             activity.started(stage)
-            val owner =
-                when (val admission = BrokerInstallationState.admit(options.installationRoot)) {
-                    is Refinement.Refined -> admission.value
-                    is Refinement.Rejected -> return reject(admission.failure.serverFailure())
-                }
-            activity.completed(stage)
             val generation =
                 when (val management = options.readiness) {
                     is BrokerServiceReadiness.Managed -> management.instanceId
                     BrokerServiceReadiness.Standalone -> BrokerServiceGeneration.fresh()
                 }
+            val installation = options.installationRoot
+            val ownership =
+                if (semantic == null) BrokerInstallationState.admit(installation)
+                else BrokerInstallationState.admitSemantic(installation, generation)
+            val owner =
+                when (ownership) {
+                    is Refinement.Refined -> ownership.value
+                    is Refinement.Rejected -> return reject(ownership.failure.serverFailure())
+                }
+            activity.completed(stage)
             val preparation =
                 InstalledWorkspacePreparation(options.userHome, options.configuration, owner.installationId.value)
             val registryPath = options.installationRoot.resolve("config/workspaces.json")
@@ -228,7 +233,8 @@ private constructor(
                     }
                 }
             activity.completed(stage)
-            return completeStartup(options, server, readiness, activity, desktopDiscovery, semantic != null, retirement)
+            val semanticOwner = if (semantic == null) null else owner
+            return completeStartup(options, server, readiness, activity, desktopDiscovery, semanticOwner, retirement)
         }
 
         private fun deferredFrontend(
@@ -278,12 +284,12 @@ private constructor(
             readiness: OwnedBrokerServiceReadiness?,
             activity: BrokerStartupActivityPublisher,
             desktopDiscovery: DesktopDaemonDiscovery,
-            semantic: Boolean,
+            semanticOwner: ThreadBindingOwner.Installation?,
             retirement: CompletableDeferred<Unit>,
         ): InstalledCoordinatorStart {
             val peer =
-                if (semantic && readiness != null) {
-                    server.semanticPeer()
+                if (semanticOwner != null && readiness != null) {
+                    server.semanticPeer(semanticOwner.installationId.value)
                         ?: run {
                             server.close()
                             readiness.reject(BrokerServerFailure.READINESS_REJECTED)

@@ -164,6 +164,7 @@ class PublicLauncherCompositionTest {
             NativePublicFixture(evidence).use { fixture ->
                 NativePublicPeer(fixture, NativePeerReply.HOLD_QUERY).use { peer ->
                     fixture.startSemanticCoordinator()
+                    assertFalse(Files.exists(fixture.installation.resolve("state/epoch.json")))
                     val parent = fixture.start("socket", semanticArguments(fixture))
                     peer.awaitQuery()
                     signalNativeProcess(parent, signal)

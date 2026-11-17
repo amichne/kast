@@ -16,12 +16,13 @@ internal data class SemanticCoordinatorPeer(
     val executable: String,
     val revision: CoordinatorExecutableRevision,
     val socketKey: String,
+    val installationId: String,
 ) {
     fun owns(socket: BrokerSocketPath, expectedExecutable: Path): Boolean {
         if (pid <= 0 || expectedExecutable.toString() != executable) return false
         val process = ProcessHandle.of(pid).orElse(null) ?: return false
         val observedSocket = OwnedUnixSocket.capture(socket) ?: return false
-        return capture(process, observedSocket) == this
+        return capture(process, observedSocket, installationId) == this
     }
 
     /** Only a vanished process or a different start at this pid proves that the recorded incarnation exited. */
@@ -38,7 +39,11 @@ internal data class SemanticCoordinatorPeer(
     }
 
     companion object {
-        fun capture(process: ProcessHandle, socket: OwnedUnixSocket): SemanticCoordinatorPeer? {
+        fun capture(
+            process: ProcessHandle,
+            socket: OwnedUnixSocket,
+            installationId: String,
+        ): SemanticCoordinatorPeer? {
             if (!process.isAlive) return null
             val info = process.info()
             val started = info.startInstant().orElse(null) ?: return null
@@ -55,7 +60,14 @@ internal data class SemanticCoordinatorPeer(
                 }
             val key = socket.currentFileKey() ?: return null
             val revision = CoordinatorExecutableRevision.capture(executable) ?: return null
-            return SemanticCoordinatorPeer(process.pid(), started.toString(), executable.toString(), revision, key)
+            return SemanticCoordinatorPeer(
+                process.pid(),
+                started.toString(),
+                executable.toString(),
+                revision,
+                key,
+                installationId,
+            )
         }
     }
 }
