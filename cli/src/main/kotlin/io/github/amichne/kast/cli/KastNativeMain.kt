@@ -14,6 +14,7 @@ import kotlin.system.exitProcess
 object KastNativeMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
+        io.github.amichne.kast.distribution.cli.ControlStageTrace.configure(System.getenv())
         when (val admitted = admitNativeControlInvocation(arguments.toList())) {
             is Refinement.Rejected -> {
                 System.err.println("kast: unsupported internal entrypoint")

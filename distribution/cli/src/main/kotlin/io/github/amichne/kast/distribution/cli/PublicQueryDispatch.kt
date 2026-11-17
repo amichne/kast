@@ -34,11 +34,32 @@ internal fun runInstalledPublicQuery(
     directory: Path,
     environment: Map<String, String>,
     output: ManagementOutput = ManagementOutput(),
+): Int {
+    val started = System.nanoTime()
+    val exit = dispatchInstalledPublicQuery(arguments, directory, environment, output)
+    ControlStageTrace.record(
+        ControlStage.END_TO_END,
+        if (exit == 0) ControlStageOutcome.COMPLETED else ControlStageOutcome.REJECTED,
+        started,
+    )
+    return exit
+}
+
+private fun dispatchInstalledPublicQuery(
+    arguments: List<String>,
+    directory: Path,
+    environment: Map<String, String>,
+    output: ManagementOutput,
 ): Int =
     when (val launcher = selectPublicQueryLauncher(environment)) {
         is PublicQueryLauncher.Admitted ->
             try {
-                runOwnedPublicQueryChild(listOf(launcher.path.toString()) + arguments, directory, environment)
+                ControlStageTrace.observe(
+                    ControlStage.QUERY_CHILD_LAUNCH,
+                    { if (it == 0) ControlStageOutcome.COMPLETED else ControlStageOutcome.REJECTED },
+                ) {
+                    runOwnedPublicQueryChild(listOf(launcher.path.toString()) + arguments, directory, environment)
+                }
             } catch (_: IOException) {
                 publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE, output)
             } catch (_: RuntimeException) {

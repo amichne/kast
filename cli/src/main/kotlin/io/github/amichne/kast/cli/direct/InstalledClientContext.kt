@@ -3,6 +3,9 @@ package io.github.amichne.kast.cli.direct
 import io.github.amichne.kast.cli.admitNativeControlRoot
 import io.github.amichne.kast.cli.installation.InstallationManifest
 import io.github.amichne.kast.cli.installation.installationManifestJson
+import io.github.amichne.kast.distribution.cli.ControlStage
+import io.github.amichne.kast.distribution.cli.ControlStageOutcome
+import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.kernel.Refinement
@@ -146,15 +149,19 @@ private constructor(
             val identity = Files.readAttributes(payload, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
             if (!identity.isRegularFile || identity.fileKey() == null)
                 return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
+            val started = System.nanoTime()
             val digest = MessageDigest.getInstance("SHA-256")
+            var bytes = 0L
             Files.newInputStream(payload, NOFOLLOW_LINKS).use { input ->
                 val buffer = ByteArray(8192)
                 var count = input.read(buffer)
                 while (count >= 0) {
                     digest.update(buffer, 0, count)
+                    bytes += count
                     count = input.read(buffer)
                 }
             }
+            ControlStageTrace.record(ControlStage.PAYLOAD_VERIFICATION, ControlStageOutcome.COMPLETED, started, bytes)
             if (selected.sha256 != "sha256:" + digest.digest().joinToString("") { "%02x".format(it) })
                 return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
             val selectedEnvironment =
