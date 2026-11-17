@@ -1,13 +1,12 @@
 package io.github.amichne.kast.cli.publicshell
 
-import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.DaemonOperationClient
 import io.github.amichne.kast.appserver.DaemonOperationClientFailure
 import io.github.amichne.kast.appserver.DaemonOperationClientRejection
 import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.InstalledSemanticCoordinator
 import io.github.amichne.kast.appserver.InstalledSemanticService
-import io.github.amichne.kast.appserver.WorkerControlFailure
+import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
 import io.github.amichne.kast.cli.direct.DirectToolRegistration
 import io.github.amichne.kast.cli.direct.InstalledClientContext
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
@@ -20,12 +19,11 @@ import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscov
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
+import java.io.IOException
 import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.withTimeoutOrNull
 
 internal fun coordinatedPublicSession(
     installation: Path,
@@ -66,35 +64,28 @@ internal fun coordinatedPublicSession(
 }
 
 private suspend fun connectSemanticCoordinator(installation: Path): InstalledSemanticCoordinator? {
-    val home = Path.of(System.getenv("HOME") ?: return null).toRealPath()
-    val readiness = InstalledSemanticCoordinator.readinessPath(installation, home)
-    when (val installed = InstalledSemanticCoordinator.observe(installation, readiness)) {
-        is Refinement.Refined -> return installed.value
-        is Refinement.Rejected -> if (installed.failure != WorkerControlFailure.UNAVAILABLE) return null
-    }
     val environment = System.getenv()
-    val executable = installation.resolve("share/kast/libexec/kast-management")
-    val admissible = runInterruptible(Dispatchers.IO) { InstalledClientContext.admit(executable, environment) }
-    if (admissible !is Refinement.Refined) return null
-
-    val submitted =
-        runInterruptible(Dispatchers.IO) {
-            ControlStageTrace.observeRefinement(ControlStage.COORDINATOR_START) {
-                InstalledSemanticService.submit(installation, home, environment)
+    val home =
+        try {
+            Path.of(environment["HOME"] ?: return null).toRealPath()
+        } catch (_: IOException) {
+            return null
+        }
+    val result =
+        InstalledSemanticCoordinator.connect(installation, home) {
+            runInterruptible(Dispatchers.IO) {
+                val executable = installation.resolve("share/kast/libexec/kast-management")
+                if (InstalledClientContext.admit(executable, environment) is Refinement.Rejected) {
+                    Refinement.Rejected(PersistentBrokerServiceFailure.KAST_QUALIFICATION_REJECTED)
+                } else {
+                    ControlStageTrace.observeRefinement(ControlStage.COORDINATOR_START) {
+                        InstalledSemanticService.submit(installation, home, environment)
+                    }
+                }
             }
         }
-    if (submitted is Refinement.Rejected) return null
-    return withTimeoutOrNull(BrokerOperationalLimits.serviceChildPhases.value) {
-        awaitSemanticCoordinator(installation, readiness)
+    return when (result) {
+        is Refinement.Refined -> result.value
+        is Refinement.Rejected -> null
     }
 }
-
-private suspend fun awaitSemanticCoordinator(installation: Path, readiness: Path): InstalledSemanticCoordinator {
-    while (true) {
-        val installed = InstalledSemanticCoordinator.observe(installation, readiness)
-        if (installed is Refinement.Refined) return installed.value
-        delay(READINESS_POLL_MILLIS)
-    }
-}
-
-private const val READINESS_POLL_MILLIS = 25L
