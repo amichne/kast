@@ -24,6 +24,19 @@ internal data class SemanticCoordinatorPeer(
         return capture(process, observedSocket) == this
     }
 
+    /** Only a vanished process or a different start at this pid proves that the recorded incarnation exited. */
+    fun incarnation(): SemanticPeerIncarnation {
+        if (pid <= 0) return SemanticPeerIncarnation.UNPROVEN
+        val process = ProcessHandle.of(pid).orElse(null) ?: return SemanticPeerIncarnation.EXITED
+        val started = process.info().startInstant().orElse(null)
+        return when {
+            started != null && started.toString() != startedAt -> SemanticPeerIncarnation.EXITED
+            !process.isAlive -> SemanticPeerIncarnation.EXITED
+            started == null -> SemanticPeerIncarnation.UNPROVEN
+            else -> SemanticPeerIncarnation.LIVE
+        }
+    }
+
     companion object {
         fun capture(process: ProcessHandle, socket: OwnedUnixSocket): SemanticCoordinatorPeer? {
             if (!process.isAlive) return null
@@ -45,6 +58,12 @@ internal data class SemanticCoordinatorPeer(
             return SemanticCoordinatorPeer(process.pid(), started.toString(), executable.toString(), revision, key)
         }
     }
+}
+
+internal enum class SemanticPeerIncarnation {
+    LIVE,
+    EXITED,
+    UNPROVEN,
 }
 
 @Serializable

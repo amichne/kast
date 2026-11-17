@@ -15,6 +15,7 @@ internal class SemanticServiceLaunch
 private constructor(
     val installation: Path,
     val home: Path,
+    val executable: Path,
     val readiness: Path,
     val label: String,
     val arguments: List<String>,
@@ -39,16 +40,12 @@ private constructor(
                 return null
             if (home.toRealPath() != home) return null
             val readiness = InstalledSemanticCoordinator.readinessPath(installation, home)
-            val identity =
-                HexFormat.of()
-                    .formatHex(
-                        MessageDigest.getInstance("SHA-256").digest(installation.toString().toByteArray(Charsets.UTF_8))
-                    )
+            val identity = semanticServiceDigest(installation)
             val explicit =
                 environment.filterKeys { it in inheritedKeys } +
                     mapOf(
                         "HOME" to home.toString(),
-                        "BROKER_SERVICE_IDENTITY" to "sha256:$identity",
+                        "BROKER_SERVICE_IDENTITY" to semanticServiceIdentity(installation),
                         "BROKER_READINESS_FILE" to readiness.toString(),
                     )
             val arguments =
@@ -58,6 +55,7 @@ private constructor(
             return SemanticServiceLaunch(
                 installation,
                 home,
+                executable,
                 readiness,
                 "io.github.amichne.kast.semantic.${identity.take(SERVICE_LABEL_DIGEST_WIDTH)}",
                 arguments,
@@ -106,5 +104,12 @@ object InstalledSemanticService {
             else -> null
         }
 }
+
+/** The readiness identity the launch contract assigns to one physical installation's semantic service. */
+internal fun semanticServiceIdentity(installation: Path): String = "sha256:${semanticServiceDigest(installation)}"
+
+private fun semanticServiceDigest(installation: Path): String =
+    HexFormat.of()
+        .formatHex(MessageDigest.getInstance("SHA-256").digest(installation.toString().toByteArray(Charsets.UTF_8)))
 
 private const val SERVICE_LABEL_DIGEST_WIDTH = 32

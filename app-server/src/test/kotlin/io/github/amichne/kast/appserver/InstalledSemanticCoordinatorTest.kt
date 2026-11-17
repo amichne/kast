@@ -21,7 +21,7 @@ class InstalledSemanticCoordinatorTest {
                     BrokerInstallationLayout.from(kast, root.resolve(".codex")).broker.resolve("service-readiness.json")
                 val environment =
                     mapOf(
-                        "BROKER_SERVICE_IDENTITY" to "sha256:${"a".repeat(64)}",
+                        "BROKER_SERVICE_IDENTITY" to semanticServiceIdentity(root),
                         "BROKER_READINESS_FILE" to readiness.toString(),
                     )
                 val options =

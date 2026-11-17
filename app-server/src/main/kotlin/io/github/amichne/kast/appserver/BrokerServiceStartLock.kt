@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.appserver.runtime.UnixSocketOwnershipLeaseAcquisition
+import io.github.amichne.kast.appserver.runtime.UnixSocketPathOwnership
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.channels.FileChannel
@@ -8,9 +10,12 @@ import java.nio.channels.OverlappingFileLockException
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
+import kotlinx.serialization.SerializationException
 
 /** Serializes service admission, retirement, and login resumption for one installation. */
 internal sealed interface BrokerServiceLockExecution<out T> {
@@ -32,6 +37,10 @@ private sealed interface BrokerServiceLockAttempt {
 }
 
 internal object BrokerServiceStartLock {
+    /**
+     * Submits only when no owned generation is live or starting. An owned stale publication is retired first; a fence
+     * or ambiguous ownership rejects before any supervisor effect.
+     */
     fun submitSemantic(
         command: SemanticServiceLaunch,
         submit: () -> Refinement<Unit, PersistentBrokerServiceFailure>,
@@ -41,12 +50,22 @@ internal object BrokerServiceStartLock {
         return when (
             val locked =
                 withAcquired(command.lock) {
-                    if (
-                        InstallationLifecycleFence.observe(command.installation) !=
-                            InstallationLifecycleStartAdmission.AVAILABLE
-                    )
-                        Refinement.Rejected(PersistentBrokerServiceFailure.DISABLED)
-                    else submit()
+                    when (
+                        val state =
+                            SemanticPublicationState.inspect(
+                                command.installation,
+                                command.readiness,
+                                command.executable,
+                            )
+                    ) {
+                        SemanticPublicationState.Missing -> submit()
+                        is SemanticPublicationState.Stale ->
+                            if (retireStalePublication(state)) submit()
+                            else Refinement.Rejected(PersistentBrokerServiceFailure.READINESS_REJECTED)
+                        is SemanticPublicationState.Starting,
+                        is SemanticPublicationState.Published -> Refinement.Refined(Unit)
+                        is SemanticPublicationState.Rejected -> Refinement.Rejected(state.rejection.serviceFailure())
+                    }
                 }
         ) {
             is BrokerServiceLockExecution.Executed -> locked.admission
@@ -56,6 +75,39 @@ internal object BrokerServiceStartLock {
             BrokerServiceLockExecution.TimedOut -> Refinement.Rejected(PersistentBrokerServiceFailure.STARTUP_TIMED_OUT)
         }
     }
+
+    private fun retireStalePublication(state: SemanticPublicationState.Stale): Boolean {
+        return try {
+            val key = admittedServiceStateFileKey(state.path, state.document) ?: return false
+            if (!retireStaleSocket(state.installation.resolve("state/run/c.sock"), state.peer.socketKey)) return false
+            if (admittedServiceStateFileKey(state.path, state.document) != key) return false
+            Files.delete(state.path)
+            true
+        } catch (_: IOException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        } catch (_: SerializationException) {
+            false
+        } catch (_: IllegalArgumentException) {
+            false
+        }
+    }
+
+    private fun retireStaleSocket(socket: Path, expectedKey: String): Boolean =
+        when (val lease = UnixSocketPathOwnership.acquireLease(socket)) {
+            is UnixSocketOwnershipLeaseAcquisition.Acquired ->
+                lease.lease.use {
+                    if (Files.notExists(socket, NOFOLLOW_LINKS)) return true
+                    val attributes = Files.readAttributes(socket, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
+                    if (!attributes.isOther || attributes.fileKey()?.toString() != expectedKey) return false
+                    Files.delete(socket)
+                    true
+                }
+            UnixSocketOwnershipLeaseAcquisition.Owned,
+            UnixSocketOwnershipLeaseAcquisition.Rejected,
+            UnixSocketOwnershipLeaseAcquisition.ParentRejected -> false
+        }
 
     private fun prepareSemanticServiceState(command: SemanticServiceLaunch): Boolean {
         val directoryMode = PosixFilePermissions.fromString("rwx------")
