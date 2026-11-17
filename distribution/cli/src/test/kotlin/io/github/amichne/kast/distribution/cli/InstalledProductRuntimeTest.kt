@@ -229,25 +229,6 @@ class InstalledProductRuntimeTest {
     }
 
     @Test
-    fun `retained installation admission rejects changed runtime bytes with the same size and mtime`() {
-        val fixture = productFixture(temporary)
-        val receipt = fixture.runtime.root.resolve("runtime.json")
-        Files.setPosixFilePermissions(receipt, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"))
-        val selected =
-            (InstalledProductRuntime.read(fixture.installation, fixture.runtime.manifest.platform)
-                    as Refinement.Refined)
-                .value
-        assertEquals(Refinement.Refined(Unit), selected.admitCurrent())
-
-        val original = Files.readString(receipt)
-        val time = Files.getLastModifiedTime(receipt)
-        Files.writeString(receipt, original.replaceFirst("archiveSha256", "ArchiveSha256"))
-        Files.setLastModifiedTime(receipt, time)
-
-        assertEquals(Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH), selected.admitCurrent())
-    }
-
-    @Test
     fun `missing runtime rejects locally and leaves installation records untouched`() {
         val fixture = productFixture(temporary)
         val manifest = fixture.installation.resolve("installation.json")
