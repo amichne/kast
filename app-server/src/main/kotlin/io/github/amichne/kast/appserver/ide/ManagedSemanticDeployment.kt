@@ -24,6 +24,7 @@ internal fun configuredSemanticDeployment(
                                     state.path,
                                     configuration.hostIdleShutdown,
                                     configuration.hostMaxHeap,
+                                    configuration.gradleImportEnvironment,
                                 ),
                                 home,
                                 idea.path,
@@ -45,6 +46,7 @@ internal fun admitSemanticDeployment(
             if (
                 identity != null &&
                     managedIdentityMatches(deployment.installation, identity) &&
+                    deployment.gradleEnvironment.matches(identity.gradleImportEnvironmentIdentity) &&
                     identity.pid == descriptor.hostPid
             )
                 Refinement.Refined(descriptor)

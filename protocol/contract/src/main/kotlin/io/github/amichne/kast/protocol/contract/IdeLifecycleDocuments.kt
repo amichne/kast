@@ -294,6 +294,8 @@ data class IdeHostRuntimeIdentity(
     val autoReload: HostAutoReload = HostAutoReload.DISABLED,
     // Absent mode in 0.51.x advertisements must continue to mean DESKTOP.
     @Suppress("DEPRECATION") @kotlinx.serialization.EncodeDefault val mode: IdeHostMode = IdeHostMode.DESKTOP,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val gradleImportEnvironmentIdentity: String? = null,
 )
 
 @Serializable

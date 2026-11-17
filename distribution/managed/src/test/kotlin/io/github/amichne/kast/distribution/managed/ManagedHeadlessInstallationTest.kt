@@ -1,6 +1,8 @@
 package io.github.amichne.kast.distribution.managed
 
 import io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy
+import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
@@ -89,7 +91,7 @@ class ManagedHeadlessInstallationTest {
                     ManagedHeadlessLaunch.prepare(
                         installation,
                         "/cloud/python/bin:/cloud/node/bin:/usr/bin:/bin",
-                        io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+                        HostIdleShutdown.Disabled,
                         HostHeapPolicy.Inherit,
                     )
                 )
@@ -126,6 +128,46 @@ class ManagedHeadlessInstallationTest {
             ManagedHeadlessLaunchFiles.write(specification),
         )
         assertEquals("protected", Files.readString(borrowed))
+    }
+
+    @Test
+    fun `Gradle delegation enters the child environment without entering launch arguments or options`(
+        @TempDir directory: Path
+    ) {
+        val fixture = fixture(directory)
+        val installation =
+            assertInstanceOf<Refinement.Refined<ManagedHeadlessInstallation>>(
+                    ManagedHeadlessInstallation.resolve(fixture.launch, fixture.state, fixture.state.resolve("home"))
+                )
+                .value
+        val delegated =
+            assertInstanceOf<Refinement.Refined<GradleImportEnvironment>>(
+                    GradleImportEnvironment.admit(
+                        "REPO_TOKEN",
+                        "",
+                        mapOf("REPO_TOKEN" to "selected", "OTHER" to "hidden"),
+                    )
+                )
+                .value
+        val launch =
+            assertInstanceOf<Refinement.Refined<ManagedHeadlessLaunch>>(
+                    ManagedHeadlessLaunch.prepare(
+                        installation,
+                        null,
+                        HostIdleShutdown.Disabled,
+                        HostHeapPolicy.Inherit,
+                        delegated,
+                    )
+                )
+                .value
+
+        assertEquals("selected", launch.environment["REPO_TOKEN"])
+        org.junit.jupiter.api.Assertions.assertFalse("OTHER" in launch.environment)
+        org.junit.jupiter.api.Assertions.assertFalse("selected" in launch.options)
+        org.junit.jupiter.api.Assertions.assertFalse(launch.arguments.any { "selected" in it })
+        org.junit.jupiter.api.Assertions.assertTrue(
+            "-Dkast.gradle.import.environment.identity=${delegated.identity.value}" in launch.options.lines()
+        )
     }
 
     @Test
@@ -176,7 +218,7 @@ class ManagedHeadlessInstallationTest {
                     ManagedHeadlessLaunch.prepare(
                         installation,
                         "/usr/bin:/bin",
-                        io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
+                        HostIdleShutdown.Disabled,
                         HostHeapPolicy.Inherit,
                     )
                 )

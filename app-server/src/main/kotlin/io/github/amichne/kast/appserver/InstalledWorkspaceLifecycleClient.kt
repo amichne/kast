@@ -30,6 +30,7 @@ internal fun installedWorkspaceLifecycleClient(
                                 managedHeadlessState.path,
                                 configuration.hostIdleShutdown,
                                 configuration.hostMaxHeap,
+                                configuration.gradleImportEnvironment,
                             ),
                     )
             }

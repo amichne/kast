@@ -13,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 
 class CoordinatorRuntimeSettingsTest {
@@ -73,6 +74,44 @@ class CoordinatorRuntimeSettingsTest {
         val admitted = AdmittedRuntimeSettings.admit(selected.wire) as Refinement.Refined
         assertEquals(setOf(ConfigurationParameter.GRADLE_USER_HOME), admitted.value.parameters)
     }
+
+    @Test
+    fun `delegated values survive an admitted request to a service started without them`() =
+        withCoordinatorPayload { root, kast ->
+            runBlocking {
+                Files.createFile(root.resolve("settings.gradle.kts"))
+                val workspace =
+                    (FilesystemCanonicalRootDiscovery.discover(root) as CanonicalRootDiscovery.Discovered).root
+                val options =
+                    (InstalledCoordinatorConfiguration.admit(kast, root, emptyMap()) as Refinement.Refined).value
+                val names = ConfigurationParameter.GRADLE_IMPORT_VARIABLES.key
+                val marker = "selected-gradle-value"
+                val expected = mapOf(names to "REPO_TOKEN", "REPO_TOKEN" to marker)
+                val settings = RequestedRuntimeSettings.fromEnvironment(expected + ("UNSELECTED" to "omit"))
+                val accepted = JsonPrimitive("executed")
+                val started =
+                    InstalledCoordinator.start(
+                        options,
+                        requests = { request ->
+                            assertEquals(expected, request.settings.environmentOver(emptyMap()))
+                            assertFalse(request.settings.toString().contains(marker))
+                            DaemonOperationResult.Complete(
+                                CanonicalJsonDocument.generated(JsonElement.serializer()).create(accepted)
+                            )
+                        },
+                    ) as InstalledCoordinatorStart.Started
+                try {
+                    val status = (readCoordinatorStatus(options.socket.path) as Refinement.Refined).value
+                    val client =
+                        InstalledDaemonOperationClient(options.socket.path, DaemonManagementTarget.from(status))
+                    assertFalse(settings.toString().contains(marker))
+                    val result = client.exchange(workspace, admittedRead(), settings)
+                    assertEquals(accepted.toString(), (result as DaemonOperationResult.Complete).document.value)
+                } finally {
+                    started.coordinator.close()
+                }
+            }
+        }
 
     private fun admittedRead(): DaemonOperationCall {
         val tool = PublicToolIdentity.QUERY_SYMBOLS

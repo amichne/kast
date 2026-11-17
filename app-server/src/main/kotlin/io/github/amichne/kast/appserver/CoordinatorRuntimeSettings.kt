@@ -7,9 +7,6 @@ import io.github.amichne.kast.distribution.contract.configuration.ConfigurationS
 import io.github.amichne.kast.distribution.contract.configuration.KastConfigurationCatalogue
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
-import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
-import io.github.amichne.kast.distribution.contract.gradle.GradleImportVariableEvidence
-import io.github.amichne.kast.distribution.contract.gradle.GradleImportVariableName
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
@@ -38,7 +35,7 @@ private val statedParameters =
 
 /**
  * Wire form of a caller's environment-tier settings: primitives only until coordinator admission. Delegated Gradle
- * variables travel as the established name and value digest; their values never leave the caller.
+ * variables travel only in the request sent to the verified private Unix peer.
  */
 @Serializable
 internal data class DaemonRuntimeSettings(
@@ -60,7 +57,7 @@ internal data class DaemonRuntimeAssignment(val key: String, val value: String) 
 }
 
 @Serializable
-internal data class DaemonDelegatedVariable(val name: String, val digest: String) {
+internal data class DaemonDelegatedVariable(val name: String, val value: String) {
     override fun toString(): String = "DaemonDelegatedVariable(name=$name)"
 }
 
@@ -113,11 +110,11 @@ class RequestedRuntimeSettings private constructor(internal val wire: DaemonRunt
                 environment[parameter.key]?.let { DaemonRuntimeAssignment(parameter.key, it) }
             }
             val names = environment[GradleImportEnvironment.VARIABLES_SETTING].orEmpty()
-            // An unadmissible selection sends no digests; the coordinator then rejects the inconsistent statement.
+            // An unadmissible selection sends no values; the coordinator rejects the inconsistent statement.
             val delegated =
                 when (val admitted = GradleImportEnvironment.admit(names, "", environment)) {
                     is Refinement.Refined ->
-                        admitted.value.evidence.map { DaemonDelegatedVariable(it.name.value, it.digest.value) }
+                        admitted.value.processVariables().map { (name, value) -> DaemonDelegatedVariable(name, value) }
                     is Refinement.Rejected -> emptyList()
                 }
             return RequestedRuntimeSettings(DaemonRuntimeSettings(assignments, delegated))
@@ -129,7 +126,7 @@ class RequestedRuntimeSettings private constructor(internal val wire: DaemonRunt
 class AdmittedRuntimeSettings
 private constructor(
     private val values: Map<ConfigurationParameter, String>,
-    private val delegated: Set<GradleImportVariableEvidence>,
+    private val delegated: GradleImportEnvironment,
 ) {
     val parameters: Set<ConfigurationParameter>
         get() = values.keys
@@ -141,43 +138,25 @@ private constructor(
         return statedParameters
             .filter { parameter ->
                 values[parameter] != coordinator.values[parameter] ||
-                    (parameter == ConfigurationParameter.GRADLE_IMPORT_VARIABLES && delegated != coordinator.delegated)
+                    (parameter == ConfigurationParameter.GRADLE_IMPORT_VARIABLES &&
+                        delegated.identity != coordinator.delegated.identity)
             }
             .map { DaemonRuntimeSettingConflict(it, statement(this, it), statement(coordinator, it)) }
     }
 
-    /**
-     * The inherited environment for a settings-aware executor: the coordinator launch environment with its stated tier
-     * replaced by this request's. An unstated key falls through to saved workspace, saved installation and defaults.
-     * Delegated values exist only in the coordinator launch, so a different delegated identity is a conflict.
-     */
-    fun environmentOver(
-        launch: Map<String, String>,
-        launchSettings: AdmittedRuntimeSettings,
-    ): Refinement<Map<String, String>, DaemonRuntimeSettingsFailure> {
-        if (delegated != launchSettings.delegated)
-            return Refinement.Rejected(
-                DaemonRuntimeSettingsFailure.Conflict(
-                    listOf(
-                        DaemonRuntimeSettingConflict(
-                            ConfigurationParameter.GRADLE_IMPORT_VARIABLES,
-                            RuntimeSettingStatement.STATED,
-                            RuntimeSettingStatement.STATED,
-                        )
-                    )
-                )
-            )
+    /** Request settings replace the service tier. Saved settings can still supply unstated values. */
+    fun environmentOver(launch: Map<String, String>): Map<String, String> {
         val stated = statedParameters.map { it.key }.toSet()
-        return Refinement.Refined(launch.filterKeys { it !in stated } + values.mapKeys { it.key.key })
+        return launch.filterKeys { it !in stated } + values.mapKeys { it.key.key } + delegated.processVariables()
     }
 
     override fun equals(other: Any?): Boolean =
-        other is AdmittedRuntimeSettings && other.values == values && other.delegated == delegated
+        other is AdmittedRuntimeSettings && other.values == values && other.delegated.identity == delegated.identity
 
-    override fun hashCode(): Int = 31 * values.hashCode() + delegated.hashCode()
+    override fun hashCode(): Int = 31 * values.hashCode() + delegated.identity.hashCode()
 
     override fun toString(): String =
-        "AdmittedRuntimeSettings(keys=${values.keys.map { it.key }.sorted()}, delegated=${delegated.map { it.name.value }.sorted()})"
+        "AdmittedRuntimeSettings(keys=${values.keys.map { it.key }.sorted()}, delegated=${delegated.evidence.map { it.name.value }})"
 
     companion object {
         fun fromEnvironment(
@@ -202,11 +181,11 @@ private constructor(
                     return configuration(assignment.key, ConfigurationFailure.DUPLICATE_ASSIGNMENT)
             }
             val delegated =
-                when (val admitted = delegatedEvidence(raw[ConfigurationParameter.GRADLE_IMPORT_VARIABLES], wire)) {
+                when (val admitted = delegatedEnvironment(raw[ConfigurationParameter.GRADLE_IMPORT_VARIABLES], wire)) {
                     is Refinement.Rejected -> return admitted
                     is Refinement.Refined -> admitted.value
                 }
-            // Delegated values are absent by construction; their names and digests were admitted above.
+            // The typed delegation already admits the selected values.
             val resolved =
                 when (
                     val resolution =
@@ -225,7 +204,7 @@ private constructor(
             val values = raw.mapValues { (parameter, value) ->
                 when {
                     parameter == ConfigurationParameter.GRADLE_IMPORT_VARIABLES ->
-                        delegated.map { it.name.value }.sorted().joinToString(",")
+                        delegated.evidence.map { it.name.value }.joinToString(",")
                     parameter.declaration().disclosure == ConfigurationDisclosure.PUBLIC ->
                         inspected.getValue(parameter.key).value
                     // Sensitive values are admitted absolute, normalized paths; the path form is canonical.
@@ -235,10 +214,10 @@ private constructor(
             return Refinement.Refined(AdmittedRuntimeSettings(values, delegated))
         }
 
-        private fun delegatedEvidence(
+        private fun delegatedEnvironment(
             names: String?,
             wire: DaemonRuntimeSettings,
-        ): Refinement<Set<GradleImportVariableEvidence>, DaemonRuntimeSettingsFailure> {
+        ): Refinement<GradleImportEnvironment, DaemonRuntimeSettingsFailure> {
             val rejected =
                 Refinement.Rejected(
                     DaemonRuntimeSettingsFailure.Configuration(
@@ -248,14 +227,12 @@ private constructor(
                 )
             val selected = if (names.isNullOrEmpty()) emptyList() else names.split(',')
             if (selected.toSet().size != selected.size) return rejected
-            val evidence = mutableSetOf<GradleImportVariableEvidence>()
-            for (variable in wire.delegated) {
-                val identity = variable.evidence() ?: return rejected
-                if (!evidence.add(identity)) return rejected
+            val values = wire.delegated.associate { it.name to it.value }
+            if (values.size != wire.delegated.size || values.keys != selected.toSet()) return rejected
+            return when (val admitted = GradleImportEnvironment.admit(names.orEmpty(), "", values)) {
+                is Refinement.Refined -> admitted
+                is Refinement.Rejected -> rejected
             }
-            return if (evidence.map { it.name.value }.toSet() == selected.toSet() && evidence.size == selected.size)
-                Refinement.Refined(evidence)
-            else rejected
         }
 
         private fun boundedKey(key: String): String =
@@ -265,17 +242,11 @@ private constructor(
 
 private fun DaemonRuntimeSettings.withinLimits(): Boolean {
     val bytes =
-        assignments.sumOf { it.key.length.toLong() + it.value.length } +
-            delegated.sumOf { it.name.length.toLong() + it.digest.length }
+        assignments.sumOf { it.key.length.toLong() + it.value.toByteArray(Charsets.UTF_8).size } +
+            delegated.sumOf { it.name.length.toLong() + it.value.toByteArray(Charsets.UTF_8).size }
     return assignments.size <= statedParameters.size &&
         delegated.size <= DaemonRuntimeSettings.maximumDelegated &&
         bytes <= DaemonRuntimeSettings.maximumBytes
-}
-
-private fun DaemonDelegatedVariable.evidence(): GradleImportVariableEvidence? {
-    val admittedName = (GradleImportVariableName.parse(name) as? Refinement.Refined)?.value ?: return null
-    val admittedDigest = (GradleImportEnvironmentIdentity.parse(digest) as? Refinement.Refined)?.value ?: return null
-    return GradleImportVariableEvidence(admittedName, admittedDigest)
 }
 
 private const val MAXIMUM_REJECTED_KEY = 128

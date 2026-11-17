@@ -213,6 +213,25 @@ class ManagedCoordinatorOperationsTest {
             }
         }
 
+    @Test
+    fun `a changed project target discards the binding without replaying the request`() = runBlocking {
+        val workspaces = ScriptedWorkspaces()
+        ManagedCoordinatorOperations(SERVICE, workspaces).use { operations ->
+            assertEquals("a#1", host(operations.execute(rootA, defaults, prepareRead)))
+            workspaces.reopened += "a#1"
+
+            val mismatch =
+                rejectedOperation(DaemonOperationFailure.Workspace("workspace", WorkspaceDemandCause.HostChanged))
+            assertEquals(mismatch, operations.execute(rootA, defaults, prepareRead))
+            assertEquals(listOf(rootA), workspaces.preparations.toList())
+            assertEquals(listOf("a#1"), workspaces.closedHosts.toList())
+
+            assertEquals("existing", host(operations.execute(rootA, defaults, retainedRead)))
+            assertEquals(listOf(rootA), workspaces.preparations.toList())
+            assertEquals("a#2", host(operations.execute(rootA, defaults, prepareRead)))
+        }
+    }
+
     private fun host(result: DaemonOperationResult): String =
         Json.decodeFromString(HostDocument.serializer(), (result as DaemonOperationResult.Complete).document.value).host
 
@@ -265,6 +284,7 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
     val preparations = ConcurrentLinkedQueue<CanonicalRoot>()
     val reads = ConcurrentLinkedQueue<String>()
     val closedHosts = ConcurrentLinkedQueue<String>()
+    val reopened: MutableSet<String> = ConcurrentHashMap.newKeySet()
     val vanished: MutableSet<String> = ConcurrentHashMap.newKeySet()
     val openLeases = AtomicInteger()
     val interruptedPreparations = AtomicInteger()
@@ -345,6 +365,8 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
     }
 
     private fun read(host: String): DaemonOperationResult {
+        if (host in reopened)
+            return rejectedOperation(DaemonOperationFailure.Workspace("workspace", WorkspaceDemandCause.HostChanged))
         if (host in vanished)
             return DaemonOperationResult.Rejected(
                 DaemonOperationClientRejection.Server(

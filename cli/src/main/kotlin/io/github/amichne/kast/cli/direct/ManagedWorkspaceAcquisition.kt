@@ -13,6 +13,8 @@ import io.github.amichne.kast.distribution.cli.InstalledProductRuntime
 import io.github.amichne.kast.distribution.cli.ManagedWorkspaceQuery
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationDisclosure
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
@@ -21,13 +23,19 @@ import java.nio.file.Path
  * Explicit caller configuration. [host] selects the retained Host and must agree with a registered workspace; [local]
  * selects output and waiting for one request and never enters a retained binding.
  */
-internal class WorkspaceSettings private constructor(val host: Map<String, String>, val local: Map<String, String>) {
+internal class WorkspaceSettings
+private constructor(
+    host: Map<String, String>,
+    val local: Map<String, String>,
+    private val delegated: GradleImportEnvironment,
+) {
+    val host = WorkspaceSettingsIdentity(host, delegated.identity)
     val preparationWait: String?
         get() = local[ConfigurationParameter.WORKSPACE_PREPARATION_WAIT.key]
 
     /** Replaces the service's caller configuration with this overlay; [local] selects the request-local part. */
     fun applyTo(service: Map<String, String>, local: Map<String, String> = this.local): Map<String, String> =
-        service.filterKeys { it !in CALLER_CONFIGURATION_KEYS } + host + local
+        service.filterKeys { it !in CALLER_CONFIGURATION_KEYS } + host.values + local + delegated.processVariables()
 
     companion object {
         /** Selects the non-secret configuration overlay from one caller's environment. */
@@ -36,13 +44,33 @@ internal class WorkspaceSettings private constructor(val host: Map<String, Strin
             return WorkspaceSettings(
                 explicit.filterKeys { it !in REQUEST_LOCAL_KEYS },
                 explicit.filterKeys { it in REQUEST_LOCAL_KEYS },
+                when (
+                    val admitted =
+                        GradleImportEnvironment.admit(
+                            environment[GradleImportEnvironment.VARIABLES_SETTING].orEmpty(),
+                            "",
+                            environment,
+                        )
+                ) {
+                    is Refinement.Rejected -> GradleImportEnvironment.Empty
+                    is Refinement.Refined -> admitted.value
+                },
             )
         }
     }
 }
 
+internal data class WorkspaceSettingsIdentity(
+    val values: Map<String, String>,
+    val delegated: GradleImportEnvironmentIdentity,
+)
+
 /** The Host selection that one admitted lease resolves to. Request-local output and wait settings are excluded. */
-internal data class WorkspaceHostIdentity(val home: Path, val environment: Map<String, String>)
+internal data class WorkspaceHostIdentity(
+    val home: Path,
+    val environment: Map<String, String>,
+    val delegated: GradleImportEnvironmentIdentity = GradleImportEnvironment.Empty.identity,
+)
 
 /** One prepared Host binding. It retains Host authority and owns no workspace lease. */
 internal class PreparedWorkspaceBinding(
@@ -181,8 +209,14 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
         else DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION)
 }
 
-private fun ManagedWorkspaceQuery.hostIdentity() =
-    WorkspaceHostIdentity(home, environment.filterKeys { it !in REQUEST_LOCAL_KEYS })
+private fun ManagedWorkspaceQuery.hostIdentity(): WorkspaceHostIdentity {
+    val names = gradleImportEnvironment.evidence.map { it.name.value }.toSet()
+    return WorkspaceHostIdentity(
+        home,
+        environment.filterKeys { it !in REQUEST_LOCAL_KEYS && it !in names },
+        gradleImportEnvironment.identity,
+    )
+}
 
 internal fun ManagedToolFailure.daemonFailure(): DaemonOperationFailure =
     when (this) {

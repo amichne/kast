@@ -4,6 +4,7 @@ import io.github.amichne.kast.distribution.contract.HostExitRecord
 import io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy
 import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
 import io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.kernel.Refinement
 import java.io.StringReader
 import java.nio.file.Files
@@ -19,6 +20,7 @@ private constructor(
     val options: String,
     internal val heap: ManagedHeadlessHeap,
     private val executablePath: ManagedHeadlessExecutablePath,
+    private val gradleEnvironment: GradleImportEnvironment,
 ) {
     val arguments: List<String>
         get() = listOf(installation.launch.executable, "kast-headless")
@@ -31,16 +33,18 @@ private constructor(
             val runtime = installation
             val state = runtime.state
             val java = runtime.launch.bundledJavaHome
-            return mapOf(
-                "PATH" to executablePath.value,
-                "HOME" to runtime.userHome.toString(),
-                "JAVA_HOME" to java.toString(),
-                "IDEA_JDK" to java.toString(),
-                "IDEA_VM_OPTIONS" to runtime.options.toString(),
-                "GRADLE_USER_HOME" to runtime.gradleHome.toString(),
-                "XDG_RUNTIME_DIR" to state.resolve("tmp").toString(),
-                "TMPDIR" to state.resolve("tmp").toString(),
-            ) + linuxSupport(runtime)
+            return gradleEnvironment.processVariables() +
+                mapOf(
+                    "PATH" to executablePath.value,
+                    "HOME" to runtime.userHome.toString(),
+                    "JAVA_HOME" to java.toString(),
+                    "IDEA_JDK" to java.toString(),
+                    "IDEA_VM_OPTIONS" to runtime.options.toString(),
+                    "GRADLE_USER_HOME" to runtime.gradleHome.toString(),
+                    "XDG_RUNTIME_DIR" to state.resolve("tmp").toString(),
+                    "TMPDIR" to state.resolve("tmp").toString(),
+                ) +
+                linuxSupport(runtime)
         }
 
     companion object {
@@ -64,10 +68,17 @@ private constructor(
             executablePath: String?,
             idleShutdown: HostIdleShutdown,
             maxHeap: HostHeapPolicy,
+            gradleEnvironment: GradleImportEnvironment = GradleImportEnvironment.Empty,
         ): Refinement<ManagedHeadlessLaunch, ManagedHeadlessLaunchFailure> {
             val search =
                 when (
-                    val admitted = ManagedHeadlessExecutablePath.parse(runtime.launch.bundledJavaHome, executablePath)
+                    val admitted =
+                        ManagedHeadlessExecutablePath.parse(
+                            runtime.launch.bundledJavaHome,
+                            (gradleEnvironment.executableDirectories.map { it.path.toString() } +
+                                    (executablePath ?: "/usr/bin:/bin"))
+                                .joinToString(":"),
+                        )
                 ) {
                     is Refinement.Rejected -> return admitted
                     is Refinement.Refined -> admitted.value
@@ -91,12 +102,28 @@ private constructor(
                         is Refinement.Refined -> selected.value
                     }
                 val flags = vendor.filterNot { it.trimStart().startsWith("-Xmx") || it.trimStart().startsWith("-Xms") }
-                val lines = flags + overrides(runtime, heap.value) + HostIdleShutdown.jvmOptions(idleShutdown)
+                val environmentOptions =
+                    if (gradleEnvironment.identity == GradleImportEnvironment.Empty.identity) emptyList()
+                    else
+                        listOf(
+                            "-D${GradleImportEnvironment.HOST_IDENTITY_PROPERTY}=${gradleEnvironment.identity.value}"
+                        )
+                val lines =
+                    flags +
+                        overrides(runtime, heap.value) +
+                        HostIdleShutdown.jvmOptions(idleShutdown) +
+                        environmentOptions
                 if (lines.any { it.contains('\n') || it.contains('\r') })
                     Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
                 else
                     Refinement.Refined(
-                        ManagedHeadlessLaunch(runtime, lines.joinToString("\n", postfix = "\n"), heap, search)
+                        ManagedHeadlessLaunch(
+                            runtime,
+                            lines.joinToString("\n", postfix = "\n"),
+                            heap,
+                            search,
+                            gradleEnvironment,
+                        )
                     )
             } catch (_: java.io.IOException) {
                 Refinement.Rejected(ManagedHeadlessLaunchFailure.METADATA_UNAVAILABLE)

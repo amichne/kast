@@ -60,6 +60,20 @@ value class GradleImportVariableName private constructor(val value: String) {
                 "JDK_JAVA_OPTIONS",
                 "_JAVA_OPTIONS",
                 "CLASSPATH",
+                "JAVA",
+                "JDK_HOME",
+                "GRADLE_OPTS",
+                "CODEX_HOME",
+                "IDEA_JDK",
+                "IDEA_VM_OPTIONS",
+                "TMPDIR",
+                "XDG_RUNTIME_DIR",
+                "XDG_CACHE_HOME",
+                "XDG_DATA_HOME",
+                "XDG_CONFIG_HOME",
+                "XDG_STATE_HOME",
+                "FONTCONFIG_FILE",
+                "FONTCONFIG_PATH",
                 "BASH_ENV",
                 "ENV",
                 "SHELLOPTS",
@@ -134,6 +148,7 @@ private constructor(
         "GradleImportEnvironment(identity=${identity.value}, names=${evidence.map { it.name.value }})"
 
     companion object {
+        const val HOST_IDENTITY_PROPERTY = "kast.gradle.import.environment.identity"
         const val VARIABLES_SETTING = "KAST_GRADLE_IMPORT_VARIABLES"
         const val PATH_SETTING = "KAST_GRADLE_IMPORT_PATH"
         const val INHERITED_JAVA_HOME_SETTING = "KAST_GRADLE_JAVA_HOME"

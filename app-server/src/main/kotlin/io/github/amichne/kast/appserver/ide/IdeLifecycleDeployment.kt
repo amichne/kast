@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver.ide
 
 import io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy
 import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessLaunch
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessLaunchFailure
@@ -22,8 +23,12 @@ sealed interface IdeLifecycleDeployment {
      * [idleShutdown] and [maxHeap] apply only when this client launches the Host; a running Host keeps the policy it
      * started with.
      */
-    data class Headless(val state: Path, val idleShutdown: HostIdleShutdown, val maxHeap: HostHeapPolicy) :
-        IdeLifecycleDeployment
+    data class Headless(
+        val state: Path,
+        val idleShutdown: HostIdleShutdown,
+        val maxHeap: HostHeapPolicy,
+        val gradleEnvironment: GradleImportEnvironment = GradleImportEnvironment.Empty,
+    ) : IdeLifecycleDeployment
 }
 
 internal sealed interface SelectedLifecycleDeployment {
@@ -31,6 +36,7 @@ internal sealed interface SelectedLifecycleDeployment {
         val installation: ManagedHeadlessInstallation,
         val idleShutdown: HostIdleShutdown,
         val maxHeap: HostHeapPolicy,
+        val gradleEnvironment: GradleImportEnvironment,
     ) : SelectedLifecycleDeployment
 }
 
@@ -45,6 +51,7 @@ internal fun selectLifecycleDeployment(
                 deployment.state,
                 deployment.idleShutdown,
                 deployment.maxHeap,
+                deployment.gradleEnvironment,
                 userHome,
                 selectedHome,
             )
@@ -54,6 +61,7 @@ private fun selectManagedLifecycleDeployment(
     state: Path,
     idleShutdown: HostIdleShutdown,
     maxHeap: HostHeapPolicy,
+    gradleEnvironment: GradleImportEnvironment,
     home: Path,
     idea: Path,
 ): Refinement<SelectedLifecycleDeployment, IdeLifecycleFailure> {
@@ -66,7 +74,9 @@ private fun selectManagedLifecycleDeployment(
     return when (val admitted = ManagedHeadlessInstallation.resolve(launch, state, home)) {
         is Refinement.Rejected -> Refinement.Rejected(IdeLifecycleFailure.UNSUPPORTED_HOST_MODE)
         is Refinement.Refined ->
-            Refinement.Refined(SelectedLifecycleDeployment.Headless(admitted.value, idleShutdown, maxHeap))
+            Refinement.Refined(
+                SelectedLifecycleDeployment.Headless(admitted.value, idleShutdown, maxHeap, gradleEnvironment)
+            )
     }
 }
 
@@ -96,6 +106,7 @@ internal fun launchManagedHeadless(
                 platform.executablePath(),
                 deployment.idleShutdown,
                 deployment.maxHeap,
+                deployment.gradleEnvironment,
             )
     ) {
         is Refinement.Rejected ->
@@ -128,6 +139,11 @@ internal fun admitWorkspaceLifecycleHost(
         is Refinement.Rejected -> return admission
         is Refinement.Refined -> Unit
     }
+    if (
+        deployment is SelectedLifecycleDeployment.Headless &&
+            !deployment.gradleEnvironment.matches(host.runtimeIdentity?.gradleImportEnvironmentIdentity)
+    )
+        return Refinement.Rejected(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
     if (host.home != home.toString()) return Refinement.Rejected(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
     if (host.protocol != 1) return Refinement.Rejected(IdeLifecycleFailure.UNSUPPORTED_PROTOCOL)
     if (!host.capabilities.containsAll(WORKSPACE_CAPABILITIES))
@@ -168,3 +184,6 @@ internal fun managedIdentityMatches(
         identity.profile == installation.config.toString() &&
         identity.pid > 0 &&
         identity.processStartEpochMillis > 0
+
+internal fun GradleImportEnvironment.matches(observed: String?): Boolean =
+    observed == identity.value || (observed == null && identity == GradleImportEnvironment.Empty.identity)

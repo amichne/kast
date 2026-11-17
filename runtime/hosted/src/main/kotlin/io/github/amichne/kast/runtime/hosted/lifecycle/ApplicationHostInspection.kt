@@ -81,6 +81,7 @@ internal fun captureApplicationAdvertisement(
             processStartEpochMillis = ProcessHandle.current().info().startInstant().orElseThrow().toEpochMilli(),
             hostLifetime = lifetime,
             buildIdentity = HostedCompatibilityMetadata.buildIdentity,
+            gradleImportEnvironmentIdentity = managed?.environment?.gradleImportEnvironmentIdentity,
             mode =
                 if (managed == null) io.github.amichne.kast.protocol.contract.IdeHostMode.DESKTOP
                 else io.github.amichne.kast.protocol.contract.IdeHostMode.MANAGED_HEADLESS,

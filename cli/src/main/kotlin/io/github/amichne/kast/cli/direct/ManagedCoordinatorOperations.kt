@@ -1,16 +1,13 @@
 package io.github.amichne.kast.cli.direct
 
-import io.github.amichne.kast.appserver.AdmittedRuntimeSettings
 import io.github.amichne.kast.appserver.CoordinatorOperationExecutor
 import io.github.amichne.kast.appserver.CoordinatorOperationRequest
 import io.github.amichne.kast.appserver.CoordinatorRequestExecutor
 import io.github.amichne.kast.appserver.DaemonOperationCall
 import io.github.amichne.kast.appserver.DaemonOperationClientRejection
 import io.github.amichne.kast.appserver.DaemonOperationFailure
-import io.github.amichne.kast.appserver.DaemonOperationInputFailure
 import io.github.amichne.kast.appserver.DaemonOperationProtocolFailure
 import io.github.amichne.kast.appserver.DaemonOperationResult
-import io.github.amichne.kast.appserver.DaemonRuntimeSettingsFailure
 import io.github.amichne.kast.appserver.WorkspaceOperationAdmission
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.workspaceAdmission
@@ -62,22 +59,12 @@ internal class ManagedCoordinatorOperations(
     private val entries = mutableMapOf<CanonicalRoot, WorkspaceSlot>()
     private val preparationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var closed = false
-    private val launchSettings = AdmittedRuntimeSettings.fromEnvironment(environment)
 
     override suspend fun execute(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult =
         execute(root, WorkspaceSettings.explicit(environment), operation)
 
-    override suspend fun execute(request: CoordinatorOperationRequest): DaemonOperationResult {
-        val launch =
-            when (val admitted = launchSettings) {
-                is Refinement.Rejected -> return rejectRuntimeSettings(admitted.failure)
-                is Refinement.Refined -> admitted.value
-            }
-        return when (val inherited = request.settings.environmentOver(environment, launch)) {
-            is Refinement.Rejected -> rejectRuntimeSettings(inherited.failure)
-            is Refinement.Refined -> execute(request.root, WorkspaceSettings.explicit(inherited.value), request.call)
-        }
-    }
+    override suspend fun execute(request: CoordinatorOperationRequest): DaemonOperationResult =
+        execute(request.root, WorkspaceSettings.explicit(request.settings.environmentOver(environment)), request.call)
 
     suspend fun execute(
         root: CanonicalRoot,
@@ -88,7 +75,9 @@ internal class ManagedCoordinatorOperations(
         if (operation.workspaceAdmission() == WorkspaceOperationAdmission.EXISTING_AUTHORITY)
             return existing(root, request, operation)
         val result = preparedRead(root, settings, request, operation)
-        return if (result.hostUnavailable() != null) preparedRead(root, settings, request, operation) else result
+        return if (result.workspaceRejection()?.cause == hostUnavailable)
+            preparedRead(root, settings, request, operation)
+        else result
     }
 
     private suspend fun existing(
@@ -157,7 +146,8 @@ internal class ManagedCoordinatorOperations(
                     is Refinement.Refined -> leased.value
                 }
             }
-        val failure = result.hostUnavailable() ?: return result
+        val failure = result.workspaceRejection() ?: return result
+        if (failure.cause != hostUnavailable && failure.cause != WorkspaceDemandCause.HostChanged) return result
         if (revoke(slot, ready, failure)) ready.binding.close()
         return result
     }
@@ -330,9 +320,6 @@ private suspend fun WorkspaceTicket.await(
     }
 }
 
-private fun rejectRuntimeSettings(reason: DaemonRuntimeSettingsFailure): DaemonOperationResult =
-    rejectedOperation(DaemonOperationFailure.Input(DaemonOperationInputFailure.RuntimeSettings(reason)))
-
 private sealed interface DrainTicket {
     data class Own(val slot: WorkspaceSlot, val state: WorkspaceEntry.Draining) : DrainTicket
 
@@ -343,13 +330,13 @@ private sealed interface WorkspaceEntry {
     val phase: WorkspacePhase
 
     sealed interface Available : WorkspaceEntry {
-        val settings: Map<String, String>
+        val settings: WorkspaceSettingsIdentity
 
         suspend fun await(): Refinement<Ready, DaemonOperationFailure>
     }
 
     data class Preparing(
-        override val settings: Map<String, String>,
+        override val settings: WorkspaceSettingsIdentity,
         val result: CompletableDeferred<Refinement<Ready, DaemonOperationFailure>>,
     ) : Available {
         override val phase = WorkspacePhase.PREPARING
@@ -357,7 +344,8 @@ private sealed interface WorkspaceEntry {
         override suspend fun await(): Refinement<Ready, DaemonOperationFailure> = result.await()
     }
 
-    data class Ready(override val settings: Map<String, String>, val binding: PreparedWorkspaceBinding) : Available {
+    data class Ready(override val settings: WorkspaceSettingsIdentity, val binding: PreparedWorkspaceBinding) :
+        Available {
         override val phase = WorkspacePhase.READY
 
         override suspend fun await(): Refinement<Ready, DaemonOperationFailure> = Refinement.Refined(this)
@@ -372,13 +360,13 @@ private sealed interface WorkspaceEntry {
     }
 }
 
-/** Inspection rejected the retained Host before any semantic request reached it. */
-private fun DaemonOperationResult.hostUnavailable(): DaemonOperationFailure.Workspace? {
+private fun DaemonOperationResult.workspaceRejection(): DaemonOperationFailure.Workspace? {
     val rejection = (this as? DaemonOperationResult.Rejected)?.failure as? DaemonOperationClientRejection.Server
-    val failure = rejection?.failure as? DaemonOperationFailure.Workspace
-    return failure?.takeIf { it.cause == WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE) }
+    return rejection?.failure as? DaemonOperationFailure.Workspace
 }
 
+// A HostChanged result can also follow a readiness retry. Revoke its binding without replaying the operation.
+private val hostUnavailable = WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE)
 private val lifecycleTransition = DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION)
 internal val configurationConflict = DaemonOperationFailure.ManagedWorkspace(ContainerFailure.CONFIGURATION_CONFLICT)
 

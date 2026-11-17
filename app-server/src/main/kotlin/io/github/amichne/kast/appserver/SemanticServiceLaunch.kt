@@ -64,7 +64,10 @@ private constructor(
 
         private val inheritedKeys =
             ConfigurationParameter.entries
-                .filter { it.declaration().disclosure != ConfigurationDisclosure.SECRET_PRESENCE }
+                .filter {
+                    it.declaration().disclosure != ConfigurationDisclosure.SECRET_PRESENCE &&
+                        it != ConfigurationParameter.GRADLE_IMPORT_VARIABLES
+                }
                 .map { it.key }
                 .toSet() +
                 setOf(

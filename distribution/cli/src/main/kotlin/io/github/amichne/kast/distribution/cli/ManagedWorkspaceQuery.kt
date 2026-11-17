@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
@@ -14,6 +15,7 @@ private constructor(
     private val lease: ContainerQueryLease,
     val home: Path,
     val environment: Map<String, String>,
+    val gradleImportEnvironment: GradleImportEnvironment,
     private val allowance: ElapsedTimeAllowance,
     private val waiting: ContainerPreparationWait,
 ) : AutoCloseable {
@@ -166,12 +168,15 @@ private constructor(
                 val environment =
                     configuration.launchEnvironment().variables.filterKeys {
                         it !in setOf("KAST_INSTALL_IDEA_HOME", "KAST_CONFIGURATION_FILE", "KAST_MANAGED_HEADLESS_STATE")
-                    } + containerEnvironment(container, inherited)
+                    } +
+                        configuration.gradleImportEnvironment.processVariables() +
+                        containerEnvironment(container, inherited)
                 val query =
                     ManagedWorkspaceQuery(
                         lease,
                         container.home,
                         environment,
+                        configuration.gradleImportEnvironment,
                         configuration.workspacePreparationWait,
                         waiting,
                     )
