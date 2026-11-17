@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import json
 import os
 import platform
@@ -133,12 +134,14 @@ def execute(args: argparse.Namespace) -> None:
     root = home / ".local/share/kast"
     workspace = work / "workspace"
     fixture(repo, workspace)
+    gradle = work / "gradle"
+    gradle.mkdir(mode=0o700)
     environment = {
         "PATH": os.defpath,
         "HOME": str(home),
         "KAST_INSTALL_ROOT": str(root),
         "TMPDIR": str(work),
-        "GRADLE_USER_HOME": str(work / "gradle"),
+        "GRADLE_USER_HOME": str(gradle),
         "KAST_OUTPUT_TOON": "0",
     }
     probe = Probe(root, home, evidence, python, dependency, environment)
@@ -153,6 +156,17 @@ def execute(args: argparse.Namespace) -> None:
     finally:
         os.environ.clear()
         os.environ.update(prior)
+        identity = hashlib.sha256(os.fsencode(root / "installation")).hexdigest()[:32]
+        unit = f"io.github.amichne.kast.semantic.{identity}.service"
+        with (evidence / "coordinator-journal.log").open("wb") as output:
+            _ = subprocess.run(
+                ["/usr/bin/journalctl", "--user", "--unit", unit, "--no-pager", "-n", "200"],
+                env={"XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}"},
+                stdout=output,
+                stderr=subprocess.STDOUT,
+                timeout=15,
+                check=False,
+            )
 
 
 def main() -> None:
