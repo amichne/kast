@@ -3,6 +3,7 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.runtime.UnixSocketOwnershipLeaseAcquisition
 import io.github.amichne.kast.appserver.runtime.UnixSocketPathOwnership
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.kernel.Validation
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.channels.FileLock
@@ -15,6 +16,7 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
+import java.nio.file.attribute.UserPrincipal
 import kotlinx.serialization.SerializationException
 
 /** Serializes service admission, retirement, and login resumption for one installation. */
@@ -45,6 +47,8 @@ internal object BrokerServiceStartLock {
         command: SemanticServiceLaunch,
         submit: () -> Refinement<Unit, PersistentBrokerServiceFailure>,
     ): Refinement<Unit, PersistentBrokerServiceFailure> {
+        if (InstallationLifecycleFence.observe(command.installation) != InstallationLifecycleStartAdmission.AVAILABLE)
+            return Refinement.Rejected(PersistentBrokerServiceFailure.DISABLED)
         if (!prepareSemanticServiceState(command))
             return Refinement.Rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
         return when (
@@ -189,6 +193,98 @@ internal object BrokerServiceStartLock {
         } catch (_: IOException) {
             BrokerServiceLockAttempt.Rejected
         }
+
+    /** Consume only the stopped private semantic service's files under the installation fence. */
+    internal fun removeRetiredSemanticState(installation: Path, home: Path): Boolean {
+        return try {
+            if (!semanticStateFenced(installation)) return false
+            val command = SemanticServiceLaunch.admit(installation, home, emptyMap()) ?: return false
+            val owner = Files.getOwner(installation, NOFOLLOW_LINKS)
+            if (Files.notExists(command.state, NOFOLLOW_LINKS)) return true
+            if (!ownedDirectory(command.state, owner) || !ownedDirectory(command.state.parent, owner)) return false
+            val empty = Files.newDirectoryStream(command.state).use { !it.iterator().hasNext() }
+            if (empty) return removeSemanticProfile(command.state)
+            if (Files.notExists(command.log, NOFOLLOW_LINKS)) return true
+            removeSemanticProfileState(command, owner)
+        } catch (_: IOException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
+    private fun removeSemanticProfileState(command: SemanticServiceLaunch, owner: UserPrincipal): Boolean {
+        val entries = Files.newDirectoryStream(command.state).use { it.take(semanticStateNames.size + 1) }
+        if (entries.any { it.fileName.toString() !in semanticStateNames || !ownedFile(it, owner) }) return false
+        val locked =
+            withAcquired(command.lock) {
+                removeLockedSemanticState(command, owner)
+            }
+        if (locked != BrokerServiceLockExecution.Executed(true)) return false
+        if (!ownedDirectory(command.state, owner) || !ownedFile(command.lock, owner)) return false
+        Files.delete(command.lock)
+        Files.delete(command.log)
+        return removeSemanticProfile(command.state)
+    }
+
+    private fun removeSemanticProfile(profile: Path): Boolean {
+        Files.delete(profile)
+        if (Files.newDirectoryStream(profile.parent).use { !it.iterator().hasNext() }) Files.delete(profile.parent)
+        return true
+    }
+
+    private fun removeLockedSemanticState(command: SemanticServiceLaunch, owner: UserPrincipal): Boolean {
+        if (!semanticStateFenced(command.installation)) return false
+        val publication =
+            SemanticPublicationState.inspectOwned(command.installation, command.readiness, command.executable)
+        val stopped =
+            when (val state = publication) {
+                SemanticPublicationState.Missing -> true
+                is SemanticPublicationState.Stale -> retireStalePublication(state)
+                else -> false
+            }
+        if (!stopped) return false
+        if (System.getProperty("os.name") == "Mac OS X" && !withdrawSemanticLaunchdJob(command)) return false
+        if (!removeSemanticSocketState(command.installation.resolve("state/run/c.sock"), owner)) return false
+        val plist = command.state.resolve("semantic-service.plist")
+        if (Files.notExists(plist, NOFOLLOW_LINKS)) return true
+        if (!ownedFile(plist, owner)) return false
+        Files.delete(plist)
+        return true
+    }
+
+    private fun removeSemanticSocketState(socket: Path, owner: UserPrincipal): Boolean {
+        val run = socket.parent
+        if (Files.notExists(run, NOFOLLOW_LINKS)) return true
+        if (!ownedDirectory(run, owner) || !Files.notExists(socket, NOFOLLOW_LINKS)) return false
+        val lock = run.resolve("c.sock.lock")
+        if (Files.notExists(lock, NOFOLLOW_LINKS)) return BrokerEndpointAliases.retire(socket) is Validation.Validated
+        if (!ownedFile(lock, owner)) return false
+        val acquired = UnixSocketPathOwnership.acquireLease(socket)
+        if (acquired !is UnixSocketOwnershipLeaseAcquisition.Acquired) return false
+        return acquired.lease.use {
+            if (!Files.notExists(socket, NOFOLLOW_LINKS) || !ownedFile(lock, owner)) return false
+            if (BrokerEndpointAliases.retire(socket) !is Validation.Validated) return false
+            Files.delete(lock)
+            true
+        }
+    }
+
+    private fun semanticStateFenced(installation: Path): Boolean =
+        InstallationLifecycleFence.observe(installation) == InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS
+
+    private fun ownedDirectory(path: Path, owner: UserPrincipal): Boolean =
+        Files.isDirectory(path, NOFOLLOW_LINKS) &&
+            path.toRealPath() == path &&
+            Files.getOwner(path, NOFOLLOW_LINKS) == owner
+
+    private fun ownedFile(path: Path, owner: UserPrincipal): Boolean {
+        val attributes = Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
+        return attributes.isRegularFile && Files.getOwner(path, NOFOLLOW_LINKS) == owner
+    }
+
+    private val semanticStateNames =
+        setOf("semantic-service.log", "semantic-service.plist", "service-start.lock", "service-readiness.json")
 
     private val LOCK_TIMEOUT_NANOS = BrokerServiceStartupBudgets.lockTimeoutNanos
     private val LOCK_POLL_MILLIS = BrokerOperationalLimits.serviceLockPoll.value

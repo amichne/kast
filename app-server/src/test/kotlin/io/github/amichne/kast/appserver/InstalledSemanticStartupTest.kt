@@ -75,7 +75,7 @@ class InstalledSemanticStartupTest {
     fun `an owned stale publication is retired under the start lock and replaced by a fresh generation`() =
         withCoordinatorPayload { root, kast ->
             runBlocking {
-                val command = launch(root)
+                val command = semanticLaunchFixture(root)
                 val stale = writeReady(root, exitedPeer(command.executable))
                 val submissions = AtomicInteger()
                 var started: InstalledCoordinatorStart? = null
@@ -116,7 +116,7 @@ class InstalledSemanticStartupTest {
     fun `an installation replacement fence rejects before stale retirement or submission`() =
         withCoordinatorPayload { root, _ ->
             runBlocking {
-                val command = launch(root)
+                val command = semanticLaunchFixture(root)
                 writeReady(root, exitedPeer(command.executable))
                 val retained = Files.readAllBytes(command.readiness)
                 Files.createFile(root.resolve(".lifecycle-transition.json"))
@@ -136,7 +136,7 @@ class InstalledSemanticStartupTest {
     fun `a live foreign incarnation or foreign identity rejects without retirement or a competing service`() =
         withCoordinatorPayload { root, _ ->
             runBlocking {
-                val command = launch(root)
+                val command = semanticLaunchFixture(root)
                 val current = ProcessHandle.current()
                 val live =
                     SemanticCoordinatorPeer(
@@ -170,7 +170,7 @@ class InstalledSemanticStartupTest {
     fun `a replaced in-progress generation rejects instead of joining its successor`() =
         withCoordinatorPayload { root, _ ->
             runBlocking {
-                val command = launch(root)
+                val command = semanticLaunchFixture(root)
                 writeStarting(root, UUID.randomUUID())
                 var replaced = false
                 val outcome =
@@ -194,7 +194,7 @@ class InstalledSemanticStartupTest {
     fun `an in-progress generation that never becomes ready exhausts the explicit startup budget`() =
         withCoordinatorPayload { root, _ ->
             runTest {
-                val command = launch(root)
+                val command = semanticLaunchFixture(root)
                 writeStarting(root, UUID.randomUUID())
                 val outcome =
                     InstalledSemanticCoordinator.connect(
@@ -220,19 +220,6 @@ class InstalledSemanticStartupTest {
         ) {
             fail("Rejected ownership must not wait")
         }
-
-    private fun launch(root: Path): SemanticServiceLaunch {
-        val executable = root.resolve("share/kast/libexec/kast-management")
-        Files.createDirectories(executable.parent)
-        Files.writeString(executable, "fixture")
-        Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
-        val command = checkNotNull(SemanticServiceLaunch.admit(root, root, emptyMap()))
-        for (directory in listOf(command.state.parent.parent, command.state.parent, command.state)) {
-            Files.createDirectories(directory)
-            Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
-        }
-        return command
-    }
 
     /** A real process incarnation that has been reaped, so its recorded identity provably exited. */
     private fun exitedPeer(executable: Path): SemanticCoordinatorPeer {

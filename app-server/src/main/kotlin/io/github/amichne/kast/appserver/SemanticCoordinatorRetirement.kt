@@ -5,8 +5,10 @@ import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmissio
 import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -25,12 +27,19 @@ suspend fun retireFencedSemanticCoordinator(installation: Path, home: Path): Sem
         return SemanticCoordinatorRetirement.UNFENCED
     val readiness = InstalledSemanticCoordinator.readinessPath(installation, home)
     val executable = installation.resolve(MANAGEMENT_EXECUTABLE)
-    return when (val state = SemanticPublicationState.inspectOwned(installation, readiness, executable)) {
-        SemanticPublicationState.Missing -> SemanticCoordinatorRetirement.ABSENT
-        is SemanticPublicationState.Stale -> SemanticCoordinatorRetirement.EXITED
-        is SemanticPublicationState.Published -> retirePublished(installation, state.publication)
-        is SemanticPublicationState.Starting,
-        is SemanticPublicationState.Rejected -> SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN
+    val retired =
+        when (val state = SemanticPublicationState.inspectOwned(installation, readiness, executable)) {
+            SemanticPublicationState.Missing -> SemanticCoordinatorRetirement.ABSENT
+            is SemanticPublicationState.Stale -> SemanticCoordinatorRetirement.EXITED
+            is SemanticPublicationState.Published -> retirePublished(installation, state.publication)
+            is SemanticPublicationState.Starting,
+            is SemanticPublicationState.Rejected -> SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN
+        }
+    if (retired != SemanticCoordinatorRetirement.ABSENT && retired != SemanticCoordinatorRetirement.EXITED)
+        return retired
+    return runInterruptible(Dispatchers.IO) {
+        if (BrokerServiceStartLock.removeRetiredSemanticState(installation, home)) retired
+        else SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN
     }
 }
 

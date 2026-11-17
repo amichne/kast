@@ -192,27 +192,69 @@ object InstalledEndpointAliases {
             val physicalIdentity =
                 physicalDirectoryIdentity(target)
                     ?: return Validation.rejected(InstalledEndpointAliasFailure.PHYSICAL_DIRECTORY_REJECTED)
-            val receipt = target.resolve(RECEIPT)
-            if (
-                !Files.isRegularFile(receipt, NOFOLLOW_LINKS) ||
-                    Files.size(receipt) > 4096 ||
-                    Files.getPosixFilePermissions(receipt, NOFOLLOW_LINKS) != privateFile ||
-                    identity(receipt)?.owner != physicalIdentity.owner
-            )
-                return Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
-            val bytes = Files.newInputStream(receipt, NOFOLLOW_LINKS).use { it.readNBytes(4097) }
-            if (bytes.size > 4096) return Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
-            val document = Json.decodeFromString<EndpointAliasDocument>(bytes.toString(StandardCharsets.UTF_8))
-            if (
-                document.schemaVersion != 1 ||
-                    document.alias != alias.toString() ||
-                    document.target != target.toString()
-            )
-                return Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
+            val document = readAliasDocument(target, alias, physicalIdentity)
+                ?: return Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
             InstalledEndpointAliasReceipt.read(document)
         } catch (_: Exception) {
             Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
         }
+
+    /** Detach the exact alias or finish a retirement whose prior caller already detached it. */
+    fun retire(socket: Path): Validation<Unit, InstalledEndpointAliasFailure> {
+        val target = socket.parent
+        val alias = transportPath(socket).parent
+        val receipt = target.resolve(RECEIPT)
+        return try {
+            if (!Files.notExists(socket, NOFOLLOW_LINKS))
+                return Validation.rejected(InstalledEndpointAliasFailure.ALIAS_REJECTED)
+            if (alias == target) return admitAbsentAliasReceipt(receipt)
+            val attached = !Files.notExists(alias, NOFOLLOW_LINKS)
+            if (!attached && Files.notExists(receipt, NOFOLLOW_LINKS)) return Validation.validated(Unit)
+            val physical = physicalDirectoryIdentity(target)
+                ?: return Validation.rejected(InstalledEndpointAliasFailure.PHYSICAL_DIRECTORY_REJECTED)
+            val document = readAliasDocument(target, alias, physical)
+                ?: return Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
+            if (attached) {
+                val admitted = InstalledEndpointAliasReceipt.read(document)
+                if (admitted !is Validation.Validated)
+                    return Validation.rejected(InstalledEndpointAliasFailure.ALIAS_REJECTED)
+                Files.delete(admitted.value.alias)
+            }
+            Files.delete(receipt)
+            Validation.validated(Unit)
+        } catch (_: IOException) {
+            Validation.rejected(InstalledEndpointAliasFailure.FILESYSTEM_REJECTED)
+        } catch (_: SecurityException) {
+            Validation.rejected(InstalledEndpointAliasFailure.FILESYSTEM_REJECTED)
+        } catch (_: IllegalArgumentException) {
+            Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
+        }
+    }
+
+    private fun admitAbsentAliasReceipt(receipt: Path): Validation<Unit, InstalledEndpointAliasFailure> =
+        if (Files.notExists(receipt, NOFOLLOW_LINKS)) Validation.validated(Unit)
+        else Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
+
+    private fun readAliasDocument(
+        target: Path,
+        alias: Path,
+        physical: EndpointFileIdentity,
+    ): EndpointAliasDocument? {
+        val receipt = target.resolve(RECEIPT)
+        if (!Files.isRegularFile(receipt, NOFOLLOW_LINKS) || Files.size(receipt) > 4096) return null
+        val mode = Files.getPosixFilePermissions(receipt, NOFOLLOW_LINKS)
+        if (mode != privateFile || identity(receipt)?.owner != physical.owner) return null
+        val bytes = Files.newInputStream(receipt, NOFOLLOW_LINKS).use { it.readNBytes(4097) }
+        if (bytes.size > 4096) return null
+        val document = Json.decodeFromString<EndpointAliasDocument>(bytes.toString(StandardCharsets.UTF_8))
+        return document.takeIf {
+            it.schemaVersion == 1 &&
+                it.alias == alias.toString() &&
+                it.target == target.toString() &&
+                it.targetIdentity == physical &&
+                it.aliasIdentity.owner == physical.owner
+        }
+    }
 
     internal fun identity(path: Path): EndpointFileIdentity? {
         val values = Files.readAttributes(path, "unix:dev,ino,uid", NOFOLLOW_LINKS)

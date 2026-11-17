@@ -21,6 +21,21 @@ internal fun ownsSemanticLaunchdJob(raw: String, target: String, command: Semant
             listOf("\tworking directory = ${command.installation}")
 }
 
+internal fun withdrawSemanticLaunchdJob(command: SemanticServiceLaunch): Boolean {
+    val absent = LaunchctlExitContract.CompletionOrAbsent(SEMANTIC_LAUNCHD_NOT_FOUND)
+    val observation = invokeServiceSupervisor(listOf("/bin/launchctl", "list", command.label), absent)
+    if (observation == LaunchctlInvocation.Absent) return true
+    if (observation != LaunchctlInvocation.Completed) return false
+    val uid = java.nio.file.Files.getAttribute(command.home, "unix:uid") as? Number ?: return false
+    val target = "gui/${uid.toLong()}/${command.label}"
+    val job = readSemanticLaunchdJob(target) ?: return false
+    if (!ownsSemanticLaunchdJob(job, target, command)) return false
+    val retired =
+        invokeServiceSupervisor(listOf("/bin/launchctl", "bootout", target), LaunchctlExitContract.CompletionOnly)
+    return retired == LaunchctlInvocation.Completed &&
+        invokeServiceSupervisor(listOf("/bin/launchctl", "list", command.label), absent) == LaunchctlInvocation.Absent
+}
+
 internal fun readSemanticLaunchdJob(target: String): String? {
     val process =
         try {
@@ -45,4 +60,5 @@ internal fun readSemanticLaunchdJob(target: String): String? {
     }
 }
 
+private const val SEMANTIC_LAUNCHD_NOT_FOUND = 113
 private const val MAXIMUM_JOB_BYTES = 32_768
