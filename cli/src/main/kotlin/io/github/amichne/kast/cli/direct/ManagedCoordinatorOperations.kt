@@ -17,7 +17,6 @@ import io.github.amichne.kast.distribution.cli.ControlStageOutcome
 import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.cli.WorkspaceQueryEnvironment
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
-import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import kotlinx.coroutines.CompletableDeferred
@@ -31,22 +30,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
-
-internal enum class WorkspacePhase {
-    PREPARING,
-    READY,
-    DRAINING,
-    FAILED,
-}
-
-internal enum class WorkspaceDrain {
-    DRAINED,
-    NOT_REGISTERED,
-}
 
 /** Each root has one retained binding and its own execution permit. Preparation belongs to the coordinator. */
 internal class ManagedCoordinatorOperations(
@@ -57,9 +42,10 @@ internal class ManagedCoordinatorOperations(
 
     private val monitor = Any()
     private val entries = mutableMapOf<CanonicalRoot, WorkspaceSlot>()
-    private val preparationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    /** Parents preparation jobs only, so shutdown interrupts them without reaching Host-exit cleanup. */
     private val preparations = SupervisorJob()
+    private val preparationScope = CoroutineScope(preparations + Dispatchers.IO)
+    private val hostCleanup = SupervisorJob()
+    private val hostCleanupScope = CoroutineScope(hostCleanup + Dispatchers.IO)
     private var closed = false
 
     override suspend fun execute(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult =
@@ -159,11 +145,17 @@ internal class ManagedCoordinatorOperations(
         return result
     }
 
-    private fun revoke(slot: WorkspaceSlot, ready: WorkspaceEntry.Ready, failure: DaemonOperationFailure): Boolean =
+    private fun revoke(
+        slot: WorkspaceSlot,
+        ready: WorkspaceEntry.Ready,
+        failure: DaemonOperationFailure,
+        onRevoked: () -> Unit = {},
+    ): Boolean =
         synchronized(monitor) {
             if (slot.state !== ready) false
             else {
                 slot.state = WorkspaceEntry.Failed(failure)
+                onRevoked()
                 true
             }
         }
@@ -202,7 +194,7 @@ internal class ManagedCoordinatorOperations(
         slot.state = preparing
         // An atomic start settles a job cancelled before dispatch. runInterruptible discards a value returned while
         // cancellation is pending, so the assignment keeps a returned binding for the drain that closes it.
-        preparationScope.launch(preparations, CoroutineStart.ATOMIC) {
+        preparationScope.launch(start = CoroutineStart.ATOMIC) {
             var returned: Refinement<PreparedWorkspaceBinding, DaemonOperationFailure>? = null
             try {
                 runInterruptible { returned = acquisition.prepare(root, settings.applyTo(environment, emptyMap())) }
@@ -246,8 +238,8 @@ internal class ManagedCoordinatorOperations(
                     authority.preparationId,
                     WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE),
                 )
-            if (revoke(slot, ready, failure)) {
-                preparationScope.launch {
+            revoke(slot, ready, failure) {
+                hostCleanupScope.launch {
                     slot.permit.withLock { runInterruptible { ready.binding.close() } }
                 }
             }
@@ -302,75 +294,15 @@ internal class ManagedCoordinatorOperations(
                     entries.keys.toList()
                 }
             preparations.cancel()
-            runBlocking(NonCancellable) { roots.forEach { drain(it) } }
+            runBlocking(NonCancellable) {
+                roots.forEach { drain(it) }
+                preparations.join()
+                hostCleanup.complete()
+                hostCleanup.join()
+            }
         } finally {
             if (interrupted) Thread.currentThread().interrupt()
         }
-    }
-}
-
-private class WorkspaceSlot(var state: WorkspaceEntry) {
-    val permit = Mutex()
-}
-
-private data class WorkspaceTicket(val slot: WorkspaceSlot, val source: WorkspaceEntry.Available)
-
-private suspend fun WorkspaceTicket.await(
-    settings: WorkspaceSettings
-): Refinement<WorkspaceEntry.Ready, DaemonOperationFailure> {
-    val allowance = settings.preparationWait ?: return source.await()
-    return when (val parsed = ElapsedTimeAllowance.parseSetting(allowance)) {
-        is Refinement.Rejected ->
-            Refinement.Rejected(DaemonOperationFailure.ManagedWorkspace(ContainerFailure.INVALID_CONFIGURATION))
-        is Refinement.Refined ->
-            when (val budget = parsed.value) {
-                ElapsedTimeAllowance.Unlimited -> source.await()
-                is ElapsedTimeAllowance.Bounded ->
-                    withTimeoutOrNull(budget.limit.value) { source.await() }
-                        ?: Refinement.Rejected(
-                            DaemonOperationFailure.ManagedWorkspace(ContainerFailure.PREPARATION_WAIT_EXPIRED)
-                        )
-            }
-    }
-}
-
-private sealed interface DrainTicket {
-    data class Own(val slot: WorkspaceSlot, val state: WorkspaceEntry.Draining) : DrainTicket
-
-    data class Join(val state: WorkspaceEntry.Draining) : DrainTicket
-}
-
-private sealed interface WorkspaceEntry {
-    val phase: WorkspacePhase
-
-    sealed interface Available : WorkspaceEntry {
-        val settings: WorkspaceSettingsIdentity
-
-        suspend fun await(): Refinement<Ready, DaemonOperationFailure>
-    }
-
-    data class Preparing(
-        override val settings: WorkspaceSettingsIdentity,
-        val result: CompletableDeferred<Refinement<Ready, DaemonOperationFailure>>,
-    ) : Available {
-        override val phase = WorkspacePhase.PREPARING
-
-        override suspend fun await(): Refinement<Ready, DaemonOperationFailure> = result.await()
-    }
-
-    data class Ready(override val settings: WorkspaceSettingsIdentity, val binding: PreparedWorkspaceBinding) :
-        Available {
-        override val phase = WorkspacePhase.READY
-
-        override suspend fun await(): Refinement<Ready, DaemonOperationFailure> = Refinement.Refined(this)
-    }
-
-    data class Draining(val prior: WorkspaceEntry, val finished: CompletableDeferred<Unit>) : WorkspaceEntry {
-        override val phase = WorkspacePhase.DRAINING
-    }
-
-    data class Failed(val reason: DaemonOperationFailure) : WorkspaceEntry {
-        override val phase = WorkspacePhase.FAILED
     }
 }
 
