@@ -192,6 +192,51 @@ def semantic(document: object, name: str, expected_file: Path) -> str:
     return str(live["host"])
 
 
+@dataclass(frozen=True)
+class WarmCoordinatorCall:
+    caller: int
+    coordinator: int
+    generation: uuid.UUID
+
+
+def warm_coordinator_call(stderr: bytes) -> WarmCoordinatorCall:
+    if len(stderr) > 1_048_576:
+        raise ValueError("warm coordinator stage evidence exceeds its limit")
+    callers: list[int] = []
+    invocations: list[tuple[int, uuid.UUID]] = []
+    for line in stderr.splitlines():
+        if b'"kast_control_stage"' not in line:
+            continue
+        value = product.document(line)
+        if not product.mapping(value) or value.get("event") != "kast_control_stage":
+            raise ValueError("invalid coordinator stage evidence")
+        stage = value.get("stage")
+        if stage in ("PAYLOAD_VERIFICATION", "QUERY_CHILD_LAUNCH", "WORKSPACE_PREPARATION"):
+            raise ValueError(f"warm coordinator call repeated {stage}")
+        pid = value.get("pid")
+        if type(pid) is not int or pid <= 0:
+            raise ValueError("coordinator stage lacks a process identity")
+        if stage == "PROCESS_START" and value.get("outcome") == "CREATED":
+            callers.append(pid)
+        if stage == "COORDINATED_INVOCATION" and value.get("outcome") == "COMPLETED":
+            generation = value.get("generation")
+            if not isinstance(generation, str):
+                raise ValueError("coordinator invocation lacks a generation")
+            invocations.append((pid, uuid.UUID(generation)))
+    if len(callers) != 1 or len(invocations) != 1 or callers[0] == invocations[0][0]:
+        raise ValueError("warm invocation lacks separate caller and coordinator identities")
+    return WarmCoordinatorCall(callers[0], *invocations[0])
+
+
+def require_warm_coordinator_reuse(first: bytes, second: bytes) -> None:
+    previous = warm_coordinator_call(first)
+    current = warm_coordinator_call(second)
+    if previous.caller == current.caller:
+        raise ValueError("warm reads must use separate native callers")
+    if (previous.coordinator, previous.generation) != (current.coordinator, current.generation):
+        raise ValueError("warm reads changed coordinator process or generation")
+
+
 @dataclass
 class Probe:
     root: Path
@@ -216,6 +261,7 @@ class Probe:
         *,
         launcher: Path | None = None,
         rejected: bool = False,
+        trace: bool = False,
     ) -> bytes:
         prefix = (
             ["/usr/bin/sandbox-exec", "-f", str(self.sandbox)] if self.sandbox is not None else []
@@ -224,7 +270,7 @@ class Probe:
         result = subprocess.run(
             [*prefix, str(executable), *arguments],
             cwd=workspace,
-            env=self.environment,
+            env=self.environment | {"KAST_DEBUG": "1"} if trace else self.environment,
             input=raw,
             capture_output=True,
             timeout=1800,
@@ -427,7 +473,9 @@ class Probe:
         ):
             raise ValueError("RPC catalog tools incomplete")
 
-    def query(self, case: str, workspace: Path, name: str = "invokeCallback") -> str:
+    def query(
+        self, case: str, workspace: Path, name: str = "invokeCallback", *, trace: bool = False
+    ) -> str:
         expected_file = workspace / (
             INVOCATION_FILE
             if name == "invokeCallback"
@@ -445,6 +493,7 @@ class Probe:
                     "function",
                     "--json",
                 ),
+                trace=trace,
             ),
             name,
             expected_file,
@@ -470,6 +519,14 @@ class Probe:
         if any(host != current_host for host in first_hosts):
             raise ValueError("parallel first queries did not share one compiler lifetime")
         return current_host
+
+    def warm_coordinator_reuse(self, workspace: Path, expected_host: str) -> None:
+        cases = ("coordinator-warm-first", "coordinator-warm-second")
+        for case in cases:
+            if self.query(case, workspace, trace=True) != expected_host:
+                raise ValueError("warm coordinator read changed compiler workspace lifetime")
+        first, second = ((self.evidence / f"{case}.stderr").read_bytes() for case in cases)
+        require_warm_coordinator_reuse(first, second)
 
     def install(self, directory: Path, record: product.ProductRecord) -> None:
         selection = product.ProductSelection(
@@ -700,6 +757,7 @@ def execute(
                 raise ValueError("passive catalog created semantic workspace state")
             probe.completed.add(acceptance.Case.PASSIVE)
             current_host = probe.parallel_first_queries(roots[0])
+            probe.warm_coordinator_reuse(roots[0], current_host)
             probe.completed.update(
                 (acceptance.Case.FRESH, acceptance.Case.CLI, acceptance.Case.PARALLEL)
             )

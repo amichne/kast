@@ -203,7 +203,40 @@ def record() -> product.ProductRecord:
     )
 
 
+@dataclass(frozen=True)
+class ControlStage:
+    stage: str
+    outcome: str
+    pid: int
+    generation: str | None = None
+    elapsedNanos: int = 1
+    bytes: int | None = None
+    event: str = "kast_control_stage"
+
+
+def trace(*events: ControlStage) -> bytes:
+    return b"".join(json.dumps(asdict(event)).encode() + b"\n" for event in events)
+
+
 class AcceptanceTest(unittest.TestCase):
+    def test_warm_coordinator_reuse_rejects_competing_owner_and_setup(self) -> None:
+        generation = "19785c96-1977-4cb6-8388-592dc0c36bf5"
+        coordinated = ControlStage("COORDINATED_INVOCATION", "COMPLETED", 7, generation)
+        first = trace(ControlStage("PROCESS_START", "CREATED", 11), coordinated)
+        second = ControlStage("PROCESS_START", "CREATED", 13)
+        probe.require_warm_coordinator_reuse(first, trace(second, coordinated))
+        for stale in (
+            trace(second),
+            trace(second, replace(coordinated, pid=8)),
+            trace(second, replace(coordinated, generation="e6eaf2a8-d0c1-4b08-869a-6562cdcd875f")),
+            trace(replace(second, pid=11), coordinated),
+            trace(second, coordinated, ControlStage("PAYLOAD_VERIFICATION", "COMPLETED", 13)),
+            trace(second, coordinated, ControlStage("QUERY_CHILD_LAUNCH", "CREATED", 13)),
+            trace(second, coordinated, ControlStage("WORKSPACE_PREPARATION", "COMPLETED", 13)),
+        ):
+            with self.assertRaises(ValueError):
+                probe.require_warm_coordinator_reuse(first, stale)
+
     def test_compiler_cases_reanalyse_the_existing_source_without_replacing_host(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -700,6 +733,7 @@ class AcceptanceTest(unittest.TestCase):
                 "public",
                 workspace,
                 ("query", "--name", "invokeCallback", "--kind", "function", "--json"),
+                trace=False,
             )
         self.assertEqual(
             "compiler-workspace-one",
