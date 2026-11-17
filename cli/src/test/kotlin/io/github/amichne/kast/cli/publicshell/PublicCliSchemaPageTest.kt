@@ -100,7 +100,9 @@ class PublicCliSchemaPageTest {
         val page = result.content as PublicSchemaPageReply.Page
         assertEquals(listOf("/first"), page.entries.map { it.pointer })
         assertEquals(1, page.nextCursor)
-        val prepared = PublicPreparedOutput(discoveryJson.encodeToString(result), PublicShellExit.COMPLETE)
+        val encoded = encodePublicCliDescriptor(PublicCliDescriptor.SchemaPage(result))
+        assertTrue(encoded.startsWith("{\n  \""))
+        val prepared = PublicPreparedOutput(encoded, PublicShellExit.COMPLETE)
         for (format in CliOutputFormat.entries) {
             assertTrue(presentPublicOutput(prepared, format).text.toByteArray(Charsets.UTF_8).size + 1 <= 1024)
         }

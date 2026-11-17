@@ -4873,11 +4873,11 @@
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "fedcc8bcc13e3daa5b623821332b93526b3f90f0cae7aaa2475abb6d45d10b47"
+          "sha256": "2afb07aff5e706ea6c74c503a558576fc67c963a580cae8da8ac5b28f6b22a4a"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "d770a354865542607c464892db3f0c2048becde927a5a8546af0f684fbd29fdc"
         },
         {
           "path": "docs/public/reference/callables/add-declaration.mdx",
@@ -4885,7 +4885,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "cd04b82d7a502d7741b9f1e378a0e6d74dc5ea5b971371aa3c9a1478392dac51"
+          "sha256": "9e365a0ce3b004c5bc5c79984c0e8b32b369677ea81d1db37263686733b3f56c"
         }
       ],
       "claims": [],
@@ -4914,11 +4914,11 @@
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "fedcc8bcc13e3daa5b623821332b93526b3f90f0cae7aaa2475abb6d45d10b47"
+          "sha256": "2afb07aff5e706ea6c74c503a558576fc67c963a580cae8da8ac5b28f6b22a4a"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "d770a354865542607c464892db3f0c2048becde927a5a8546af0f684fbd29fdc"
         },
         {
           "path": "docs/public/reference/callables/check-diagnostics.mdx",
@@ -4926,7 +4926,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "cd04b82d7a502d7741b9f1e378a0e6d74dc5ea5b971371aa3c9a1478392dac51"
+          "sha256": "9e365a0ce3b004c5bc5c79984c0e8b32b369677ea81d1db37263686733b3f56c"
         }
       ],
       "claims": [],
@@ -4955,11 +4955,11 @@
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "fedcc8bcc13e3daa5b623821332b93526b3f90f0cae7aaa2475abb6d45d10b47"
+          "sha256": "2afb07aff5e706ea6c74c503a558576fc67c963a580cae8da8ac5b28f6b22a4a"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "d770a354865542607c464892db3f0c2048becde927a5a8546af0f684fbd29fdc"
         },
         {
           "path": "docs/public/reference/callables/query-symbols.mdx",
@@ -4967,7 +4967,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "cd04b82d7a502d7741b9f1e378a0e6d74dc5ea5b971371aa3c9a1478392dac51"
+          "sha256": "9e365a0ce3b004c5bc5c79984c0e8b32b369677ea81d1db37263686733b3f56c"
         }
       ],
       "claims": [],
@@ -4996,11 +4996,11 @@
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "fedcc8bcc13e3daa5b623821332b93526b3f90f0cae7aaa2475abb6d45d10b47"
+          "sha256": "2afb07aff5e706ea6c74c503a558576fc67c963a580cae8da8ac5b28f6b22a4a"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "d770a354865542607c464892db3f0c2048becde927a5a8546af0f684fbd29fdc"
         },
         {
           "path": "docs/public/reference/callables/replace-body.mdx",
@@ -5008,7 +5008,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "cd04b82d7a502d7741b9f1e378a0e6d74dc5ea5b971371aa3c9a1478392dac51"
+          "sha256": "9e365a0ce3b004c5bc5c79984c0e8b32b369677ea81d1db37263686733b3f56c"
         }
       ],
       "claims": [],
@@ -5037,11 +5037,11 @@
       "content": [
         {
           "path": "docs/public/assets/callable-reference.txt",
-          "sha256": "fedcc8bcc13e3daa5b623821332b93526b3f90f0cae7aaa2475abb6d45d10b47"
+          "sha256": "2afb07aff5e706ea6c74c503a558576fc67c963a580cae8da8ac5b28f6b22a4a"
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "d770a354865542607c464892db3f0c2048becde927a5a8546af0f684fbd29fdc"
         },
         {
           "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
@@ -5049,7 +5049,7 @@
         },
         {
           "path": "docs/public/snippets/callable-reference.jsx",
-          "sha256": "cd04b82d7a502d7741b9f1e378a0e6d74dc5ea5b971371aa3c9a1478392dac51"
+          "sha256": "9e365a0ce3b004c5bc5c79984c0e8b32b369677ea81d1db37263686733b3f56c"
         }
       ],
       "claims": [],
