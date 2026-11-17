@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import os
 import shutil
@@ -126,6 +127,19 @@ def read_runtime(reference: product.ProductReference) -> None:
     product.verify_runtime(root, manifest, assembly=prefix + "/kast-headless.json")
 
 
+def copy_runtime_file(source: str, target: str) -> object:
+    # copytree aggregates file failures into a shutil.Error without errno.
+    # Translate storage exhaustion first, then retain every other copy failure.
+    try:
+        return shutil.copy2(source, target)
+    except OSError as problem:
+        if problem.errno != errno.ENOSPC:
+            raise
+        raise install.StageRejected(
+            contract.Rejected(contract.Stage.PREPARATION, contract.Failure.STORAGE_EXHAUSTED)
+        ) from None
+
+
 def publish_runtime(admitted: product.AdmittedProduct, reference: product.ProductReference) -> None:
     _ = prepare_runtime(admitted, reference, immutable_store.RepairPolicy.REJECT)
 
@@ -161,7 +175,9 @@ def prepare_runtime(
         return damaged + pending
     # Only a fully populated private directory may become the digest-addressed runtime.
     with immutable_store.publication(destination.parent, admitted, "RUNTIME") as staged:
-        _ = shutil.copytree(admitted.runtime, staged, symlinks=True)
+        _ = shutil.copytree(
+            admitted.runtime, staged, symlinks=True, copy_function=copy_runtime_file
+        )
         product.verify_runtime(staged, admitted.manifest)
         prefix = "host" if admitted.manifest.platform.is_linux else "host/Kast.app/Contents"
         assembly = staged / prefix / "kast-headless.json"

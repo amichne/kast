@@ -1,6 +1,7 @@
 """Complete product records retain target-local evidence, not platform promises."""
 
 import contextlib
+import errno
 import hashlib
 import io
 import json
@@ -1796,6 +1797,48 @@ class ProductActivationTest(unittest.TestCase):
         self.assertFalse((self.root / "recovery/replacement").exists())
         self.assertFalse((self.root / "installation").exists())
         self.assertEqual([], list(self.root.parent.glob(".kast-install-*")))
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+
+    def test_runtime_copy_storage_exhaustion_is_reported_and_cleaned(self) -> None:
+        admitted = self.admitted()
+        copyfile = shutil.copyfile
+        runtime = Path(admitted.reference(self.root).runtimeRoot)
+        cases = (
+            (errno.ENOSPC, '"reason":"STORAGE_EXHAUSTED"'),
+            (errno.EIO, '"reason":"OWNERSHIP_UNPROVEN"'),
+        )
+        for code, reason in cases:
+            with self.subTest(errno=errno.errorcode[code]):
+
+                def exhausted(
+                    source: str, target: str, *, follow_symlinks: bool = True, code: int = code
+                ) -> str:
+                    if not Path(source).is_relative_to(admitted.runtime):
+                        return copyfile(source, target, follow_symlinks=follow_symlinks)
+                    # A full device leaves a true prefix of the source bytes behind.
+                    _ = Path(target).write_bytes(Path(source).read_bytes()[:3])
+                    raise OSError(code, os.strerror(code), target)
+
+                evidence = io.StringIO()
+                with (
+                    patch.object(shutil, "copyfile", side_effect=exhausted),
+                    contextlib.redirect_stderr(evidence),
+                ):
+                    result = activation.activate(self.root, self.home, admitted)
+                self.assertEqual(
+                    '{"stage":"PREPARATION",' + reason + ',"adapterCode":null,"type":"REJECTED"}\n',
+                    install.encoded(result).decode(),
+                )
+                self.assertIn(reason, evidence.getvalue())
+                self.assertNotIn(str(self.home), evidence.getvalue())
+                self.assertFalse(os.path.lexists(runtime))
+                self.assertEqual([], list(runtime.parent.iterdir()))
+                self.assertEqual([], list(self.home.glob(".kast-runtime-*")))
+                self.assertFalse((self.root / "recovery/replacement").exists())
+                self.assertFalse((self.root / "installation").exists())
+                self.assertEqual([], list(self.root.parent.glob(".kast-install-*")))
         self.assertIsInstance(
             activation.activate(self.root, self.home, admitted), activation.ProductInstalled
         )
