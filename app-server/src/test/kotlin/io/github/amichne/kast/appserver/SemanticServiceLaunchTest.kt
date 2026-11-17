@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver
 
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -66,15 +67,19 @@ class SemanticServiceLaunchTest {
         Files.writeString(executable, "fixture")
         Files.setPosixFilePermissions(executable, PosixFilePermissions.fromString("rwx------"))
         val command = checkNotNull(SemanticServiceLaunch.admit(root, root, mapOf("TMPDIR" to "/tmp/\$literal")))
+        val runtime = createLinuxUserRuntime(root)
         val calls = mutableListOf<List<String>>()
-        val host = LinuxPersistentBrokerServiceHost { arguments, _ ->
-            calls += arguments
-            when (arguments.first()) {
-                "/usr/bin/systemctl" -> LaunchctlInvocation.Absent
-                "/usr/bin/systemd-run" -> LaunchctlInvocation.Completed
-                else -> error("Unexpected systemd executable: ${arguments.first()}")
+        val host =
+            LinuxPersistentBrokerServiceHost(runtime.parent) { arguments, _ ->
+                assertEquals(listOf("/usr/bin/env", "-i", "XDG_RUNTIME_DIR=$runtime"), arguments.take(3))
+                val commandArguments = arguments.drop(3)
+                calls += commandArguments
+                when (commandArguments.first()) {
+                    "/usr/bin/systemctl" -> LaunchctlInvocation.Absent
+                    "/usr/bin/systemd-run" -> LaunchctlInvocation.Completed
+                    else -> error("Unexpected systemd executable: ${commandArguments.first()}")
+                }
             }
-        }
         assertEquals(io.github.amichne.kast.kernel.Refinement.Refined(Unit), host.submitSemantic(command))
         assertEquals(listOf("/usr/bin/systemctl", "/usr/bin/systemd-run"), calls.map { it.first() })
         assertEquals(
@@ -96,5 +101,23 @@ class SemanticServiceLaunchTest {
         assertTrue(calls[1].contains("TMPDIR=/tmp/\$\$literal"))
         assertTrue(calls[1].contains(executable.toString()))
         assertEquals("--semantic", calls[1].last())
+
+        Files.setPosixFilePermissions(runtime, PosixFilePermissions.fromString("rwxr-xr-x"))
+        assertEquals(
+            io.github.amichne.kast.kernel.Refinement.Rejected(
+                PersistentBrokerServiceFailure.SERVICE_OBSERVATION_REJECTED
+            ),
+            host.submitSemantic(command),
+        )
+        assertEquals(2, calls.size)
+    }
+
+    private fun createLinuxUserRuntime(root: Path): Path {
+        val base = Files.createDirectory(root.resolve("run-user"))
+        val uid = Files.getAttribute(root, "unix:uid")
+        return Files.createDirectory(
+            base.resolve(uid.toString()),
+            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")),
+        )
     }
 }
