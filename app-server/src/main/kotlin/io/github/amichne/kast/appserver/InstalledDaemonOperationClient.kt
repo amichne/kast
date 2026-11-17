@@ -136,9 +136,9 @@ internal fun admitOperationResponse(
     allowHosted: Boolean = false,
 ): DaemonOperationResult {
     if (!response.matches(target, root)) return rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)
+    // The coordinator relays its executor's projected outcome for every call. Only canonical and change calls
+    // also admit a raw hosted document.
     if (response is DaemonOperationResponse.Hosted && !allowHosted)
-        return rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)
-    if (allowHosted && response !is DaemonOperationResponse.Hosted && response !is DaemonOperationResponse.Rejected)
         return rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)
     fun document(value: JsonElement): CanonicalJsonDocument =
         CanonicalJsonDocument.generated(JsonElement.serializer()).create(value)

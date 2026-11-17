@@ -360,6 +360,49 @@ class InstalledCoordinatorEndpointTest {
         (InstalledCoordinatorConfiguration.admit(kast, root, emptyMap()) as Refinement.Refined).value
 }
 
+class InstalledCoordinatorMutationProjectionTest {
+    @Test
+    fun `semantic client admits the coordinator's projected change outcomes once`() =
+        withCoordinatorPayload { root, kast ->
+            runBlocking {
+                Files.writeString(root.resolve("settings.gradle.kts"), "")
+                val options =
+                    (InstalledCoordinatorConfiguration.admit(kast, root, emptyMap()) as Refinement.Refined).value
+                val workspace =
+                    (FilesystemCanonicalRootDiscovery.discover(root) as CanonicalRootDiscovery.Discovered).root
+                val plan = (ProtocolText.parse("plan:${"b".repeat(64)}") as Refinement.Refined).value
+                val mutation = DaemonOperationCall.Change(DaemonChangeAction.Apply(ChangeApplyRequest(plan)))
+                val rejected = JsonPrimitive("host rejected the application")
+                val executions = AtomicInteger()
+                val started =
+                    InstalledCoordinator.start(
+                        options,
+                        semantic = { _, operation ->
+                            assertEquals(mutation, operation)
+                            executions.incrementAndGet()
+                            DaemonOperationResult.OperationRejected(
+                                CanonicalJsonDocument.generated(JsonElement.serializer()).create(rejected)
+                            )
+                        },
+                    ) as InstalledCoordinatorStart.Started
+                try {
+                    val reply =
+                        InstalledDaemonOperationClient(
+                                options.socket.path,
+                                DaemonManagementTarget.from(
+                                    (readCoordinatorStatus(options.socket.path) as Refinement.Refined).value
+                                ),
+                            )
+                            .exchange(workspace, mutation)
+                    assertEquals(rejected.toString(), (reply as DaemonOperationResult.OperationRejected).document.value)
+                    assertEquals(1, executions.get())
+                } finally {
+                    started.coordinator.close()
+                }
+            }
+        }
+}
+
 internal fun withCoordinatorPayload(test: (Path, Path) -> Unit) {
     val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kast-c-").toRealPath()
     try {
