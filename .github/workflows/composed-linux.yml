@@ -16,27 +16,9 @@ on:
         description: Assemble and qualify only Linux x86-64
         type: boolean
         default: false
-  workflow_call:
-    inputs:
-      release_target:
-        description: Qualify one native target, or both when omitted
-        type: string
-        required: false
-        default: ''
-      complete_product:
-        description: Retain qualified targets with exact CI producer evidence
-        type: boolean
-        default: false
-      version:
-        description: Exact numeric version for the candidates
-        required: true
-        type: string
-      action_revision:
-        description: Retired archive-action input; must be empty
-        required: false
-        type: string
 
 permissions:
+  actions: read
   contents: read
 
 env:
@@ -46,16 +28,9 @@ env:
 
 jobs:
   candidate:
-    name: Build and qualify ${{ matrix.target }}
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 180
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(format('[{0}{1}{2}]',
-          inputs.release_target != 'macos-aarch64' && '{"target":"linux-x86_64","runner":"ubuntu-24.04","donor":"idea-2026.2.2.tar.gz"}' || '',
-          inputs.release_target == '' && !inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true' && ',' || '',
-          (inputs.release_target == 'macos-aarch64' || (inputs.release_target == '' && !inputs.linux_only)) && vars.KAST_MACOS_CHECKS == 'true' && '{"target":"macos-aarch64","runner":"macos-15","donor":"idea-2026.2.2-aarch64.dmg"}' || '')) }}
+    name: Replay the Linux upgrade with the qualified fix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -64,12 +39,10 @@ jobs:
 
       - name: Admit source and version
         env:
-          RELEASE_TARGET: ${{ inputs.release_target }}
-          TARGET: ${{ matrix.target }}
+          TARGET: linux-x86_64
         run: |
           bash .github/scripts/release/admit-source.sh --expected-source-revision "46ac330f9db25aab6be46df0ced2da250d59c37f"
           python3 -c 'import os,re; assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", os.environ["BUNDLE_VERSION"]), "numeric version required"; assert not os.environ["ACTION_REVISION"], "archive-action contract retired; action_revision must be empty"'
-          test -z "$RELEASE_TARGET" || test "$RELEASE_TARGET" = "$TARGET"
 
       - name: Set up Python
         id: candidate-python
@@ -80,128 +53,39 @@ jobs:
       - name: Check workspace and scratch free space
         run: python3 .github/scripts/ci/build_storage.py check --minimum-bytes 8589934592 "$GITHUB_WORKSPACE" /tmp
 
-      - name: Prepare signed Linux support before compilation
-        if: startsWith(matrix.target, 'linux-')
-        run: |
-          mkdir -p build/cloud-input
-          python3 packaging/internal/composition/composed_release.py linux-support --output "$PWD/build/cloud-input/linux-support"
-
       - name: Set up pinned tools
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
-        with:
-          validate-wrappers: true
-          cache-read-only: true
 
-      - name: Check shared composition Python source
-        if: matrix.target == 'linux-x86_64'
-        run: |
-          mise exec -- uv run --locked --project packaging ruff check packaging/internal/composition/composed_release.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py
-          mise exec -- uv run --locked --project packaging ruff format --check packaging/internal/composition/composed_release.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py
-          mise exec -- uv run --locked --project packaging pyright --project packaging
-
-      - name: Run composition tests on the target platform
-        run: mise exec -- uv run --locked --project packaging pytest packaging/tests/test_composition_*.py packaging/tests/test_runtime_archive.py packaging/tests/test-managed-headless.py -q
-
-      - name: Download exact macOS release candidate
-        if: inputs.release_target == 'macos-aarch64' && !inputs.complete_product
+      - name: Download exact candidate bytes
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: release-candidate-v${{ inputs.version }}-46ac330f9db25aab6be46df0ced2da250d59c37f
-          path: build/release/v${{ inputs.version }}
+          artifact-ids: 14344009901
+          run-id: 44119663473
+          github-token: ${{ github.token }}
+          path: build/composed-release
 
-      - name: Download the exact CI release
-        if: inputs.complete_product && inputs.release_target == 'macos-aarch64'
+      - name: Download exact assembly qualification
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/handoff-input/
+          artifact-ids: 14345038424
+          run-id: 44119663473
+          github-token: ${{ github.token }}
+          path: build/retained-qualification
 
-      - name: Admit retained CI release identity and bytes
-        if: inputs.complete_product && inputs.release_target == 'macos-aarch64'
-        run: >-
-          mise exec -- uv run --locked --script .github/scripts/ci/native_handoff.py restore --version "$BUNDLE_VERSION"
-
-      - name: Assemble bootstrap for the retained macOS release
-        if: inputs.release_target == 'macos-aarch64'
-        run: >-
-          mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
-          -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="46ac330f9db25aab6be46df0ced2da250d59c37f"
-          :runtime:hosted:headlessBootstrapPlugin
-
-      - name: Assemble matching Control, Host, and bootstrap
-        if: inputs.release_target != 'macos-aarch64'
+      - name: Find the single retained assembly receipt
         run: |
-          mkdir -p build/reports/native
-          mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2 \
-            -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="46ac330f9db25aab6be46df0ced2da250d59c37f" \
-            -PkastNativeBuildMetrics=true \
-            assembleRelease :runtime:hosted:headlessBootstrapPlugin \
-            ${{ matrix.target == 'linux-x86_64' && 'verifyJsonContracts verifyKastArchitecture' || '' }}
-
-      - name: Download pinned donor and assemble the archive
-        shell: bash
-        env:
-          DONOR: ${{ matrix.donor }}
-          TARGET: ${{ matrix.target }}
-        run: |
-          scratch=$(cd /tmp && pwd -P)
-          support=()
-          mkdir -p build/cloud-input
-          if [[ "$TARGET" == linux-* ]]; then
-            support=(--linux-support "$PWD/build/cloud-input/linux-support")
-          fi
-          curl --fail --location --retry 3 "https://download.jetbrains.com/idea/$DONOR" --output "build/cloud-input/$DONOR"
-          mise exec -- uv run --locked --project packaging python packaging/internal/composition/composed_release.py assemble \
-            --archive "$PWD/build/cloud-input/$DONOR" \
-            --bootstrap "$PWD/runtime/hosted/build/distributions/kast-managed-headless-v${BUNDLE_VERSION}-idea-262.zip" \
-            --assets "$PWD/build/release/v${BUNDLE_VERSION}" \
-            --root "$scratch/kp" --output "$PWD/build/composed-release" \
-            --version "$BUNDLE_VERSION" --source-revision "46ac330f9db25aab6be46df0ced2da250d59c37f" "${support[@]}"
-
-      - name: Re-admit unchanged source
-        run: bash .github/scripts/release/admit-source.sh --expected-source-revision "46ac330f9db25aab6be46df0ced2da250d59c37f"
-
-      - name: Retain the assembled candidate
-        if: inputs.release_target == '' || inputs.complete_product
-        id: candidate-artifact
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: kast-composed-${{ matrix.target }}-46ac330f9db25aab6be46df0ced2da250d59c37f-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/composed-release/
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 30
-
-      - name: Retain assembly evidence
-        if: always()
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: kast-composed-assembly-${{ matrix.target }}-46ac330f9db25aab6be46df0ced2da250d59c37f-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            build/cloud-input/linux-support/licenses/
-            build/reports/
-            /tmp/kp/donor-manifest.json
-            /tmp/kp/p/composition-manifest.json
-            /tmp/kp/p/installer.log
-          if-no-files-found: warn
-          retention-days: 14
-
-      - name: Free assembly scratch space before qualification
-        run: |
-          scratch=$(cd /tmp && pwd -P)
-          workspace=$(pwd -P)
-          mise exec -- uv run --locked --project packaging python packaging/internal/composition/composed_release.py \
-            discard-assembly-inputs --root "$scratch/kp" --inputs "$workspace/build/cloud-input"
+          mapfile -t receipts < <(find build/retained-qualification -name qualification.json -type f)
+          test "${#receipts[@]}" -eq 1
+          mkdir -p build/composed-evidence
+          cp "${receipts[0]}" build/composed-evidence/qualification.json
 
       - name: Verify the exact component assembly
         timeout-minutes: 60
         shell: bash
         env:
           CANDIDATE_PYTHON: ${{ steps.candidate-python.outputs.python-path }}
-          TARGET: ${{ matrix.target }}
+          TARGET: linux-x86_64
         run: |
           scratch=$(cd /tmp && pwd -P)
           python=$CANDIDATE_PYTHON
@@ -216,11 +100,10 @@ jobs:
           "$python" -E -s -B packaging/internal/composition/composed_release.py qualify \
             --archive "$archive" --archive-sha256 "$digest" \
             --runtime-archive "$runtime" --runtime-sha256 "$runtime_digest" \
-            --root "$scratch/kc" --evidence "$PWD/build/composed-evidence" \
+            --root "$scratch/kc" --evidence "$PWD/build/replay-qualification" \
             --version "$BUNDLE_VERSION" --source-revision "46ac330f9db25aab6be46df0ced2da250d59c37f"
 
       - name: Download the same sealed upgrade baseline
-        if: github.event_name == 'workflow_dispatch' && inputs.linux_only && matrix.target == 'linux-x86_64'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: ci-product-sealed-fae2343f81c25d1fcc5c1deadfe2757c2573c271-1
@@ -229,9 +112,8 @@ jobs:
           path: build/product-baseline
 
       - name: Upgrade and uninstall the exact fixed Linux candidate
-        if: github.event_name == 'workflow_dispatch' && inputs.linux_only && matrix.target == 'linux-x86_64'
         env:
-          JAVA_RELEASE: build/cloud-input/java-release
+          JAVA_RELEASE: build/java-release
         run: |
           sudo loginctl enable-linger "$(id -un)"
           XDG_RUNTIME_DIR="/run/user/$(id -u)" systemctl --user start default.target
@@ -263,7 +145,7 @@ jobs:
           root = home/'.local/share/kast'
           fixture = work/'first'
           native.fixture(repo, fixture)
-          evidence = repo/'build/composed-evidence/installed-upgrade'
+          evidence = repo/'build/installed-upgrade'
           evidence.mkdir()
           env = {'PATH': os.defpath, 'HOME': str(home), 'TMPDIR': str(work),
                  'XDG_CACHE_HOME': str(home/'.cache'), 'XDG_CONFIG_HOME': str(home/'.config'),
@@ -289,60 +171,12 @@ jobs:
           print('Upgrade, owner-only state directories and public uninstall passed')
           PYTHON
 
-      - name: Retain assembly receipt beside its exact product bytes
-        if: '!inputs.complete_product && !inputs.linux_only'
-        env:
-          TARGET: ${{ matrix.target }}
-        run: cp build/composed-evidence/qualification.json "build/composed-release/qualification-${TARGET}.json"
 
-      - name: Seal native target and toolchain evidence for the exact CI attempt
-        if: inputs.complete_product
-        env:
-          TARGET: ${{ matrix.target }}
-        run: >-
-          mise exec -- python3 .github/scripts/release/product_producer.py target
-          --directory build/composed-release
-          --receipt build/composed-evidence/qualification.json
-          --control /tmp/kc/components/control/share/kast/libexec/kast-management
-          --java-release "$(mise where java)/release" --target "$TARGET"
-
-      - name: Retain target-local qualified product evidence
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: kast-qualified-product-${{ matrix.target }}-46ac330f9db25aab6be46df0ced2da250d59c37f-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            build/composed-release/kast-composed-setup-v${{ inputs.version }}-${{ matrix.target }}.tar.gz
-            build/composed-release/kast-runtime-v${{ inputs.version }}-${{ matrix.target }}.zip
-            build/composed-release/kast-runtime-base-${{ matrix.target }}-*.zip
-            build/composed-release/qualification-${{ matrix.target }}.json
-            build/composed-release/target-record-${{ matrix.target }}.json
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 30
-
-      - name: Retain qualified runtime for stable release
-        if: inputs.release_target != '' && !inputs.complete_product
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: kast-release-runtime-v${{ inputs.version }}-${{ matrix.target }}-46ac330f9db25aab6be46df0ced2da250d59c37f
-          path: |
-            build/composed-release/kast-runtime-v${{ inputs.version }}-${{ matrix.target }}.zip
-            build/composed-release/kast-runtime-v${{ inputs.version }}-${{ matrix.target }}.zip.sha256
-            build/composed-release/kast-runtime-base-${{ matrix.target }}-*.zip
-            build/composed-evidence/qualification.json
-          if-no-files-found: error
-          overwrite: true
-          compression-level: 0
-          retention-days: 30
-
-      - name: Retain qualification evidence
+      - name: Retain installed replay evidence
         if: always()
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: kast-composed-evidence-${{ matrix.target }}-46ac330f9db25aab6be46df0ced2da250d59c37f-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            build/composed-evidence/
-            /tmp/kc/installer.log
-            /tmp/kc/state/log/
+          name: linux-fixed-upgrade-replay
+          path: build/installed-upgrade/
           if-no-files-found: warn
           retention-days: 14
