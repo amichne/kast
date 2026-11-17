@@ -1,5 +1,6 @@
 """Restricted-PATH contracts; scripted interpreters are not native qualification."""
 
+import ast
 import hashlib
 import io
 import json
@@ -216,6 +217,18 @@ class BootstrapTest(unittest.TestCase):
             _ = (site.parent / "artifact.json").write_bytes(mcp.encoded(artifact))
             _ = dependency.write_bytes(b"changed dependency")
             self.assertFalse(generator.check_support(output, target))
+
+    def test_engine_members_keep_their_source_syntax_tree_and_positions(self) -> None:
+        for name in generator.SOURCES:
+            source = generator.source_file(name).read_bytes()
+            engine = generator.engine_member(name)
+            with self.subTest(name=name):
+                self.assertEqual(
+                    ast.dump(ast.parse(source), include_attributes=True),
+                    ast.dump(ast.parse(engine), include_attributes=True),
+                )
+                self.assertEqual(source.count(b"\n"), engine.count(b"\n"))
+                self.assertLessEqual(len(engine), len(source))
 
     def test_checked_in_bootstrap_is_the_exact_generated_inventory(self) -> None:
         self.assertEqual(generator.render(), (generator.REPOSITORY / "install.sh").read_bytes())

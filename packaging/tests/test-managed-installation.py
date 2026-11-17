@@ -885,6 +885,90 @@ raise SystemExit('interrupt was lost')
             self.assertEqual(1, install.main(["--recover-only", "--json"]))
 
 
+class UntrustedReleaseSource:
+    """Scripted transfer observation; production admission owns the rejection."""
+
+    def __init__(self) -> None:
+        self.reads: list[str] = []
+
+    def read(self, url: str, limit: int) -> bytes | install.release.TransferRejection:
+        self.reads.append(url.rsplit("/", 1)[-1])
+        return install.release.TransferRejected(
+            install.release.TransferFailure.TLS_CERTIFICATE_UNTRUSTED,
+            install.release.TrustRoots.KEYCHAIN,
+        )
+
+    def download(
+        self, url: str, destination: Path, limit: int
+    ) -> install.release.DownloadedFile | install.release.TransferRejection:
+        raise AssertionError("unexpected download")
+
+
+class TransferRejectionPresentationTest(unittest.TestCase):
+    def run_install(self, arguments: list[str]) -> tuple[int, str, str, list[str]]:
+        source = UntrustedReleaseSource()
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with (
+            tempfile.TemporaryDirectory(prefix="kast-transfer-") as temporary,
+            patch.dict(os.environ, {"HOME": str(Path(temporary).resolve())}),
+            patch.object(install.platform, "system", return_value="Darwin"),
+            patch.object(install.platform, "machine", return_value="arm64"),
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            code = install.main(arguments, source)
+        return code, stdout.getvalue(), stderr.getvalue(), source.reads
+
+    def test_json_rejection_carries_the_tls_cause_and_trust_outcome(self) -> None:
+        code, stdout, _, reads = self.run_install(["--version", "0.52.0", "--json"])
+        self.assertNotEqual(0, code)
+        self.assertEqual(["release-mapping.json"], reads)
+        self.assertEqual(
+            {
+                "reason": "BINARY_UNAVAILABLE",
+                "stage": "RECORDS",
+                "requested": "0.52.0",
+                "platform": "macos-aarch64",
+                "selectable": [],
+                "transfer": {
+                    "cause": "TLS_CERTIFICATE_UNTRUSTED",
+                    "trust": "KEYCHAIN",
+                    "httpStatus": None,
+                },
+                "type": "REJECTED",
+            },
+            json.loads(stdout),
+        )
+
+    def test_human_rejection_names_the_certificate_bundle_remedy(self) -> None:
+        code, stdout, stderr, _ = self.run_install(["--channel", "main"])
+        self.assertNotEqual(0, code)
+        self.assertEqual("REJECTED\n", stdout)
+        self.assertIn('"cause":"TLS_CERTIFICATE_UNTRUSTED"', stderr)
+        self.assertIn("TLS certificate verification failed", stderr)
+        self.assertIn("trust roots: KEYCHAIN", stderr)
+        self.assertIn("SSL_CERT_FILE", stderr)
+        self.assertNotIn("https://", stderr)
+
+    def test_http_status_rejection_keeps_its_code_in_the_message(self) -> None:
+        failure = install.release.TransferRejected(
+            install.release.TransferFailure.HTTP_STATUS, install.release.TrustRoots.KEYCHAIN, 403
+        )
+        message = install.transfer_message(failure)
+        self.assertIn("HTTP status 403", message)
+        self.assertNotIn("SSL_CERT_FILE", message)
+
+    def test_configured_certificate_bundle_is_named_as_the_bundle_to_extend(self) -> None:
+        message = install.transfer_message(
+            install.release.TransferRejected(
+                install.release.TransferFailure.TLS_CERTIFICATE_UNTRUSTED,
+                install.release.TrustRoots.ENVIRONMENT,
+            )
+        )
+        self.assertIn("trust roots: ENVIRONMENT", message)
+        self.assertIn("configured SSL_CERT_FILE or SSL_CERT_DIR must include", message)
+
+
 @dataclass(frozen=True)
 class PayloadFileFixture:
     path: str

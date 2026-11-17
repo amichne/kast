@@ -5,13 +5,19 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import socket
+import ssl
 import struct
+import subprocess
 import tempfile
 import unittest
+import urllib.error
 import zipfile
 from dataclasses import asdict, dataclass, replace
+from http.client import HTTPMessage
 from pathlib import Path
-from typing import override
+from typing import IO, override
+from unittest.mock import patch
 from urllib.parse import urlsplit
 
 import managed_release as release
@@ -660,6 +666,244 @@ class ReleaseAdmissionTest(unittest.TestCase):
         result = release.decode_selection(encoded(mismatched))
         assert isinstance(result, release.Rejected)
         self.assertEqual(release.Failure.SELECTOR_INVALID, result.reason)
+
+
+class FailingTransport(release.HttpReleaseSource):
+    """Inject one urllib observation at the opener boundary; production maps it."""
+
+    def __init__(self, failure: OSError | None, body: bytes = b"") -> None:
+        super().__init__(
+            lambda: (ssl.create_default_context(), release.TrustRoots.KEYCHAIN), system="Linux"
+        )
+        self.failure, self.body = failure, body
+
+    @override
+    def open(self, url: str) -> IO[bytes]:
+        if self.failure is not None:
+            raise self.failure
+        return io.BytesIO(self.body)
+
+
+def http_error(code: int) -> urllib.error.HTTPError:
+    return urllib.error.HTTPError(release.STABLE_URL, code, "status", HTTPMessage(), None)
+
+
+class TransferCauseTest(unittest.TestCase):
+    def test_urllib_failures_map_to_their_bounded_transfer_cause(self) -> None:
+        verify = ssl.SSLCertVerificationError(1, "certificate verify failed")
+        cases: tuple[tuple[OSError, release.TransferRejection], ...] = (
+            (
+                urllib.error.URLError(verify),
+                release.TransferRejected(
+                    release.TransferFailure.TLS_CERTIFICATE_UNTRUSTED, release.TrustRoots.KEYCHAIN
+                ),
+            ),
+            (
+                verify,
+                release.TransferRejected(
+                    release.TransferFailure.TLS_CERTIFICATE_UNTRUSTED, release.TrustRoots.KEYCHAIN
+                ),
+            ),
+            (
+                urllib.error.URLError(ssl.SSLError(1, "wrong version number")),
+                release.TransferRejected(
+                    release.TransferFailure.TLS_FAILED, release.TrustRoots.KEYCHAIN
+                ),
+            ),
+            (
+                urllib.error.URLError(TimeoutError("timed out")),
+                release.TransferRejected(
+                    release.TransferFailure.TIMEOUT, release.TrustRoots.KEYCHAIN
+                ),
+            ),
+            (
+                urllib.error.URLError(socket.gaierror(8, "nodename nor servname provided")),
+                release.TransferRejected(
+                    release.TransferFailure.CONNECTION_FAILED, release.TrustRoots.KEYCHAIN
+                ),
+            ),
+            (
+                urllib.error.URLError(OSError("Tunnel connection failed: 407")),
+                release.TransferRejected(
+                    release.TransferFailure.CONNECTION_FAILED, release.TrustRoots.KEYCHAIN
+                ),
+            ),
+            (
+                http_error(403),
+                release.TransferRejected(
+                    release.TransferFailure.HTTP_STATUS, release.TrustRoots.KEYCHAIN, 403
+                ),
+            ),
+            (
+                http_error(500),
+                release.TransferRejected(
+                    release.TransferFailure.HTTP_STATUS, release.TrustRoots.KEYCHAIN, 500
+                ),
+            ),
+            (http_error(404), release.TransferFailure.NOT_FOUND),
+            (
+                urllib.error.URLError("release redirect does not use HTTPS"),
+                release.TransferRejected(
+                    release.TransferFailure.UNAVAILABLE, release.TrustRoots.KEYCHAIN
+                ),
+            ),
+        )
+        for failure, expected in cases:
+            with self.subTest(failure=type(failure).__name__, expected=expected):
+                self.assertEqual(expected, FailingTransport(failure).read(release.STABLE_URL, 10))
+
+    def test_local_destination_failure_is_not_reported_as_a_network_cause(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "existing"
+            _ = destination.write_bytes(b"prior")
+            result = FailingTransport(None, b"body").download(release.STABLE_URL, destination, 10)
+            self.assertEqual(
+                release.TransferRejected(
+                    release.TransferFailure.UNAVAILABLE, release.TrustRoots.KEYCHAIN
+                ),
+                result,
+            )
+            self.assertEqual(b"prior", destination.read_bytes())
+
+    def test_tls_rejection_reaches_selection_and_record_rejections(self) -> None:
+        untrusted = FailingTransport(
+            urllib.error.URLError(ssl.SSLCertVerificationError(1, "certificate verify failed"))
+        )
+        expected_transfer = {
+            "cause": "TLS_CERTIFICATE_UNTRUSTED",
+            "trust": "KEYCHAIN",
+            "httpStatus": None,
+        }
+        selection = release.resolve_selection("main", None, None, untrusted)
+        assert isinstance(selection, release.Rejected)
+        self.assertEqual(
+            {
+                "reason": "CATALOG_UNAVAILABLE",
+                "stage": "SELECTION",
+                "requested": "main",
+                "platform": "macos-aarch64",
+                "selectable": [],
+                "transfer": expected_transfer,
+            },
+            json.loads(json.dumps(asdict(selection))),
+        )
+        pinned = release.resolve_selection(None, "0.52.0", None, untrusted)
+        assert isinstance(pinned, release.StableSelection)
+        with tempfile.TemporaryDirectory() as temporary:
+            records = release.download_composition(pinned, "262", Path(temporary), untrusted)
+        assert isinstance(records, release.Rejected)
+        self.assertEqual(
+            {
+                "reason": "BINARY_UNAVAILABLE",
+                "stage": "RECORDS",
+                "requested": "0.52.0",
+                "platform": "macos-aarch64",
+                "selectable": [],
+                "transfer": expected_transfer,
+            },
+            json.loads(json.dumps(asdict(records))),
+        )
+
+
+class NativeTransportTest(unittest.TestCase):
+    def test_native_reads_and_downloads_keep_limits_digests_and_protected_files(self) -> None:
+        calls: list[tuple[str, ...]] = []
+
+        def run(command: tuple[str, ...], output: IO[bytes]) -> subprocess.CompletedProcess[bytes]:
+            calls.append(command)
+            _ = output.write(b"native bytes")
+            return subprocess.CompletedProcess(command, 0, stderr=b"200")
+
+        source = release.HttpReleaseSource(system="Darwin", environment={}, native=run)
+        self.assertEqual(b"native bytes", source.read("https://example.test/data", 12))
+        self.assertEqual(
+            release.TransferFailure.LIMIT_EXCEEDED, source.read("https://example.test/data", 11)
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "asset"
+            self.assertEqual(
+                release.DownloadedFile(target, hashlib.sha256(b"native bytes").hexdigest(), 12),
+                source.download("https://example.test/data", target, 12),
+            )
+            self.assertEqual(b"native bytes", target.read_bytes())
+            self.assertEqual(
+                release.TransferRejected(
+                    release.TransferFailure.UNAVAILABLE, release.TrustRoots.KEYCHAIN
+                ),
+                source.download("https://example.test/data", target, 12),
+            )
+            self.assertEqual(b"native bytes", target.read_bytes())
+        self.assertEqual(3, len(calls))
+        for command in calls:
+            self.assertEqual(("/usr/bin/curl", "--disable"), command[:2])
+            for option in ("--proto", "--proto-redir"):
+                self.assertEqual("=https", command[command.index(option) + 1])
+            self.assertEqual("1800", command[command.index("--max-time") + 1])
+            self.assertNotIn("--insecure", command)
+            self.assertNotIn("--cacert", command)
+
+    def test_native_failures_are_finite_and_do_not_fall_back_to_exported_anchors(self) -> None:
+        failure = release.TransferFailure
+        cases = (
+            (60, b"000", failure.TLS_CERTIFICATE_UNTRUSTED, None),
+            (35, b"000", failure.TLS_FAILED, None),
+            (28, b"000", failure.TIMEOUT, None),
+            (6, b"000", failure.CONNECTION_FAILED, None),
+            (63, b"200", failure.LIMIT_EXCEEDED, None),
+            (22, b"403", failure.HTTP_STATUS, 403),
+            (56, b"503", failure.HTTP_STATUS, 503),
+            (22, b"404", failure.NOT_FOUND, None),
+            (56, b"404", failure.NOT_FOUND, None),
+            (22, b"malformed", failure.UNAVAILABLE, None),
+        )
+        for code, status, cause, expected_status in cases:
+            with self.subTest(code=code):
+                calls: list[None] = []
+
+                def run(
+                    command: tuple[str, ...],
+                    output: IO[bytes],
+                    observations: list[None] = calls,
+                    exit_code: int = code,
+                    http_status: bytes = status,
+                ) -> subprocess.CompletedProcess[bytes]:
+                    observations.append(None)
+                    return subprocess.CompletedProcess(command, exit_code, stderr=http_status)
+
+                def forbidden_context() -> tuple[ssl.SSLContext, release.TrustRoots]:
+                    self.fail("native failures must not fall back to OpenSSL anchors")
+
+                source = release.HttpReleaseSource(
+                    forbidden_context, system="Darwin", environment={}, native=run
+                )
+                self.assertEqual(
+                    failure.NOT_FOUND
+                    if cause is failure.NOT_FOUND
+                    else release.TransferRejected(
+                        cause, release.TrustRoots.KEYCHAIN, expected_status
+                    ),
+                    source.read("https://example.test/data", 12),
+                )
+                self.assertEqual([None], calls)
+
+    def test_linux_and_explicit_openssl_roots_do_not_invoke_native_transport(self) -> None:
+        for system, environment in (
+            ("Linux", {}),
+            ("Darwin", {"SSL_CERT_FILE": "/private/roots.pem"}),
+            ("Darwin", {"SSL_CERT_DIR": "/private/roots"}),
+        ):
+            with self.subTest(system=system, environment=environment):
+
+                def forbidden_native(
+                    command: tuple[str, ...], output: IO[bytes]
+                ) -> subprocess.CompletedProcess[bytes]:
+                    self.fail("Linux and explicit OpenSSL roots must not invoke native transport")
+
+                source = release.HttpReleaseSource(
+                    system=system, environment=environment, native=forbidden_native
+                )
+                with patch.object(source, "open", return_value=io.BytesIO(b"openssl bytes")):
+                    self.assertEqual(b"openssl bytes", source.read("https://example.test/data", 13))
 
 
 if __name__ == "__main__":

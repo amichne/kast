@@ -6,17 +6,23 @@ import hashlib
 import io
 import json
 import os
+import platform
 import re
 import shutil
+import ssl
 import stat
 import struct
+import subprocess
 import tarfile
+import tempfile
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as XML
 import zipfile
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import cache
 from http.client import HTTPMessage
 from pathlib import Path, PurePosixPath
 from typing import IO, TYPE_CHECKING, Literal, Protocol, TypeGuard, override
@@ -71,6 +77,7 @@ class Rejected:
     requested: str
     platform: str = PLATFORM
     selectable: tuple[str, ...] = ()
+    transfer: TransferRejected | None = None
 
 
 type UpdatePolicy = TrackStable | TrackMain | PinnedBuild
@@ -142,13 +149,93 @@ class TransferFailure(StrEnum):
     NOT_FOUND = "NOT_FOUND"
     UNAVAILABLE = "UNAVAILABLE"
     LIMIT_EXCEEDED = "LIMIT_EXCEEDED"
+    TLS_CERTIFICATE_UNTRUSTED = "TLS_CERTIFICATE_UNTRUSTED"
+    TLS_FAILED = "TLS_FAILED"
+    CONNECTION_FAILED = "CONNECTION_FAILED"
+    TIMEOUT = "TIMEOUT"
+    HTTP_STATUS = "HTTP_STATUS"
+
+
+class TrustRoots(StrEnum):
+    """Certificate authorities behind one process's HTTPS context."""
+
+    PLATFORM = "PLATFORM"
+    ENVIRONMENT = "ENVIRONMENT"
+    KEYCHAIN = "KEYCHAIN"
+
+
+@dataclass(frozen=True, slots=True)
+class TransferRejected:
+    """Bounded transfer cause; httpStatus is present only for HTTP_STATUS."""
+
+    cause: TransferFailure
+    trust: TrustRoots | None = None
+    httpStatus: int | None = None
+
+
+type TransferRejection = TransferFailure | TransferRejected
+TRANSFER_REJECTIONS = (TransferFailure, TransferRejected)
+
+
+def transfer(rejection: TransferRejection) -> TransferRejected:
+    return rejection if isinstance(rejection, TransferRejected) else TransferRejected(rejection)
 
 
 class ReleaseSource(Protocol):
-    def read(self, url: str, limit: int) -> bytes | TransferFailure: ...
+    def read(self, url: str, limit: int) -> bytes | TransferRejection: ...
     def download(
         self, url: str, destination: Path, limit: int
-    ) -> DownloadedFile | TransferFailure: ...
+    ) -> DownloadedFile | TransferRejection: ...
+
+
+@cache
+def process_trust() -> tuple[ssl.SSLContext, TrustRoots]:
+    return ssl.create_default_context(), (
+        TrustRoots.ENVIRONMENT
+        if "SSL_CERT_FILE" in os.environ or "SSL_CERT_DIR" in os.environ
+        else TrustRoots.PLATFORM
+    )
+
+
+def run_native_https(
+    command: tuple[str, ...], output: IO[bytes]
+) -> subprocess.CompletedProcess[bytes]:
+    """Apple curl delegates certificate evaluation to SecureTransport, not exported anchors."""
+    return subprocess.run(
+        command,
+        stdin=subprocess.DEVNULL,
+        stdout=output,
+        stderr=subprocess.PIPE,
+        timeout=1800,
+        check=False,
+        env={
+            **{key: value for key, value in os.environ.items() if key != "CURL_CA_BUNDLE"},
+            "CURL_SSL_BACKEND": "secure-transport",
+        },
+    )
+
+
+def transfer_failure(error: OSError, trust: TrustRoots) -> TransferRejection:
+    if isinstance(error, urllib.error.HTTPError):
+        if error.code == 404:
+            return TransferFailure.NOT_FOUND
+        if 100 <= error.code <= 599:
+            return TransferRejected(TransferFailure.HTTP_STATUS, trust, error.code)
+        return TransferRejected(TransferFailure.UNAVAILABLE, trust)
+    wrapped = isinstance(error, urllib.error.URLError)
+    cause = error.reason if isinstance(error, urllib.error.URLError) else error
+    return TransferRejected(
+        TransferFailure.TLS_CERTIFICATE_UNTRUSTED
+        if isinstance(cause, ssl.SSLCertVerificationError)
+        else TransferFailure.TLS_FAILED
+        if isinstance(cause, ssl.SSLError)
+        else TransferFailure.TIMEOUT
+        if isinstance(cause, TimeoutError)
+        else TransferFailure.CONNECTION_FAILED
+        if isinstance(cause, ConnectionError) or (wrapped and isinstance(cause, OSError))
+        else TransferFailure.UNAVAILABLE,
+        trust,
+    )
 
 
 class HttpsRedirects(urllib.request.HTTPRedirectHandler):
@@ -168,29 +255,61 @@ class HttpsRedirects(urllib.request.HTTPRedirectHandler):
 
 
 class HttpReleaseSource:
-    def read(self, url: str, limit: int) -> bytes | TransferFailure:
+    def __init__(
+        self,
+        trust: Callable[[], tuple[ssl.SSLContext, TrustRoots]] = process_trust,
+        *,
+        system: str | None = None,
+        environment: Mapping[str, str] | None = None,
+        native: Callable[
+            [tuple[str, ...], IO[bytes]], subprocess.CompletedProcess[bytes]
+        ] = run_native_https,
+    ) -> None:
+        self.trust = trust
+        environment = os.environ if environment is None else environment
+        self.native = native
+        self.use_native = (
+            (platform.system() if system is None else system) == "Darwin"
+            and "SSL_CERT_FILE" not in environment
+            and "SSL_CERT_DIR" not in environment
+        )
+
+    def open(self, url: str) -> IO[bytes]:
+        context, _ = self.trust()
+        request = urllib.request.Request(
+            url, headers={"Cache-Control": "no-cache", "User-Agent": "kast-install"}
+        )
+        opener = urllib.request.build_opener(
+            HttpsRedirects(), urllib.request.HTTPSHandler(context=context)
+        )
+        stream: IO[bytes] = opener.open(request, timeout=30)
+        return stream
+
+    def read(self, url: str, limit: int) -> bytes | TransferRejection:
         try:
-            request = urllib.request.Request(
-                url, headers={"Cache-Control": "no-cache", "User-Agent": "kast-install"}
-            )
-            with urllib.request.build_opener(HttpsRedirects()).open(request, timeout=30) as stream:
+            if self.use_native:
+                with tempfile.TemporaryDirectory() as directory:
+                    destination = Path(directory) / "response"
+                    result = self.native_download(url, destination, limit)
+                    return (
+                        result
+                        if isinstance(result, TRANSFER_REJECTIONS)
+                        else destination.read_bytes()
+                    )
+            with self.open(url) as stream:
                 data: bytes = stream.read(limit + 1)
             return data if len(data) <= limit else TransferFailure.LIMIT_EXCEEDED
-        except urllib.error.HTTPError as failure:
-            return TransferFailure.NOT_FOUND if failure.code == 404 else TransferFailure.UNAVAILABLE
-        except (OSError, urllib.error.URLError):
-            return TransferFailure.UNAVAILABLE
+        except OSError as failure:
+            return transfer_failure(failure, self.trust()[1])
 
-    def download(self, url: str, destination: Path, limit: int) -> DownloadedFile | TransferFailure:
+    def download(
+        self, url: str, destination: Path, limit: int
+    ) -> DownloadedFile | TransferRejection:
+        if self.use_native:
+            return self.native_download(url, destination, limit)
         digest, size = hashlib.sha256(), 0
         try:
-            request = urllib.request.Request(
-                url, headers={"Cache-Control": "no-cache", "User-Agent": "kast-install"}
-            )
-            with (
-                urllib.request.build_opener(HttpsRedirects()).open(request, timeout=30) as stream,
-                destination.open("xb") as output,
-            ):
+            with self.open(url) as stream, destination.open("xb") as output:
                 while block := stream.read(min(65_536, limit - size + 1)):
                     size += len(block)
                     if size > limit:
@@ -198,10 +317,77 @@ class HttpReleaseSource:
                     digest.update(block)
                     _ = output.write(block)
             return DownloadedFile(destination, digest.hexdigest(), size)
-        except urllib.error.HTTPError as failure:
-            return TransferFailure.NOT_FOUND if failure.code == 404 else TransferFailure.UNAVAILABLE
-        except (OSError, urllib.error.URLError):
-            return TransferFailure.UNAVAILABLE
+        except OSError as failure:
+            return transfer_failure(failure, self.trust()[1])
+
+    def native_download(
+        self, url: str, destination: Path, limit: int
+    ) -> DownloadedFile | TransferRejection:
+        # Disable curlrc, pin Apple's transport and prohibit cleartext redirects.
+        # No PEM export can retain SecTrust's deny, policy and hostname constraints.
+        command = (
+            "/usr/bin/curl",
+            "--disable",
+            "--silent",
+            "--fail",
+            "--location",
+            "--proto",
+            "=https",
+            "--proto-redir",
+            "=https",
+            "--max-redirs",
+            "10",
+            "--connect-timeout",
+            "30",
+            "--speed-time",
+            "30",
+            "--speed-limit",
+            "1",
+            "--max-time",
+            "1800",
+            "--max-filesize",
+            str(limit),
+            "--header",
+            "Cache-Control: no-cache",
+            "--user-agent",
+            "kast-install",
+            "--write-out",
+            "%{stderr}%{http_code}",
+            "--url",
+            url,
+        )
+        try:
+            with destination.open("xb") as output:
+                result = self.native(command, output)
+            if result.returncode != 0:
+                return native_transfer_failure(result.returncode, result.stderr)
+            size = destination.stat().st_size
+            if size > limit:
+                return TransferFailure.LIMIT_EXCEEDED
+            return DownloadedFile(destination, file_digest(destination), size)
+        except subprocess.TimeoutExpired:
+            return TransferRejected(TransferFailure.TIMEOUT, TrustRoots.KEYCHAIN)
+        except OSError:
+            return TransferRejected(TransferFailure.UNAVAILABLE, TrustRoots.KEYCHAIN)
+
+
+def native_transfer_failure(code: int, status: bytes) -> TransferRejection:
+    if len(status) == 3 and status.isdigit() and 400 <= int(status) <= 599:
+        return (
+            TransferFailure.NOT_FOUND
+            if status == b"404"
+            else TransferRejected(TransferFailure.HTTP_STATUS, TrustRoots.KEYCHAIN, int(status))
+        )
+    cause = {
+        5: TransferFailure.CONNECTION_FAILED,
+        6: TransferFailure.CONNECTION_FAILED,
+        7: TransferFailure.CONNECTION_FAILED,
+        28: TransferFailure.TIMEOUT,
+        35: TransferFailure.TLS_FAILED,
+        60: TransferFailure.TLS_CERTIFICATE_UNTRUSTED,
+        63: TransferFailure.LIMIT_EXCEEDED,
+    }.get(code, TransferFailure.UNAVAILABLE)
+    return TransferRejected(cause, TrustRoots.KEYCHAIN)
 
 
 class LocalReleaseSource:
@@ -256,7 +442,7 @@ class LocalReleaseSource:
 
     def selection(self) -> ProductSelection | Rejected:
         raw = self.read("build-record.json", MAXIMUM_RECORD_BYTES)
-        if isinstance(raw, TransferFailure):
+        if isinstance(raw, TRANSFER_REJECTIONS):
             return Rejected(Failure.ARTIFACT_INVALID, Stage.RECORDS, str(self.directory))
         record = decode_installed_product_record(raw)
         if isinstance(record, Failure):
@@ -901,8 +1087,10 @@ def resolve_selection(
         return Rejected(Failure.SELECTOR_INVALID, Stage.SELECTION, requested)
     if commit is None and channel in (None, "stable"):
         raw = source.read(STABLE_URL, MAXIMUM_RECORD_BYTES)
-        if isinstance(raw, TransferFailure):
-            return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
+        if isinstance(raw, TRANSFER_REJECTIONS):
+            return Rejected(
+                Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested, transfer=transfer(raw)
+            )
         try:
             stable = document(raw)
         except (ValueError, UnicodeError, RecursionError):
@@ -918,8 +1106,10 @@ def resolve_selection(
                 return StableSelection(tag[1:], tag, StablePolicy.TRACK)
         return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
     raw = source.read(CATALOG_URL, MAXIMUM_RECORD_BYTES)
-    if isinstance(raw, TransferFailure):
-        return Rejected(Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested)
+    if isinstance(raw, TRANSFER_REJECTIONS):
+        return Rejected(
+            Failure.CATALOG_UNAVAILABLE, Stage.SELECTION, requested, transfer=transfer(raw)
+        )
     try:
         parsed = document(raw)
     except (ValueError, UnicodeError, RecursionError):
@@ -1167,7 +1357,7 @@ def checked_record(
 ) -> bytes | Failure:
     checksum = source.read(asset_url(selection, name + ".sha256"), 512)
     raw = source.read(asset_url(selection, name), MAXIMUM_RECORD_BYTES)
-    if isinstance(checksum, TransferFailure) or isinstance(raw, TransferFailure):
+    if isinstance(checksum, TRANSFER_REJECTIONS) or isinstance(raw, TRANSFER_REJECTIONS):
         if name.startswith("kast-control-release-") and raw is TransferFailure.NOT_FOUND:
             return Failure.INSTALLER_CONTRACT_UNSUPPORTED
         return Failure.ARTIFACT_INVALID
@@ -1186,7 +1376,7 @@ def download_asset(
 ) -> DownloadedFile | Failure:
     checksum = source.read(asset_url(selection, record.artifact_name + ".sha256"), 512)
     if (
-        isinstance(checksum, TransferFailure)
+        isinstance(checksum, TRANSFER_REJECTIONS)
         or checksum != f"{record.sha256}  {record.artifact_name}\n".encode()
     ):
         return Failure.ARTIFACT_INVALID
@@ -1196,7 +1386,7 @@ def download_asset(
     result = source.download(asset_url(selection, record.artifact_name), destination, record.bytes)
     if result is TransferFailure.NOT_FOUND:
         return Failure.PLATFORM_UNAVAILABLE
-    if isinstance(result, TransferFailure):
+    if isinstance(result, TRANSFER_REJECTIONS):
         return Failure.ARTIFACT_INVALID
     if (
         result.path != destination
@@ -1522,7 +1712,10 @@ def admit_main_records(
     values: list[object] = []
     for reference in (selection.catalogEntry.candidate, selection.catalogEntry.promotion):
         raw = source.read(asset_url(selection, reference.name), MAXIMUM_RECORD_BYTES)
-        if isinstance(raw, TransferFailure) or hashlib.sha256(raw).hexdigest() != reference.sha256:
+        if (
+            isinstance(raw, TRANSFER_REJECTIONS)
+            or hashlib.sha256(raw).hexdigest() != reference.sha256
+        ):
             return Failure.ARTIFACT_INVALID
         try:
             values.append(document(raw))
@@ -1683,8 +1876,10 @@ def download_composition(
     raw = source.read(
         f"{RELEASE_URL}/{selection.releaseTag}/build-record.json", MAXIMUM_RECORD_BYTES
     )
-    if isinstance(raw, TransferFailure):
-        return Rejected(Failure.BINARY_UNAVAILABLE, Stage.RECORDS, requested)
+    if isinstance(raw, TRANSFER_REJECTIONS):
+        return Rejected(
+            Failure.BINARY_UNAVAILABLE, Stage.RECORDS, requested, transfer=transfer(raw)
+        )
     if (
         hashlib.sha256(raw).hexdigest() != selection.recordSha256
         or (
@@ -1706,8 +1901,10 @@ def resolve_product_mapping(
 ) -> ProductSelection | Rejected:
     base = f"{RELEASE_URL}/{selection.releaseTag}"
     raw = source.read(f"{base}/release-mapping.json", MAXIMUM_RECORD_BYTES)
-    if isinstance(raw, TransferFailure):
-        return Rejected(Failure.BINARY_UNAVAILABLE, Stage.RECORDS, selection.version)
+    if isinstance(raw, TRANSFER_REJECTIONS):
+        return Rejected(
+            Failure.BINARY_UNAVAILABLE, Stage.RECORDS, selection.version, transfer=transfer(raw)
+        )
     try:
         mapping = parse_release_mapping(document(raw))
     except (ValueError, UnicodeError, RecursionError):
@@ -1715,8 +1912,10 @@ def resolve_product_mapping(
     if isinstance(mapping, Failure) or mapping.publicVersion != selection.version:
         return Rejected(Failure.ARTIFACT_INVALID, Stage.RECORDS, selection.version)
     raw = source.read(f"{base}/build-record.json", MAXIMUM_RECORD_BYTES)
-    if isinstance(raw, TransferFailure):
-        return Rejected(Failure.BINARY_UNAVAILABLE, Stage.RECORDS, selection.version)
+    if isinstance(raw, TRANSFER_REJECTIONS):
+        return Rejected(
+            Failure.BINARY_UNAVAILABLE, Stage.RECORDS, selection.version, transfer=transfer(raw)
+        )
     record = decode_product_record(raw)
     if isinstance(record, Failure) or hashlib.sha256(raw).hexdigest() != mapping.buildRecordSha256:
         return Rejected(Failure.ARTIFACT_INVALID, Stage.RECORDS, selection.version)
