@@ -101,30 +101,13 @@ private constructor(
                         is Refinement.Rejected -> return selected
                         is Refinement.Refined -> selected.value
                     }
-                val flags = vendor.filterNot { it.trimStart().startsWith("-Xmx") || it.trimStart().startsWith("-Xms") }
-                val environmentOptions =
-                    if (gradleEnvironment.identity == GradleImportEnvironment.Empty.identity) emptyList()
-                    else
-                        listOf(
-                            "-D${GradleImportEnvironment.HOST_IDENTITY_PROPERTY}=${gradleEnvironment.identity.value}"
+                when (val options = renderOptions(runtime, vendor, heap, idleShutdown, gradleEnvironment)) {
+                    is Refinement.Rejected -> options
+                    is Refinement.Refined ->
+                        Refinement.Refined(
+                            ManagedHeadlessLaunch(runtime, options.value, heap, search, gradleEnvironment)
                         )
-                val lines =
-                    flags +
-                        overrides(runtime, heap.value) +
-                        HostIdleShutdown.jvmOptions(idleShutdown) +
-                        environmentOptions
-                if (lines.any { it.contains('\n') || it.contains('\r') })
-                    Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
-                else
-                    Refinement.Refined(
-                        ManagedHeadlessLaunch(
-                            runtime,
-                            lines.joinToString("\n", postfix = "\n"),
-                            heap,
-                            search,
-                            gradleEnvironment,
-                        )
-                    )
+                }
             } catch (_: java.io.IOException) {
                 Refinement.Rejected(ManagedHeadlessLaunchFailure.METADATA_UNAVAILABLE)
             } catch (_: kotlinx.serialization.SerializationException) {
@@ -132,6 +115,24 @@ private constructor(
             } catch (_: IllegalArgumentException) {
                 Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
             }
+        }
+
+        private fun renderOptions(
+            runtime: ManagedHeadlessInstallation,
+            vendor: List<String>,
+            heap: ManagedHeadlessHeap,
+            idleShutdown: HostIdleShutdown,
+            gradleEnvironment: GradleImportEnvironment,
+        ): Refinement<String, ManagedHeadlessLaunchFailure> {
+            val flags = vendor.filterNot { it.trimStart().startsWith("-Xmx") || it.trimStart().startsWith("-Xms") }
+            val environmentOptions =
+                if (gradleEnvironment.identity == GradleImportEnvironment.Empty.identity) emptyList()
+                else listOf("-D${GradleImportEnvironment.HOST_IDENTITY_PROPERTY}=${gradleEnvironment.identity.value}")
+            val lines =
+                flags + overrides(runtime, heap.value) + HostIdleShutdown.jvmOptions(idleShutdown) + environmentOptions
+            return if (lines.any { it.contains('\n') || it.contains('\r') })
+                Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
+            else Refinement.Refined(lines.joinToString("\n", postfix = "\n"))
         }
 
         private fun vendorOptions(runtime: ManagedHeadlessInstallation): Path? {
