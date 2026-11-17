@@ -22,6 +22,7 @@ class SemanticServiceLaunchTest {
                         root,
                         mapOf(
                             "KAST_HOST_MAX_HEAP_MIB" to "2048",
+                            "GRADLE_USER_HOME" to root.resolve("gradle").toString(),
                             "KAST_OPTS" to "-DownedFixture=omit",
                             "UNRELATED_TOKEN" to "omit",
                         ),
@@ -44,6 +45,7 @@ class SemanticServiceLaunchTest {
                                     assertTrue(document.contains(executable.toString()))
                                     assertTrue(document.contains("<string>--semantic</string>"))
                                     assertTrue(document.contains("<string>KAST_HOST_MAX_HEAP_MIB=2048</string>"))
+                                    assertTrue(document.contains("<string>GRADLE_USER_HOME=$root/gradle</string>"))
                                     assertTrue(document.contains("<key>StandardInPath</key><string>/dev/null</string>"))
                                     assertFalse(document.contains("UNRELATED_TOKEN"))
                                     assertFalse(document.contains("KAST_OPTS"))

@@ -66,7 +66,7 @@ private constructor(
 
         private val inheritedKeys =
             ConfigurationParameter.entries
-                .filter { it.declaration().disclosure == ConfigurationDisclosure.PUBLIC }
+                .filter { it.declaration().disclosure != ConfigurationDisclosure.SECRET_PRESENCE }
                 .map { it.key }
                 .toSet() +
                 setOf(
