@@ -49,12 +49,13 @@ class NativeProducerInvocationDiscoveryTest : NativeReferenceFixtureTest() {
                         )
                         .nativeRefined()
                 val seed =
-                    IntellijValueFlowCompilerAdapter().seed(
-                        project = project,
-                        current = owner.lease,
-                        request = selection,
-                        model = fixture.model,
-                    )
+                    IntellijValueFlowCompilerAdapter()
+                        .seed(
+                            project = project,
+                            current = owner.lease,
+                            request = selection,
+                            model = fixture.model,
+                        )
                 assertTrue(
                     "Issued range must select its exact compiler call: $seed",
                     seed is ValueProducerSeedRead.Seeded,
