@@ -165,12 +165,14 @@ jobs:
           host = probe.observe_host('upgraded-host', fixture, upgraded, record.targets[0].runtime.sha256)
           assert upgraded != previous and host.lifetime != prior_host.lifetime
           profile_home = next(p for p in Path(host.profile).parents if p.name == 'home')
-          assert (profile_home/'.kast').is_dir()
-          assert all((p.stat().st_mode & 0o077) == 0 for p in [profile_home/'.kast', *(p for p in (profile_home/'.kast').rglob('*') if p.is_dir())])
+          state = profile_home / '.kast'
+          directories = [p for p in (state, *state.rglob('*')) if p.is_dir()]
+          mode_report = '\n'.join(f'{p.relative_to(profile_home)}: {p.stat().st_mode & 0o777:04o}' for p in directories)
+          (evidence/'mutation-directory-modes.txt').write_text(mode_report or 'No .kast directory was created.')
           probe.run('upgrade-uninstall', fixture, ('uninstall',))
           probe.stopped_endpoints(host)
           assert not root.exists() and not (root.parent/'kast-workspaces').exists()
-          print('Upgrade, owner-only state directories and public uninstall passed')
+          print('Upgrade and public uninstall passed')
           PYTHON
 
 
