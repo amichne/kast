@@ -20,7 +20,6 @@ import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
-import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,8 +33,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.Required
-import kotlinx.serialization.Serializable
 
 internal enum class WorkspacePhase {
     PREPARING,
@@ -83,7 +80,7 @@ internal class ManagedCoordinatorOperations(
         if (operation.workspaceAdmission() == WorkspaceOperationAdmission.EXISTING_AUTHORITY)
             return existing(root, request, operation)
         val result = preparedRead(root, settings, request, operation)
-        return if (result.workspaceRejection()?.cause == hostUnavailable)
+        return if (result.workspaceRejection()?.cause?.reprepares(operation) == true)
             preparedRead(root, settings, request, operation)
         else result
     }
@@ -145,8 +142,7 @@ internal class ManagedCoordinatorOperations(
                 when (
                     val leased =
                         acquisition.withRequestLease(root, request, ready.binding.identity) {
-                            if (operation == DaemonOperationCall.PrepareWorkspace) preparedWorkspace
-                            else ready.binding.read(root, operation)
+                            ready.binding.execute(root, operation)
                         }
                 ) {
                     is Refinement.Rejected -> rejectedOperation(leased.failure)
@@ -375,14 +371,12 @@ private fun DaemonOperationResult.workspaceRejection(): DaemonOperationFailure.W
 private fun WorkspaceDemandCause.invalidatesBinding(): Boolean =
     this == hostUnavailable || this == WorkspaceDemandCause.HostChanged
 
+/** A workspace wait sends no semantic operation, so a stale project target may be prepared once more. */
+private fun WorkspaceDemandCause.reprepares(operation: DaemonOperationCall): Boolean =
+    this == hostUnavailable ||
+        (operation == DaemonOperationCall.PrepareWorkspace && this == WorkspaceDemandCause.HostChanged)
+
 // A HostChanged result can also follow a readiness retry. Revoke its binding without replaying the operation.
 private val hostUnavailable = WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE)
 private val lifecycleTransition = DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION)
 internal val configurationConflict = DaemonOperationFailure.ManagedWorkspace(ContainerFailure.CONFIGURATION_CONFLICT)
-
-@Serializable internal data class PreparedWorkspaceDocument(@Required val ready: Boolean = true)
-
-private val preparedWorkspace =
-    DaemonOperationResult.Complete(
-        CanonicalJsonDocument.generated(PreparedWorkspaceDocument.serializer()).create(PreparedWorkspaceDocument())
-    )

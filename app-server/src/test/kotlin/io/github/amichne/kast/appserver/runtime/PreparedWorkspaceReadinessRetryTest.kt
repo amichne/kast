@@ -7,9 +7,11 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeDocuments
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostIncarnation
 import io.github.amichne.kast.appserver.ide.HostedEndpointOwnerPid
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
+import io.github.amichne.kast.appserver.ide.ObservedHost
 import io.github.amichne.kast.appserver.mcpOperation
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.distribution.managed.canonicalRootFixture
@@ -27,6 +29,7 @@ import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Path
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -37,6 +40,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class PreparedWorkspaceReadinessRetryTest {
@@ -263,6 +267,45 @@ class PreparedWorkspaceReadinessRetryTest {
                 assertSame(cancelled, observed)
             }
             assertEquals(2, fixture.invocations)
+            assertEquals(2, fixture.opens)
+        } finally {
+            preparations.close()
+        }
+    }
+
+    @Test
+    fun `retained authority confirms its exact target and rejects a project-only change without semantics`() = runTest {
+        val fixture = RetryCase()
+        var observed = fixture.target
+        val preparations = WorkspacePreparations(this, fixture::open)
+        try {
+            val demand =
+                PreparedWorkspaceDemand(preparations, { fixture.inspected(observed) }) { _, _ ->
+                    error("unexpected semantic request")
+                }
+            val incarnation = HostIncarnation("/idea", "/profile", "lifetime", 1, 1, "/idea/bin/idea")
+            val prepared =
+                demand.prepareWithHost(fixture.root) { selected ->
+                    Refinement.Refined(ObservedHost.Adopted(incarnation, selected, CompletableFuture()))
+                }
+            val authority = (prepared as Refinement.Refined).value
+            assertEquals(Refinement.Refined(Unit), authority.confirmReady())
+
+            // The same Host stays alive, but the project at this root was reopened with another identity.
+            observed = fixture.target.copy(project = "00000000-0000-0000-0000-000000000005")
+            val stale = (authority.confirmReady() as Refinement.Rejected).failure
+            assertEquals(
+                WorkspaceDemandFailure.Operation(
+                    authority.preparationId,
+                    fixture.root,
+                    WorkspaceDemandCause.HostChanged,
+                ),
+                stale,
+            )
+            assertEquals(1, fixture.opens)
+
+            observed = fixture.target
+            assertTrue(demand.prepare(fixture.root) is Refinement.Refined)
             assertEquals(2, fixture.opens)
         } finally {
             preparations.close()
