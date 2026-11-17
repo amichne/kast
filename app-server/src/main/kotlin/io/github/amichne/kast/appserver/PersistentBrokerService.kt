@@ -537,6 +537,9 @@ private enum class BrokerSymbolicLinkPolicy {
 
 internal fun interface PersistentBrokerServiceHost {
     fun ensure(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission
+
+    fun submitSemantic(command: SemanticServiceLaunch): Refinement<Unit, PersistentBrokerServiceFailure> =
+        Refinement.Rejected(PersistentBrokerServiceFailure.UNAVAILABLE)
 }
 
 internal class InstalledPersistentBrokerService(

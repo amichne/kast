@@ -6,8 +6,10 @@ import io.github.amichne.kast.appserver.DaemonOperationClientFailure
 import io.github.amichne.kast.appserver.DaemonOperationClientRejection
 import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.InstalledSemanticCoordinator
+import io.github.amichne.kast.appserver.InstalledSemanticService
 import io.github.amichne.kast.appserver.WorkerControlFailure
 import io.github.amichne.kast.cli.direct.DirectToolRegistration
+import io.github.amichne.kast.cli.direct.InstalledClientContext
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.cli.direct.directToolName
 import io.github.amichne.kast.cli.ide.executeAdmittedPublicTool
@@ -18,12 +20,11 @@ import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscov
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
-import java.io.IOException
 import java.nio.file.Path
-import java.security.MessageDigest
-import java.util.HexFormat
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal fun coordinatedPublicSession(
@@ -71,46 +72,29 @@ private suspend fun connectSemanticCoordinator(installation: Path): InstalledSem
         is Refinement.Refined -> return installed.value
         is Refinement.Rejected -> if (installed.failure != WorkerControlFailure.UNAVAILABLE) return null
     }
-    val child = startSemanticCoordinator(installation, home, readiness) ?: return null
-    return withTimeoutOrNull(BrokerOperationalLimits.serviceChildPhases.value) {
-        while (child.isAlive) {
-            val installed = InstalledSemanticCoordinator.observe(installation, readiness)
-            if (installed is Refinement.Refined) return@withTimeoutOrNull installed.value
-            delay(READINESS_POLL_MILLIS)
+    val environment = System.getenv()
+    val executable = installation.resolve("share/kast/libexec/kast-management")
+    val admissible = runInterruptible(Dispatchers.IO) { InstalledClientContext.admit(executable, environment) }
+    if (admissible !is Refinement.Refined) return null
+
+    val submitted =
+        runInterruptible(Dispatchers.IO) {
+            ControlStageTrace.observeRefinement(ControlStage.COORDINATOR_START) {
+                InstalledSemanticService.submit(installation, home, environment)
+            }
         }
-        null
+    if (submitted is Refinement.Rejected) return null
+    return withTimeoutOrNull(BrokerOperationalLimits.serviceChildPhases.value) {
+        awaitSemanticCoordinator(installation, readiness)
+    }
+}
+
+private suspend fun awaitSemanticCoordinator(installation: Path, readiness: Path): InstalledSemanticCoordinator {
+    while (true) {
+        val installed = InstalledSemanticCoordinator.observe(installation, readiness)
+        if (installed is Refinement.Refined) return installed.value
+        delay(READINESS_POLL_MILLIS)
     }
 }
 
 private const val READINESS_POLL_MILLIS = 25L
-
-private fun startSemanticCoordinator(installation: Path, home: Path, readiness: Path): Process? =
-    try {
-        val executable = installation.resolve("share/kast/libexec/kast-management")
-        val identity =
-            HexFormat.of()
-                .formatHex(
-                    MessageDigest.getInstance("SHA-256").digest(installation.toString().toByteArray(Charsets.UTF_8))
-                )
-        val arguments =
-            listOf(
-                executable.toString(),
-                "-Duser.home=$home",
-                "--internal-entrypoint=daemon",
-                "--semantic",
-            )
-        ProcessBuilder(arguments)
-            .directory(installation.toFile())
-            .redirectInput(Path.of("/dev/null").toFile())
-            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-            .redirectError(ProcessBuilder.Redirect.DISCARD)
-            .apply {
-                environment()["BROKER_SERVICE_IDENTITY"] = "sha256:$identity"
-                environment()["BROKER_READINESS_FILE"] = readiness.toString()
-            }
-            .start()
-    } catch (_: IOException) {
-        null
-    } catch (_: SecurityException) {
-        null
-    }

@@ -10,14 +10,14 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 
 /** Serializes launchd admission, retirement, and login resumption for one installation. */
-internal sealed interface BrokerServiceLockExecution {
-    data class Executed(val admission: PersistentBrokerServiceAdmission) : BrokerServiceLockExecution
+internal sealed interface BrokerServiceLockExecution<out T> {
+    data class Executed<T>(val admission: T) : BrokerServiceLockExecution<T>
 
-    data object Interrupted : BrokerServiceLockExecution
+    data object Interrupted : BrokerServiceLockExecution<Nothing>
 
-    data object Rejected : BrokerServiceLockExecution
+    data object Rejected : BrokerServiceLockExecution<Nothing>
 
-    data object TimedOut : BrokerServiceLockExecution
+    data object TimedOut : BrokerServiceLockExecution<Nothing>
 }
 
 private sealed interface BrokerServiceLockAttempt {
@@ -29,10 +29,10 @@ private sealed interface BrokerServiceLockAttempt {
 }
 
 internal object BrokerServiceStartLock {
-    fun withAcquired(
+    fun <T> withAcquired(
         path: Path,
-        operation: () -> PersistentBrokerServiceAdmission,
-    ): BrokerServiceLockExecution {
+        operation: () -> T,
+    ): BrokerServiceLockExecution<T> {
         if (Files.isSymbolicLink(path)) return BrokerServiceLockExecution.Rejected
         val channel =
             try {
@@ -50,10 +50,10 @@ internal object BrokerServiceStartLock {
         return channel.use { opened -> awaitAcquired(opened, operation) }
     }
 
-    private fun awaitAcquired(
+    private fun <T> awaitAcquired(
         channel: FileChannel,
-        operation: () -> PersistentBrokerServiceAdmission,
-    ): BrokerServiceLockExecution {
+        operation: () -> T,
+    ): BrokerServiceLockExecution<T> {
         val deadline = System.nanoTime() + LOCK_TIMEOUT_NANOS
         while (System.nanoTime() < deadline) {
             when (val attempt = tryAcquire(channel)) {

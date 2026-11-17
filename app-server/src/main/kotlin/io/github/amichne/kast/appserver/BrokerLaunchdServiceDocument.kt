@@ -11,8 +11,6 @@ internal object BrokerLaunchdServiceDocument {
         command: BrokerServiceLaunchCommand,
         start: BrokerLaunchdStart = BrokerLaunchdStart.CURRENT_SESSION,
     ): String {
-        fun xml(raw: String) =
-            raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
         val environment =
             listOf(
                 "HOME=${command.userHome}",
@@ -32,13 +30,29 @@ internal object BrokerLaunchdServiceDocument {
             listOf("/usr/bin/env", "-i") +
                 environment +
                 if (start == BrokerLaunchdStart.LOGIN) daemon + "--login" else daemon
+        return renderJob(command.serviceLabel.value, arguments, command.serviceLog.toString())
+    }
+
+    fun renderSemantic(command: SemanticServiceLaunch): String =
+        renderJob(command.label, command.arguments, command.log.toString(), command.installation.toString())
+
+    private fun renderJob(label: String, arguments: List<String>, log: String, directory: String? = null): String {
+        val supervision =
+            if (directory == null)
+                "<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>" +
+                    "<key>ThrottleInterval</key><integer>10</integer>"
+            else
+                "<key>WorkingDirectory</key><string>${xml(directory)}</string>" +
+                    "<key>StandardInPath</key><string>/dev/null</string>"
         return """<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0"><dict><key>Label</key><string>${xml(command.serviceLabel.value)}</string>
+<plist version="1.0"><dict><key>Label</key><string>${xml(label)}</string>
 <key>ProgramArguments</key><array>${arguments.joinToString("") { "<string>${xml(it)}</string>" }}</array>
-<key>RunAtLoad</key><true/><key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
-<key>ThrottleInterval</key><integer>10</integer>
-<key>StandardOutPath</key><string>${xml(command.serviceLog.toString())}</string>
-<key>StandardErrorPath</key><string>${xml(command.serviceLog.toString())}</string></dict></plist>
+<key>RunAtLoad</key><true/>$supervision
+<key>StandardOutPath</key><string>${xml(log)}</string>
+<key>StandardErrorPath</key><string>${xml(log)}</string></dict></plist>
 """
     }
+
+    private fun xml(raw: String) =
+        raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 }
