@@ -12,6 +12,7 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import java.sql.DriverManager
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -21,6 +22,24 @@ import org.junit.jupiter.api.io.TempDir
 
 class SqliteHostedChangeStoresTest {
     @TempDir lateinit var temporary: Path
+
+    @Test
+    fun `opening a hosted store creates private directories for every missing state component`() {
+        val location = location()
+        val home = temporary.toRealPath()
+        val root = home.resolve(".kast")
+        val state = root.resolve("state")
+        val workspaces = state.resolve("workspaces")
+        val workspace = Path.of(location.valueAtSqliteBoundary()).parent
+        assertFalse(Files.exists(root))
+
+        assertInstanceOf<Refinement.Refined<SqliteHostedChangeStores>>(SqliteHostedChangeStores.open(location))
+
+        val privatePermissions = PosixFilePermissions.fromString("rwx------")
+        for (directory in listOf(root, state, workspaces, workspace)) {
+            assertEquals(privatePermissions, Files.getPosixFilePermissions(directory), directory.toString())
+        }
+    }
 
     @Test
     fun `shared stores persist live plans and create only mutation tables`() {
@@ -88,7 +107,7 @@ class SqliteHostedChangeStoresTest {
         val root = temporary.toRealPath()
         val state =
             assertInstanceOf<Refinement.Refined<KastUserStateRoot>>(
-                    KastUserStateRoot.parse(root.resolve("state").toString())
+                    KastUserStateRoot.parse(root.resolve(".kast").toString())
                 )
                 .value
         val workspace =

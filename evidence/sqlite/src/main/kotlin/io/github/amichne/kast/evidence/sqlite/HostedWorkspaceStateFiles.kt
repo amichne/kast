@@ -4,6 +4,10 @@ import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
+
+private val privateDirectoryPermissions =
+    PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"))
 
 /** Creates the exact database parent and preserves the finite reason if it cannot be admitted. */
 internal fun admitHostedDatabasePath(raw: String): Refinement<Path, SqliteMutationRecoveryJournalOpenFailure> =
@@ -18,7 +22,7 @@ internal fun admitHostedDatabasePath(raw: String): Refinement<Path, SqliteMutati
                 !Files.isDirectory(database.parent, LinkOption.NOFOLLOW_LINKS) ->
                 Refinement.Rejected(SqliteMutationRecoveryJournalOpenFailure.PARENT_NOT_DIRECTORY)
             else -> {
-                Files.createDirectories(database.parent)
+                Files.createDirectories(database.parent, privateDirectoryPermissions)
                 if (database.parent.toRealPath() != database.parent)
                     Refinement.Rejected(SqliteMutationRecoveryJournalOpenFailure.SYMLINK_NOT_ALLOWED)
                 else Refinement.Refined(database)
@@ -29,5 +33,7 @@ internal fun admitHostedDatabasePath(raw: String): Refinement<Path, SqliteMutati
     } catch (_: java.io.IOException) {
         Refinement.Rejected(SqliteMutationRecoveryJournalOpenFailure.STORAGE_UNAVAILABLE)
     } catch (_: SecurityException) {
+        Refinement.Rejected(SqliteMutationRecoveryJournalOpenFailure.STORAGE_UNAVAILABLE)
+    } catch (_: UnsupportedOperationException) {
         Refinement.Rejected(SqliteMutationRecoveryJournalOpenFailure.STORAGE_UNAVAILABLE)
     }
