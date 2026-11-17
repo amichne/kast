@@ -1,6 +1,6 @@
 package io.github.amichne.kast.distribution.managed
 
-import io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap
+import io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
@@ -90,21 +90,21 @@ class ManagedHeadlessInstallationTest {
                         installation,
                         "/cloud/python/bin:/cloud/node/bin:/usr/bin:/bin",
                         io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
-                        io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
+                        HostHeapPolicy.Inherit,
                     )
                 )
                 .value
         assertEquals(listOf(fixture.launch.executable, "kast-headless"), specification.arguments)
         org.junit.jupiter.api.Assertions.assertTrue("-Dvendor.required=true\n" in specification.options)
         org.junit.jupiter.api.Assertions.assertTrue("-Djbr.dbus.enabled=false\n" in specification.options)
-        org.junit.jupiter.api.Assertions.assertFalse("-Xmx2048m" in specification.options)
+        assertEquals(listOf("-Xmx2048m"), specification.options.lines().filter { it.startsWith("-Xmx") })
         org.junit.jupiter.api.Assertions.assertFalse("kast.host.idle_shutdown_minutes" in specification.options)
         val idle =
             io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.parseSetting("45")
                 as Refinement.Refined
         val limited =
             assertInstanceOf<Refinement.Refined<ManagedHeadlessLaunch>>(
-                    ManagedHeadlessLaunch.prepare(installation, "/usr/bin:/bin", idle.value, HostMaxHeap.DEFAULT)
+                    ManagedHeadlessLaunch.prepare(installation, "/usr/bin:/bin", idle.value, HostHeapPolicy.Inherit)
                 )
                 .value
         org.junit.jupiter.api.Assertions.assertTrue(
@@ -129,33 +129,37 @@ class ManagedHeadlessInstallationTest {
     }
 
     @Test
-    fun `the configured heap replaces the vendor heap as the only -Xmx option`(@TempDir directory: Path) {
-        val fixture = fixture(directory)
-        val installation =
-            assertInstanceOf<Refinement.Refined<ManagedHeadlessInstallation>>(
-                    ManagedHeadlessInstallation.resolve(fixture.launch, fixture.state, fixture.state.resolve("home"))
-                )
-                .value
-        fun heapOptions(heap: io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap): List<String> =
-            assertInstanceOf<Refinement.Refined<ManagedHeadlessLaunch>>(
-                    ManagedHeadlessLaunch.prepare(
-                        installation,
-                        "/usr/bin:/bin",
-                        io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
-                        heap,
-                    )
-                )
-                .value
-                .options
-                .lines()
-                .filter { it.startsWith("-Xmx") || it.startsWith("-Xms") }
+    fun `heap selection renders one canonical option or rejects an ambiguous source`() {
+        val bundled = listOf("-Xmx2048m")
+        val custom = listOf("-Xms1024m", "-Dexample=true", "  -Xmx4G")
+        val duplicate = listOf("-Xmx2048m", "-Xmx4096m")
         val configured =
-            io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.parseSetting("8192")
-                as Refinement.Refined
-        assertEquals(listOf("-Xmx8192m"), heapOptions(configured.value))
+            assertInstanceOf<Refinement.Refined<HostHeapPolicy.Explicit>>(HostHeapPolicy.Explicit.parseSetting("1536"))
+                .value
+
+        fun option(policy: HostHeapPolicy, custom: List<String>, bundled: List<String>): String =
+            assertInstanceOf<Refinement.Refined<ManagedHeadlessHeap>>(
+                    ManagedHeadlessHeap.select(policy, custom, bundled)
+                )
+                .value
+                .value
+                .jvmOption
+
+        assertEquals("-Xmx1536m", option(configured, duplicate, bundled))
+        assertEquals("-Xmx4096m", option(HostHeapPolicy.Inherit, custom, bundled))
+        assertEquals("-Xmx2048m", option(HostHeapPolicy.Inherit, listOf("-Xms1g"), bundled))
+        assertEquals("-Xmx1536m", option(HostHeapPolicy.Inherit, emptyList(), emptyList()))
         assertEquals(
-            listOf("-Xmx1536m"),
-            heapOptions(io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT),
+            Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA),
+            ManagedHeadlessHeap.select(HostHeapPolicy.Inherit, duplicate, bundled),
+        )
+        assertEquals(
+            Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA),
+            ManagedHeadlessHeap.select(HostHeapPolicy.Inherit, emptyList(), duplicate),
+        )
+        assertEquals(
+            Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA),
+            ManagedHeadlessHeap.select(HostHeapPolicy.Inherit, listOf("-Xmxgarbage"), bundled),
         )
     }
 
@@ -173,7 +177,7 @@ class ManagedHeadlessInstallationTest {
                         installation,
                         "/usr/bin:/bin",
                         io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
-                        io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
+                        HostHeapPolicy.Inherit,
                     )
                 )
                 .value

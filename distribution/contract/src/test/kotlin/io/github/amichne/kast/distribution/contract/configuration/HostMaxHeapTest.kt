@@ -3,6 +3,7 @@ package io.github.amichne.kast.distribution.contract.configuration
 import io.github.amichne.kast.kernel.Refinement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 
 class HostMaxHeapTest {
     private fun mebibytes(raw: String): Int = (HostMaxHeap.parseSetting(raw) as Refinement.Refined).value.mebibytes
@@ -28,18 +29,21 @@ class HostMaxHeapTest {
     }
 
     @Test
-    fun `resolution keeps the prior 1536 MiB default and rejects an invalid saved or explicit value`() {
+    fun `resolution preserves inheritance and rejects an invalid heap setting`() {
         val key = "KAST_HOST_MAX_HEAP_MIB"
         val default = ResolvedKastConfiguration.resolve(ConfigurationSources()) as Refinement.Refined
-        assertEquals(1536, default.value.hostMaxHeap.mebibytes)
+        assertEquals(HostHeapPolicy.Inherit, default.value.hostMaxHeap)
         val explicit =
             ResolvedKastConfiguration.resolve(
                 ConfigurationSources(savedWorkspace = listOf(key to "4096"), commandLine = listOf(key to "8192"))
             ) as Refinement.Refined
-        assertEquals(8192, explicit.value.hostMaxHeap.mebibytes)
+        assertEquals(8192, assertInstanceOf<HostHeapPolicy.Explicit>(explicit.value.hostMaxHeap).heap.mebibytes)
         val rejected =
-            ResolvedKastConfiguration.resolve(ConfigurationSources(environment = mapOf(key to "512")))
-                as Refinement.Rejected
+            assertInstanceOf<Refinement.Rejected<ConfigurationRejection>>(
+                ResolvedKastConfiguration.resolve(
+                    ConfigurationSources(environment = mapOf(key to "512"), savedWorkspace = listOf(key to "4096"))
+                )
+            )
         assertEquals(key, rejected.failure.key)
         assertEquals(ConfigurationFailure.INVALID_VALUE, rejected.failure.reason)
     }

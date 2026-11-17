@@ -350,7 +350,6 @@ enum class ConfigurationParameter(
         ConfigurationSyntax.OWNER_INPUT,
         ConfigurationScope.WORKSPACE,
         ":app-server",
-        defaultValue = HostMaxHeap.DEFAULT_MEBIBYTES.toString(),
         children = setOf(ConfigurationChild.BROKER),
     ),
     DEBUG(
@@ -511,12 +510,13 @@ enum class ConfigurationParameter(
     private fun hostLaunchDeclaration(base: ConfigurationDeclaration): ConfigurationDeclaration =
         if (this == HOST_MAX_HEAP_MIB)
             base.copy(
+                defaultAuthority = "IDEA VM options at Host launch, then ${HostMaxHeap.DEFAULT_MEBIBYTES} MiB",
                 unit = ConfigurationUnit.MEBIBYTES,
                 admittedRange =
                     ConfigurationAdmittedRange(
                         minimum = HostMaxHeap.MINIMUM_MEBIBYTES.toLong(),
                         maximum = HostMaxHeap.MAXIMUM_MEBIBYTES.toLong(),
-                        ownerAdmission = "HostMaxHeap.parseSetting; whole mebibytes from 1024 to 32768",
+                        ownerAdmission = "HostHeapPolicy.Explicit.parseSetting; whole mebibytes from 1024 to 32768",
                     ),
             )
         else

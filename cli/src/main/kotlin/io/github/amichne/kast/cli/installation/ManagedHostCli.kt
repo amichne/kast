@@ -52,6 +52,7 @@ private fun executeSelectedManagedHost(
                 .key,
             io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter.HOST_IDLE_SHUTDOWN.key,
             io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter.HOST_MAX_HEAP_MIB.key,
+            io.github.amichne.kast.distribution.contract.configuration.RetiredConfigurationSetting.INDEXER_MAX_HEAP.key,
         )
     val sources =
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationSources(

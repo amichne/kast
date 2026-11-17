@@ -68,7 +68,7 @@ internal fun shutdownManagedHeadless(installation: Path, home: Path, state: Path
                 IdeLifecycleDeployment.Headless(
                     state,
                     io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
-                    io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
+                    io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy.Inherit,
                 ),
         )
     val execute: (ManagedHostRequest) -> ManagedHostResponse = {

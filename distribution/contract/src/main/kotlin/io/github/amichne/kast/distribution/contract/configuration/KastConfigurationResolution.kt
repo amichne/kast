@@ -57,6 +57,8 @@ sealed interface ConfigurationPathSelection {
 internal sealed interface ConfigurationValue {
     class ReadLimit(val value: ReadLimitValue) : ConfigurationValue
 
+    class MaximumHeap(val value: HostHeapPolicy.Explicit) : ConfigurationValue
+
     class Directory(val value: Path) : ConfigurationValue
 
     class Switch(val value: ConfigurationSwitch) : ConfigurationValue
@@ -106,7 +108,7 @@ private constructor(
     val readLimits: ReadLimits,
     val workspacePreparationWait: io.github.amichne.kast.kernel.ElapsedTimeAllowance,
     val hostIdleShutdown: HostIdleShutdown,
-    val hostMaxHeap: HostMaxHeap,
+    val hostMaxHeap: HostHeapPolicy,
     val workspaceDependencySharing: WorkspaceDependencySharing,
     private val delegatedEnvironment: GradleImportEnvironment,
 ) {
@@ -145,6 +147,7 @@ private constructor(
                 is ConfigurationValue.OwnerInput -> ConfigurationSemanticAdmission.OWNER_REQUIRED
                 is ConfigurationValue.Directory -> ConfigurationSemanticAdmission.PHYSICAL_REQUIRED
                 is ConfigurationValue.ReadLimit,
+                is ConfigurationValue.MaximumHeap,
                 is ConfigurationValue.Switch -> ConfigurationSemanticAdmission.ADMITTED
             },
         )
@@ -319,18 +322,10 @@ private constructor(
                         )
                 }
             val maxHeap =
-                when (
-                    val parsed =
-                        HostMaxHeap.parseSetting(
-                            byKey.getValue(ConfigurationParameter.HOST_MAX_HEAP_MIB).value.boundaryValue()
-                        )
-                ) {
-                    is Refinement.Refined -> parsed.value
-                    is Refinement.Rejected ->
-                        return rejected(
-                            ConfigurationParameter.HOST_MAX_HEAP_MIB.key,
-                            ConfigurationFailure.INVALID_VALUE,
-                        )
+                when (val value = byKey[ConfigurationParameter.HOST_MAX_HEAP_MIB]?.value) {
+                    null -> HostHeapPolicy.Inherit
+                    is ConfigurationValue.MaximumHeap -> value.value
+                    else -> error("Catalogue heap declaration invariant lost")
                 }
             val dependencySharing =
                 when (
@@ -398,6 +393,7 @@ private constructor(
 private fun ConfigurationValue.boundaryValue(): String =
     when (this) {
         is ConfigurationValue.ReadLimit -> value.value.toString()
+        is ConfigurationValue.MaximumHeap -> value.heap.mebibytes.toString()
         is ConfigurationValue.Directory -> value.toString()
         is ConfigurationValue.Switch ->
             when (value) {
@@ -414,6 +410,11 @@ private fun parse(
 ): Refinement<ConfigurationValue, ConfigurationRejection> {
     if (raw.length > 32 * 1024 || raw.any { it == '\u0000' || it == '\n' || it == '\r' })
         return rejected(parameter.key, ConfigurationFailure.INVALID_VALUE)
+    if (parameter == ConfigurationParameter.HOST_MAX_HEAP_MIB)
+        return when (val parsed = HostHeapPolicy.Explicit.parseSetting(raw)) {
+            is Refinement.Refined -> Refinement.Refined(ConfigurationValue.MaximumHeap(parsed.value))
+            is Refinement.Rejected -> rejected(parameter.key, ConfigurationFailure.INVALID_VALUE)
+        }
     if (parameter == ConfigurationParameter.OUTPUT_TOON)
         return when (val format = selectCliOutputFormat(raw)) {
             is Refinement.Refined ->

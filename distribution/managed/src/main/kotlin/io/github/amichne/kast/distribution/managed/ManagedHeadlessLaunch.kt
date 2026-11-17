@@ -1,10 +1,13 @@
 package io.github.amichne.kast.distribution.managed
 
 import io.github.amichne.kast.distribution.contract.HostExitRecord
+import io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy
 import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
 import io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap
 import io.github.amichne.kast.kernel.Refinement
+import java.io.StringReader
 import java.nio.file.Files
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -14,10 +17,14 @@ class ManagedHeadlessLaunch
 private constructor(
     val installation: ManagedHeadlessInstallation,
     val options: String,
+    internal val heap: ManagedHeadlessHeap,
     private val executablePath: ManagedHeadlessExecutablePath,
 ) {
     val arguments: List<String>
         get() = listOf(installation.launch.executable, "kast-headless")
+
+    val launcherLog: Path
+        get() = installation.state.resolve("launcher.log")
 
     val environment: Map<String, String>
         get() {
@@ -37,7 +44,7 @@ private constructor(
         }
 
     companion object {
-        private const val MAXIMUM_OPTIONS_BYTES = 65_536L
+        private const val MAXIMUM_OPTIONS_BYTES = 65_536
         private const val MAXIMUM_PRODUCT_BYTES = 1_048_576
 
         private fun linuxSupport(runtime: ManagedHeadlessInstallation): Map<String, String> {
@@ -56,7 +63,7 @@ private constructor(
             runtime: ManagedHeadlessInstallation,
             executablePath: String?,
             idleShutdown: HostIdleShutdown,
-            maxHeap: HostMaxHeap,
+            maxHeap: HostHeapPolicy,
         ): Refinement<ManagedHeadlessLaunch, ManagedHeadlessLaunchFailure> {
             val search =
                 when (
@@ -68,12 +75,29 @@ private constructor(
             return try {
                 val path =
                     vendorOptions(runtime) ?: return Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
-                val vendor = Files.readAllLines(path).filterNot { it.startsWith("-Xmx") || it.startsWith("-Xms") }
-                val lines = vendor + overrides(runtime, maxHeap) + HostIdleShutdown.jvmOptions(idleShutdown)
+                val vendor =
+                    when (val read = readOptions(path)) {
+                        is Refinement.Rejected -> return read
+                        is Refinement.Refined -> read.value
+                    }
+                val custom =
+                    when (val read = readPrivateOptions(runtime, path, maxHeap)) {
+                        is Refinement.Rejected -> return read
+                        is Refinement.Refined -> read.value
+                    }
+                val heap =
+                    when (val selected = ManagedHeadlessHeap.select(maxHeap, custom, vendor)) {
+                        is Refinement.Rejected -> return selected
+                        is Refinement.Refined -> selected.value
+                    }
+                val flags = vendor.filterNot { it.trimStart().startsWith("-Xmx") || it.trimStart().startsWith("-Xms") }
+                val lines = flags + overrides(runtime, heap.value) + HostIdleShutdown.jvmOptions(idleShutdown)
                 if (lines.any { it.contains('\n') || it.contains('\r') })
                     Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
                 else
-                    Refinement.Refined(ManagedHeadlessLaunch(runtime, lines.joinToString("\n", postfix = "\n"), search))
+                    Refinement.Refined(
+                        ManagedHeadlessLaunch(runtime, lines.joinToString("\n", postfix = "\n"), heap, search)
+                    )
             } catch (_: java.io.IOException) {
                 Refinement.Rejected(ManagedHeadlessLaunchFailure.METADATA_UNAVAILABLE)
             } catch (_: kotlinx.serialization.SerializationException) {
@@ -97,9 +121,30 @@ private constructor(
                 product.launch.filter { root.resolve(it.launcherPath).normalize().toString() == target.executable }
             if (specs.size != 1) return null
             val path = root.resolve(specs.single().vmOptionsFilePath).normalize()
-            return if (path.startsWith(home) && path.toRealPath() == path && Files.size(path) <= MAXIMUM_OPTIONS_BYTES)
-                path
-            else null
+            return path.takeIf { it.startsWith(home) }
+        }
+
+        private fun readOptions(path: Path): Refinement<List<String>, ManagedHeadlessLaunchFailure> {
+            if (path.toRealPath() != path || !Files.isRegularFile(path, NOFOLLOW_LINKS))
+                return Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
+            val bytes = Files.newInputStream(path, NOFOLLOW_LINKS).use { it.readNBytes(MAXIMUM_OPTIONS_BYTES + 1) }
+            if (bytes.size > MAXIMUM_OPTIONS_BYTES)
+                return Refinement.Rejected(ManagedHeadlessLaunchFailure.INVALID_METADATA)
+            val lines = StringReader(bytes.decodeToString(throwOnInvalidSequence = true)).buffered().readLines()
+            return Refinement.Refined(lines)
+        }
+
+        private fun readPrivateOptions(
+            runtime: ManagedHeadlessInstallation,
+            vendorOptions: Path,
+            policy: HostHeapPolicy,
+        ): Refinement<List<String>, ManagedHeadlessLaunchFailure> {
+            val path = runtime.config.resolve(vendorOptions.fileName)
+            return when (policy) {
+                is HostHeapPolicy.Explicit -> Refinement.Refined(emptyList())
+                HostHeapPolicy.Inherit ->
+                    if (Files.notExists(path, NOFOLLOW_LINKS)) Refinement.Refined(emptyList()) else readOptions(path)
+            }
         }
 
         private fun overrides(runtime: ManagedHeadlessInstallation, maxHeap: HostMaxHeap): List<String> =
@@ -140,7 +185,7 @@ enum class ManagedHeadlessLaunchFailure {
 }
 
 /**
- * The filesystem owner writes only the selected private launch input. It also deletes the previous Host's exit record,
+ * The filesystem owner writes the private launch input and diagnostic. It also deletes the previous Host's exit record,
  * so a record that survives belongs to the launch it follows; a record that cannot be deleted blocks the launch.
  */
 object ManagedHeadlessLaunchFiles {
@@ -155,6 +200,13 @@ object ManagedHeadlessLaunchFiles {
                 java.nio.file.LinkOption.NOFOLLOW_LINKS,
             )
             Files.deleteIfExists(HostExitRecord.path(specification.installation.state))
+            Files.writeString(
+                specification.launcherLog,
+                "heap_source=${specification.heap.source.name} heap_mib=${specification.heap.value.mebibytes}\n",
+                java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.APPEND,
+                NOFOLLOW_LINKS,
+            )
             Refinement.Refined(Unit)
         } catch (_: java.io.IOException) {
             Refinement.Rejected(ManagedHeadlessLaunchFailure.WRITE_FAILED)

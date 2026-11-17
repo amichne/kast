@@ -1,7 +1,7 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy
 import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
-import io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessLaunch
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessLaunchFailure
@@ -22,7 +22,7 @@ sealed interface IdeLifecycleDeployment {
      * [idleShutdown] and [maxHeap] apply only when this client launches the Host; a running Host keeps the policy it
      * started with.
      */
-    data class Headless(val state: Path, val idleShutdown: HostIdleShutdown, val maxHeap: HostMaxHeap) :
+    data class Headless(val state: Path, val idleShutdown: HostIdleShutdown, val maxHeap: HostHeapPolicy) :
         IdeLifecycleDeployment
 }
 
@@ -30,7 +30,7 @@ internal sealed interface SelectedLifecycleDeployment {
     data class Headless(
         val installation: ManagedHeadlessInstallation,
         val idleShutdown: HostIdleShutdown,
-        val maxHeap: HostMaxHeap,
+        val maxHeap: HostHeapPolicy,
     ) : SelectedLifecycleDeployment
 }
 
@@ -53,7 +53,7 @@ internal fun selectLifecycleDeployment(
 private fun selectManagedLifecycleDeployment(
     state: Path,
     idleShutdown: HostIdleShutdown,
-    maxHeap: HostMaxHeap,
+    maxHeap: HostHeapPolicy,
     home: Path,
     idea: Path,
 ): Refinement<SelectedLifecycleDeployment, IdeLifecycleFailure> {
