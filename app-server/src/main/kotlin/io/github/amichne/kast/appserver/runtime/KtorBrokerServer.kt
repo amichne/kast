@@ -1,6 +1,7 @@
 package io.github.amichne.kast.appserver.runtime
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
+import io.github.amichne.kast.appserver.SemanticCoordinatorPeer
 import io.github.amichne.kast.appserver.core.AgentSessionBootstrap
 import io.github.amichne.kast.appserver.core.Broker
 import io.github.amichne.kast.appserver.core.BrokerInvocationActivitySink
@@ -236,6 +237,9 @@ private constructor(
     private val frontend: BrokerFrontend,
     private val runtimeControl: CoordinatorControl?,
 ) {
+    internal fun semanticPeer(): SemanticCoordinatorPeer? =
+        SemanticCoordinatorPeer.capture(ProcessHandle.current(), ownedSocket)
+
     internal suspend fun close() {
         try {
             try {

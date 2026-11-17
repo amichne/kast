@@ -13,10 +13,11 @@ internal object CoordinatorReadinessPublisher {
         target: DesktopDiscoveryTarget,
         discovery: DesktopDaemonDiscovery,
         activity: BrokerStartupActivityPublisher,
+        semanticPeer: SemanticCoordinatorPeer? = null,
     ): CoordinatorReadinessPublication {
         val stage = BrokerStartupStage.READINESS_PUBLICATION
         activity.started(stage)
-        if (readiness?.ready() != BrokerReadinessTransition.Rejected) {
+        if (readiness?.ready(semanticPeer) != BrokerReadinessTransition.Rejected) {
             activity.completed(stage)
             return CoordinatorReadinessPublication.Ready
         }

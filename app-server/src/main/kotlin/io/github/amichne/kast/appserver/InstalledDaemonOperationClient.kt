@@ -63,7 +63,11 @@ enum class DaemonOperationClientFailure {
 }
 
 /** The caller supplies the socket and target from the same admitted coordinator. */
-internal class InstalledDaemonOperationClient(private val socket: Path, private val target: DaemonManagementTarget) {
+internal class InstalledDaemonOperationClient(
+    private val socket: Path,
+    private val target: DaemonManagementTarget,
+    private val peerCurrent: () -> Boolean = { true },
+) {
     suspend fun exchange(root: CanonicalRoot, call: DaemonOperationCall): DaemonOperationResult {
         val selection =
             call.selection() ?: return protocolRejection(DaemonOperationProtocolFailure.OPERATION_UNSUPPORTED)
@@ -85,6 +89,7 @@ internal class InstalledDaemonOperationClient(private val socket: Path, private 
                 BrokerUpstreamConnectionAdmission.Rejected -> return rejected(DaemonOperationClientFailure.UNAVAILABLE)
             }
         try {
+            if (!peerCurrent()) return rejected(DaemonOperationClientFailure.UNAVAILABLE)
             if (connection.send(message) != BrokerUpstreamSend.SENT)
                 return rejected(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
             val frame =

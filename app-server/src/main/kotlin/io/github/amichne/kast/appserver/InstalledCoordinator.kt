@@ -225,7 +225,7 @@ private constructor(
                     }
                 }
             activity.completed(stage)
-            return completeStartup(options, server, readiness, activity, desktopDiscovery)
+            return completeStartup(options, server, readiness, activity, desktopDiscovery, semantic != null)
         }
 
         private fun deferredFrontend(
@@ -275,7 +275,17 @@ private constructor(
             readiness: OwnedBrokerServiceReadiness?,
             activity: BrokerStartupActivityPublisher,
             desktopDiscovery: DesktopDaemonDiscovery,
+            semantic: Boolean,
         ): InstalledCoordinatorStart {
+            val peer =
+                if (semantic && readiness != null) {
+                    server.semanticPeer()
+                        ?: run {
+                            server.close()
+                            readiness.reject(BrokerServerFailure.READINESS_REJECTED)
+                            return InstalledCoordinatorStart.Rejected(BrokerServerFailure.READINESS_REJECTED)
+                        }
+                } else null
             if (provePublicReadiness(options, activity) == PublicReadinessGate.REJECTED) {
                 server.close()
                 activity.rejected(
@@ -293,7 +303,14 @@ private constructor(
                     return InstalledCoordinatorStart.Rejected(BrokerServerFailure.DESKTOP_DISCOVERY_REJECTED)
                 }
             }
-            return publishReadiness(server, readiness, activity, DesktopDiscoveryTarget.from(options), desktopDiscovery)
+            return publishReadiness(
+                server,
+                readiness,
+                activity,
+                DesktopDiscoveryTarget.from(options),
+                desktopDiscovery,
+                peer,
+            )
         }
 
         internal fun publishDesktopDiscovery(
@@ -346,8 +363,9 @@ private constructor(
             activity: BrokerStartupActivityPublisher,
             target: DesktopDiscoveryTarget,
             discovery: DesktopDaemonDiscovery,
+            peer: SemanticCoordinatorPeer?,
         ): InstalledCoordinatorStart =
-            when (val outcome = CoordinatorReadinessPublisher.publish(readiness, target, discovery, activity)) {
+            when (val outcome = CoordinatorReadinessPublisher.publish(readiness, target, discovery, activity, peer)) {
                 CoordinatorReadinessPublication.Ready ->
                     InstalledCoordinatorStart.Started(InstalledCoordinator(server, readiness))
                 is CoordinatorReadinessPublication.Rejected -> {

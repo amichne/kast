@@ -762,13 +762,14 @@ private constructor(
     private var fileKey: Any,
 ) {
     @Synchronized
-    internal fun ready(): BrokerReadinessTransition =
+    internal fun ready(semanticPeer: SemanticCoordinatorPeer? = null): BrokerReadinessTransition =
         transition(
             BrokerServiceStateDocument.Ready(
                 BROKER_SERVICE_STATE_SCHEMA_VERSION,
                 managed.identity.value,
                 managed.instanceId.toString(),
                 VENDORED_BROKER_VERSION,
+                semanticPeer,
             )
         )
 
@@ -946,6 +947,7 @@ internal sealed interface BrokerServiceStateDocument {
         override val serviceIdentity: String,
         override val serviceInstanceId: String,
         override val brokerVersion: String,
+        val semanticPeer: SemanticCoordinatorPeer? = null,
     ) : BrokerServiceStateDocument
 
     @Serializable

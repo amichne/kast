@@ -46,7 +46,7 @@ import org.junit.jupiter.api.Test
 class InstalledCoordinatorEndpointTest {
     @Test
     fun `private coordinator rejects unsupported semantic protocol before workspace admission`() =
-        withPayload { root, kast ->
+        withCoordinatorPayload { root, kast ->
             runBlocking {
                 val options = privateOptions(kast, root)
                 val started = InstalledCoordinator.start(options) as InstalledCoordinatorStart.Started
@@ -74,7 +74,7 @@ class InstalledCoordinatorEndpointTest {
 
     @Test
     fun `semantic route invokes the admitted tool once and rejects a stale service generation`() =
-        withPayload { root, kast ->
+        withCoordinatorPayload { root, kast ->
             runBlocking {
                 Files.writeString(root.resolve("settings.gradle.kts"), "")
                 val options = privateOptions(kast, root)
@@ -123,40 +123,43 @@ class InstalledCoordinatorEndpointTest {
         }
 
     @Test
-    fun `semantic client retains an unobserved mutation outcome without replay`() = withPayload { root, kast ->
-        runBlocking {
-            Files.writeString(root.resolve("settings.gradle.kts"), "")
-            val options = privateOptions(kast, root)
-            val workspace = (FilesystemCanonicalRootDiscovery.discover(root) as CanonicalRootDiscovery.Discovered).root
-            val plan = (ProtocolText.parse("plan:${"a".repeat(64)}") as Refinement.Refined).value
-            val mutation = DaemonOperationCall.Change(DaemonChangeAction.Apply(ChangeApplyRequest(plan)))
-            val executions = AtomicInteger()
-            val started =
-                InstalledCoordinator.start(
-                    options,
-                    semantic = { _, operation ->
-                        assertEquals(mutation, operation)
-                        executions.incrementAndGet()
-                        throw CancellationException("fixture drops the reply after dispatch")
-                    },
-                ) as InstalledCoordinatorStart.Started
-            try {
-                val client = InstalledDaemonOperationClient(options.socket.path, semanticTarget(options.socket.path))
-                assertEquals(
-                    DaemonOperationResult.Rejected(
-                        DaemonOperationClientRejection.Transport(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
-                    ),
-                    withTimeout(5_000) { client.exchange(workspace, mutation) },
-                )
-                assertEquals(1, executions.get())
-            } finally {
-                started.coordinator.close()
+    fun `semantic client retains an unobserved mutation outcome without replay`() =
+        withCoordinatorPayload { root, kast ->
+            runBlocking {
+                Files.writeString(root.resolve("settings.gradle.kts"), "")
+                val options = privateOptions(kast, root)
+                val workspace =
+                    (FilesystemCanonicalRootDiscovery.discover(root) as CanonicalRootDiscovery.Discovered).root
+                val plan = (ProtocolText.parse("plan:${"a".repeat(64)}") as Refinement.Refined).value
+                val mutation = DaemonOperationCall.Change(DaemonChangeAction.Apply(ChangeApplyRequest(plan)))
+                val executions = AtomicInteger()
+                val started =
+                    InstalledCoordinator.start(
+                        options,
+                        semantic = { _, operation ->
+                            assertEquals(mutation, operation)
+                            executions.incrementAndGet()
+                            throw CancellationException("fixture drops the reply after dispatch")
+                        },
+                    ) as InstalledCoordinatorStart.Started
+                try {
+                    val client =
+                        InstalledDaemonOperationClient(options.socket.path, semanticTarget(options.socket.path))
+                    assertEquals(
+                        DaemonOperationResult.Rejected(
+                            DaemonOperationClientRejection.Transport(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
+                        ),
+                        withTimeout(5_000) { client.exchange(workspace, mutation) },
+                    )
+                    assertEquals(1, executions.get())
+                } finally {
+                    started.coordinator.close()
+                }
             }
         }
-    }
 
     @Test
-    fun `closing the semantic socket cancels its admitted execution`() = withPayload { root, kast ->
+    fun `closing the semantic socket cancels its admitted execution`() = withCoordinatorPayload { root, kast ->
         runBlocking {
             Files.writeString(root.resolve("settings.gradle.kts"), "")
             val options = privateOptions(kast, root)
@@ -252,7 +255,7 @@ class InstalledCoordinatorEndpointTest {
 
     @Test
     fun `default private coordinator serves status alongside a live native Codex endpoint`() =
-        withPayload { root, kast ->
+        withCoordinatorPayload { root, kast ->
             runBlocking {
                 val native = root.resolve(".codex/app-server-control/app-server-control.sock")
                 Files.createDirectories(native.parent)
@@ -280,46 +283,50 @@ class InstalledCoordinatorEndpointTest {
         }
 
     @Test
-    fun `canonical service cannot publish readiness without native Codex protocol`() = withPayload { root, kast ->
-        runBlocking {
-            val activities = java.util.concurrent.CopyOnWriteArrayList<BrokerStartupActivity>()
-            val sink = BrokerStartupActivitySink { activity ->
-                activities += activity
-                BrokerStartupActivityPublication.PUBLISHED
-            }
-            val options = managedOptions(kast, root, sink)
-            val discovery =
-                DesktopDaemonDiscovery(
-                    object : DesktopDaemonEnvironment {
-                        override fun readHome(): DesktopDaemonHomeRead =
-                            throw AssertionError("Unexpected home observation before native readiness")
+    fun `canonical service cannot publish readiness without native Codex protocol`() =
+        withCoordinatorPayload { root, kast ->
+            runBlocking {
+                val activities = java.util.concurrent.CopyOnWriteArrayList<BrokerStartupActivity>()
+                val sink = BrokerStartupActivitySink { activity ->
+                    activities += activity
+                    BrokerStartupActivityPublication.PUBLISHED
+                }
+                val options = managedOptions(kast, root, sink)
+                val discovery =
+                    DesktopDaemonDiscovery(
+                        object : DesktopDaemonEnvironment {
+                            override fun readHome(): DesktopDaemonHomeRead =
+                                throw AssertionError("Unexpected home observation before native readiness")
 
-                        override fun read(): DesktopDaemonEnvironmentRead =
-                            throw AssertionError("Unexpected discovery observation before native readiness")
+                            override fun read(): DesktopDaemonEnvironmentRead =
+                                throw AssertionError("Unexpected discovery observation before native readiness")
 
-                        override fun enable(): DesktopDiscoveryOutcome =
-                            throw AssertionError("Unexpected discovery publication before native readiness")
+                            override fun enable(): DesktopDiscoveryOutcome =
+                                throw AssertionError("Unexpected discovery publication before native readiness")
 
-                        override fun remove(): DesktopDiscoveryOutcome =
-                            throw AssertionError("Unexpected discovery cleanup")
-                    }
-                )
-            val started = InstalledCoordinator.start(options, discovery)
-            try {
-                assertEquals(InstalledCoordinatorStart.Rejected(BrokerServerFailure.NATIVE_PROTOCOL_REJECTED), started)
-                assertFalse(activities.any { it.stage == BrokerStartupStage.DESKTOP_DISCOVERY })
-                assertFalse(
-                    activities.contains(BrokerStartupActivity.Completed(BrokerStartupStage.READINESS_PUBLICATION))
-                )
-                assertFalse(Files.exists(options.socket.path))
-            } finally {
-                if (started is InstalledCoordinatorStart.Started) started.coordinator.close()
+                            override fun remove(): DesktopDiscoveryOutcome =
+                                throw AssertionError("Unexpected discovery cleanup")
+                        }
+                    )
+                val started = InstalledCoordinator.start(options, discovery)
+                try {
+                    assertEquals(
+                        InstalledCoordinatorStart.Rejected(BrokerServerFailure.NATIVE_PROTOCOL_REJECTED),
+                        started,
+                    )
+                    assertFalse(activities.any { it.stage == BrokerStartupStage.DESKTOP_DISCOVERY })
+                    assertFalse(
+                        activities.contains(BrokerStartupActivity.Completed(BrokerStartupStage.READINESS_PUBLICATION))
+                    )
+                    assertFalse(Files.exists(options.socket.path))
+                } finally {
+                    if (started is InstalledCoordinatorStart.Started) started.coordinator.close()
+                }
             }
         }
-    }
 
     @Test
-    fun `semantic execution requires the installation private endpoint`() = withPayload { root, kast ->
+    fun `semantic execution requires the installation private endpoint`() = withCoordinatorPayload { root, kast ->
         runBlocking {
             val options = managedOptions(kast, root) { error("Unexpected startup activity") }
             assertEquals(
@@ -351,16 +358,16 @@ class InstalledCoordinatorEndpointTest {
 
     private fun privateOptions(kast: Path, root: Path): InstalledCoordinatorOptions =
         (InstalledCoordinatorConfiguration.admit(kast, root, emptyMap()) as Refinement.Refined).value
+}
 
-    private fun withPayload(test: (Path, Path) -> Unit) {
-        val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kast-c-").toRealPath()
-        try {
-            for (directory in listOf("bin", "lib", "share")) Files.createDirectory(root.resolve(directory))
-            val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
-            Files.setPosixFilePermissions(kast, PosixFilePermissions.fromString("rwx------"))
-            test(root, kast)
-        } finally {
-            Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
-        }
+internal fun withCoordinatorPayload(test: (Path, Path) -> Unit) {
+    val root = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kast-c-").toRealPath()
+    try {
+        for (directory in listOf("bin", "lib", "share")) Files.createDirectory(root.resolve(directory))
+        val kast = Files.writeString(root.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
+        Files.setPosixFilePermissions(kast, PosixFilePermissions.fromString("rwx------"))
+        test(root, kast)
+    } finally {
+        Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
     }
 }
