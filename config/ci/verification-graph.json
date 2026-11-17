@@ -226,7 +226,7 @@
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt",
-            "sha256": "c0c1fa317851da0c81f01e1a41eb5c6a789e94df237337fe1edbbf95f985ba82"
+            "sha256": "7f8d53d0f2962e2fbbdd589235df4dccfeb158eacb1d65da84bf44570669cf4e"
         },
         {
             "path": "build-logic/src/main/kotlin/support/architecture/policy/KastQueryModules.kt",
