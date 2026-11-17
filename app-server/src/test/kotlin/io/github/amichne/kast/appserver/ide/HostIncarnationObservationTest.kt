@@ -128,14 +128,17 @@ class HostIncarnationObservationTest {
     }
 
     private fun startAdoptableChild(launcher: Path): Process {
-        Files.copy(Path.of("/bin/cat"), launcher, StandardCopyOption.REPLACE_EXISTING)
+        Files.copy(Path.of("/bin/bash"), launcher, StandardCopyOption.REPLACE_EXISTING)
         assertTrue(launcher.toFile().setExecutable(true))
         signAdoptionFixtureOnMac(launcher)
-        val child = ProcessBuilder(launcher.toString()).start()
+        val script = "printf 'adoption-fixture-ready\\n'; read -r line"
+        val child =
+            ProcessBuilder(launcher.toString(), "--noprofile", "--norc", "-c", script)
+                .redirectError(ProcessBuilder.Redirect.INHERIT)
+                .apply { environment().remove("BASH_ENV") }
+                .start()
         try {
             val marker = "adoption-fixture-ready\n".encodeToByteArray()
-            child.outputStream.write(marker)
-            child.outputStream.flush()
             val echo = CompletableFuture.supplyAsync { child.inputStream.readNBytes(marker.size) }
             assertArrayEquals(marker, echo.get(EXIT_WAIT_SECONDS, TimeUnit.SECONDS))
             return child
