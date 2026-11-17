@@ -1843,6 +1843,31 @@ class ProductActivationTest(unittest.TestCase):
             activation.activate(self.root, self.home, admitted), activation.ProductInstalled
         )
 
+    def test_runtime_archive_storage_exhaustion_is_reported_and_cleaned(self) -> None:
+        admitted = self.admitted()
+        copyfile = shutil.copyfile
+
+        def exhausted(source: str, target: str, *, follow_symlinks: bool = True) -> str:
+            if Path(target).name == "archive.zip" and Path(target).parent.name == "provenance":
+                _ = Path(target).write_bytes(Path(source).read_bytes()[:3])
+                raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC), target)
+            return copyfile(source, target, follow_symlinks=follow_symlinks)
+
+        evidence = io.StringIO()
+        with (
+            patch.object(shutil, "copyfile", side_effect=exhausted),
+            contextlib.redirect_stderr(evidence),
+        ):
+            result = activation.activate(self.root, self.home, admitted)
+        self.assertEqual(
+            '{"stage":"PREPARATION","reason":"STORAGE_EXHAUSTED","adapterCode":null,"type":"REJECTED"}\n',
+            install.encoded(result).decode(),
+        )
+        self.assertNotIn(str(self.home), evidence.getvalue())
+        self.assertEqual([], list(self.root.parent.glob(".kast-runtime-*")))
+        self.assertFalse((self.root / "recovery/replacement").exists())
+        self.assertFalse((self.root / "installation").exists())
+
     def test_failed_update_preparation_does_not_prevent_product_removal(self) -> None:
         admitted = self.admitted()
         installed = activation.activate(self.root, self.home, admitted)

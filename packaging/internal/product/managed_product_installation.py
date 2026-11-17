@@ -685,23 +685,23 @@ def prepared_preimage(
 
 
 def failed(root: Path, problem: BaseException) -> contract.Rejected | contract.RecoveryRequired:
-    failure = (
-        problem.failure
-        if isinstance(problem, install.StageRejected)
-        else contract.Rejected(
+    if isinstance(problem, install.StageRejected):
+        failure = problem.failure
+    elif isinstance(problem, journal.Rejected) and problem.failure is journal.Failure.CONTROL_LIMIT:
+        failure = contract.Rejected(
             contract.Stage.PREPARATION,
             contract.Failure.CONTROL_REJECTED,
             journal.Failure.CONTROL_LIMIT.value,
         )
-        if isinstance(problem, journal.Rejected)
-        and problem.failure is journal.Failure.CONTROL_LIMIT
-        else contract.Rejected(
+    elif isinstance(problem, OSError) and problem.errno == errno.ENOSPC:
+        failure = contract.Rejected(contract.Stage.PREPARATION, contract.Failure.STORAGE_EXHAUSTED)
+    else:
+        failure = contract.Rejected(
             contract.Stage.PREPARATION,
             contract.Failure.CANCELLED
             if isinstance(problem, KeyboardInterrupt)
             else contract.Failure.OWNERSHIP_UNPROVEN,
         )
-    )
     install.emit(failure.stage, "REJECTED", failure.reason)
     if os.path.lexists(root / "recovery/replacement"):
         return contract.RecoveryRequired(
