@@ -7,11 +7,13 @@ import io.github.amichne.kast.appserver.DaemonOperationFailure
 import io.github.amichne.kast.appserver.DaemonOperationProtocolFailure
 import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.WorkspaceOperationAdmission
+import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.workspaceAdmission
 import io.github.amichne.kast.distribution.cli.ContainerFailure
 import io.github.amichne.kast.distribution.cli.ManagedWorkspaceQuery
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import java.nio.file.Path
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -37,6 +39,20 @@ internal class ManagedCoordinatorOperations(private val context: InstalledClient
     private fun executeAdmitted(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult {
         val admission = operation.workspaceAdmission()
         val retained = bindings[root].takeIf { admission == WorkspaceOperationAdmission.PREPARE }
+        val result = executeWithLease(root, operation, admission, retained)
+        if (retained == null || !result.preparedHostUnavailable()) return result
+
+        bindings.remove(root)
+        retained.client.close()
+        return executeWithLease(root, operation, admission, null)
+    }
+
+    private fun executeWithLease(
+        root: CanonicalRoot,
+        operation: DaemonOperationCall,
+        admission: WorkspaceOperationAdmission,
+        retained: Binding?,
+    ): DaemonOperationResult {
         val opened =
             if (admission == WorkspaceOperationAdmission.PREPARE && retained == null)
                 ManagedWorkspaceQuery.open(context.installation, root, context.environment, ::inspectWorkspaceSeedHost)
@@ -102,3 +118,10 @@ private fun rejectedAdmission(failure: ManagedToolFailure): DaemonOperationResul
 
 private fun reject(failure: DaemonOperationFailure) =
     DaemonOperationResult.Rejected(DaemonOperationClientRejection.Server(failure))
+
+/** Lifecycle inspection found that the retained Host disappeared before it received this operation. */
+private fun DaemonOperationResult.preparedHostUnavailable(): Boolean {
+    val server = (this as? DaemonOperationResult.Rejected)?.failure as? DaemonOperationClientRejection.Server
+    val operation = server?.failure as? DaemonOperationFailure.Workspace
+    return operation?.cause == WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE)
+}
