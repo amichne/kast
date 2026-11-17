@@ -15,6 +15,9 @@ import io.github.amichne.kast.appserver.WorkspaceOperationAdmission
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.workspaceAdmission
 import io.github.amichne.kast.distribution.cli.ContainerFailure
+import io.github.amichne.kast.distribution.cli.ControlStage
+import io.github.amichne.kast.distribution.cli.ControlStageOutcome
+import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
@@ -125,7 +128,15 @@ internal class ManagedCoordinatorOperations(
         slot: WorkspaceSlot,
         ready: WorkspaceEntry.Ready,
     ): DaemonOperationResult {
-        if (synchronized(monitor) { closed || slot.state !== ready }) return rejectedOperation(lifecycleTransition)
+        val invalid =
+            synchronized(monitor) {
+                when {
+                    closed -> lifecycleTransition
+                    slot.state === ready -> null
+                    else -> (slot.state as? WorkspaceEntry.Failed)?.reason ?: lifecycleTransition
+                }
+            }
+        if (invalid != null) return rejectedOperation(invalid)
         val result =
             runInterruptible(Dispatchers.IO) {
                 when (
@@ -140,21 +151,18 @@ internal class ManagedCoordinatorOperations(
                 }
             }
         val failure = result.hostUnavailable() ?: return result
-        revoke(slot, ready, failure)
+        if (revoke(slot, ready, failure)) ready.binding.close()
         return result
     }
 
-    private fun revoke(slot: WorkspaceSlot, ready: WorkspaceEntry.Ready, failure: DaemonOperationFailure) {
-        val invalidated =
-            synchronized(monitor) {
-                if (slot.state !== ready) false
-                else {
-                    slot.state = WorkspaceEntry.Failed(failure)
-                    true
-                }
+    private fun revoke(slot: WorkspaceSlot, ready: WorkspaceEntry.Ready, failure: DaemonOperationFailure): Boolean =
+        synchronized(monitor) {
+            if (slot.state !== ready) false
+            else {
+                slot.state = WorkspaceEntry.Failed(failure)
+                true
             }
-        if (invalidated) ready.binding.close()
-    }
+        }
 
     private fun prepareFor(
         root: CanonicalRoot,
@@ -168,8 +176,14 @@ internal class ManagedCoordinatorOperations(
                 is WorkspaceEntry.Draining -> Refinement.Rejected(lifecycleTransition)
                 is WorkspaceEntry.Ready -> Refinement.Refined(WorkspaceTicket(slot, entry))
                 is WorkspaceEntry.Preparing ->
-                    if (entry.settings == settings.host) Refinement.Refined(WorkspaceTicket(slot, entry))
-                    else Refinement.Rejected(configurationConflict)
+                    if (entry.settings == settings.host) {
+                        ControlStageTrace.record(
+                            ControlStage.WORKSPACE_PREPARATION_JOIN,
+                            ControlStageOutcome.REUSED,
+                            System.nanoTime(),
+                        )
+                        Refinement.Refined(WorkspaceTicket(slot, entry))
+                    } else Refinement.Rejected(configurationConflict)
             }
         }
 
@@ -203,6 +217,7 @@ internal class ManagedCoordinatorOperations(
                 is Refinement.Rejected -> prepared
                 is Refinement.Refined -> Refinement.Refined(WorkspaceEntry.Ready(preparing.settings, prepared.value))
             }
+        val ready = (result as? Refinement.Refined)?.value
         synchronized(monitor) {
             if (slot.state === preparing)
                 slot.state =
@@ -210,7 +225,25 @@ internal class ManagedCoordinatorOperations(
                         is Refinement.Refined -> result.value
                         is Refinement.Rejected -> WorkspaceEntry.Failed(result.failure)
                     }
+            ready?.let { watchHost(slot, it) }
             preparing.result.complete(result)
+        }
+    }
+
+    private fun watchHost(slot: WorkspaceSlot, ready: WorkspaceEntry.Ready) {
+        val authority = ready.binding.authority ?: return
+        authority.host.exit.thenAccept { exit ->
+            recordCoordinatorHostExit(exit)
+            val failure =
+                DaemonOperationFailure.Workspace(
+                    authority.preparationId,
+                    WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE),
+                )
+            if (revoke(slot, ready, failure)) {
+                preparationScope.launch {
+                    slot.permit.withLock { runInterruptible { ready.binding.close() } }
+                }
+            }
         }
     }
 

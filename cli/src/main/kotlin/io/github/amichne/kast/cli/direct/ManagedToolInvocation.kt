@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.DaemonOperationClient
 import io.github.amichne.kast.appserver.DaemonOperationClientRejection
 import io.github.amichne.kast.appserver.DaemonOperationFailure
 import io.github.amichne.kast.appserver.McpWorkspaceOperationClient
+import io.github.amichne.kast.appserver.PreparedMcpWorkspace
 import io.github.amichne.kast.appserver.WorkspaceOperationAdmission
 import io.github.amichne.kast.appserver.mcpWorkspaceOperationClient
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
@@ -98,6 +99,7 @@ internal class ManagedToolClient
 private constructor(
     private val owner: McpWorkspaceOperationClient,
     val capabilities: ExistingIdeCliCapabilities,
+    val prepared: PreparedMcpWorkspace?,
 ) : AutoCloseable {
     override fun close() = owner.close()
 
@@ -147,7 +149,7 @@ private constructor(
                 return when (val prepared = runBlocking { owner.prepared(root) }) {
                     is Refinement.Rejected -> Refinement.Rejected(ManagedToolFailure.Preparation(prepared.failure))
                     is Refinement.Refined -> {
-                        val client = compose(owner, prepared.value, home, bounded)
+                        val client = compose(owner, prepared.value.client, home, bounded, prepared.value)
                         transferred = true
                         Refinement.Refined(client)
                     }
@@ -162,6 +164,7 @@ private constructor(
             read: DaemonOperationClient,
             home: Path,
             environment: Map<String, String>,
+            prepared: PreparedMcpWorkspace? = null,
         ) =
             ManagedToolClient(
                 owner,
@@ -170,6 +173,7 @@ private constructor(
                     configuredExistingIdeClient(home, environment),
                     read,
                 ),
+                prepared,
             )
     }
 }
@@ -191,6 +195,9 @@ internal fun managedWorkspaceRejected(failure: ContainerFailure): CliExit.Bounda
                 failure,
                 if (failure == ContainerFailure.RUNTIME_UNAVAILABLE) "kast upgrade --repair" else null,
             )
+        ),
+        CliFailureCause.Runtime(
+            DaemonOperationClientRejection.Server(DaemonOperationFailure.ManagedWorkspace(failure))
         ),
     )
 

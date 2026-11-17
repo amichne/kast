@@ -190,6 +190,8 @@ fun DaemonOperationClientRejection.diagnosticCode(): String =
                                 "daemon-operation-preparation-${cause.failure.name}"
                             is io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause.Lifecycle ->
                                 "daemon-operation-lifecycle-${cause.reason.name}"
+                            is io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause.HostIncarnation ->
+                                "daemon-operation-host-incarnation-${cause.reason.name}"
                             io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause.HostChanged ->
                                 "daemon-operation-host-changed"
                         }

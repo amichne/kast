@@ -3,11 +3,14 @@ package io.github.amichne.kast.appserver.runtime
 import io.github.amichne.kast.appserver.ide.ExistingIdeClient
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
+import io.github.amichne.kast.appserver.ide.HostIncarnationFailure
 import io.github.amichne.kast.appserver.ide.HostedPresemanticRecovery
+import io.github.amichne.kast.appserver.ide.ObservedHost
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
+import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterIsInstance
@@ -53,7 +56,17 @@ sealed interface WorkspaceDemandCause {
     @Serializable @SerialName("lifecycle") data class Lifecycle(val reason: IdeLifecycleFailure) : WorkspaceDemandCause
 
     @Serializable @SerialName("host_changed") data object HostChanged : WorkspaceDemandCause
+
+    @Serializable
+    @SerialName("host_incarnation")
+    data class HostIncarnation(val reason: HostIncarnationFailure) : WorkspaceDemandCause
 }
+
+internal data class PreparedWorkspaceAuthority(
+    val demand: WorkspaceDemand,
+    val host: ObservedHost,
+    val preparationId: WorkspacePreparationId,
+)
 
 internal class PreparedWorkspaceDemand(
     private val preparations: WorkspacePreparations,
@@ -85,17 +98,40 @@ internal class PreparedWorkspaceDemand(
     suspend fun prepare(root: CanonicalRoot): Refinement<WorkspaceDemand, WorkspaceDemandFailure> =
         when (val ready = prepareReady(root)) {
             is Refinement.Rejected -> ready
-            is Refinement.Refined ->
-                Refinement.Refined(
-                    WorkspaceDemand { selected, operation ->
-                        if (selected != root)
-                            WorkspaceDemandResult.Rejected(
-                                WorkspaceDemandFailure.Admission(selected, WorkspacePreparationFailure.ROOT_REJECTED)
-                            )
-                        else queryPrepared(ready.value, operation)
-                    }
-                )
+            is Refinement.Refined -> Refinement.Refined(capture(root, ready.value))
         }
+
+    suspend fun prepareWithHost(
+        root: CanonicalRoot,
+        observeHost: suspend (IdeProjectTarget) -> Refinement<ObservedHost, HostIncarnationFailure>,
+    ): Refinement<PreparedWorkspaceAuthority, WorkspaceDemandFailure> {
+        val ready =
+            when (val prepared = prepareReady(root)) {
+                is Refinement.Rejected -> return prepared
+                is Refinement.Refined -> prepared.value
+            }
+        val host =
+            when (val observed = observeHost(ready.workspace.target)) {
+                is Refinement.Rejected ->
+                    return Refinement.Rejected(
+                        WorkspaceDemandFailure.Operation(
+                            ready.entry.id,
+                            root,
+                            WorkspaceDemandCause.HostIncarnation(observed.failure),
+                        )
+                    )
+                is Refinement.Refined -> observed.value
+            }
+        return Refinement.Refined(PreparedWorkspaceAuthority(capture(root, ready), host, ready.entry.id))
+    }
+
+    private fun capture(root: CanonicalRoot, ready: Ready) = WorkspaceDemand { selected, operation ->
+        if (selected != root)
+            WorkspaceDemandResult.Rejected(
+                WorkspaceDemandFailure.Admission(selected, WorkspacePreparationFailure.ROOT_REJECTED)
+            )
+        else queryPrepared(ready, operation)
+    }
 
     private data class Ready(val entry: WorkspacePreparation, val workspace: PreparedWorkspace)
 

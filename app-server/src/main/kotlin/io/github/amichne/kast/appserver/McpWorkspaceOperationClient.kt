@@ -5,9 +5,9 @@ import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
+import io.github.amichne.kast.appserver.ide.ObservedHost
 import io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
-import io.github.amichne.kast.appserver.runtime.PreparedWorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandFailure
@@ -32,6 +32,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
 /** The caller owns preparation jobs and closes them when its request or session ends. */
+class PreparedMcpWorkspace
+internal constructor(val client: DaemonOperationClient, val host: ObservedHost, val preparationId: String)
+
 class McpWorkspaceOperationClient
 internal constructor(
     private val delegate: DaemonOperationClient,
@@ -41,16 +44,23 @@ internal constructor(
         io.github.amichne.kast.kernel.ElapsedTimeAllowance.Bounded(
             io.github.amichne.kast.protocol.contract.WorkspacePreparationBudget.limit
         ),
-    private val preparedDemand: PreparedWorkspaceDemand? = null,
+    private val managed: InstalledWorkspacePreparation? = null,
 ) : DaemonOperationClient by delegate, AutoCloseable {
     /** The returned client retains this exact ready incarnation and cannot prepare a replacement. */
-    suspend fun prepared(root: CanonicalRoot): Refinement<DaemonOperationClient, DaemonOperationFailure> =
-        when (val demand = preparedDemand) {
+    suspend fun prepared(root: CanonicalRoot): Refinement<PreparedMcpWorkspace, DaemonOperationFailure> =
+        when (val owner = managed) {
             null -> Refinement.Rejected(DaemonOperationFailure.Host(ExistingIdeFailure.CONFIGURATION_REJECTED))
             else ->
-                when (val ready = demand.prepare(root)) {
+                when (val ready = owner.demand.prepareWithHost(root, owner::observeHost)) {
                     is Refinement.Rejected -> Refinement.Rejected(ready.failure.daemonFailure())
-                    is Refinement.Refined -> Refinement.Refined(mcpDemandClient(ready.value))
+                    is Refinement.Refined ->
+                        Refinement.Refined(
+                            PreparedMcpWorkspace(
+                                mcpDemandClient(ready.value.demand),
+                                ready.value.host,
+                                ready.value.preparationId.value.toString(),
+                            )
+                        )
                 }
         }
 
@@ -175,7 +185,7 @@ private fun configuredMcpWorkspaceOperationClient(
         preparation.operations,
         preparation.lifecycle,
         config.workspacePreparationWait,
-        preparation.demand,
+        preparation,
     )
 }
 

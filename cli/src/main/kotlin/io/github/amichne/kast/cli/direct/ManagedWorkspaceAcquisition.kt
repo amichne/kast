@@ -6,6 +6,7 @@ import io.github.amichne.kast.appserver.DaemonOperationClientRejection
 import io.github.amichne.kast.appserver.DaemonOperationFailure
 import io.github.amichne.kast.appserver.DaemonOperationProtocolFailure
 import io.github.amichne.kast.appserver.DaemonOperationResult
+import io.github.amichne.kast.appserver.PreparedMcpWorkspace
 import io.github.amichne.kast.appserver.WorkspaceOperationAdmission
 import io.github.amichne.kast.distribution.cli.ManagedWorkspaceQuery
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationDisclosure
@@ -45,6 +46,7 @@ internal data class WorkspaceHostIdentity(val home: Path, val environment: Map<S
 internal class PreparedWorkspaceBinding(
     val identity: WorkspaceHostIdentity,
     private val client: DaemonOperationClient,
+    val authority: PreparedMcpWorkspace? = null,
     private val owner: AutoCloseable,
 ) : AutoCloseable {
     fun read(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult = client.read(root, operation)
@@ -101,6 +103,7 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
                         PreparedWorkspaceBinding(
                             workspace.hostIdentity(),
                             selected.value.capabilities.read,
+                            checkNotNull(selected.value.prepared),
                             selected.value,
                         )
                     )
