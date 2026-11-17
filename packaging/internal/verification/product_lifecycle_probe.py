@@ -802,6 +802,15 @@ def execute(
                 second_host, first_host = second.result(), first.result()
             if first_host == second_host or first_host != restarted:
                 raise ValueError("workspace roots did not retain separate compiler lifetimes")
+            second_identity = probe.observe_host(
+                "second-host", roots[1], second_host, facts.runtime.sha256
+            )
+            _ = probe.run(
+                "stop-second-root", roots[1], ("stop", "--workspace", str(roots[1]), "--json")
+            )
+            probe.stopped_endpoints(second_identity)
+            if probe.query("first-root-after-scoped-stop", roots[0]) != first_host:
+                raise ValueError("scoped stop changed the other workspace's compiler lifetime")
             probe.completed.add(acceptance.Case.ROOTS)
             source = roots[0] / "invocation/src/main/kotlin/AcceptanceEdited.kt"
             _ = source.write_text("fun acceptanceEditedDeclaration() = 42\n")
