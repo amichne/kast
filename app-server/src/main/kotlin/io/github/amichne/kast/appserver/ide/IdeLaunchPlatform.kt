@@ -14,7 +14,6 @@ internal interface IdeLaunchPlatform {
         override fun executablePath(): String? = System.getenv("PATH")
 
         override fun startManaged(specification: ManagedHeadlessLaunch): Refinement<Process, IdeLifecycleFailure> {
-            val runtime = specification.installation
             when (val written = ManagedHeadlessLaunchFiles.write(specification)) {
                 is Refinement.Rejected -> return Refinement.Rejected(IdeLifecycleFailure.LAUNCH_FAILED)
                 is Refinement.Refined -> Unit
@@ -24,7 +23,7 @@ internal interface IdeLaunchPlatform {
                     .apply {
                         environment().clear()
                         environment().putAll(specification.environment)
-                        redirectOutput(ProcessBuilder.Redirect.appendTo(runtime.state.resolve("launcher.log").toFile()))
+                        redirectOutput(ProcessBuilder.Redirect.appendTo(specification.launcherLog.toFile()))
                         redirectErrorStream(true)
                     }
                     .start()

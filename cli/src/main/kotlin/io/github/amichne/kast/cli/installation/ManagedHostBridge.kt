@@ -27,8 +27,8 @@ internal fun executeManagedHost(
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault,
     idleShutdown: io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown =
         io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
-    maxHeap: io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap =
-        io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
+    maxHeap: io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy =
+        io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy.Inherit,
     processes: (SelectedIdeLaunch.Resolved) -> ManagedProcessInventory = ::observeManagedIdeProcesses,
     exchange: (Path, IdeLifecycleCommand) -> IdeLifecycleResult = { idea, command ->
         exchangeSelectedHost(home, idea, managedHeadlessState, command)
@@ -307,7 +307,7 @@ private fun exchangeSelectedHost(
                         IdeLifecycleDeployment.Headless(
                             selection.path,
                             io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown.Disabled,
-                            io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap.DEFAULT,
+                            io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy.Inherit,
                         ),
                 )
                 .manageInstallation(command)
@@ -318,7 +318,7 @@ private fun startSelectedManagedHost(
     home: Path,
     selection: io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection,
     idleShutdown: io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown,
-    maxHeap: io.github.amichne.kast.distribution.contract.configuration.HostMaxHeap,
+    maxHeap: io.github.amichne.kast.distribution.contract.configuration.HostHeapPolicy,
 ): ManagedIdeLaunchOutcome =
     when (selection) {
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault ->

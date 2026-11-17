@@ -2,6 +2,20 @@ package io.github.amichne.kast.distribution.contract.configuration
 
 import io.github.amichne.kast.kernel.Refinement
 
+sealed interface HostHeapPolicy {
+    data object Inherit : HostHeapPolicy
+
+    class Explicit private constructor(val heap: HostMaxHeap) : HostHeapPolicy {
+        companion object {
+            fun parseSetting(raw: String): Refinement<Explicit, HostMaxHeapFailure> =
+                when (val parsed = HostMaxHeap.parseSetting(raw)) {
+                    is Refinement.Refined -> Refinement.Refined(Explicit(parsed.value))
+                    is Refinement.Rejected -> parsed
+                }
+        }
+    }
+}
+
 /** The managed Host JVM's maximum heap. Control writes it as the only `-Xmx` option at each Host launch. */
 class HostMaxHeap private constructor(val mebibytes: Int) {
     val jvmOption: String
@@ -23,11 +37,28 @@ class HostMaxHeap private constructor(val mebibytes: Int) {
 
         val DEFAULT: HostMaxHeap = HostMaxHeap(DEFAULT_MEBIBYTES)
 
-        fun parseSetting(raw: String): Refinement<HostMaxHeap, HostMaxHeapFailure> {
+        private val vmOption = Regex("-Xmx([0-9]+)([kKmMgG]?)")
+
+        internal fun parseSetting(raw: String): Refinement<HostMaxHeap, HostMaxHeapFailure> {
             val mebibytes =
                 if (raw.isNotEmpty() && raw.all { it in '0'..'9' } && raw.length <= 5) raw.toInt()
                 else return Refinement.Rejected(HostMaxHeapFailure.INVALID_SETTING)
             return if (mebibytes in MINIMUM_MEBIBYTES..MAXIMUM_MEBIBYTES) Refinement.Refined(HostMaxHeap(mebibytes))
+            else Refinement.Rejected(HostMaxHeapFailure.OUT_OF_RANGE)
+        }
+
+        fun parseVmOption(raw: String): Refinement<HostMaxHeap, HostMaxHeapFailure> {
+            val match = vmOption.matchEntire(raw) ?: return Refinement.Rejected(HostMaxHeapFailure.INVALID_VM_OPTION)
+            val (digits, unit) = match.destructured
+            val amount = digits.toLongOrNull() ?: return Refinement.Rejected(HostMaxHeapFailure.OUT_OF_RANGE)
+            val mebibytes =
+                when (unit.lowercase()) {
+                    "g" -> if (amount <= Int.MAX_VALUE / 1024) amount * 1024 else 0
+                    "m" -> amount
+                    "k" -> if (amount % 1024 == 0L) amount / 1024 else 0
+                    else -> if (amount % 1_048_576 == 0L) amount / 1_048_576 else 0
+                }
+            return if (mebibytes in 1..Int.MAX_VALUE.toLong()) Refinement.Refined(HostMaxHeap(mebibytes.toInt()))
             else Refinement.Rejected(HostMaxHeapFailure.OUT_OF_RANGE)
         }
     }
@@ -35,5 +66,6 @@ class HostMaxHeap private constructor(val mebibytes: Int) {
 
 enum class HostMaxHeapFailure {
     INVALID_SETTING,
+    INVALID_VM_OPTION,
     OUT_OF_RANGE,
 }
