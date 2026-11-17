@@ -7,6 +7,7 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCause
 import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeStage
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
+import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -43,6 +44,7 @@ internal constructor(
     nanoTime: () -> Long,
     private val platform: IdeLaunchPlatform = IdeLaunchPlatform.Native,
     private val deployment: IdeLifecycleDeployment,
+    private val children: HostChildRetention = HostChildRetention.Discarded,
 ) : WorkspaceLifecycleClient {
     constructor(
         userHome: Path,
@@ -57,6 +59,17 @@ internal constructor(
     )
 
     private val transport = LifecycleSocketExchange(userHome, exchangeTimer, nanoTime)
+
+    internal fun observeHost(target: IdeProjectTarget): Refinement<ObservedHost, HostIncarnationFailure> {
+        val inspected =
+            execute(IdeLifecycleCommand.Inspect) as? IdeLifecycleResult.Inspected
+                ?: return Refinement.Rejected(HostIncarnationFailure.INSPECTION_REJECTED)
+        val selected =
+            (selectLifecycleDeployment(deployment, userHome, selectedHome) as? Refinement.Refined)?.value
+                as? SelectedLifecycleDeployment.Headless
+                ?: return Refinement.Rejected(HostIncarnationFailure.INSPECTION_REJECTED)
+        return observeManagedHost(selected.installation, inspected, target, children.current())
+    }
 
     /** Installation management uses the same admitted application endpoint without project preparation. */
     fun manageInstallation(command: IdeLifecycleCommand): IdeLifecycleResult =
@@ -189,6 +202,7 @@ internal constructor(
     }
 
     private fun coldHost(requireWorkspaceTrust: Boolean = false): IdeLifecycleResult {
+        if (children.current()?.isAlive == true) return blocked(IdeLifecycleFailure.HOST_UNAVAILABLE)
         val selectedDeployment =
             when (val selected = selectLifecycleDeployment(deployment, userHome, selectedHome)) {
                 is Refinement.Rejected -> return blocked(selected.failure)
@@ -201,6 +215,7 @@ internal constructor(
                 is Refinement.Rejected -> return blocked(started.failure)
                 is Refinement.Refined -> started.value
             }
+        if (lifetime is IdeLaunchLifetime.Application) children.record(lifetime.process)
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(LAUNCH_WAIT_SECONDS)
         var host = execute(IdeLifecycleCommand.Inspect)
         while (host !is IdeLifecycleResult.Inspected && System.nanoTime() < deadline) {
