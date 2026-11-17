@@ -69,12 +69,27 @@ internal class WorkspacePreparations(
     fun prepareForDemand(root: CanonicalRoot): Refinement<WorkspacePreparation, WorkspacePreparationFailure> {
         if (closed || !worker.isActive) return Refinement.Rejected(WorkspacePreparationFailure.CLOSED)
         val previous = entries[root] ?: return create(root)
-        return when (previous.state.value) {
-            is WorkspacePreparationOutcome.Pending,
-            is WorkspacePreparationOutcome.Complete -> Refinement.Refined(previous)
+        return when (val state = previous.state.value) {
+            is WorkspacePreparationOutcome.Pending -> retained(previous, WorkspacePreparationActivityOutcome.Joined)
+            is WorkspacePreparationOutcome.Complete ->
+                retained(
+                    previous,
+                    WorkspacePreparationActivityOutcome.Reused(
+                        state.workspace.host.toString(),
+                        state.workspace.project.toString(),
+                    ),
+                )
             is WorkspacePreparationOutcome.Blocked,
             is WorkspacePreparationOutcome.Rejected -> create(root, previous.id)
         }
+    }
+
+    private fun retained(
+        entry: WorkspacePreparation,
+        outcome: WorkspacePreparationActivityOutcome,
+    ): Refinement.Refined<WorkspacePreparation> {
+        observer.observe(WorkspacePreparationActivity(entry.id.value.toString(), outcome))
+        return Refinement.Refined(entry)
     }
 
     private fun create(

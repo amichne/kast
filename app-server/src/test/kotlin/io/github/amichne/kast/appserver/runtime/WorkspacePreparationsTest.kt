@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
@@ -60,13 +63,27 @@ class WorkspacePreparationsTest {
         val completed = first.state.value as WorkspacePreparationOutcome.Complete
         assertEquals(root, completed.workspace.root)
         assertEquals(target, completed.workspace.target)
+        assertSame(first, (preparations.prepareForDemand(root) as Refinement.Refined).value)
+        assertEquals(1, requests.size)
         assertEquals(
-            listOf(
-                WorkspacePreparationActivityOutcome.Pending(IdeLifecycleStage.OPENING),
-                WorkspacePreparationActivityOutcome.Completed,
-            ),
-            events.map { it.outcome },
+            listOf("pending", "joined", "completed", "reused"),
+            events.map {
+                Json.encodeToJsonElement(WorkspacePreparationActivity.serializer(), it)
+                    .jsonObject
+                    .getValue("outcome")
+                    .jsonObject
+                    .getValue("type")
+                    .jsonPrimitive
+                    .content
+            },
         )
+        val reused =
+            Json.encodeToJsonElement(WorkspacePreparationActivity.serializer(), events.last())
+                .jsonObject
+                .getValue("outcome")
+                .jsonObject
+        assertEquals(target.host, reused.getValue("host").jsonPrimitive.content)
+        assertEquals(target.project, reused.getValue("project").jsonPrimitive.content)
         preparations.close()
         assertEquals(emptyList<String>(), preparations.activeRoots())
     }

@@ -1,11 +1,13 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.kernel.Refinement
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /** Control effect boundaries whose repetition decides warm-call latency. */
 enum class ControlStage {
+    PROCESS_START,
     QUERY_CHILD_LAUNCH,
     PAYLOAD_VERIFICATION,
     COORDINATOR_CONNECTION,
@@ -77,6 +79,18 @@ object ControlStageTrace {
         record(stage, outcome(value), started)
         return value
     }
+
+    inline fun <T, F> observeRefinement(stage: ControlStage, action: () -> Refinement<T, F>): Refinement<T, F> =
+        observe(
+            stage,
+            { result ->
+                when (result) {
+                    is Refinement.Refined -> ControlStageOutcome.COMPLETED
+                    is Refinement.Rejected -> ControlStageOutcome.REJECTED
+                }
+            },
+            action,
+        )
 }
 
 private val traceJson = Json { encodeDefaults = true }

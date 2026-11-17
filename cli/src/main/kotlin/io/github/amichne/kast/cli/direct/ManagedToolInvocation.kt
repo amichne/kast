@@ -12,6 +12,8 @@ import io.github.amichne.kast.cli.CliFailureCause
 import io.github.amichne.kast.cli.ide.ExistingIdeCliCapabilities
 import io.github.amichne.kast.cli.ide.configuredExistingIdeClient
 import io.github.amichne.kast.distribution.cli.ContainerFailure
+import io.github.amichne.kast.distribution.cli.ControlStage
+import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.cli.ManagedWorkspaceQuery
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
@@ -58,16 +60,18 @@ internal fun <Result> invokeManagedTool(
             is CanonicalRootDiscovery.Discovered -> discovered.root
         }
     val opened =
-        when (admission) {
-            WorkspaceOperationAdmission.PREPARE ->
-                ManagedWorkspaceQuery.open(
-                    context.installation,
-                    root,
-                    environment,
-                    ::inspectWorkspaceSeedHost,
-                )
-            WorkspaceOperationAdmission.EXISTING_AUTHORITY ->
-                ManagedWorkspaceQuery.openExisting(context.installation, root, environment)
+        ControlStageTrace.observeRefinement(ControlStage.WORKSPACE_ADMISSION) {
+            when (admission) {
+                WorkspaceOperationAdmission.PREPARE ->
+                    ManagedWorkspaceQuery.open(
+                        context.installation,
+                        root,
+                        environment,
+                        ::inspectWorkspaceSeedHost,
+                    )
+                WorkspaceOperationAdmission.EXISTING_AUTHORITY ->
+                    ManagedWorkspaceQuery.openExisting(context.installation, root, environment)
+            }
         }
     val workspace =
         when (opened) {
@@ -109,7 +113,9 @@ private constructor(
                 WorkspaceOperationAdmission.PREPARE ->
                     when (
                         val prepared = workspace.prepare { remaining ->
-                            prepare(root, workspace.home, workspace.environment, remaining)
+                            ControlStageTrace.observeRefinement(ControlStage.WORKSPACE_PREPARATION) {
+                                prepare(root, workspace.home, workspace.environment, remaining)
+                            }
                         }
                     ) {
                         is Refinement.Rejected -> Refinement.Rejected(ManagedToolFailure.Workspace(prepared.failure))

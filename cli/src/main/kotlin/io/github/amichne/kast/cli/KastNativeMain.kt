@@ -4,6 +4,9 @@ import io.github.amichne.kast.cli.mcp.KastMcpMain
 import io.github.amichne.kast.cli.publicshell.KastPublicCliMain
 import io.github.amichne.kast.cli.publicshell.PublicJqWorker
 import io.github.amichne.kast.cli.rpc.KastToolRpcMain
+import io.github.amichne.kast.distribution.cli.ControlStage
+import io.github.amichne.kast.distribution.cli.ControlStageOutcome
+import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.cli.main as runManagement
 import io.github.amichne.kast.distribution.contract.NativeControlEntry
 import io.github.amichne.kast.distribution.contract.admitNativeControlInvocation
@@ -14,7 +17,9 @@ import kotlin.system.exitProcess
 object KastNativeMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
-        io.github.amichne.kast.distribution.cli.ControlStageTrace.configure(System.getenv())
+        val started = System.nanoTime()
+        ControlStageTrace.configure(System.getenv())
+        ControlStageTrace.record(ControlStage.PROCESS_START, ControlStageOutcome.CREATED, started)
         when (val admitted = admitNativeControlInvocation(arguments.toList())) {
             is Refinement.Rejected -> {
                 System.err.println("kast: unsupported internal entrypoint")
