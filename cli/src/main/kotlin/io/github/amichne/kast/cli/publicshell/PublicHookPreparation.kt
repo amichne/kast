@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.DaemonOperationClientRejection
 import io.github.amichne.kast.appserver.DaemonOperationFailure
 import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.RequestedRuntimeSettings
+import io.github.amichne.kast.appserver.diagnosticCode
 import io.github.amichne.kast.cli.direct.CoordinatedToolClient
 import io.github.amichne.kast.cli.direct.InstalledClientBinding
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
@@ -15,6 +16,8 @@ import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.distribution.managed.InstalledWorkspaceConfigurationIngress
 import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
+import kotlinx.serialization.Required
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -54,7 +57,7 @@ internal fun prepareInstalledHook(
     val settings = RequestedRuntimeSettings.fromWorkspace(installed.installation, root.path, environment)
     val reply = read(root, DaemonOperationCall.PrepareWorkspace, settings)
     return when (reply) {
-        is DaemonOperationResult.Rejected -> Refinement.Rejected(reply.failure.hookFailure())
+        is DaemonOperationResult.Rejected -> Refinement.Rejected(reply.failure.hookFailure(diagnostic))
         is DaemonOperationResult.Complete ->
             if (ready(reply)) reportPreparation(root, installed, environment, diagnostic)
             else Refinement.Rejected(HookPreparationFailure.Unproven)
@@ -90,18 +93,27 @@ private fun reportPreparation(
         }
     }
 
-private fun DaemonOperationClientRejection.hookFailure(): HookPreparationFailure =
+private fun DaemonOperationClientRejection.hookFailure(diagnostic: (String) -> Unit): HookPreparationFailure =
     when (this) {
         is DaemonOperationClientRejection.Server ->
             when (val reason = failure) {
                 is DaemonOperationFailure.ManagedWorkspace -> HookPreparationFailure.Managed(reason.reason)
                 else -> HookPreparationFailure.Native(reason)
             }
+        is DaemonOperationClientRejection.Startup -> {
+            diagnostic(preparationJson.encodeToString(HookStartupRejectionDiagnostic(diagnosticCode())))
+            HookPreparationFailure.Unproven
+        }
         is DaemonOperationClientRejection.Command,
         is DaemonOperationClientRejection.Coordinator,
-        is DaemonOperationClientRejection.Startup,
         is DaemonOperationClientRejection.Transport -> HookPreparationFailure.Unproven
     }
+
+@Serializable
+private data class HookStartupRejectionDiagnostic(
+    val reason: String,
+    @Required val type: String = "coordinator_startup_rejected",
+)
 
 private val preparationJson = Json { encodeDefaults = true }
 

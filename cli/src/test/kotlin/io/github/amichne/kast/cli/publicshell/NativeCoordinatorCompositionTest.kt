@@ -37,11 +37,7 @@ class NativeCoordinatorCompositionTest {
     @Test
     fun `public query reports an unadmitted coordinator publication`(@TempDir evidence: Path) {
         NativePublicFixture(evidence).use { fixture ->
-            val readiness = InstalledSemanticCoordinator.readinessPath(fixture.installation, fixture.home)
-            Files.createDirectories(readiness.parent, PosixFilePermissions.asFileAttribute(privateDirectory))
-            Files.writeString(readiness, "{")
-            Files.setPosixFilePermissions(readiness, PosixFilePermissions.fromString("rw-------"))
-
+            val readiness = unadmittedReadiness(fixture)
             val arguments =
                 listOf("query", "--workspace", fixture.workspace.toString(), "--name", "OrderService", "--json")
             fixture.assertExit(fixture.start("unadmitted", arguments), 5, "unadmitted")
@@ -55,6 +51,32 @@ class NativeCoordinatorCompositionTest {
             )
             assertEquals("{", Files.readString(readiness))
         }
+    }
+
+    @Test
+    fun `public workspace wait reports startup detail without changing its reply`(@TempDir evidence: Path) {
+        NativePublicFixture(evidence).use { fixture ->
+            unadmittedReadiness(fixture)
+            val arguments = listOf("workspace", "wait", "--workspace", fixture.workspace.toString(), "--wait", "1000")
+            fixture.assertExit(fixture.start("wait", arguments), 4, "wait")
+            val reply = Json.parseToJsonElement(Files.readString(evidence.resolve("wait.stdout"))).jsonObject
+            assertEquals("PREPARATION_REJECTED", reply.getValue("failure").jsonPrimitive.content)
+            val diagnostic =
+                Json.parseToJsonElement(Files.readAllLines(evidence.resolve("wait.stderr")).last()).jsonObject
+            assertEquals("coordinator_startup_rejected", diagnostic.getValue("type").jsonPrimitive.content)
+            assertEquals(
+                "daemon-operation-startup-ownership-rejected",
+                diagnostic.getValue("reason").jsonPrimitive.content,
+            )
+        }
+    }
+
+    private fun unadmittedReadiness(fixture: NativePublicFixture): Path {
+        val readiness = InstalledSemanticCoordinator.readinessPath(fixture.installation, fixture.home)
+        Files.createDirectories(readiness.parent, PosixFilePermissions.asFileAttribute(privateDirectory))
+        Files.writeString(readiness, "{")
+        Files.setPosixFilePermissions(readiness, PosixFilePermissions.fromString("rw-------"))
+        return readiness
     }
 
     @Test

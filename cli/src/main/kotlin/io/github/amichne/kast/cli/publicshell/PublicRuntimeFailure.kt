@@ -12,8 +12,8 @@ import kotlinx.serialization.Serializable
 internal fun classifyPublicRuntimeFailure(failure: DaemonOperationClientRejection): PublicShellExit =
     when (failure) {
         is DaemonOperationClientRejection.Command,
-        is DaemonOperationClientRejection.Coordinator,
-        is DaemonOperationClientRejection.Startup -> PublicShellExit.BOOTSTRAP
+        is DaemonOperationClientRejection.Coordinator -> PublicShellExit.BOOTSTRAP
+        is DaemonOperationClientRejection.Startup -> PublicShellExit.IO
         is DaemonOperationClientRejection.Transport ->
             when (failure.failure) {
                 DaemonOperationClientFailure.CODE_SOURCE_UNAVAILABLE,

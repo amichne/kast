@@ -36,7 +36,7 @@ class PublicRuntimeFailureTest {
                 .code,
         )
         assertEquals(
-            9,
+            5,
             classifyPublicRuntimeFailure(
                     DaemonOperationClientRejection.Startup(SemanticCoordinatorStartupFailure.StartupTimedOut)
                 )
