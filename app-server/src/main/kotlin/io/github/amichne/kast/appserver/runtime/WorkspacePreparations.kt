@@ -134,6 +134,22 @@ internal class WorkspacePreparations(
         records[id]?.let { Refinement.Refined(it) }
             ?: Refinement.Rejected(WorkspacePreparationFailure.UNKNOWN_OPERATION)
 
+    /**
+     * The current ready record for exactly [workspace]'s target, else the held record. Another target is never
+     * substituted, so a later [invalidate] retires only the record that this operation actually used.
+     */
+    @Synchronized
+    fun current(
+        held: WorkspacePreparation,
+        workspace: PreparedWorkspace,
+    ): Pair<WorkspacePreparation, PreparedWorkspace> {
+        val entry = entries[workspace.root] ?: return held to workspace
+        val outcome = entry.state.value
+        return if (outcome is WorkspacePreparationOutcome.Complete && outcome.workspace.target == workspace.target)
+            entry to outcome.workspace
+        else held to workspace
+    }
+
     /** Retire only this ready incarnation; preserve its historical operation record. */
     @Synchronized
     fun invalidate(id: WorkspacePreparationId, workspace: PreparedWorkspace) {
