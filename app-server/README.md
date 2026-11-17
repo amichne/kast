@@ -1,28 +1,25 @@
-# Persistent Kast App Server
+# Kast coordinator and legacy App Server
 
-`:app-server` owns the persistent Codex broker, hosted tool catalog, and client
-sessions. The installer keeps service control in the selected release at
-`share/kast/libexec/kast-service`; the public native `kast` command manages the installation and integrations.
-Semantic contracts and IntelliJ runtime implementations retain their own modules.
+The installed CLI, direct MCP, and tool RPC use the same coordinator. The
+coordinator owns workspace preparation and keeps one binding per canonical
+workspace root. The first request that needs preparation can start the
+coordinator and the managed Host for that workspace. `kast workspace wait` uses the
+same preparation path.
 
-Provider qualification reads the bounded `share/kast/provider-catalog.json` artifact
-and checks the complete hosted tool set against the canonical registry. Startup
-rejects a missing or incompatible catalog and changes between qualification and
-provider startup. Installed payload admission, IDEA compatibility, and Codex
-schema qualification retain their existing owners.
+A binding keeps the Host process identity and its exact project. Each semantic
+request gets its own workspace lease. IntelliJ owns semantic freshness, Gradle
+import, and the project model. Requests that use issued authority, such as
+retained results and mutation recovery, need the existing Host.
 
-## Codex plugin
+The coordinator uses a private installation socket at `state/run/c.sock`.
+macOS starts the service through `launchd`. Linux uses the `systemd` user manager.
+The service runs outside the caller's process group. An installation transition
+blocks new requests before it asks the coordinator to stop. The transition
+checks that the recorded process exits before replacement or removal.
 
-Fresh and replacement installations use private settings and do not enable the broker.
-An admitted saved `codex-control` setting migrates to `private`.
-The installer rejects an explicit shared-endpoint selection.
-The Kast MCP plugin connects independently of Codex's control socket.
-The MCP session starts preparation for `settings.gradle.kts` projects through the existing workspace lifecycle.
-Its passive `SessionStart` hook supplies context with the Python standard library.
-
-Use `kast plugin codex` or `kast connect codex` for public Codex registration.
-The former `kast connect codex mcp` form selects the same plugin.
-The App Server registration form rejects before effects.
+The Codex plugin uses the same coordinator through direct MCP. Its
+`SessionStart` hook supplies context. `kast install codex --mcp` installs the
+integration.
 
 ## Legacy broker implementation
 
