@@ -53,6 +53,18 @@ class HostedManagedApplicationEncodingTest {
         val json = Json { encodeDefaults = true }
         val encoded = json.encodeToString(document)
         assertTrue(schema.validate(encoded, InputFormat.JSON).isEmpty(), encoded)
+        val delegated =
+            json.encodeToString(
+                document.copy(
+                    application =
+                        application.copy(
+                            runtimeIdentity = identity.copy(gradleImportEnvironmentIdentity = "f".repeat(64))
+                        )
+                )
+            )
+        assertTrue(schema.validate(delegated, InputFormat.JSON).isEmpty(), delegated)
+        val invalidDelegation = delegated.replace("f".repeat(64), "invalid-digest")
+        assertTrue(schema.validate(invalidDelegation, InputFormat.JSON).isNotEmpty())
         val obsoleteSchema = json.encodeToString(document.copy(querySchema = "kast.query.run.v9"))
         assertTrue(schema.validate(obsoleteSchema, InputFormat.JSON).isNotEmpty())
         val desktop =

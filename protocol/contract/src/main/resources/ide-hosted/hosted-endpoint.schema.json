@@ -97,6 +97,7 @@
         "pid": { "type": "integer", "minimum": 1 },
         "processStartEpochMillis": { "type": "integer", "minimum": 1 },
         "hostLifetime": { "$ref": "#/$defs/hostLifetime" },
+        "gradleImportEnvironmentIdentity": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "autoReload": { "const": "DISABLED" },
         "mode": { "const": "MANAGED_HEADLESS" },
         "buildIdentity": {
