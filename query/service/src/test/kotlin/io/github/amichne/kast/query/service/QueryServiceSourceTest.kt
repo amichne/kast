@@ -2,11 +2,14 @@ package io.github.amichne.kast.query.service
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.query.contract.AdmittedQueryPlan
+import io.github.amichne.kast.query.contract.QueryByteLimit
 import io.github.amichne.kast.query.contract.QueryExactReferences
+import io.github.amichne.kast.query.contract.QueryExecutionRequest
 import io.github.amichne.kast.query.contract.QueryExecutionResult
 import io.github.amichne.kast.query.contract.QueryItemFailure
 import io.github.amichne.kast.query.contract.QueryLimitation
 import io.github.amichne.kast.query.contract.QueryOutputSyntax
+import io.github.amichne.kast.query.contract.QueryPresentationExecution
 import io.github.amichne.kast.query.contract.QuerySourceFailure
 import io.github.amichne.kast.query.contract.QuerySourceSyntax
 import io.github.amichne.kast.query.contract.QuerySymbolField
@@ -164,6 +167,42 @@ class QueryServiceSourceTest {
                 SourceReadRejection.DOCUMENT_DIRTY,
                 (qualified.result.symbolRows().single().source as QuerySymbolSource.Rejected).reason,
             )
+        }
+    }
+
+    @Test
+    fun `source window grants obey storage and preserve source rejection`() = runTest {
+        with(fixture) {
+            val selected = selector(selection())
+            val base = request(sourcePlan(selected), 8L, returnedBytes = 4096)
+            val allowance = QueryByteLimit.parse(8192).refined()
+            val run =
+                QueryExecutionRequest.create(base.plan, base.lease, base.budget.copy(checkpointBytes = allowance))
+                    .refined()
+            val grants = mutableListOf<Long>()
+            suspend fun evaluate(owner: QueryPresentationExecution?): QueryExecutionResult =
+                service(
+                        exact =
+                            exactOperations(
+                                describe = { SymbolDescriptionResult.Described(SymbolDescription.from(it)) },
+                                resolve = { error("Unexpected discovery") },
+                            ),
+                        source =
+                            SourceReadOperations {
+                                grants += it.textByteLimit.value
+                                SourceReadResult.Rejected(SourceReadRejection.DOCUMENT_DIRTY)
+                            },
+                        presentation = owner,
+                    )
+                    .run(run)
+            val standalone = evaluate(null)
+            val paired = QueryPresentationExecution.evaluateAndFit(::evaluate) { it }
+            assertEquals(listOf(4096L, 8192L), grants)
+            for (result in listOf(standalone, paired)) {
+                val qualified = assertInstanceOf(QueryExecutionResult.Qualified::class.java, result)
+                val failure = qualified.result.failures.single() as QueryItemFailure.Source
+                assertEquals(QuerySourceFailure.Rejected(SourceReadRejection.DOCUMENT_DIRTY), failure.reason)
+            }
         }
     }
 
