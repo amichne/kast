@@ -14,19 +14,24 @@ import javax.xml.stream.XMLOutputFactory
 import org.w3c.dom.Element
 import org.xml.sax.InputSource
 
-internal fun ContainerStore.admitGeneration(owned: AdmittedWorkspace): Refinement<AdmittedContainer, ContainerFailure> =
-    containerFiles {
-        when (val source = owned.generation) {
-            is ContainerGenerationSource.Legacy ->
-                when (val selected = runtime(source.runtime)) {
-                    is Refinement.Rejected -> selected
-                    is Refinement.Refined -> admitContainerState(AdmittedContainer(owned, selected.value))
-                }
-            ContainerGenerationSource.Current -> readGeneration(owned)
-        }
+internal fun ContainerStore.admitGeneration(
+    owned: AdmittedWorkspace,
+    retained: AdmittedContainerRuntime? = null,
+): Refinement<AdmittedContainer, ContainerFailure> = containerFiles {
+    when (val source = owned.generation) {
+        is ContainerGenerationSource.Legacy ->
+            when (val selected = runtime(source.runtime)) {
+                is Refinement.Rejected -> selected
+                is Refinement.Refined -> admitContainerState(AdmittedContainer(owned, selected.value))
+            }
+        ContainerGenerationSource.Current -> readGeneration(owned, retained)
     }
+}
 
-private fun ContainerStore.readGeneration(owned: AdmittedWorkspace): Refinement<AdmittedContainer, ContainerFailure> {
+private fun ContainerStore.readGeneration(
+    owned: AdmittedWorkspace,
+    retained: AdmittedContainerRuntime?,
+): Refinement<AdmittedContainer, ContainerFailure> {
     val generation =
         when (val parsed = readContainerRecord<ContainerGenerationRecord>(owned.directory.resolve("generation.json"))) {
             is Refinement.Rejected -> return parsed
@@ -37,7 +42,13 @@ private fun ContainerStore.readGeneration(owned: AdmittedWorkspace): Refinement<
             is Refinement.Rejected -> return admitted
             is Refinement.Refined -> admitted.value
         }
-    return when (val selected = runtime(generation.runtime)) {
+    val selected =
+        if (retained != null) {
+            if (runtimes.resolve(generation.runtime) != retained.root || generation.runtime != retained.key)
+                return Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
+            Refinement.Refined(retained)
+        } else runtime(generation.runtime)
+    return when (selected) {
         is Refinement.Rejected -> selected
         is Refinement.Refined ->
             if (generation.archiveSha256 == selected.value.archiveSha256)

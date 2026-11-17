@@ -1,7 +1,10 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.file.Files
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
+import java.nio.file.attribute.FileTime
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 
@@ -25,63 +28,97 @@ internal data class InstalledProductReference(
 )
 
 /** Local admission never acquires release assets or substitutes another runtime. */
-internal class InstalledProductRuntime
+class InstalledProductRuntime
 private constructor(
-    private val installation: Path,
-    private val selection: InstalledProductSelection,
-    val runtime: AdmittedContainerRuntime,
+    internal val installation: Path,
+    internal val runtime: AdmittedContainerRuntime,
+    internal val record: ProductBuildRecord,
+    private val revisions: List<ProductInputRevision>,
 ) {
-    val record: ProductBuildRecord
-        get() = selection.record
-
-    /** Recheck under the request lease or publication lock before changing workspace state. */
-    fun admitCurrent(): Refinement<Unit, ContainerFailure> = containerFiles {
-        if (
-            !java.nio.file.Files.notExists(
-                installation.parent.resolve(SHUTDOWN_FENCE),
-                java.nio.file.LinkOption.NOFOLLOW_LINKS,
-            )
-        )
-            return@containerFiles Refinement.Rejected(ContainerFailure.FENCE_REJECTED)
-        when (val current = InstalledProductSelection.read(installation, runtime.manifest.platform)) {
-            is Refinement.Rejected -> current
-            is Refinement.Refined ->
-                if (current.value.reference == selection.reference && current.value.record == record)
-                    Refinement.Refined(Unit)
-                else Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
+    /** Recheck the exact files covered by cold admission before workspace effects. */
+    internal fun admitCurrent(): Refinement<Unit, ContainerFailure> = containerFiles {
+        when {
+            !Files.notExists(installation.parent.resolve(SHUTDOWN_FENCE), NOFOLLOW_LINKS) ->
+                Refinement.Rejected(ContainerFailure.FENCE_REJECTED)
+            revisions.all { it.isCurrent() } -> Refinement.Refined(Unit)
+            else -> Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
         }
     }
 
     companion object {
-        fun read(
+        fun admit(installation: Path): Refinement<InstalledProductRuntime, ContainerFailure> =
+            when (val platform = ContainerPlatform.current()) {
+                is Refinement.Rejected -> platform
+                is Refinement.Refined -> read(installation, platform.value)
+            }
+
+        internal fun read(
             installation: Path,
             platform: ContainerPlatform,
-        ): Refinement<InstalledProductRuntime, ContainerFailure> =
+        ): Refinement<InstalledProductRuntime, ContainerFailure> = containerFiles {
+            val revisions =
+                captureRevisions(installation, listOf("installation.json", PRODUCT_REFERENCE, BUILD_RECORD))
+                    ?: return@containerFiles Refinement.Rejected(ContainerFailure.INVALID_RECORD)
             when (val selection = InstalledProductSelection.read(installation, platform)) {
                 is Refinement.Rejected -> selection
-                is Refinement.Refined ->
-                    containerFiles {
-                        admitRuntime(installation, selection.value, platform)
-                    }
+                is Refinement.Refined -> admitRuntime(installation, selection.value, platform, revisions)
             }
+        }
 
         private fun admitRuntime(
             installation: Path,
             selection: InstalledProductSelection,
             platform: ContainerPlatform,
-        ): Refinement<InstalledProductRuntime, ContainerFailure> =
-            when (val runtime = AdmittedContainerRuntime.read(Path.of(selection.reference.runtimeRoot), platform)) {
-                is Refinement.Rejected -> runtime
-                is Refinement.Refined ->
-                    if (
-                        runtime.value.manifest.version == selection.record.version &&
-                            sha256(runtime.value.root.resolve("manifest.json")) ==
-                                selection.reference.runtimeManifestSha256
-                    )
-                        Refinement.Refined(InstalledProductRuntime(installation, selection, runtime.value))
-                    else Refinement.Rejected(ContainerFailure.INVALID_RECORD)
-            }
+            productRevisions: List<ProductInputRevision>,
+        ): Refinement<InstalledProductRuntime, ContainerFailure> {
+            val root = Path.of(selection.reference.runtimeRoot)
+            val runtimeRevisions =
+                captureRevisions(root, listOf("manifest.json", "runtime.json"))
+                    ?: return Refinement.Rejected(ContainerFailure.RUNTIME_UNAVAILABLE)
+            val admitted =
+                when (val runtime = AdmittedContainerRuntime.read(root, platform)) {
+                    is Refinement.Rejected -> return runtime
+                    is Refinement.Refined -> runtime.value
+                }
+            if (
+                admitted.manifest.version != selection.record.version ||
+                    sha256(root.resolve("manifest.json")) != selection.reference.runtimeManifestSha256
+            )
+                return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
+            val witnesses = productRevisions + runtimeRevisions
+            return if (witnesses.all { it.isCurrent() })
+                Refinement.Refined(InstalledProductRuntime(installation, admitted, selection.record, witnesses))
+            else Refinement.Rejected(ContainerFailure.RUNTIME_MISMATCH)
+        }
     }
+}
+
+/** Each digest covers these exact filesystem revisions, including changes that restore an old mtime. */
+private data class ProductInputRevision(
+    val path: Path,
+    val device: Long,
+    val inode: Long,
+    val size: Long,
+    val changed: FileTime,
+) {
+    fun isCurrent(): Boolean = capture(path) == this
+
+    companion object {
+        fun capture(path: Path): ProductInputRevision? {
+            if (!Files.isRegularFile(path, NOFOLLOW_LINKS) || path.toRealPath() != path) return null
+            val attributes = Files.readAttributes(path, "unix:dev,ino,size,ctime,isRegularFile", NOFOLLOW_LINKS)
+            if (attributes["isRegularFile"] != true) return null
+            val device = (attributes["dev"] as? Number)?.toLong() ?: return null
+            val inode = (attributes["ino"] as? Number)?.toLong() ?: return null
+            val size = (attributes["size"] as? Number)?.toLong() ?: return null
+            val changed = attributes["ctime"] as? FileTime ?: return null
+            return ProductInputRevision(path, device, inode, size, changed)
+        }
+    }
+}
+
+private fun captureRevisions(root: Path, names: List<String>): List<ProductInputRevision>? = names.map {
+    ProductInputRevision.capture(root.resolve(it)) ?: return null
 }
 
 /** Selection ownership is available for repair even when selected runtime bytes are missing. */

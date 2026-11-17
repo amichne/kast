@@ -8,6 +8,8 @@ import io.github.amichne.kast.appserver.DaemonOperationProtocolFailure
 import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.PreparedMcpWorkspace
 import io.github.amichne.kast.appserver.WorkspaceOperationAdmission
+import io.github.amichne.kast.distribution.cli.ContainerFailure
+import io.github.amichne.kast.distribution.cli.InstalledProductRuntime
 import io.github.amichne.kast.distribution.cli.ManagedWorkspaceQuery
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationDisclosure
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
@@ -79,15 +81,14 @@ internal interface ManagedWorkspaceAcquisition {
 
 internal class InstalledWorkspaceAcquisition(private val context: InstalledClientContext) :
     ManagedWorkspaceAcquisition {
+    private val product by lazy { InstalledProductRuntime.admit(context.installation) }
+
     override fun prepare(
         root: CanonicalRoot,
         environment: Map<String, String>,
     ): Refinement<PreparedWorkspaceBinding, DaemonOperationFailure> {
         val workspace =
-            when (
-                val opened =
-                    ManagedWorkspaceQuery.open(context.installation, root, environment, ::inspectWorkspaceSeedHost)
-            ) {
+            when (val opened = open(root, environment, WorkspaceOperationAdmission.PREPARE)) {
                 is Refinement.Rejected ->
                     return Refinement.Rejected(DaemonOperationFailure.ManagedWorkspace(opened.failure))
                 is Refinement.Refined -> opened.value
@@ -117,7 +118,7 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
         action: (WorkspaceHostIdentity) -> T,
     ): Refinement<T, DaemonOperationFailure> {
         val workspace =
-            when (val opened = ManagedWorkspaceQuery.openExisting(context.installation, root, environment)) {
+            when (val opened = open(root, environment, WorkspaceOperationAdmission.EXISTING_AUTHORITY)) {
                 is Refinement.Rejected ->
                     return Refinement.Rejected(DaemonOperationFailure.ManagedWorkspace(opened.failure))
                 is Refinement.Refined -> opened.value
@@ -136,7 +137,7 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
         operation: DaemonOperationCall,
     ): DaemonOperationResult {
         val workspace =
-            when (val opened = ManagedWorkspaceQuery.openExisting(context.installation, root, environment)) {
+            when (val opened = open(root, environment, WorkspaceOperationAdmission.EXISTING_AUTHORITY)) {
                 is Refinement.Rejected ->
                     return rejectedOperation(DaemonOperationFailure.ManagedWorkspace(opened.failure))
                 is Refinement.Refined -> opened.value
@@ -153,6 +154,22 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
             }
         }
     }
+
+    private fun open(
+        root: CanonicalRoot,
+        environment: Map<String, String>,
+        admission: WorkspaceOperationAdmission,
+    ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+        when (val admitted = product) {
+            is Refinement.Rejected -> admitted
+            is Refinement.Refined ->
+                when (admission) {
+                    WorkspaceOperationAdmission.PREPARE ->
+                        ManagedWorkspaceQuery.open(admitted.value, root, environment, ::inspectWorkspaceSeedHost)
+                    WorkspaceOperationAdmission.EXISTING_AUTHORITY ->
+                        ManagedWorkspaceQuery.openExisting(admitted.value, root, environment)
+                }
+        }
 
     /** The workspace lease excludes retirement; the Control is rechecked after acquiring it. */
     private fun admitInstallation(): DaemonOperationFailure? =

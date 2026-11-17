@@ -50,10 +50,23 @@ private constructor(
                 root,
                 inherited,
                 WorkspaceAccess.RETAINED,
-                WorkspaceSeedHostProbe { _, _, _ ->
-                    error("Retained workspace access cannot select a seed")
-                },
+                unexpectedSeed,
             )
+
+        fun open(
+            product: InstalledProductRuntime,
+            root: CanonicalRoot,
+            inherited: Map<String, String>,
+            seedHostProbe: WorkspaceSeedHostProbe,
+        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+            open(product, root, inherited, WorkspaceAccess.PREPARE, seedHostProbe)
+
+        fun openExisting(
+            product: InstalledProductRuntime,
+            root: CanonicalRoot,
+            inherited: Map<String, String>,
+        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+            open(product, root, inherited, WorkspaceAccess.RETAINED, unexpectedSeed)
 
         private fun open(
             installation: Path,
@@ -61,20 +74,22 @@ private constructor(
             inherited: Map<String, String>,
             access: WorkspaceAccess,
             seedHostProbe: WorkspaceSeedHostProbe,
+        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+            when (val product = InstalledProductRuntime.admit(installation)) {
+                is Refinement.Rejected -> product
+                is Refinement.Refined -> open(product.value, root, inherited, access, seedHostProbe)
+            }
+
+        private fun open(
+            product: InstalledProductRuntime,
+            root: CanonicalRoot,
+            inherited: Map<String, String>,
+            access: WorkspaceAccess,
+            seedHostProbe: WorkspaceSeedHostProbe,
         ): Refinement<ManagedWorkspaceQuery, ContainerFailure> = containerFiles {
             val waiting = ManagedWorkspaceWait()
-            val platform =
-                when (val parsed = ContainerPlatform.current()) {
-                    is Refinement.Rejected -> return@containerFiles parsed
-                    is Refinement.Refined -> parsed.value
-                }
-            val product =
-                when (val selected = InstalledProductRuntime.read(installation, platform)) {
-                    is Refinement.Rejected -> return@containerFiles selected
-                    is Refinement.Refined -> selected.value
-                }
             ContainerQueryLease.duringStoreAdmission(product.runtime.root.parent.parent) {
-                openSelected(installation, root, inherited, product, waiting, access, seedHostProbe)
+                openSelected(product.installation, root, inherited, product, waiting, access, seedHostProbe)
             }
         }
 
@@ -134,7 +149,7 @@ private constructor(
                                 configuration.workspacePreparationWait,
                                 waiting,
                             )
-                        WorkspaceAccess.RETAINED -> lease.admitGeneration()
+                        WorkspaceAccess.RETAINED -> lease.admitGeneration(product.runtime)
                     }
                 val container =
                     when (generation) {
@@ -255,4 +270,8 @@ private class ManagedWorkspaceWait : ContainerPreparationWait {
     override fun admitActive(): Refinement<Unit, ContainerFailure> =
         if (Thread.currentThread().isInterrupted) Refinement.Rejected(ContainerFailure.CANCELLED_INTERRUPT)
         else Refinement.Refined(Unit)
+}
+
+private val unexpectedSeed = WorkspaceSeedHostProbe { _, _, _ ->
+    error("Retained workspace access cannot select a seed")
 }
