@@ -22,10 +22,12 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
@@ -56,6 +58,8 @@ internal class ManagedCoordinatorOperations(
     private val monitor = Any()
     private val entries = mutableMapOf<CanonicalRoot, WorkspaceSlot>()
     private val preparationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /** Parents preparation jobs only, so shutdown interrupts them without reaching Host-exit cleanup. */
+    private val preparations = SupervisorJob()
     private var closed = false
 
     override suspend fun execute(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult =
@@ -187,6 +191,7 @@ internal class ManagedCoordinatorOperations(
             }
         }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun beginPreparation(
         root: CanonicalRoot,
         retainedSlot: WorkspaceSlot?,
@@ -195,13 +200,15 @@ internal class ManagedCoordinatorOperations(
         val preparing = WorkspaceEntry.Preparing(settings.host, CompletableDeferred())
         val slot = retainedSlot ?: WorkspaceSlot(preparing).also { entries[root] = it }
         slot.state = preparing
-        preparationScope.launch {
+        // An atomic start settles a job cancelled before dispatch. runInterruptible discards a value returned while
+        // cancellation is pending, so the assignment keeps a returned binding for the drain that closes it.
+        preparationScope.launch(preparations, CoroutineStart.ATOMIC) {
+            var returned: Refinement<PreparedWorkspaceBinding, DaemonOperationFailure>? = null
             try {
-                val prepared = runInterruptible { acquisition.prepare(root, settings.applyTo(environment, emptyMap())) }
-                finishPreparation(slot, preparing, prepared)
+                runInterruptible { returned = acquisition.prepare(root, settings.applyTo(environment, emptyMap())) }
             } finally {
-                if (!preparing.result.isCompleted)
-                    finishPreparation(slot, preparing, Refinement.Rejected(lifecycleTransition))
+                val prepared = returned?.takeIf { isActive || it is Refinement.Refined }
+                finishPreparation(slot, preparing, prepared ?: Refinement.Rejected(lifecycleTransition))
             }
         }
         return WorkspaceTicket(slot, preparing)
@@ -282,6 +289,10 @@ internal class ManagedCoordinatorOperations(
             }
         }
 
+    /**
+     * Interrupts every preparation, which settles its Preparing result, and then drains each slot behind its permit.
+     * Host-exit cleanup jobs are not cancelled, so each revoked binding still closes.
+     */
     override fun close() {
         val interrupted = Thread.interrupted()
         try {
@@ -290,9 +301,9 @@ internal class ManagedCoordinatorOperations(
                     closed = true
                     entries.keys.toList()
                 }
+            preparations.cancel()
             runBlocking(NonCancellable) { roots.forEach { drain(it) } }
         } finally {
-            preparationScope.cancel()
             if (interrupted) Thread.currentThread().interrupt()
         }
     }
