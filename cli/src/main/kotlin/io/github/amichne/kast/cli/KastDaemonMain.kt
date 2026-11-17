@@ -85,7 +85,7 @@ private fun runSemanticDaemon(environment: Map<String, String>): BrokerServerRun
         runDaemonBootstrap(
             emptyList(),
             semantic,
-            InstalledBrokerServerRunner(context.installation.resolve("bin/kast"), home, semantic, it),
+            InstalledBrokerServerRunner(context.installation.resolve("bin/kast"), home, semantic, requests = it),
         )
     }
 }

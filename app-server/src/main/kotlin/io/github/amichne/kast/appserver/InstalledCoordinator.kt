@@ -145,9 +145,31 @@ private constructor(
             options: InstalledCoordinatorOptions,
             desktopDiscovery: DesktopDaemonDiscovery = DesktopDaemonDiscovery(),
             semantic: CoordinatorOperationExecutor? = null,
+        ): InstalledCoordinatorStart =
+            start(options, desktopDiscovery, semantic?.let { CoordinatorSemantic.LaunchBound(it) })
+
+        suspend fun start(
+            options: InstalledCoordinatorOptions,
+            requests: CoordinatorRequestExecutor,
+            desktopDiscovery: DesktopDaemonDiscovery = DesktopDaemonDiscovery(),
+        ): InstalledCoordinatorStart = start(options, desktopDiscovery, CoordinatorSemantic.RequestBound(requests))
+
+        @Suppress("LongMethod")
+        internal suspend fun start(
+            options: InstalledCoordinatorOptions,
+            desktopDiscovery: DesktopDaemonDiscovery,
+            selected: CoordinatorSemantic?,
         ): InstalledCoordinatorStart {
-            if (semantic != null && options.publicEndpoint !is BrokerPublicEndpoint.Private)
+            if (selected != null && options.publicEndpoint !is BrokerPublicEndpoint.Private)
                 return InstalledCoordinatorStart.Rejected(BrokerServerFailure.PROTOCOL_CONFIGURATION_REJECTED)
+            // The launch-bound executor resolves only this environment, so its stated tier is the conflict authority.
+            val semantic =
+                when (val execution = selected?.execution(options.environment)) {
+                    null -> null
+                    is Refinement.Refined -> execution.value
+                    is Refinement.Rejected ->
+                        return InstalledCoordinatorStart.Rejected(BrokerServerFailure.PROTOCOL_CONFIGURATION_REJECTED)
+                }
             val activity = BrokerStartupActivityPublisher(options.activitySink)
             var stage = BrokerStartupStage.READINESS_ACQUISITION
             activity.started(stage)

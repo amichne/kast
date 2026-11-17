@@ -19,6 +19,9 @@ import java.nio.file.Path
  * selects output and waiting for one request and never enters a retained binding.
  */
 internal class WorkspaceSettings private constructor(val host: Map<String, String>, val local: Map<String, String>) {
+    val preparationWait: String?
+        get() = local[ConfigurationParameter.WORKSPACE_PREPARATION_WAIT.key]
+
     /** Replaces the service's caller configuration with this overlay; [local] selects the request-local part. */
     fun applyTo(service: Map<String, String>, local: Map<String, String> = this.local): Map<String, String> =
         service.filterKeys { it !in CALLER_CONFIGURATION_KEYS } + host + local
@@ -176,4 +179,8 @@ private val CALLER_CONFIGURATION_KEYS =
         .toSet()
 
 private val REQUEST_LOCAL_KEYS =
-    setOf(ConfigurationParameter.OUTPUT_TOON.key, ConfigurationParameter.WORKSPACE_PREPARATION_WAIT.key)
+    setOf(
+        ConfigurationParameter.OUTPUT_TOON.key,
+        ConfigurationParameter.WORKSPACE_PREPARATION_WAIT.key,
+        ConfigurationParameter.DEBUG.key,
+    )

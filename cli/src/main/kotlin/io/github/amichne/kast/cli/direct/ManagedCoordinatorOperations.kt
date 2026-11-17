@@ -1,16 +1,22 @@
 package io.github.amichne.kast.cli.direct
 
+import io.github.amichne.kast.appserver.AdmittedRuntimeSettings
 import io.github.amichne.kast.appserver.CoordinatorOperationExecutor
+import io.github.amichne.kast.appserver.CoordinatorOperationRequest
+import io.github.amichne.kast.appserver.CoordinatorRequestExecutor
 import io.github.amichne.kast.appserver.DaemonOperationCall
 import io.github.amichne.kast.appserver.DaemonOperationClientRejection
 import io.github.amichne.kast.appserver.DaemonOperationFailure
+import io.github.amichne.kast.appserver.DaemonOperationInputFailure
 import io.github.amichne.kast.appserver.DaemonOperationProtocolFailure
 import io.github.amichne.kast.appserver.DaemonOperationResult
+import io.github.amichne.kast.appserver.DaemonRuntimeSettingsFailure
 import io.github.amichne.kast.appserver.WorkspaceOperationAdmission
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.workspaceAdmission
 import io.github.amichne.kast.distribution.cli.ContainerFailure
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
+import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import kotlinx.coroutines.CompletableDeferred
@@ -25,6 +31,7 @@ import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 internal enum class WorkspacePhase {
     PREPARING,
@@ -42,16 +49,29 @@ internal enum class WorkspaceDrain {
 internal class ManagedCoordinatorOperations(
     private val environment: Map<String, String>,
     private val acquisition: ManagedWorkspaceAcquisition,
-) : CoordinatorOperationExecutor, AutoCloseable {
+) : CoordinatorOperationExecutor, CoordinatorRequestExecutor, AutoCloseable {
     constructor(context: InstalledClientContext) : this(context.environment, InstalledWorkspaceAcquisition(context))
 
     private val monitor = Any()
     private val entries = mutableMapOf<CanonicalRoot, WorkspaceSlot>()
     private val preparationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var closed = false
+    private val launchSettings = AdmittedRuntimeSettings.fromEnvironment(environment)
 
     override suspend fun execute(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult =
         execute(root, WorkspaceSettings.explicit(environment), operation)
+
+    override suspend fun execute(request: CoordinatorOperationRequest): DaemonOperationResult {
+        val launch =
+            when (val admitted = launchSettings) {
+                is Refinement.Rejected -> return rejectRuntimeSettings(admitted.failure)
+                is Refinement.Refined -> admitted.value
+            }
+        return when (val inherited = request.settings.environmentOver(environment, launch)) {
+            is Refinement.Rejected -> rejectRuntimeSettings(inherited.failure)
+            is Refinement.Refined -> execute(request.root, WorkspaceSettings.explicit(inherited.value), request.call)
+        }
+    }
 
     suspend fun execute(
         root: CanonicalRoot,
@@ -91,7 +111,7 @@ internal class ManagedCoordinatorOperations(
                 is Refinement.Refined -> admitted.value
             }
         val ready =
-            when (val selected = ticket.source.await()) {
+            when (val selected = ticket.await(settings)) {
                 is Refinement.Rejected -> return rejectedOperation(selected.failure)
                 is Refinement.Refined -> selected.value
             }
@@ -146,7 +166,8 @@ internal class ManagedCoordinatorOperations(
             when (val entry = slot.state) {
                 is WorkspaceEntry.Failed -> Refinement.Refined(beginPreparation(root, slot, settings))
                 is WorkspaceEntry.Draining -> Refinement.Rejected(lifecycleTransition)
-                is WorkspaceEntry.Available ->
+                is WorkspaceEntry.Ready -> Refinement.Refined(WorkspaceTicket(slot, entry))
+                is WorkspaceEntry.Preparing ->
                     if (entry.settings == settings.host) Refinement.Refined(WorkspaceTicket(slot, entry))
                     else Refinement.Rejected(configurationConflict)
             }
@@ -249,6 +270,28 @@ private class WorkspaceSlot(var state: WorkspaceEntry) {
 }
 
 private data class WorkspaceTicket(val slot: WorkspaceSlot, val source: WorkspaceEntry.Available)
+
+private suspend fun WorkspaceTicket.await(
+    settings: WorkspaceSettings
+): Refinement<WorkspaceEntry.Ready, DaemonOperationFailure> {
+    val allowance = settings.preparationWait ?: return source.await()
+    return when (val parsed = ElapsedTimeAllowance.parseSetting(allowance)) {
+        is Refinement.Rejected ->
+            Refinement.Rejected(DaemonOperationFailure.ManagedWorkspace(ContainerFailure.INVALID_CONFIGURATION))
+        is Refinement.Refined ->
+            when (val budget = parsed.value) {
+                ElapsedTimeAllowance.Unlimited -> source.await()
+                is ElapsedTimeAllowance.Bounded ->
+                    withTimeoutOrNull(budget.limit.value) { source.await() }
+                        ?: Refinement.Rejected(
+                            DaemonOperationFailure.ManagedWorkspace(ContainerFailure.PREPARATION_WAIT_EXPIRED)
+                        )
+            }
+    }
+}
+
+private fun rejectRuntimeSettings(reason: DaemonRuntimeSettingsFailure): DaemonOperationResult =
+    rejectedOperation(DaemonOperationFailure.Input(DaemonOperationInputFailure.RuntimeSettings(reason)))
 
 private sealed interface DrainTicket {
     data class Own(val slot: WorkspaceSlot, val state: WorkspaceEntry.Draining) : DrainTicket

@@ -4,8 +4,8 @@ import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.BrokerServiceGeneration
 import io.github.amichne.kast.appserver.CoordinatorControlAction
 import io.github.amichne.kast.appserver.CoordinatorControlRequest
+import io.github.amichne.kast.appserver.CoordinatorExecution
 import io.github.amichne.kast.appserver.CoordinatorHostAttachment
-import io.github.amichne.kast.appserver.CoordinatorOperationExecutor
 import io.github.amichne.kast.appserver.CoordinatorServiceState
 import io.github.amichne.kast.appserver.CoordinatorStatusDocument
 import io.github.amichne.kast.appserver.CoordinatorStatusProtocol
@@ -53,7 +53,7 @@ private constructor(
     private val preparations: WorkspacePreparations,
     private val hostedServices: () -> List<HostedServiceStatus>,
     val privateEndpoint: Boolean,
-    semantic: CoordinatorOperationExecutor?,
+    semantic: CoordinatorExecution?,
 ) {
     private val closed = AtomicBoolean(false)
     // Capture once: replacing installed bytes cannot change this process's loaded version.
@@ -185,7 +185,7 @@ private constructor(
             preparations: WorkspacePreparations,
             hostedServices: () -> List<HostedServiceStatus> = { emptyList() },
             privateEndpoint: Boolean,
-            semantic: CoordinatorOperationExecutor? = null,
+            semantic: CoordinatorExecution? = null,
         ): Refinement<CoordinatorControl, WorkerControlFailure> =
             try {
                 val legacy = installationRoot.resolve("state/workers")

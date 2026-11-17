@@ -7,6 +7,7 @@ import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.InstalledSemanticCoordinator
 import io.github.amichne.kast.appserver.InstalledSemanticService
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
+import io.github.amichne.kast.appserver.RequestedRuntimeSettings
 import io.github.amichne.kast.cli.direct.DirectToolRegistration
 import io.github.amichne.kast.cli.direct.InstalledClientContext
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
@@ -43,7 +44,7 @@ internal fun coordinatedPublicSession(
                         DaemonOperationClientRejection.Transport(DaemonOperationClientFailure.UNAVAILABLE)
                     )
             val started = System.nanoTime()
-            val result = coordinator.execute(root, operation)
+            val result = coordinator.execute(root, operation, RequestedRuntimeSettings.fromEnvironment(System.getenv()))
             ControlStageTrace.record(
                 ControlStage.COORDINATED_INVOCATION,
                 if (result is DaemonOperationResult.Rejected) ControlStageOutcome.REJECTED

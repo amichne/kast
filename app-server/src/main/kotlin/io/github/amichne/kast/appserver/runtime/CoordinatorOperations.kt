@@ -1,7 +1,9 @@
 package io.github.amichne.kast.appserver.runtime
 
+import io.github.amichne.kast.appserver.AdmittedRuntimeSettings
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
-import io.github.amichne.kast.appserver.CoordinatorOperationExecutor
+import io.github.amichne.kast.appserver.CoordinatorExecution
+import io.github.amichne.kast.appserver.CoordinatorOperationRequest
 import io.github.amichne.kast.appserver.DaemonManagementTarget
 import io.github.amichne.kast.appserver.DaemonOperationCall
 import io.github.amichne.kast.appserver.DaemonOperationClientFailure
@@ -14,6 +16,7 @@ import io.github.amichne.kast.appserver.DaemonOperationRequest
 import io.github.amichne.kast.appserver.DaemonOperationResponse
 import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.DaemonOperationSelection
+import io.github.amichne.kast.appserver.DaemonRuntimeSettingsFailure
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.appserver.query.PublicToolInputFailure
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
@@ -34,11 +37,14 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerializationException
 
-/** One request per connection. A disconnect cancels that request's execution. */
+/**
+ * One request per connection. A disconnect cancels that request's execution. Output presentation, timeouts and
+ * cancellation stay with the caller; only stated runtime settings cross this boundary.
+ */
 internal class CoordinatorOperations(
     private val target: DaemonManagementTarget,
     private val available: () -> Boolean,
-    private val executor: CoordinatorOperationExecutor?,
+    private val execution: CoordinatorExecution?,
 ) {
     suspend fun handle(session: DefaultWebSocketServerSession) {
         val frame =
@@ -65,19 +71,21 @@ internal class CoordinatorOperations(
     }
 
     private suspend fun exchange(frame: Frame): DaemonOperationResponse {
-        val text = (frame as? Frame.Text)?.readText() ?: return reject(DaemonOperationProtocolFailure.INVALID_REQUEST)
-        if (text.toByteArray(Charsets.UTF_8).size > DaemonOperationProtocol.maximumRequestBytes)
-            return reject(DaemonOperationProtocolFailure.CAPACITY_EXCEEDED)
         val request =
-            try {
-                DaemonOperationProtocol.json.decodeFromString<DaemonOperationRequest>(text)
-            } catch (_: SerializationException) {
-                return reject(DaemonOperationProtocolFailure.INVALID_REQUEST)
+            when (val admitted = admitFrame(frame)) {
+                is Refinement.Rejected -> return reject(admitted.failure)
+                is Refinement.Refined -> admitted.value
             }
-        if (request.version != DaemonOperationProtocol.version)
-            return reject(DaemonOperationProtocolFailure.UNSUPPORTED_VERSION)
-        if (request.target != target) return reject(DaemonOperationProtocolFailure.IDENTITY_REJECTED)
-        val execute = executor ?: return reject(DaemonOperationProtocolFailure.UNAVAILABLE)
+        val settings =
+            when (val admitted = AdmittedRuntimeSettings.admit(request.settings)) {
+                is Refinement.Rejected -> return settingsRejected(admitted.failure)
+                is Refinement.Refined -> admitted.value
+            }
+        val execute = execution ?: return reject(DaemonOperationProtocolFailure.UNAVAILABLE)
+        if (execute is CoordinatorExecution.LaunchBound) {
+            val conflicts = settings.conflictsWith(execute.launch)
+            if (conflicts.isNotEmpty()) return settingsRejected(DaemonRuntimeSettingsFailure.Conflict(conflicts))
+        }
         val root =
             when (val admitted = exactRoot(request.root)) {
                 is Refinement.Rejected ->
@@ -91,7 +99,31 @@ internal class CoordinatorOperations(
                 is Refinement.Refined -> admitted.value
             }
         if (!available()) return reject(DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION)
-        return execute.execute(root, call).response(root)
+        val result =
+            when (execute) {
+                is CoordinatorExecution.LaunchBound -> execute.executor.execute(root, call)
+                is CoordinatorExecution.RequestBound ->
+                    execute.executor.execute(CoordinatorOperationRequest(root, call, settings))
+            }
+        return result.response(root)
+    }
+
+    private fun admitFrame(frame: Frame): Refinement<DaemonOperationRequest, DaemonOperationProtocolFailure> {
+        val text =
+            (frame as? Frame.Text)?.readText()
+                ?: return Refinement.Rejected(DaemonOperationProtocolFailure.INVALID_REQUEST)
+        if (text.toByteArray(Charsets.UTF_8).size > DaemonOperationProtocol.maximumRequestBytes)
+            return Refinement.Rejected(DaemonOperationProtocolFailure.CAPACITY_EXCEEDED)
+        val request =
+            try {
+                DaemonOperationProtocol.json.decodeFromString<DaemonOperationRequest>(text)
+            } catch (_: SerializationException) {
+                return Refinement.Rejected(DaemonOperationProtocolFailure.INVALID_REQUEST)
+            }
+        if (request.version != DaemonOperationProtocol.version)
+            return Refinement.Rejected(DaemonOperationProtocolFailure.UNSUPPORTED_VERSION)
+        if (request.target != target) return Refinement.Rejected(DaemonOperationProtocolFailure.IDENTITY_REJECTED)
+        return Refinement.Refined(request)
     }
 
     private fun DaemonOperationResult.response(root: CanonicalRoot): DaemonOperationResponse {
@@ -125,6 +157,9 @@ internal class CoordinatorOperations(
 
 private fun encode(response: DaemonOperationResponse): String =
     DaemonOperationProtocol.json.encodeToString(DaemonOperationResponse.serializer(), response)
+
+private fun settingsRejected(reason: DaemonRuntimeSettingsFailure) =
+    DaemonOperationResponse.Rejected(DaemonOperationFailure.Input(DaemonOperationInputFailure.RuntimeSettings(reason)))
 
 private fun reject(reason: DaemonOperationProtocolFailure) =
     DaemonOperationResponse.Rejected(DaemonOperationFailure.Protocol(reason))
