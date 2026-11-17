@@ -1835,7 +1835,7 @@ class ProductActivationTest(unittest.TestCase):
                 self.assertNotIn(str(self.home), evidence.getvalue())
                 self.assertFalse(os.path.lexists(runtime))
                 self.assertEqual([], list(runtime.parent.iterdir()))
-                self.assertEqual([], list(self.home.glob(".kast-runtime-*")))
+                self.assertEqual([], list(self.root.parent.glob(".kast-runtime-*")))
                 self.assertFalse((self.root / "recovery/replacement").exists())
                 self.assertFalse((self.root / "installation").exists())
                 self.assertEqual([], list(self.root.parent.glob(".kast-install-*")))
