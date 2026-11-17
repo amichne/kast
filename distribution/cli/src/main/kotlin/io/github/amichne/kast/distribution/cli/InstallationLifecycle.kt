@@ -60,6 +60,24 @@ private constructor(
             is LifecycleEffect.Rejected -> Refinement.Rejected(ContainerFailure.FENCE_REJECTED)
         }
 
+    /** Managed Host retirement excludes semantic effects through generation leases. */
+    fun retireManagedCoordinator(): Refinement<Unit, ContainerFailure> =
+        when (step(LifecycleOperation.STOP_FORCE, LifecycleStage.COORDINATOR, ::retireSemanticService)) {
+            LifecycleEffect.Completed -> Refinement.Refined(Unit)
+            is LifecycleEffect.Rejected -> Refinement.Rejected(ContainerFailure.SHUTDOWN_FAILED)
+        }
+
+    private fun retireSemanticService(): LifecycleEffect {
+        val state = installation.resolve("state")
+        // Service startup must publish under state/broker before it creates its socket.
+        if (
+            Files.notExists(state.resolve("broker"), NOFOLLOW_LINKS) &&
+                Files.notExists(state.resolve("run/c.sock"), NOFOLLOW_LINKS)
+        )
+            return LifecycleEffect.Completed
+        return service(LifecycleServiceAction.RETIRE_SEMANTIC)
+    }
+
     /** Only a committed removal journal may retain a fence created by this uninstall attempt. */
     fun <T> duringUninstallPreparation(action: () -> T): T {
         val absent = Files.notExists(root.resolve(SHUTDOWN_FENCE), NOFOLLOW_LINKS)
@@ -371,22 +389,7 @@ internal fun payloadOwned(
         entry.sha256 == "sha256:${sha256(path)}"
 }
 
-/** Only the selected lifecycle home crosses into the private JVM's system properties. */
-internal fun installationLifecycleEnvironment(
-    home: Path,
-    installation: Path,
-    environment: Map<String, String>,
-): Map<String, String> =
-    environment.filterKeys {
-        it in setOf("PATH", "JAVA_HOME", "CODEX_EXECUTABLE", "TMPDIR", "KAST_MANAGED_HEADLESS_STATE")
-    } +
-        mapOf(
-            "HOME" to home.toString(),
-            "KAST_CONFIGURATION_FILE" to installation.resolve("config/environment").toString(),
-            // JVM option quoting, not shell evaluation: preserve one property even for quotes or newlines.
-            "JAVA_TOOL_OPTIONS" to "'-Duser.home=${home.toString().replace("'", "'\"'\"'")}'",
-        )
-
 private enum class LifecycleServiceAction(val command: String) {
-    DISABLE("disable")
+    RETIRE_SEMANTIC("retire-semantic"),
+    DISABLE("disable"),
 }

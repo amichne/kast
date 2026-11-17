@@ -20,6 +20,7 @@ import io.github.amichne.kast.kernel.Refinement
 import kotlin.system.exitProcess
 
 fun main(arguments: Array<String>) {
+    ControlStageTrace.configure(System.getenv())
     if (arguments.firstOrNull() == "--internal-install") {
         executeInternalInstall(arguments.toList())
         return

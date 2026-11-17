@@ -24,6 +24,7 @@ internal fun configuredSemanticDeployment(
                                     state.path,
                                     configuration.hostIdleShutdown,
                                     configuration.hostMaxHeap,
+                                    configuration.gradleImportEnvironment,
                                 ),
                                 home,
                                 idea.path,
@@ -38,16 +39,18 @@ internal fun configuredSemanticDeployment(
 internal fun admitSemanticDeployment(
     deployment: SelectedLifecycleDeployment,
     descriptor: ExistingIdeDescriptor,
-): Refinement<ExistingIdeDescriptor, ExistingIdeFailure> =
-    when (deployment) {
-        is SelectedLifecycleDeployment.Headless -> {
-            val identity = descriptor.application?.runtimeIdentity
+): Refinement<ExistingIdeDescriptor, ExistingIdeFailure> {
+    val rejected = Refinement.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
+    val application = descriptor.application ?: return rejected
+    val identity = application.runtimeIdentity
+    return when (deployment) {
+        is SelectedLifecycleDeployment.Headless ->
             if (
-                identity != null &&
-                    managedIdentityMatches(deployment.installation, identity) &&
+                managedIdentityMatches(deployment.installation, identity) &&
+                    deployment.gradleEnvironment.matches(application.gradleImportEnvironmentIdentity) &&
                     identity.pid == descriptor.hostPid
             )
                 Refinement.Refined(descriptor)
-            else Refinement.Rejected(ExistingIdeFailure.DESCRIPTOR_REJECTED)
-        }
+            else rejected
     }
+}

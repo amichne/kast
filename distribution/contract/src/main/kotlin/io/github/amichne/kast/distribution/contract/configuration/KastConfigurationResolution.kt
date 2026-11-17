@@ -110,7 +110,7 @@ private constructor(
     val hostIdleShutdown: HostIdleShutdown,
     val hostMaxHeap: HostHeapPolicy,
     val workspaceDependencySharing: WorkspaceDependencySharing,
-    private val delegatedEnvironment: GradleImportEnvironment,
+    val gradleImportEnvironment: GradleImportEnvironment,
 ) {
     val selectedIdeHome: ConfigurationPathSelection
         get() = path(ConfigurationParameter.INSTALL_IDEA_HOME)
@@ -153,6 +153,9 @@ private constructor(
         )
     }
 
+    fun gradleImportVariableSelection(): String =
+        assignments.single { it.parameter == ConfigurationParameter.GRADLE_IMPORT_VARIABLES }.value.boundaryValue()
+
     /** Complete non-secret runtime configuration, including catalogue defaults, for launch evidence. */
     fun launchEnvironment(): ResolvedLaunchEnvironment =
         ResolvedLaunchEnvironment(
@@ -176,7 +179,7 @@ private constructor(
     /** Internal launch identity includes materialized saved inputs, without exporting secret values. */
     fun childIdentityInputs(child: ConfigurationChild): Map<String, String> =
         childProjection(child, reloadSaved = false).mapValues { (key, value) ->
-            if (delegatedEnvironment.evidence.any { it.name.value == key }) "<present>" else value
+            if (gradleImportEnvironment.evidence.any { it.name.value == key }) "<present>" else value
         }
 
     private fun childProjection(child: ConfigurationChild, reloadSaved: Boolean): Map<String, String> = buildMap {
@@ -193,8 +196,10 @@ private constructor(
                 put(assignment.parameter.key, assignment.value.boundaryValue())
             }
         }
-        if (delegatedEnvironment.evidence.isNotEmpty() || delegatedEnvironment.executableDirectories.isNotEmpty()) {
-            putAll(delegatedEnvironment.processVariables())
+        if (
+            gradleImportEnvironment.evidence.isNotEmpty() || gradleImportEnvironment.executableDirectories.isNotEmpty()
+        ) {
+            putAll(gradleImportEnvironment.processVariables())
             if (
                 !(reloadInstallation &&
                     assignments.any {
@@ -204,7 +209,7 @@ private constructor(
             )
                 put(
                     GradleImportEnvironment.VARIABLES_SETTING,
-                    delegatedEnvironment.evidence.joinToString(",") { it.name.value },
+                    gradleImportEnvironment.evidence.joinToString(",") { it.name.value },
                 )
             if (
                 !(reloadInstallation &&
@@ -215,7 +220,7 @@ private constructor(
             )
                 put(
                     GradleImportEnvironment.PATH_SETTING,
-                    delegatedEnvironment.executableDirectories.joinToString(":") { it.path.toString() },
+                    gradleImportEnvironment.executableDirectories.joinToString(":") { it.path.toString() },
                 )
         }
     }

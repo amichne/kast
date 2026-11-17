@@ -3,6 +3,9 @@ package io.github.amichne.kast.cli.direct
 import io.github.amichne.kast.cli.admitNativeControlRoot
 import io.github.amichne.kast.cli.installation.InstallationManifest
 import io.github.amichne.kast.cli.installation.installationManifestJson
+import io.github.amichne.kast.distribution.cli.ControlStage
+import io.github.amichne.kast.distribution.cli.ControlStageOutcome
+import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.kernel.Refinement
@@ -10,24 +13,31 @@ import java.io.IOException
 import java.net.URISyntaxException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 import kotlinx.serialization.SerializationException
 
-/** Runtime-only installation evidence shared by direct execution and its invocation record. */
-internal class InstalledClientContext
+/**
+ * Revision-bound installation identity without a payload digest. It selects the installation, observes its fences, and
+ * records invocations. Local workspace authority needs [InstalledClientContext.verify]; a coordinator peer serving this
+ * exact payload revision carries that proof instead.
+ */
+internal class InstalledClientBinding
 private constructor(
     val installation: Path,
+    val payload: Path,
     val environment: Map<String, String>,
-    private val payload: Path,
-    private val identity: BasicFileAttributes,
+    internal val expectedDigest: String,
+    private val payloadRevision: ClientFileRevision,
+    private val manifest: ClientFileRevision,
 ) {
     fun observe(): InstalledToolAdmission =
         try {
-            val current = Files.readAttributes(payload, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
             if (
-                !payloadUnchanged(current) ||
+                !payloadRevision.isCurrent() ||
+                    !manifest.isCurrent() ||
                     !Files.notExists(installation.resolve(".recovery-detached"), NOFOLLOW_LINKS)
             )
                 InstalledToolAdmission.UNPROVEN
@@ -38,16 +48,8 @@ private constructor(
             InstalledToolAdmission.UNPROVEN
         }
 
-    private fun payloadUnchanged(current: BasicFileAttributes): Boolean =
-        current.isRegularFile && payload.toRealPath() == payload && sameIdentity(current)
-
-    private fun sameIdentity(current: BasicFileAttributes): Boolean =
-        current.fileKey() == identity.fileKey() &&
-            current.size() == identity.size() &&
-            current.lastModifiedTime() == identity.lastModifiedTime()
-
     companion object {
-        fun current(environment: Map<String, String>): Refinement<InstalledClientContext, ClientInstallationFailure> =
+        fun current(environment: Map<String, String>): Refinement<InstalledClientBinding, ClientInstallationFailure> =
             try {
                 val payload =
                     if (System.getProperty("org.graalvm.nativeimage.imagecode") == "runtime") {
@@ -56,7 +58,7 @@ private constructor(
                         InstalledClientContext::class.java.protectionDomain.codeSource?.location?.toURI()?.let(Path::of)
                     }
                 if (payload == null) Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
-                else admit(payload, environment)
+                else locate(payload, environment)
             } catch (_: URISyntaxException) {
                 Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
             } catch (_: IllegalArgumentException) {
@@ -65,12 +67,12 @@ private constructor(
                 Refinement.Rejected(ClientInstallationFailure.IO)
             }
 
-        fun admit(
+        fun locate(
             payload: Path,
             environment: Map<String, String>,
-        ): Refinement<InstalledClientContext, ClientInstallationFailure> =
+        ): Refinement<InstalledClientBinding, ClientInstallationFailure> =
             try {
-                admitFiles(payload, environment)
+                locateFiles(payload, environment)
             } catch (_: IOException) {
                 Refinement.Rejected(ClientInstallationFailure.IO)
             } catch (_: SecurityException) {
@@ -79,10 +81,10 @@ private constructor(
                 Refinement.Rejected(ClientInstallationFailure.MANIFEST)
             }
 
-        private fun admitFiles(
+        private fun locateFiles(
             payload: Path,
             environment: Map<String, String>,
-        ): Refinement<InstalledClientContext, ClientInstallationFailure> {
+        ): Refinement<InstalledClientBinding, ClientInstallationFailure> {
             if (!payload.isAbsolute || payload.normalize() != payload || payload.toRealPath() != payload)
                 return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
             val installation =
@@ -92,9 +94,33 @@ private constructor(
                 }
             if (!Files.notExists(installation.resolve(".recovery-detached"), NOFOLLOW_LINKS))
                 return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
-            return when (val manifest = admitManifest(installation)) {
-                is Refinement.Rejected -> manifest
-                is Refinement.Refined -> admitPayload(payload, installation, manifest.value, environment)
+            val manifest =
+                when (val admitted = admitManifest(installation)) {
+                    is Refinement.Rejected -> return admitted
+                    is Refinement.Refined -> admitted.value
+                }
+            val relative = installation.relativize(payload).toString()
+            val selected =
+                manifest.document.payloadFiles.singleOrNull { it.path == relative }
+                    ?: return Refinement.Rejected(ClientInstallationFailure.MANIFEST)
+            val revision =
+                ClientFileRevision.capture(payload) ?: return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
+            val selectedEnvironment =
+                if ("KAST_CONFIGURATION_FILE" in environment) environment.toMap()
+                else environment + ("KAST_CONFIGURATION_FILE" to manifest.document.configuration)
+            val binding =
+                InstalledClientBinding(
+                    installation,
+                    payload,
+                    selectedEnvironment,
+                    selected.sha256,
+                    revision,
+                    manifest.revision,
+                )
+            return when (binding.observe()) {
+                InstalledToolAdmission.AVAILABLE,
+                InstalledToolAdmission.STOPPED -> Refinement.Refined(binding)
+                InstalledToolAdmission.UNPROVEN -> Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
             }
         }
 
@@ -113,10 +139,14 @@ private constructor(
                     }
             }
 
-        private fun admitManifest(installation: Path): Refinement<InstallationManifest, ClientInstallationFailure> {
+        private fun admitManifest(installation: Path): Refinement<AdmittedClientManifest, ClientInstallationFailure> {
             val manifestPath = installation.resolve("installation.json")
-            if (!Files.isRegularFile(manifestPath, NOFOLLOW_LINKS))
-                return Refinement.Rejected(ClientInstallationFailure.MANIFEST)
+            val revision =
+                try {
+                    ClientFileRevision.capture(manifestPath)
+                } catch (_: NoSuchFileException) {
+                    null
+                } ?: return Refinement.Rejected(ClientInstallationFailure.MANIFEST)
             val bytes =
                 Files.newInputStream(manifestPath, NOFOLLOW_LINKS).use {
                     it.readNBytes(ControlDistributionLimits.maximumManifestBytes + 1)
@@ -131,41 +161,92 @@ private constructor(
                     manifest.configuration != installation.resolve("config/environment").toString()
             )
                 Refinement.Rejected(ClientInstallationFailure.MANIFEST)
-            else Refinement.Refined(manifest)
+            else Refinement.Refined(AdmittedClientManifest(manifest, revision))
         }
+    }
+}
 
-        private fun admitPayload(
+/** Digest-verified installation evidence shared by local workspace execution and its invocation record. */
+internal class InstalledClientContext private constructor(val binding: InstalledClientBinding) {
+    val installation: Path
+        get() = binding.installation
+
+    val environment: Map<String, String>
+        get() = binding.environment
+
+    fun observe(): InstalledToolAdmission = binding.observe()
+
+    companion object {
+        fun current(environment: Map<String, String>): Refinement<InstalledClientContext, ClientInstallationFailure> =
+            when (val located = InstalledClientBinding.current(environment)) {
+                is Refinement.Rejected -> located
+                is Refinement.Refined -> verify(located.value)
+            }
+
+        fun admit(
             payload: Path,
-            installation: Path,
-            manifest: InstallationManifest,
             environment: Map<String, String>,
-        ): Refinement<InstalledClientContext, ClientInstallationFailure> {
-            val relative = installation.relativize(payload).toString()
-            val selected = manifest.payloadFiles.singleOrNull { it.path == relative }
-            if (selected == null) return Refinement.Rejected(ClientInstallationFailure.MANIFEST)
-            val identity = Files.readAttributes(payload, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
-            if (!identity.isRegularFile || identity.fileKey() == null)
-                return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
-            val digest = MessageDigest.getInstance("SHA-256")
-            Files.newInputStream(payload, NOFOLLOW_LINKS).use { input ->
-                val buffer = ByteArray(8192)
-                var count = input.read(buffer)
-                while (count >= 0) {
-                    digest.update(buffer, 0, count)
-                    count = input.read(buffer)
+        ): Refinement<InstalledClientContext, ClientInstallationFailure> =
+            when (val located = InstalledClientBinding.locate(payload, environment)) {
+                is Refinement.Rejected -> located
+                is Refinement.Refined -> verify(located.value)
+            }
+
+        /** Hashes the complete bound payload; the captured revision must still hold afterward. */
+        fun verify(binding: InstalledClientBinding): Refinement<InstalledClientContext, ClientInstallationFailure> =
+            try {
+                val started = System.nanoTime()
+                val digest = MessageDigest.getInstance("SHA-256")
+                var bytes = 0L
+                Files.newInputStream(binding.payload, NOFOLLOW_LINKS).use { input ->
+                    val buffer = ByteArray(8192)
+                    var count = input.read(buffer)
+                    while (count >= 0) {
+                        digest.update(buffer, 0, count)
+                        bytes += count
+                        count = input.read(buffer)
+                    }
                 }
+                ControlStageTrace.record(
+                    ControlStage.PAYLOAD_VERIFICATION,
+                    ControlStageOutcome.COMPLETED,
+                    started,
+                    bytes,
+                )
+                if (binding.expectedDigest != "sha256:" + digest.digest().joinToString("") { "%02x".format(it) })
+                    Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
+                else
+                    when (binding.observe()) {
+                        InstalledToolAdmission.AVAILABLE,
+                        InstalledToolAdmission.STOPPED -> Refinement.Refined(InstalledClientContext(binding))
+                        InstalledToolAdmission.UNPROVEN -> Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
+                    }
+            } catch (_: IOException) {
+                Refinement.Rejected(ClientInstallationFailure.IO)
+            } catch (_: SecurityException) {
+                Refinement.Rejected(ClientInstallationFailure.IO)
             }
-            if (selected.sha256 != "sha256:" + digest.digest().joinToString("") { "%02x".format(it) })
-                return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
-            val selectedEnvironment =
-                if ("KAST_CONFIGURATION_FILE" in environment) environment.toMap()
-                else environment + ("KAST_CONFIGURATION_FILE" to manifest.configuration)
-            val context = InstalledClientContext(installation, selectedEnvironment, payload, identity)
-            return when (context.observe()) {
-                InstalledToolAdmission.AVAILABLE,
-                InstalledToolAdmission.STOPPED -> Refinement.Refined(context)
-                InstalledToolAdmission.UNPROVEN -> Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
-            }
+    }
+}
+
+private data class AdmittedClientManifest(val document: InstallationManifest, val revision: ClientFileRevision)
+
+private class ClientFileRevision
+private constructor(private val path: Path, private val identity: BasicFileAttributes) {
+    fun isCurrent(): Boolean {
+        val current = Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
+        return current.isRegularFile &&
+            path.toRealPath() == path &&
+            current.fileKey() == identity.fileKey() &&
+            current.size() == identity.size() &&
+            current.lastModifiedTime() == identity.lastModifiedTime()
+    }
+
+    companion object {
+        fun capture(path: Path): ClientFileRevision? {
+            val identity = Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
+            return if (identity.isRegularFile && identity.fileKey() != null) ClientFileRevision(path, identity)
+            else null
         }
     }
 }

@@ -3,7 +3,11 @@ package io.github.amichne.kast.cli
 import io.github.amichne.kast.cli.mcp.KastMcpMain
 import io.github.amichne.kast.cli.publicshell.KastPublicCliMain
 import io.github.amichne.kast.cli.publicshell.PublicJqWorker
+import io.github.amichne.kast.cli.publicshell.nativeControlEnvironment
 import io.github.amichne.kast.cli.rpc.KastToolRpcMain
+import io.github.amichne.kast.distribution.cli.ControlStage
+import io.github.amichne.kast.distribution.cli.ControlStageOutcome
+import io.github.amichne.kast.distribution.cli.ControlStageTrace
 import io.github.amichne.kast.distribution.cli.main as runManagement
 import io.github.amichne.kast.distribution.contract.NativeControlEntry
 import io.github.amichne.kast.distribution.contract.admitNativeControlInvocation
@@ -14,6 +18,10 @@ import kotlin.system.exitProcess
 object KastNativeMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
+        val started = System.nanoTime()
+        val environment = nativeControlEnvironment()
+        ControlStageTrace.configure(environment)
+        ControlStageTrace.record(ControlStage.PROCESS_START, ControlStageOutcome.CREATED, started)
         when (val admitted = admitNativeControlInvocation(arguments.toList())) {
             is Refinement.Rejected -> {
                 System.err.println("kast: unsupported internal entrypoint")
@@ -23,7 +31,11 @@ object KastNativeMain {
                 val invocation = admitted.value
                 val args = invocation.arguments.toTypedArray()
                 when (invocation.entry) {
-                    NativeControlEntry.MANAGEMENT -> runManagement(args)
+                    NativeControlEntry.MANAGEMENT -> {
+                        val installation = coordinatedQueryInstallation(invocation.arguments, environment)
+                        if (installation != null) KastPublicCliMain.coordinated(args, installation, environment)
+                        runManagement(args)
+                    }
                     NativeControlEntry.QUERY -> KastPublicCliMain.main(args)
                     NativeControlEntry.JQ -> PublicJqWorker.main(args)
                     NativeControlEntry.MCP -> KastMcpMain.main(args)
@@ -36,4 +48,15 @@ object KastNativeMain {
             }
         }
     }
+}
+
+private fun coordinatedQueryInstallation(
+    args: List<String>,
+    environment: Map<String, String>,
+): java.nio.file.Path? {
+    if (System.getProperty("org.graalvm.nativeimage.imagecode") != "runtime") return null
+    val namespace = args.firstOrNull()
+    if (namespace != "workspace" && !io.github.amichne.kast.distribution.cli.isPublicQueryNamespace(namespace))
+        return null
+    return io.github.amichne.kast.distribution.cli.selectedPublicQueryInstallation(environment)
 }

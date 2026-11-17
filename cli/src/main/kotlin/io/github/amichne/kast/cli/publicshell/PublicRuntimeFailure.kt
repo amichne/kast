@@ -13,6 +13,7 @@ internal fun classifyPublicRuntimeFailure(failure: DaemonOperationClientRejectio
     when (failure) {
         is DaemonOperationClientRejection.Command,
         is DaemonOperationClientRejection.Coordinator -> PublicShellExit.BOOTSTRAP
+        is DaemonOperationClientRejection.Startup -> PublicShellExit.IO
         is DaemonOperationClientRejection.Transport ->
             when (failure.failure) {
                 DaemonOperationClientFailure.CODE_SOURCE_UNAVAILABLE,
@@ -33,6 +34,7 @@ private fun classifyServerFailure(cause: DaemonOperationFailure): PublicShellExi
         is DaemonOperationFailure.Root -> PublicShellExit.WORKSPACE
         is DaemonOperationFailure.Input -> PublicShellExit.INPUT
         is DaemonOperationFailure.Preparation,
+        is DaemonOperationFailure.ManagedWorkspace,
         is DaemonOperationFailure.Workspace -> PublicShellExit.RUNTIME
         is DaemonOperationFailure.Protocol ->
             when (cause.reason) {

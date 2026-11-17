@@ -220,6 +220,8 @@ private constructor(
     private val fileKey: Any,
     private val aliasTarget: SocketTarget? = null,
 ) {
+    internal fun currentFileKey(): String? = fileKey.toString().takeIf { matchesCurrent() }
+
     internal fun matchesCurrent(): Boolean {
         return try {
             val current = Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)

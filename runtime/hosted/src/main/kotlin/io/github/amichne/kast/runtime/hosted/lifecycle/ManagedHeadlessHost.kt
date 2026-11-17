@@ -5,6 +5,7 @@ import com.intellij.openapi.application.ModernApplicationStarter
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.util.Key
 import io.github.amichne.kast.distribution.contract.configuration.HostIdleShutdown
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 
@@ -31,6 +32,7 @@ internal data class HeadlessHostEnvironment(
     val productionBootstrap: Boolean,
     /** The raw launch property; admission refines it into [ManagedHeadlessHost.idleShutdown]. */
     val idleShutdown: String? = null,
+    val gradleImportEnvironmentIdentity: String? = null,
 )
 
 /** Admission grants private process state, never project trust or semantic readiness. */
@@ -118,6 +120,8 @@ private constructor(val environment: HeadlessHostEnvironment, val idleShutdown: 
                                     System.getProperty("idea.trust.all.projects") in setOf(null, "false") &&
                                     System.getProperty("idea.auto.reload.plugins") in setOf(null, "false"),
                             idleShutdown = System.getProperty(HostIdleShutdown.JVM_PROPERTY),
+                            gradleImportEnvironmentIdentity =
+                                System.getProperty(GradleImportEnvironment.HOST_IDENTITY_PROPERTY),
                         )
                     )
             } catch (_: java.io.IOException) {

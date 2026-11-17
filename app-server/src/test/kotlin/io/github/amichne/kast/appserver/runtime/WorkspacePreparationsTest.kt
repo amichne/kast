@@ -60,10 +60,14 @@ class WorkspacePreparationsTest {
         val completed = first.state.value as WorkspacePreparationOutcome.Complete
         assertEquals(root, completed.workspace.root)
         assertEquals(target, completed.workspace.target)
+        assertSame(first, (preparations.prepareForDemand(root) as Refinement.Refined).value)
+        assertEquals(1, requests.size)
         assertEquals(
             listOf(
                 WorkspacePreparationActivityOutcome.Pending(IdeLifecycleStage.OPENING),
+                WorkspacePreparationActivityOutcome.Joined,
                 WorkspacePreparationActivityOutcome.Completed,
+                WorkspacePreparationActivityOutcome.Reused(target.host, target.project),
             ),
             events.map { it.outcome },
         )

@@ -113,7 +113,10 @@ class HostedCompatibilityExchangeTest {
             val preparation = installedPreparation(root.path, deployment)
             try {
                 val status =
-                    assertInstanceOf(HostedServiceStatus.Compatible::class.java, preparation.hostedServices().single())
+                    assertInstanceOf(
+                        HostedServiceStatus.Compatible::class.java,
+                        preparation.hostedServices(root.path.resolve("installation/config/workspaces.json")).single(),
+                    )
                 assertEquals(root.path.toString(), status.root)
                 assertEquals("00000000-0000-0000-0000-000000000002", status.host)
                 assertEquals(ProcessHandle.current().pid(), status.hostPid)
@@ -136,7 +139,7 @@ class HostedCompatibilityExchangeTest {
                 val status =
                     assertInstanceOf(
                         HostedServiceStatus.Incompatible::class.java,
-                        preparation.hostedServices().single(),
+                        preparation.hostedServices(root.path.resolve("installation/config/workspaces.json")).single(),
                     )
                 assertEquals(root.path.toString(), status.root)
                 assertEquals("0.49.0", status.hostedPluginVersion)
@@ -175,7 +178,7 @@ class HostedCompatibilityExchangeTest {
                 ) as Refinement.Refined)
                 .value
         val owner = (BrokerInstallationState.admit(installation) as Refinement.Refined).value
-        return InstalledWorkspacePreparation(options, owner)
+        return InstalledWorkspacePreparation(options.userHome, options.configuration, owner.installationId.value)
     }
 
     @Test

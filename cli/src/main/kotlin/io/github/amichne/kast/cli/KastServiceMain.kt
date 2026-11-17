@@ -7,6 +7,8 @@ import io.github.amichne.kast.appserver.AppServerManager
 import io.github.amichne.kast.appserver.DaemonManagementRejection
 import io.github.amichne.kast.appserver.InstalledAppServerManager
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
+import io.github.amichne.kast.appserver.SemanticCoordinatorRetirement
+import io.github.amichne.kast.appserver.retireFencedSemanticCoordinator
 import io.github.amichne.kast.cli.installation.InstallationCliInspection
 import io.github.amichne.kast.cli.installation.InstallationHandling
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
@@ -15,6 +17,7 @@ import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlin.system.exitProcess
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -58,6 +61,11 @@ object KastServiceMain {
             exitProcess(exit.code)
         }
         if (tryManagedHeadlessShutdown(arguments.toList())) return
+        if (arguments.toList() == listOf("retire-semantic")) {
+            retireSemanticOwner(requireFence = true)
+            return
+        }
+        if (arguments.toList() == listOf("disable")) retireSemanticOwner(requireFence = false)
         val outcome = runServiceControl(selectServiceControl(arguments.toList()))
         when (outcome) {
             ServiceControlOutcome.Completed -> Unit
@@ -209,6 +217,10 @@ internal sealed interface ServiceControlFailureDocument {
     data class Headless(val failure: io.github.amichne.kast.cli.installation.ManagedHeadlessShutdownFailure) :
         ServiceControlFailureDocument
 
+    @Serializable
+    @SerialName("semantic_coordinator")
+    data class SemanticCoordinator(val failure: SemanticCoordinatorRetirement) : ServiceControlFailureDocument
+
     @Serializable @SerialName("arguments") data object Arguments : ServiceControlFailureDocument
 
     @Serializable
@@ -230,6 +242,37 @@ internal sealed interface ServiceControlFailureDocument {
 internal val serviceControlJson = Json { encodeDefaults = true }
 
 private const val SERVICE_CONTROL_REJECTED_EXIT_CODE = 64
+
+private fun retireSemanticOwner(requireFence: Boolean) {
+    val retired =
+        when (val installed = installedKastExecutable()) {
+            is Refinement.Rejected -> SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN
+            is Refinement.Refined ->
+                runBlocking {
+                    retireFencedSemanticCoordinator(
+                        installed.value.parent.parent,
+                        Path.of(System.getProperty("user.home")),
+                    )
+                }
+        }
+    when (retired) {
+        SemanticCoordinatorRetirement.ABSENT,
+        SemanticCoordinatorRetirement.EXITED -> Unit
+        SemanticCoordinatorRetirement.UNFENCED -> if (requireFence) semanticRetirementRejected(retired)
+        SemanticCoordinatorRetirement.OWNERSHIP_UNPROVEN,
+        SemanticCoordinatorRetirement.SHUTDOWN_UNOBSERVED,
+        SemanticCoordinatorRetirement.EXIT_UNOBSERVED -> semanticRetirementRejected(retired)
+    }
+}
+
+private fun semanticRetirementRejected(retired: SemanticCoordinatorRetirement): Nothing {
+    System.err.println(
+        serviceControlJson.encodeToString<ServiceControlFailureDocument>(
+            ServiceControlFailureDocument.SemanticCoordinator(retired)
+        )
+    )
+    exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
+}
 
 private fun tryManagedHeadlessShutdown(arguments: List<String>): Boolean {
     if (arguments != listOf("disable") || System.getenv("KAST_MANAGED_HEADLESS_STATE") == null) return false

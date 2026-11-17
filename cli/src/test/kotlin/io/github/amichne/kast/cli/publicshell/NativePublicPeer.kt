@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.publicshell
 
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
@@ -55,6 +57,10 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
     AutoCloseable {
     private val json = Json { encodeDefaults = true }
     private val deployment = NativeManagedWorkspaceFixture(fixture).deployment
+    private val hostProcess =
+        ProcessBuilder(deployment.launch.executable)
+            .redirectError(fixture.evidence.resolve("fixture-host.stderr").toFile())
+            .start()
     private val target =
         IdeProjectTarget(
             "00000000-0000-0000-0000-000000000001",
@@ -77,13 +83,13 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
         IdeHostRuntimeIdentity(
             deployment.launch.home,
             deployment.config.toString(),
-            ProcessHandle.current().pid(),
-            ProcessHandle.current().info().startInstant().orElseThrow().toEpochMilli(),
+            hostProcess.pid(),
+            exactHostStart(hostProcess),
             target.host,
             IdeHostBuildIdentity("0.0.0", "a".repeat(40), "b".repeat(40)),
             mode = IdeHostMode.MANAGED_HEADLESS,
         )
-    private val application = IdeHostApplicationAdvertisement(identity, compatibility)
+    private val application = IdeHostApplicationAdvertisement(identity, compatibility, defaultGradleIdentity())
     private val endpointRoot =
         Files.createDirectory(
             io.github.amichne.kast.distribution.contract.HostedEndpointPaths.root(deployment.userHome)
@@ -94,6 +100,15 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
     private val executor = Executors.newSingleThreadExecutor()
     private val queryStarted = CompletableFuture<Unit>()
     private val worker = executor.submit {
+        try {
+            serve()
+        } catch (failure: Throwable) {
+            queryStarted.completeExceptionally(failure)
+            throw failure
+        }
+    }
+
+    private fun serve() {
         prepareWorkspace()
         hosted.accept().use { channel ->
             assertRequest(channel, "DESCRIBE")
@@ -119,15 +134,46 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
     }
 
     init {
-        val socket = (hosted.localAddress as UnixDomainSocketAddress).path
-        Files.writeString(
-            socket.parent.resolve("endpoint.json"),
-            json.encodeToString(PeerDescriptor(target.root, socket.toString(), target.project, application)),
-        )
+        writeDescriptor(hosted) { socket ->
+            PeerDescriptor(target.root, socket.toString(), target.project, application, hostPid = identity.pid)
+        }
+        writeDescriptor(lifecycle) { socket ->
+            PeerDescriptor(
+                identity.ideaHome,
+                socket.toString(),
+                target.host,
+                application,
+                hostPid = identity.pid,
+                querySchema = "kast.workspace.lifecycle.v2",
+                operations = listOf("WORKSPACE_LIFECYCLE"),
+            )
+        }
+    }
+
+    private fun writeDescriptor(listener: ServerSocketChannel, descriptor: (Path) -> PeerDescriptor) {
+        val socket = (listener.localAddress as UnixDomainSocketAddress).path
+        Files.writeString(socket.parent.resolve("endpoint.json"), json.encodeToString(descriptor(socket)))
+    }
+
+    private fun defaultGradleIdentity(): String {
+        val gradleHome = deployment.gradleHome.toString()
+        val selected = GradleImportEnvironment.admit("GRADLE_USER_HOME", "", mapOf("GRADLE_USER_HOME" to gradleHome))
+        check(selected is Refinement.Refined)
+        return selected.value.identity.value
     }
 
     fun awaitQuery() {
-        queryStarted.get(20, TimeUnit.SECONDS)
+        try {
+            queryStarted.get(20, TimeUnit.SECONDS)
+        } catch (failure: java.util.concurrent.TimeoutException) {
+            val evidence =
+                listOf("semantic.stderr", "mcp.stderr", "socket.stderr", "socket.stdout", "fixture-host.stderr")
+                    .mapNotNull { name ->
+                        val path = fixture.evidence.resolve(name)
+                        if (Files.exists(path)) "$name: ${Files.readString(path).takeLast(8192)}" else null
+                    }
+            throw AssertionError(evidence.joinToString("\n"), failure)
+        }
     }
 
     fun assertConsumed() {
@@ -160,9 +206,12 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
             assertEquals(target.host, open.host)
             writeFrame(channel, json.encodeToString<IdeLifecycleResult>(IdeLifecycleResult.Opened(target)))
         }
-        lifecycle.accept().use { channel ->
-            assertEquals(IdeLifecycleCommand.Inspect, lifecycleRequest(channel))
-            writeFrame(channel, json.encodeToString<IdeLifecycleResult>(inspected))
+        repeat(2) {
+            lifecycle.accept().use { channel ->
+                check(hostProcess.isAlive) { "Fixture Host exited: ${hostProcess.exitValue()}" }
+                assertEquals(IdeLifecycleCommand.Inspect, lifecycleRequest(channel))
+                writeFrame(channel, json.encodeToString<IdeLifecycleResult>(inspected))
+            }
         }
     }
 
@@ -178,7 +227,7 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
     }
 
     private fun statusReply(): String {
-        val status = PeerHost(target.root, target.project, compatibility)
+        val status = PeerHost(target.root, target.project, compatibility, hostPid = identity.pid)
         return when (reply) {
             NativePeerReply.HOLD_QUERY,
             NativePeerReply.REPLACED_SOCKET,
@@ -225,8 +274,22 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
         executor.shutdownNow()
         check(executor.awaitTermination(5, TimeUnit.SECONDS)) { "Peer worker did not settle" }
         replacements.forEach(ServerSocketChannel::close)
+        stopNativeProcess(hostProcess)
         Files.walk(endpointRoot).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
     }
+}
+
+private fun exactHostStart(process: Process): Long {
+    val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+    while (process.isAlive && System.nanoTime() < deadline) {
+        process.info().startInstant().orElse(null)?.let {
+            return it.toEpochMilli()
+        }
+        Thread.onSpinWait()
+    }
+    val exit = if (process.isAlive) "alive" else process.exitValue().toString()
+    stopNativeProcess(process)
+    error("The fixture Host did not publish its process start. Exit: $exit")
 }
 
 private fun readFrame(channel: SocketChannel): String {
@@ -255,7 +318,7 @@ private data class PeerDescriptor(
     val application: IdeHostApplicationAdvertisement,
     val type: String = "KAST_IDE_ENDPOINT",
     val protocol: Int = 3,
-    val hostPid: Long = ProcessHandle.current().pid(),
+    val hostPid: Long,
     val querySchema: String = "kast.query.run.v10",
     val operations: List<String> = peerOperations(),
 )
@@ -267,7 +330,7 @@ private data class PeerHost(
     val compatibility: HostedCompatibilityDocument,
     val type: String = "KAST_IDE_HOST",
     val protocol: Int = 3,
-    val hostPid: Long = ProcessHandle.current().pid(),
+    val hostPid: Long,
     val querySchema: String = "kast.query.run.v10",
     val indexAuthority: String = "existing_ide_kotlin_stub_index",
     val operations: List<String> = peerOperations(),

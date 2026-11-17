@@ -43,6 +43,46 @@ import kotlinx.serialization.json.JsonObject
 object KastPublicCliMain {
     @JvmStatic
     fun main(args: Array<String>) {
+        exitProcess(
+            run(args) { input, directory ->
+                preparePublicCli(args.toList(), input, directory, diagnostic = System.err::println)
+            }
+        )
+    }
+
+    internal fun coordinated(
+        args: Array<String>,
+        installation: Path,
+        environment: Map<String, String>,
+    ): Nothing {
+        val started = System.nanoTime()
+        val exit =
+            run(args) { input, directory ->
+                if (args.firstOrNull() == "workspace")
+                    preparePublicHook(args.toList(), input, System.err::println) { root, wait ->
+                        coordinatedHookPreparation(installation, environment, root, wait, System.err::println)
+                    }
+                else
+                    preparePublicCli(
+                        args.toList(),
+                        input,
+                        directory,
+                        session = { workspace, catalog ->
+                            coordinatedPublicSession(installation, workspace, catalog, environment)
+                        },
+                        diagnostic = System.err::println,
+                    )
+            }
+        io.github.amichne.kast.distribution.cli.ControlStageTrace.record(
+            io.github.amichne.kast.distribution.cli.ControlStage.END_TO_END,
+            if (exit == 0) io.github.amichne.kast.distribution.cli.ControlStageOutcome.COMPLETED
+            else io.github.amichne.kast.distribution.cli.ControlStageOutcome.REJECTED,
+            started,
+        )
+        exitProcess(exit)
+    }
+
+    private fun run(args: Array<String>, prepare: (InputStream, Path) -> PublicPreparedOutput): Int {
         val output = Channels.newOutputStream(FileOutputStream(FileDescriptor.out).channel)
         val format =
             if (args.firstOrNull() in setOf("hook", "workspace") || "--json" in args) CliOutputFormat.JSON
@@ -55,26 +95,24 @@ object KastPublicCliMain {
                                 cliOutputRejection(selected.failure, CliOutputFormat.JSON),
                                 PublicShellExit.INPUT,
                             )
-                        exitProcess(runPublicCliInvocation({ failure }, output).code)
+                        return runPublicCliInvocation({ failure }, output).code
                     }
                 }
-        exitProcess(
-            runPublicCliInvocation(
-                    {
-                        preparePublicCli(
-                            args.toList(),
-                            Channels.newInputStream(FileInputStream(FileDescriptor.`in`).channel),
-                            Path.of("").toAbsolutePath(),
-                            diagnostic = System.err::println,
-                        )
-                    },
-                    output,
-                    format,
-                )
-                .code
-        )
+        return runPublicCliInvocation(
+                {
+                    prepare(
+                        Channels.newInputStream(FileInputStream(FileDescriptor.`in`).channel),
+                        Path.of("").toAbsolutePath(),
+                    )
+                },
+                output,
+                format,
+            )
+            .code
     }
 }
+
+internal fun nativeControlEnvironment(): Map<String, String> = System.getenv()
 
 internal sealed interface PublicOutputContent {
     data object DOCUMENT : PublicOutputContent

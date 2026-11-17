@@ -173,15 +173,19 @@ internal fun writeManagementReceipt(root: Path, receipt: ManagementReceipt) {
 }
 
 internal fun sha256(path: Path): String {
+    val started = System.nanoTime()
     val digest = MessageDigest.getInstance("SHA-256")
+    var bytes = 0L
     Files.newInputStream(path).use { stream ->
         val buffer = ByteArray(65536)
         while (true) {
             val count = stream.read(buffer)
             if (count < 0) break
             digest.update(buffer, 0, count)
+            bytes += count
         }
     }
+    ControlStageTrace.record(ControlStage.PAYLOAD_VERIFICATION, ControlStageOutcome.COMPLETED, started, bytes)
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
 

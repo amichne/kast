@@ -12,6 +12,8 @@ import sun.misc.Signal
 
 internal val publicQueryNamespaces = setOf("query", "result", "source", "diagnostic", "describe")
 
+fun isPublicQueryNamespace(name: String?): Boolean = name in publicQueryNamespaces
+
 internal class PublicQueryNamespace(private val namespace: String) : ManagementNode(namespace) {
     override fun help(context: Context) =
         when (namespace) {
@@ -34,11 +36,32 @@ internal fun runInstalledPublicQuery(
     directory: Path,
     environment: Map<String, String>,
     output: ManagementOutput = ManagementOutput(),
+): Int {
+    val started = System.nanoTime()
+    val exit = dispatchInstalledPublicQuery(arguments, directory, environment, output)
+    ControlStageTrace.record(
+        ControlStage.END_TO_END,
+        if (exit == 0) ControlStageOutcome.COMPLETED else ControlStageOutcome.REJECTED,
+        started,
+    )
+    return exit
+}
+
+private fun dispatchInstalledPublicQuery(
+    arguments: List<String>,
+    directory: Path,
+    environment: Map<String, String>,
+    output: ManagementOutput,
 ): Int =
     when (val launcher = selectPublicQueryLauncher(environment)) {
         is PublicQueryLauncher.Admitted ->
             try {
-                runOwnedPublicQueryChild(listOf(launcher.path.toString()) + arguments, directory, environment)
+                ControlStageTrace.observe(
+                    ControlStage.QUERY_CHILD_LAUNCH,
+                    { if (it == 0) ControlStageOutcome.COMPLETED else ControlStageOutcome.REJECTED },
+                ) {
+                    runOwnedPublicQueryChild(listOf(launcher.path.toString()) + arguments, directory, environment)
+                }
             } catch (_: IOException) {
                 publishPublicQueryStartupFailure(PublicQueryStartupFailure.CATALOG_UNAVAILABLE, output)
             } catch (_: RuntimeException) {
@@ -89,6 +112,21 @@ internal fun selectPublicQueryLauncher(environment: Map<String, String>): Public
         PublicQueryLauncher.Unavailable
     } catch (_: SecurityException) {
         PublicQueryLauncher.Unavailable
+    }
+
+/** Selects the same physical installation as the public query launcher without hashing the payload. */
+fun selectedPublicQueryInstallation(environment: Map<String, String>): Path? =
+    try {
+        when (val selected = resolveManagementRoot(environment)) {
+            is ManagementRootResolution.Rejected -> null
+            is ManagementRootResolution.Selected -> selectedInstallation(selected.root)
+        }
+    } catch (_: ManagementRejected) {
+        null
+    } catch (_: IOException) {
+        null
+    } catch (_: SecurityException) {
+        null
     }
 
 @Serializable

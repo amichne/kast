@@ -91,5 +91,6 @@ internal fun captureApplicationAdvertisement(
     return io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement(
         identity,
         HostedCompatibilityMetadata.document,
+        managed?.environment?.gradleImportEnvironmentIdentity,
     )
 }

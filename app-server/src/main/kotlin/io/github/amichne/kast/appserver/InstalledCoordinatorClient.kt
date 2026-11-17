@@ -80,46 +80,13 @@ internal class InstalledCoordinatorClient(private val kast: Path) {
                 is Refinement.Refined -> read.value
                 is Refinement.Rejected -> return CoordinatorStatusRead.Rejected(read.failure)
             }
-        return withTimeoutOrNull(OperationExecutionBudget.LOCAL_QUALIFICATION.value) {
-            val connection =
-                when (
-                    val connected =
-                        connectCodexUnixWebSocket(
-                            command.publicSocket,
-                            CoordinatorStatusProtocol.maximumMessageBytes,
-                            OperationExecutionBudget.LOCAL_QUALIFICATION.value,
-                            BrokerControlRoute.RUNTIME,
-                        )
-                ) {
-                    is BrokerUpstreamConnectionAdmission.Connected -> connected.connection
-                    BrokerUpstreamConnectionAdmission.Rejected ->
-                        return@withTimeoutOrNull CoordinatorStatusRead.Rejected(WorkerControlFailure.UNAVAILABLE)
-                }
-            try {
-                exchange(connection, publication)
-            } finally {
-                withContext(kotlinx.coroutines.NonCancellable) { connection.close() }
-            }
-        } ?: CoordinatorStatusRead.Rejected(WorkerControlFailure.DEADLINE_EXCEEDED)
-    }
-
-    private suspend fun exchange(
-        connection: io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnection,
-        publication: Published,
-    ): CoordinatorStatusRead {
-        val request = Json.encodeToString(CoordinatorControlRequest(CoordinatorControlAction.STATUS))
-        if (connection.send(request) != BrokerUpstreamSend.SENT)
-            return CoordinatorStatusRead.Rejected(WorkerControlFailure.UNAVAILABLE)
-        val frame = connection.receive()
-        if (frame !is BrokerUpstreamFrame.Text) return CoordinatorStatusRead.Rejected(WorkerControlFailure.UNAVAILABLE)
-        val snapshot =
-            when (val admitted = CoordinatorStatusSnapshot.decode(frame.message)) {
-                is Refinement.Refined -> admitted.value
-                is Refinement.Rejected -> return CoordinatorStatusRead.Rejected(admitted.failure)
-            }
-        return if (snapshot.belongsTo(publication.owner, publication.service))
-            CoordinatorStatusRead.Observed(snapshot, publication.service)
-        else CoordinatorStatusRead.Rejected(WorkerControlFailure.IDENTITY_REJECTED)
+        return when (val observed = readCoordinatorStatus(command.publicSocket)) {
+            is Refinement.Rejected -> CoordinatorStatusRead.Rejected(observed.failure)
+            is Refinement.Refined ->
+                if (observed.value.belongsTo(publication.owner, publication.service))
+                    CoordinatorStatusRead.Observed(observed.value, publication.service)
+                else CoordinatorStatusRead.Rejected(WorkerControlFailure.IDENTITY_REJECTED)
+        }
     }
 
     private class Published(
@@ -167,3 +134,32 @@ internal class InstalledCoordinatorClient(private val kast: Path) {
         }
     }
 }
+
+internal suspend fun readCoordinatorStatus(socket: Path): Refinement<CoordinatorStatusSnapshot, WorkerControlFailure> =
+    withTimeoutOrNull(OperationExecutionBudget.LOCAL_QUALIFICATION.value) {
+        val connection =
+            when (
+                val connected =
+                    connectCodexUnixWebSocket(
+                        socket,
+                        CoordinatorStatusProtocol.maximumMessageBytes,
+                        OperationExecutionBudget.LOCAL_QUALIFICATION.value,
+                        BrokerControlRoute.RUNTIME,
+                    )
+            ) {
+                is BrokerUpstreamConnectionAdmission.Connected -> connected.connection
+                BrokerUpstreamConnectionAdmission.Rejected ->
+                    return@withTimeoutOrNull Refinement.Rejected(WorkerControlFailure.UNAVAILABLE)
+            }
+        try {
+            val request = Json.encodeToString(CoordinatorControlRequest(CoordinatorControlAction.STATUS))
+            if (connection.send(request) != BrokerUpstreamSend.SENT)
+                return@withTimeoutOrNull Refinement.Rejected(WorkerControlFailure.UNAVAILABLE)
+            val frame =
+                connection.receive() as? BrokerUpstreamFrame.Text
+                    ?: return@withTimeoutOrNull Refinement.Rejected(WorkerControlFailure.UNAVAILABLE)
+            CoordinatorStatusSnapshot.decode(frame.message)
+        } finally {
+            withContext(kotlinx.coroutines.NonCancellable) { connection.close() }
+        }
+    } ?: Refinement.Rejected(WorkerControlFailure.DEADLINE_EXCEEDED)

@@ -10,10 +10,12 @@ enum class WorkspaceOperationAdmission {
     EXISTING_AUTHORITY,
 }
 
-internal fun DaemonOperationCall.workspaceAdmission(): WorkspaceOperationAdmission =
+fun DaemonOperationCall.workspaceAdmission(): WorkspaceOperationAdmission =
     when (this) {
         is DaemonOperationCall.Canonical -> WorkspaceOperationAdmission.EXISTING_AUTHORITY
         is DaemonOperationCall.Change -> WorkspaceOperationAdmission.EXISTING_AUTHORITY
+        DaemonOperationCall.WorkspaceStatus,
+        DaemonOperationCall.PrepareWorkspace -> WorkspaceOperationAdmission.PREPARE
         is DaemonOperationCall.PublicTool -> tool.canonical.workspaceAdmission()
     }
 

@@ -4,6 +4,7 @@ import io.github.amichne.kast.distribution.managed.ManagedInstallationOwnedTree
 import io.github.amichne.kast.distribution.managed.ManagedInstallationOwnedTreeAdmission
 import io.github.amichne.kast.distribution.managed.ManagedInstallationOwnedTreeDeletion
 import io.github.amichne.kast.distribution.managed.ManagedInstallationTreeKind
+import io.github.amichne.kast.kernel.Refinement
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
@@ -306,6 +307,7 @@ internal class MacOsPersistentBrokerServiceHost(
     private val startupTimeoutNanos: Long = DEFAULT_STARTUP_TIMEOUT_NANOS,
     private val retirementTimeoutNanos: Long = DEFAULT_RETIREMENT_TIMEOUT_NANOS,
     private val desktopDiscovery: DesktopDaemonDiscovery = DesktopDaemonDiscovery(),
+    private val semanticJob: (String) -> String? = ::readSemanticLaunchdJob,
 ) : PersistentBrokerServiceHost {
     internal fun observeLifecycle(command: BrokerServiceLaunchCommand): BrokerLifecycleObservation =
         when (observeService(command.serviceLabel)) {
@@ -315,6 +317,38 @@ internal class MacOsPersistentBrokerServiceHost(
             BrokerLaunchdServiceObservation.Interrupted -> BrokerLifecycleObservation.INTERRUPTED
             BrokerLaunchdServiceObservation.TimedOut -> BrokerLifecycleObservation.TIMED_OUT
         }
+
+    override fun submitSemantic(command: SemanticServiceLaunch): Refinement<Unit, PersistentBrokerServiceFailure> =
+        BrokerServiceStartLock.submitSemantic(command) { submitSemanticExclusively(command) }
+
+    private fun submitSemanticExclusively(
+        command: SemanticServiceLaunch
+    ): Refinement<Unit, PersistentBrokerServiceFailure> {
+        val existing =
+            launchctl.invoke(
+                listOf(LAUNCHCTL_EXECUTABLE, "list", command.label),
+                LaunchctlExitContract.CompletionOrAbsent(LAUNCHCTL_SERVICE_NOT_FOUND),
+            )
+        val result =
+            when (existing) {
+                LaunchctlInvocation.Absent ->
+                    submitLaunchdJob(
+                        command.state.resolve("semantic-service.plist"),
+                        command.home,
+                        BrokerLaunchdServiceDocument.renderSemantic(command),
+                    )
+                LaunchctlInvocation.Completed -> kickstartSemanticJob(command)
+                else -> existing
+            }
+        return when (result) {
+            LaunchctlInvocation.Completed -> Refinement.Refined(Unit)
+            LaunchctlInvocation.Interrupted -> Refinement.Rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+            LaunchctlInvocation.TimedOut -> Refinement.Rejected(PersistentBrokerServiceFailure.LAUNCHCTL_TIMED_OUT)
+            LaunchctlInvocation.Absent,
+            LaunchctlInvocation.Rejected ->
+                Refinement.Rejected(PersistentBrokerServiceFailure.SERVICE_SUBMISSION_REJECTED)
+        }
+    }
 
     override fun ensure(command: BrokerServiceLaunchCommand): PersistentBrokerServiceAdmission {
         when (prepareStateDirectory(command)) {
@@ -835,41 +869,24 @@ internal class MacOsPersistentBrokerServiceHost(
     }
 
     private fun submit(command: BrokerServiceLaunchCommand): BrokerLaunchdServiceSubmission {
-        val invocation =
+        val daemon = command.daemonExecutable
+        val admitted =
             try {
-                val daemon = command.daemonExecutable
-                if (
-                    daemon.toRealPath() != daemon ||
-                        !Files.isRegularFile(daemon, LinkOption.NOFOLLOW_LINKS) ||
-                        !Files.isExecutable(daemon)
-                )
-                    return BrokerLaunchdServiceSubmission.Rejected
-                val document = BrokerLaunchdServiceDocument.render(command)
-                val plist = command.stateDirectory.resolve("service.plist")
-                if (Files.isSymbolicLink(plist)) return BrokerLaunchdServiceSubmission.Rejected
-                val temporary = Files.createTempFile(command.stateDirectory, ".service-", ".plist")
-                try {
-                    Files.writeString(temporary, document)
-                    Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------"))
-                    Files.move(
-                        temporary,
-                        plist,
-                        java.nio.file.StandardCopyOption.ATOMIC_MOVE,
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                    )
-                } finally {
-                    Files.deleteIfExists(temporary)
-                }
-                val uid =
-                    Files.getAttribute(command.userHome, "unix:uid") as? Number
-                        ?: return BrokerLaunchdServiceSubmission.Rejected
-                launchctl.invoke(
-                    listOf(LAUNCHCTL_EXECUTABLE, "bootstrap", "gui/${uid.toLong()}", plist.toString()),
-                    LaunchctlExitContract.CompletionOnly,
-                )
-            } catch (_: Exception) {
-                return BrokerLaunchdServiceSubmission.Rejected
+                daemon.toRealPath() == daemon &&
+                    Files.isRegularFile(daemon, LinkOption.NOFOLLOW_LINKS) &&
+                    Files.isExecutable(daemon)
+            } catch (_: IOException) {
+                false
+            } catch (_: SecurityException) {
+                false
             }
+        if (!admitted) return BrokerLaunchdServiceSubmission.Rejected
+        val invocation =
+            submitLaunchdJob(
+                command.stateDirectory.resolve("service.plist"),
+                command.userHome,
+                BrokerLaunchdServiceDocument.render(command),
+            )
         return when (invocation) {
             LaunchctlInvocation.Completed -> BrokerLaunchdServiceSubmission.Submitted
             LaunchctlInvocation.Interrupted -> BrokerLaunchdServiceSubmission.Interrupted
@@ -885,6 +902,49 @@ internal class MacOsPersistentBrokerServiceHost(
                 }
         }
     }
+
+    private fun submitLaunchdJob(plist: Path, home: Path, document: String): LaunchctlInvocation =
+        try {
+            if (Files.isSymbolicLink(plist)) return LaunchctlInvocation.Rejected
+            val temporary = Files.createTempFile(plist.parent, ".service-", ".plist")
+            try {
+                Files.writeString(temporary, document)
+                Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------"))
+                Files.move(
+                    temporary,
+                    plist,
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                )
+            } finally {
+                Files.deleteIfExists(temporary)
+            }
+            val uid = Files.getAttribute(home, "unix:uid") as? Number ?: return LaunchctlInvocation.Rejected
+            launchctl.invoke(
+                listOf(LAUNCHCTL_EXECUTABLE, "bootstrap", "gui/${uid.toLong()}", plist.toString()),
+                LaunchctlExitContract.CompletionOnly,
+            )
+        } catch (_: IOException) {
+            LaunchctlInvocation.Rejected
+        } catch (_: SecurityException) {
+            LaunchctlInvocation.Rejected
+        }
+
+    private fun kickstartSemanticJob(command: SemanticServiceLaunch): LaunchctlInvocation =
+        try {
+            val uid = Files.getAttribute(command.home, "unix:uid") as? Number ?: return LaunchctlInvocation.Rejected
+            val target = "gui/${uid.toLong()}/${command.label}"
+            val job = semanticJob(target) ?: return LaunchctlInvocation.Rejected
+            if (!ownsSemanticLaunchdJob(job, target, command)) return LaunchctlInvocation.Rejected
+            launchctl.invoke(
+                listOf(LAUNCHCTL_EXECUTABLE, "kickstart", target),
+                LaunchctlExitContract.CompletionOnly,
+            )
+        } catch (_: IOException) {
+            LaunchctlInvocation.Rejected
+        } catch (_: SecurityException) {
+            LaunchctlInvocation.Rejected
+        }
 
     private fun observeService(label: BrokerLaunchdServiceLabel): BrokerLaunchdServiceObservation =
         when (
@@ -1220,43 +1280,7 @@ private object JdkBrokerLaunchctlInvoker : LaunchctlInvoker {
         exitContract: LaunchctlExitContract,
     ): LaunchctlInvocation {
         if (System.getProperty("os.name") != "Mac OS X") return LaunchctlInvocation.Rejected
-        val process =
-            try {
-                ProcessBuilder(arguments)
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start()
-            } catch (_: IOException) {
-                return LaunchctlInvocation.Rejected
-            } catch (_: SecurityException) {
-                return LaunchctlInvocation.Rejected
-            }
-        val completed =
-            try {
-                process.waitFor(BrokerOperationalLimits.launchctlInvocation.value, TimeUnit.MILLISECONDS)
-            } catch (_: InterruptedException) {
-                process.destroyForcibly()
-                Thread.currentThread().interrupt()
-                return LaunchctlInvocation.Interrupted
-            } catch (_: SecurityException) {
-                process.destroyForcibly()
-                return LaunchctlInvocation.Rejected
-            }
-        if (!completed) {
-            process.destroyForcibly()
-            return LaunchctlInvocation.TimedOut
-        }
-        val exitCode = process.exitValue()
-        if (exitCode == 0) return LaunchctlInvocation.Completed
-        return when (exitContract) {
-            LaunchctlExitContract.CompletionOnly -> LaunchctlInvocation.Rejected
-            is LaunchctlExitContract.CompletionOrAbsent ->
-                if (exitCode == exitContract.absentExitCode) {
-                    LaunchctlInvocation.Absent
-                } else {
-                    LaunchctlInvocation.Rejected
-                }
-        }
+        return invokeServiceSupervisor(arguments, exitContract)
     }
 }
 

@@ -65,6 +65,7 @@ class NativeMcpCancellationTest {
     private fun assertCancellation(evidence: Path, trigger: NativeMcpCancellation) {
         NativePublicFixture(evidence).use { fixture ->
             NativePublicPeer(fixture, NativePeerReply.HOLD_QUERY).use { peer ->
+                fixture.startSemanticCoordinator()
                 assertConnectedCancellation(fixture, peer, evidence, trigger)
             }
         }

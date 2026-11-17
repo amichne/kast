@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.CleanupMode
 import org.junit.jupiter.api.io.TempDir
 
-/** Actual native writer with an unread pipe, established syscall evidence and exact public-child ownership. */
+/** Actual native writer with an unread pipe, established syscall evidence and native caller ownership. */
 @Tag("public-launcher")
 class PublicOutputCancellationTest {
     @TempDir(cleanup = CleanupMode.ON_SUCCESS) lateinit var temporary: Path
@@ -26,13 +26,11 @@ class PublicOutputCancellationTest {
                 val label = "blocked-$signal"
                 val parent = fixture.start(label, metadataArguments(), captureOutput = false)
                 parent.outputStream.close()
-                val child = fixture.awaitQueryChild(parent)
                 // No stdout consumer has run. Sampling must observe this worker inside write, not just join.
-                awaitNativePipeStack(child, temporary, "write")
+                awaitNativePipeStack(parent.toHandle(), temporary, "write")
                 signalNativeProcess(parent, signal)
                 fixture.assertExit(parent, exit, label)
-                fixture.assertReaped(child)
-                // Only after both exits may we inspect the abandoned pipe prefix.
+                // Only after exit may we inspect the abandoned pipe prefix.
                 val prefix = parent.inputStream.readAllBytes()
                 Files.write(temporary.resolve("$label.prefix"), prefix)
                 assertTrue(prefix.isNotEmpty(), "No bytes reached the blocked stdout pipe")
@@ -46,15 +44,13 @@ class PublicOutputCancellationTest {
     }
 
     @Test
-    fun `closing the proven blocked native stdout pipe selects IO failure and reaps the child`() {
+    fun `closing the proven blocked native stdout pipe selects IO failure`() {
         NativePublicFixture(temporary).use { fixture ->
             val parent = fixture.start("closed-consumer", metadataArguments(), captureOutput = false)
             parent.outputStream.close()
-            val child = fixture.awaitQueryChild(parent)
-            awaitNativePipeStack(child, temporary, "write")
+            awaitNativePipeStack(parent.toHandle(), temporary, "write")
             parent.inputStream.close()
             fixture.assertExit(parent, 5, "closed-consumer")
-            fixture.assertReaped(child)
         }
     }
 

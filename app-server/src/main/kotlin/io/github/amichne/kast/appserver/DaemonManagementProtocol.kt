@@ -113,6 +113,17 @@ internal sealed interface DaemonManagementRequest {
         val root: String,
         @Required override val version: Int = DaemonManagementProtocol.version,
     ) : DaemonManagementRequest
+
+    /**
+     * Installation lifecycle retirement. The status route is fenced at this point, so the caller names the exact
+     * generation from the owned readiness record instead of a status-derived target.
+     */
+    @Serializable
+    @SerialName("retire")
+    data class Retire(
+        val serviceGeneration: String,
+        @Required override val version: Int = DaemonManagementProtocol.version,
+    ) : DaemonManagementRequest
 }
 
 @Serializable
@@ -158,6 +169,11 @@ internal sealed interface DaemonManagementResponse {
         val threadId: String,
         val connectionId: String,
     ) : DaemonManagementResponse
+
+    /** Admission is closed; the coordinator settles admitted operations and then terminates. */
+    @Serializable
+    @SerialName("retiring")
+    data class Retiring(val target: DaemonManagementTarget) : DaemonManagementResponse
 
     @Serializable
     @SerialName("rejected")
@@ -214,6 +230,7 @@ enum class DaemonManagementFailure {
     OUTCOME_UNOBSERVED,
     RESPONSE_REJECTED,
     CAPACITY_EXCEEDED,
+    LIFECYCLE_UNFENCED,
 }
 
 @Serializable

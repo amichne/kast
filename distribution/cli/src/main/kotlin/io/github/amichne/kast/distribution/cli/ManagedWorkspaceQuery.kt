@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.ElapsedTimeAllowance
 import io.github.amichne.kast.kernel.Refinement
@@ -8,12 +9,17 @@ import java.nio.file.Path
 import kotlin.time.Duration
 import kotlin.time.TimeSource
 
+class WorkspaceQueryEnvironment(environment: Map<String, String>, val delegated: GradleImportEnvironment) {
+    val values = environment + delegated.processVariables()
+}
+
 /** One admitted semantic request owns this lease, never an MCP or RPC session. */
 class ManagedWorkspaceQuery
 private constructor(
     private val lease: ContainerQueryLease,
     val home: Path,
     val environment: Map<String, String>,
+    val gradleImportEnvironment: GradleImportEnvironment,
     private val allowance: ElapsedTimeAllowance,
     private val waiting: ContainerPreparationWait,
 ) : AutoCloseable {
@@ -50,10 +56,23 @@ private constructor(
                 root,
                 inherited,
                 WorkspaceAccess.RETAINED,
-                WorkspaceSeedHostProbe { _, _, _ ->
-                    error("Retained workspace access cannot select a seed")
-                },
+                unexpectedSeed,
             )
+
+        fun open(
+            product: InstalledProductRuntime,
+            root: CanonicalRoot,
+            request: WorkspaceQueryEnvironment,
+            seedHostProbe: WorkspaceSeedHostProbe,
+        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+            open(product, root, request.values, WorkspaceAccess.PREPARE, seedHostProbe, request.delegated)
+
+        fun openExisting(
+            product: InstalledProductRuntime,
+            root: CanonicalRoot,
+            request: WorkspaceQueryEnvironment,
+        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+            open(product, root, request.values, WorkspaceAccess.RETAINED, unexpectedSeed, request.delegated)
 
         private fun open(
             installation: Path,
@@ -61,31 +80,34 @@ private constructor(
             inherited: Map<String, String>,
             access: WorkspaceAccess,
             seedHostProbe: WorkspaceSeedHostProbe,
+        ): Refinement<ManagedWorkspaceQuery, ContainerFailure> =
+            when (val product = InstalledProductRuntime.admit(installation)) {
+                is Refinement.Rejected -> product
+                is Refinement.Refined -> open(product.value, root, inherited, access, seedHostProbe)
+            }
+
+        private fun open(
+            product: InstalledProductRuntime,
+            root: CanonicalRoot,
+            inherited: Map<String, String>,
+            access: WorkspaceAccess,
+            seedHostProbe: WorkspaceSeedHostProbe,
+            delegated: GradleImportEnvironment? = null,
         ): Refinement<ManagedWorkspaceQuery, ContainerFailure> = containerFiles {
             val waiting = ManagedWorkspaceWait()
-            val platform =
-                when (val parsed = ContainerPlatform.current()) {
-                    is Refinement.Rejected -> return@containerFiles parsed
-                    is Refinement.Refined -> parsed.value
-                }
-            val product =
-                when (val selected = InstalledProductRuntime.read(installation, platform)) {
-                    is Refinement.Rejected -> return@containerFiles selected
-                    is Refinement.Refined -> selected.value
-                }
             ContainerQueryLease.duringStoreAdmission(product.runtime.root.parent.parent) {
-                openSelected(installation, root, inherited, product, waiting, access, seedHostProbe)
+                openSelected(product, root, inherited, waiting, access, seedHostProbe, delegated)
             }
         }
 
         private fun openSelected(
-            installation: Path,
+            product: InstalledProductRuntime,
             root: CanonicalRoot,
             inherited: Map<String, String>,
-            product: InstalledProductRuntime,
             waiting: ContainerPreparationWait,
             access: WorkspaceAccess,
             seedHostProbe: WorkspaceSeedHostProbe,
+            delegated: GradleImportEnvironment?,
         ): Refinement<ManagedWorkspaceQuery, ContainerFailure> {
             val store =
                 ContainerStore(product.runtime.root.parent.parent, product.runtime.manifest.platform, seedHostProbe)
@@ -95,10 +117,12 @@ private constructor(
                 is Refinement.Refined -> Unit
             }
             val configuration =
-                when (val parsed = containerPreparationConfiguration(installation, root.path, inherited)) {
+                when (val parsed = containerPreparationConfiguration(product.installation, root.path, inherited)) {
                     is Refinement.Rejected -> return parsed
                     is Refinement.Refined -> parsed.value
                 }
+            if (delegated != null && !delegated.matchesSelection(configuration.gradleImportVariableSelection()))
+                return Refinement.Rejected(ContainerFailure.CONFIGURATION_CONFLICT)
             if (access == WorkspaceAccess.PREPARE) reclaimVanishedWorkspaces(store)
             val workspace =
                 when (val selected = admitWorkspace(store, root, product, configuration, waiting, access)) {
@@ -134,7 +158,7 @@ private constructor(
                                 configuration.workspacePreparationWait,
                                 waiting,
                             )
-                        WorkspaceAccess.RETAINED -> lease.admitGeneration()
+                        WorkspaceAccess.RETAINED -> lease.admitGeneration(product.runtime)
                     }
                 val container =
                     when (generation) {
@@ -148,15 +172,12 @@ private constructor(
                         container.gradleHome.toRealPath() != container.gradleHome
                 )
                     return Refinement.Rejected(ContainerFailure.INVALID_GRADLE_HOME)
-                val environment =
-                    configuration.launchEnvironment().variables.filterKeys {
-                        it !in setOf("KAST_INSTALL_IDEA_HOME", "KAST_CONFIGURATION_FILE", "KAST_MANAGED_HEADLESS_STATE")
-                    } + containerEnvironment(container, inherited)
                 val query =
                     ManagedWorkspaceQuery(
                         lease,
                         container.home,
-                        environment,
+                        configuration.workspaceEnvironment(container, inherited),
+                        configuration.gradleImportEnvironment,
                         configuration.workspacePreparationWait,
                         waiting,
                     )
@@ -256,3 +277,18 @@ private class ManagedWorkspaceWait : ContainerPreparationWait {
         if (Thread.currentThread().isInterrupted) Refinement.Rejected(ContainerFailure.CANCELLED_INTERRUPT)
         else Refinement.Refined(Unit)
 }
+
+private val unexpectedSeed = WorkspaceSeedHostProbe { _, _, _ ->
+    error("Retained workspace access cannot select a seed")
+}
+
+private fun GradleImportEnvironment.matchesSelection(names: String): Boolean =
+    evidence.map { it.name.value }.sorted().joinToString(",") == names.split(',').sorted().joinToString(",")
+
+private fun ResolvedKastConfiguration.workspaceEnvironment(
+    container: AdmittedContainer,
+    inherited: Map<String, String>,
+): Map<String, String> =
+    launchEnvironment().variables.filterKeys {
+        it !in setOf("KAST_INSTALL_IDEA_HOME", "KAST_CONFIGURATION_FILE", "KAST_MANAGED_HEADLESS_STATE")
+    } + gradleImportEnvironment.processVariables() + containerEnvironment(container, inherited)

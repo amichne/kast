@@ -1,9 +1,9 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.appserver.protocol.ThreadBindingOwner
 import io.github.amichne.kast.appserver.provider.BrokerExecutable
 import io.github.amichne.kast.appserver.runtime.*
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationOwner
-import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.Validation
 import java.nio.file.Files
@@ -12,32 +12,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CompletableDeferred
-
-internal class InstalledCoordinatorOptions(
-    val kast: Path,
-    val userHome: Path,
-    val environment: Map<String, String>,
-    val installationRoot: Path,
-    val socket: BrokerSocketPath,
-    val publicEndpoint: BrokerPublicEndpoint,
-    val serviceDirectory: Path,
-    val readiness: BrokerServiceReadiness,
-    val configuration: ResolvedKastConfiguration,
-    val activitySink: BrokerStartupActivitySink,
-) {
-    /** Host admission is deferred; successful options must retain this process's readiness authority. */
-    internal fun admitHost(demand: WorkspaceDemand): InstalledBrokerServerConfiguration =
-        when (val admitted = InstalledBrokerServerConfiguration.admit(kast, userHome, environment)) {
-            is InstalledBrokerServerConfiguration.Rejected -> admitted
-            is InstalledBrokerServerConfiguration.Configured ->
-                InstalledBrokerServerConfiguration.Configured(
-                    admitted.options.copy(
-                        readiness = readiness,
-                        kastOptions = admitted.options.kastOptions.withWorkspaceDemand(demand),
-                    )
-                )
-        }
-}
+import kotlinx.coroutines.selects.select
 
 internal object InstalledCoordinatorConfiguration {
     fun admit(
@@ -121,11 +96,16 @@ internal class InstalledCoordinator
 private constructor(
     private val server: KtorBrokerServer,
     private val readiness: OwnedBrokerServiceReadiness?,
+    private val retirement: CompletableDeferred<Unit>,
 ) {
     private val closed = AtomicBoolean(false)
     private val stopped = CompletableDeferred<Unit>()
 
-    suspend fun awaitTermination() = stopped.await()
+    /** Completes after close, or once an accepted lifecycle retirement asks the owner to close. */
+    suspend fun awaitTermination() = select {
+        stopped.onAwait {}
+        retirement.onAwait {}
+    }
 
     suspend fun close() {
         if (!closed.compareAndSet(false, true)) {
@@ -144,7 +124,32 @@ private constructor(
         suspend fun start(
             options: InstalledCoordinatorOptions,
             desktopDiscovery: DesktopDaemonDiscovery = DesktopDaemonDiscovery(),
+            semantic: CoordinatorOperationExecutor? = null,
+        ): InstalledCoordinatorStart =
+            start(options, desktopDiscovery, semantic?.let { CoordinatorSemantic.LaunchBound(it) })
+
+        suspend fun start(
+            options: InstalledCoordinatorOptions,
+            requests: CoordinatorRequestExecutor,
+            desktopDiscovery: DesktopDaemonDiscovery = DesktopDaemonDiscovery(),
+        ): InstalledCoordinatorStart = start(options, desktopDiscovery, CoordinatorSemantic.RequestBound(requests))
+
+        @Suppress("LongMethod")
+        internal suspend fun start(
+            options: InstalledCoordinatorOptions,
+            desktopDiscovery: DesktopDaemonDiscovery,
+            selected: CoordinatorSemantic?,
         ): InstalledCoordinatorStart {
+            if (selected != null && options.publicEndpoint !is BrokerPublicEndpoint.Private)
+                return InstalledCoordinatorStart.Rejected(BrokerServerFailure.PROTOCOL_CONFIGURATION_REJECTED)
+            // The launch-bound executor resolves only this environment, so its stated tier is the conflict authority.
+            val semantic =
+                when (val execution = selected?.execution(options.environment)) {
+                    null -> null
+                    is Refinement.Refined -> execution.value
+                    is Refinement.Rejected ->
+                        return InstalledCoordinatorStart.Rejected(BrokerServerFailure.PROTOCOL_CONFIGURATION_REJECTED)
+                }
             val activity = BrokerStartupActivityPublisher(options.activitySink)
             var stage = BrokerStartupStage.READINESS_ACQUISITION
             activity.started(stage)
@@ -168,54 +173,26 @@ private constructor(
             }
             stage = BrokerStartupStage.INSTALLATION_OWNERSHIP
             activity.started(stage)
-            val owner =
-                when (val admission = BrokerInstallationState.admit(options.installationRoot)) {
-                    is Refinement.Refined -> admission.value
-                    is Refinement.Rejected -> return reject(admission.failure.serverFailure())
-                }
-            activity.completed(stage)
             val generation =
                 when (val management = options.readiness) {
                     is BrokerServiceReadiness.Managed -> management.instanceId
                     BrokerServiceReadiness.Standalone -> BrokerServiceGeneration.fresh()
                 }
-            val preparation = InstalledWorkspacePreparation(options, owner)
-            val frontend = DeferredBrokerFrontend { upgrades ->
-                activity.started(BrokerStartupStage.HOST_ADMISSION)
-                when (val configuration = options.admitHost(preparation.demand)) {
-                    is InstalledBrokerServerConfiguration.Rejected -> {
-                        activity.rejected(
-                            BrokerStartupStage.HOST_ADMISSION,
-                            BrokerStartupRejection.HostAdmission(configuration.failure),
-                        )
-                        BrokerFrontendAdmission.Rejected
-                    }
-                    is InstalledBrokerServerConfiguration.Configured -> {
-                        activity.completed(BrokerStartupStage.HOST_ADMISSION)
-                        when (
-                            val prepared =
-                                InstalledBrokerHost.prepare(
-                                    configuration.options.copy(startupActivitySink = options.activitySink)
-                                )
-                        ) {
-                            is InstalledBrokerHostStart.Rejected -> BrokerFrontendAdmission.Rejected
-                            is InstalledBrokerHostStart.Prepared ->
-                                when (
-                                    val admission =
-                                        KtorBrokerServer.frontend(prepared.options, upgrades) {
-                                            prepared.upstream.close()
-                                        }
-                                ) {
-                                    is BrokerFrontendAdmission.Prepared -> admission
-                                    BrokerFrontendAdmission.Rejected -> {
-                                        prepared.upstream.close()
-                                        admission
-                                    }
-                                }
-                        }
-                    }
+            val installation = options.installationRoot
+            val ownership =
+                if (semantic == null) BrokerInstallationState.admit(installation)
+                else BrokerInstallationState.admitSemantic(installation, generation)
+            val owner =
+                when (ownership) {
+                    is Refinement.Refined -> ownership.value
+                    is Refinement.Rejected -> return reject(ownership.failure.serverFailure())
                 }
-            }
+            activity.completed(stage)
+            val preparation =
+                InstalledWorkspacePreparation(options.userHome, options.configuration, owner.installationId.value)
+            val registryPath = options.installationRoot.resolve("config/workspaces.json")
+            val frontend = deferredFrontend(options, preparation, activity)
+            val retirement = CompletableDeferred<Unit>()
             stage = BrokerStartupStage.WORKER_CONTROL
             activity.started(stage)
             val control =
@@ -230,8 +207,10 @@ private constructor(
                             hostObservation = frontend::observe,
                             sessions = frontend,
                             preparations = preparation.operations,
-                            demand = preparation.demand,
-                            hostedServices = preparation::hostedServices,
+                            hostedServices = { preparation.hostedServices(registryPath) },
+                            privateEndpoint = options.publicEndpoint is BrokerPublicEndpoint.Private,
+                            semantic = semantic,
+                            requestRetirement = { retirement.complete(Unit) },
                         )
                 ) {
                     is Refinement.Refined -> admission.value
@@ -254,7 +233,49 @@ private constructor(
                     }
                 }
             activity.completed(stage)
-            return completeStartup(options, server, readiness, activity, desktopDiscovery)
+            val semanticOwner = if (semantic == null) null else owner
+            return completeStartup(options, server, readiness, activity, desktopDiscovery, semanticOwner, retirement)
+        }
+
+        private fun deferredFrontend(
+            options: InstalledCoordinatorOptions,
+            preparation: InstalledWorkspacePreparation,
+            activity: BrokerStartupActivityPublisher,
+        ): DeferredBrokerFrontend = DeferredBrokerFrontend { upgrades ->
+            activity.started(BrokerStartupStage.HOST_ADMISSION)
+            when (val configuration = options.admitHost(preparation.demand)) {
+                is InstalledBrokerServerConfiguration.Rejected -> {
+                    activity.rejected(
+                        BrokerStartupStage.HOST_ADMISSION,
+                        BrokerStartupRejection.HostAdmission(configuration.failure),
+                    )
+                    BrokerFrontendAdmission.Rejected
+                }
+                is InstalledBrokerServerConfiguration.Configured -> {
+                    activity.completed(BrokerStartupStage.HOST_ADMISSION)
+                    when (
+                        val prepared =
+                            InstalledBrokerHost.prepare(
+                                configuration.options.copy(startupActivitySink = options.activitySink)
+                            )
+                    ) {
+                        is InstalledBrokerHostStart.Rejected -> BrokerFrontendAdmission.Rejected
+                        is InstalledBrokerHostStart.Prepared ->
+                            when (
+                                val admission =
+                                    KtorBrokerServer.frontend(prepared.options, upgrades) {
+                                        prepared.upstream.close()
+                                    }
+                            ) {
+                                is BrokerFrontendAdmission.Prepared -> admission
+                                BrokerFrontendAdmission.Rejected -> {
+                                    prepared.upstream.close()
+                                    admission
+                                }
+                            }
+                    }
+                }
+            }
         }
 
         private suspend fun completeStartup(
@@ -263,7 +284,18 @@ private constructor(
             readiness: OwnedBrokerServiceReadiness?,
             activity: BrokerStartupActivityPublisher,
             desktopDiscovery: DesktopDaemonDiscovery,
+            semanticOwner: ThreadBindingOwner.Installation?,
+            retirement: CompletableDeferred<Unit>,
         ): InstalledCoordinatorStart {
+            val peer =
+                if (semanticOwner != null && readiness != null) {
+                    server.semanticPeer(semanticOwner.installationId.value)
+                        ?: run {
+                            server.close()
+                            readiness.reject(BrokerServerFailure.READINESS_REJECTED)
+                            return InstalledCoordinatorStart.Rejected(BrokerServerFailure.READINESS_REJECTED)
+                        }
+                } else null
             if (provePublicReadiness(options, activity) == PublicReadinessGate.REJECTED) {
                 server.close()
                 activity.rejected(
@@ -281,7 +313,15 @@ private constructor(
                     return InstalledCoordinatorStart.Rejected(BrokerServerFailure.DESKTOP_DISCOVERY_REJECTED)
                 }
             }
-            return publishReadiness(server, readiness, activity, DesktopDiscoveryTarget.from(options), desktopDiscovery)
+            return publishReadiness(
+                server,
+                readiness,
+                activity,
+                DesktopDiscoveryTarget.from(options),
+                desktopDiscovery,
+                peer,
+                retirement,
+            )
         }
 
         internal fun publishDesktopDiscovery(
@@ -334,10 +374,12 @@ private constructor(
             activity: BrokerStartupActivityPublisher,
             target: DesktopDiscoveryTarget,
             discovery: DesktopDaemonDiscovery,
+            peer: SemanticCoordinatorPeer?,
+            retirement: CompletableDeferred<Unit>,
         ): InstalledCoordinatorStart =
-            when (val outcome = CoordinatorReadinessPublisher.publish(readiness, target, discovery, activity)) {
+            when (val outcome = CoordinatorReadinessPublisher.publish(readiness, target, discovery, activity, peer)) {
                 CoordinatorReadinessPublication.Ready ->
-                    InstalledCoordinatorStart.Started(InstalledCoordinator(server, readiness))
+                    InstalledCoordinatorStart.Started(InstalledCoordinator(server, readiness, retirement))
                 is CoordinatorReadinessPublication.Rejected -> {
                     server.close()
                     InstalledCoordinatorStart.Rejected(outcome.failure)

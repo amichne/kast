@@ -3,6 +3,7 @@ package io.github.amichne.kast.cli.publicshell
 import io.github.amichne.kast.appserver.DaemonOperationClientFailure
 import io.github.amichne.kast.appserver.DaemonOperationClientRejection
 import io.github.amichne.kast.appserver.DaemonOperationFailure
+import io.github.amichne.kast.appserver.SemanticCoordinatorStartupFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
 import io.github.amichne.kast.cli.CliFailureCause
@@ -31,6 +32,13 @@ class PublicRuntimeFailureTest {
             4,
             classifyPublicRuntimeFailure(
                     DaemonOperationClientRejection.Transport(DaemonOperationClientFailure.KAST_EXECUTABLE_UNAVAILABLE)
+                )
+                .code,
+        )
+        assertEquals(
+            5,
+            classifyPublicRuntimeFailure(
+                    DaemonOperationClientRejection.Startup(SemanticCoordinatorStartupFailure.StartupTimedOut)
                 )
                 .code,
         )

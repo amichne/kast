@@ -69,12 +69,27 @@ internal class WorkspacePreparations(
     fun prepareForDemand(root: CanonicalRoot): Refinement<WorkspacePreparation, WorkspacePreparationFailure> {
         if (closed || !worker.isActive) return Refinement.Rejected(WorkspacePreparationFailure.CLOSED)
         val previous = entries[root] ?: return create(root)
-        return when (previous.state.value) {
-            is WorkspacePreparationOutcome.Pending,
-            is WorkspacePreparationOutcome.Complete -> Refinement.Refined(previous)
+        return when (val state = previous.state.value) {
+            is WorkspacePreparationOutcome.Pending -> retained(previous, WorkspacePreparationActivityOutcome.Joined)
+            is WorkspacePreparationOutcome.Complete ->
+                retained(
+                    previous,
+                    WorkspacePreparationActivityOutcome.Reused(
+                        state.workspace.host.toString(),
+                        state.workspace.project.toString(),
+                    ),
+                )
             is WorkspacePreparationOutcome.Blocked,
             is WorkspacePreparationOutcome.Rejected -> create(root, previous.id)
         }
+    }
+
+    private fun retained(
+        entry: WorkspacePreparation,
+        outcome: WorkspacePreparationActivityOutcome,
+    ): Refinement.Refined<WorkspacePreparation> {
+        observer.observe(WorkspacePreparationActivity(entry.id.value.toString(), outcome))
+        return Refinement.Refined(entry)
     }
 
     private fun create(
@@ -118,6 +133,22 @@ internal class WorkspacePreparations(
     fun observe(id: WorkspacePreparationId): Refinement<WorkspacePreparation, WorkspacePreparationFailure> =
         records[id]?.let { Refinement.Refined(it) }
             ?: Refinement.Rejected(WorkspacePreparationFailure.UNKNOWN_OPERATION)
+
+    /**
+     * The current ready record for exactly [workspace]'s target, else the held record. Another target is never
+     * substituted, so a later [invalidate] retires only the record that this operation actually used.
+     */
+    @Synchronized
+    fun current(
+        held: WorkspacePreparation,
+        workspace: PreparedWorkspace,
+    ): Pair<WorkspacePreparation, PreparedWorkspace> {
+        val entry = entries[workspace.root] ?: return held to workspace
+        val outcome = entry.state.value
+        return if (outcome is WorkspacePreparationOutcome.Complete && outcome.workspace.target == workspace.target)
+            entry to outcome.workspace
+        else held to workspace
+    }
 
     /** Retire only this ready incarnation; preserve its historical operation record. */
     @Synchronized

@@ -320,4 +320,6 @@ enum class HostAutoReload {
 data class IdeHostApplicationAdvertisement(
     val runtimeIdentity: IdeHostRuntimeIdentity,
     val compatibility: HostedCompatibilityDocument,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val gradleImportEnvironmentIdentity: String? = null,
 )

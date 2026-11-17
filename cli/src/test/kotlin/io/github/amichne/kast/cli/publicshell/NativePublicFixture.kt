@@ -1,5 +1,7 @@
 package io.github.amichne.kast.cli.publicshell
 
+import io.github.amichne.kast.appserver.InstalledSemanticCoordinator
+import io.github.amichne.kast.appserver.NativeCoordinatorProbe
 import io.github.amichne.kast.cli.installation.InstallationManifest
 import io.github.amichne.kast.cli.installation.PayloadFile
 import java.nio.file.Files
@@ -10,7 +12,6 @@ import java.util.concurrent.TimeUnit
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 
 /** Actual candidate bytes in a private installation; no JVM entry or substituted invocation adapter. */
@@ -22,7 +23,6 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
     val payload: Path = installation.resolve("share/kast/libexec/kast-management")
     private val configuration = installation.resolve("config/environment")
     private val children = mutableListOf<Process>()
-    private val queryChildren = mutableListOf<ProcessHandle>()
 
     init {
         Files.createDirectories(payload.parent)
@@ -94,45 +94,68 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
             .start()
             .also(children::add)
 
-    fun awaitQueryChild(parent: Process): ProcessHandle {
-        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)
-        while (parent.isAlive && System.nanoTime() < deadline) {
-            val matches =
-                parent.descendants().use { descendants ->
-                    descendants.filter { it.info().command().orElse("") == payload.toString() }.toList()
-                }
-            if (matches.isNotEmpty()) {
-                assertEquals(1, matches.size, "Expected one actual native payload")
-                val child = matches.single()
-                queryChildren.add(child)
-                assertTrue(child.info().startInstant().isPresent, "Missing exact child start identity")
-                Files.writeString(evidence.resolve("child-${child.pid()}.txt"), child.info().toString())
-                return child
-            }
-            Thread.onSpinWait()
+    fun startSemanticCoordinator() {
+        val readiness = InstalledSemanticCoordinator.readinessPath(installation, home)
+        Files.createDirectories(readiness.parent)
+        val service = "sha256:" + digest(installation.toString())
+        val kast = Files.writeString(installation.resolve("bin/kast"), "#!/bin/sh\nexit 0\n")
+        assertTrue(kast.toFile().setExecutable(true))
+        readiness.fileSystem.newWatchService().use { watch ->
+            readiness.parent.register(
+                watch,
+                java.nio.file.StandardWatchEventKinds.ENTRY_CREATE,
+                java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY,
+            )
+            val process =
+                ProcessBuilder(
+                        payload.toString(),
+                        "-Duser.home=$home",
+                        "--internal-entrypoint=daemon",
+                        "--semantic",
+                    )
+                    .directory(home.toFile())
+                    .redirectError(evidence.resolve("semantic.stderr").toFile())
+                    .redirectOutput(evidence.resolve("semantic.stdout").toFile())
+                    .apply {
+                        environment().clear()
+                        environment()["HOME"] = home.toString()
+                        environment()["PATH"] = "/usr/bin:/bin"
+                        environment()["BROKER_SERVICE_IDENTITY"] = service
+                        environment()["BROKER_READINESS_FILE"] = readiness.toString()
+                    }
+                    .start()
+                    .also(children::add)
+            awaitReadiness(watch, readiness, service, process)
         }
-        error("No selected native query child observed; evidence: $evidence")
     }
+
+    private fun awaitReadiness(
+        watch: java.nio.file.WatchService,
+        readiness: Path,
+        service: String,
+        process: Process,
+    ) {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30)
+        while (!Files.exists(readiness) || !NativeCoordinatorProbe.ready(Files.readString(readiness), service)) {
+            assertTrue(process.isAlive, Files.readString(evidence.resolve("semantic.stderr")).take(8192))
+            val remaining = deadline - System.nanoTime()
+            assertTrue(remaining > 0, "Native coordinator did not become ready")
+            val key = checkNotNull(watch.poll(remaining, TimeUnit.NANOSECONDS))
+            key.pollEvents()
+            assertTrue(key.reset())
+        }
+    }
+
+    private fun digest(text: String): String =
+        java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.toByteArray()))
 
     fun assertExit(parent: Process, expected: Int, label: String) {
         assertTrue(parent.waitFor(20, TimeUnit.SECONDS), "Public process did not settle: $evidence")
         assertEquals(expected, parent.exitValue(), Files.readString(evidence.resolve("$label.stderr")))
     }
 
-    fun assertReaped(child: ProcessHandle) {
-        child.onExit().get(5, TimeUnit.SECONDS)
-        assertFalse(child.isAlive, "Exact native query child survived public exit")
-    }
-
     override fun close() {
         children.forEach(::stopNativeProcess)
-        // Failed reaping assertions must not leave an orphan after its public parent has already exited.
-        queryChildren.forEach { child ->
-            if (child.isAlive) {
-                child.destroyForcibly()
-                child.onExit().get(5, TimeUnit.SECONDS)
-            }
-        }
         Files.walk(home).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
     }
 }

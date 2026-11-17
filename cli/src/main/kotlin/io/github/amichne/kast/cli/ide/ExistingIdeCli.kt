@@ -119,9 +119,14 @@ internal fun executeAdmittedPublicTool(
     tool: AdmittedPublicTool,
     start: Path,
     capabilities: ExistingIdeCliCapabilities,
-): CliExit =
-    executeDaemonOperation(start, capabilities.roots, capabilities.read, DaemonOperationCall.PublicTool(tool))
-        .present(tool.outputDetail)
+): CliExit = executeAdmittedPublicTool(tool, start, capabilities.roots, capabilities.read)
+
+internal fun executeAdmittedPublicTool(
+    tool: AdmittedPublicTool,
+    start: Path,
+    roots: CanonicalRootDiscoverer,
+    read: DaemonOperationClient,
+): CliExit = executeDaemonOperation(start, roots, read, DaemonOperationCall.PublicTool(tool)).present(tool.outputDetail)
 
 private fun executeSemanticAction(
     action: CliAction.Semantic,
@@ -217,9 +222,21 @@ private fun executeDaemonOperation(
         is DaemonOperationResult.Qualified -> CliExit.Qualified(result.document)
         is DaemonOperationResult.OperationRejected -> CliExit.OperationRejected(result.document)
         is DaemonOperationResult.Hosted -> CliExit.Complete(result.document)
-        is DaemonOperationResult.Rejected ->
-            boundaryExit(CliBoundaryExitStatus.RUNTIME, result.failure.diagnosticCode())
-                .copy(cause = CliFailureCause.Runtime(result.failure))
+        is DaemonOperationResult.Rejected -> semanticOperationRejected(result.failure)
+    }
+}
+
+private fun semanticOperationRejected(rejection: DaemonOperationClientRejection): CliExit.BoundaryRejected {
+    val server = (rejection as? DaemonOperationClientRejection.Server)?.failure
+    return when (server) {
+        is io.github.amichne.kast.appserver.DaemonOperationFailure.ManagedWorkspace ->
+            io.github.amichne.kast.cli.direct.managedWorkspaceRejected(server.reason)
+        is io.github.amichne.kast.appserver.DaemonOperationFailure.Preparation,
+        is io.github.amichne.kast.appserver.DaemonOperationFailure.Workspace ->
+            io.github.amichne.kast.cli.direct.managedPreparationRejected(server)
+        else ->
+            boundaryExit(CliBoundaryExitStatus.RUNTIME, rejection.diagnosticCode())
+                .copy(cause = CliFailureCause.Runtime(rejection))
     }
 }
 

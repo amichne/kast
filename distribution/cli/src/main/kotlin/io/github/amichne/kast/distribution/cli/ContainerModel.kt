@@ -6,37 +6,7 @@ import java.nio.file.Path
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 
-@Serializable
-enum class ContainerFailure(val exit: Int = 1) {
-    INVALID_NAME,
-    INVALID_ID,
-    INVALID_WORKSPACE,
-    INVALID_GRADLE_HOME,
-    UNSUPPORTED_PLATFORM,
-    NOT_FOUND,
-    AMBIGUOUS_WORKSPACE,
-    NAME_EXISTS,
-    WORKSPACE_EXISTS,
-    INVALID_RECORD,
-    FOREIGN_STATE,
-    FILESYSTEM_UNAVAILABLE,
-    FENCE_REJECTED,
-    BUSY,
-    LEASE_CLOSED,
-    PREPARATION_WAIT_EXPIRED,
-    INVALID_CONFIGURATION,
-    CAPACITY_EXCEEDED,
-    STOPPED,
-    RUNTIME_UNAVAILABLE,
-    RUNTIME_MISMATCH,
-    INVALID_ARCHIVE,
-    DIGEST_MISMATCH,
-    DOWNLOAD_FAILED,
-    PREPARATION_FAILED,
-    SHUTDOWN_FAILED,
-    CANCELLED_INTERRUPT(PublicQuerySignal.INTERRUPT.exit),
-    CANCELLED_TERMINATE(PublicQuerySignal.TERMINATE.exit),
-}
+typealias ContainerFailure = io.github.amichne.kast.distribution.contract.ContainerFailure
 
 @JvmInline
 internal value class ContainerId private constructor(val text: String) {

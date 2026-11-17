@@ -152,27 +152,30 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
                     null -> return ShutdownProcessAdmission.Rejected
                     else -> selected
                 }
-            if (payload == NativeToolPayload.CONTROL) {
-                when (val invocation = admitNativeControlProcessInvocation(snapshot.arguments)) {
-                    is Refinement.Rejected -> return ShutdownProcessAdmission.Rejected
-                    is Refinement.Refined ->
-                        when (invocation.value.entry) {
-                            NativeControlEntry.QUERY,
-                            NativeControlEntry.MCP,
-                            NativeControlEntry.RPC -> Unit
-                            NativeControlEntry.MANAGEMENT,
-                            NativeControlEntry.JQ,
-                            NativeControlEntry.SERVICE,
-                            NativeControlEntry.DAEMON,
-                            NativeControlEntry.CODEX,
-                            NativeControlEntry.INSTALLER -> return ShutdownProcessAdmission.Rejected
-                        }
-                }
-            }
+            if (payload == NativeToolPayload.CONTROL && !ownsNativeClient(snapshot.arguments))
+                return ShutdownProcessAdmission.Rejected
             val executable = installation.resolve(payload.relative)
             val attributes = Files.readAttributes(executable, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
             val process = NativeTool(snapshot, installation, manifest, attributes, payload)
             return process.revalidate(LifecycleProcessObservation.Present(snapshot))
+        }
+
+        private fun ownsNativeClient(arguments: List<String>): Boolean {
+            val invocation =
+                (admitNativeControlProcessInvocation(arguments) as? Refinement.Refined)?.value ?: return false
+            return when (invocation.entry) {
+                NativeControlEntry.QUERY,
+                NativeControlEntry.MCP,
+                NativeControlEntry.RPC -> true
+                NativeControlEntry.MANAGEMENT ->
+                    isPublicQueryNamespace(invocation.arguments.firstOrNull()) &&
+                        invocation.arguments.none { it.startsWith("--internal-entrypoint=") }
+                NativeControlEntry.JQ,
+                NativeControlEntry.SERVICE,
+                NativeControlEntry.DAEMON,
+                NativeControlEntry.CODEX,
+                NativeControlEntry.INSTALLER -> false
+            }
         }
 
         private fun sameExecutable(expected: BasicFileAttributes, path: Path): Boolean {
@@ -325,3 +328,19 @@ internal object NativeLifecycleProcesses : LifecycleProcesses {
         return LifecycleEffect.Completed
     }
 }
+
+/** Only the selected lifecycle home crosses into the private JVM's system properties. */
+internal fun installationLifecycleEnvironment(
+    home: Path,
+    installation: Path,
+    environment: Map<String, String>,
+): Map<String, String> =
+    environment.filterKeys {
+        it in setOf("PATH", "JAVA_HOME", "CODEX_EXECUTABLE", "TMPDIR", "KAST_MANAGED_HEADLESS_STATE")
+    } +
+        mapOf(
+            "HOME" to home.toString(),
+            "KAST_CONFIGURATION_FILE" to installation.resolve("config/environment").toString(),
+            // JVM option quoting, not shell evaluation: preserve one property even for quotes or newlines.
+            "JAVA_TOOL_OPTIONS" to "'-Duser.home=${home.toString().replace("'", "'\"'\"'")}'",
+        )

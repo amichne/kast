@@ -45,6 +45,18 @@ class WorkspacePreparationDocumentTest {
     private val json = Json { encodeDefaults = true }
 
     @Test
+    fun `reuse evidence contains the retained Host and project identity`() {
+        val event =
+            WorkspacePreparationActivity(requestId, WorkspacePreparationActivityOutcome.Reused("host", "project"))
+        val value = json.encodeToJsonElement(WorkspacePreparationActivity.serializer(), event).jsonObject
+        val outcome = value.getValue("outcome").jsonObject
+        assertEquals(setOf("type", "host", "project"), outcome.keys)
+        assertEquals("reused", outcome.getValue("type").jsonPrimitive.content)
+        assertEquals("host", outcome.getValue("host").jsonPrimitive.content)
+        assertEquals("project", outcome.getValue("project").jsonPrimitive.content)
+    }
+
+    @Test
     fun `preparation document encodes each closed outcome with its discriminator`() {
         val cases =
             listOf(

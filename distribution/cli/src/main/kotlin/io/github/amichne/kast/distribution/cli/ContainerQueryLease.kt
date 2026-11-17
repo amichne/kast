@@ -26,9 +26,10 @@ private constructor(
         var readers = 1
     }
 
-    fun admitGeneration(): Refinement<AdmittedContainer, ContainerFailure> = whileActive {
-        ContainerStore(workspace.directory.parent.parent, platform).admitGeneration(workspace)
-    }
+    fun admitGeneration(runtime: AdmittedContainerRuntime? = null): Refinement<AdmittedContainer, ContainerFailure> =
+        whileActive {
+            ContainerStore(workspace.directory.parent.parent, platform).admitGeneration(workspace, runtime)
+        }
 
     @Synchronized
     fun <T> whileActive(action: () -> Refinement<T, ContainerFailure>): Refinement<T, ContainerFailure> =

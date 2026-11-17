@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver.ide
 
+import io.github.amichne.kast.distribution.contract.HostedEndpointPaths
+import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ApprovedProjectCloseInvocation
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
@@ -7,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCause
 import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeStage
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
+import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest
 import java.io.DataInputStream
 import java.io.DataOutputStream
@@ -43,6 +46,7 @@ internal constructor(
     nanoTime: () -> Long,
     private val platform: IdeLaunchPlatform = IdeLaunchPlatform.Native,
     private val deployment: IdeLifecycleDeployment,
+    private val children: HostChildRetention = HostChildRetention.Discarded,
 ) : WorkspaceLifecycleClient {
     constructor(
         userHome: Path,
@@ -57,6 +61,17 @@ internal constructor(
     )
 
     private val transport = LifecycleSocketExchange(userHome, exchangeTimer, nanoTime)
+
+    internal fun observeHost(target: IdeProjectTarget): Refinement<ObservedHost, HostIncarnationFailure> {
+        val inspected =
+            execute(IdeLifecycleCommand.Inspect) as? IdeLifecycleResult.Inspected
+                ?: return Refinement.Rejected(HostIncarnationFailure.INSPECTION_REJECTED)
+        val selected =
+            (selectLifecycleDeployment(deployment, userHome, selectedHome) as? Refinement.Refined)?.value
+                as? SelectedLifecycleDeployment.Headless
+                ?: return Refinement.Rejected(HostIncarnationFailure.INSPECTION_REJECTED)
+        return observeManagedHost(selected.installation, inspected, target, children.current())
+    }
 
     /** Installation management uses the same admitted application endpoint without project preparation. */
     fun manageInstallation(command: IdeLifecycleCommand): IdeLifecycleResult =
@@ -146,6 +161,11 @@ internal constructor(
             is Refinement.Rejected -> return blocked(admitted.failure)
             is Refinement.Refined -> Unit
         }
+        if (
+            selectedDeployment is SelectedLifecycleDeployment.Headless &&
+                !transport.admitsWorkspaceLaunch(home, host, selectedDeployment.gradleEnvironment)
+        )
+            return blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
         return if (command == IdeLifecycleCommand.Inspect) host else exchange(home, command)
     }
 
@@ -189,6 +209,7 @@ internal constructor(
     }
 
     private fun coldHost(requireWorkspaceTrust: Boolean = false): IdeLifecycleResult {
+        if (children.current()?.isAlive == true) return blocked(IdeLifecycleFailure.HOST_UNAVAILABLE)
         val selectedDeployment =
             when (val selected = selectLifecycleDeployment(deployment, userHome, selectedHome)) {
                 is Refinement.Rejected -> return blocked(selected.failure)
@@ -201,6 +222,7 @@ internal constructor(
                 is Refinement.Rejected -> return blocked(started.failure)
                 is Refinement.Refined -> started.value
             }
+        if (lifetime is IdeLaunchLifetime.Application) children.record(lifetime.process)
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(LAUNCH_WAIT_SECONDS)
         var host = execute(IdeLifecycleCommand.Inspect)
         while (host !is IdeLifecycleResult.Inspected && System.nanoTime() < deadline) {
@@ -240,14 +262,32 @@ internal class LifecycleSocketExchange(
 ) {
     private val json = Json { encodeDefaults = true }
 
+    fun admitsWorkspaceLaunch(
+        home: Path,
+        host: IdeLifecycleResult.Inspected,
+        expected: GradleImportEnvironment,
+    ): Boolean {
+        if (expected.identity == GradleImportEnvironment.Empty.identity) return true
+        val directory = lifecycleDirectory(home)
+        return try {
+            val owner = readHostedOwner(userHome, directory)
+            owner is Refinement.Refined &&
+                owner.value.lifecycleApplication(directory.resolve("host.sock"), host)?.let {
+                    expected.matches(it.gradleImportEnvironmentIdentity)
+                } == true
+        } catch (_: java.io.IOException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
+    private fun lifecycleDirectory(home: Path): Path =
+        HostedEndpointPaths.directory(userHome, HostedEndpointPaths.Family.LIFECYCLE, home.toString())
+
     fun exchange(home: Path, command: IdeLifecycleCommand): IdeLifecycleResult {
         val attempt = LifecycleExchangeAttempt(command, nanoTime)
-        val directory =
-            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
-                userHome,
-                io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
-                home.toString(),
-            )
+        val directory = lifecycleDirectory(home)
         val socket = directory.resolve("host.sock")
         if (!Files.exists(socket)) return attempt.reject(IdeLifecycleExchangeCause.SOCKET_MISSING)
         var ancestor: Path? = directory

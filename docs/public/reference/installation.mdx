@@ -44,7 +44,7 @@ Use [agent setup](/reference/integrations) after installation. No desktop plugin
 On macOS ARM64, build and qualify a clean committed checkout first:
 
 ```shell
-mise exec -- uv run --locked --project packaging python packaging/local_product_install.py \
+mise exec -- uv run --locked --project packaging python packaging/internal/product/local_product_install.py \
   build --source /path/to/clean/checkout --output /absolute/path/to/product
 ```
 

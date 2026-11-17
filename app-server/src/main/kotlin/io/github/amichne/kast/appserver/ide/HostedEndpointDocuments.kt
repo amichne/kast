@@ -2,6 +2,8 @@ package io.github.amichne.kast.appserver.ide
 
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement
+import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import java.nio.file.Path
 
 /** Owner-envelope authority proves only a declared process identity, never a hosted contract. */
@@ -11,6 +13,32 @@ private constructor(
     private val raw: ByteArray,
 ) {
     fun endpoint(): Refinement<DeclaredHostedEndpoint, ExistingIdeFailure> = ExistingIdeDocuments.declaredEndpoint(raw)
+
+    /** The lifecycle socket's live inspection binds the private advertisement to one Host incarnation. */
+    fun lifecycleApplication(
+        socket: Path,
+        inspected: IdeLifecycleResult.Inspected,
+    ): IdeHostApplicationAdvertisement? {
+        val document =
+            try {
+                kotlinx.serialization.json.Json.decodeFromString<EndpointRoutingDocument>(raw.decodeToString())
+            } catch (_: kotlinx.serialization.SerializationException) {
+                return null
+            }
+        val advertised = document.application ?: return null
+        return advertised.takeIf {
+            document.type == "KAST_IDE_ENDPOINT" &&
+                document.protocol == HOSTED_PROTOCOL_VERSION &&
+                document.querySchema == "kast.workspace.lifecycle.v2" &&
+                document.operations == listOf("WORKSPACE_LIFECYCLE") &&
+                document.root == inspected.home &&
+                document.socket == socket.toString() &&
+                document.host == inspected.host &&
+                document.hostPid == inspected.runtimeIdentity?.pid &&
+                advertised.runtimeIdentity == inspected.runtimeIdentity &&
+                advertised.compatibility == inspected.compatibility
+        }
+    }
 
     companion object {
         fun read(raw: ByteArray): Refinement<RecordedHostedEndpointOwner, ExistingIdeFailure> =

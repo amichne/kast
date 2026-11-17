@@ -4,6 +4,7 @@ import io.github.amichne.kast.distribution.managed.ManagedHeadlessLaunch
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessLaunchFiles
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
+import java.io.File
 
 internal interface IdeLaunchPlatform {
     fun executablePath(): String? = null
@@ -20,6 +21,8 @@ internal interface IdeLaunchPlatform {
             }
             return Refinement.Refined(
                 ProcessBuilder(specification.arguments)
+                    .directory(specification.installation.state.toFile())
+                    .redirectInput(ProcessBuilder.Redirect.from(File("/dev/null")))
                     .apply {
                         environment().clear()
                         environment().putAll(specification.environment)

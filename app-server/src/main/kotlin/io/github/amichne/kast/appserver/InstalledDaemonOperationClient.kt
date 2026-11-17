@@ -1,8 +1,18 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
+import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.runtime.BrokerControlRoute
+import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmission
+import io.github.amichne.kast.appserver.runtime.BrokerUpstreamFrame
+import io.github.amichne.kast.appserver.runtime.BrokerUpstreamSend
+import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import java.nio.file.Path
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 
 sealed interface DaemonOperationCall {
@@ -11,6 +21,10 @@ sealed interface DaemonOperationCall {
     data class Canonical(val read: DaemonCanonicalRead) : DaemonOperationCall
 
     data class Change(val action: DaemonChangeAction) : DaemonOperationCall
+
+    data object WorkspaceStatus : DaemonOperationCall
+
+    data object PrepareWorkspace : DaemonOperationCall
 }
 
 /** The CLI's semantic capability; a rejection never causes a direct IDE invocation. */
@@ -37,6 +51,9 @@ sealed interface DaemonOperationClientRejection {
 
     data class Coordinator(val failure: WorkerControlFailure) : DaemonOperationClientRejection
 
+    /** Starting or joining the installed coordinator rejected before any operation was sent. */
+    data class Startup(val failure: SemanticCoordinatorStartupFailure) : DaemonOperationClientRejection
+
     data class Transport(val failure: DaemonOperationClientFailure) : DaemonOperationClientRejection
 }
 
@@ -52,6 +69,79 @@ enum class DaemonOperationClientFailure {
     RESPONSE_REJECTED,
 }
 
+/** The caller supplies the socket and target from the same admitted coordinator. */
+internal class InstalledDaemonOperationClient(
+    private val socket: Path,
+    private val target: DaemonManagementTarget,
+    private val peerCurrent: () -> Boolean = { true },
+) {
+    suspend fun exchange(
+        root: CanonicalRoot,
+        call: DaemonOperationCall,
+        settings: RequestedRuntimeSettings = RequestedRuntimeSettings.Unstated,
+    ): DaemonOperationResult {
+        val selection =
+            call.selection() ?: return protocolRejection(DaemonOperationProtocolFailure.OPERATION_UNSUPPORTED)
+        val request = DaemonOperationRequest(target, root.path.toString(), selection, settings.wire)
+        val message = DaemonOperationProtocol.json.encodeToString(DaemonOperationRequest.serializer(), request)
+        if (message.toByteArray(Charsets.UTF_8).size > DaemonOperationProtocol.maximumRequestBytes)
+            return protocolRejection(DaemonOperationProtocolFailure.CAPACITY_EXCEEDED)
+        val connection =
+            when (
+                val connected =
+                    connectCodexUnixWebSocket(
+                        socket,
+                        DaemonOperationProtocol.maximumResponseBytes,
+                        BrokerOperationalLimits.workerControlHandshake.value,
+                        BrokerControlRoute.SEMANTIC,
+                    )
+            ) {
+                is BrokerUpstreamConnectionAdmission.Connected -> connected.connection
+                BrokerUpstreamConnectionAdmission.Rejected -> return rejected(DaemonOperationClientFailure.UNAVAILABLE)
+            }
+        try {
+            if (!peerCurrent()) return rejected(DaemonOperationClientFailure.UNAVAILABLE)
+            if (connection.send(message) != BrokerUpstreamSend.SENT)
+                return rejected(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
+            val frame =
+                connection.receive() as? BrokerUpstreamFrame.Text
+                    ?: return rejected(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
+            val invalidReply =
+                if (call is DaemonOperationCall.Change) DaemonOperationClientFailure.OUTCOME_UNOBSERVED
+                else DaemonOperationClientFailure.RESPONSE_REJECTED
+            val response =
+                try {
+                    DaemonOperationProtocol.json.decodeFromString<DaemonOperationResponse>(frame.message)
+                } catch (_: SerializationException) {
+                    return rejected(invalidReply)
+                }
+            val hosted = call is DaemonOperationCall.Canonical || call is DaemonOperationCall.Change
+            val result = admitOperationResponse(response, target, root, allowHosted = hosted)
+            return if (result == rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)) rejected(invalidReply)
+            else result
+        } finally {
+            withContext(NonCancellable) { connection.close() }
+        }
+    }
+}
+
+private fun DaemonOperationCall.selection(): DaemonOperationSelection? =
+    when (this) {
+        is DaemonOperationCall.PublicTool ->
+            DaemonOperationTool.entries
+                .find { it.identity == tool.identity }
+                ?.let {
+                    DaemonOperationSelection.PublicTool(it, PublicToolContract.encode(tool), tool.catalog)
+                }
+        is DaemonOperationCall.Canonical -> DaemonOperationSelection.Canonical(read)
+        is DaemonOperationCall.Change -> DaemonOperationSelection.Change(action)
+        DaemonOperationCall.WorkspaceStatus -> DaemonOperationSelection.WorkspaceStatus
+        DaemonOperationCall.PrepareWorkspace -> DaemonOperationSelection.PrepareWorkspace
+    }
+
+private fun protocolRejection(reason: DaemonOperationProtocolFailure) =
+    DaemonOperationResult.Rejected(DaemonOperationClientRejection.Server(DaemonOperationFailure.Protocol(reason)))
+
 internal fun admitOperationResponse(
     response: DaemonOperationResponse,
     target: DaemonManagementTarget,
@@ -59,9 +149,9 @@ internal fun admitOperationResponse(
     allowHosted: Boolean = false,
 ): DaemonOperationResult {
     if (!response.matches(target, root)) return rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)
+    // The coordinator relays its executor's projected outcome for every call. Only canonical and change calls
+    // also admit a raw hosted document.
     if (response is DaemonOperationResponse.Hosted && !allowHosted)
-        return rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)
-    if (allowHosted && response !is DaemonOperationResponse.Hosted && response !is DaemonOperationResponse.Rejected)
         return rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)
     fun document(value: JsonElement): CanonicalJsonDocument =
         CanonicalJsonDocument.generated(JsonElement.serializer()).create(value)
@@ -92,26 +182,23 @@ fun DaemonOperationClientRejection.diagnosticCode(): String =
     when (this) {
             is DaemonOperationClientRejection.Command -> "daemon-operation-command-${failure.name}"
             is DaemonOperationClientRejection.Coordinator -> "daemon-operation-coordinator-${failure.name}"
+            is DaemonOperationClientRejection.Startup -> "daemon-operation-startup-${failure.diagnosticCode()}"
             is DaemonOperationClientRejection.Transport -> "daemon-operation-${failure.name}"
             is DaemonOperationClientRejection.Server ->
                 when (val reason = failure) {
                     is DaemonOperationFailure.Protocol -> "daemon-operation-${reason.reason.name}"
                     is DaemonOperationFailure.Root -> "daemon-operation-root-${reason.reason.name}"
-                    is DaemonOperationFailure.Input ->
-                        when (val input = reason.reason) {
-                            DaemonOperationInputFailure.SchemaMismatch -> "daemon-operation-schema-mismatch"
-                            DaemonOperationInputFailure.SchemaRejected -> "daemon-operation-schema-rejected"
-                            DaemonOperationInputFailure.SyntaxRejected -> "daemon-operation-syntax-rejected"
-                            is DaemonOperationInputFailure.Parameter ->
-                                "daemon-operation-${input.parameter.name}-${input.rule.name}"
-                        }
+                    is DaemonOperationFailure.Input -> reason.reason.diagnosticCode()
                     is DaemonOperationFailure.Preparation -> "daemon-operation-preparation-${reason.reason.name}"
+                    is DaemonOperationFailure.ManagedWorkspace -> "daemon-operation-workspace-${reason.reason.name}"
                     is DaemonOperationFailure.Workspace ->
                         when (val cause = reason.cause) {
                             is io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause.Preparation ->
                                 "daemon-operation-preparation-${cause.failure.name}"
                             is io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause.Lifecycle ->
                                 "daemon-operation-lifecycle-${cause.reason.name}"
+                            is io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause.HostIncarnation ->
+                                "daemon-operation-host-incarnation-${cause.reason.name}"
                             io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause.HostChanged ->
                                 "daemon-operation-host-changed"
                         }
@@ -120,3 +207,32 @@ fun DaemonOperationClientRejection.diagnosticCode(): String =
         }
         .lowercase()
         .replace('_', '-')
+
+private fun SemanticCoordinatorStartupFailure.diagnosticCode(): String =
+    when (this) {
+        SemanticCoordinatorStartupFailure.InstallationFenced -> "installation-fenced"
+        SemanticCoordinatorStartupFailure.OwnershipRejected -> "ownership-rejected"
+        SemanticCoordinatorStartupFailure.StartupRejected -> "rejected"
+        SemanticCoordinatorStartupFailure.GenerationReplaced -> "generation-replaced"
+        SemanticCoordinatorStartupFailure.StartupTimedOut -> "timed-out"
+        is SemanticCoordinatorStartupFailure.SubmissionRejected -> "submission-${failure.name}"
+    }
+
+private fun DaemonOperationInputFailure.diagnosticCode(): String =
+    when (this) {
+        DaemonOperationInputFailure.SchemaMismatch -> "daemon-operation-schema-mismatch"
+        DaemonOperationInputFailure.SchemaRejected -> "daemon-operation-schema-rejected"
+        DaemonOperationInputFailure.SyntaxRejected -> "daemon-operation-syntax-rejected"
+        is DaemonOperationInputFailure.Parameter -> "daemon-operation-${parameter.name}-${rule.name}"
+        is DaemonOperationInputFailure.Constraint -> "daemon-operation-${rule.name}"
+        is DaemonOperationInputFailure.SourceAnchor -> "daemon-operation-${cause.name}"
+        is DaemonOperationInputFailure.RuntimeSettings -> "daemon-operation-runtime-settings-${reason.diagnosticCode()}"
+    }
+
+private fun DaemonRuntimeSettingsFailure.diagnosticCode(): String =
+    when (this) {
+        DaemonRuntimeSettingsFailure.CapacityExceeded -> "capacity-exceeded"
+        is DaemonRuntimeSettingsFailure.NotGoverned -> "not-governed"
+        is DaemonRuntimeSettingsFailure.Configuration -> reason.name
+        is DaemonRuntimeSettingsFailure.Conflict -> "conflict"
+    }

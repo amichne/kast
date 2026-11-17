@@ -142,35 +142,33 @@ class PublicLauncherCompositionTest {
     }
 
     @Test
-    fun `public native launcher cancels proven incomplete stdin and reaps its exact child`() {
+    fun `public native caller cancels proven incomplete stdin without a query child`() {
         NativePublicFixture(temporary).use { fixture ->
             for ((signal, exit) in listOf("INT" to 130, "TERM" to 143)) {
                 val label = "stdin-$signal"
                 val parent = fixture.start(label, listOf("query", "--request", "-"))
                 parent.outputStream.write("{\"request\":".toByteArray())
                 parent.outputStream.flush()
-                val child = fixture.awaitQueryChild(parent)
-                awaitNativePipeStack(child, temporary, "read")
+                awaitNativePipeStack(parent.toHandle(), temporary, "read")
                 signalNativeProcess(parent, signal)
                 fixture.assertExit(parent, exit, label)
-                fixture.assertReaped(child)
                 assertEquals("", Files.readString(temporary.resolve("$label.stdout")))
             }
         }
     }
 
     @Test
-    fun `signals close the production admitted Unix query socket without replay and reap the native child`() {
+    fun `signals close the admitted Unix query socket without replay`() {
         for ((signal, exit) in listOf("INT" to 130, "TERM" to 143)) {
             val evidence = Files.createDirectory(temporary.resolve(signal))
             NativePublicFixture(evidence).use { fixture ->
                 NativePublicPeer(fixture, NativePeerReply.HOLD_QUERY).use { peer ->
+                    fixture.startSemanticCoordinator()
+                    assertFalse(Files.exists(fixture.installation.resolve("state/epoch.json")))
                     val parent = fixture.start("socket", semanticArguments(fixture))
-                    val child = fixture.awaitQueryChild(parent)
                     peer.awaitQuery()
                     signalNativeProcess(parent, signal)
                     fixture.assertExit(parent, exit, "socket")
-                    fixture.assertReaped(child)
                     peer.assertConsumed()
                     assertEquals("", Files.readString(evidence.resolve("socket.stdout")))
                     assertInvocationRecordRemoved(fixture)
@@ -195,6 +193,7 @@ class PublicLauncherCompositionTest {
             val evidence = Files.createDirectory(temporary.resolve(reply.name))
             NativePublicFixture(evidence).use { fixture ->
                 NativePublicPeer(fixture, reply).use { peer ->
+                    fixture.startSemanticCoordinator()
                     val parent = fixture.start("reply", semanticArguments(fixture))
                     fixture.assertExit(parent, if (reply == NativePeerReply.HOST_REJECTION) 2 else 6, "reply")
                     peer.assertConsumed()

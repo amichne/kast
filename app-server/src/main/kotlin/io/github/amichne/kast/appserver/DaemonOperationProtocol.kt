@@ -3,12 +3,15 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
+import io.github.amichne.kast.distribution.contract.ContainerFailure
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
-import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
+import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocumentFailure
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -18,13 +21,21 @@ import kotlinx.serialization.json.JsonElement
 
 /** One typed semantic operation on the installed daemon's owned Unix socket. */
 internal object DaemonOperationProtocol {
-    const val version = 3
+    const val version = 5
     const val maximumRequestBytes = BrokerOperationalLimits.maximumToolArgumentBytes + 4096
     const val maximumResponseBytes = BrokerOperationalLimits.maximumToolResultBytes + 4096
     val json = Json {
         encodeDefaults = true
         explicitNulls = true
     }
+}
+
+/**
+ * Coordinator-owned semantic execution, after transport and exact workspace admission. It applies only the
+ * coordinator's launch settings, so the ingress rejects every request whose stated runtime settings differ.
+ */
+fun interface CoordinatorOperationExecutor {
+    suspend fun execute(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult
 }
 
 /** Closed RPC presentations. Adding a public tool requires an explicit routing decision. */
@@ -39,6 +50,8 @@ internal data class DaemonOperationRequest(
     val target: DaemonManagementTarget,
     val root: String,
     val selection: DaemonOperationSelection,
+    /** The caller's environment-tier runtime settings; admitted before any root or workspace effect. */
+    @Required val settings: DaemonRuntimeSettings = RequestedRuntimeSettings.Unstated.wire,
     @Required val version: Int = DaemonOperationProtocol.version,
 )
 
@@ -50,6 +63,7 @@ internal sealed interface DaemonOperationSelection {
         val tool: DaemonOperationTool,
         /** Opaque only until the daemon re-admits the selected public tool's exact schema. */
         val arguments: JsonElement,
+        val catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
     ) : DaemonOperationSelection
 
     @Serializable
@@ -57,6 +71,10 @@ internal sealed interface DaemonOperationSelection {
     data class Canonical(val read: DaemonCanonicalRead) : DaemonOperationSelection
 
     @Serializable @SerialName("change") data class Change(val action: DaemonChangeAction) : DaemonOperationSelection
+
+    @Serializable @SerialName("workspace_status") data object WorkspaceStatus : DaemonOperationSelection
+
+    @Serializable @SerialName("prepare_workspace") data object PrepareWorkspace : DaemonOperationSelection
 }
 
 /** A change call retains its exact typed plan, application or recovery request. */
@@ -69,30 +87,11 @@ sealed interface DaemonChangeAction {
     @Serializable @SerialName("recover") data class Recover(val request: ChangeRecoverRequest) : DaemonChangeAction
 }
 
-internal fun DaemonChangeAction.operation(): CanonicalOperation =
-    when (this) {
-        is DaemonChangeAction.Plan -> CanonicalOperation.CHANGE_PLAN
-        is DaemonChangeAction.Apply -> CanonicalOperation.CHANGE_APPLY
-        is DaemonChangeAction.Recover -> CanonicalOperation.CHANGE_RECOVER
-    }
-
 /** The canonical request keeps its concrete type across the RPC boundary. */
 @Serializable
 sealed interface DaemonCanonicalRead {
     @Serializable @SerialName("source_read") data class SourceRead(val request: SourceReadRequest) : DaemonCanonicalRead
 }
-
-internal fun DaemonCanonicalRead.operation(): CanonicalOperation =
-    when (this) {
-        is DaemonCanonicalRead.SourceRead -> CanonicalOperation.SOURCE_READ
-    }
-
-internal fun DaemonOperationSelection.operation(): CanonicalOperation =
-    when (this) {
-        is DaemonOperationSelection.PublicTool -> tool.identity.operation
-        is DaemonOperationSelection.Canonical -> read.operation()
-        is DaemonOperationSelection.Change -> action.operation()
-    }
 
 @Serializable
 internal sealed interface DaemonOperationResponse {
@@ -142,6 +141,10 @@ sealed interface DaemonOperationFailure {
     @SerialName("workspace")
     data class Workspace(val id: String, val cause: WorkspaceDemandCause) : DaemonOperationFailure
 
+    @Serializable
+    @SerialName("managed_workspace")
+    data class ManagedWorkspace(val reason: ContainerFailure) : DaemonOperationFailure
+
     @Serializable @SerialName("host") data class Host(val reason: ExistingIdeFailure) : DaemonOperationFailure
 }
 
@@ -172,4 +175,21 @@ sealed interface DaemonOperationInputFailure {
         val parameter: io.github.amichne.kast.appserver.query.PublicToolParameter,
         val rule: io.github.amichne.kast.appserver.query.PublicToolRule,
     ) : DaemonOperationInputFailure
+
+    @Serializable
+    @SerialName("constraint")
+    data class Constraint(
+        val firstParameter: io.github.amichne.kast.appserver.query.PublicToolParameter,
+        val remainingParameters: Set<io.github.amichne.kast.appserver.query.PublicToolParameter>,
+        val rule: io.github.amichne.kast.appserver.query.PublicToolRule,
+    ) : DaemonOperationInputFailure
+
+    @Serializable
+    @SerialName("source_anchor")
+    data class SourceAnchor(val cause: SourceReadAnchorDocumentFailure) : DaemonOperationInputFailure
+
+    /** The request's runtime settings were malformed, not governed by this route, or conflict with its execution. */
+    @Serializable
+    @SerialName("runtime_settings")
+    data class RuntimeSettings(val reason: DaemonRuntimeSettingsFailure) : DaemonOperationInputFailure
 }

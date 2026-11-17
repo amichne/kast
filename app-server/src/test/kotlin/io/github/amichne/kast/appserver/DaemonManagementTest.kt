@@ -2,6 +2,7 @@ package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.core.CanonicalBrokerDirectory
 import io.github.amichne.kast.appserver.runtime.DaemonManagement
+import io.github.amichne.kast.appserver.runtime.DaemonRetirementAdmission
 import io.github.amichne.kast.appserver.runtime.UnavailableDaemonSessions
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
@@ -57,6 +58,49 @@ class DaemonManagementTest {
         val reason = result.getValue("reason").jsonObject
         assertEquals("upgrade", reason.getValue("type").jsonPrimitive.content)
         assertEquals("UNAVAILABLE", reason.getValue("failure").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `only the fenced generation can request retirement`() {
+        var fenced = false
+        var retirements = 0
+        val management =
+            DaemonManagement(
+                target = target,
+                available = { !fenced },
+                status = { status },
+                sessions = UnavailableDaemonSessions,
+                retire = {
+                    if (fenced) {
+                        retirements++
+                        DaemonRetirementAdmission.ACCEPTED
+                    } else DaemonRetirementAdmission.UNFENCED
+                },
+            ) {
+                error("unexpected enrollment")
+            }
+        val exact = DaemonManagementRequest.Retire(target.serviceGeneration)
+        assertEquals(rejection(DaemonManagementFailure.LIFECYCLE_UNFENCED), management.execute(exact))
+        fenced = true
+        assertEquals(
+            rejection(DaemonManagementFailure.IDENTITY_REJECTED),
+            management.execute(exact.copy(serviceGeneration = target.stateEpoch)),
+        )
+        assertEquals(0, retirements)
+        val accepted = management.respond(DaemonManagementProtocol.json.encodeToString<DaemonManagementRequest>(exact))
+        assertTrue(accepted.requestsRetirement)
+        val document = Json.parseToJsonElement(accepted.text).jsonObject
+        assertEquals("retiring", document.getValue("type").jsonPrimitive.content)
+        assertEquals(1, retirements)
+        assertFalse(
+            management
+                .respond(
+                    DaemonManagementProtocol.json.encodeToString<DaemonManagementRequest>(
+                        DaemonManagementRequest.Status()
+                    )
+                )
+                .requestsRetirement
+        )
     }
 
     /** Independent request boundary for the new private management operation. */

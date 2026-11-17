@@ -84,7 +84,8 @@
       "required": ["runtimeIdentity", "compatibility"],
       "properties": {
         "runtimeIdentity": { "$ref": "#/$defs/managedRuntimeIdentity" },
-        "compatibility": { "$ref": "#/$defs/hostedCompatibility" }
+        "compatibility": { "$ref": "#/$defs/hostedCompatibility" },
+        "gradleImportEnvironmentIdentity": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     },
     "managedRuntimeIdentity": {

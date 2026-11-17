@@ -612,11 +612,28 @@ internal object InstalledBrokerHost {
     }
 }
 
-class InstalledBrokerServerRunner(
+class InstalledBrokerServerRunner
+private constructor(
     private val kastExecutable: Path,
     private val userHome: Path,
-    private val environment: Map<String, String> = System.getenv(),
+    private val environment: Map<String, String>,
+    private val semantic: CoordinatorSemantic?,
 ) : BrokerServerRunner {
+    constructor(
+        kastExecutable: Path,
+        userHome: Path,
+        environment: Map<String, String> = System.getenv(),
+        semantic: CoordinatorOperationExecutor? = null,
+    ) : this(kastExecutable, userHome, environment, semantic?.let { CoordinatorSemantic.LaunchBound(it) })
+
+    /** Each request's admitted runtime settings reach [requests], which owns conflicts with its bindings. */
+    constructor(
+        kastExecutable: Path,
+        userHome: Path,
+        environment: Map<String, String>,
+        requests: CoordinatorRequestExecutor,
+    ) : this(kastExecutable, userHome, environment, CoordinatorSemantic.RequestBound(requests))
+
     override fun serve(): BrokerServerRun {
         val options =
             when (val admission = InstalledCoordinatorConfiguration.admit(kastExecutable, userHome, environment)) {
@@ -626,7 +643,7 @@ class InstalledBrokerServerRunner(
         return try {
             runBlocking {
                 val running =
-                    when (val started = InstalledCoordinator.start(options)) {
+                    when (val started = InstalledCoordinator.start(options, DesktopDaemonDiscovery(), semantic)) {
                         is InstalledCoordinatorStart.Started -> started.coordinator
                         is InstalledCoordinatorStart.Rejected ->
                             return@runBlocking BrokerServerRun.Rejected(started.failure)
@@ -687,6 +704,7 @@ internal sealed interface BrokerServiceReadiness {
         val identity: BrokerServiceIdentity,
         val instanceId: BrokerServiceGeneration,
         val path: Path,
+        val process: ServiceProcessIncarnation,
     ) : BrokerServiceReadiness {
         companion object {
             internal fun admit(
@@ -696,7 +714,8 @@ internal sealed interface BrokerServiceReadiness {
             ): Managed? {
                 val admittedIdentity = BrokerServiceIdentity.admit(identity) ?: return null
                 if (path != expected || !path.isAbsolute || path.normalize() != path) return null
-                return Managed(admittedIdentity, BrokerServiceGeneration.fresh(), path)
+                val process = ServiceProcessIncarnation.capture(ProcessHandle.current()) ?: return null
+                return Managed(admittedIdentity, BrokerServiceGeneration.fresh(), path, process)
             }
         }
     }
@@ -761,13 +780,14 @@ private constructor(
     private var fileKey: Any,
 ) {
     @Synchronized
-    internal fun ready(): BrokerReadinessTransition =
+    internal fun ready(semanticPeer: SemanticCoordinatorPeer? = null): BrokerReadinessTransition =
         transition(
             BrokerServiceStateDocument.Ready(
                 BROKER_SERVICE_STATE_SCHEMA_VERSION,
                 managed.identity.value,
                 managed.instanceId.toString(),
                 VENDORED_BROKER_VERSION,
+                semanticPeer,
             )
         )
 
@@ -884,6 +904,7 @@ private fun beginManagedReadiness(managed: BrokerServiceReadiness.Managed): Brok
             managed.identity.value,
             managed.instanceId.toString(),
             VENDORED_BROKER_VERSION,
+            managed.process,
         )
     try {
         Files.createDirectories(
@@ -936,6 +957,8 @@ internal sealed interface BrokerServiceStateDocument {
         override val serviceIdentity: String,
         override val serviceInstanceId: String,
         override val brokerVersion: String,
+        /** The publishing process; absent only in older records, which never prove an abandoned startup. */
+        val startupProcess: ServiceProcessIncarnation? = null,
     ) : BrokerServiceStateDocument
 
     @Serializable
@@ -945,6 +968,7 @@ internal sealed interface BrokerServiceStateDocument {
         override val serviceIdentity: String,
         override val serviceInstanceId: String,
         override val brokerVersion: String,
+        val semanticPeer: SemanticCoordinatorPeer? = null,
     ) : BrokerServiceStateDocument
 
     @Serializable

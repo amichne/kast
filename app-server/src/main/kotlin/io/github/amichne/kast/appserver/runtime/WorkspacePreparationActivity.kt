@@ -29,6 +29,12 @@ internal sealed interface WorkspacePreparationActivityOutcome {
 
     @Serializable @SerialName("completed") data object Completed : WorkspacePreparationActivityOutcome
 
+    @Serializable @SerialName("joined") data object Joined : WorkspacePreparationActivityOutcome
+
+    @Serializable
+    @SerialName("reused")
+    data class Reused(val host: String, val project: String) : WorkspacePreparationActivityOutcome
+
     @Serializable
     @SerialName("rejected")
     data class Rejected(val failure: WorkspacePreparationFailure) : WorkspacePreparationActivityOutcome

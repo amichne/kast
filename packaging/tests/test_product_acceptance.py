@@ -203,7 +203,40 @@ def record() -> product.ProductRecord:
     )
 
 
+@dataclass(frozen=True)
+class ControlStage:
+    stage: str
+    outcome: str
+    pid: int
+    generation: str | None = None
+    elapsedNanos: int = 1
+    bytes: int | None = None
+    event: str = "kast_control_stage"
+
+
+def trace(*events: ControlStage) -> bytes:
+    return b"".join(json.dumps(asdict(event)).encode() + b"\n" for event in events)
+
+
 class AcceptanceTest(unittest.TestCase):
+    def test_warm_coordinator_reuse_rejects_competing_owner_and_setup(self) -> None:
+        generation = "19785c96-1977-4cb6-8388-592dc0c36bf5"
+        coordinated = ControlStage("COORDINATED_INVOCATION", "COMPLETED", 7, generation)
+        first = trace(ControlStage("PROCESS_START", "CREATED", 11), coordinated)
+        second = ControlStage("PROCESS_START", "CREATED", 13)
+        probe.require_warm_coordinator_reuse(first, trace(second, coordinated))
+        for stale in (
+            trace(second),
+            trace(second, replace(coordinated, pid=8)),
+            trace(second, replace(coordinated, generation="e6eaf2a8-d0c1-4b08-869a-6562cdcd875f")),
+            trace(replace(second, pid=11), coordinated),
+            trace(second, coordinated, ControlStage("PAYLOAD_VERIFICATION", "COMPLETED", 13)),
+            trace(second, coordinated, ControlStage("QUERY_CHILD_LAUNCH", "CREATED", 13)),
+            trace(second, coordinated, ControlStage("WORKSPACE_PREPARATION", "COMPLETED", 13)),
+        ):
+            with self.assertRaises(ValueError):
+                probe.require_warm_coordinator_reuse(first, stale)
+
     def test_compiler_cases_reanalyse_the_existing_source_without_replacing_host(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -633,9 +666,32 @@ class AcceptanceTest(unittest.TestCase):
                 root / "dependency.whl",
                 {},
             )
-            with patch.object(
-                probe.Probe, "run", return_value=json.dumps(asdict(Reply(document))).encode()
-            ) as run:
+            runner.evidence.mkdir()
+            coordinated = ControlStage(
+                "COORDINATED_INVOCATION", "COMPLETED", 7, "19785c96-1977-4cb6-8388-592dc0c36bf5"
+            )
+            encode_trace = trace
+            raw = json.dumps(asdict(Reply(document))).encode()
+
+            def resulting_call(
+                case: str,
+                selected: Path,
+                arguments: tuple[str, ...],
+                *,
+                trace: bool,
+                disposable_caller: bool,
+            ) -> bytes:
+                self.assertTrue(trace)
+                self.assertEqual(disposable_caller, case != "repeated")
+                self.assertEqual(selected, workspace)
+                self.assertEqual(arguments[0], "query")
+                identity = 24 if case == "repeated" else 20 + int(case[-1])
+                _ = (runner.evidence / f"{case}.stderr").write_bytes(
+                    encode_trace(ControlStage("PROCESS_START", "CREATED", identity), coordinated)
+                )
+                return raw
+
+            with patch.object(probe.Probe, "run", side_effect=resulting_call) as run:
                 self.assertEqual("compiler-workspace-one", runner.parallel_first_queries(workspace))
                 self.assertCountEqual(
                     ["parallel-first-0", "parallel-first-1", "parallel-first-2", "repeated"],
@@ -668,7 +724,11 @@ class AcceptanceTest(unittest.TestCase):
             runner = probe.Probe(root / "kast", root, root, root, root, {})
             workspace = root / "workspace"
 
-            def observed(case: str, selected: Path) -> str:
+            def observed(
+                case: str, selected: Path, *, trace: bool, disposable_caller: bool = False
+            ) -> str:
+                self.assertTrue(trace)
+                self.assertEqual(disposable_caller, case != "repeated")
                 self.assertEqual(workspace, selected)
                 return "different-host" if case == "parallel-first-2" else "one-host"
 
@@ -700,6 +760,8 @@ class AcceptanceTest(unittest.TestCase):
                 "public",
                 workspace,
                 ("query", "--name", "invokeCallback", "--kind", "function", "--json"),
+                trace=False,
+                disposable_caller=False,
             )
         self.assertEqual(
             "compiler-workspace-one",

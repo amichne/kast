@@ -554,6 +554,11 @@ jobs:
                   raise SystemExit(result.value)
           PrivateInterpreter.admit(Path('build/private-python.tar.gz'), Path('build/defusedxml.whl'), pin.target)
           PY
+      - name: Start the Linux user service manager
+        if: runner.os == 'Linux'
+        run: |
+          sudo loginctl enable-linger "$(id -un)"
+          XDG_RUNTIME_DIR="/run/user/$(id -u)" systemctl --user start default.target
       - name: Exercise installed CLI MCP RPC and lifecycle against retained bytes
         env:
           TARGET: ${{ matrix.target }}

@@ -5,6 +5,7 @@ import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement
 import io.github.amichne.kast.protocol.contract.IdeHostMode
+import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import io.github.amichne.kast.protocol.wire.CanonicalHostedContract
 import java.nio.file.Path
 import java.util.UUID
@@ -12,9 +13,56 @@ import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.junit.jupiter.api.io.TempDir
 
 class ManagedDeploymentAdmissionTest {
+    @Test
+    fun `private launch evidence belongs to the inspected incarnation`(@TempDir root: Path) {
+        val fixture = ManagedDeploymentFixture(root.toRealPath())
+        val identity = fixture.identity(UUID(0, 3).toString())
+        val compatibility =
+            HostedCompatibilityDocument("262.1.1", "262.1.1-IJ", "1.2.3", CanonicalHostedContract.document)
+        val application = IdeHostApplicationAdvertisement(identity, compatibility, "a".repeat(64))
+        val inspected =
+            IdeLifecycleResult.Inspected(
+                identity.hostLifetime,
+                identity.ideaHome,
+                "262.1.1",
+                emptyList(),
+                compatibility,
+                runtimeIdentity = identity,
+            )
+        val socket = root.resolve("host.sock")
+        val descriptor =
+            HostedSocketExchangeFixture.Descriptor(
+                identity.ideaHome,
+                socket.toString(),
+                hostPid = identity.pid,
+                host = identity.hostLifetime,
+                querySchema = "kast.workspace.lifecycle.v2",
+                operations = listOf("WORKSPACE_LIFECYCLE"),
+                application = application,
+            )
+        val recorded =
+            assertInstanceOf<Refinement.Refined<RecordedHostedEndpointOwner>>(
+                    ExistingIdeDocuments.recordedOwner(
+                        Json { encodeDefaults = true }.encodeToString(descriptor).toByteArray()
+                    )
+                )
+                .value
+        assertEquals(application, recorded.lifecycleApplication(socket, inspected))
+        assertEquals(
+            null,
+            recorded.lifecycleApplication(
+                socket,
+                inspected.copy(
+                    runtimeIdentity = identity.copy(processStartEpochMillis = identity.processStartEpochMillis + 1)
+                ),
+            ),
+        )
+    }
+
     @Test
     fun `owner envelope does not grant current admission to a desktop application`(@TempDir root: Path) {
         val fixture = ManagedDeploymentFixture(root.toRealPath())

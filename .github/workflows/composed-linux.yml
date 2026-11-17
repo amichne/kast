@@ -219,8 +219,19 @@ jobs:
             --root "$scratch/kc" --evidence "$PWD/build/composed-evidence" \
             --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
 
+      - name: Exercise the installed Linux coordinator
+        if: github.event_name == 'workflow_dispatch' && inputs.linux_only && matrix.target == 'linux-x86_64'
+        run: |
+          sudo loginctl enable-linger "$(id -un)"
+          XDG_RUNTIME_DIR="/run/user/$(id -u)" systemctl --user start default.target
+          mise exec -- uv run --locked --project packaging python packaging/internal/verification/linux_coordinator_probe.py \
+            --directory build/composed-release --receipt build/composed-evidence/qualification.json \
+            --control /tmp/kc/components/control/share/kast/libexec/kast-management \
+            --java-release "$(mise where java)/release" --version "$BUNDLE_VERSION" \
+            --revision "$GITHUB_SHA" --evidence build/composed-evidence/installed-coordinator
+
       - name: Retain assembly receipt beside its exact product bytes
-        if: '!inputs.complete_product'
+        if: '!inputs.complete_product && !inputs.linux_only'
         env:
           TARGET: ${{ matrix.target }}
         run: cp build/composed-evidence/qualification.json "build/composed-release/qualification-${TARGET}.json"
