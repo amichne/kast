@@ -219,12 +219,6 @@ jobs:
             --root "$scratch/kc" --evidence "$PWD/build/composed-evidence" \
             --version "$BUNDLE_VERSION" --source-revision "$GITHUB_SHA"
 
-      - name: Retain assembly receipt beside its exact product bytes
-        if: '!inputs.complete_product'
-        env:
-          TARGET: ${{ matrix.target }}
-        run: cp build/composed-evidence/qualification.json "build/composed-release/qualification-${TARGET}.json"
-
       - name: Exercise the installed Linux coordinator
         if: github.event_name == 'workflow_dispatch' && inputs.linux_only && matrix.target == 'linux-x86_64'
         run: |
@@ -235,6 +229,12 @@ jobs:
             --control /tmp/kc/components/control/share/kast/libexec/kast-management \
             --java-release "$(mise where java)/release" --version "$BUNDLE_VERSION" \
             --revision "$GITHUB_SHA" --evidence build/composed-evidence/installed-coordinator
+
+      - name: Retain assembly receipt beside its exact product bytes
+        if: '!inputs.complete_product && !inputs.linux_only'
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cp build/composed-evidence/qualification.json "build/composed-release/qualification-${TARGET}.json"
 
       - name: Seal native target and toolchain evidence for the exact CI attempt
         if: inputs.complete_product
