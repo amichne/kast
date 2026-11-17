@@ -23,6 +23,8 @@ sealed interface DaemonOperationCall {
     data class Change(val action: DaemonChangeAction) : DaemonOperationCall
 
     data object WorkspaceStatus : DaemonOperationCall
+
+    data object PrepareWorkspace : DaemonOperationCall
 }
 
 /** The CLI's semantic capability; a rejection never causes a direct IDE invocation. */
@@ -131,6 +133,7 @@ private fun DaemonOperationCall.selection(): DaemonOperationSelection? =
         is DaemonOperationCall.Canonical -> DaemonOperationSelection.Canonical(read)
         is DaemonOperationCall.Change -> DaemonOperationSelection.Change(action)
         DaemonOperationCall.WorkspaceStatus -> DaemonOperationSelection.WorkspaceStatus
+        DaemonOperationCall.PrepareWorkspace -> DaemonOperationSelection.PrepareWorkspace
     }
 
 private fun protocolRejection(reason: DaemonOperationProtocolFailure) =

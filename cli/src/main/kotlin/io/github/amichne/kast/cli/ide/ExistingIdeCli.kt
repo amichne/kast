@@ -231,6 +231,9 @@ private fun semanticOperationRejected(rejection: DaemonOperationClientRejection)
     return when (server) {
         is io.github.amichne.kast.appserver.DaemonOperationFailure.ManagedWorkspace ->
             io.github.amichne.kast.cli.direct.managedWorkspaceRejected(server.reason)
+        is io.github.amichne.kast.appserver.DaemonOperationFailure.Preparation,
+        is io.github.amichne.kast.appserver.DaemonOperationFailure.Workspace ->
+            io.github.amichne.kast.cli.direct.managedPreparationRejected(server)
         else ->
             boundaryExit(CliBoundaryExitStatus.RUNTIME, rejection.diagnosticCode())
                 .copy(cause = CliFailureCause.Runtime(rejection))

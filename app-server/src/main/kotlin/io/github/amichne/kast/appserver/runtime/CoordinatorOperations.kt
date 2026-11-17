@@ -244,6 +244,7 @@ private fun DaemonOperationSelection.admit(): Refinement<DaemonOperationCall, Da
     when (this) {
         is DaemonOperationSelection.Canonical -> Refinement.Refined(DaemonOperationCall.Canonical(read))
         DaemonOperationSelection.WorkspaceStatus -> Refinement.Refined(DaemonOperationCall.WorkspaceStatus)
+        DaemonOperationSelection.PrepareWorkspace -> Refinement.Refined(DaemonOperationCall.PrepareWorkspace)
         is DaemonOperationSelection.Change -> Refinement.Refined(DaemonOperationCall.Change(action))
         is DaemonOperationSelection.PublicTool ->
             when (val admitted = PublicToolContract.admit(tool.identity, arguments, catalog)) {

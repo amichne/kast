@@ -76,6 +76,7 @@ internal interface ManagedWorkspaceAcquisition {
         root: CanonicalRoot,
         environment: Map<String, String>,
         operation: DaemonOperationCall,
+        expected: WorkspaceHostIdentity?,
     ): DaemonOperationResult
 }
 
@@ -135,6 +136,7 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
         root: CanonicalRoot,
         environment: Map<String, String>,
         operation: DaemonOperationCall,
+        expected: WorkspaceHostIdentity?,
     ): DaemonOperationResult {
         val workspace =
             when (val opened = open(root, environment, WorkspaceOperationAdmission.EXISTING_AUTHORITY)) {
@@ -146,6 +148,8 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
             admitInstallation()?.let {
                 return@use rejectedOperation(it)
             }
+            if (expected != null && workspace.hostIdentity() != expected)
+                return@use rejectedOperation(configurationConflict)
             when (
                 val selected = ManagedToolClient.admit(root, workspace, WorkspaceOperationAdmission.EXISTING_AUTHORITY)
             ) {
@@ -184,9 +188,6 @@ internal fun ManagedToolFailure.daemonFailure(): DaemonOperationFailure =
     when (this) {
         is ManagedToolFailure.Workspace -> DaemonOperationFailure.ManagedWorkspace(reason)
         is ManagedToolFailure.Preparation -> reason
-        ManagedToolFailure.Stopped,
-        ManagedToolFailure.Unproven ->
-            DaemonOperationFailure.Protocol(DaemonOperationProtocolFailure.LIFECYCLE_TRANSITION)
     }
 
 internal fun rejectedOperation(failure: DaemonOperationFailure): DaemonOperationResult =

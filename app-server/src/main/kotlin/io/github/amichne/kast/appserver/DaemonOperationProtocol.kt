@@ -73,6 +73,8 @@ internal sealed interface DaemonOperationSelection {
     @Serializable @SerialName("change") data class Change(val action: DaemonChangeAction) : DaemonOperationSelection
 
     @Serializable @SerialName("workspace_status") data object WorkspaceStatus : DaemonOperationSelection
+
+    @Serializable @SerialName("prepare_workspace") data object PrepareWorkspace : DaemonOperationSelection
 }
 
 /** A change call retains its exact typed plan, application or recovery request. */

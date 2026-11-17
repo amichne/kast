@@ -29,14 +29,21 @@ internal class CoordinatedToolClient(private val binding: InstalledClientBinding
     private val connection = Mutex()
     private val settings = RequestedRuntimeSettings.fromEnvironment(binding.environment)
 
-    override fun read(root: CanonicalRoot, call: DaemonOperationCall): DaemonOperationResult = runBlocking {
+    override fun read(root: CanonicalRoot, call: DaemonOperationCall): DaemonOperationResult =
+        read(root, call, settings)
+
+    fun read(
+        root: CanonicalRoot,
+        call: DaemonOperationCall,
+        requestSettings: RequestedRuntimeSettings,
+    ): DaemonOperationResult = runBlocking {
         if (binding.observe() != InstalledToolAdmission.AVAILABLE) return@runBlocking unavailable
         val started = System.nanoTime()
         val coordinator = selected.get() ?: connectOnce()
         ControlStageTrace.record(ControlStage.COORDINATOR_CONNECTION, outcome(coordinator == null), started)
         if (coordinator == null) return@runBlocking unavailable
         val invoking = System.nanoTime()
-        val result = coordinator.execute(root, call, settings)
+        val result = coordinator.execute(root, call, requestSettings)
         // No call retries the exchange. The next request can observe a newly available coordinator.
         if (result == unavailable) selected.compareAndSet(coordinator, null)
         ControlStageTrace.record(
