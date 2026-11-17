@@ -233,6 +233,48 @@ class ManagedCoordinatorOperationsTest {
         }
     }
 
+    @Test
+    fun `workspace wait confirms a retained target and prepares again after a project-only change`() = runBlocking {
+        val workspaces = ScriptedWorkspaces()
+        ManagedCoordinatorOperations(SERVICE, workspaces).use { operations ->
+            assertEquals("a#1", host(operations.execute(rootA, defaults, prepareRead)))
+            val wait = DaemonOperationCall.PrepareWorkspace
+            assertTrue(operations.execute(rootA, defaults, wait) is DaemonOperationResult.Complete)
+            assertEquals(listOf(rootA), workspaces.preparations.toList())
+
+            // The first Host remains alive, but its retained project target no longer exists.
+            workspaces.reopened += "a#1"
+            assertTrue(operations.execute(rootA, defaults, wait) is DaemonOperationResult.Complete)
+            assertEquals(listOf(rootA, rootA), workspaces.preparations.toList())
+            assertEquals(listOf("a#1"), workspaces.closedHosts.toList())
+            assertEquals(listOf("a#1"), workspaces.reads.toList())
+            assertEquals(0, workspaces.openLeases.get())
+        }
+    }
+
+    @Test
+    fun `workspace wait replaces a lost Host once and prepares at most once more for a stale replacement`() =
+        runBlocking {
+            val workspaces = ScriptedWorkspaces()
+            ManagedCoordinatorOperations(SERVICE, workspaces).use { operations ->
+                val wait = DaemonOperationCall.PrepareWorkspace
+                assertTrue(operations.execute(rootA, defaults, wait) is DaemonOperationResult.Complete)
+                workspaces.vanished += "a#1"
+                assertTrue(operations.execute(rootA, defaults, wait) is DaemonOperationResult.Complete)
+                assertEquals(listOf("a#1"), workspaces.closedHosts.toList())
+
+                workspaces.reopened += "a#2"
+                workspaces.reopened += "a#3"
+                val mismatch =
+                    rejectedOperation(DaemonOperationFailure.Workspace("workspace", WorkspaceDemandCause.HostChanged))
+                assertEquals(mismatch, operations.execute(rootA, defaults, wait))
+                assertEquals(List(3) { rootA }, workspaces.preparations.toList())
+                assertEquals(listOf("a#1", "a#2", "a#3"), workspaces.closedHosts.toList())
+                assertEquals(emptyList<String>(), workspaces.reads.toList())
+                assertEquals(0, workspaces.openLeases.get())
+            }
+        }
+
     private fun host(result: DaemonOperationResult): String =
         Json.decodeFromString(HostDocument.serializer(), (result as DaemonOperationResult.Complete).document.value).host
 
@@ -335,7 +377,9 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
         }
         val host = "${root.path.fileName}#${incarnations.incrementAndGet()}"
         Refinement.Refined(
-            PreparedWorkspaceBinding(identity(root, environment), { _, _ -> read(host) }) { closedHosts += host }
+            PreparedWorkspaceBinding(identity(root, environment), { _, _ -> read(host) }, { readiness(host) }) {
+                closedHosts += host
+            }
         )
     }
 
@@ -369,18 +413,26 @@ private class ScriptedWorkspaces : ManagedWorkspaceAcquisition {
         else DaemonOperationResult.Complete(hostDocument.create(HostDocument("existing")))
     }
 
-    private fun read(host: String): DaemonOperationResult {
-        if (host in reopened)
-            return rejectedOperation(DaemonOperationFailure.Workspace("workspace", WorkspaceDemandCause.HostChanged))
-        if (host in vanished)
-            return DaemonOperationResult.Rejected(
-                DaemonOperationClientRejection.Server(
+    /** The scripted exact-target inspection: a reopened project or a vanished Host no longer serves [host]. */
+    private fun readiness(host: String): Refinement<Unit, DaemonOperationFailure> =
+        when (host) {
+            in reopened ->
+                Refinement.Rejected(DaemonOperationFailure.Workspace("workspace", WorkspaceDemandCause.HostChanged))
+            in vanished ->
+                Refinement.Rejected(
                     DaemonOperationFailure.Workspace(
                         "workspace",
                         WorkspaceDemandCause.Lifecycle(IdeLifecycleFailure.HOST_UNAVAILABLE),
                     )
                 )
-            )
+            else -> Refinement.Refined(Unit)
+        }
+
+    private fun read(host: String): DaemonOperationResult {
+        when (val current = readiness(host)) {
+            is Refinement.Rejected -> return rejectedOperation(current.failure)
+            is Refinement.Refined -> Unit
+        }
         val blocked = readGate
         if (host !in unblockedHosts && !blocked.isDone) {
             readStarts.release()

@@ -33,7 +33,19 @@ import kotlinx.coroutines.runBlocking
 
 /** The caller owns preparation jobs and closes them when its request or session ends. */
 class PreparedMcpWorkspace
-internal constructor(val client: DaemonOperationClient, val host: ObservedHost, val preparationId: String)
+internal constructor(
+    val client: DaemonOperationClient,
+    val host: ObservedHost,
+    val preparationId: String,
+    private val readiness: suspend () -> Refinement<Unit, WorkspaceDemandFailure>,
+) {
+    /** Confirms that the current Host still serves this exact retained project target, without a semantic call. */
+    fun confirmReady(): Refinement<Unit, DaemonOperationFailure> =
+        when (val current = runBlocking { readiness() }) {
+            is Refinement.Rejected -> Refinement.Rejected(current.failure.daemonFailure())
+            is Refinement.Refined -> current
+        }
+}
 
 class McpWorkspaceOperationClient
 internal constructor(
@@ -59,6 +71,7 @@ internal constructor(
                                 mcpDemandClient(ready.value.demand),
                                 ready.value.host,
                                 ready.value.preparationId.value.toString(),
+                                ready.value.confirmReady,
                             )
                         )
                 }

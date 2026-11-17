@@ -18,7 +18,10 @@ import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironme
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironmentIdentity
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
 import java.nio.file.Path
+import kotlinx.serialization.Required
+import kotlinx.serialization.Serializable
 
 /**
  * Explicit caller configuration. [host] selects the retained Host and must agree with a registered workspace; [local]
@@ -80,17 +83,35 @@ internal data class WorkspaceHostIdentity(
     val delegated: GradleImportEnvironmentIdentity = GradleImportEnvironment.Empty.identity,
 )
 
-/** One prepared Host binding. It retains Host authority and owns no workspace lease. */
+/**
+ * One prepared Host binding. It retains Host authority and owns no workspace lease. [readiness] inspects the exact
+ * retained project target without a semantic call.
+ */
 internal class PreparedWorkspaceBinding(
     val identity: WorkspaceHostIdentity,
     private val client: DaemonOperationClient,
+    private val readiness: () -> Refinement<Unit, DaemonOperationFailure>,
     val authority: PreparedMcpWorkspace? = null,
     private val owner: AutoCloseable,
 ) : AutoCloseable {
-    fun read(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult = client.read(root, operation)
+    /** A workspace wait reports success only after the current Host confirms this exact retained project target. */
+    fun execute(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult =
+        if (operation != DaemonOperationCall.PrepareWorkspace) client.read(root, operation)
+        else
+            when (val current = readiness()) {
+                is Refinement.Rejected -> rejectedOperation(current.failure)
+                is Refinement.Refined -> preparedWorkspace
+            }
 
     override fun close() = owner.close()
 }
+
+@Serializable internal data class PreparedWorkspaceDocument(@Required val ready: Boolean = true)
+
+private val preparedWorkspace =
+    DaemonOperationResult.Complete(
+        CanonicalJsonDocument.generated(PreparedWorkspaceDocument.serializer()).create(PreparedWorkspaceDocument())
+    )
 
 /** Installed workspace effects behind the coordinator registry. Every lease belongs to one preparation or request. */
 internal interface ManagedWorkspaceAcquisition {
@@ -137,15 +158,18 @@ internal class InstalledWorkspaceAcquisition(private val context: InstalledClien
             }
             when (val selected = ManagedToolClient.admit(root, workspace, WorkspaceOperationAdmission.PREPARE)) {
                 is Refinement.Rejected -> Refinement.Rejected(selected.failure.daemonFailure())
-                is Refinement.Refined ->
+                is Refinement.Refined -> {
+                    val authority = checkNotNull(selected.value.prepared)
                     Refinement.Refined(
                         PreparedWorkspaceBinding(
                             workspace.hostIdentity(),
                             selected.value.capabilities.read,
-                            checkNotNull(selected.value.prepared),
+                            authority::confirmReady,
+                            authority,
                             selected.value,
                         )
                     )
+                }
             }
         }
     }
