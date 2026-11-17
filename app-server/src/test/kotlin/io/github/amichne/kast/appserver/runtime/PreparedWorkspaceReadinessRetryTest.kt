@@ -67,6 +67,28 @@ class PreparedWorkspaceReadinessRetryTest {
     }
 
     @Test
+    fun `retained authority reloads again after its recovered record is rejected by a later model reload`() = runTest {
+        val fixture = RetryCase()
+        val preparations = WorkspacePreparations(this, fixture::open)
+        try {
+            val rejection = fixture.decode(ModelReloadDocument())
+            val demand =
+                PreparedWorkspaceDemand(preparations, { fixture.inspected() }) { workspace, _ ->
+                    assertEquals(fixture.target, workspace.target)
+                    if (++fixture.invocations % 2 == 1) rejection else fixture.completed
+                }
+            val ready = (demand.prepare(fixture.root) as Refinement.Refined).value
+            assertEquals(WorkspaceDemandResult.Native(fixture.completed), ready.query(fixture.root, fixture.read))
+            assertEquals(2, fixture.opens)
+            assertEquals(WorkspaceDemandResult.Native(fixture.completed), ready.query(fixture.root, fixture.read))
+            assertEquals(3, fixture.opens)
+            assertEquals(4, fixture.invocations)
+        } finally {
+            preparations.close()
+        }
+    }
+
+    @Test
     fun `prepared reads retry only moved freshness at model capture or content revalidation`() = runTest {
         for (stage in listOf("MODEL_CAPTURE", "CONTENT_REVALIDATION")) {
             val fixture = RetryCase()

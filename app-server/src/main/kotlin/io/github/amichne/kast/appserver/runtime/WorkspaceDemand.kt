@@ -161,8 +161,12 @@ internal class PreparedWorkspaceDemand(
         }
     }
 
-    private suspend fun queryPrepared(ready: Ready, operation: ExistingIdeOperation): WorkspaceDemandResult =
-        retryPrepared(ready, operation, queryReady(ready.entry, ready.workspace, operation))
+    /** Each held operation starts from the current completed record for the same exact target. */
+    private suspend fun queryPrepared(held: Ready, operation: ExistingIdeOperation): WorkspaceDemandResult {
+        val (entry, workspace) = preparations.current(held.entry, held.workspace)
+        val ready = Ready(entry, workspace)
+        return retryPrepared(ready, operation, queryReady(entry, workspace, operation))
+    }
 
     private suspend fun retryPrepared(
         ready: Ready,
