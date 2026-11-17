@@ -1,8 +1,18 @@
 package io.github.amichne.kast.appserver
 
 import io.github.amichne.kast.appserver.query.AdmittedPublicTool
+import io.github.amichne.kast.appserver.query.PublicToolContract
+import io.github.amichne.kast.appserver.runtime.BrokerControlRoute
+import io.github.amichne.kast.appserver.runtime.BrokerUpstreamConnectionAdmission
+import io.github.amichne.kast.appserver.runtime.BrokerUpstreamFrame
+import io.github.amichne.kast.appserver.runtime.BrokerUpstreamSend
+import io.github.amichne.kast.appserver.runtime.connectCodexUnixWebSocket
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.protocol.wire.presentation.CanonicalJsonDocument
+import java.nio.file.Path
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 
 sealed interface DaemonOperationCall {
@@ -51,6 +61,68 @@ enum class DaemonOperationClientFailure {
     OUTCOME_UNOBSERVED,
     RESPONSE_REJECTED,
 }
+
+/** The caller supplies the socket and target from the same admitted coordinator. */
+internal class InstalledDaemonOperationClient(private val socket: Path, private val target: DaemonManagementTarget) {
+    suspend fun exchange(root: CanonicalRoot, call: DaemonOperationCall): DaemonOperationResult {
+        val selection =
+            call.selection() ?: return protocolRejection(DaemonOperationProtocolFailure.OPERATION_UNSUPPORTED)
+        val request = DaemonOperationRequest(target, root.path.toString(), selection)
+        val message = DaemonOperationProtocol.json.encodeToString(DaemonOperationRequest.serializer(), request)
+        if (message.toByteArray(Charsets.UTF_8).size > DaemonOperationProtocol.maximumRequestBytes)
+            return protocolRejection(DaemonOperationProtocolFailure.CAPACITY_EXCEEDED)
+        val connection =
+            when (
+                val connected =
+                    connectCodexUnixWebSocket(
+                        socket,
+                        DaemonOperationProtocol.maximumResponseBytes,
+                        BrokerOperationalLimits.workerControlHandshake.value,
+                        BrokerControlRoute.SEMANTIC,
+                    )
+            ) {
+                is BrokerUpstreamConnectionAdmission.Connected -> connected.connection
+                BrokerUpstreamConnectionAdmission.Rejected -> return rejected(DaemonOperationClientFailure.UNAVAILABLE)
+            }
+        try {
+            if (connection.send(message) != BrokerUpstreamSend.SENT)
+                return rejected(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
+            val frame =
+                connection.receive() as? BrokerUpstreamFrame.Text
+                    ?: return rejected(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
+            val invalidReply =
+                if (call is DaemonOperationCall.Change) DaemonOperationClientFailure.OUTCOME_UNOBSERVED
+                else DaemonOperationClientFailure.RESPONSE_REJECTED
+            val response =
+                try {
+                    DaemonOperationProtocol.json.decodeFromString<DaemonOperationResponse>(frame.message)
+                } catch (_: SerializationException) {
+                    return rejected(invalidReply)
+                }
+            val hosted = call is DaemonOperationCall.Canonical || call is DaemonOperationCall.Change
+            val result = admitOperationResponse(response, target, root, allowHosted = hosted)
+            return if (result == rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)) rejected(invalidReply)
+            else result
+        } finally {
+            withContext(NonCancellable) { connection.close() }
+        }
+    }
+}
+
+private fun DaemonOperationCall.selection(): DaemonOperationSelection? =
+    when (this) {
+        is DaemonOperationCall.PublicTool ->
+            DaemonOperationTool.entries
+                .find { it.identity == tool.identity }
+                ?.let {
+                    DaemonOperationSelection.PublicTool(it, PublicToolContract.encode(tool), tool.catalog)
+                }
+        is DaemonOperationCall.Canonical -> DaemonOperationSelection.Canonical(read)
+        is DaemonOperationCall.Change -> DaemonOperationSelection.Change(action)
+    }
+
+private fun protocolRejection(reason: DaemonOperationProtocolFailure) =
+    DaemonOperationResult.Rejected(DaemonOperationClientRejection.Server(DaemonOperationFailure.Protocol(reason)))
 
 internal fun admitOperationResponse(
     response: DaemonOperationResponse,
@@ -104,6 +176,8 @@ fun DaemonOperationClientRejection.diagnosticCode(): String =
                             DaemonOperationInputFailure.SyntaxRejected -> "daemon-operation-syntax-rejected"
                             is DaemonOperationInputFailure.Parameter ->
                                 "daemon-operation-${input.parameter.name}-${input.rule.name}"
+                            is DaemonOperationInputFailure.Constraint -> "daemon-operation-${input.rule.name}"
+                            is DaemonOperationInputFailure.SourceAnchor -> "daemon-operation-${input.cause.name}"
                         }
                     is DaemonOperationFailure.Preparation -> "daemon-operation-preparation-${reason.reason.name}"
                     is DaemonOperationFailure.Workspace ->

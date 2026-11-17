@@ -5,6 +5,7 @@ import io.github.amichne.kast.appserver.BrokerServiceGeneration
 import io.github.amichne.kast.appserver.CoordinatorControlAction
 import io.github.amichne.kast.appserver.CoordinatorControlRequest
 import io.github.amichne.kast.appserver.CoordinatorHostAttachment
+import io.github.amichne.kast.appserver.CoordinatorOperationExecutor
 import io.github.amichne.kast.appserver.CoordinatorServiceState
 import io.github.amichne.kast.appserver.CoordinatorStatusDocument
 import io.github.amichne.kast.appserver.CoordinatorStatusProtocol
@@ -50,8 +51,9 @@ private constructor(
     private val hostObservation: () -> BrokerFrontendObservation,
     private val sessions: DaemonSessions,
     private val preparations: WorkspacePreparations,
-    demand: WorkspaceDemand,
     private val hostedServices: () -> List<HostedServiceStatus>,
+    val privateEndpoint: Boolean,
+    semantic: CoordinatorOperationExecutor?,
 ) {
     private val closed = AtomicBoolean(false)
     // Capture once: replacing installed bytes cannot change this process's loaded version.
@@ -63,6 +65,7 @@ private constructor(
             generation.value.toString(),
             coordinatorConfigurationIdentity(configuration),
         )
+    private val operations = CoordinatorOperations(target, ::available, semantic)
     private val management =
         DaemonManagement(
             target,
@@ -116,6 +119,8 @@ private constructor(
         closed.set(true)
         preparations.close()
     }
+
+    suspend fun handleSemantic(session: DefaultWebSocketServerSession) = operations.handle(session)
 
     suspend fun handle(session: DefaultWebSocketServerSession) {
         val frame =
@@ -178,8 +183,9 @@ private constructor(
             hostObservation: () -> BrokerFrontendObservation = { BrokerFrontendObservation.PENDING },
             sessions: DaemonSessions = UnavailableDaemonSessions,
             preparations: WorkspacePreparations,
-            demand: WorkspaceDemand,
             hostedServices: () -> List<HostedServiceStatus> = { emptyList() },
+            privateEndpoint: Boolean,
+            semantic: CoordinatorOperationExecutor? = null,
         ): Refinement<CoordinatorControl, WorkerControlFailure> =
             try {
                 val legacy = installationRoot.resolve("state/workers")
@@ -203,8 +209,9 @@ private constructor(
                                 hostObservation,
                                 sessions,
                                 preparations,
-                                demand,
                                 hostedServices,
+                                privateEndpoint,
+                                semantic,
                             )
                         )
                 }

@@ -3,12 +3,15 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
 import io.github.amichne.kast.appserver.runtime.WorkspacePreparationFailure
+import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.distribution.managed.CanonicalRootFailure
 import io.github.amichne.kast.protocol.contract.CanonicalOperation
 import io.github.amichne.kast.protocol.contract.ChangeApplyRequest
 import io.github.amichne.kast.protocol.contract.ChangePlanRequest
 import io.github.amichne.kast.protocol.contract.ChangeRecoverRequest
+import io.github.amichne.kast.protocol.contract.SourceReadAnchorDocumentFailure
 import io.github.amichne.kast.protocol.contract.SourceReadRequest
+import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -25,6 +28,11 @@ internal object DaemonOperationProtocol {
         encodeDefaults = true
         explicitNulls = true
     }
+}
+
+/** Coordinator-owned semantic execution, after transport and exact workspace admission. */
+fun interface CoordinatorOperationExecutor {
+    suspend fun execute(root: CanonicalRoot, operation: DaemonOperationCall): DaemonOperationResult
 }
 
 /** Closed RPC presentations. Adding a public tool requires an explicit routing decision. */
@@ -50,6 +58,7 @@ internal sealed interface DaemonOperationSelection {
         val tool: DaemonOperationTool,
         /** Opaque only until the daemon re-admits the selected public tool's exact schema. */
         val arguments: JsonElement,
+        val catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
     ) : DaemonOperationSelection
 
     @Serializable
@@ -172,4 +181,16 @@ sealed interface DaemonOperationInputFailure {
         val parameter: io.github.amichne.kast.appserver.query.PublicToolParameter,
         val rule: io.github.amichne.kast.appserver.query.PublicToolRule,
     ) : DaemonOperationInputFailure
+
+    @Serializable
+    @SerialName("constraint")
+    data class Constraint(
+        val firstParameter: io.github.amichne.kast.appserver.query.PublicToolParameter,
+        val remainingParameters: Set<io.github.amichne.kast.appserver.query.PublicToolParameter>,
+        val rule: io.github.amichne.kast.appserver.query.PublicToolRule,
+    ) : DaemonOperationInputFailure
+
+    @Serializable
+    @SerialName("source_anchor")
+    data class SourceAnchor(val cause: SourceReadAnchorDocumentFailure) : DaemonOperationInputFailure
 }

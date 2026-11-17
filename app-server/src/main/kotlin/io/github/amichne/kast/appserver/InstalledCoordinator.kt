@@ -144,7 +144,10 @@ private constructor(
         suspend fun start(
             options: InstalledCoordinatorOptions,
             desktopDiscovery: DesktopDaemonDiscovery = DesktopDaemonDiscovery(),
+            semantic: CoordinatorOperationExecutor? = null,
         ): InstalledCoordinatorStart {
+            if (semantic != null && options.publicEndpoint !is BrokerPublicEndpoint.Private)
+                return InstalledCoordinatorStart.Rejected(BrokerServerFailure.PROTOCOL_CONFIGURATION_REJECTED)
             val activity = BrokerStartupActivityPublisher(options.activitySink)
             var stage = BrokerStartupStage.READINESS_ACQUISITION
             activity.started(stage)
@@ -182,42 +185,7 @@ private constructor(
             val preparation =
                 InstalledWorkspacePreparation(options.userHome, options.configuration, owner.installationId.value)
             val registryPath = options.installationRoot.resolve("config/workspaces.json")
-            val frontend = DeferredBrokerFrontend { upgrades ->
-                activity.started(BrokerStartupStage.HOST_ADMISSION)
-                when (val configuration = options.admitHost(preparation.demand)) {
-                    is InstalledBrokerServerConfiguration.Rejected -> {
-                        activity.rejected(
-                            BrokerStartupStage.HOST_ADMISSION,
-                            BrokerStartupRejection.HostAdmission(configuration.failure),
-                        )
-                        BrokerFrontendAdmission.Rejected
-                    }
-                    is InstalledBrokerServerConfiguration.Configured -> {
-                        activity.completed(BrokerStartupStage.HOST_ADMISSION)
-                        when (
-                            val prepared =
-                                InstalledBrokerHost.prepare(
-                                    configuration.options.copy(startupActivitySink = options.activitySink)
-                                )
-                        ) {
-                            is InstalledBrokerHostStart.Rejected -> BrokerFrontendAdmission.Rejected
-                            is InstalledBrokerHostStart.Prepared ->
-                                when (
-                                    val admission =
-                                        KtorBrokerServer.frontend(prepared.options, upgrades) {
-                                            prepared.upstream.close()
-                                        }
-                                ) {
-                                    is BrokerFrontendAdmission.Prepared -> admission
-                                    BrokerFrontendAdmission.Rejected -> {
-                                        prepared.upstream.close()
-                                        admission
-                                    }
-                                }
-                        }
-                    }
-                }
-            }
+            val frontend = deferredFrontend(options, preparation, activity)
             stage = BrokerStartupStage.WORKER_CONTROL
             activity.started(stage)
             val control =
@@ -232,8 +200,9 @@ private constructor(
                             hostObservation = frontend::observe,
                             sessions = frontend,
                             preparations = preparation.operations,
-                            demand = preparation.demand,
                             hostedServices = { preparation.hostedServices(registryPath) },
+                            privateEndpoint = options.publicEndpoint is BrokerPublicEndpoint.Private,
+                            semantic = semantic,
                         )
                 ) {
                     is Refinement.Refined -> admission.value
@@ -257,6 +226,47 @@ private constructor(
                 }
             activity.completed(stage)
             return completeStartup(options, server, readiness, activity, desktopDiscovery)
+        }
+
+        private fun deferredFrontend(
+            options: InstalledCoordinatorOptions,
+            preparation: InstalledWorkspacePreparation,
+            activity: BrokerStartupActivityPublisher,
+        ): DeferredBrokerFrontend = DeferredBrokerFrontend { upgrades ->
+            activity.started(BrokerStartupStage.HOST_ADMISSION)
+            when (val configuration = options.admitHost(preparation.demand)) {
+                is InstalledBrokerServerConfiguration.Rejected -> {
+                    activity.rejected(
+                        BrokerStartupStage.HOST_ADMISSION,
+                        BrokerStartupRejection.HostAdmission(configuration.failure),
+                    )
+                    BrokerFrontendAdmission.Rejected
+                }
+                is InstalledBrokerServerConfiguration.Configured -> {
+                    activity.completed(BrokerStartupStage.HOST_ADMISSION)
+                    when (
+                        val prepared =
+                            InstalledBrokerHost.prepare(
+                                configuration.options.copy(startupActivitySink = options.activitySink)
+                            )
+                    ) {
+                        is InstalledBrokerHostStart.Rejected -> BrokerFrontendAdmission.Rejected
+                        is InstalledBrokerHostStart.Prepared ->
+                            when (
+                                val admission =
+                                    KtorBrokerServer.frontend(prepared.options, upgrades) {
+                                        prepared.upstream.close()
+                                    }
+                            ) {
+                                is BrokerFrontendAdmission.Prepared -> admission
+                                BrokerFrontendAdmission.Rejected -> {
+                                    prepared.upstream.close()
+                                    admission
+                                }
+                            }
+                    }
+                }
+            }
         }
 
         private suspend fun completeStartup(
