@@ -13,6 +13,7 @@ import java.io.IOException
 import java.net.URISyntaxException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
@@ -23,14 +24,14 @@ internal class InstalledClientContext
 private constructor(
     val installation: Path,
     val environment: Map<String, String>,
-    private val payload: Path,
-    private val identity: BasicFileAttributes,
+    private val payload: ClientFileRevision,
+    private val manifest: ClientFileRevision,
 ) {
     fun observe(): InstalledToolAdmission =
         try {
-            val current = Files.readAttributes(payload, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
             if (
-                !payloadUnchanged(current) ||
+                !payload.isCurrent() ||
+                    !manifest.isCurrent() ||
                     !Files.notExists(installation.resolve(".recovery-detached"), NOFOLLOW_LINKS)
             )
                 InstalledToolAdmission.UNPROVEN
@@ -40,14 +41,6 @@ private constructor(
         } catch (_: SecurityException) {
             InstalledToolAdmission.UNPROVEN
         }
-
-    private fun payloadUnchanged(current: BasicFileAttributes): Boolean =
-        current.isRegularFile && payload.toRealPath() == payload && sameIdentity(current)
-
-    private fun sameIdentity(current: BasicFileAttributes): Boolean =
-        current.fileKey() == identity.fileKey() &&
-            current.size() == identity.size() &&
-            current.lastModifiedTime() == identity.lastModifiedTime()
 
     companion object {
         fun current(environment: Map<String, String>): Refinement<InstalledClientContext, ClientInstallationFailure> =
@@ -116,10 +109,14 @@ private constructor(
                     }
             }
 
-        private fun admitManifest(installation: Path): Refinement<InstallationManifest, ClientInstallationFailure> {
+        private fun admitManifest(installation: Path): Refinement<AdmittedClientManifest, ClientInstallationFailure> {
             val manifestPath = installation.resolve("installation.json")
-            if (!Files.isRegularFile(manifestPath, NOFOLLOW_LINKS))
-                return Refinement.Rejected(ClientInstallationFailure.MANIFEST)
+            val revision =
+                try {
+                    ClientFileRevision.capture(manifestPath)
+                } catch (_: NoSuchFileException) {
+                    null
+                } ?: return Refinement.Rejected(ClientInstallationFailure.MANIFEST)
             val bytes =
                 Files.newInputStream(manifestPath, NOFOLLOW_LINKS).use {
                     it.readNBytes(ControlDistributionLimits.maximumManifestBytes + 1)
@@ -134,21 +131,20 @@ private constructor(
                     manifest.configuration != installation.resolve("config/environment").toString()
             )
                 Refinement.Rejected(ClientInstallationFailure.MANIFEST)
-            else Refinement.Refined(manifest)
+            else Refinement.Refined(AdmittedClientManifest(manifest, revision))
         }
 
         private fun admitPayload(
             payload: Path,
             installation: Path,
-            manifest: InstallationManifest,
+            manifest: AdmittedClientManifest,
             environment: Map<String, String>,
         ): Refinement<InstalledClientContext, ClientInstallationFailure> {
             val relative = installation.relativize(payload).toString()
-            val selected = manifest.payloadFiles.singleOrNull { it.path == relative }
+            val selected = manifest.document.payloadFiles.singleOrNull { it.path == relative }
             if (selected == null) return Refinement.Rejected(ClientInstallationFailure.MANIFEST)
-            val identity = Files.readAttributes(payload, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
-            if (!identity.isRegularFile || identity.fileKey() == null)
-                return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
+            val revision =
+                ClientFileRevision.capture(payload) ?: return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
             val started = System.nanoTime()
             val digest = MessageDigest.getInstance("SHA-256")
             var bytes = 0L
@@ -166,13 +162,35 @@ private constructor(
                 return Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
             val selectedEnvironment =
                 if ("KAST_CONFIGURATION_FILE" in environment) environment.toMap()
-                else environment + ("KAST_CONFIGURATION_FILE" to manifest.configuration)
-            val context = InstalledClientContext(installation, selectedEnvironment, payload, identity)
+                else environment + ("KAST_CONFIGURATION_FILE" to manifest.document.configuration)
+            val context = InstalledClientContext(installation, selectedEnvironment, revision, manifest.revision)
             return when (context.observe()) {
                 InstalledToolAdmission.AVAILABLE,
                 InstalledToolAdmission.STOPPED -> Refinement.Refined(context)
                 InstalledToolAdmission.UNPROVEN -> Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
             }
+        }
+    }
+}
+
+private data class AdmittedClientManifest(val document: InstallationManifest, val revision: ClientFileRevision)
+
+private class ClientFileRevision
+private constructor(private val path: Path, private val identity: BasicFileAttributes) {
+    fun isCurrent(): Boolean {
+        val current = Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
+        return current.isRegularFile &&
+            path.toRealPath() == path &&
+            current.fileKey() == identity.fileKey() &&
+            current.size() == identity.size() &&
+            current.lastModifiedTime() == identity.lastModifiedTime()
+    }
+
+    companion object {
+        fun capture(path: Path): ClientFileRevision? {
+            val identity = Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
+            return if (identity.isRegularFile && identity.fileKey() != null) ClientFileRevision(path, identity)
+            else null
         }
     }
 }

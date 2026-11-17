@@ -13,6 +13,7 @@ import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import kotlinx.serialization.encodeToString
@@ -87,6 +88,21 @@ class InstalledClientContextTest {
         val context = admitted(payload, environment)
         assertEquals(environment, context.environment)
         assertEquals(InstalledToolAdmission.AVAILABLE, context.observe())
+    }
+
+    @Test
+    fun `replacing the installation manifest retires previously admitted payload authority`(@TempDir temporary: Path) {
+        val payload = installedPayload(temporary.toRealPath(), "share/kast/libexec/kast-management")
+        val manifest = temporary.resolve("path with spaces/installation/installation.json")
+        val context = admitted(payload)
+        assertEquals(InstalledToolAdmission.AVAILABLE, context.observe())
+
+        val replacement = manifest.resolveSibling("replacement.json")
+        Files.copy(manifest, replacement, StandardCopyOption.COPY_ATTRIBUTES)
+        Files.move(replacement, manifest, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+
+        assertEquals(InstalledToolAdmission.UNPROVEN, context.observe())
+        assertEquals(InstalledToolAdmission.AVAILABLE, admitted(payload).observe())
     }
 
     @Test
