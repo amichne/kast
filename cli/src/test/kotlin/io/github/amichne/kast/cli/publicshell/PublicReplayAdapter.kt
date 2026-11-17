@@ -418,7 +418,9 @@ private fun replayQueryAdmission(
             is PublicCliInput.Lowered,
             PublicCliInput.Stdin -> input
         }
-    return when (val loaded = readPublicCliInput(ownedInput, stdin.byteInputStream())) {
+    return when (
+        val loaded = readPublicCliInput(ownedInput, stdin.byteInputStream(), PublicToolIdentity.QUERY_SYMBOLS)
+    ) {
         is Refinement.Rejected ->
             replayRejection(
                 argv,

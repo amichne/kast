@@ -5,20 +5,11 @@ import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 
 internal sealed interface PublicCliWorkspace {
     data object Current : PublicCliWorkspace
 
     data class Selected(val path: String) : PublicCliWorkspace
-}
-
-internal sealed interface PublicCliInput {
-    data class Lowered(val arguments: JsonObject) : PublicCliInput
-
-    data class File(val path: String) : PublicCliInput
-
-    data object Stdin : PublicCliInput
 }
 
 internal sealed interface PublicCliCommand {
