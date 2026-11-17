@@ -179,7 +179,9 @@ private constructor(
                     is BrokerServiceReadiness.Managed -> management.instanceId
                     BrokerServiceReadiness.Standalone -> BrokerServiceGeneration.fresh()
                 }
-            val preparation = InstalledWorkspacePreparation(options, owner)
+            val preparation =
+                InstalledWorkspacePreparation(options.userHome, options.configuration, owner.installationId.value)
+            val registryPath = options.installationRoot.resolve("config/workspaces.json")
             val frontend = DeferredBrokerFrontend { upgrades ->
                 activity.started(BrokerStartupStage.HOST_ADMISSION)
                 when (val configuration = options.admitHost(preparation.demand)) {
@@ -231,7 +233,7 @@ private constructor(
                             sessions = frontend,
                             preparations = preparation.operations,
                             demand = preparation.demand,
-                            hostedServices = preparation::hostedServices,
+                            hostedServices = { preparation.hostedServices(registryPath) },
                         )
                 ) {
                     is Refinement.Refined -> admission.value

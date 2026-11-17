@@ -3,15 +3,10 @@ package io.github.amichne.kast.appserver
 import io.github.amichne.kast.appserver.ide.ExistingIdeExchange
 import io.github.amichne.kast.appserver.ide.ExistingIdeFailure
 import io.github.amichne.kast.appserver.ide.ExistingIdeOperation
-import io.github.amichne.kast.appserver.ide.ExistingIdeSocketClient
-import io.github.amichne.kast.appserver.ide.ExistingIdeStage
 import io.github.amichne.kast.appserver.ide.HostedMutationOperation
 import io.github.amichne.kast.appserver.ide.HostedPlanIdentity
 import io.github.amichne.kast.appserver.ide.WorkspaceLifecycleClient
-import io.github.amichne.kast.appserver.ide.observeExistingIdeStage
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
-import io.github.amichne.kast.appserver.runtime.ExistingWorkspaceDemand
-import io.github.amichne.kast.appserver.runtime.JsonLineWorkspacePreparationObserver
 import io.github.amichne.kast.appserver.runtime.PreparedWorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemand
 import io.github.amichne.kast.appserver.runtime.WorkspaceDemandCause
@@ -31,14 +26,10 @@ import io.github.amichne.kast.protocol.wire.presentation.OperationPreparation
 import io.github.amichne.kast.protocol.wire.presentation.ProjectedOperationOutcome
 import io.github.amichne.kast.protocol.wire.presentation.canonicalCliRequestPreparers
 import java.nio.file.Path
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.runInterruptible
 
 /** The caller owns preparation jobs and closes them when its request or session ends. */
 class McpWorkspaceOperationClient
@@ -162,37 +153,7 @@ private fun configuredMcpWorkspaceOperationClient(
             is Refinement.Refined -> resolved.value
             is Refinement.Rejected -> return rejectedMcpConfiguration()
         }
-    val lifecycle = installedWorkspaceLifecycleClient(home, config)
-    val native = ExistingIdeSocketClient(home, config)
-    val dispatcher = Dispatchers.IO
-    val preparations =
-        WorkspacePreparations(
-            CoroutineScope(SupervisorJob() + dispatcher),
-            { request ->
-                runInterruptible(dispatcher) {
-                    observeExistingIdeStage(ExistingIdeStage.LIFECYCLE_PREPARATION) {
-                        lifecycle.execute(request, "kast-mcp")
-                    }
-                }
-            },
-            observer = JsonLineWorkspacePreparationObserver(System.err, config.debug),
-            budget = config.workspacePreparationWait.duration,
-        )
-    val demand =
-        PreparedWorkspaceDemand(
-            preparations,
-            {
-                runInterruptible(dispatcher) {
-                    observeExistingIdeStage(ExistingIdeStage.LIFECYCLE_INSPECTION) {
-                        lifecycle.execute(
-                            io.github.amichne.kast.protocol.contract.WorkspaceLifecycleRequest.Inspect,
-                            "kast-mcp",
-                        )
-                    }
-                }
-            },
-            { workspace, operation -> runInterruptible(dispatcher) { native.queryPrepared(workspace, operation) } },
-        )
+    val preparation = InstalledWorkspacePreparation(home, config, "kast-mcp")
     val delegate = DaemonOperationClient { root, call ->
         val operation =
             when (val admitted = mcpOperation(call)) {
@@ -204,12 +165,18 @@ private fun configuredMcpWorkspaceOperationClient(
             }
         val selected =
             when (call.workspaceAdmission()) {
-                WorkspaceOperationAdmission.PREPARE -> demand
-                WorkspaceOperationAdmission.EXISTING_AUTHORITY -> ExistingWorkspaceDemand(native, dispatcher)
+                WorkspaceOperationAdmission.PREPARE -> preparation.demand
+                WorkspaceOperationAdmission.EXISTING_AUTHORITY -> preparation.existing
             }
         runBlocking { selected.query(root, operation) }.daemonResult()
     }
-    return McpWorkspaceOperationClient(delegate, preparations, lifecycle, config.workspacePreparationWait, demand)
+    return McpWorkspaceOperationClient(
+        delegate,
+        preparation.operations,
+        preparation.lifecycle,
+        config.workspacePreparationWait,
+        preparation.demand,
+    )
 }
 
 private fun mcpDemandClient(demand: WorkspaceDemand): DaemonOperationClient = DaemonOperationClient { root, call ->
