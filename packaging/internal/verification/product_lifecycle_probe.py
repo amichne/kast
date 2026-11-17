@@ -16,6 +16,7 @@ import os
 import platform
 import selectors
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -200,6 +201,10 @@ class WarmCoordinatorCall:
 
 
 def warm_coordinator_call(stderr: bytes) -> WarmCoordinatorCall:
+    return coordinator_call(stderr, warm=True)
+
+
+def coordinator_call(stderr: bytes, *, warm: bool) -> WarmCoordinatorCall:
     if len(stderr) > 1_048_576:
         raise ValueError("warm coordinator stage evidence exceeds its limit")
     callers: list[int] = []
@@ -211,7 +216,11 @@ def warm_coordinator_call(stderr: bytes) -> WarmCoordinatorCall:
         if not product.mapping(value) or value.get("event") != "kast_control_stage":
             raise ValueError("invalid coordinator stage evidence")
         stage = value.get("stage")
-        if stage in ("PAYLOAD_VERIFICATION", "QUERY_CHILD_LAUNCH", "WORKSPACE_PREPARATION"):
+        if warm and stage in (
+            "PAYLOAD_VERIFICATION",
+            "QUERY_CHILD_LAUNCH",
+            "WORKSPACE_PREPARATION",
+        ):
             raise ValueError(f"warm coordinator call repeated {stage}")
         pid = value.get("pid")
         if type(pid) is not int or pid <= 0:
@@ -235,6 +244,50 @@ def require_warm_coordinator_reuse(first: bytes, second: bytes) -> None:
         raise ValueError("warm reads must use separate native callers")
     if (previous.coordinator, previous.generation) != (current.coordinator, current.generation):
         raise ValueError("warm reads changed coordinator process or generation")
+
+
+_DISPOSABLE_LAUNCHER = """import os, signal, subprocess, sys
+descriptor, *command = sys.argv[1:]
+with os.fdopen(int(descriptor), "w") as result:
+    code = subprocess.run(command, stdin=subprocess.DEVNULL, check=False).returncode
+    result.write(str(code))
+signal.pause()
+"""
+
+
+def run_in_disposable_group(
+    command: list[str], workspace: Path, environment: dict[str, str], output: Path, error: Path
+) -> int:
+    """Reproduce executor cleanup after the real native caller returns."""
+    with output.open("wb") as stdout, error.open("wb") as stderr:
+        read_fd, write_fd = os.pipe()
+        with os.fdopen(read_fd, "rb") as result, os.fdopen(write_fd, "wb") as launch_result:
+            with subprocess.Popen(
+                [sys.executable, "-I", "-c", _DISPOSABLE_LAUNCHER, str(write_fd), *command],
+                cwd=workspace,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                stdout=stdout,
+                stderr=stderr,
+                pass_fds=(write_fd,),
+                start_new_session=True,
+            ) as launcher:
+                launch_result.close()
+                try:
+                    with selectors.DefaultSelector() as ready:
+                        _ = ready.register(result, selectors.EVENT_READ)
+                        if not ready.select(timeout=1800):
+                            raise ValueError("Disposable caller did not complete")
+                        status = result.read(16)
+                    if not status or launcher.poll() is not None:
+                        raise ValueError(
+                            "Disposable caller did not report an exit in its process group"
+                        )
+                finally:
+                    if launcher.poll() is None and os.getpgid(launcher.pid) == launcher.pid:
+                        os.killpg(launcher.pid, signal.SIGKILL)
+                        _ = launcher.wait(timeout=10)
+                return int(status)
 
 
 @dataclass
@@ -262,25 +315,38 @@ class Probe:
         launcher: Path | None = None,
         rejected: bool = False,
         trace: bool = False,
+        disposable_caller: bool = False,
     ) -> bytes:
         prefix = (
             ["/usr/bin/sandbox-exec", "-f", str(self.sandbox)] if self.sandbox is not None else []
         )
         executable = launcher if launcher is not None else self.home / ".local/bin/kast"
-        result = subprocess.run(
-            [*prefix, str(executable), *arguments],
-            cwd=workspace,
-            env=self.environment | {"KAST_DEBUG": "1"} if trace else self.environment,
-            input=raw,
-            capture_output=True,
-            timeout=1800,
-            check=False,
-        )
-        _ = (self.evidence / f"{case}.stdout").write_bytes(result.stdout)
-        _ = (self.evidence / f"{case}.stderr").write_bytes(result.stderr)
-        if (result.returncode == 0) == rejected:
+        command = [*prefix, str(executable), *arguments]
+        environment = self.environment | {"KAST_DEBUG": "1"} if trace else self.environment
+        output = self.evidence / f"{case}.stdout"
+        error = self.evidence / f"{case}.stderr"
+        if disposable_caller:
+            if raw is not None:
+                raise ValueError("A disposable caller expects no stdin")
+            code = run_in_disposable_group(command, workspace, environment, output, error)
+            response = output.read_bytes()
+        else:
+            result = subprocess.run(
+                command,
+                cwd=workspace,
+                env=environment,
+                input=raw,
+                capture_output=True,
+                timeout=1800,
+                check=False,
+            )
+            code = result.returncode
+            response = result.stdout
+            _ = output.write_bytes(result.stdout)
+            _ = error.write_bytes(result.stderr)
+        if (code == 0) == rejected:
             raise ValueError(f"native case failed: {case}")
-        return result.stdout
+        return response
 
     def observe_host(
         self, case: str, workspace: Path, lifetime: str, runtime_digest: str
@@ -474,7 +540,13 @@ class Probe:
             raise ValueError("RPC catalog tools incomplete")
 
     def query(
-        self, case: str, workspace: Path, name: str = "invokeCallback", *, trace: bool = False
+        self,
+        case: str,
+        workspace: Path,
+        name: str = "invokeCallback",
+        *,
+        trace: bool = False,
+        disposable_caller: bool = False,
     ) -> str:
         expected_file = workspace / (
             INVOCATION_FILE
@@ -494,6 +566,7 @@ class Probe:
                     "--json",
                 ),
                 trace=trace,
+                disposable_caller=disposable_caller,
             ),
             name,
             expected_file,
@@ -510,14 +583,26 @@ class Probe:
 
         def cold_query(index: int) -> str:
             _ = gate.wait()
-            return self.query(f"parallel-first-{index}", workspace)
+            return self.query(
+                f"parallel-first-{index}", workspace, trace=True, disposable_caller=True
+            )
 
         with ThreadPoolExecutor(max_workers=3) as executor:
             futures = [executor.submit(cold_query, index) for index in range(3)]
             first_hosts = [future.result() for future in futures]
-        current_host = self.query("repeated", workspace)
+        current_host = self.query("repeated", workspace, trace=True)
         if any(host != current_host for host in first_hosts):
             raise ValueError("parallel first queries did not share one compiler lifetime")
+        retained = warm_coordinator_call((self.evidence / "repeated.stderr").read_bytes())
+        for index in range(3):
+            caller = coordinator_call(
+                (self.evidence / f"parallel-first-{index}.stderr").read_bytes(), warm=False
+            )
+            if (caller.coordinator, caller.generation) != (
+                retained.coordinator,
+                retained.generation,
+            ):
+                raise ValueError("The coordinator did not outlive its disposable caller group")
         return current_host
 
     def warm_coordinator_reuse(self, workspace: Path, expected_host: str) -> None:
