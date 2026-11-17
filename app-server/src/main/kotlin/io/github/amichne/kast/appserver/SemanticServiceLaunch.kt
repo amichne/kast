@@ -1,5 +1,6 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.distribution.contract.configuration.ConfigurationDisclosure
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
@@ -64,7 +65,10 @@ private constructor(
         }
 
         private val inheritedKeys =
-            ConfigurationParameter.entries.map { it.key }.toSet() +
+            ConfigurationParameter.entries
+                .filter { it.declaration().disclosure == ConfigurationDisclosure.PUBLIC }
+                .map { it.key }
+                .toSet() +
                 setOf(
                     "PATH",
                     "JAVA_HOME",
@@ -86,11 +90,20 @@ object InstalledSemanticService {
         try {
             val command = SemanticServiceLaunch.admit(installation, home, environment)
             if (command == null) Refinement.Rejected(PersistentBrokerServiceFailure.KAST_EXECUTABLE_UNAVAILABLE)
-            else MacOsPersistentBrokerServiceHost().submitSemantic(command)
+            else
+                serviceHost()?.submitSemantic(command)
+                    ?: Refinement.Rejected(PersistentBrokerServiceFailure.UNAVAILABLE)
         } catch (_: IOException) {
             Refinement.Rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
         } catch (_: SecurityException) {
             Refinement.Rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
+        }
+
+    private fun serviceHost(): PersistentBrokerServiceHost? =
+        when (System.getProperty("os.name")) {
+            "Mac OS X" -> MacOsPersistentBrokerServiceHost()
+            "Linux" -> LinuxPersistentBrokerServiceHost()
+            else -> null
         }
 }
 

@@ -1,15 +1,18 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.channels.FileLock
 import java.nio.channels.OverlappingFileLockException
+import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.PosixFilePermissions
 
-/** Serializes launchd admission, retirement, and login resumption for one installation. */
+/** Serializes service admission, retirement, and login resumption for one installation. */
 internal sealed interface BrokerServiceLockExecution<out T> {
     data class Executed<T>(val admission: T) : BrokerServiceLockExecution<T>
 
@@ -29,6 +32,60 @@ private sealed interface BrokerServiceLockAttempt {
 }
 
 internal object BrokerServiceStartLock {
+    fun submitSemantic(
+        command: SemanticServiceLaunch,
+        submit: () -> Refinement<Unit, PersistentBrokerServiceFailure>,
+    ): Refinement<Unit, PersistentBrokerServiceFailure> {
+        if (!prepareSemanticServiceState(command))
+            return Refinement.Rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
+        return when (
+            val locked =
+                withAcquired(command.lock) {
+                    if (
+                        InstallationLifecycleFence.observe(command.installation) !=
+                            InstallationLifecycleStartAdmission.AVAILABLE
+                    )
+                        Refinement.Rejected(PersistentBrokerServiceFailure.DISABLED)
+                    else submit()
+                }
+        ) {
+            is BrokerServiceLockExecution.Executed -> locked.admission
+            BrokerServiceLockExecution.Interrupted -> Refinement.Rejected(PersistentBrokerServiceFailure.INTERRUPTED)
+            BrokerServiceLockExecution.Rejected ->
+                Refinement.Rejected(PersistentBrokerServiceFailure.SERVICE_LOCK_REJECTED)
+            BrokerServiceLockExecution.TimedOut -> Refinement.Rejected(PersistentBrokerServiceFailure.STARTUP_TIMED_OUT)
+        }
+    }
+
+    private fun prepareSemanticServiceState(command: SemanticServiceLaunch): Boolean {
+        val directoryMode = PosixFilePermissions.fromString("rwx------")
+        val fileMode = PosixFilePermissions.fromString("rw-------")
+        val owner = Files.getOwner(command.installation, LinkOption.NOFOLLOW_LINKS)
+        val dirs = listOf(command.state.parent.parent, command.state.parent, command.state)
+        for (directory in dirs) {
+            try {
+                Files.createDirectory(directory, PosixFilePermissions.asFileAttribute(directoryMode))
+            } catch (_: FileAlreadyExistsException) {
+                // Existing state must pass the same filesystem admission.
+            }
+            if (
+                !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS) ||
+                    directory.toRealPath() != directory ||
+                    Files.getOwner(directory, LinkOption.NOFOLLOW_LINKS) != owner
+            )
+                return false
+        }
+        if (Files.getPosixFilePermissions(command.state, LinkOption.NOFOLLOW_LINKS) != directoryMode) return false
+        try {
+            Files.createFile(command.log, PosixFilePermissions.asFileAttribute(fileMode))
+        } catch (_: FileAlreadyExistsException) {
+            // A running service can already own the private log.
+        }
+        return Files.isRegularFile(command.log, LinkOption.NOFOLLOW_LINKS) &&
+            Files.getOwner(command.log, LinkOption.NOFOLLOW_LINKS) == owner &&
+            Files.getPosixFilePermissions(command.log, LinkOption.NOFOLLOW_LINKS) == fileMode
+    }
+
     fun <T> withAcquired(
         path: Path,
         operation: () -> T,

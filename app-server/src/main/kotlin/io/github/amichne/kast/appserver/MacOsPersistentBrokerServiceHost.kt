@@ -17,7 +17,6 @@ import io.ktor.websocket.readText
 import io.ktor.websocket.send
 import java.io.IOException
 import java.net.ConnectException
-import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.NoSuchFileException
@@ -318,56 +317,8 @@ internal class MacOsPersistentBrokerServiceHost(
             BrokerLaunchdServiceObservation.TimedOut -> BrokerLifecycleObservation.TIMED_OUT
         }
 
-    override fun submitSemantic(command: SemanticServiceLaunch): Refinement<Unit, PersistentBrokerServiceFailure> {
-        if (!prepareSemanticServiceState(command))
-            return Refinement.Rejected(PersistentBrokerServiceFailure.STATE_DIRECTORY_REJECTED)
-        return when (
-            val locked =
-                BrokerServiceStartLock.withAcquired(command.lock) {
-                    if (
-                        InstallationLifecycleFence.observe(command.installation) !=
-                            InstallationLifecycleStartAdmission.AVAILABLE
-                    )
-                        Refinement.Rejected(PersistentBrokerServiceFailure.DISABLED)
-                    else submitSemanticExclusively(command)
-                }
-        ) {
-            is BrokerServiceLockExecution.Executed -> locked.admission
-            BrokerServiceLockExecution.Interrupted -> Refinement.Rejected(PersistentBrokerServiceFailure.INTERRUPTED)
-            BrokerServiceLockExecution.Rejected ->
-                Refinement.Rejected(PersistentBrokerServiceFailure.SERVICE_LOCK_REJECTED)
-            BrokerServiceLockExecution.TimedOut -> Refinement.Rejected(PersistentBrokerServiceFailure.STARTUP_TIMED_OUT)
-        }
-    }
-
-    private fun prepareSemanticServiceState(command: SemanticServiceLaunch): Boolean {
-        val directoryMode = PosixFilePermissions.fromString("rwx------")
-        val fileMode = PosixFilePermissions.fromString("rw-------")
-        val owner = Files.getOwner(command.installation, LinkOption.NOFOLLOW_LINKS)
-        val dirs = listOf(command.state.parent.parent, command.state.parent, command.state)
-        for (directory in dirs) {
-            try {
-                Files.createDirectory(directory, PosixFilePermissions.asFileAttribute(directoryMode))
-            } catch (_: FileAlreadyExistsException) {
-                // Existing state must pass the same filesystem admission.
-            }
-            if (
-                !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS) ||
-                    directory.toRealPath() != directory ||
-                    Files.getOwner(directory, LinkOption.NOFOLLOW_LINKS) != owner
-            )
-                return false
-        }
-        if (Files.getPosixFilePermissions(command.state, LinkOption.NOFOLLOW_LINKS) != directoryMode) return false
-        try {
-            Files.createFile(command.log, PosixFilePermissions.asFileAttribute(fileMode))
-        } catch (_: FileAlreadyExistsException) {
-            // A running service can already own the private log.
-        }
-        return Files.isRegularFile(command.log, LinkOption.NOFOLLOW_LINKS) &&
-            Files.getOwner(command.log, LinkOption.NOFOLLOW_LINKS) == owner &&
-            Files.getPosixFilePermissions(command.log, LinkOption.NOFOLLOW_LINKS) == fileMode
-    }
+    override fun submitSemantic(command: SemanticServiceLaunch): Refinement<Unit, PersistentBrokerServiceFailure> =
+        BrokerServiceStartLock.submitSemantic(command) { submitSemanticExclusively(command) }
 
     private fun submitSemanticExclusively(
         command: SemanticServiceLaunch
@@ -1309,43 +1260,7 @@ private object JdkBrokerLaunchctlInvoker : LaunchctlInvoker {
         exitContract: LaunchctlExitContract,
     ): LaunchctlInvocation {
         if (System.getProperty("os.name") != "Mac OS X") return LaunchctlInvocation.Rejected
-        val process =
-            try {
-                ProcessBuilder(arguments)
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start()
-            } catch (_: IOException) {
-                return LaunchctlInvocation.Rejected
-            } catch (_: SecurityException) {
-                return LaunchctlInvocation.Rejected
-            }
-        val completed =
-            try {
-                process.waitFor(BrokerOperationalLimits.launchctlInvocation.value, TimeUnit.MILLISECONDS)
-            } catch (_: InterruptedException) {
-                process.destroyForcibly()
-                Thread.currentThread().interrupt()
-                return LaunchctlInvocation.Interrupted
-            } catch (_: SecurityException) {
-                process.destroyForcibly()
-                return LaunchctlInvocation.Rejected
-            }
-        if (!completed) {
-            process.destroyForcibly()
-            return LaunchctlInvocation.TimedOut
-        }
-        val exitCode = process.exitValue()
-        if (exitCode == 0) return LaunchctlInvocation.Completed
-        return when (exitContract) {
-            LaunchctlExitContract.CompletionOnly -> LaunchctlInvocation.Rejected
-            is LaunchctlExitContract.CompletionOrAbsent ->
-                if (exitCode == exitContract.absentExitCode) {
-                    LaunchctlInvocation.Absent
-                } else {
-                    LaunchctlInvocation.Rejected
-                }
-        }
+        return invokeServiceSupervisor(arguments, exitContract)
     }
 }
 
