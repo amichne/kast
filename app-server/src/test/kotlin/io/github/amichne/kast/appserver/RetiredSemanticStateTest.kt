@@ -40,24 +40,23 @@ class RetiredSemanticStateTest {
         }
 
     @Test
-    fun `retirement completes after the exact alias was already detached`() =
-        withCoordinatorPayload { root, _ ->
-            val run = Files.createDirectories(root.resolve("n".repeat(110)).resolve("state/run"))
-            Files.setPosixFilePermissions(run, PosixFilePermissions.fromString("rwx------"))
-            val socket = run.resolve("c.sock")
-            val selected = BrokerEndpointAliases.prepare(run) as Validation.Validated
-            val alias = selected.value.alias
-            try {
-                assertTrue(Files.isSymbolicLink(alias))
-                Files.delete(alias)
-                assertTrue(Files.isRegularFile(run.resolve("endpoint-alias.json")))
-                assertEquals(Validation.validated(Unit), BrokerEndpointAliases.retire(socket))
-                assertFalse(Files.exists(run.resolve("endpoint-alias.json")))
-                assertTrue(Files.isDirectory(run))
-            } finally {
-                if (selected.value.validate() is Validation.Validated) Files.delete(alias)
-            }
+    fun `retirement completes after the exact alias was already detached`() = withCoordinatorPayload { root, _ ->
+        val run = Files.createDirectories(root.resolve("n".repeat(110)).resolve("state/run"))
+        Files.setPosixFilePermissions(run, PosixFilePermissions.fromString("rwx------"))
+        val socket = run.resolve("c.sock")
+        val selected = BrokerEndpointAliases.prepare(run) as Validation.Validated
+        val alias = selected.value.alias
+        try {
+            assertTrue(Files.isSymbolicLink(alias))
+            Files.delete(alias)
+            assertTrue(Files.isRegularFile(run.resolve("endpoint-alias.json")))
+            assertEquals(Validation.validated(Unit), BrokerEndpointAliases.retire(socket))
+            assertFalse(Files.exists(run.resolve("endpoint-alias.json")))
+            assertTrue(Files.isDirectory(run))
+        } finally {
+            if (selected.value.validate() is Validation.Validated) Files.delete(alias)
         }
+    }
 }
 
 internal fun semanticLaunchFixture(root: Path): SemanticServiceLaunch {

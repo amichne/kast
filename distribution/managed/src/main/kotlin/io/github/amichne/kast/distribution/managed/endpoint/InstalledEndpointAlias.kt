@@ -192,8 +192,9 @@ object InstalledEndpointAliases {
             val physicalIdentity =
                 physicalDirectoryIdentity(target)
                     ?: return Validation.rejected(InstalledEndpointAliasFailure.PHYSICAL_DIRECTORY_REJECTED)
-            val document = readAliasDocument(target, alias, physicalIdentity)
-                ?: return Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
+            val document =
+                readAliasDocument(target, alias, physicalIdentity)
+                    ?: return Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
             InstalledEndpointAliasReceipt.read(document)
         } catch (_: Exception) {
             Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
@@ -210,10 +211,12 @@ object InstalledEndpointAliases {
             if (alias == target) return admitAbsentAliasReceipt(receipt)
             val attached = !Files.notExists(alias, NOFOLLOW_LINKS)
             if (!attached && Files.notExists(receipt, NOFOLLOW_LINKS)) return Validation.validated(Unit)
-            val physical = physicalDirectoryIdentity(target)
-                ?: return Validation.rejected(InstalledEndpointAliasFailure.PHYSICAL_DIRECTORY_REJECTED)
-            val document = readAliasDocument(target, alias, physical)
-                ?: return Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
+            val physical =
+                physicalDirectoryIdentity(target)
+                    ?: return Validation.rejected(InstalledEndpointAliasFailure.PHYSICAL_DIRECTORY_REJECTED)
+            val document =
+                readAliasDocument(target, alias, physical)
+                    ?: return Validation.rejected(InstalledEndpointAliasFailure.RECEIPT_REJECTED)
             if (attached) {
                 val admitted = InstalledEndpointAliasReceipt.read(document)
                 if (admitted !is Validation.Validated)
