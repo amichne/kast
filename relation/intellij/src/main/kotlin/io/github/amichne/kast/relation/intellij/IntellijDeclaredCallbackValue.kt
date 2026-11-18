@@ -72,6 +72,8 @@ private fun declaredBinding(
         is Refinement.Rejected -> {
             context.observation.terminated(
                 when (binding.failure) {
+                    DeclaredCallbackValueFailure.DECLARED_CONTRACT_UNAVAILABLE ->
+                        IntellijReadTermination.VALUE_DECLARED_CALLBACK_UNAVAILABLE
                     DeclaredCallbackValueFailure.BASIS_MISMATCH ->
                         IntellijReadTermination.VALUE_DECLARED_CALLBACK_BASIS_MISMATCH
                     DeclaredCallbackValueFailure.OWNER_MISMATCH ->

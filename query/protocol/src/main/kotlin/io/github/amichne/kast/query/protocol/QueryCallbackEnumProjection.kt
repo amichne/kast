@@ -1,11 +1,13 @@
 package io.github.amichne.kast.query.protocol
 
+import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyContractProvenanceDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyInvocationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackExclusionReasonDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowFailureDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackInvocationScanDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackNamedUnavailableCauseDocument
+import io.github.amichne.kast.relation.contract.CallbackDependencyContractProvenance
 import io.github.amichne.kast.relation.contract.CallbackDependencyInvocationKind
 import io.github.amichne.kast.relation.contract.CallbackExclusionReason
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
@@ -13,12 +15,22 @@ import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
 import io.github.amichne.kast.relation.contract.CallbackInvocationScan
 import io.github.amichne.kast.relation.contract.CallbackNamedCallUnavailableCause
 
+internal fun CallbackDependencyContractProvenance.protocolCallbackDocument():
+    QueryCallbackDependencyContractProvenanceDocument =
+    when (this) {
+        CallbackDependencyContractProvenance.KOTLIN_BINARY_CONTRACT ->
+            QueryCallbackDependencyContractProvenanceDocument.KOTLIN_BINARY_CONTRACT
+        CallbackDependencyContractProvenance.REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH ->
+            QueryCallbackDependencyContractProvenanceDocument.REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH
+    }
+
 internal fun CallbackDependencyInvocationKind.protocolCallbackDocument():
     QueryCallbackDependencyInvocationKindDocument =
     when (this) {
         CallbackDependencyInvocationKind.EXACTLY_ONCE -> QueryCallbackDependencyInvocationKindDocument.EXACTLY_ONCE
         CallbackDependencyInvocationKind.AT_MOST_ONCE -> QueryCallbackDependencyInvocationKindDocument.AT_MOST_ONCE
         CallbackDependencyInvocationKind.AT_LEAST_ONCE -> QueryCallbackDependencyInvocationKindDocument.AT_LEAST_ONCE
+        CallbackDependencyInvocationKind.ZERO_OR_MORE -> QueryCallbackDependencyInvocationKindDocument.ZERO_OR_MORE
         CallbackDependencyInvocationKind.UNKNOWN -> QueryCallbackDependencyInvocationKindDocument.UNKNOWN
     }
 

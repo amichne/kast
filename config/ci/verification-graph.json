@@ -418,7 +418,7 @@
         },
         {
             "path": "gradle/libs.versions.toml",
-            "sha256": "8ddf6942326a714f185fe7c92b3a33cba95613c8cd5ef3d781f6c716b19d5b71"
+            "sha256": "162ec4beaaa70a33da44cc4dee0144cafe44774aa47e3b9505dc6672b412c652"
         },
         {
             "path": "kernel/build.gradle.kts",
@@ -458,7 +458,7 @@
         },
         {
             "path": "relation/intellij/build.gradle.kts",
-            "sha256": "d125a4b65f8b0ca24a64ea003da6c08a400c9f303f5d0a60c52376ef1819a399"
+            "sha256": "ee3d8e6fce5f11e96c8bfd9523769ac77c3498d2db7c7ac1c698478a15541b12"
         },
         {
             "path": "relation/service/build.gradle.kts",

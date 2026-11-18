@@ -28,7 +28,7 @@ import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtExpression
 
-/** Reads a declared effect or an exact reviewed lazy model. Dependency PSI bodies never supply proof. */
+/** Reads compiler-declared effects and reviewed dependency models for the selected formal. */
 internal fun readCallbackDependencyContract(
     context: IntellijCallbackFlowContext,
     call: KtCallElement,
@@ -67,6 +67,13 @@ private fun dependencyContract(
         context.occurrence(call.valueInvocationExpression())
             ?: return CallbackBindingPreparation.Unavailable(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
     return when (val effect = native.effect) {
+        is NativeDependencyEffect.ArrayIteration ->
+            bindReviewedArrayIteration(
+                context = context,
+                call = call,
+                occurrence = occurrence,
+                operation = effect.operation,
+            )
         is NativeDependencyEffect.DeferredLazy ->
             bindDeferred(
                 context = context,
@@ -166,6 +173,7 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.binaryContract(
     val candidate =
         if (effects.isEmpty()) {
             if (symbol.isLazyInitializer(parameter)) NativeDependencyCandidate.LazyInitializer
+            else if (symbol.isIntArrayIteration(parameter)) NativeDependencyCandidate.ArrayIteration
             else return Refinement.Rejected(CallbackInvocationFlowCause.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN)
         } else {
             when (val admitted = admitDeclaredCallbackInvocationKind(effects)) {
@@ -218,6 +226,20 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.loadBinaryContract(
         when (candidate) {
             is NativeDependencyCandidate.CallsInPlace ->
                 NativeDependencyEffect.CallsInPlace(candidate.kind, candidate.resultEffect)
+            NativeDependencyCandidate.ArrayIteration ->
+                when (
+                    val admitted =
+                        reviewedArrayIteration(
+                            context = context,
+                            file = file,
+                            target = evidence,
+                            position = position,
+                            classDigest = digest,
+                        )
+                ) {
+                    is Refinement.Refined -> NativeDependencyEffect.ArrayIteration(admitted.value)
+                    is Refinement.Rejected -> return admitted
+                }
             NativeDependencyCandidate.LazyInitializer ->
                 when (val read = readKotlinLazyBinaryEvidence(context, file, digest)) {
                     is Refinement.Refined -> NativeDependencyEffect.DeferredLazy(read.value)
@@ -363,6 +385,9 @@ private sealed interface NativeDependencyEffect {
         val resultEffect: DeclaredCallbackResultEffect,
     ) : NativeDependencyEffect
 
+    data class ArrayIteration(val operation: io.github.amichne.kast.relation.contract.ReviewedIntArrayIteration) :
+        NativeDependencyEffect
+
     data class DeferredLazy(val binary: KotlinLazyBinaryEvidence) : NativeDependencyEffect
 }
 
@@ -373,6 +398,8 @@ private sealed interface NativeDependencyCandidate {
         val kind: CallbackDependencyInvocationKind,
         val resultEffect: DeclaredCallbackResultEffect,
     ) : NativeDependencyCandidate
+
+    data object ArrayIteration : NativeDependencyCandidate
 
     data object LazyInitializer : NativeDependencyCandidate
 }

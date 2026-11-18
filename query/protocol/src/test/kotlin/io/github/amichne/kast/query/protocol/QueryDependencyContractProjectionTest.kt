@@ -23,7 +23,10 @@ import org.junit.jupiter.api.Test
 internal class QueryDependencyContractProjectionTest : CompleteOnlyCallbackQueryCase() {
     @Test
     fun `dependency target projection preserves evidence when external source handles are forbidden`() {
-        for (kind in CallbackDependencyInvocationKind.entries) assertProjection(kind)
+        for (kind in
+            CallbackDependencyInvocationKind.entries - CallbackDependencyInvocationKind.ZERO_OR_MORE) assertProjection(
+            kind
+        )
     }
 
     private fun assertProjection(kind: CallbackDependencyInvocationKind) {

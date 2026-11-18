@@ -365,7 +365,10 @@ private fun admitDependencyContractFlow(
 
 internal fun QueryCallbackBindingDocument.DependencyContract.validDependencyContractTarget(): Boolean {
     val signature = target.compilerEvidence.signature as? CompilerSignatureDocument.Function ?: return false
-    return target.compilerEvidence.signature.supports(target.kind) &&
+    val reviewed =
+        provenance == QueryCallbackDependencyContractProvenanceDocument.REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH
+    return reviewed == (invocationKind == QueryCallbackDependencyInvocationKindDocument.ZERO_OR_MORE) &&
+        target.compilerEvidence.signature.supports(target.kind) &&
         target.file.value.startsWith("jar://") &&
         target.file.value.endsWith(".class") &&
         position.value in signature.valueParameters.values.indices &&
