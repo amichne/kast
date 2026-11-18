@@ -7514,6 +7514,650 @@
                           "properties": {
                             "type": {
                               "enum": [
+                                "JAVA_INT_DIVISION_V1"
+                              ],
+                              "type": "string"
+                            },
+                            "input_range": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "start": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "end": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "start",
+                                "end"
+                              ]
+                            },
+                            "divisor_range": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "start": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "end": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "start",
+                                "end"
+                              ]
+                            },
+                            "result_range": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "start": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "end": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "start",
+                                "end"
+                              ]
+                            },
+                            "divisor": {
+                              "type": "integer"
+                            },
+                            "execution": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "enclosing": {
+                                  "$ref": "#/$defs/impactDeclarationReference"
+                                },
+                                "executionOwner": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "type": {
+                                          "enum": [
+                                            "CALLBACK"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "body": {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "properties": {
+                                            "file": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 1048576,
+                                              "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                            },
+                                            "range": {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "properties": {
+                                                "start": {
+                                                  "type": "integer",
+                                                  "minimum": 0
+                                                },
+                                                "end": {
+                                                  "type": "integer",
+                                                  "minimum": 0
+                                                }
+                                              },
+                                              "required": [
+                                                "start",
+                                                "end"
+                                              ]
+                                            },
+                                            "compilerIdentity": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 1048576,
+                                              "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                            }
+                                          },
+                                          "required": [
+                                            "file",
+                                            "range",
+                                            "compilerIdentity"
+                                          ]
+                                        },
+                                        "invocations": {
+                                          "type": "array",
+                                          "items": {
+                                            "$ref": "#/$defs/impactCaptureInvocation"
+                                          },
+                                          "maxItems": 1000
+                                        },
+                                        "selection": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "properties": {
+                                                "type": {
+                                                  "enum": [
+                                                    "EXACT"
+                                                  ],
+                                                  "type": "string"
+                                                },
+                                                "invocation": {
+                                                  "$ref": "#/$defs/impactCaptureInvocation"
+                                                }
+                                              },
+                                              "required": [
+                                                "type",
+                                                "invocation"
+                                              ]
+                                            },
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "properties": {
+                                                "type": {
+                                                  "enum": [
+                                                    "UNIQUE"
+                                                  ],
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "type"
+                                              ]
+                                            }
+                                          ],
+                                          "discriminator": {
+                                            "propertyName": "type"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "body",
+                                        "invocations"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "type": {
+                                          "enum": [
+                                            "DECLARATION"
+                                          ],
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "type": {
+                                          "enum": [
+                                            "DECLARED_CALLBACK"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "binding": {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "properties": {
+                                            "enclosing": {
+                                              "$ref": "#/$defs/impactDeclarationReference"
+                                            },
+                                            "body": {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "properties": {
+                                                "file": {
+                                                  "type": "string",
+                                                  "minLength": 1,
+                                                  "maxLength": 1048576,
+                                                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                },
+                                                "range": {
+                                                  "type": "object",
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "start": {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    },
+                                                    "end": {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "start",
+                                                    "end"
+                                                  ]
+                                                },
+                                                "compilerIdentity": {
+                                                  "type": "string",
+                                                  "minLength": 1,
+                                                  "maxLength": 1048576,
+                                                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                }
+                                              },
+                                              "required": [
+                                                "file",
+                                                "range",
+                                                "compilerIdentity"
+                                              ]
+                                            },
+                                            "contract": {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "properties": {
+                                                "basis": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "object",
+                                                      "additionalProperties": false,
+                                                      "properties": {
+                                                        "type": {
+                                                          "enum": [
+                                                            "LIVE"
+                                                          ],
+                                                          "type": "string"
+                                                        },
+                                                        "root": {
+                                                          "type": "string",
+                                                          "minLength": 1,
+                                                          "maxLength": 1048576,
+                                                          "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                        },
+                                                        "host": {
+                                                          "type": "string",
+                                                          "minLength": 1,
+                                                          "maxLength": 1048576,
+                                                          "allOf": [
+                                                            {
+                                                              "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                            },
+                                                            {
+                                                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                                                            }
+                                                          ]
+                                                        },
+                                                        "epoch": {
+                                                          "type": "integer",
+                                                          "minimum": 1
+                                                        },
+                                                        "contentView": {
+                                                          "type": "string",
+                                                          "enum": [
+                                                            "SAVED_PSI_COMMITTED"
+                                                          ]
+                                                        },
+                                                        "referenceVersion": {
+                                                          "type": "integer",
+                                                          "minimum": 1,
+                                                          "maximum": 1
+                                                        }
+                                                      },
+                                                      "required": [
+                                                        "type",
+                                                        "root",
+                                                        "host",
+                                                        "epoch",
+                                                        "contentView",
+                                                        "referenceVersion"
+                                                      ]
+                                                    },
+                                                    {
+                                                      "type": "object",
+                                                      "additionalProperties": false,
+                                                      "properties": {
+                                                        "type": {
+                                                          "enum": [
+                                                            "PUBLISHED"
+                                                          ],
+                                                          "type": "string"
+                                                        },
+                                                        "root": {
+                                                          "type": "string",
+                                                          "minLength": 1,
+                                                          "maxLength": 1048576,
+                                                          "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                        },
+                                                        "generation": {
+                                                          "type": "integer",
+                                                          "minimum": 1
+                                                        }
+                                                      },
+                                                      "required": [
+                                                        "type",
+                                                        "root",
+                                                        "generation"
+                                                      ]
+                                                    }
+                                                  ],
+                                                  "discriminator": {
+                                                    "propertyName": "type"
+                                                  }
+                                                },
+                                                "occurrenceFile": {
+                                                  "type": "string",
+                                                  "minLength": 1,
+                                                  "maxLength": 1048576,
+                                                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                },
+                                                "occurrenceRange": {
+                                                  "type": "object",
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "start": {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    },
+                                                    "end": {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "start",
+                                                    "end"
+                                                  ]
+                                                },
+                                                "owner": {
+                                                  "type": "object",
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "file": {
+                                                      "type": "string",
+                                                      "minLength": 1,
+                                                      "maxLength": 1048576,
+                                                      "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                    },
+                                                    "range": {
+                                                      "type": "object",
+                                                      "additionalProperties": false,
+                                                      "properties": {
+                                                        "start": {
+                                                          "type": "integer",
+                                                          "minimum": 0
+                                                        },
+                                                        "end": {
+                                                          "type": "integer",
+                                                          "minimum": 0
+                                                        }
+                                                      },
+                                                      "required": [
+                                                        "start",
+                                                        "end"
+                                                      ]
+                                                    },
+                                                    "compilerIdentity": {
+                                                      "type": "string",
+                                                      "minLength": 1,
+                                                      "maxLength": 1048576,
+                                                      "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "file",
+                                                    "range",
+                                                    "compilerIdentity"
+                                                  ]
+                                                },
+                                                "target": {
+                                                  "type": "object",
+                                                  "additionalProperties": false,
+                                                  "properties": {
+                                                    "declaration": {
+                                                      "$ref": "#/$defs/impactDeclarationReference"
+                                                    },
+                                                    "qualifiedIdentity": {
+                                                      "type": "string",
+                                                      "minLength": 1,
+                                                      "maxLength": 1048576,
+                                                      "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                    },
+                                                    "receiver": {
+                                                      "anyOf": [
+                                                        {
+                                                          "type": "object",
+                                                          "additionalProperties": false,
+                                                          "properties": {
+                                                            "type": {
+                                                              "enum": [
+                                                                "ABSENT"
+                                                              ],
+                                                              "type": "string"
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "type"
+                                                          ]
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "additionalProperties": false,
+                                                          "properties": {
+                                                            "type": {
+                                                              "enum": [
+                                                                "PRESENT"
+                                                              ],
+                                                              "type": "string"
+                                                            },
+                                                            "compilerType": {
+                                                              "type": "string",
+                                                              "minLength": 1,
+                                                              "maxLength": 1048576,
+                                                              "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "type",
+                                                            "compilerType"
+                                                          ]
+                                                        }
+                                                      ],
+                                                      "discriminator": {
+                                                        "propertyName": "type"
+                                                      }
+                                                    },
+                                                    "contextReceivers": {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 1048576,
+                                                        "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                      },
+                                                      "maxItems": 1000
+                                                    },
+                                                    "valueParameters": {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 1048576,
+                                                        "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                      },
+                                                      "maxItems": 1000
+                                                    },
+                                                    "typeParameterCount": {
+                                                      "type": "integer",
+                                                      "minimum": 0
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "declaration",
+                                                    "qualifiedIdentity",
+                                                    "receiver",
+                                                    "contextReceivers",
+                                                    "valueParameters",
+                                                    "typeParameterCount"
+                                                  ]
+                                                },
+                                                "position": {
+                                                  "type": "integer",
+                                                  "minimum": 0
+                                                },
+                                                "classDigest": {
+                                                  "type": "string",
+                                                  "minLength": 64,
+                                                  "maxLength": 64,
+                                                  "allOf": [
+                                                    {
+                                                      "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                                                    },
+                                                    {
+                                                      "pattern": "^[0-9a-f]{64}$"
+                                                    }
+                                                  ]
+                                                },
+                                                "provenance": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "KOTLIN_BINARY_CONTRACT"
+                                                  ]
+                                                },
+                                                "invocationKind": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "EXACTLY_ONCE",
+                                                    "AT_MOST_ONCE",
+                                                    "AT_LEAST_ONCE",
+                                                    "UNKNOWN"
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "basis",
+                                                "occurrenceFile",
+                                                "occurrenceRange",
+                                                "owner",
+                                                "target",
+                                                "position",
+                                                "classDigest",
+                                                "provenance",
+                                                "invocationKind"
+                                              ]
+                                            },
+                                            "resultEffect": {
+                                              "type": "string",
+                                              "enum": [
+                                                "RETURNS_RESULT_OF",
+                                                "UNSPECIFIED"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "enclosing",
+                                            "body",
+                                            "contract",
+                                            "resultEffect"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "binding"
+                                      ]
+                                    },
+                                    {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "type": {
+                                          "enum": [
+                                            "REVIEWED_CALLBACK"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "binding": {
+                                          "$ref": "#/$defs/impactReviewedValueBinding"
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "binding"
+                                      ]
+                                    }
+                                  ],
+                                  "discriminator": {
+                                    "propertyName": "type"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "enclosing"
+                              ]
+                            },
+                            "call_stack": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/$defs/impactCallFrame"
+                              },
+                              "maxItems": 1000
+                            },
+                            "input": {
+                              "type": "string",
+                              "enum": [
+                                "DIVIDEND"
+                              ]
+                            },
+                            "operand_types": {
+                              "type": "string",
+                              "enum": [
+                                "INT_INT"
+                              ]
+                            },
+                            "result_type": {
+                              "type": "string",
+                              "enum": [
+                                "INT"
+                              ]
+                            },
+                            "completion": {
+                              "type": "string",
+                              "enum": [
+                                "NORMAL_COMPLETION"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "input_range",
+                            "divisor_range",
+                            "result_range",
+                            "divisor",
+                            "execution",
+                            "call_stack",
+                            "input",
+                            "operand_types",
+                            "result_type",
+                            "completion"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "type": {
+                              "enum": [
                                 "LOOP_ADVANCE"
                               ],
                               "type": "string"

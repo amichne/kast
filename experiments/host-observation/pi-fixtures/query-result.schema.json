@@ -60302,6 +60302,89 @@
               "properties": {
                 "type": {
                   "enum": [
+                    "JAVA_INT_DIVISION_V1"
+                  ],
+                  "type": "string"
+                },
+                "input_range": {
+                  "$ref": "#/$defs/impactSourceRange"
+                },
+                "divisor_range": {
+                  "$ref": "#/$defs/impactSourceRange"
+                },
+                "result_range": {
+                  "$ref": "#/$defs/impactSourceRange"
+                },
+                "divisor": {
+                  "type": "integer"
+                },
+                "execution": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "enclosing": {
+                      "$ref": "#/$defs/impactDeclarationReference"
+                    },
+                    "executionOwner": {
+                      "$ref": "#/$defs/impactExecutionOwner"
+                    }
+                  },
+                  "required": [
+                    "enclosing"
+                  ]
+                },
+                "call_stack": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/impactCallFrame"
+                  },
+                  "maxItems": 1000
+                },
+                "input": {
+                  "type": "string",
+                  "enum": [
+                    "DIVIDEND"
+                  ]
+                },
+                "operand_types": {
+                  "type": "string",
+                  "enum": [
+                    "INT_INT"
+                  ]
+                },
+                "result_type": {
+                  "type": "string",
+                  "enum": [
+                    "INT"
+                  ]
+                },
+                "completion": {
+                  "type": "string",
+                  "enum": [
+                    "NORMAL_COMPLETION"
+                  ]
+                }
+              },
+              "required": [
+                "type",
+                "input_range",
+                "divisor_range",
+                "result_range",
+                "divisor",
+                "execution",
+                "call_stack",
+                "input",
+                "operand_types",
+                "result_type",
+                "completion"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
                     "LOOP_ADVANCE"
                   ],
                   "type": "string"
