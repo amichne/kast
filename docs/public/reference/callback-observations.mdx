@@ -79,9 +79,15 @@ A returned callback has no invocation route unless proof shows that it is called
 
 Calls-in-place evidence keeps `EXACTLY_ONCE`, `AT_MOST_ONCE`, `AT_LEAST_ONCE`, or explicitly declared `UNKNOWN`.
 
-The compiler selects the formal. The effect belongs to that formal and the reviewed binary identity. If effects are missing, repeated, or not supported, the result returns `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`.
+The compiler selects the formal. The effect belongs to that formal and the reviewed binary identity. If the reader cannot prove an effect or match a reviewed model, the result returns `DEPENDENCY_CONTRACT_EFFECT_UNPROVEN`.
 
 These kinds describe the declared contract. They supply neither runtime call counts nor call sites from dependency bodies.
+
+## Reviewed array iteration
+
+For Kotlin 2.4.10, Kast recognizes the `action` parameter of `kotlin.IntArray.forEach` in the reviewed standard library archive.
+The binding reports `REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH` with `ZERO_OR_MORE`.
+The array can be empty. For each element, the implementation calls the action before the loop continues.
 
 ## Unresolved obligations
 
