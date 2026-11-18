@@ -8,6 +8,19 @@ import io.github.amichne.kast.relation.contract.DependencyClassDigest
 import io.github.amichne.kast.relation.contract.KotlinLazyBinaryEvidence
 import io.github.amichne.kast.relation.contract.KotlinLazyClassDigests
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCounter
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.types.KaClassType
+
+@OptIn(org.jetbrains.kotlin.analysis.api.KaExperimentalApi::class)
+internal fun KaNamedFunctionSymbol.isLazyInitializer(
+    parameter: org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
+): Boolean {
+    if (callableId?.asSingleFqName()?.asString() != "kotlin.lazy") return false
+    if (receiverParameter != null || contextReceivers.isNotEmpty()) return false
+    if (typeParameters.size != 1 || valueParameters.size !in 1..2) return false
+    if (valueParameters.last() != parameter || parameter.name.asString() != "initializer") return false
+    return (returnType as? KaClassType)?.classId?.asSingleFqName()?.asString() == "kotlin.Lazy"
+}
 
 /** Reads six classes from the resolved factory's archive under one unchanged archive stamp. */
 internal fun readKotlinLazyBinaryEvidence(
