@@ -314,6 +314,7 @@ val nativeIdeaLibraries =
 
 dependencies {
     add(nativeTest.implementationConfigurationName, nativeIdeaLibraries)
+    add(nativeTest.implementationConfigurationName, testFixtures(project(":workspace:contract")))
     add(
         nativeTest.implementationConfigurationName,
         "org.jetbrains.kotlinx:kotlinx-coroutines-test:$nativeCoroutinesTestVersion",
@@ -415,6 +416,7 @@ registerHostedNativeFixtures(
         "*NativePrimitiveValueQueryTest",
         "*NativeCompilerCoverageControlsTest",
         "*NativeJavaStaticFlowQueryTest",
+        "*NativeJavaLocationQueryTest",
     ),
 )
 

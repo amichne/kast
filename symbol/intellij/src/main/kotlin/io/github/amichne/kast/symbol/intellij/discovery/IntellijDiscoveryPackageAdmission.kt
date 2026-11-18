@@ -4,6 +4,7 @@ import com.intellij.navigation.NavigationItem
 import com.intellij.navigation.PsiElementNavigationItem
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiJavaFile
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import org.jetbrains.kotlin.psi.KtFile
@@ -34,6 +35,7 @@ internal data object IntellijPsiDiscoveryItemPackage : IntellijDiscoveryItemPack
 internal fun PsiFile.packageEvidence(): IntellijPackageEvidence =
     when (this) {
         is KtFile -> IntellijPackageEvidence.Known(packageFqName.asString())
+        is PsiJavaFile -> IntellijPackageEvidence.Known(packageName)
         else -> IntellijPackageEvidence.Unavailable
     }
 

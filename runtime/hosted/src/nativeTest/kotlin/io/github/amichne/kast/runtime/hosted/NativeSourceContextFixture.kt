@@ -20,7 +20,7 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
 import java.nio.file.Path
 
-/** One indexed source file and an authored model belong to the native case. */
+/** Indexed source files and an authored model belong to the native case. */
 internal class NativeSourceContextFixture(
     private val project: Project,
     private val base: VirtualFile,
@@ -28,7 +28,12 @@ internal class NativeSourceContextFixture(
     private val sdk: Sdk,
 ) {
     fun prepare(text: String): Pair<NativeScopedTraceFixture, VirtualFile> {
-        lateinit var result: Pair<NativeScopedTraceFixture, VirtualFile>
+        val (fixture, files) = prepare(mapOf("Owners.kt" to text))
+        return fixture to files.single()
+    }
+
+    fun prepare(sources: Map<String, String>): Pair<NativeScopedTraceFixture, List<VirtualFile>> {
+        lateinit var result: Pair<NativeScopedTraceFixture, List<VirtualFile>>
         ApplicationManager.getApplication().invokeAndWait {
             val directory =
                 WriteCommandAction.writeCommandAction(project).compute<VirtualFile, RuntimeException> {
@@ -43,9 +48,11 @@ internal class NativeSourceContextFixture(
                 roots.addRoot("jar://$jar!/", OrderRootType.CLASSES)
                 roots.commit()
             }
-            val file =
-                WriteCommandAction.writeCommandAction(project).compute<VirtualFile, RuntimeException> {
-                    directory.createChildData(this, "Owners.kt").also { it.setBinaryContent(text.toByteArray()) }
+            val files =
+                WriteCommandAction.writeCommandAction(project).compute<List<VirtualFile>, RuntimeException> {
+                    sources.map { (name, text) ->
+                        directory.createChildData(this, name).also { it.setBinaryContent(text.toByteArray()) }
+                    }
                 }
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             IndexingTestUtil.waitUntilIndexesAreReady(project)
@@ -67,8 +74,7 @@ internal class NativeSourceContextFixture(
                     ),
                 ) as WorkspaceSearchScopeModelCompilation.Compiled
             result =
-                NativeScopedTraceFixture(project = project, root = root, model = model.model, files = listOf(file)) to
-                    file
+                NativeScopedTraceFixture(project = project, root = root, model = model.model, files = files) to files
         }
         return result
     }

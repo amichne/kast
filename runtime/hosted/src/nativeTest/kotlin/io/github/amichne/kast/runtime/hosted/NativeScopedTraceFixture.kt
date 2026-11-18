@@ -14,7 +14,11 @@ import io.github.amichne.kast.kernel.WorkUnitLimit
 import io.github.amichne.kast.query.contract.QueryBranchObservation
 import io.github.amichne.kast.query.protocol.CanonicalQueryProtocol
 import io.github.amichne.kast.query.protocol.CanonicalQueryReferences
+import io.github.amichne.kast.query.protocol.CanonicalSelectorDecoding
 import io.github.amichne.kast.query.protocol.CanonicalSourceReadProtocol
+import io.github.amichne.kast.query.protocol.QueryReferenceAuthority
+import io.github.amichne.kast.query.protocol.ReacquiringQueryReferences
+import io.github.amichne.kast.query.protocol.decodingFailure
 import io.github.amichne.kast.query.service.QueryService
 import io.github.amichne.kast.relation.contract.RelationBudget
 import io.github.amichne.kast.relation.contract.RelationByteLimit
@@ -26,8 +30,13 @@ import io.github.amichne.kast.source.contract.SourceReadContinuationPort
 import io.github.amichne.kast.source.contract.SourceReadRejection
 import io.github.amichne.kast.source.intellij.ProjectBoundIntellijSourceReadPort
 import io.github.amichne.kast.source.service.SourceReadService
+import io.github.amichne.kast.symbol.contract.ExactRevalidationPolicy
+import io.github.amichne.kast.symbol.contract.ExactRevalidationResult
 import io.github.amichne.kast.symbol.contract.SymbolDiscoverySourceSets
+import io.github.amichne.kast.symbol.intellij.IntellijExactRevalidationCapture
+import io.github.amichne.kast.symbol.intellij.ProjectBoundExactRevalidationPort
 import io.github.amichne.kast.symbol.intellij.ProjectBoundIntellijSymbolPorts
+import io.github.amichne.kast.symbol.service.ExactRevalidationService
 import io.github.amichne.kast.symbol.service.SymbolDiscoveryService
 import io.github.amichne.kast.symbol.service.SymbolExactService
 import io.github.amichne.kast.traversal.contract.TraversalBudget
@@ -35,6 +44,8 @@ import io.github.amichne.kast.traversal.contract.TraversalByteLimit
 import io.github.amichne.kast.traversal.contract.TraversalDepthLimit
 import io.github.amichne.kast.traversal.contract.TraversalFrontierLimit
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
+import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
+import io.github.amichne.kast.workspace.contract.SemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.SemanticReadLease
 import io.github.amichne.kast.workspace.contract.SemanticReadValidation
 import io.github.amichne.kast.workspace.contract.SemanticReadValidationPort
@@ -73,13 +84,14 @@ internal class NativeScopedTraceFixture(
             !project.isDisposed && files.map { it.modificationStamp } == stamps
         }
 
-    private val validation = SemanticReadValidationPort { expected ->
+    private fun validation(authority: SemanticReadAuthority) = SemanticReadValidationPort { expected ->
         when {
-            expected.workspaceRoot != lease.workspaceRoot -> SemanticReadValidation.ROOT_MISMATCH
-            expected != lease || !current() -> SemanticReadValidation.MOVED
+            expected.workspaceRoot != authority.workspaceRoot -> SemanticReadValidation.ROOT_MISMATCH
+            expected != authority || !current() -> SemanticReadValidation.MOVED
             else -> SemanticReadValidation.CURRENT
         }
     }
+
     private val admission = IntellijSemanticSourceFileAdmission { path, sourceSets ->
         model.sourceRoots.any { owner ->
             path.startsWith(Path.of(owner.sourceRoot.value)) &&
@@ -97,22 +109,79 @@ internal class NativeScopedTraceFixture(
     fun valueServices() =
         NativePacketQueryServices(project = project, root = lease.workspaceRoot, model = model, files = files)
 
-    fun protocol(branchObservation: QueryBranchObservation = QueryBranchObservation.None): CanonicalQueryProtocol {
+    fun protocol(branchObservation: QueryBranchObservation = QueryBranchObservation.None): CanonicalQueryProtocol =
+        protocol(authority = lease, references = references, capture = null, branchObservation = branchObservation)
+
+    fun reacquiringProtocol(
+        authority: LiveSemanticReadAuthority,
+        records: ExactRevalidationRecords,
+    ): CanonicalQueryProtocol {
+        val read =
+            NativeScopedTraceFixture(project = project, root = authority.workspaceRoot, model = model, files = files)
+        return read.liveProtocol(authority, records)
+    }
+
+    private fun liveProtocol(
+        authority: LiveSemanticReadAuthority,
+        records: ExactRevalidationRecords,
+    ): CanonicalQueryProtocol {
+        val capture = IntellijExactRevalidationCapture(model, observation)
+        val strict =
+            CanonicalQueryReferences(
+                model,
+                exactIssued = { selector, token, canonical ->
+                    records.retain(token, canonical, capture.locator(selector).traceRefined()).traceRefined()
+                },
+            )
+        val policy = ExactRevalidationPolicy.CURRENT_DECLARATION
+        val port =
+            ProjectBoundExactRevalidationPort(
+                project = project,
+                model = model,
+                files = admission,
+                capture = capture,
+                observation = observation,
+                policy = policy,
+            )
+        val service = ExactRevalidationService(validation(authority), port, policy)
+        val references =
+            ReacquiringQueryReferences(
+                strict,
+                { token, current ->
+                    val locator = records.locate(token).traceRefined()
+                    when (val result = service.revalidate(locator, current)) {
+                        is ExactRevalidationResult.Reacquired -> CanonicalSelectorDecoding.Decoded(result.selector)
+                        is ExactRevalidationResult.Rejected ->
+                            CanonicalSelectorDecoding.Rejected(result.reason.decodingFailure())
+                    }
+                },
+            )
+        return protocol(authority, references, capture)
+    }
+
+    private fun protocol(
+        authority: SemanticReadAuthority,
+        references: QueryReferenceAuthority,
+        capture: IntellijExactRevalidationCapture?,
+        branchObservation: QueryBranchObservation = QueryBranchObservation.None,
+    ): CanonicalQueryProtocol {
+        val validation = validation(authority)
         val symbols =
             ProjectBoundIntellijSymbolPorts.create(
                 project = project,
-                authority = lease,
+                authority = authority,
                 model = model,
                 fileAdmission = admission,
                 observation = observation,
                 limits = limits,
+                capture = capture,
             )
         val relations =
             RelationService(
                 validation,
                 ProjectBoundIntellijRelationPort.create(
                     project = project,
-                    authority = lease,
+                    authority = authority,
                     model = model,
                     fileAdmission = admission,
                     observation = observation,
@@ -123,7 +192,7 @@ internal class NativeScopedTraceFixture(
             QueryService(
                 discovery = SymbolDiscoveryService(validation, symbols.discovery),
                 exact = SymbolExactService(validation, symbols.exact),
-                source = source(),
+                source = source(authority),
                 relations = relations,
                 traversal = hostedTraversalOperations(relations, observation),
                 traversalCeiling = traversalBudget,
@@ -133,15 +202,21 @@ internal class NativeScopedTraceFixture(
         )
     }
 
-    private fun source() =
+    private fun source(authority: SemanticReadAuthority = lease) =
         SourceReadService(
             SourceReadContextPort { expected ->
-                if (expected == lease && current()) Refinement.Refined(SourceReadContext(lease, sourceState))
-                else Refinement.Rejected(SourceReadRejection.SOURCE_STATE_MISMATCH)
+                if (expected != authority || !current()) Refinement.Rejected(SourceReadRejection.SOURCE_STATE_MISMATCH)
+                else
+                    Refinement.Refined(
+                        when (authority) {
+                            is LiveSemanticReadAuthority -> SourceReadContext.Live(authority)
+                            is SemanticReadLease -> SourceReadContext(authority, sourceState)
+                        }
+                    )
             },
             ProjectBoundIntellijSourceReadPort.create(
                 project = project,
-                authority = lease,
+                authority = authority,
                 model = model,
                 fileAdmission = admission,
                 continuations = SourceReadContinuationPort.Cursorless,
