@@ -18,6 +18,16 @@ function outcome(row) {
   return 'error';
 }
 
+function matchedDeveloperInputs(pair, left, right) {
+  const a = pair.get(left);
+  if (a?.vars.comparison !== 'developer-tasks') return true;
+  const b = pair.get(right);
+  return ['taskSha256', 'sourceSha256'].every(key => {
+    const digest = a.response?.metadata?.[key];
+    return typeof digest === 'string' && /^[a-f0-9]{64}$/.test(digest) && digest === b?.response?.metadata?.[key];
+  });
+}
+
 function count(value) {
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
@@ -100,6 +110,8 @@ export function compare(document, left, right) {
   let reason = 'TIED_ON_MEASURED_CRITERIA';
   if (Object.values(arms).some((arm) => arm.missing || arm.error)) {
     reason = 'INCOMPLETE_OR_INVALID_PAIR';
+  } else if (!allPairs.every(pair => matchedDeveloperInputs(pair, left, right))) {
+    reason = 'UNMATCHED_DEVELOPER_INPUTS';
   } else if (
     !sameModel ||
     efforts.size !== 1 ||

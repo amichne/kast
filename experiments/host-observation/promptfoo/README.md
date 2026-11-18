@@ -23,6 +23,7 @@ Promptfoo uses a fresh model response for each live trial. Provider caches can s
 
 | Configuration | Cases and arms | Inputs |
 |---|---|---|
+| `developer.config.mjs` | Implement features, migrate an API, trace dispatch, and fix a scheduler defect with or without Kast. | Use Pi, Kast, Kotlin/JVM, and macOS. [Developer task guide](developer-tasks.md) |
 | `pi.config.mjs` | Six replay graders, paired interface formats, fresh Pi tasks, received results, or a recorded target | Use `KAST_PI_EVAL_PLAN` for a live plan. Use `KAST_PI_EVAL_TARGET` for a recorded target. [Pi guide](../PI_EVALUATION.md) |
 | `agent-efficiency.config.mjs` | Paired control and Kast treatment on a curated development or holdout corpus. The optimization plan adds candidate configurations. | Supply the private corpus and `KAST_EFFICIENCY_PLAN`. [Efficiency guide](../AGENT_EFFICIENCY.md) |
 | `semantic-campaign.config.mjs` | Source witnesses for baseline, relation, and source variants across the named repositories | Supply `KAST_CAMPAIGN_PLAN` and the specified checkout, executable, and log. [Campaign guide](../CAMPAIGN_RESULTS.md) |

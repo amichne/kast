@@ -73,3 +73,23 @@ test('inconsistent correctness and unrecorded effort block a preference', () => 
   delete b.response.metadata.effort;
   assert.equal(report(a, b).preference, null);
 });
+
+test('developer task comparisons need the same initial source and requirement in both arms', () => {
+  const baseline = row('source', true, 12, 1);
+  const treatment = row('kast', true, 10, 2);
+  for (const item of [baseline, treatment]) {
+    item.vars.comparison = 'developer-tasks';
+    Object.assign(item.response.metadata, { taskSha256: 'a'.repeat(64), sourceSha256: 'b'.repeat(64) });
+  }
+  assert.deepEqual(report(baseline, treatment).preference, { arm: 'kast', criterion: 'tokens' });
+  for (const key of ['taskSha256', 'sourceSha256']) {
+    const original = treatment.response.metadata[key];
+    for (const invalid of [undefined, 'broken', 'c'.repeat(64)]) {
+      treatment.response.metadata[key] = invalid;
+      const comparison = report(baseline, treatment);
+      assert.equal(comparison.preference, null);
+      assert.equal(comparison.reason, 'UNMATCHED_DEVELOPER_INPUTS');
+    }
+    treatment.response.metadata[key] = original;
+  }
+});
