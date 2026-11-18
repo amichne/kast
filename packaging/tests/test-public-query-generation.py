@@ -217,6 +217,10 @@ class PublicQueryGenerationTest(unittest.TestCase):
         for name, digest in expected.items():
             schema = json.loads(generated[generator.RESOURCES / name])
             definitions = schema["$defs"]
+            # The mixed-source flow extends the enum and keeps the existing default.
+            flow = definitions["ImpactFlow"]
+            self.assertEqual(["KOTLIN_FORWARD_V1", "KOTLIN_JAVA_FORWARD_V2"], flow["enum"])
+            flow["enum"].remove("KOTLIN_JAVA_FORWARD_V2")
             # Issued producer candidates add a strict, epoch-bound invocation range to IMPACT input.
             candidate = {"$ref": "#/$defs/ImpactReferenceText"}
             expected_candidate = {"anyOf": [candidate, {"type": "null"}]}

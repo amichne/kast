@@ -344,5 +344,6 @@ registerRelationNativeFixtures(
         "*NativeLoopInputTest",
         "*NativeLoopInputBoundaryTest",
         "*NativeDestructuringFormsTest",
+        "*NativeJavaStaticValueFlowTest",
     ),
 )

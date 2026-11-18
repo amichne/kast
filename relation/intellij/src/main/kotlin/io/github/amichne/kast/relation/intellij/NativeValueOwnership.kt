@@ -1,6 +1,9 @@
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiLambdaExpression
+import com.intellij.psi.PsiMethod
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -18,6 +21,9 @@ internal fun valueNativeOwnership(element: PsiElement, owner: PsiElement): Nativ
     while (current != null) {
         if (current === owner) return NativeValueOwnership.ADMITTED
         when (current) {
+            is PsiClass,
+            is PsiLambdaExpression,
+            is PsiMethod,
             is KtNamedFunction,
             is KtLambdaExpression,
             is KtClassOrObject -> return NativeValueOwnership.NESTED

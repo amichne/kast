@@ -172,13 +172,13 @@ File-scoped occurrences keep imports and aliases. They cannot act as declaration
 
 ## Value impact inputs and qualifications
 
-`IMPACT` traces exact producer calls with `KOTLIN_FORWARD_V1`. State the seeds, declarations, domain, flow, and reviewed models in its input.
+`IMPACT` traces exact producer calls. State the seeds, declarations, domain, flow, and reviewed models in its input.
 
 | Input | Requirement |
 | --- | --- |
 | `seeds` | Issued `enclosing` and producer `callable` references, plus UTF-16 `start` and `end` covering the whole constructor or function call. A nested or qualified selection must resolve to that same compiler invocation. |
 | `declarations` | Pair modeled callable references with identity claims. Kast checks those claims again. |
-| `flow` | `KOTLIN_FORWARD_V1`. |
+| `flow` | `KOTLIN_FORWARD_V1` by default. Select `KOTLIN_JAVA_FORWARD_V2` to include the supported Java static methods. |
 | `domain` | Explicit expansion scope. |
 | `models` | Reviewed representation rules or rules for modeled interfaces. `[]` supplies none. |
 | Optional `requestedSites` | State the enclosing identity, range, and role. An argument site also identifies its invocation, callable, and zero-based declared formal parameter index. Named-argument source order does not change that index. |
@@ -188,6 +188,18 @@ Native reads prove call and site identity. Supplied models prove what a represen
 Public requested sites and model boundary sites select native work through `enclosing`, `range`, and `role`. Kast supplies retained `executionOwner`, `valuePath`, and `callStack` evidence. These input sites do not accept those retained fields.
 
 `IMPACT` accepts no transformation steps. Select EMIT with `VALUE_PATHS` for paths or `IMPACT_WITNESS` for a section after the original investigation completes.
+
+<Accordion title="Java static method transfers">
+`KOTLIN_JAVA_FORWARD_V2` keeps the Kotlin transfers and adds source-backed Java static methods called from Kotlin.
+A supported Java body has one final return and can declare final local variables before it.
+A literal or a read of a formal or earlier local variable can supply each local or return value.
+The transfer preserves the value through Java assignments without boxing or unboxing.
+
+Kast connects the return to the original Kotlin invocation.
+A literal return carries no provenance from the selected argument.
+A resolved method without available source keeps an `EXTERNAL_CALL` obligation.
+Other Java body shapes keep an unresolved obligation.
+</Accordion>
 
 <Accordion title="Kotlin transfer qualifications">
 Under normal completion, a final try or catch value can supply its try expression. The compiler proves that transfer. Catch fallback values keep their own producers.

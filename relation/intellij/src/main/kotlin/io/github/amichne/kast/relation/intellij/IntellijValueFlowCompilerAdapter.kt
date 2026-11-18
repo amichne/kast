@@ -7,6 +7,7 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationBudget
@@ -42,10 +43,8 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedKind
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
-import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.KtThisExpression
 
 sealed interface ValueSiteResolution {
     data class Found(val site: ValueSite) : ValueSiteResolution
@@ -202,7 +201,7 @@ class IntellijValueFlowCompilerAdapter(
         onWork: (RelationWorkCount) -> Unit,
     ): ValueFlowRead {
         val source =
-            prepared.owner.exactValueElement(request.source.range)
+            prepared.owner.exactRetainedValueElement(request.source.range)
                 ?: return ValueFlowRead.Rejected(ValueFlowRejection.STALE_SITE, flowWorkCount(1))
         val execution =
             when (
@@ -224,7 +223,11 @@ class IntellijValueFlowCompilerAdapter(
             request.source.role == ValueRole.LocalBinding &&
                 request.source.localVersion == io.github.amichne.kast.relation.contract.ValueLocalVersion.Unversioned
         ) {
-            if (source !is KtProperty && source.nativeLocalBindingMutability() is Refinement.Rejected)
+            if (
+                prepared.owner !is PsiMethod &&
+                    source !is KtProperty &&
+                    source.nativeLocalBindingMutability() is Refinement.Rejected
+            )
                 return ValueFlowRead.Rejected(ValueFlowRejection.STALE_SITE, flowWorkCount(1))
         }
         return IntellijValueFlowNative(
@@ -368,27 +371,6 @@ private fun SemanticReadAuthority.isCurrentValueAuthority(): Boolean =
         is LiveSemanticReadAuthority -> withCurrentOwner { Unit } is Refinement.Refined
         is SemanticReadLease -> true
     }
-
-/** Exact Kotlin semantic elements exclude same-range lexer tokens and argument container wrappers. */
-internal fun PsiElement.exactValueElement(range: ExactDeclarationTextRange): KtExpression? =
-    generateSequence(containingFile.findElementAt(range.startInclusive)) { it.parent }
-        .takeWhile {
-            it.textRange.startOffset >= textRange.startOffset && it.textRange.endOffset <= textRange.endOffset
-        }
-        .filterIsInstance<KtExpression>()
-        .firstOrNull {
-            it.textRange.startOffset == range.startInclusive && it.textRange.endOffset == range.endExclusive
-        }
-        ?.let { expression ->
-            val semantic = expression.parent as? KtThisExpression
-            if (
-                semantic != null &&
-                    semantic.instanceReference === expression &&
-                    semantic.textRange == expression.textRange
-            )
-                semantic
-            else expression
-        }
 
 private fun flowWorkCount(count: Long): RelationWorkCount =
     when (val refined = RelationWorkCount.parse(count)) {

@@ -54,6 +54,8 @@ internal fun bindImpactSourceModels(
                     domain,
                     when (flow) {
                         QueryImpactFlowDocument.KOTLIN_FORWARD_V1 -> QueryImpactFlowSemantics.KOTLIN_FORWARD_V1
+                        QueryImpactFlowDocument.KOTLIN_JAVA_FORWARD_V2 ->
+                            QueryImpactFlowSemantics.KOTLIN_JAVA_FORWARD_V2
                     },
                     evidence.requestedSites,
                     models.peers,

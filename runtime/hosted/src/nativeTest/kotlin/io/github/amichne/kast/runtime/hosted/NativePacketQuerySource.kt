@@ -163,6 +163,15 @@ internal class NativePacketQuerySource(
         range(if (qualified?.selectorExpression == call) qualified else call)
     }
 
+    fun invocationWithArgument(method: String, callee: String, argument: ImpactSourceRangeDocument) = read {
+        val call =
+            PsiTreeUtil.collectElementsOfType(function("", method), KtCallExpression::class.java).single { call ->
+                call.calleeExpression?.text == callee &&
+                    call.valueArguments.any { it.getArgumentExpression()?.let(::range) == argument }
+            }
+        range(call)
+    }
+
     fun outgoingArgument(): ImpactSourceRangeDocument = read {
         range(
             checkNotNull(call(variant.concreteClient, "fetch", "send").valueArguments.single().getArgumentExpression())

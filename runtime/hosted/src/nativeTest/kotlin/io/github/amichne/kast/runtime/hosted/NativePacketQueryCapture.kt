@@ -35,6 +35,7 @@ import io.github.amichne.kast.query.protocol.QueryPublishedPage
 internal class NativePacketQueryCapture(
     private val services: NativePacketQueryServices,
     private val checkpoint: NativePacketQueryCheckpoint? = null,
+    private val flow: QueryImpactFlowDocument = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
 ) {
     private val budget = NativePacketQueryServices.budget
     private val policy =
@@ -202,7 +203,7 @@ internal class NativePacketQueryCapture(
             is OperationOutcome.Qualified -> error("Strict initial query unexpectedly returned qualified success")
         }
 
-    private fun request(
+    fun request(
         producer: QueryImpactProducerDocument,
         targets: List<ImpactValueSiteReferenceDocument>,
         declarations: List<QueryImpactDeclarationDocument>,
@@ -215,7 +216,7 @@ internal class NativePacketQueryCapture(
                         seeds = packetQueryList(listOf(producer)),
                         declarations = packetQueryList(declarations),
                         domain = domain,
-                        flow = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+                        flow = flow,
                         models = packetQueryList(emptyList()),
                         requestedSites = packetQueryList(targets),
                     )

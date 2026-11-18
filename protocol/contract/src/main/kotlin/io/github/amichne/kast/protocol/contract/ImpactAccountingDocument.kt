@@ -8,7 +8,8 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 enum class ImpactFlowSemanticsDocument {
-    KOTLIN_FORWARD_V1
+    KOTLIN_FORWARD_V1,
+    KOTLIN_JAVA_FORWARD_V2,
 }
 
 @Serializable

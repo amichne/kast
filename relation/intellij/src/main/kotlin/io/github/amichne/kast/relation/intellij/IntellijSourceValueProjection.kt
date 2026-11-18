@@ -3,6 +3,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationEndpoint
@@ -13,6 +14,8 @@ import io.github.amichne.kast.relation.contract.ValueCallStack
 import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueField
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowSemantics
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueFormalParameter
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
@@ -41,16 +44,22 @@ import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 
 internal fun nativeValueSourceArgument(
-    source: ValueSite,
+    request: ValueFlowRequest,
+    element: PsiElement,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
 ): Refinement<ValueTransfer, ValueFlowUnsupportedCause> {
+    val source = request.source
     val argument = source.role as? ValueRole.Argument ?: return sourceRejected()
     val callable =
         when (val native = projection.subject(scope, argument.call.callable)) {
-            is IntellijRelationSubjectLookup.Found -> native.declaration as? KtNamedFunction
+            is IntellijRelationSubjectLookup.Found -> native.declaration
             is IntellijRelationSubjectLookup.Rejected -> null
-        } ?: return sourceRejected()
+        }
+    if (request.semantics == ValueFlowSemantics.KOTLIN_JAVA_FORWARD_V2 && (callable is PsiMethod || callable == null)) {
+        return nativeJavaValueEntry(source = source, element = element, scope = scope, projection = projection)
+    }
+    if (callable !is KtNamedFunction) return sourceRejected()
     if (callable.bodyExpression == null) return Refinement.Rejected(ValueFlowUnsupportedCause.EXTERNAL_CALL)
     if (
         nativeValueBodySelection(
@@ -78,7 +87,7 @@ internal fun nativeValueFormalParameter(
 internal fun nativeValueFormalParameter(
     callable: RelationEndpoint,
     position: ValueArgumentPosition,
-    parameter: KtParameter,
+    parameter: PsiNamedElement,
 ): Refinement<ValueFormalParameter, ValueFlowUnsupportedCause> {
     val name =
         when (val value = SymbolDiscoveryCandidateName.parse(parameter.name.orEmpty())) {
@@ -310,7 +319,7 @@ internal fun sourceTransfer(
 internal fun sourceValueRange(element: PsiElement): ExactDeclarationTextRange =
     when (val value = ExactDeclarationTextRange.parse(element.textRange.startOffset, element.textRange.endOffset)) {
         is Refinement.Refined -> value.value
-        is Refinement.Rejected -> error("A live Kotlin PSI element has a nonnegative range")
+        is Refinement.Rejected -> error("A live PSI element has a nonnegative range")
     }
 
 private fun sourceRejected(): Refinement.Rejected<ValueFlowUnsupportedCause> =
