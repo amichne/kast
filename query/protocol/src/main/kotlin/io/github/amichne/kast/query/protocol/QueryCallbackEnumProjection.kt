@@ -22,6 +22,8 @@ internal fun CallbackDependencyContractProvenance.protocolCallbackDocument():
             QueryCallbackDependencyContractProvenanceDocument.KOTLIN_BINARY_CONTRACT
         CallbackDependencyContractProvenance.REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH ->
             QueryCallbackDependencyContractProvenanceDocument.REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH
+        CallbackDependencyContractProvenance.REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH ->
+            QueryCallbackDependencyContractProvenanceDocument.REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH
     }
 
 internal fun CallbackDependencyInvocationKind.protocolCallbackDocument():

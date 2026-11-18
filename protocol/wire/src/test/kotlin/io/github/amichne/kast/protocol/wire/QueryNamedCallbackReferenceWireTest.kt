@@ -2,13 +2,20 @@ package io.github.amichne.kast.protocol.wire
 
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.BoundedProtocolList
+import io.github.amichne.kast.protocol.contract.CompilerReceiverDocument
+import io.github.amichne.kast.protocol.contract.CompilerSignatureDocument
+import io.github.amichne.kast.protocol.contract.CompilerSymbolEvidenceDocument
+import io.github.amichne.kast.protocol.contract.CompilerTypeParameterCountDocument
 import io.github.amichne.kast.protocol.contract.ProtocolCount
 import io.github.amichne.kast.protocol.contract.QueryCallableObservationDocument
 import io.github.amichne.kast.protocol.contract.QueryCallableTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackBindingDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackBodyDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyContractProvenanceDocument
+import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyInvocationKindDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackFlowDocument
 import io.github.amichne.kast.protocol.contract.QueryCallbackReferenceReceiverDocument
+import io.github.amichne.kast.protocol.contract.QueryExcludedCompilerTargetDocument
 import io.github.amichne.kast.protocol.contract.QueryExpandedFrontierDocument
 import io.github.amichne.kast.protocol.contract.QueryNamedCallbackReferenceDocument
 import io.github.amichne.kast.protocol.contract.QueryNamedCallbackReferenceFlowDocument
@@ -201,6 +208,86 @@ class QueryNamedCallbackReferenceWireTest {
                     )
             )
         assertEquals(WireDocumentConversion.Rejected, forged.toContract())
+    }
+
+    @Test
+    fun `reviewed supply encodes its action and rejects declared invocation provenance`() {
+        val original = suppliedReference().toWireDocument()
+        val named = original.target as QueryCallableTargetWireDocument.NamedReference
+        val supplied = named.reference.flow as QueryNamedCallbackReferenceFlowWireDocument.Supplied
+        val source = supplied.binding as QueryCallbackBindingWireDocument.Bound
+        val binding =
+            QueryCallbackBindingWireDocument.DependencyContract(
+                basis = original.basis,
+                occurrence = source.invocationOccurrence,
+                owner = source.invocationOwner,
+                target = iterableTarget().callbackWire(),
+                position = 0,
+                classDigest = "7f74e68459e9c8ae6c69510014b6fe0f565b9389ddbe5acb5e181dd773558878",
+                provenance = QueryCallbackDependencyContractProvenanceDocument.REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH,
+                invocationKind = QueryCallbackDependencyInvocationKindDocument.ZERO_OR_MORE,
+            )
+        fun suppliedBy(proof: QueryCallbackBindingWireDocument.DependencyContract) =
+            original.copy(
+                target =
+                    named.copy(
+                        reference =
+                            named.reference.copy(
+                                flow = QueryNamedCallbackReferenceFlowWireDocument.ReviewedSupply(proof)
+                            ),
+                        resultProjection =
+                            QueryCallbackResultProjectionWireDocument.Unproven(
+                                io.github.amichne.kast.protocol.contract.QueryCallbackFlowCauseDocument.OUTSIDE_DOMAIN
+                            ),
+                    )
+            )
+        val wire = suppliedBy(binding)
+        assertTrue(wire.toContract() is WireDocumentConversion.Converted)
+        val raw = wireJson.encodeToJsonElement(QueryCallableObservationWireDocument.serializer(), wire).jsonObject
+        val serialized = raw.getValue("target").jsonObject.getValue("reference").jsonObject.getValue("flow").jsonObject
+        assertEquals(JsonPrimitive("REVIEWED_SUPPLY"), serialized.getValue("type"))
+        assertEquals(
+            JsonPrimitive("ZERO_OR_MORE"),
+            serialized.getValue("binding").jsonObject.getValue("invocation_kind"),
+        )
+        assertEquals(
+            WireDocumentConversion.Rejected,
+            suppliedBy(
+                    binding.copy(provenance = QueryCallbackDependencyContractProvenanceDocument.KOTLIN_BINARY_CONTRACT)
+                )
+                .toContract(),
+        )
+    }
+
+    private fun iterableTarget(): QueryExcludedCompilerTargetDocument {
+        val id = "kotlin.collections.forEach"
+        val base =
+            fixture
+                .callable(
+                    file = "jar:///stdlib.jar!/kotlin/collections/CollectionsKt.class",
+                    start = 0,
+                    end = 40,
+                    identity = id,
+                    parameters = listOf("(T)->kotlin/Unit"),
+                )
+                .compilerTarget
+        val signature = base.compilerEvidence.signature as CompilerSignatureDocument.Function
+        val typeParameterCount = (CompilerTypeParameterCountDocument.parse(1) as Refinement.Refined).value
+        val evidence =
+            CompilerSymbolEvidenceDocument.fromSignature(
+                signature.copy(
+                    receiver = CompilerReceiverDocument.Present(fixture.text("kotlin/collections/Iterable<T>")),
+                    typeParameterCount = typeParameterCount,
+                )
+            )
+        return (QueryExcludedCompilerTargetDocument.create(
+                file = base.file,
+                range = base.range,
+                name = base.name,
+                kind = base.kind,
+                compilerEvidence = (evidence as Refinement.Refined).value,
+            ) as Refinement.Refined)
+            .value
     }
 
     private fun suppliedReference(): QueryCallableObservationDocument {

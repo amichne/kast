@@ -131,6 +131,7 @@ internal class IntellijCallbackResultProjection(
         val result = select(CallbackResultSites.reference(selected.request.meaning, reference))
         if (result != CallbackResultProjectionRead.Excluded) return result
         return when (val flow = reference.flow) {
+            is NamedCallbackReferenceFlow.ReviewedSupply,
             is NamedCallbackReferenceFlow.Supplied,
             is NamedCallbackReferenceFlow.Direct -> result
             is NamedCallbackReferenceFlow.Unavailable -> CallbackResultProjectionRead.Unproven(flow.cause)

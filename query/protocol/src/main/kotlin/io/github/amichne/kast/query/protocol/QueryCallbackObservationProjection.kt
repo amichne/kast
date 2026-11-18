@@ -349,9 +349,9 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
             body(value.owner) ?: return null,
         )
 
-    private fun dependencyContract(
+    fun dependencyContract(
         value: io.github.amichne.kast.relation.contract.CallbackDependencyContract
-    ): QueryCallbackBindingDocument? =
+    ): QueryCallbackBindingDocument.DependencyContract? =
         QueryCallbackBindingDocument.DependencyContract(
             value.basis.impactDocument().callbackValue() ?: return null,
             occurrence(value.occurrence) ?: return null,
