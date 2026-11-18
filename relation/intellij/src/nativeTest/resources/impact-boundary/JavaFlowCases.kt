@@ -22,3 +22,17 @@ fun sibling() {
     consume(/*<tracked>*/ JavaFlow.relay(0, value) /*</tracked>*/)
     consume(/*<other>*/ JavaFlow.branch(value) /*</other>*/)
 }
+
+fun bucketed() {
+    consume(/*<tracked>*/ JavaFlow.bucket(producer()) /*</tracked>*/)
+}
+
+fun unrelatedBucket() {
+    consume(/*<other>*/ JavaFlow.bucket(17) /*</other>*/)
+}
+
+fun zeroDivision() = JavaFlow.zero(producer())
+
+fun promotedDivision() = JavaFlow.promoted(producer())
+
+fun boxedDivision() = JavaFlow.boxed(producer())

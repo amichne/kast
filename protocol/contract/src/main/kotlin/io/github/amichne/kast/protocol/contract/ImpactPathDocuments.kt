@@ -102,6 +102,21 @@ sealed interface ImpactTransferEvidenceDocument {
     ) : ImpactTransferEvidenceDocument
 
     @Serializable
+    @SerialName("JAVA_INT_DIVISION_V1")
+    data class JavaIntDivision(
+        @SerialName("input_range") val inputRange: ImpactSourceRangeDocument,
+        @SerialName("divisor_range") val divisorRange: ImpactSourceRangeDocument,
+        @SerialName("result_range") val resultRange: ImpactSourceRangeDocument,
+        val divisor: Int,
+        val execution: ImpactExecutionReferenceDocument,
+        @SerialName("call_stack") val callStack: BoundedProtocolList<ImpactCallFrameDocument>,
+        val input: ImpactJavaDivisionInput,
+        @SerialName("operand_types") val operandTypes: ImpactJavaDivisionOperands,
+        @SerialName("result_type") val resultType: ImpactJavaDivisionType,
+        val completion: ImpactBranchCompletionDocument,
+    ) : ImpactTransferEvidenceDocument
+
+    @Serializable
     @SerialName("LOOP_ADVANCE")
     data class LoopAdvance(
         val iteration: ImpactLoopIterationDocument,

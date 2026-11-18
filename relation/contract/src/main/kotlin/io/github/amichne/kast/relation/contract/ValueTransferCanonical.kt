@@ -11,6 +11,7 @@ internal fun StringBuilder.transferEvidence(evidence: ValueTransferEvidence) {
             field(evidence.input.name)
             field(evidence.nullAlternative.name)
         }
+        is ValueJavaIntDivision -> javaIntDivision(evidence)
         is ValueIntArithmetic -> {
             field("PRIMITIVE_DERIVATION")
             field(evidence.rule.name)
@@ -126,4 +127,12 @@ private fun StringBuilder.loopProtocol(protocol: ValueLoopProtocol) {
         site(invocation.resultSite())
         endpoint(invocation.callable)
     }
+}
+
+private fun StringBuilder.javaIntDivision(evidence: ValueJavaIntDivision) {
+    field("JAVA_INT_DIVISION_V1")
+    range(evidence.inputRange)
+    range(evidence.divisorRange)
+    range(evidence.resultRange)
+    field(evidence.divisor.toString())
 }

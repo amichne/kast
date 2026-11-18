@@ -1,8 +1,12 @@
 package io.github.amichne.kast.query.protocol
 
+import io.github.amichne.kast.protocol.contract.ImpactBranchCompletionDocument
 import io.github.amichne.kast.protocol.contract.ImpactIntArithmeticInputDocument
 import io.github.amichne.kast.protocol.contract.ImpactIntArithmeticRuleDocument
 import io.github.amichne.kast.protocol.contract.ImpactIntBuiltinEvidenceDocument
+import io.github.amichne.kast.protocol.contract.ImpactJavaDivisionInput
+import io.github.amichne.kast.protocol.contract.ImpactJavaDivisionOperands
+import io.github.amichne.kast.protocol.contract.ImpactJavaDivisionType
 import io.github.amichne.kast.protocol.contract.ImpactTransferEvidenceDocument
 import io.github.amichne.kast.relation.contract.IntArithmeticInput
 import io.github.amichne.kast.relation.contract.IntArithmeticRule
@@ -48,3 +52,25 @@ private fun IntBuiltinEvidence.impactDocument(): ImpactIntBuiltinEvidenceDocumen
         IntBuiltinEvidence.K2_BUILTINS_MODULE -> ImpactIntBuiltinEvidenceDocument.K2_BUILTINS_MODULE
         IntBuiltinEvidence.K2_BUILTINS_METADATA -> ImpactIntBuiltinEvidenceDocument.K2_BUILTINS_METADATA
     }
+
+internal fun io.github.amichne.kast.relation.contract.ValueJavaIntDivision.impactDocument():
+    ImpactProjected<ImpactTransferEvidenceDocument.JavaIntDivision> =
+    inputRange
+        .impactDocument()
+        .impactZip(divisorRange.impactDocument())
+        .impactZip(resultRange.impactDocument())
+        .impactZip(execution.impactDocument().impactZip(callStack.impactDocument()))
+        .impactMap { (ranges, context) ->
+            ImpactTransferEvidenceDocument.JavaIntDivision(
+                inputRange = ranges.first.first,
+                divisorRange = ranges.first.second,
+                resultRange = ranges.second,
+                divisor = divisor,
+                input = ImpactJavaDivisionInput.DIVIDEND,
+                operandTypes = ImpactJavaDivisionOperands.INT_INT,
+                resultType = ImpactJavaDivisionType.INT,
+                completion = ImpactBranchCompletionDocument.NORMAL_COMPLETION,
+                execution = context.first,
+                callStack = context.second,
+            )
+        }

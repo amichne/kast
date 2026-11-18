@@ -1,5 +1,7 @@
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.psi.JavaTokenType
+import com.intellij.psi.PsiBinaryExpression
 import com.intellij.psi.PsiCompiledElement
 import com.intellij.psi.PsiDeclarationStatement
 import com.intellij.psi.PsiElement
@@ -124,15 +126,49 @@ private fun readJavaValue(
         is PsiLiteralExpression ->
             if (TypeConversionUtil.areTypesAssignmentCompatible(expected, value)) JavaValueInput.Literal
             else JavaValueInput.Unsupported
-        is PsiReferenceExpression -> {
-            if (value.qualifierExpression != null) return JavaValueInput.Unsupported
-            val binding = value.resolve() ?: return JavaValueInput.Unresolved
-            if (binding !is PsiVariable || binding !in bindings) return JavaValueInput.Unsupported
-            val actual = value.type ?: return JavaValueInput.Unresolved
-            if (!sameJavaValue(actual, expected)) return JavaValueInput.Unsupported
-            JavaValueInput.Read(JavaValueRead(value, binding, destination))
-        }
+        is PsiBinaryExpression -> readJavaDivision(value, expected, bindings, destination)
+        is PsiReferenceExpression -> readBinding(value, expected, bindings, destination)
         else -> JavaValueInput.Unsupported
+    }
+}
+
+private fun readBinding(
+    value: PsiReferenceExpression,
+    expected: PsiType,
+    bindings: Set<PsiVariable>,
+    destination: JavaValueDestination,
+): JavaValueInput {
+    if (value.qualifierExpression != null) return JavaValueInput.Unsupported
+    val binding = value.resolve() ?: return JavaValueInput.Unresolved
+    if (binding !is PsiVariable || binding !in bindings) return JavaValueInput.Unsupported
+    val actual = value.type ?: return JavaValueInput.Unresolved
+    if (!sameJavaValue(actual, expected)) return JavaValueInput.Unsupported
+    return JavaValueInput.Read(JavaValueRead(value, binding, destination))
+}
+
+private fun readJavaDivision(
+    expression: PsiBinaryExpression,
+    expected: PsiType,
+    bindings: Set<PsiVariable>,
+    destination: JavaValueDestination,
+): JavaValueInput {
+    val int = PsiTypes.intType()
+    if (expression.operationTokenType != JavaTokenType.DIV || expected != int || expression.type != int)
+        return JavaValueInput.Unsupported
+    val dividend =
+        PsiUtil.skipParenthesizedExprDown(expression.lOperand) as? PsiReferenceExpression
+            ?: return JavaValueInput.Unsupported
+    val literal =
+        PsiUtil.skipParenthesizedExprDown(expression.rOperand) as? PsiLiteralExpression
+            ?: return JavaValueInput.Unsupported
+    val divisor = literal.value as? Int ?: return JavaValueInput.Unsupported
+    if (divisor == 0 || literal.type != int) return JavaValueInput.Unsupported
+    return when (val input = readBinding(dividend, int, bindings, destination)) {
+        is JavaValueInput.Read ->
+            JavaValueInput.Read(
+                input.read.copy(operation = JavaReadOperation.IntDivision(expression, literal, divisor))
+            )
+        else -> input
     }
 }
 

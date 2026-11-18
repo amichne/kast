@@ -68,3 +68,41 @@ private fun ImpactValueSiteReferenceDocument.admitsPrimitiveResult(target: Impac
         target.role == ImpactValueRoleDocument.ExpressionResult &&
         valuePath.values.isEmpty() &&
         target.valuePath.values.isEmpty()
+
+@Serializable
+enum class ImpactJavaDivisionInput {
+    DIVIDEND
+}
+
+@Serializable
+enum class ImpactJavaDivisionOperands {
+    INT_INT
+}
+
+@Serializable
+enum class ImpactJavaDivisionType {
+    INT
+}
+
+internal fun ImpactTransferEvidenceDocument.JavaIntDivision.admits(
+    source: ImpactValueSiteReferenceDocument,
+    target: ImpactValueSiteReferenceDocument,
+    kind: ImpactTransferKindDocument,
+): Boolean =
+    kind == ImpactTransferKindDocument.PRIMITIVE_DERIVATION &&
+        divisor != 0 &&
+        inputRange == source.range &&
+        resultRange == target.range &&
+        admitsOperandRanges() &&
+        execution.enclosing == source.enclosing &&
+        execution.executionOwner.hasSameExecutionIdentity(source.executionOwner) &&
+        callStack.values.lastOrNull()?.callee == execution &&
+        callStack.hasSameCallStackIdentity(source.callStack) &&
+        source.role == ImpactValueRoleDocument.LocalRead &&
+        source.admitsPrimitiveResult(target)
+
+private fun ImpactTransferEvidenceDocument.JavaIntDivision.admitsOperandRanges(): Boolean =
+    resultRange.containsExecutionRange(inputRange) &&
+        resultRange.containsExecutionRange(divisorRange) &&
+        divisorRange.start.value < divisorRange.end.value &&
+        inputRange.end.value < divisorRange.start.value
