@@ -54,6 +54,10 @@ private fun NamedCallbackReferenceFlow.projectFlow(
                     is Refinement.Rejected -> return null
                 }
             )
+        is NamedCallbackReferenceFlow.ReviewedSupply ->
+            QueryNamedCallbackReferenceFlowDocument.ReviewedSupply(
+                projection.dependencyContract(value.binding) ?: return null
+            )
         is NamedCallbackReferenceFlow.Direct -> value.projectDirect(projection)
         is NamedCallbackReferenceFlow.Supplied ->
             QueryNamedCallbackReferenceFlowDocument.Supplied(

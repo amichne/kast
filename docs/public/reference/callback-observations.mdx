@@ -83,11 +83,20 @@ The compiler selects the formal. The effect belongs to that formal and the revie
 
 These kinds describe the declared contract. They supply neither runtime call counts nor call sites from dependency bodies.
 
-## Reviewed array iteration
+## Reviewed iteration
 
-For Kotlin 2.4.10, Kast recognizes the `action` parameter of `kotlin.IntArray.forEach` in the reviewed standard library archive.
-The binding reports `REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH` with `ZERO_OR_MORE`.
-The array can be empty. For each element, the implementation calls the action before the loop continues.
+Kast recognizes two standard library overloads from the reviewed Kotlin 2.4.10 archive.
+
+| Receiver for `forEach` | Provenance |
+| --- | --- |
+| `IntArray` | `REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH` |
+| `Iterable<T>` | `REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH` |
+
+Both bindings report `ZERO_OR_MORE` for the selected `action` parameter. An empty input skips the action.
+For each element, the implementation calls the action before the loop continues.
+
+A named method reference passed to the reviewed `Iterable<T>.forEach` can return a `REVIEWED_SUPPLY` observation.
+It keeps the selected method, receiver, and supply site. The direct caller rows exclude this reference.
 
 ## Unresolved obligations
 

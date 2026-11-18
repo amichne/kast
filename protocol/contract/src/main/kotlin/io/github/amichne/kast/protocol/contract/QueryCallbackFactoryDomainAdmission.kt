@@ -38,6 +38,7 @@ internal fun QueryCallableTargetDocument.admitsFactoryPolicy(domain: QueryRelati
         is QueryCallableTargetDocument.NamedReference ->
             when (val flow = reference.flow) {
                 is QueryNamedCallbackReferenceFlowDocument.Immutable -> flow.flow.admitsFactoryPolicy(domain)
+                is QueryNamedCallbackReferenceFlowDocument.ReviewedSupply,
                 is QueryNamedCallbackReferenceFlowDocument.Direct,
                 is QueryNamedCallbackReferenceFlowDocument.Supplied,
                 is QueryNamedCallbackReferenceFlowDocument.Unavailable -> true

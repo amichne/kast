@@ -327,6 +327,7 @@ registerRelationNativeFixtures(
         "*NativeCallbackReturnFlowTest.testRunnerControlledCallbackReturnAndReadmissionExceedLegacyTypeCap",
         "*NativeDependencyCallbackTest",
         "*NativeArrayCallbackTest",
+        "*NativeIterationReferenceTest",
         "*NativeDeclaredEffectCallbackTest",
         "*NativeCallbackCandidateFilterTest",
         "*NativeNestedCallbackCompositionTest",

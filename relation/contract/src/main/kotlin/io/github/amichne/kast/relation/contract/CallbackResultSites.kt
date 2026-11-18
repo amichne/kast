@@ -45,6 +45,7 @@ object CallbackResultSites {
                         is NamedCallbackReferenceFlow.Direct ->
                             listOf(CallbackResultSite.DirectInvocation(flow.binding))
                         is NamedCallbackReferenceFlow.Immutable -> invocations(flow.flow)
+                        is NamedCallbackReferenceFlow.ReviewedSupply,
                         is NamedCallbackReferenceFlow.Unavailable -> emptyList()
                     }
             RelationMeaning.Callees -> listOf(CallbackResultSite.Target(reference.target.evidence))

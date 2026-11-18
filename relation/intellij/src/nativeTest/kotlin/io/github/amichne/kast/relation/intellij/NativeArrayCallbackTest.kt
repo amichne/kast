@@ -63,13 +63,75 @@ class NativeArrayCallbackTest : NativeDependencyCallbackFixture() {
         }
     }
 
-    fun testChangedArchiveCannotSupplyTheReviewedProof() {
+    fun testListIterationUsesTheSelectedIterableAction() {
+        val fixture =
+            fixture(
+                expression = "Unit",
+                sources = false,
+                helper =
+                    "class Bin(val counted: Int)\nclass Ledger { fun post(i: Int) = proof.target() }\n" +
+                        "fun Ledger.recordCycleCount(bins: List<Bin>) = bins.forEach { post(it.counted) }\n",
+                libraryJar = pinnedLibrary(),
+            )
+        ReadAction.run<RuntimeException> {
+            val file = psiManager.findFile(fixture.callerFile) as KtFile
+            val call =
+                PsiTreeUtil.collectElementsOfType(file, KtCallExpression::class.java).single {
+                    it.calleeExpression?.text == "forEach"
+                }
+            IntellijReadObservation.None.observedAnalyze(call) {
+                val resolved = checkNotNull(call.resolveCall())
+                val target = resolved.signature.symbol as KaNamedFunctionSymbol
+                val identity = checkNotNull(target.callableId).asSingleFqName().asString()
+                val receiver = target.receiverParameter?.returnType as KaClassType
+                val external = checkNotNull(target.psi?.containingFile?.virtualFile)
+                assertEquals("CollectionsKt.class", external.name)
+                val digest = java.security.MessageDigest.getInstance("SHA-256").digest(external.contentsToByteArray())
+                assertEquals(
+                    "7f74e68459e9c8ae6c69510014b6fe0f565b9389ddbe5acb5e181dd773558878",
+                    java.util.HexFormat.of().formatHex(digest),
+                )
+                assertEquals("kotlin.collections.forEach", identity)
+                assertEquals("kotlin.collections.Iterable", receiver.classId.asSingleFqName().asString())
+                assertEquals("action", resolved.valueArgumentMapping.values.single().symbol.name.asString())
+                assertTrue(target.contractEffects.isEmpty())
+            }
+            val flow = read(fixture, ownerName = "recordCycleCount")
+            assertEquals(emptySet<CallbackInvocationFlowCause>(), flow.obligations)
+            val binding = (flow.binding as CallbackBindingEvidence.DependencyContract).binding
+            assertEquals("REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH", binding.provenance.name)
+            assertEquals("ZERO_OR_MORE", binding.invocationKind.name)
+        }
+    }
+
+    fun testChangedIterableArchiveCannotSupplyTheReviewedProof() =
+        assertChangedArchiveRejected("listOf(1).forEach { proof.target() }")
+
+    fun testUserDefinedListIterationStoresTheAction() {
+        val fixture =
+            fixture(
+                expression = "DeferredList().forEach { proof.target() }",
+                sources = false,
+                helper =
+                    "class DeferredList { var later: (() -> Unit)? = null\n" +
+                        "fun forEach(action: (Int) -> Unit) { later = { action(1) } } }\n",
+                libraryJar = pinnedLibrary(),
+            )
+        ReadAction.run<RuntimeException> {
+            assertFalse(read(fixture).binding is CallbackBindingEvidence.DependencyContract)
+        }
+    }
+
+    fun testChangedArchiveCannotSupplyTheReviewedProof() =
+        assertChangedArchiveRejected("intArrayOf(1).forEach { proof.target() }")
+
+    private fun assertChangedArchiveRejected(expression: String) {
         val changed = Files.createTempFile("array-iteration-changed-", ".jar")
         try {
             Files.copy(pinnedLibrary(), changed, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
             // The ZIP reader accepts trailing data. Every class remains byte-identical.
             Files.write(changed, byteArrayOf(1), StandardOpenOption.APPEND)
-            val fixture = fixture("intArrayOf(1).forEach { proof.target() }", false, libraryJar = changed)
+            val fixture = fixture(expression, false, libraryJar = changed)
             ReadAction.run<RuntimeException> {
                 val flow = read(fixture)
                 assertEquals(setOf(CallbackInvocationFlowCause.DEPENDENCY_CONTRACT_EFFECT_UNPROVEN), flow.obligations)

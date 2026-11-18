@@ -21,6 +21,9 @@ sealed interface QueryNamedCallbackReferenceFlowDocument {
         val forwarding: QueryCallbackForwardingEvidenceDocument,
     ) : QueryNamedCallbackReferenceFlowDocument
 
+    data class ReviewedSupply(val binding: QueryCallbackBindingDocument.DependencyContract) :
+        QueryNamedCallbackReferenceFlowDocument
+
     data class Direct(val binding: QueryCallbackBindingDocument.Direct) : QueryNamedCallbackReferenceFlowDocument
 
     data class Unavailable(val obligations: QueryCallbackGraphObligationsDocument) :
@@ -40,6 +43,8 @@ data class QueryNamedCallbackReferenceDocument(
             is QueryNamedCallbackReferenceFlowDocument.Immutable ->
                 matchesOrigin(proof.flow.sourceValue.origin, occurrence)
             is QueryNamedCallbackReferenceFlowDocument.Unavailable -> true
+            is QueryNamedCallbackReferenceFlowDocument.ReviewedSupply ->
+                proof.binding.admitsReviewedSupply(occurrence, lexicalOwner)
             is QueryNamedCallbackReferenceFlowDocument.Direct -> {
                 val owner = proof.binding.owner as? QueryCallbackBodyDocument.Named ?: return false
                 owner.callable == lexicalOwner &&
@@ -90,4 +95,17 @@ private fun QueryNamedCallbackReferenceFlowDocument.Supplied.admits(
         return false
     return CallbackInvocationRouteProof(binding.invocation.callable.basis, invocations.values, emptyList(), forwarding)
         .admitParameterInvocations(binding.parameterIdentity(), binding.invocation.callable) is Refinement.Refined
+}
+
+private fun QueryCallbackBindingDocument.DependencyContract.admitsReviewedSupply(
+    occurrence: RelationOccurrenceDocument,
+    lexicalOwner: QueryCallbackCallableDocument,
+): Boolean {
+    val owner = this.owner as? QueryCallbackBodyDocument.Named ?: return false
+    return this.provenance ==
+        QueryCallbackDependencyContractProvenanceDocument.REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH &&
+        this.validDependencyContractTarget() &&
+        owner.callable == lexicalOwner &&
+        this.occurrence.contains(occurrence) &&
+        lexicalOwner.declaration.contains(this.occurrence)
 }
