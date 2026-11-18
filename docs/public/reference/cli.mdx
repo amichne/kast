@@ -156,7 +156,8 @@ kast query --request - --json < query.json
 cat query.json | kast query --request - --json > result.json
 ```
 
-The document contains the public `request` field, without an RPC envelope.
+For a `RUN` action, the CLI accepts the complete argument document or the action inside its `request` field.
+Other actions use the complete argument document.
 The `--request` value names a file or selects stdin with `-`. It does not accept inline JSON.
 Do not combine `--request` with semantic flags or `--verbose`.
 

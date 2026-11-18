@@ -35,6 +35,7 @@ internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
                     "--request FILE or --request - accepts the packaged diagnostic input. Preserve incomplete coverage."
             commands.any { it == PublicCliCommandId.QUERY || it == PublicCliCommandId.QUERY_PLAN } ->
                 "--request FILE reads JSON from a file; --request - reads JSON from stdin.\n" +
+                    "Supply a RUN action directly or a full public argument document.\n" +
                     "Example: kast query --request - --json < query.json\n" +
                     "--fields accepts unique values: ${CliField.entries.joinToString(",") { it.spelling }}; " +
                     "use with --output symbols.\n" +

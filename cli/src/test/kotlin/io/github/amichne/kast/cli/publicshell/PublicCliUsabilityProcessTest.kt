@@ -4,7 +4,9 @@ import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -13,11 +15,34 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
+@Serializable private data class MixedRun(val type: String, val request: JsonObject)
+
 class PublicCliUsabilityProcessTest {
     @TempDir lateinit var temporary: Path
 
     private val children
         get() = PublicCliProcessFixture(temporary)
+
+    @Test
+    fun `bare RUN file and stdin produce the wrapped plan and preserve schema rejection`() {
+        val examples = PublicToolContract.examples(PublicToolIdentity.QUERY_SYMBOLS).examples
+        val example = examples.getValue("boundedCallerWalk").value
+        val action = example.jsonObject.getValue("request").toString()
+        val stdin = listOf("query", "plan", "--request", "-")
+        val expected = children.child(stdin, example.toString().encodeToByteArray())
+        assertEquals(0, expected.first)
+        assertEquals(expected, children.child(stdin, action.encodeToByteArray()))
+        val file = Files.writeString(temporary.resolve("walk.json"), action)
+        assertEquals(expected, children.child(listOf("query", "plan", "--request", file.toString())))
+        for (invalid in
+            listOf(
+                Json.encodeToString(MixedRun("RUN", example.jsonObject.getValue("request").jsonObject)),
+                action.replace("executionBudget", "unknownBudget"),
+                examples.getValue("resumeQuery").value.jsonObject.getValue("request").toString(),
+            )) {
+            assertEquals(2, children.child(stdin, invalid.encodeToByteArray()).first)
+        }
+    }
 
     @Test
     fun `schema discovery pipes bounded JSON without preparing a workspace`() {
