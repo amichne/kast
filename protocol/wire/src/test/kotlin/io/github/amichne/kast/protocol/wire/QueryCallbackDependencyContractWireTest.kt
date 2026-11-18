@@ -16,9 +16,14 @@ class QueryCallbackDependencyContractWireTest {
     fun `wire invocation kinds preserve all four declared Kotlin effects`() {
         assertEquals(
             setOf("EXACTLY_ONCE", "AT_MOST_ONCE", "AT_LEAST_ONCE", "UNKNOWN"),
-            QueryCallbackDependencyInvocationKindDocument.entries.map { it.name }.toSet(),
+            (QueryCallbackDependencyInvocationKindDocument.entries -
+                    QueryCallbackDependencyInvocationKindDocument.ZERO_OR_MORE)
+                .map { it.name }
+                .toSet(),
         )
-        for (kind in QueryCallbackDependencyInvocationKindDocument.entries) {
+        for (kind in
+            QueryCallbackDependencyInvocationKindDocument.entries -
+                QueryCallbackDependencyInvocationKindDocument.ZERO_OR_MORE) {
             val wire = observation()
             val flow = fixture.flow(wire)
             val binding = flow.binding as QueryCallbackBindingWireDocument.DependencyContract
@@ -37,6 +42,35 @@ class QueryCallbackDependencyContractWireTest {
                     .content,
             )
         }
+    }
+
+    @Test
+    fun `absence of a declared effect cannot acquire declared provenance`() {
+        val wire = observation()
+        val flow = fixture.flow(wire)
+        val binding = flow.binding as QueryCallbackBindingWireDocument.DependencyContract
+        fixture.assertRejected(
+            wire.copy(
+                flow =
+                    flow.copy(
+                        binding =
+                            binding.copy(invocationKind = QueryCallbackDependencyInvocationKindDocument.ZERO_OR_MORE)
+                    )
+            )
+        )
+        fixture.assertRejected(
+            wire.copy(
+                flow =
+                    flow.copy(
+                        binding =
+                            binding.copy(
+                                provenance =
+                                    QueryCallbackDependencyContractProvenanceDocument
+                                        .REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH
+                            )
+                    )
+            )
+        )
     }
 
     @Test
