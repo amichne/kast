@@ -72,7 +72,7 @@ Use a returned pointer to examine a child.
 kast describe query --section input --pointer ''
 ```
 
-Use `kast query --request FILE` for the complete public argument document.
+Pass a `RUN` action or a complete public argument document to `kast query --request FILE`.
 Use `kast query --request -` only when stdin contains that document.
 The default catalog is `COMPLETE`.
 An explicit `COMMON` selection remains restrictive.
@@ -89,3 +89,21 @@ Omitted `--fields`, empty `--fields ''`, and explicit fields have distinct meani
 
 Enable `set -o pipefail` when a shell pipeline depends on the Kast exit status.
 Local cancellation does not prove native settlement.
+
+## Optional MCP tools
+
+`kast install <harness> --mcp` selects the optional MCP composition.
+CLI, MCP, and tool RPC share the managed workspace Host and semantic contracts.
+Use `find` before exact relationship tasks.
+Use `source` with `ANCHOR` before a body region.
+Use `schema` before an advanced existing operation through `raw`.
+Source changes need the user's request, an issued exact target, and explicit write admission.
+Do not infer live readiness from registration or schema admission.
+
+## Fresh sessions
+
+A core update interrupts owned work and invalidates Host-issued references after a Host transition.
+Kast refreshes guidance for its installed harness integrations.
+Start a fresh agent session after installation or an update.
+If the core result reports `HARNESS_REFRESH_REQUIRED`, repeat `kast install <harness>` before that session.
+A standalone skill export keeps its bytes until explicit removal or another output directory.

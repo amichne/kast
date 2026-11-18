@@ -5,7 +5,6 @@ import io.github.amichne.kast.appserver.query.AdmittedPublicTool
 import io.github.amichne.kast.appserver.query.PublicToolCanonical
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.cli.CliBoundaryExitStatus
-import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
 import io.github.amichne.kast.cli.boundaryExit
 import io.github.amichne.kast.cli.direct.InstalledToolAdmission
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
@@ -15,7 +14,6 @@ import io.github.amichne.kast.cli.rpc.QueryCostPlanReply
 import io.github.amichne.kast.cli.rpc.ToolRpcFailure
 import io.github.amichne.kast.cli.rpc.ToolRpcReply
 import io.github.amichne.kast.cli.rpc.costAdvice
-import io.github.amichne.kast.cli.rpc.decodeToolRpcInput
 import io.github.amichne.kast.cli.rpc.presentToolRpcExit
 import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import io.github.amichne.kast.distribution.contract.configuration.selectCliOutputFormat
@@ -28,16 +26,12 @@ import io.github.amichne.kast.protocol.registry.PublicToolIdentity
 import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.IOException
 import java.io.InputStream
 import java.nio.channels.Channels
-import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlin.system.exitProcess
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 
 /** Public shell adapter. Metadata and admission precede installation composition. */
 object KastPublicCliMain {
@@ -258,7 +252,7 @@ private fun prepareQuery(
     use: (AdmittedPublicTool) -> PublicPreparedOutput,
 ): PublicPreparedOutput {
     val arguments =
-        when (val loaded = readPublicCliInput(input, stdin)) {
+        when (val loaded = readPublicCliInput(input, stdin, identity)) {
             is Refinement.Refined -> loaded.value
             is Refinement.Rejected -> {
                 diagnostic(publicCliInputDiagnostic(loaded.failure))
@@ -279,43 +273,6 @@ private fun prepareQuery(
         is Refinement.Refined -> use(admitted.value)
         is Refinement.Rejected -> preparePublicReply(ToolRpcReply.Rejected.publicInput(admitted.failure))
     }
-}
-
-internal enum class PublicInputReadFailure {
-    IO,
-    INVALID,
-    TOO_LARGE,
-}
-
-internal fun readPublicCliInput(
-    input: PublicCliInput,
-    stdin: InputStream,
-): Refinement<JsonObject, PublicInputReadFailure> =
-    try {
-        when (input) {
-            is PublicCliInput.Lowered -> Refinement.Refined(input.arguments)
-            is PublicCliInput.File -> Files.newInputStream(Path.of(input.path)).use(::readPublicArguments)
-            PublicCliInput.Stdin -> readPublicArguments(stdin)
-        }
-    } catch (_: IOException) {
-        Refinement.Rejected(PublicInputReadFailure.IO)
-    } catch (_: InvalidPathException) {
-        Refinement.Rejected(PublicInputReadFailure.INVALID)
-    }
-
-private fun readPublicArguments(input: InputStream): Refinement<JsonObject, PublicInputReadFailure> {
-    val bytes = input.readNBytes(MAXIMUM_PROTOCOL_TEXT_LENGTH + 1)
-    return if (bytes.size > MAXIMUM_PROTOCOL_TEXT_LENGTH) Refinement.Rejected(PublicInputReadFailure.TOO_LARGE)
-    else
-        when (val decoded = decodeToolRpcInput(bytes)) {
-            is Refinement.Refined ->
-                try {
-                    Refinement.Refined(publicShellJson.decodeFromString<JsonObject>(decoded.value))
-                } catch (_: SerializationException) {
-                    Refinement.Rejected(PublicInputReadFailure.INVALID)
-                }
-            is Refinement.Rejected -> Refinement.Rejected(PublicInputReadFailure.INVALID)
-        }
 }
 
 private fun invokeInstalledPublic(session: KastDirectToolSession, admitted: AdmittedPublicTool): PublicPreparedOutput =
