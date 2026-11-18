@@ -32,7 +32,14 @@ internal class NativePacketQueryFixture(
     fun prepare(variant: NativePacketQueryVariant = NativePacketQueryVariant.V0): NativePacketQueryCase {
         val path = variant.sourcePath
         val inputs =
-            if (variant == NativePacketQueryVariant.JAVA_FLOW) {
+            if (variant == NativePacketQueryVariant.JAVA_ORIGIN) {
+                mapOf(
+                    path to
+                        checkNotNull(javaClass.getResourceAsStream("/impact-boundary/JavaOrigin.java")).use {
+                            it.readBytes()
+                        }
+                )
+            } else if (variant == NativePacketQueryVariant.JAVA_FLOW) {
                 val java = path.substringBeforeLast('/') + "/JavaFlow.java"
                 listOf(path, java).associateWith { input ->
                     val name = input.substringAfterLast('/')
@@ -48,7 +55,7 @@ internal class NativePacketQueryFixture(
                 variant = variant,
                 ownedRoot = prepared.model.sourceRoots.single(),
             )
-        original.assertNoErrors()
+        if (variant != NativePacketQueryVariant.JAVA_ORIGIN) original.assertNoErrors()
         return NativePacketQueryCase(prepared.services, original)
     }
 
@@ -168,11 +175,13 @@ internal enum class NativePacketQueryVariant(val directory: String, val concrete
     V8("v8", "BackendClient", "derived-sources.sha256"),
     COVERAGE("coverage", "BindingScope", "frozen-sources.sha256"),
     CONFIGURED("configured", "Box", "frozen-sources.sha256"),
-    JAVA_FLOW("controls", "JavaFlow", "");
+    JAVA_FLOW("controls", "JavaFlow", ""),
+    JAVA_ORIGIN("controls", "JavaOrigin", "");
 
     val sourcePath: String
         get() =
             if (this == JAVA_FLOW) "src/main/kotlin/fixture/controls/JavaFlowCases.kt"
+            else if (this == JAVA_ORIGIN) "src/main/kotlin/fixture/controls/JavaOrigin.java"
             else "src/main/kotlin/fixture/variants/$directory/${directory.uppercase()}.kt"
 }
 

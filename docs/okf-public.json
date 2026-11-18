@@ -4516,7 +4516,7 @@
       "content": [
         {
           "path": "docs/public/reference/api.mdx",
-          "sha256": "db31c7ba8f360f566d4c5077fb272d9fe010e97daab77a25a2a0efddbb600444"
+          "sha256": "680e8923fb89bdf566d14fd555c371af3539f494fb3502fca7376937db615269"
         }
       ],
       "claims": [
@@ -11301,7 +11301,7 @@
       "content": [
         {
           "path": "docs/public/reference/program-tracing.mdx",
-          "sha256": "3af64a9037eabf4e201cfe029dacca3fc3f2a0a07f1b8b65e24838b044f91e3f"
+          "sha256": "9eff2d59b5b5c6eba9558d3dbd124e75d2aa69f522937deac68c3ccf556fc45a"
         },
         {
           "path": "docs/public/snippets/diagrams/callback-route.jsx",

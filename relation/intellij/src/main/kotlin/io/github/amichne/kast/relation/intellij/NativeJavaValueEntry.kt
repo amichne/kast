@@ -61,6 +61,16 @@ private fun resolveJavaArgument(
     argument: ValueRole.Argument,
     observation: IntellijReadObservation,
 ): Refinement<PsiMethod, ValueFlowUnsupportedCause> {
+    if (element is com.intellij.psi.PsiExpression) {
+        val binding =
+            when (val result = NativeJavaArgumentBinding.resolve(element)) {
+                is Refinement.Refined -> result.value
+                is Refinement.Rejected -> return result
+            }
+        if (sourceValueRange(binding.call.expression) != argument.call.range || binding.position != argument.position)
+            return unresolvedJavaArgument()
+        return Refinement.Refined(binding.call.method)
+    }
     val expression = element as? KtExpression ?: return unresolvedJavaArgument()
     val actual = expression.parent as? KtValueArgument ?: return unresolvedJavaArgument()
     val call = (actual.parent as? KtValueArgumentList)?.parent as? KtCallElement ?: return unresolvedJavaArgument()
