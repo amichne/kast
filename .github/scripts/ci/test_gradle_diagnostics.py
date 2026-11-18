@@ -70,12 +70,11 @@ public class GradleDaemon {
     }
 }
 """)
-            compiled = diagnostics.capture(
+            subprocess.run(
                 (str(java / "bin/javac"), "-d", str(root), str(source)),
-                seconds=15,
-                limit=10000,
+                check=True,
+                timeout=120,
             )
-            self.assertEqual(diagnostics.Captured(b"", 0), compiled, "fixture compilation failed")
             ready = root / "ready"
             token = "f" * 32
             process = subprocess.Popen(
