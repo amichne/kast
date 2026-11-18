@@ -210,12 +210,18 @@ export async function replayWorker(mode,plan,trial,services={}) {
 }
 const shellDirectory=directory=>path.join(directory,'fixture');
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- let result,plan,trial;try{plan=JSON.parse(fs.readFileSync(process.argv[3]));trial=expandReplayPlan(plan).find(t=>t.trialId===process.argv[4]);
-  result={type:'report',report:await replayWorker(process.argv[2],plan,trial)};
- }catch(error){
-  let ledger={usage:null,providerSends:null,shellCalls:null,kastInvocations:null,nativeCalls:0};
-  try{ledger=JSON.parse(fs.readFileSync(path.join(plan.outputRoot,process.argv[2]==='--preflight'?`preflight-${trial.trialId}`:trial.trialId,'ledger.json')));}catch{}
-  result={type:'report',report:{...trial,...ledger,outcome:{type:'invalid',reasons:[error.message==='CREDENTIAL_UNAVAILABLE'?'CREDENTIAL_UNAVAILABLE':'REPLAY_SETUP_FAILED']},diagnostic:String(error.message).slice(0,300)}};
+ const [,,mode,planFile,trialId]=process.argv;
+ if(typeof process.send!=='function'||process.argv.length!==5||!['--preflight','--trial'].includes(mode))process.exitCode=1;
+ else {
+  let result,plan,trial;
+  try{
+   plan=JSON.parse(fs.readFileSync(planFile));trial=expandReplayPlan(plan).find(t=>t.trialId===trialId);
+   result={type:'report',report:await replayWorker(mode,plan,trial)};
+  }catch(error){
+   let ledger={usage:null,providerSends:null,shellCalls:null,kastInvocations:null,nativeCalls:0};
+   try{ledger=JSON.parse(fs.readFileSync(path.join(plan.outputRoot,mode==='--preflight'?`preflight-${trial.trialId}`:trial.trialId,'ledger.json')));}catch{}
+   result={type:'report',report:{...trial,...ledger,outcome:{type:'invalid',reasons:[error.message==='CREDENTIAL_UNAVAILABLE'?'CREDENTIAL_UNAVAILABLE':'REPLAY_SETUP_FAILED']},diagnostic:String(error.message).slice(0,300)}};
+  }
+  await publishWorkerResult(result);
  }
- await publishWorkerResult(result);
 }

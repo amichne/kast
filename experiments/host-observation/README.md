@@ -1,7 +1,7 @@
 # Manual IntelliJ host observation
 
-For opt-in, bounded model-driven Pi checks and launch-free controller regressions,
-use [PI_EVALUATION.md](PI_EVALUATION.md).
+For agent evaluations, source controls, and cost comparisons, use the [Promptfoo suites](promptfoo/README.md).
+For Pi plan admission and worker tests, use the [Pi evaluation guide](PI_EVALUATION.md).
 
 For the opt-in synthetic semantic-query matrix, use [SEMANTIC_REPRODUCTION.md](SEMANTIC_REPRODUCTION.md).
 

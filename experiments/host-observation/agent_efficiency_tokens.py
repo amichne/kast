@@ -167,7 +167,9 @@ def analyze(run: Path) -> Report:
                     treatment_correct=t.correct,
                     control_tokens=c.total_tokens,
                     treatment_tokens=t.total_tokens,
-                    token_ratio=ratio(c.total_tokens, t.total_tokens),
+                    token_ratio=ratio(c.total_tokens, t.total_tokens)
+                    if c.correct and t.correct
+                    else None,
                 )
             )
             if (
@@ -180,9 +182,10 @@ def analyze(run: Path) -> Report:
                 paired_treatment.append(t.total_tokens)
     control = summary(tuple(r for r in rows if r.arm == "control"))
     treatment = summary(tuple(r for r in rows if r.arm == "treatment"))
-    c_median = float(statistics.median(paired_control)) if paired_control else None
-    t_median = float(statistics.median(paired_treatment)) if paired_treatment else None
-    total_ratio = ratio(control.total_tokens, treatment.total_tokens)
+    complete_pairs = len(paired_control) == len(pairs)
+    c_median = float(statistics.median(paired_control)) if complete_pairs else None
+    t_median = float(statistics.median(paired_treatment)) if complete_pairs else None
+    total_ratio = ratio(control.total_tokens, treatment.total_tokens) if complete_pairs else None
     return Report(
         manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
         tasks=tuple(rows),
@@ -195,7 +198,9 @@ def analyze(run: Path) -> Report:
         paired_correct_median_ratio=ratio(c_median, t_median),
         aggregate_tokens_per_correct_ratio=ratio(
             control.tokens_per_correct_completion, treatment.tokens_per_correct_completion
-        ),
+        )
+        if complete_pairs
+        else None,
         aggregate_token_savings_percent=(1 - 1 / total_ratio) * 100 if total_ratio else None,
         all_treatment_tasks_correct=treatment.failures == 0,
         all_usage_complete=control.incomplete_usage_trials + treatment.incomplete_usage_trials == 0,

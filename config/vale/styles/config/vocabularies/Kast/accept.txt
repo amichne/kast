@@ -76,6 +76,7 @@ worktrees
 RPCs
 nonadvancing
 # Established terms in real-repository evaluation and local log capture.
+Promptfoo
 DSLs
 Ktor
 multiplatform

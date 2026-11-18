@@ -1,0 +1,179 @@
+{
+  "evalId": "eval-ldx-2026-11-18T00:02:09",
+  "environment": {
+    "promptfooVersion": "0.125.1",
+    "nodeVersion": "v24.21.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "exportedAt": "2026-11-18T00:02:43.446Z",
+    "evaluationCreatedAt": "2026-11-18T00:02:09.325Z"
+  },
+  "exportSha256": "b54b3178f7343bed16436b7fd04899661b49be0f8bb582c5f6129f8c4117ec2a",
+  "kastVersion": "0.0.4413",
+  "kastExecutableSha256": "1f2f080767ed9012594a6da5900881adf9a0920c55ddb24be71c0e50b7a03cf2",
+  "piVersion": "1.5.2",
+  "preflight": [
+    {
+      "world": "adapter-a",
+      "coverage": {
+        "exhaustive": true
+      },
+      "evidence": {
+        "failure_count": 0,
+        "omission_count": 0,
+        "evidence_count": 1
+      },
+      "workspaceRelativePath": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt"
+    },
+    {
+      "world": "adapter-b",
+      "coverage": {
+        "exhaustive": true
+      },
+      "evidence": {
+        "failure_count": 0,
+        "omission_count": 0,
+        "evidence_count": 1
+      },
+      "workspaceRelativePath": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt"
+    }
+  ],
+  "priorRun": {
+    "evalId": "eval-HuY-2026-11-17T23:59:25",
+    "reason": "The earlier grader combined answer correctness and evidence of access. The final grader scores answers equally in every arm."
+  },
+  "results": [
+    {
+      "caseId": "adapter-a",
+      "arm": "source",
+      "answer": "UNKNOWN",
+      "correct": false,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 258,
+        "output": 5,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 263
+      },
+      "toolCalls": 0,
+      "providerResponses": 1,
+      "elapsedMillis": 2749.7877499999995,
+      "promptSha256": "15d17089822021574b65292cb06c344782d821b6bf1ffa5101f1d4bdc7fe8b11",
+      "sourceSha256": "37233f5813273a7620e1fd5bc9f2341fe6e6abcc94131ab3c3e94a9443dbbd88",
+      "queryPath": null,
+      "qualifiedPath": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt"
+    },
+    {
+      "caseId": "adapter-a",
+      "arm": "kast",
+      "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+      "correct": true,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 824,
+        "output": 32,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 856
+      },
+      "toolCalls": 1,
+      "providerResponses": 2,
+      "elapsedMillis": 5922.3232499999995,
+      "promptSha256": "15d17089822021574b65292cb06c344782d821b6bf1ffa5101f1d4bdc7fe8b11",
+      "sourceSha256": "37233f5813273a7620e1fd5bc9f2341fe6e6abcc94131ab3c3e94a9443dbbd88",
+      "queryPath": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+      "qualifiedPath": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt"
+    },
+    {
+      "caseId": "adapter-a",
+      "arm": "materialized",
+      "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+      "correct": true,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 273,
+        "output": 44,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 317
+      },
+      "toolCalls": 0,
+      "providerResponses": 1,
+      "elapsedMillis": 7143.6121250000015,
+      "promptSha256": "87ca396b3692e5e8672b53f938159396ed2921ffa309cf967063ded747ee8652",
+      "sourceSha256": "37233f5813273a7620e1fd5bc9f2341fe6e6abcc94131ab3c3e94a9443dbbd88",
+      "queryPath": null,
+      "qualifiedPath": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt"
+    },
+    {
+      "caseId": "adapter-b",
+      "arm": "kast",
+      "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+      "correct": true,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 828,
+        "output": 32,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 860
+      },
+      "toolCalls": 1,
+      "providerResponses": 2,
+      "elapsedMillis": 6004.604666000003,
+      "promptSha256": "15d17089822021574b65292cb06c344782d821b6bf1ffa5101f1d4bdc7fe8b11",
+      "sourceSha256": "37233f5813273a7620e1fd5bc9f2341fe6e6abcc94131ab3c3e94a9443dbbd88",
+      "queryPath": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+      "qualifiedPath": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt"
+    },
+    {
+      "caseId": "adapter-b",
+      "arm": "materialized",
+      "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+      "correct": true,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 272,
+        "output": 16,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 288
+      },
+      "toolCalls": 0,
+      "providerResponses": 1,
+      "elapsedMillis": 3183.1719169999997,
+      "promptSha256": "8a0a55f00d6710e0188df0b27078b7c1ab009bace5aeba39831e76d30a492c03",
+      "sourceSha256": "37233f5813273a7620e1fd5bc9f2341fe6e6abcc94131ab3c3e94a9443dbbd88",
+      "queryPath": null,
+      "qualifiedPath": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt"
+    },
+    {
+      "caseId": "adapter-b",
+      "arm": "source",
+      "answer": "UNKNOWN",
+      "correct": false,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 257,
+        "output": 22,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 279
+      },
+      "toolCalls": 0,
+      "providerResponses": 1,
+      "elapsedMillis": 8363.210416000002,
+      "promptSha256": "15d17089822021574b65292cb06c344782d821b6bf1ffa5101f1d4bdc7fe8b11",
+      "sourceSha256": "37233f5813273a7620e1fd5bc9f2341fe6e6abcc94131ab3c3e94a9443dbbd88",
+      "queryPath": null,
+      "qualifiedPath": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt"
+    }
+  ]
+}

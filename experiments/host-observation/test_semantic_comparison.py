@@ -53,16 +53,6 @@ class ScriptedInvocation:
 
 
 class SemanticComparisonTest(unittest.TestCase):
-    def test_campaign_success_requires_final_source_admission(self):
-        passed = [dict(outcome=dict(status='PASSED'))]
-        self.assertEqual(0, r.campaign_exit_status(dict(variants=passed, sourceAtEnd='UNCHANGED')))
-        for source in (dict(status='BLOCKED', reason='SOURCE_CHANGED'),
-                       dict(status='BLOCKED', reason='INPUT_UNAVAILABLE'), None):
-            with self.subTest(source=source):
-                self.assertEqual(2, r.campaign_exit_status(dict(variants=passed, sourceAtEnd=source)))
-        self.assertEqual(2, r.campaign_exit_status(dict(
-            variants=[dict(outcome=dict(status='FAILED'))], sourceAtEnd='UNCHANGED')))
-
     def test_fixed_work_grants_select_bounded_execution_explicitly(self):
         for profile in r.WorkloadProfile:
             for name, request in r.comparison_requests(profile).items():

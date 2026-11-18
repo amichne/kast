@@ -322,6 +322,11 @@ def source_overlay_document(
     return SourceOverlayDocument(subject_sha256=subject_digest(subject), outcome=value)
 
 
+class CodemodeOptions(Record):
+    mode: Literal["on"]
+    models: Literal[False]
+
+
 class SessionReport(Record):
     version: int
     outcome: str
@@ -351,6 +356,8 @@ class SessionReport(Record):
     piPackageSha256: str
     mcpExecutableSha256: str | None
     onboardingSha256: str
+    codemodeOptions: CodemodeOptions | None = None
+    adapterSha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
 
 class Verdict(Record):
@@ -836,14 +843,21 @@ def examine_prepared_inputs(
                 raise ValueError("SOURCE_CONTENT_MISMATCH")
 
 
-def execute(
+@dataclass(frozen=True)
+class TrialRun:
+    environment: Environment
+    configuration: Configuration
+    tasks: tuple[Task, ...]
+    policy: str
+    manifest: Mapping[str, JsonValue]
+
+
+def admit_trial_run(
     root: Path,
     config_path: Path,
-    output: Path,
     task_ids: tuple[str, ...],
-    repeats: int,
     holdout: bool,
-) -> None:
+) -> TrialRun:
     env = Environment.model_validate_json((root / "environment.json").read_bytes())
     config = Configuration.model_validate_json(config_path.read_bytes())
     corpus_path = root / "vault/holdout.json" if holdout else root / "development.json"
@@ -864,12 +878,27 @@ def execute(
     policy = sandbox_policy(
         (root / "vault", root / "development.json", *(Path(item) for item in denied))
     )
-    examine_sandbox(policy, root / "vault/corpus.json")
+    return TrialRun(env, config, selected, policy, manifest)
+
+
+def record_trial_run(
+    run: TrialRun,
+    root: Path,
+    config_path: Path,
+    output: Path,
+    repeats: int,
+    holdout: bool,
+) -> None:
+    env, config, selected, manifest = run.environment, run.configuration, run.tasks, run.manifest
+    producer = Path(env.producer_workspace)
+    examine_sandbox(run.policy, root / "vault/corpus.json")
     output.mkdir(mode=0o700)
     controller_source = output / "controller-source"
     controller_source.mkdir(mode=0o700)
     for name in (
         "agent_efficiency.py",
+        "agent_efficiency_promptfoo.py",
+        "agent_efficiency_optimize.py",
         "agent_efficiency_session.mjs",
         "agent_efficiency_limits.mjs",
         "agent_efficiency_audit.mjs",
@@ -879,8 +908,13 @@ def execute(
         "agent_efficiency_tokens.py",
         "agent_efficiency_timing.py",
         "pi_evaluation_controller.mjs",
+        "promptfoo/agent-efficiency.config.mjs",
+        "promptfoo/agent-efficiency-provider.mjs",
+        "promptfoo/python-scenario.mjs",
+        "promptfoo/scenario-oracle.mjs",
     ):
         saved = controller_source / name
+        saved.parent.mkdir(mode=0o700, exist_ok=True)
         _ = saved.write_bytes((HERE / name).read_bytes())
         saved.chmod(0o600)
     save(
@@ -908,27 +942,10 @@ def execute(
             "semanticAuditQualification": "INDEPENDENT_AUDIT_PENDING",
         },
     )
-    trials: list[Trial] = []
-    for repeat in range(repeats):
-        for index, task in enumerate(selected):
-            arms: tuple[Literal["control", "treatment"], ...] = (
-                ("control", "treatment") if (index + repeat) % 2 == 0 else ("treatment", "control")
-            )
-            for arm in arms:
-                trial = run_trial(task, arm, repeat, config, env, output, policy)
-                trials.append(trial)
-                print(
-                    json.dumps(
-                        {
-                            "task": task.id,
-                            "arm": arm,
-                            "correct": trial.correct,
-                            "seconds": trial.wall_seconds,
-                        }
-                    ),
-                    flush=True,
-                )
-    report = compare(trials, expected_task_ids=tuple(task.id for task in selected))
+
+
+def report_trials(output: Path, tasks: tuple[str, ...], trials: tuple[Trial, ...]) -> None:
+    report = compare(trials, expected_task_ids=tasks)
     save(output / "comparison.json", report)
     catalog: list[Trial] = []
     for trial in trials:
@@ -942,7 +959,7 @@ def execute(
         output / "catalog-comparison.json",
         {
             "qualification": "CATALOG_ESTIMATES_NOT_BILLED_DOLLARS",
-            "comparison": compare(catalog, expected_task_ids=tuple(task.id for task in selected)),
+            "comparison": compare(catalog, expected_task_ids=tasks),
         },
     )
 
@@ -955,29 +972,10 @@ def main() -> int:
     _ = prep.add_argument("--output", type=Path, required=True)
     _ = prep.add_argument("--curator", type=Path, required=True)
     _ = prep.add_argument("--environment", type=Path, required=True)
-    run = subs.add_parser("run")
-    _ = run.add_argument("--benchmark", type=Path, required=True)
-    _ = run.add_argument("--config", type=Path, required=True)
-    _ = run.add_argument("--output", type=Path, required=True)
-    _ = run.add_argument("--tasks", default="")
-    _ = run.add_argument("--repeats", type=int, default=1)
-    _ = run.add_argument("--holdout", action="store_true")
     args = parser.parse_args()
     try:
-        if args.command == "prepare":
-            env = Environment.model_validate_json(args.environment.read_bytes())
-            prepare(args.workspace.resolve(), args.output.resolve(), args.curator.resolve(), env)
-        else:
-            if args.repeats < 1:
-                raise ValueError("POSITIVE_REPEAT_COUNT_NEEDED")
-            execute(
-                args.benchmark.resolve(),
-                args.config.resolve(),
-                args.output.resolve(),
-                tuple(item for item in args.tasks.split(",") if item),
-                args.repeats,
-                args.holdout,
-            )
+        env = Environment.model_validate_json(args.environment.read_bytes())
+        prepare(args.workspace.resolve(), args.output.resolve(), args.curator.resolve(), env)
     except (ValueError, ValidationError, OSError, subprocess.SubprocessError) as error:
         print(
             json.dumps(

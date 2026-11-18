@@ -5,6 +5,8 @@ The [agent integration guide](../../agent-tools/README.md) describes its default
 The implementation uses the existing tool RPC. Its tests live in `packaging/task-access`.
 The records in this document describe the original contract-17 candidate before promotion.
 
+The [Promptfoo guide](../host-observation/promptfoo/README.md) describes the current procedure for these historical cases.
+
 ## Pi sessions
 
 On October 28, 2026, Pi 1.4.0 ran separate sessions with `gpt-6.1-terra` and `gpt-6-luna` through `openai-codex`.

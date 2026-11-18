@@ -1,8 +1,7 @@
 # Interface decision replay
 
 This experiment compares one next decision after a fixed, synthetic Kast result.
-It extends `run_pi_evaluation.mjs` and preserves fresh and received-result modes.
-It composes no Host, MCP connection, or native semantic call.
+Promptfoo schedules the replay cases. Each case uses synthetic results and a restricted shell.
 
 The first screen declares six development cases, two formats, two repetitions, eight workers, and at most 24 provider sends.
 The twelve pair IDs and balanced arm order appear in the no-inference plan.
@@ -16,7 +15,8 @@ Prepare the production adapter with the repository toolchain:
 mise exec -- ./gradlew :cli:prepareReplayAdapter
 node experiments/host-observation/run_pi_evaluation.mjs --prepare-replay /absolute/initial-plan.json
 node experiments/host-observation/run_pi_evaluation.mjs --plan /absolute/initial-plan.json
-node experiments/host-observation/run_pi_evaluation.mjs --execute /absolute/initial-plan.json
+npm ci --prefix experiments/host-observation/promptfoo
+KAST_PI_EVAL_PLAN=/absolute/initial-plan.json npm --prefix experiments/host-observation/promptfoo run eval -- -c pi.config.mjs
 ```
 
 For one case, append `C6` to `--prepare-replay`.
@@ -64,6 +64,8 @@ Only the controller writes the aggregate report.
 The report includes every planned trial, failed send, invalid arm, incomplete decision, and unavailable measurement.
 Incomplete model outcomes remain unsuccessful in the correctness denominator.
 Missing usage remains unavailable. Cache tokens count once. Reasoning remains within output tokens.
+Promptfoo grades correctness independently of token usage and tool proposals.
+Use the full planned cohort for a comparison. A Promptfoo filter leaves absent trials in the private report.
 
 ## Current limits
 
@@ -109,12 +111,14 @@ The experiment does not repair decoded data or shorten an arm.
 ## Focused evidence
 
 ```sh
+npm --prefix experiments/host-observation/promptfoo run eval -- -c pi.config.mjs --no-write
 node --test experiments/host-observation/pi_evaluation_replay*.test.mjs
 KAST_REPLAY_ADAPTER_MANIFEST="$PWD/cli/build/replay-adapter/manifest.json" node --test experiments/host-observation/pi_evaluation_replay_adapter.test.mjs
 KAST_REPLAY_TEST_PLAN="$PWD/build/interface-replay-plan.json" node --test experiments/host-observation/pi_evaluation_replay_sdk.test.mjs
 mise exec -- ./gradlew :cli:test --tests 'io.github.amichne.kast.cli.publicshell.*' :distribution:output:test verifyJsonContracts
 ```
 
+Without a plan, Promptfoo runs the accepted and rejected decision controls for all six cases without inference.
 The SDK test uses synthetic transport and no provider credentials.
 The adapter tests use the real restricted shell and JVM admission, without a semantic executor.
 These tests supply no live-model, compiler-fixture, installed-product, or native-host evidence.
