@@ -39,6 +39,8 @@ import io.github.amichne.kast.query.protocol.QueryInvocationPolicy
 import io.github.amichne.kast.workspace.contract.LiveSemanticReadAuthority
 import io.github.amichne.kast.workspace.contract.MovingLiveReadAuthorityFixture
 import java.nio.file.Path
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
 
 class NativeJavaLocationQueryTest : NativeSmartModeFixtureTest() {
@@ -85,70 +87,65 @@ class NativeJavaLocationQueryTest : NativeSmartModeFixtureTest() {
         assertMixedSourceUses(fixture, method.request, callable.ref)
     }
 
-    private suspend fun assertClassTypeReferences(
-        fixture: NativeScopedTraceFixture,
-        selected: QueryResultItemDocument.ExactSymbol,
-    ) {
-        val request =
-            reuse(selected)
-                .copy(
-                    steps = packetQueryList(listOf(QueryStepDocument.Related(RelationKindDocument.REFERENCES, domain))),
-                    output = QueryOutputDocument.Occurrences,
-                )
-        val outcome = execute(fixture, request)
-        assertTrue(outcome.toString(), outcome is OperationOutcome.Complete)
-        val sites =
-            (outcome as OperationOutcome.Complete).evidence.payload.items.values.map { row ->
-                val occurrence = (row as QueryResultItemDocument.ReferenceOccurrence).occurrence.occurrence
-                fixture.projectPath(occurrence.file.value) to occurrence.range.startInclusive.value
-            }
-        val javaType = fixture.projectPath("src/Endpoint.java") to java.indexOf("Endpoint sameOwner")
-        val kotlinQualifier = fixture.projectPath("src/Consumers.kt") to kotlin.indexOf("Endpoint.relay")
-        assertTrue(sites.toString(), javaType in sites)
-        assertTrue(sites.toString(), kotlinQualifier in sites)
+    fun testExactNameMatchesLocationAcrossBothDiscoveryRoutes() = runBlocking {
+        val (fixture, _) = prepare(javaDiscoverySources)
+        val method = request("LegacyRelay.java", javaRelaySource.indexOf("relay(int"))
+        assertJavaDiscovery(
+            ::request,
+            { query ->
+                val outcome = execute(fixture, query)
+                assertTrue(outcome.toString(), outcome is OperationOutcome.Complete)
+                (outcome as OperationOutcome.Complete).evidence.payload.items.values.map {
+                    it as QueryResultItemDocument.ExactSymbol
+                }
+            },
+        ) { reference ->
+            assertMixedSourceUses(
+                fixture = fixture,
+                selection = method,
+                reference = reference,
+                sources = javaDiscoverySources,
+            )
+        }
     }
 
-    private suspend fun assertMixedSourceUses(
-        fixture: NativeScopedTraceFixture,
-        selection: QueryRunRequest.Run,
-        reference: QueryReferenceDocument.ExactSymbol,
-    ) {
-        val javaUse = java.indexOf("relay(1)")
-        val kotlinUse = kotlin.indexOf("relay(2)")
-        val expectedUses =
-            setOf(
-                fixture.projectPath("src/Endpoint.java") to javaUse,
-                fixture.projectPath("src/Consumers.kt") to kotlinUse,
-            )
-        val exact = QueryFromDocument.References(packetQueryList(listOf(reference)))
-        for (kind in listOf(RelationKindDocument.REFERENCES, RelationKindDocument.CALLERS)) {
-            val request =
-                selection.copy(
-                    from = exact,
-                    steps = packetQueryList(listOf(QueryStepDocument.Related(kind, domain))),
-                    output = QueryOutputDocument.Occurrences,
-                )
-            val outcome = execute(fixture, request)
+    fun testFreshExactNameAfterJavaOverloadEdits() = runBlocking {
+        val (fixture, files) = prepare(mapOf("LegacyRelay.java" to javaRelaySource))
+        val epochs = MovingLiveReadAuthorityFixture(fixture.lease.workspaceRoot)
+        val records = ExactRevalidationRecords()
+        var authority = epochs.admit()
+        assertWarmJavaNames(
+            request("LegacyRelay.java", 0),
+            { content ->
+                project.replaceSource(files.single(), content)
+                authority = epochs.advance()
+            },
+        ) { query ->
+            val outcome =
+                fixture
+                    .reacquiringProtocol(authority, records)
+                    .execute(
+                        request = query,
+                        lease = authority,
+                        budget = budget,
+                        policy = policy,
+                    )
             assertTrue(outcome.toString(), outcome is OperationOutcome.Complete)
-            val rows = (outcome as OperationOutcome.Complete).evidence.payload.items.values
-            val uses = rows.map { row ->
-                val occurrence =
-                    when (row) {
-                        is QueryResultItemDocument.ReferenceOccurrence -> row.occurrence.occurrence
-                        is QueryResultItemDocument.Occurrence -> row.relation.occurrence
-                        else -> error("Expected occurrence for $kind, got $row")
-                    }
-                fixture.projectPath(occurrence.file.value) to occurrence.range.startInclusive.value
+            (outcome as OperationOutcome.Complete).evidence.payload.items.values.map {
+                it as QueryResultItemDocument.ExactSymbol
             }
-            assertEquals("$kind occurrences", expectedUses.sortedBy { it.first }, uses.sortedBy { it.first })
         }
     }
 
     fun testFieldAndConstructorLocationsRejectCompleteOnly() = runBlocking {
         val (fixture, _) = prepare()
-        for (marker in listOf("ignored = 1", "Endpoint()", "record Pair", "class Local")) {
-            val outcome = execute(fixture, request("Endpoint.java", java.indexOf(marker)))
-            assertTrue("Unsupported Java location $marker: $outcome", outcome is OperationOutcome.Rejected)
+        val unsupported =
+            listOf("ignored = 1", "Endpoint()", "record Pair", "class Local").map { marker ->
+                request("Endpoint.java", java.indexOf(marker))
+            } + request("Endpoint.java", 0).copy(from = unsupportedJavaRecordByName())
+        for (query in unsupported) {
+            val outcome = execute(fixture, query)
+            assertTrue("Unsupported Java declaration: $outcome", outcome is OperationOutcome.Rejected)
             val rejected = (outcome as OperationOutcome.Rejected).reason
             assertTrue(rejected.toString(), rejected is QueryRunRejection.CompletionUnproven)
             val coverage = (rejected as QueryRunRejection.CompletionUnproven).originalCoverage
@@ -203,7 +200,7 @@ class NativeJavaLocationQueryTest : NativeSmartModeFixtureTest() {
                     as QueryResultItemDocument.ExactSymbol
             }
         val insertion = "// space before the class\n"
-        replaceSource(file, insertion + java)
+        project.replaceSource(file, insertion + java)
         val shifted = epochs.advance()
         for (target in targets) {
             assertShifted(
@@ -254,9 +251,6 @@ class NativeJavaLocationQueryTest : NativeSmartModeFixtureTest() {
         assertEquals(ReadReferenceAcquisitionReason.STALE_SEMANTIC_AUTHORITY, acquired.reason)
     }
 
-    private fun reuse(target: QueryResultItemDocument.ExactSymbol) =
-        request("Endpoint.java", 0).copy(from = QueryFromDocument.References(packetQueryList(listOf(target.ref))))
-
     private suspend fun assertRenamedRejected(
         fixture: NativeScopedTraceFixture,
         epochs: MovingLiveReadAuthorityFixture,
@@ -264,7 +258,7 @@ class NativeJavaLocationQueryTest : NativeSmartModeFixtureTest() {
         file: VirtualFile,
         use: QueryRunRequest.Run,
     ) {
-        replaceSource(file, java.replace("int relay(int", "int renamed(int").replace("relay(1)", "renamed(1)"))
+        project.replaceSource(file, java.replace("int relay(int", "int renamed(int").replace("relay(1)", "renamed(1)"))
         val renamed = epochs.advance()
         val rejected =
             fixture
@@ -280,56 +274,9 @@ class NativeJavaLocationQueryTest : NativeSmartModeFixtureTest() {
         assertEquals(QueryReferenceRejectionReason.REVALIDATION_DECLARATION_MISSING, reference.reason)
     }
 
-    private fun replaceSource(file: VirtualFile, content: String) {
-        ApplicationManager.getApplication().invokeAndWait {
-            WriteCommandAction.runWriteCommandAction(project) {
-                file.setBinaryContent(content.toByteArray())
-            }
-            PsiDocumentManager.getInstance(project).commitAllDocuments()
-            IndexingTestUtil.waitUntilIndexesAreReady(project)
-        }
-    }
-
-    private fun NativeScopedTraceFixture.projectPath(path: String) =
-        Path.of(lease.workspaceRoot.value).resolve(path).toString()
-
-    private suspend fun execute(fixture: NativeScopedTraceFixture, request: QueryRunRequest.Run) =
-        fixture.protocol().execute(request = request, lease = fixture.lease, budget = budget, policy = policy)
-
-    private fun location(file: String, source: String, marker: String, declaration: String, kind: SymbolKindDocument) =
-        LocationExpectation(
-            request = request(file, source.indexOf(marker)),
-            marker = marker,
-            start = source.indexOf(declaration),
-            kind = kind,
-        )
-
-    private data class LocationExpectation(
-        val request: QueryRunRequest.Run,
-        val marker: String,
-        val start: Int,
-        val kind: SymbolKindDocument,
-    )
-
-    private fun request(file: String, offset: Int) =
-        QueryRunRequest.Run(
-            from = QueryFromDocument.Location(packetQueryText("src/$file"), packetQueryOffset(offset)),
-            steps = packetQueryList(emptyList()),
-            output =
-                QueryOutputDocument.Symbols(
-                    packetQueryList(
-                        listOf(
-                            QuerySymbolFieldDocument.NAME,
-                            QuerySymbolFieldDocument.LOCATION,
-                            QuerySymbolFieldDocument.SIGNATURE,
-                        )
-                    )
-                ),
-            execution =
-                QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
-        )
-
-    private fun prepare(): Pair<NativeScopedTraceFixture, List<VirtualFile>> {
+    private fun prepare(
+        sources: Map<String, String> = mapOf("Endpoint.java" to java, "Consumers.kt" to kotlin)
+    ): Pair<NativeScopedTraceFixture, List<VirtualFile>> {
         lateinit var sdk: Sdk
         ApplicationManager.getApplication().invokeAndWait {
             sdk = JavaSdk.getInstance().createJdk("java-location-jdk", System.getProperty("java.home"), false)
@@ -341,49 +288,135 @@ class NativeJavaLocationQueryTest : NativeSmartModeFixtureTest() {
                 module = module,
                 sdk = sdk,
             )
-            .prepare(mapOf("Endpoint.java" to java, "Consumers.kt" to kotlin))
-    }
-
-    companion object {
-        private val java =
-            """
-            package mixed;
-            public class Endpoint {
-                public int ignored = 1;
-                public Endpoint() {}
-                public static int relay(int value) { return value; }
-                public static String relay(String value) { return value.trim(); }
-                public static Integer relay(Integer value) { return value; }
-                public static int fromJava() { return relay(1); }
-                public static String otherJava() { return relay("1"); }
-                public static Endpoint sameOwner(Endpoint value) { return value; }
-                public interface Contract { int convert(int value); }
-                public record Pair(int value) {}
-                public void unsupported() { class Local {} }
-            }
-            """
-                .trimIndent()
-        private val kotlin =
-            """
-            package mixed
-            fun fromKotlin(): Int = Endpoint.relay(2)
-            fun otherKotlin(): String = Endpoint.relay("2")
-            """
-                .trimIndent()
-        private val budget = NativePacketQueryServices.budget
-        private val policy =
-            QueryInvocationPolicy(
-                previewRows = NativeScopedTraceFixture.resources.resultLimit,
-                previewBytesLimit = budget.returnedBytes,
-                retainedBytes = budget.returnedBytes,
-                previewBytes = CanonicalQueryCliDocuments::previewBytes,
-            )
-        private val domain =
-            QueryExpansionScopeDocument.Sources(
-                sourceSets = packetQueryList(listOf(packetQueryText("main"))),
-                directory = QueryDirectoryScopeDocument(packetQueryText("src"), QueryContainmentDocument.DESCENDANTS),
-                sourcePolicy = QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
-                generatedSources = QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
-            )
+            .prepare(sources)
     }
 }
+
+private val java = javaLocationSource
+private val kotlin = kotlinLocationSource
+private val budget = NativePacketQueryServices.budget
+private val policy =
+    QueryInvocationPolicy(
+        previewRows = NativeScopedTraceFixture.resources.resultLimit,
+        previewBytesLimit = budget.returnedBytes,
+        retainedBytes = budget.returnedBytes,
+        previewBytes = CanonicalQueryCliDocuments::previewBytes,
+    )
+private val domain =
+    QueryExpansionScopeDocument.Sources(
+        sourceSets = packetQueryList(listOf(packetQueryText("main"))),
+        directory = QueryDirectoryScopeDocument(packetQueryText("src"), QueryContainmentDocument.DESCENDANTS),
+        sourcePolicy = QueryDiscoverySourcePolicyDocument.PRODUCTION_ONLY,
+        generatedSources = QueryDiscoveryInclusionPolicyDocument.EXCLUDE,
+    )
+
+private fun com.intellij.openapi.project.Project.replaceSource(file: VirtualFile, content: String) {
+    ApplicationManager.getApplication().invokeAndWait {
+        WriteCommandAction.runWriteCommandAction(this) {
+            file.setBinaryContent(content.toByteArray())
+        }
+        PsiDocumentManager.getInstance(this).commitAllDocuments()
+        IndexingTestUtil.waitUntilIndexesAreReady(this)
+    }
+}
+
+private fun location(file: String, source: String, marker: String, declaration: String, kind: SymbolKindDocument) =
+    LocationExpectation(
+        request = request(file, source.indexOf(marker)),
+        marker = marker,
+        start = source.indexOf(declaration),
+        kind = kind,
+    )
+
+private data class LocationExpectation(
+    val request: QueryRunRequest.Run,
+    val marker: String,
+    val start: Int,
+    val kind: SymbolKindDocument,
+)
+
+private fun request(file: String, offset: Int) =
+    QueryRunRequest.Run(
+        from = QueryFromDocument.Location(packetQueryText("src/$file"), packetQueryOffset(offset)),
+        steps = packetQueryList(emptyList()),
+        output =
+            QueryOutputDocument.Symbols(
+                packetQueryList(
+                    listOf(
+                        QuerySymbolFieldDocument.NAME,
+                        QuerySymbolFieldDocument.LOCATION,
+                        QuerySymbolFieldDocument.SIGNATURE,
+                    )
+                )
+            ),
+        execution =
+            QueryExecutionDocument(QueryExecutionKindDocument.EXHAUSTIVE, QueryExecutionBudgetDocument.INTERACTIVE),
+    )
+
+private suspend fun assertClassTypeReferences(
+    fixture: NativeScopedTraceFixture,
+    selected: QueryResultItemDocument.ExactSymbol,
+) {
+    val request =
+        reuse(selected)
+            .copy(
+                steps = packetQueryList(listOf(QueryStepDocument.Related(RelationKindDocument.REFERENCES, domain))),
+                output = QueryOutputDocument.Occurrences,
+            )
+    val outcome = execute(fixture, request)
+    assertTrue(outcome.toString(), outcome is OperationOutcome.Complete)
+    val sites =
+        (outcome as OperationOutcome.Complete).evidence.payload.items.values.map { row ->
+            val occurrence = (row as QueryResultItemDocument.ReferenceOccurrence).occurrence.occurrence
+            fixture.projectPath(occurrence.file.value) to occurrence.range.startInclusive.value
+        }
+    val javaType = fixture.projectPath("src/Endpoint.java") to java.indexOf("Endpoint sameOwner")
+    val kotlinQualifier = fixture.projectPath("src/Consumers.kt") to kotlin.indexOf("Endpoint.relay")
+    assertTrue(sites.toString(), javaType in sites)
+    assertTrue(sites.toString(), kotlinQualifier in sites)
+}
+
+private suspend fun assertMixedSourceUses(
+    fixture: NativeScopedTraceFixture,
+    selection: QueryRunRequest.Run,
+    reference: QueryReferenceDocument.ExactSymbol,
+    sources: Map<String, String> = mapOf("Endpoint.java" to java, "Consumers.kt" to kotlin),
+) {
+    val expectedUses = sources.mapNotNull { (file, source) ->
+        val marker = if (file.endsWith(".java")) "relay(1)" else "relay(2)"
+        val offset = source.indexOf(marker)
+        if (offset < 0) null else fixture.projectPath("src/$file") to offset
+    }
+    assertEquals(2, expectedUses.size)
+    val exact = QueryFromDocument.References(packetQueryList(listOf(reference)))
+    for (kind in listOf(RelationKindDocument.REFERENCES, RelationKindDocument.CALLERS)) {
+        val request =
+            selection.copy(
+                from = exact,
+                steps = packetQueryList(listOf(QueryStepDocument.Related(kind, domain))),
+                output = QueryOutputDocument.Occurrences,
+            )
+        val outcome = execute(fixture, request)
+        assertTrue(outcome.toString(), outcome is OperationOutcome.Complete)
+        val rows = (outcome as OperationOutcome.Complete).evidence.payload.items.values
+        val uses = rows.map { row ->
+            val occurrence =
+                when (row) {
+                    is QueryResultItemDocument.ReferenceOccurrence -> row.occurrence.occurrence
+                    is QueryResultItemDocument.Occurrence -> row.relation.occurrence
+                    else -> error("Expected occurrence for $kind, got $row")
+                }
+            fixture.projectPath(occurrence.file.value) to occurrence.range.startInclusive.value
+        }
+        assertEquals("$kind occurrences", expectedUses.sortedBy { it.first }, uses.sortedBy { it.first })
+    }
+}
+
+private fun reuse(target: QueryResultItemDocument.ExactSymbol) =
+    request("Endpoint.java", 0).copy(from = QueryFromDocument.References(packetQueryList(listOf(target.ref))))
+
+private fun NativeScopedTraceFixture.projectPath(path: String) =
+    Path.of(lease.workspaceRoot.value).resolve(path).toString()
+
+private suspend fun execute(fixture: NativeScopedTraceFixture, request: QueryRunRequest.Run) =
+    fixture.protocol().execute(request = request, lease = fixture.lease, budget = budget, policy = policy)

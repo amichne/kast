@@ -78,7 +78,8 @@ Those seed limits do not restrict the destinations of later relationship reads. 
 
 `AT_LOCATION` selects the nearest containing named declaration. An offset on a call expression selects the declaration that contains the call.
 
-In Java source, `AT_LOCATION` supports named classes and interfaces and their static and instance methods.
+In Java source, `AT_LOCATION` and exact-name `SEARCH_DECLARATIONS` support named classes, interfaces, and their static and instance methods.
+Use the compiler signature to select an overload.
 Use a class or method reference for `REFERENCES` across Java and Kotlin source. Use a method reference for `CALLERS`.
 An offset inside an unsupported Java member, such as a constructor or field, leaves the result unproven.
 </Accordion>

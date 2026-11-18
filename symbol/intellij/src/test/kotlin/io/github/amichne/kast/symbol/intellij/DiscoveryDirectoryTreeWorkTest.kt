@@ -176,7 +176,7 @@ class DiscoveryDirectoryTreeWorkTest {
     private class TreeIndexes(
         private val source: IntellijDeclarationDiscoveryTestFixture.Fixture,
         private val noise: Int,
-    ) : IntellijDeclarationIndexes {
+    ) : KotlinFixtureDeclarationIndexes {
         override fun candidateFiles(
             name: IntellijIndexedDeclarationName,
             scope: GlobalSearchScope,

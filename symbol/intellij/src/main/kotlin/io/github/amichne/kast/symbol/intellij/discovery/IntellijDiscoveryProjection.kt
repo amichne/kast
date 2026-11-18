@@ -6,6 +6,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileSystemItem
+import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiUtilCore
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -85,6 +87,9 @@ internal data object IntellijPsiDiscoveryItemCompilerKind : IntellijDiscoveryIte
     override fun classify(item: NavigationItem): IntellijDiscoveryItemCompilerKindResult {
         val kind =
             when (val element = item.psiElement()) {
+                is PsiMember ->
+                    (element as? PsiNamedElement)?.javaLocationKind()
+                        ?: return IntellijDiscoveryItemCompilerKindResult.Unsupported
                 is KtEnumEntry -> return IntellijDiscoveryItemCompilerKindResult.EnumEntry
                 is KtClassOrObject -> CompilerSymbolKind.CLASSLIKE
                 is KtConstructor<*> -> CompilerSymbolKind.CONSTRUCTOR

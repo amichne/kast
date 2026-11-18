@@ -132,7 +132,7 @@ internal class ScopedDiscoveryDispatcherFixture(private val project: Project, re
         private val expectedScope: GlobalSearchScope,
         private val fileSupply: (GlobalSearchScope, (VirtualFile) -> Boolean) -> Boolean,
         private val completeNamed: Boolean = true,
-    ) : IntellijDeclarationIndexes {
+    ) : KotlinFixtureDeclarationIndexes {
         override fun candidateFiles(
             name: IntellijIndexedDeclarationName,
             scope: GlobalSearchScope,

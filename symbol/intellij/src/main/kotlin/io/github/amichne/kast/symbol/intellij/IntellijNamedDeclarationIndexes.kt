@@ -70,6 +70,7 @@ private fun collectExactDeclarations(
     accept: (NavigationItem) -> Boolean,
 ): Boolean {
     val kinds = request.requestedDeclarationKinds()
+    if (!indexes.javaNamed(request, scope.nativeScope, accept)) return false
     return IntellijNamedDeclarationIndex.entries.all { index ->
         index.kind !in kinds ||
             observation.call(IntellijReadCall.NAMED_DECLARATION_INDEX) {

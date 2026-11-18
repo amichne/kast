@@ -49,7 +49,7 @@ class DiscoveryDirectoryEnumerationWorkTest {
                 var namedCalls = 0
                 var fileCalls = 0
                 val indexes =
-                    object : IntellijDeclarationIndexes {
+                    object : KotlinFixtureDeclarationIndexes {
                         override fun candidateFiles(
                             name: IntellijIndexedDeclarationName,
                             scope: GlobalSearchScope,

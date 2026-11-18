@@ -98,7 +98,7 @@ internal object ClasslikeAstDispatcherFixture {
         private val source: IntellijDeclarationDiscoveryTestFixture.Fixture,
         private val pattern: String,
         private val controls: Controls,
-    ) : IntellijDeclarationIndexes {
+    ) : KotlinFixtureDeclarationIndexes {
         override fun candidateFiles(
             name: IntellijIndexedDeclarationName,
             scope: GlobalSearchScope,

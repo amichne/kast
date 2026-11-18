@@ -259,7 +259,7 @@ class ExactNameCandidateFilesTest {
     private class StrictIndexes(
         private val expectedScope: GlobalSearchScope,
         private val supply: ((VirtualFile) -> Boolean) -> Boolean,
-    ) : IntellijDeclarationIndexes {
+    ) : KotlinFixtureDeclarationIndexes {
         private var calls = 0
 
         override fun candidateFiles(
