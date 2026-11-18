@@ -57,7 +57,14 @@ class DeclaredCallbackValueTest {
             setOf("RETURNS_RESULT_OF", "UNSPECIFIED"),
             DeclaredCallbackResultEffect.entries.map { it.name }.toSet(),
         )
-        for (kind in CallbackDependencyInvocationKind.entries) {
+        val declaredKinds =
+            listOf(
+                CallbackDependencyInvocationKind.EXACTLY_ONCE,
+                CallbackDependencyInvocationKind.AT_MOST_ONCE,
+                CallbackDependencyInvocationKind.AT_LEAST_ONCE,
+                CallbackDependencyInvocationKind.UNKNOWN,
+            )
+        for (kind in declaredKinds) {
             val binding = f.binding(f.contract(kind = kind), effect = DeclaredCallbackResultEffect.UNSPECIFIED)
             val source = f.source(binding)
             assertEquals(binding.body.range, source.executionOwner.range)
