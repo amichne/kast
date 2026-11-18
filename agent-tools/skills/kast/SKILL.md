@@ -5,7 +5,7 @@ description: Use the installed Kast CLI for Kotlin declaration discovery, relati
 
 # Kast
 
-Use the installed `kast` command for supported Kotlin work.
+Use Kast for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects.
 The managed IntelliJ IDEA Host owns compiler authority and project state.
 The first explicit semantic request trusts the exact workspace root and prepares its private Host.
 Use a workspace whose build code the user trusts. Session hooks and discovery do not grant trust or start a Host.

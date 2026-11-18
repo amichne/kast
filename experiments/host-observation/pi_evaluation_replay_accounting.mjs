@@ -186,6 +186,11 @@ export function assessReplayTarget({target,baseline,candidate}={}) {
    if(!left||!right||identityFields.some(key=>left[key]===undefined||right[key]===undefined))issues.add('IDENTITY_UNAVAILABLE');
    else{
     if(identityFields.some(key=>JSON.stringify(left[key])!==JSON.stringify(right[key])))invalid.add('IDENTITY_MISMATCH');
+    const guidance=[left.kastGuidanceSha256,right.kastGuidanceSha256];
+    if(guidance.some(value=>value!==undefined)){
+     if(guidance[0]!==guidance[1])invalid.add('GUIDANCE_MISMATCH');
+     else if(typeof guidance[0]!=='string'||!/^[a-f0-9]{64}$/.test(guidance[0]))issues.add('IDENTITY_UNAVAILABLE');
+    }
     if(variation!==undefined){
      if(!formats.includes(control.format)||!formats.includes(next.format))issues.add('IDENTITY_UNAVAILABLE');
      else if(control.format!==next.format)invalid.add('FORMAT_MISMATCH');

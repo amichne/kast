@@ -7,7 +7,6 @@ import { permittedKast, runtimeEnvironment } from './skill-sandbox.mjs';
 
 export default function (pi: ExtensionAPI) {
   const workspace = process.env.KAST_EVAL_TRIAL_WORKSPACE!;
-  const guide = process.env.KAST_EVAL_TRIAL_GUIDE;
   const scope = process.env.KAST_EVAL_TRIAL_SCOPE!;
   if (process.env.KAST_EVAL_TRIAL_READER === '1') {
     pi.registerTool({
@@ -38,7 +37,6 @@ export default function (pi: ExtensionAPI) {
     label: 'Kast CLI',
     description: [
       'Run the installed Kast CLI with argv after kast.',
-      ...(guide ? ['["guide"] reads public-cli.md.'] : []),
       ...(documents ? ['Pass a JSON request as the stdin string for argv ["query", "--request", "-"].'] : []),
     ].join(' '),
     parameters: Type.Object({
@@ -46,9 +44,6 @@ export default function (pi: ExtensionAPI) {
       ...(documents ? { stdin: Type.Optional(Type.String({ maxLength: 8192 })) } : {}),
     }),
     async execute(_id, { argv, stdin }) {
-      if (guide && argv.length === 1 && argv[0] === 'guide') {
-        return { content: [{ type: 'text', text: readFileSync(guide, 'utf8') }], details: { argv } };
-      }
       if (!permittedKast(argv, scope, stdin)) throw new Error('Command outside this trial');
       const result = spawnSync(kast, argv, {
         cwd: workspace, env: runtimeEnvironment(), encoding: 'utf8', input: stdin,

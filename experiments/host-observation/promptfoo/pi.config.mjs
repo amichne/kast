@@ -124,7 +124,7 @@ function replayResponse(receipt) {
       protectedFilesUnchanged: protectedFilesUnchanged === true, workerExit: controller?.exitCode ?? null },
     ...reportedUsage(receipt.usage),
     ...(unavailable ? { error: outcome.reasons.join(' / ') || 'REPLAY_WORKER_FAILED' } : {}),
-    metadata: { model, effort: receipt.identity?.effort, ...(count(toolProposals) ? { toolCalls: toolProposals } : {}), ...(count(shellCalls) ? { shellCalls } : {}),
+    metadata: { model, effort: receipt.identity?.effort, ...(receipt.guidance && { guidance: receipt.guidance }), ...(count(toolProposals) ? { toolCalls: toolProposals } : {}), ...(count(shellCalls) ? { shellCalls } : {}),
       ...(count(providerSends) ? { providerSends } : {}) },
   };
 }
@@ -145,6 +145,7 @@ function liveResponse(receipt) {
     ...(report?.usage?.totalTokens > 0 ? reportedUsage(report.usage) : {}),
     ...(unavailable ? { error: receipt.failure?.reason ?? report?.outcome ?? 'PI_WORKER_FAILED' } : {}),
     metadata: { model: observation?.payloadModel, effort: observation?.effort, ...(count(toolCalls) ? { toolCalls } : {}),
+      ...(report?.guidance && { guidance: report.guidance }),
       ...(count(adaptersStarted) ? { adaptersStarted } : {}),
       ...(count(report?.providerRequests) ? { admittedRequests: report.providerRequests } : {}) },
   };

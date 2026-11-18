@@ -40,10 +40,9 @@ export const skillCases = {
 };
 
 export const armCapabilities = {
-  'with-skill': { comparison: 'skill', kast: true, guidance: true, read: false },
-  'without-skill': { comparison: 'skill', kast: true, guidance: false, read: false },
-  reference: { comparison: 'skill-version', kast: true, guidance: true, read: false, snapshot: 'reference' },
-  delivered: { comparison: 'skill-version', kast: true, guidance: true, read: false, snapshot: 'delivered' },
-  'with-kast': { comparison: 'tool', kast: true, guidance: false, read: true },
-  'without-kast': { comparison: 'tool', kast: false, guidance: false, read: true },
+  canonical: { comparison: 'canonical-skill', kast: true, read: false },
+  reference: { comparison: 'skill-version', kast: true, read: false, snapshot: 'reference' },
+  delivered: { comparison: 'skill-version', kast: true, read: false, snapshot: 'delivered' },
+  'with-kast': { comparison: 'guided-kast-access', kast: true, read: true },
+  'without-kast': { comparison: 'guided-kast-access', kast: false, read: true },
 };

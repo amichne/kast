@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -83,13 +84,22 @@ test('paired provider gives both participants the same controls and independentl
       const workspace = input.extensionEnvironment.KAST_DEV_EVAL_WORKSPACE;
       setups.push(input);
       if (input.toolNames.includes('kast')) replaceWorkspaceText(workspace, path, '1', '2');
-      return receipt();
+      return { ...receipt(), guidance: input.guidance };
     },
   });
   const source = await runCase(provider, 'source');
   const kast = await runCase(provider, 'kast');
   assert.equal(setups[0].prompt, setups[1].prompt);
-  assert.equal(setups[0].system, setups[1].system);
+  for (const [file, field] of [['SKILL.md', 'skillSha256'], ['public-cli.md', 'guideSha256']]) {
+    const contents = await readFile(new URL('../../../agent-tools/skills/kast/' + file, import.meta.url), 'utf8');
+    assert.equal(setups[1].guidance?.[file === 'SKILL.md' ? 'skillText' : 'guideText'], contents);
+    assert.ok(!setups[0].system.includes(contents));
+    assert.equal(kast.metadata[field], createHash('sha256').update(contents).digest('hex'));
+    assert.equal(source.metadata[field], undefined);
+  }
+  assert.equal(setups[0].guidance, undefined);
+  assert.match(setups[1].guidance.text, /Use Kast for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects\./);
+  assert.doesNotMatch(setups[0].system, /Use Kast/);
   assert.equal(setups[0].timeout, setups[1].timeout);
   assert.deepEqual(setups[1].toolNames, [...setups[0].toolNames, 'kast']);
   assert.deepEqual(stops, [setups[1].extensionEnvironment.KAST_DEV_EVAL_WORKSPACE]);
@@ -108,6 +118,19 @@ test('paired provider gives both participants the same controls and independentl
   assert.deepEqual(source.tokenUsage, { total: 21, prompt: 18, completion: 3, cached: 4 });
   assert.equal(source.metadata.toolCalls, 1);
   assert.equal(source.metadata.toolExecutions, 0);
+});
+
+test('Kast work cannot receive a grade if the launcher omits its skill receipt', async () => {
+  const provider = createDeveloperProvider({
+    cases: [task], preflightOracle: async () => {}, prepareWorkspace: (_task, workspace) => writeFixture(workspace),
+    gradeWorkspace: async () => assert.fail('unqualified Kast trial reached the grader'),
+  }, {
+    compile: () => ({ type: 'COMPILED' }), getKast: async () => 'owned-kast', getGradleHome: async () => undefined,
+    warmup: async () => true, stop: async () => true, runPi: async () => receipt(),
+  });
+  const result = await runCase(provider, 'kast');
+  assert.equal(result.error, 'DEVELOPER_GUIDANCE_DELIVERY_FAILED');
+  assert.equal(result.metadata.skillSha256, undefined);
 });
 
 test('an unavailable exact Host stops the trial before model use', async () => {

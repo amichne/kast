@@ -1,6 +1,8 @@
 # Evaluate Kast with Promptfoo
 
 Use Promptfoo to run agent evaluations. Each comparison asks whether both agents reached the correct answer before it compares tokens or tool calls.
+Kast-enabled agents receive an instruction to use Kast for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects.
+Their sessions include the skill and its linked CLI guide. Source-only controls receive neither.
 
 ## Start with an offline run
 
@@ -27,7 +29,7 @@ Promptfoo uses a fresh model response for each live trial. Provider caches can s
 | `pi.config.mjs` | Six replay graders, paired interface formats, fresh Pi tasks, received results, or a recorded target | Use `KAST_PI_EVAL_PLAN` for a live plan. Use `KAST_PI_EVAL_TARGET` for a recorded target. [Pi guide](../PI_EVALUATION.md) |
 | `agent-efficiency.config.mjs` | Paired control and Kast treatment on a curated development or holdout corpus. The optimization plan adds candidate configurations. | Supply the private corpus and `KAST_EFFICIENCY_PLAN`. [Efficiency guide](../AGENT_EFFICIENCY.md) |
 | `semantic-campaign.config.mjs` | Source witnesses for baseline, relation, and source variants across the named repositories | Supply `KAST_CAMPAIGN_PLAN` and the specified checkout, executable, and log. [Campaign guide](../CAMPAIGN_RESULTS.md) |
-| `skill.config.mjs` | Skill revisions, guidance on and off, and a matched source lookup with and without Kast | Use Pi and Kast. The repository case uses this checkout or `KAST_EVAL_QCD_WORKSPACE`. |
+| `skill.config.mjs` | Canonical skill, historical skill revisions, and a matched source lookup with and without Kast | Use Pi and Kast. The repository case uses this checkout or `KAST_EVAL_QCD_WORKSPACE`. |
 | `task-access.config.mjs` | Eight contract-17 questions. Both arms get the historical schema. One also gets the historical skill and request preview. | Use Pi, uv, and Git history through `bc18ec841`. Select the model with `KAST_EVAL_TASK_MODEL`. [Original exercise](../../task-access/README.md) |
 | `imported-model.config.mjs` | Two identical Git trees with different imported Gradle projects. Each case asks which Kotlin file supplies a function. | Prepare the two workspaces and set `KAST_EVAL_IMPORTED_MODEL_ROOT`. [Fixture guide](imported-model.md) |
 | `retained-state.config.mjs` | Two prior queries with identical source. Three arms get different access to the prior query. | Use Pi and Kast. Each trial needs a working Host for the static callback fixture. |
@@ -43,7 +45,7 @@ kast stop --workspace "$PWD/build/promptfoo/static-callback-fixture"
 
 Keep result exports outside participant workspaces. They can include model replies, local paths, and tool receipts.
 
-The six original skill tasks compare the pinned `reference` and `delivered` skill texts.
+The six original skill tasks compare the pinned `reference` and `delivered` skill texts. Both receive the current instruction to use Kast.
 For the original binary comparison, set `KAST_EVAL_REFERENCE_KAST` and `KAST_EVAL_DELIVERED_DRAFT_KAST` to the recorded executables.
 Both live arms use the same installed Kast. The archive records the original binary hashes. [Historical trials](history/pi-skill-cli-results.json)
 
@@ -76,6 +78,8 @@ A token comparison needs two correct answers on every pair, the same model, and 
 Tokens include input, output, cache reads, and cache writes according to the provider counters. Billed cost depends on provider rates.
 Only a token tie permits a comparison of tool calls. The counts include unsuccessful calls.
 Repetitions measure consistency on the selected cases. The report makes no population-level estimate.
+
+The historical comparisons in the next three sections predate the current skill pointer. Their scores describe the original prompts.
 
 ## Which Kotlin file supplies the implementation?
 

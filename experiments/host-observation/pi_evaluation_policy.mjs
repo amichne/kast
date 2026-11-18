@@ -5,6 +5,7 @@ import { isAdmittedPayload, isVerifiedInputCalibration, PayloadFailure } from '.
 import { decodeQueryDelivery, deliverySummary, partialEvidenceSummary } from './pi_evaluation_delivery.mjs';
 export const READ_TOOLS=Object.freeze(['query_symbols','check_diagnostics','health_check']);
 export const READ_TOOL_IDENTITIES=Object.freeze([...READ_TOOLS,...READ_TOOLS.map(name=>`mcp__kast__${name}`)]);
+export const GuidanceReadTool = 'read_kast_guidance';
 export function readToolName(name) {
   return READ_TOOLS.find(tool=>name===tool||name===`mcp__kast__${tool}`);
 }
@@ -180,17 +181,24 @@ export class CasePolicy {
     if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
     return bytes>this.maximumProviderResponseBytes?this.stop(Outcome.BUDGET):decision(true,'RESPONSE_WITHIN_BYTES',this.phase);
   }
-  toolCall(toolName,args,callId) {
+  toolCall(toolName,args,callId,guidanceReader=false) {
     const proposal={callId,toolName,requestType:args?.request?.type??null,harnessDecision:undefined,adapterStartObserved:false,rpcReplyObserved:false,nativeReplyObserved:false};this.proposals.push(proposal);
     let allowed=false;
     const canonicalName=readToolName(toolName);
-    if(this.phase==='WORK') allowed=canonicalName!==undefined && (canonicalName!=='query_symbols'||args?.request?.type==='RUN') && this.tools<this.config.work.tools && !this.activeToolCall;
+    if(this.phase==='WORK') allowed=(guidanceReader&&toolName===GuidanceReadTool||canonicalName!==undefined && (canonicalName!=='query_symbols'||args?.request?.type==='RUN')) && this.tools<this.config.work.tools && !this.activeToolCall;
     if(this.phase==='DELIVERY'&&this.evidenceRequest) allowed=canonicalName==='query_symbols' && isDeepStrictEqual(args?.request,this.evidenceRequest) && !this.activeToolCall;
     if(this.phase==='STOPPED') {proposal.harnessDecision=this.outcome;return decision(false,this.outcome,this.phase);}
     if(!allowed) {proposal.harnessDecision=Outcome.TOOL_BLOCKED;return this.stop(Outcome.TOOL_BLOCKED);}
     this.tools++;this.activeToolCall=callId;proposal.harnessDecision='ADMITTED';return decision(true,'ADMITTED',this.phase);
   }
   adapterStarted(callId) {const p=this.proposals.find(p=>p.callId===callId);if(p) p.adapterStartObserved=true;}
+  guidanceResult(callId,textBytes) {
+    if(this.phase==='STOPPED')return decision(false,this.outcome,this.phase);
+    if(this.phase!=='WORK'||callId!==this.activeToolCall||!this.proposals.some(p=>p.callId===callId&&p.toolName===GuidanceReadTool)||!integer(textBytes))return this.stop(Outcome.INVALID);
+    this.activeToolCall=undefined;
+    this.toolTextBytes+=textBytes;
+    return this.toolTextBytes>this.config.maximumToolTextBytes?this.stop(Outcome.BUDGET):decision(true,'READ_TOOL_REPLY',this.phase);
+  }
   toolResult(envelope,textBytes=0,callId,hostIsError) {
     const observed=this.observeToolResult(envelope,textBytes,callId,hostIsError);
     if(!observed.allow||this.config.finalPresentation!=='compact')return observed;

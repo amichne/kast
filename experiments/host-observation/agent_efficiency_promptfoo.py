@@ -10,6 +10,8 @@ from typing import Literal
 from pydantic import Field, JsonValue, TypeAdapter
 
 from agent_efficiency import (
+    KAST_GUIDANCE_ARCHIVE,
+    KastGuidance,
     Record,
     SessionReport,
     TrialRun,
@@ -61,6 +63,8 @@ class TrialMetadata(Record):
     wallSeconds: float
     usageQualification: str
     toolCalls: int | None = None
+    skillSha256: str | None = None
+    guideSha256: str | None = None
 
 
 class TrialResult(Record):
@@ -151,9 +155,17 @@ def run_row(cohort: Cohort, run: TrialRun, row: Row) -> TrialResult:
         or manifest["split"] != ("holdout" if cohort.holdout else "development")
     ):
         raise ValueError("TRIAL_PLAN_CHANGED")
+    guidance = None
+    if row.arm == "treatment":
+        guidance = KastGuidance.read(output / KAST_GUIDANCE_ARCHIVE)
+        if (guidance.skill_sha256, guidance.guide_sha256) != (
+            manifest.get("skillSha256"),
+            manifest.get("guideSha256"),
+        ):
+            raise ValueError("KAST_GUIDANCE_CHANGED")
     task = next(task for task in run.tasks if task.id == row.taskId)
     trial = run_trial(
-        task, row.arm, row.repeat, run.configuration, run.environment, output, run.policy
+        task, row.arm, row.repeat, run.configuration, run.environment, output, run.policy, guidance
     )
     evidence = evidence_directory(output, row)
     verdict = TypeAdapter(dict[str, JsonValue]).validate_json(
@@ -189,6 +201,8 @@ def run_row(cohort: Cohort, run: TrialRun, row: Row) -> TrialResult:
         wallSeconds=trial.wall_seconds,
         usageQualification=usage_qualification,
         toolCalls=session.toolCalls if session else None,
+        skillSha256=guidance.skill_sha256 if guidance else None,
+        guideSha256=guidance.guide_sha256 if guidance else None,
     )
     reason = verdict["reason"]
     if not isinstance(reason, str):

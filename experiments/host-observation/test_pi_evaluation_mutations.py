@@ -131,6 +131,12 @@ class PiEvaluationMutationTest(unittest.TestCase):
                 shutil.copyfile(here.parent.parent / "cli/src/main/js/query-presentation.mjs", contract.with_name("query-presentation.mjs"))
                 for source in here.glob("pi_evaluation*.mjs"):
                     shutil.copyfile(source, root / source.name)
+                (root / "promptfoo").mkdir()
+                shutil.copyfile(here / "promptfoo/kast-guidance.mjs", root / "promptfoo/kast-guidance.mjs")
+                guidance = Path(directory) / "agent-tools/skills/kast"
+                guidance.mkdir(parents=True)
+                for name in ("SKILL.md", "public-cli.md"):
+                    shutil.copyfile(here.parent.parent / "agent-tools/skills/kast" / name, guidance / name)
                 shutil.copyfile(here / "run_pi_evaluation.mjs", root / "run_pi_evaluation.mjs")
                 shutil.copytree(here / "pi-fixtures", root / "pi-fixtures")
                 target = root / filename

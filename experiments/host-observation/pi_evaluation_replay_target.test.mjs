@@ -44,6 +44,15 @@ test('threefold acceptance needs both cost and speed without lost task correctne
  assert.equal(result.cases,2);assert.equal(result.pairs.length,4);assert.equal(result.quality.noAccuracyLoss,true);
  assert.equal(JSON.stringify({baseline,candidate}),before);
 });
+
+test('guided and historical replay receipts cannot prove one matched performance comparison',()=>{
+ const baseline=rows(900,900),candidate=rows(300,300);
+ for(const row of candidate)row.identity.kastGuidanceSha256=hash('a');
+ const result=assess(baseline,candidate);
+ assert.equal(result.status,'INVALID_COMPARISON');assert.ok(result.reasons.includes('GUIDANCE_MISMATCH'));
+ for(const row of baseline)row.identity.kastGuidanceSha256=hash('a');
+ assert.equal(assess(baseline,candidate).status,'TARGET_MET');
+});
 test('a faster wrong target cannot count as an efficiency improvement',()=>{
  const baseline=rows(900,900),candidate=rows(100,100);
  candidate[0]={...candidate[0],outcome:{type:'incorrect',reasons:['WRONG_TARGET']},grade:{correct:false,misuse:['WRONG_TARGET']}};

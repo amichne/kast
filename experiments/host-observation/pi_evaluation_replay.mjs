@@ -60,7 +60,7 @@ export function validateReplayPlan(plan) {
 // Promptfoo schedules live trials. This owner admits the paired inputs and
 // records controller evidence for each admitted trial.
 export async function prepareReplayRun(planFile,planBytes,plan,signal,{checkPins=examineReplayPins,spawnWorker=runOwnedWorker}={}) {
- checkPins(plan,{planFile});
+ checkPins(plan,{planFile,requireGuidance:true});
  const trials=expandReplayPlan(plan);
  const planned=new Map(trials.map(trial=>[trial.trialId,trial]));
  const artifact=JSON.parse(fs.readFileSync(plan.adapterManifest));
@@ -81,6 +81,7 @@ export async function prepareReplayRun(planFile,planBytes,plan,signal,{checkPins
    canonicalSha256:fixture.canonicalSha256,promptSha256:fixture.promptSha256,contractSha256:fixture.contractSha256,
    codec:'JToon-3.0.0',instructionProfile:plan.instructionProfile??'full',executionProfile:plan.executionProfile??'fresh',
    publicContractSha256:plan.publicContractSha256,credentialSource:plan.credentialSource??'PI_OAUTH',
+   kastGuidanceSha256:plan.kastGuidanceSha256,
    graderSha256,planSha256,...observation.identity,timingMethod:'CONTROLLER_REAPED_WALL_V1'}};
  };
  const write=(name,value,flag='w')=>fs.writeFileSync(path.join(plan.outputRoot,name),JSON.stringify(value,null,2)+'\n',{mode:0o600,flag});

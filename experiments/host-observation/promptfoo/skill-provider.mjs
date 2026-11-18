@@ -7,13 +7,15 @@ import { homedir, tmpdir } from 'node:os';
 import { delimiter, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { decodeReplayCredential } from '../pi_evaluation_replay_auth.mjs';
+import { loadKastGuidance, stageKastGuidance } from './kast-guidance.mjs';
 import { armCapabilities, completionFile, invocationFile, originalCases, skillCases } from './skill-cases.mjs';
 import { runtimeEnvironment } from './skill-sandbox.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const fixture = fileURLToPath(new URL('../static-callback-fixture/', import.meta.url));
-const skill = join(root, 'agent-tools/skills/kast');
 const tool = fileURLToPath(new URL('./skill-tool.ts', import.meta.url));
+const guidanceTool = fileURLToPath(new URL('./kast-guidance-tool.ts', import.meta.url));
+const kastTools = new Set(['kast', 'read_previous_result', 'query_imported_main']);
 const snapshots = new URL('./history/pi-skill-cli-snapshots.json', import.meta.url);
 const neutral = 'You are a coding assistant. Use the tools available in this session when needed to answer the task.';
 const maximumBytes = 16 * 1024 * 1024;
@@ -258,18 +260,22 @@ export function settlePiTrial(result, model, toolNames, captureLimits = false) {
 
 export async function runIsolatedPi({
   directory, prompt, system = neutral, model = defaultModel, effort = 'low', extension, extensionEnvironment = {}, toolNames = [], timeout = 150_000,
-  captureLimits = false,
+  captureLimits = false, guidance,
 }) {
+  if (!guidance && toolNames.some(name => kastTools.has(name))) throw Error('Kast access needs participant guidance');
   const pi = await binary(process.env.KAST_EVAL_PI, 'pi');
   const agent = join(directory, 'pi');
   await mkdir(agent, { mode: 0o700 });
   await credentials(agent);
+  if (guidance) await stageKastGuidance(directory, guidance);
+  const instructions = guidance ? `${system}\n\n${guidance.text} Use read_kast_guidance to open it.` : system;
   const systemFile = join(directory, 'system-prompt.txt');
-  await writeFile(systemFile, system, { mode: 0o600 });
+  await writeFile(systemFile, instructions, { mode: 0o600 });
   const args = [
     '--offline', '--no-session', '--no-context-files', '--no-extensions', '--no-skills', '--no-mcp',
     '--no-prompt-templates', '--no-themes', '--no-approve', '--no-builtin-tools',
-    ...(extension ? ['-e', extension] : []), '--model', model, '--thinking', effort,
+    ...(extension ? ['-e', extension] : []), ...(guidance ? ['-e', guidanceTool] : []),
+    '--model', model, '--thinking', effort,
     '--system-prompt', systemFile, '--mode', 'json', '-p', '--', prompt,
   ];
   const started = performance.now();
@@ -277,7 +283,13 @@ export async function runIsolatedPi({
     cwd: directory, timeout, captureLimits,
     env: { ...runtimeEnvironment(), ...extensionEnvironment, PI_CODING_AGENT_DIR: agent, PI_OFFLINE: '1' },
   });
-  return { ...settlePiTrial(result, model, toolNames, captureLimits), elapsedMillis: performance.now() - started };
+  const admittedTools = guidance ? [...toolNames, 'read_kast_guidance'] : toolNames;
+  return {
+    ...settlePiTrial(result, model, admittedTools, captureLimits),
+    elapsedMillis: performance.now() - started,
+    systemSha256: totalHash(instructions),
+    ...(guidance && { guidance: { skillSha256: guidance.skillSha256, guideSha256: guidance.guideSha256 } }),
+  };
 }
 
 async function fixtureFiles(directory, includes, label) {
@@ -385,16 +397,11 @@ async function hashBinary(path) {
   return digest.digest('hex');
 }
 
-async function guidanceFor(capabilities, directory) {
-  if (!capabilities.guidance) return { system: neutral };
-  if (capabilities.snapshot) {
-    const files = JSON.parse(await readFile(snapshots, 'utf8'))[capabilities.snapshot];
-    const guide = join(directory, 'public-cli.md');
-    await writeFile(guide, files['public-cli.md'], { mode: 0o600 });
-    return { system: files['SKILL.md'], guide };
-  }
-  const guidance = await readFile(join(skill, 'SKILL.md'), 'utf8');
-  return { system: `${neutral}\n\n${guidance}`, guide: join(skill, 'public-cli.md') };
+async function guidanceFor(capabilities) {
+  if (!capabilities.kast) return undefined;
+  if (!capabilities.snapshot) return loadKastGuidance();
+  const files = JSON.parse(await readFile(snapshots, 'utf8'))[capabilities.snapshot];
+  return loadKastGuidance({ skillText: files['SKILL.md'], guideText: files['public-cli.md'] });
 }
 
 export default class SkillProvider {
@@ -404,8 +411,8 @@ export default class SkillProvider {
     const { caseId, arm, comparison } = context.vars;
     const capabilities = armCapabilities[arm];
     const scenario = skillCases[caseId];
-    if (!scenario || !capabilities || capabilities.comparison !== comparison ||
-        (caseId === 'source-lookup') !== (comparison === 'tool') ||
+    if (!Object.hasOwn(skillCases, caseId) || !Object.hasOwn(armCapabilities, arm) || capabilities.comparison !== comparison ||
+        (caseId === 'source-lookup') !== (comparison === 'guided-kast-access') ||
         (comparison === 'skill-version' && !originalCases.includes(caseId)) || prompt !== scenario.prompt) {
       return { error: 'Invalid skill evaluation case or arm' };
     }
@@ -416,16 +423,15 @@ export default class SkillProvider {
       const kast = await binary((!scenario.workspace && draftBinary) || process.env.KAST_EVAL_KAST, 'kast');
       const workspace = await prepareWorkspace(scenario, directory);
       if (scenario.workspace) await warmWorkspace(workspace.root, kast, scenario.workspace);
-      const { system, guide } = await guidanceFor(capabilities, directory);
+      const guidance = await guidanceFor(capabilities);
       const model = process.env.KAST_EVAL_PI_MODEL ?? defaultModel;
       const trial = await runIsolatedPi({
-        directory, prompt, system, model, extension: tool,
+        directory, prompt, guidance, model, extension: tool,
         extensionEnvironment: {
           KAST_EVAL_TRIAL_SCOPE: scenario.workspace ?? 'draft',
           KAST_EVAL_TRIAL_WORKSPACE: workspace.root,
           ...(capabilities.kast ? { KAST_EVAL_TRIAL_BIN: kast } : {}),
           ...(capabilities.read ? { KAST_EVAL_TRIAL_READER: '1' } : {}),
-          ...(guide ? { KAST_EVAL_TRIAL_GUIDE: guide } : {}),
         },
         toolNames: [
           ...(capabilities.kast ? ['kast'] : []), ...(capabilities.read ? ['search_kotlin_source'] : []),
@@ -445,8 +451,8 @@ export default class SkillProvider {
           model, effort: 'low', workspace: workspace.root, calls: trial.calls, planned,
           toolCalls: trial.toolCalls, providerResponses: trial.providerResponses,
           elapsedMillis: trial.elapsedMillis, usage: trial.usage, kastSha256: await hashBinary(kast),
-          taskSha256: totalHash(prompt), systemSha256: totalHash(system),
-          guideSha256: guide ? totalHash(await readFile(guide)) : null,
+          taskSha256: totalHash(prompt), systemSha256: trial.systemSha256,
+          skillSha256: trial.guidance?.skillSha256 ?? null, guideSha256: trial.guidance?.guideSha256 ?? null,
         },
       };
     } catch (error) {

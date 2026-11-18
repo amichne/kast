@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { Outcome, READ_TOOLS, READ_TOOL_IDENTITIES } from './pi_evaluation_policy.mjs';
+import { GuidanceReadTool, Outcome, READ_TOOLS, READ_TOOL_IDENTITIES } from './pi_evaluation_policy.mjs';
 import { isAdmittedPayload, PayloadFailure } from './pi_evaluation_payload.mjs';
 
 const maximumSummaryBytes = 64 * 1024;
@@ -14,6 +14,7 @@ const count = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
 const bool = value => typeof value === 'boolean' ? value : null;
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value) ? value : null;
 const phases = ['WORK','DELIVERY','STOPPED'];
+const evaluationTools = [...READ_TOOL_IDENTITIES,GuidanceReadTool];
 const reasons = [...Object.values(Outcome),'ADMITTED','SAVED_RESULT_DELIVERY','ZERO_USAGE','ACCOUNTED',
   'READ_TOOL_REPLY','DECLARED_ALREADY_DELIVERED_PROOF','DECLARED_EVIDENCE_ONLY_DELIVERY','DECLARED_RECEIVED_PARTIAL_EVIDENCE',
   'QUALIFIED_RESULT_RECEIVED','RESULT_RECEIVED','TOOL_PROPOSAL_PENDING','RESPONSE_WITHIN_BYTES'];
@@ -38,8 +39,8 @@ export function summarizeGuard(value) {
   try {
     switch(value?.type) {
       case 'session_settings': return {stage:'SESSION_SETTINGS',...settings(value),
-        toolNames:Array.isArray(value.toolNames) && value.toolNames.length <= READ_TOOLS.length
-          ? value.toolNames.map(name=>choice(name,READ_TOOL_IDENTITIES)) : ['OBSERVATION_INVALID']};
+        toolNames:Array.isArray(value.toolNames) && value.toolNames.length <= (value.toolNames.includes(GuidanceReadTool)?evaluationTools.length:READ_TOOLS.length)
+          ? value.toolNames.map(name=>choice(name,evaluationTools)) : ['OBSERVATION_INVALID']};
       case 'provider_admission': {
         const o=value.observation,p=o?.payload;
         if(!isAdmittedPayload(p)) return {stage:'PROVIDER_ADMISSION',...settings(o),
@@ -54,8 +55,9 @@ export function summarizeGuard(value) {
           restoredDeclarations:count(p.restoredDeclarations),outputTokenCap:count(p.outputTokenCap),
           decision:decision(value.decision)};
       }
-      case 'model_tool_proposal': return {stage:'TOOL_PROPOSAL',toolName:choice(value.toolName,READ_TOOL_IDENTITIES),
+      case 'model_tool_proposal': return {stage:'TOOL_PROPOSAL',toolName:choice(value.toolName,evaluationTools),
         requestType:choice(value.requestType,['RUN','RESUME','READ_RESULT']),decision:decision(value.decision)};
+      case 'guidance_read': return {stage:'GUIDANCE_READ',textBytes:count(value.textBytes),decision:decision(value.decision)};
       case 'native_reply': return {stage:'NATIVE_REPLY',envelopeType:choice(value.envelopeType,
         ['complete','qualified','rejected_document','rejected','mcp_rejected','query_delivery','invalid']),
         hostIsError:bool(value.hostIsError),deliveryStop:value.deliveryStop == null ? null
@@ -90,7 +92,7 @@ export function summarizeSessionEvent(value) {
       }
     }
     if(event.startsWith('tool_execution_')) {
-      summary.toolName=choice(value.toolName,READ_TOOL_IDENTITIES);
+      summary.toolName=choice(value.toolName,evaluationTools);
       if(event==='tool_execution_end') summary.isError=bool(value.isError);
     }
     if(event==='auto_retry_end') summary.success=bool(value.success);

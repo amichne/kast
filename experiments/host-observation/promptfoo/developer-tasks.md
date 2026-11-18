@@ -2,7 +2,7 @@
 
 Use this suite to measure whether an agent can change working Kotlin code or trace a call through a service.
 Each Promptfoo case gives both agents the same requirement, source tree, editor, and compiler.
-One agent also gets read access to Kast. Both can solve each task with the supplied source.
+One agent also gets Kast and a short instruction to read its skill. Both can solve each task with the supplied source.
 
 | Case | Developer request | Evidence for a correct result |
 |---|---|---|
@@ -50,10 +50,28 @@ The Picnic task starts with all seven Kotlin production files at revision `cd569
 The fixture uses the repository Gradle wrapper and removes obsolete `@JvmDefault` annotations for the current Kotlin compiler.
 The issue and merged fix are public, so a model can know the change from prior training. [Picnic issue #20](https://github.com/JakeWharton/picnic/issues/20) · [Upstream fix and tests](https://github.com/JakeWharton/picnic/pull/22)
 
-## Recorded developer trials
+## Trials with the Kast skill
+
+Each arm ran each task once with `openai-codex/gpt-6.1-sol` at low effort.
+The Kast agent opened the skill and completed a compiler-backed query on every task.
+
+| Access | Correct | Tokens | Tool calls | Kast calls | Completed semantic queries |
+|---|---:|---:|---:|---:|---:|
+| Source and compiler | 5/5 | 99,353 | 45 | 0 | 0 |
+| Source, compiler, and Kast with its skill | 5/5 | 251,533 | 62 | 13 | 8 |
+
+Each arm solved every task. In this run, the source arm used fewer tokens and tool calls. [Guided trial record](history/developer-tasks-guided.json)
+
+To compare the guided results, run this command from the suite directory.
+
+```sh
+npm run compare -- history/developer-tasks-guided.json source kast
+```
+
+## Historical trials without the Kast skill
 
 Pi used `openai-codex/gpt-6.1-sol` at low effort. Each arm ran each task once.
-Both arms passed all five tasks. The agent with Kast available used the ordinary project tools for every task.
+Both arms passed all five tasks. These trials exposed the Kast tool with no skill or usage instruction.
 
 | Access | Correct | Tokens | Tool calls | Participant Kast calls |
 |---|---:|---:|---:|---:|
@@ -63,9 +81,3 @@ Both arms passed all five tasks. The agent with Kast available used the ordinary
 Each Kast preflight completed before the participant started. The tool-call counts cover the participant session.
 The source arm used fewer tokens in this run. One trial per arm cannot establish a consistent cost difference.
 The record includes the task and source hashes, all eight edit patches, both trace answers, and the token counts. [Trial record](history/developer-tasks.json)
-
-To compare the saved results, run this command from the suite directory.
-
-```sh
-npm run compare -- history/developer-tasks.json source kast
-```

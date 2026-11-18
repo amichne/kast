@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { replayCases } from './pi_evaluation_replay_cases.mjs';
 import { replaySourceIdentity,examineReplayPins } from './pi_evaluation_replay_identity.mjs';
+import { loadKastGuidance,replayGuidanceIdentity } from './pi_evaluation_guidance.mjs';
 
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 function setup(t){
@@ -48,4 +49,13 @@ test('an excluded plan path cannot conceal a changed tracked file',t=>{
  const {root,plan}=setup(t),planFile=path.join(root,'worker.mjs');
  fs.writeFileSync(planFile,'changed source\n');
  assert.throws(()=>examineReplayPins(plan,{root,planFile}),/REPLAY_SOURCE_CHANGED/);
+});
+
+test('new replay execution admits exact guidance bytes and refuses unguided historical plans',t=>{
+ const {root,plan}=setup(t);
+ assert.doesNotThrow(()=>examineReplayPins(plan,{root}));
+ assert.throws(()=>examineReplayPins(plan,{root,requireGuidance:true}),/REPLAY_GUIDANCE_PIN_REQUIRED/);
+ const guided={...plan,kastGuidanceSha256:replayGuidanceIdentity(loadKastGuidance())};
+ assert.doesNotThrow(()=>examineReplayPins(guided,{root,requireGuidance:true}));
+ assert.throws(()=>examineReplayPins({...guided,kastGuidanceSha256:'0'.repeat(64)},{root,requireGuidance:true}),/REPLAY_GUIDANCE_CHANGED/);
 });

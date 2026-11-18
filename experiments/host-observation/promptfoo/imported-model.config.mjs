@@ -2,6 +2,7 @@ import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadKastGuidance } from './kast-guidance.mjs';
 import { binary, runIsolatedPi } from './skill-provider.mjs';
 import {
   declarationPath, digest, examineWorlds, gradeImportedAnswer, participantPrompt,
@@ -35,6 +36,8 @@ async function callApi(_label, { vars: { caseId, arm } }) {
     const trial = await runIsolatedPi({
       directory, prompt, model, effort: 'low',
       ...(arm === 'kast' && {
+        guidance: loadKastGuidance(),
+        system: 'Use query_imported_main for the Kast declaration query in this session.',
         extension, toolNames: [tool],
         extensionEnvironment: {
           KAST_EVAL_TRIAL_BIN: kast, KAST_EVAL_TRIAL_WORKSPACE: workspace,
@@ -49,7 +52,7 @@ async function callApi(_label, { vars: { caseId, arm } }) {
         completion: trial.usage.output, cached: trial.usage.cacheRead,
       },
       metadata: {
-        model, effort: 'low', usage: trial.usage, toolCalls: trial.toolCalls, providerResponses: trial.providerResponses,
+        model, effort: 'low', ...trial.guidance, usage: trial.usage, toolCalls: trial.toolCalls, providerResponses: trial.providerResponses,
         elapsedMillis: trial.elapsedMillis, promptSha256: digest(prompt), sourceSha256, queryPath,
         qualifiedPath: declarationPath(caseId),
       },
