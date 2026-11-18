@@ -11,6 +11,8 @@ code_sources:
   - path: frontend/internal/frontend/catalog.go
   - path: frontend/internal/frontend/invocation.go
   - path: frontend/internal/frontend/run.go
+  - path: frontend/go.mod
+  - path: frontend/check
   - path: frontend/stage
   - path: frontend/acceptance
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/PublicInvocationProtocol.kt
@@ -31,6 +33,8 @@ This is a tracer increment. Native Image remains the shipped product. Read the [
 ## Rules
 
 - Keep the frontend free of `cgo`. Build it with `CGO_ENABLED=0`, outside Gradle and the Kotlin module graph.
+- `go.mod` owns the Go release through its `toolchain` line and the analyzers through its `tool` lines.
+  The `mise.toml` Go entry only provisions a matching `go` command.
 - Forward the argument vector, working directory, and environment unchanged. Never lower flags or model requests in Go.
 - Answer only exact help vectors from `share/kast/frontend.json`. Forward every other vector.
 - Admit the catalog versions before any other field. Ignore additive metadata within one schema version.
@@ -48,11 +52,15 @@ This is a tracer increment. Native Image remains the shipped product. Read the [
 - [catalog.go](internal/frontend/catalog.go) - version-first metadata admission and exact help lookup.
 - [invocation.go](internal/frontend/invocation.go) - the typed envelope and the private-socket trust check.
 - [run.go](internal/frontend/run.go) - start or join, status mapping, signals, and delivery.
+- [check](check) - the deterministic gate and the separate advisory scan.
 - [stage](stage) - assembles a coordinator root from Gradle output, the binary, and an explicit launcher.
 - [acceptance](acceptance) - case matrix, comparison, latency, first callers, and cancellation evidence.
 
 ## Entry Points
 
-- Tests: `cd frontend && go test -race ./...`. Set `KAST_FRONTEND_CATALOG` to the generated catalog for the status check.
+- Gate: `mise exec -- ./gradlew :frontendTest`. It runs `frontend/check gate` with the generated catalog.
+  The gate covers module integrity and tidiness, `gofmt`, `go vet`, `staticcheck`, race tests, and cgo-free builds for every release target.
+- Advisory scan: `mise exec -- uv run --locked --script frontend/check vulnerabilities`. Its result depends on the live Go advisory database.
+- Inner loop: `cd frontend && go test -race ./...`. Set `KAST_FRONTEND_CATALOG` to the generated catalog for the status check.
 - Coordinator bytecode and metadata: `mise exec -- ./gradlew :cli:assembleJvmCoordinator`.
 - Coordinator route tests: `PublicInvocationEndpointTest` in `app-server` and `CoordinatorPublicInvocationsTest` in `cli`.

@@ -128,6 +128,12 @@ jobs:
 
       - uses: ./.github/actions/jq-oracle
 
+      - name: Set up the frontend Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: frontend/go.mod
+          cache-dependency-path: frontend/go.sum
+
       - name: Set up documentation parser runtime
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -148,6 +154,9 @@ jobs:
             caches
             notifications
             native-build-tools
+
+      - name: Scan the frontend against the Go advisory database
+        run: uv run --locked --script frontend/check vulnerabilities
 
       - name: Validate affected source obligations
         if: needs.scope.outputs.product == 'skip'
@@ -735,6 +744,12 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check -r experiments/host-observation/requirements-test.txt uv==0.12.9
 
       - uses: ./.github/actions/jq-oracle
+
+      - name: Set up the frontend Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: frontend/go.mod
+          cache-dependency-path: frontend/go.sum
 
       - name: Set up documentation parser runtime
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

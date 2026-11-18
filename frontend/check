@@ -1,0 +1,83 @@
+#!/usr/bin/env -S uv run --locked --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
+"""Verify the Go frontend: module integrity, formatting, static analysis, tests, and cgo-free release targets.
+
+The module's `toolchain` line selects the Go release, and its `tool` lines pin the analyzers. The vulnerability scan
+reads a live advisory database, so it is a separate command rather than part of the deterministic gate.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+
+MODULE = Path(__file__).resolve().parent
+# Every target the product can ship. Building each one with cgo disabled proves the frontend stays portable.
+RELEASE_TARGETS = (("darwin", "arm64"), ("darwin", "amd64"), ("linux", "arm64"), ("linux", "amd64"))
+
+
+def run(stage: str, command: Sequence[str], environment: Mapping[str, str] | None = None) -> str:
+    completed = subprocess.run(
+        command,
+        cwd=MODULE,
+        env={**os.environ, **(environment or {})},
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    output = completed.stdout + completed.stderr
+    if completed.returncode != 0:
+        sys.stderr.write(output)
+        raise SystemExit(f"frontend-check: {stage} failed with exit code {completed.returncode}")
+    print(f"frontend-check: {stage} passed", flush=True)
+    return completed.stdout
+
+
+def gate(catalog: Path | None) -> None:
+    run("module integrity", ("go", "mod", "verify"))
+    run("module tidiness", ("go", "mod", "tidy", "-diff"))
+    # The module's toolchain owns gofmt too; a gofmt from PATH may be another release.
+    goroot = run("toolchain", ("go", "env", "GOROOT")).strip()
+    unformatted = run("formatting", (str(Path(goroot) / "bin" / "gofmt"), "-l", "."))
+    if unformatted.strip():
+        raise SystemExit(f"frontend-check: gofmt would rewrite:\n{unformatted}")
+    run("vet", ("go", "vet", "./..."))
+    run("staticcheck", ("go", "tool", "staticcheck", "./..."))
+    # Without the generated catalog the status-table test skips, so the gate requires it explicitly.
+    tests = {"KAST_FRONTEND_CATALOG": str(catalog)} if catalog else {}
+    run("tests", ("go", "test", "-race", "./..."), tests)
+    for goos, goarch in RELEASE_TARGETS:
+        run(
+            f"build {goos}/{goarch}",
+            ("go", "build", "-trimpath", "-o", os.devnull, "./cmd/kast"),
+            {"CGO_ENABLED": "0", "GOOS": goos, "GOARCH": goarch},
+        )
+
+
+def main(arguments: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    verify = commands.add_parser("gate", help="deterministic checks for every change")
+    verify.add_argument("--catalog", type=Path, help="generated frontend.json; required for the status-table test")
+    commands.add_parser("vulnerabilities", help="scan reachable code against the live Go advisory database")
+    args = parser.parse_args(arguments)
+    if args.command == "gate":
+        catalog = args.catalog
+        if catalog is not None and (not catalog.is_absolute() or not catalog.is_file()):
+            raise SystemExit(f"frontend-check: --catalog must be an existing absolute file: {catalog}")
+        gate(catalog)
+    else:
+        run("vulnerabilities", ("go", "tool", "govulncheck", "./..."))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

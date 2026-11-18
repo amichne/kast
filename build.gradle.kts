@@ -326,6 +326,19 @@ tasks.withType<VerificationReportTask>().configureEach {
     sourceFiles.from("mise.toml", ".python-version")
 }
 
+val frontendCatalogFiles = consumeProjectOutput("frontendCatalogFiles", ":cli", "frontendCatalogElements")
+val frontendTest = tasks.register<VerificationReportTask>("frontendTest") {
+    group = "verification"
+    description = "Verifies the Go frontend module, formatting, analysis, race tests, and cgo-free release targets."
+    sourceFiles.from(fileTree("frontend") { exclude("**/__pycache__/**") })
+    runtimeFiles.from(frontendCatalogFiles)
+    executableFile.set(validationExecutable("uv"))
+    arguments.set(frontendCatalogFiles.flatMap { it.elements }.map {
+        listOf("run", "--locked", "--script", "frontend/check", "gate", "--catalog", it.single().asFile.absolutePath)
+    })
+}
+tasks.named("check") { dependsOn(frontendTest) }
+
 val offlineInstallerChecks = setOf(
     "testCheckoutInstaller", "installerEntrypointTest", "installerFixtureTest", "installerRemovalTest",
     "installationSystemPythonTest", "installationRecoveryTest", "installationLifecycleTest",
