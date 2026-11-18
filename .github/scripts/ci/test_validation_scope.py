@@ -713,7 +713,11 @@ class SourceInventoryTest(unittest.TestCase):
         reused = candidate.split("- name: Download the exact CI release\n", 1)[1]
         reused = reused.split("- name: Assemble bootstrap", 1)[0]
         self.assertIn("inputs.complete_product && inputs.release_target == 'macos-aarch64'", reused)
-        self.assertIn("name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}", reused)
+        self.assertIn("artifact-ids: ${{ inputs.assembled_artifact_id || '0' }}", reused)
+        self.assertIn("assembled_artifact_id: ${{ needs.assembly.outputs.artifact_id }}", mac)
+        for producer, consumer in (("native-inputs", "native"), ("native", "assembly"), ("assembly", "kotlin")):
+            self.assertIn("artifact_id: ${{ steps.handoff.outputs.artifact-id }}", jobs[producer])
+            self.assertIn(f"artifact-ids: ${{{{ needs.{producer}.outputs.artifact_id || '0' }}}}", jobs[consumer])
         self.assertNotIn("run-id:", reused)
         self.assertIn("native_handoff.py restore --version", reused)
         self.assertIn("if: inputs.release_target != '' && !inputs.complete_product", candidate)

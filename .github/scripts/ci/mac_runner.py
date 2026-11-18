@@ -18,6 +18,7 @@ TOKEN_VARIABLE = "KAST_RUNNER_STATUS_TOKEN"
 
 
 class Reason(str, Enum):
+    HOSTED_DEFAULT = "HOSTED_DEFAULT"
     IDLE_LOCAL_RUNNER = "IDLE_LOCAL_RUNNER"
     NO_IDLE_LOCAL_RUNNER = "NO_IDLE_LOCAL_RUNNER"
     NO_STATUS_TOKEN = "NO_STATUS_TOKEN"
@@ -90,6 +91,8 @@ def decide(environment: Mapping[str, str]) -> Selection:
     token = environment.get(TOKEN_VARIABLE, "")
     if not token:
         return Selection(Reason.NO_STATUS_TOKEN)
+    if environment.get("KAST_PREFER_LOCAL_MAC") != "true":
+        return Selection(Reason.HOSTED_DEFAULT)
     return observe(environment["GITHUB_REPOSITORY"], token)
 
 

@@ -168,9 +168,10 @@ Every main push or manual main run that needs a product builds and qualifies a f
 The **Isolated runtime candidates** workflow produces platform archives with its own qualification receipts.
 
 The `Kotlin product` job needs macOS to exercise the assembled Mac product; Linux cannot execute those binaries.
-The `native` and `kotlin` jobs prefer the self-hosted `kast-main` Mac and fall back to the GitHub-hosted `macos-15` runner.
+The `native` and `kotlin` jobs use the GitHub-hosted `macos-15` runner by default.
 A selector job runs `mac_runner.py` immediately before each of them.
-It picks the Mac only when the GitHub runner API reports an online, idle runner with the `self-hosted`, `macOS`, `ARM64`, and `kast-main` labels.
+Set `KAST_PREFER_LOCAL_MAC=true` to enable local selection.
+With local selection enabled, it picks the Mac only when the GitHub runner API reports an online, idle runner with the `self-hosted`, `macOS`, `ARM64`, and `kast-main` labels.
 A missing `KAST_RUNNER_STATUS_TOKEN` secret, a failed request, a malformed response, or a busy or offline Mac selects `macos-15`.
 The step summary records the reason.
 The secret is a fine-grained token for this repository with read-only **Administration** permission; `GITHUB_TOKEN` cannot list runners.

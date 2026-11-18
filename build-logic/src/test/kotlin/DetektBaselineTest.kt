@@ -18,7 +18,10 @@ class DetektBaselineTest {
             .writeText(
                 """
                 plugins { id 'dev.detekt' }
-                repositories { mavenCentral() }
+                repositories {
+                    mavenCentral()
+                    maven { url = uri('https://maven-central.storage-download.googleapis.com/maven2/') }
+                }
                 detekt {
                     toolVersion = '2.0.0-alpha.6'
                     baseline.set(layout.projectDirectory.file('baseline.xml'))

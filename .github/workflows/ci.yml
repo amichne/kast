@@ -177,6 +177,8 @@ jobs:
     name: Prepare compiled native inputs
     needs: scope
     if: github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run'
+    outputs:
+      artifact_id: ${{ steps.handoff.outputs.artifact-id }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -204,6 +206,7 @@ jobs:
       - name: Prepare compiled native inputs
         run: uv run --locked --script .github/scripts/ci/native_handoff.py inputs --version "0.0.$GITHUB_RUN_NUMBER"
       - name: Retain compiled native inputs
+        id: handoff
         uses: actions/upload-artifact@v7.0.2
         with:
           name: native-inputs-${{ github.run_id }}-${{ github.run_attempt }}
@@ -227,6 +230,7 @@ jobs:
           persist-credentials: false
       - id: select
         env:
+          KAST_PREFER_LOCAL_MAC: ${{ vars.KAST_PREFER_LOCAL_MAC }}
           KAST_RUNNER_STATUS_TOKEN: ${{ secrets.KAST_RUNNER_STATUS_TOKEN }}
         run: python3 .github/scripts/ci/mac_runner.py
 
@@ -234,6 +238,8 @@ jobs:
     name: Compile macOS native executable
     needs: [scope, native-inputs, native-runner]
     if: github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run'
+    outputs:
+      artifact_id: ${{ steps.handoff.outputs.artifact-id }}
     runs-on: ${{ fromJSON(needs.native-runner.outputs.labels) }}
     timeout-minutes: 75
     steps:
@@ -269,7 +275,8 @@ jobs:
         run: ./gradlew --stop
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: native-inputs-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact-ids: ${{ needs.native-inputs.outputs.artifact_id || '0' }}
+          merge-multiple: true
           path: build/handoff-input/
       - name: Compile and examine the native executable
         run: >-
@@ -277,7 +284,8 @@ jobs:
           --report build/reports/ci/build-execution.json
           --native-report build/reports/native/build-output.json --
           uv run --locked --script .github/scripts/ci/native_handoff.py native --version "0.0.$GITHUB_RUN_NUMBER"
-      - uses: actions/upload-artifact@v7.0.2
+      - id: handoff
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: native-executable-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/handoff-output/
@@ -296,6 +304,8 @@ jobs:
   assembly:
     name: Assemble release on Linux
     needs: [scope, native]
+    outputs:
+      artifact_id: ${{ steps.handoff.outputs.artifact-id }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -323,13 +333,15 @@ jobs:
           cache-read-only: ${{ !(github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) }}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: native-executable-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact-ids: ${{ needs.native.outputs.artifact_id || '0' }}
+          merge-multiple: true
           path: build/handoff-input/
       - name: Admit native output and assemble the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: uv run --locked --script .github/scripts/ci/native_handoff.py assemble --version "0.0.$GITHUB_RUN_NUMBER"
-      - uses: actions/upload-artifact@v7.0.2
+      - id: handoff
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/handoff-output/
@@ -358,6 +370,7 @@ jobs:
           persist-credentials: false
       - id: select
         env:
+          KAST_PREFER_LOCAL_MAC: ${{ vars.KAST_PREFER_LOCAL_MAC }}
           KAST_RUNNER_STATUS_TOKEN: ${{ secrets.KAST_RUNNER_STATUS_TOKEN }}
         run: python3 .github/scripts/ci/mac_runner.py
 
@@ -387,7 +400,8 @@ jobs:
         uses: ./.github/actions/local-python
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact-ids: ${{ needs.assembly.outputs.artifact_id || '0' }}
+          merge-multiple: true
           path: build/handoff-input/
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
@@ -436,6 +450,7 @@ jobs:
       version: 0.0.${{ github.run_number }}
       complete_product: true
       release_target: macos-aarch64
+      assembled_artifact_id: ${{ needs.assembly.outputs.artifact_id }}
 
   sealed-product:
     name: Seal both native targets without rebuilding

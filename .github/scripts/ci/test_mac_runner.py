@@ -13,6 +13,10 @@ def runner(status="online", busy=False, labels=LOCAL):
 
 
 class MacRunnerTest(unittest.TestCase):
+    def test_configured_token_alone_keeps_the_hosted_runner(self):
+        selection = decide({"KAST_RUNNER_STATUS_TOKEN": "unused"})
+        self.assertEqual("macos-15", json.loads(selection.labels))
+
     def test_idle_local_runner_is_selected_with_exact_labels(self):
         selection = select({"total_count": 2, "runners": [runner(status="offline"), runner()]})
         self.assertIs(Reason.IDLE_LOCAL_RUNNER, selection.reason)

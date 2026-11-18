@@ -3,6 +3,7 @@ rootProject.name = "build-logic"
 pluginManagement {
     repositories {
         mavenCentral()
+        maven("https://maven-central.storage-download.googleapis.com/maven2/")
         gradlePluginPortal()
         maven("https://repo.gradle.org/gradle/libs-releases")
         maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
@@ -14,6 +15,7 @@ dependencyResolutionManagement {
     repositories {
 
         mavenCentral()
+        maven("https://maven-central.storage-download.googleapis.com/maven2/")
         gradlePluginPortal()
         maven("https://repo.gradle.org/gradle/libs-releases")
         maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")

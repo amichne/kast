@@ -23,6 +23,7 @@ java {
 repositories {
     gradlePluginPortal()
     mavenCentral()
+    maven("https://maven-central.storage-download.googleapis.com/maven2/")
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")

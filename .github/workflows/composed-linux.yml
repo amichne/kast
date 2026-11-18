@@ -23,6 +23,10 @@ on:
         type: string
         required: false
         default: ''
+      assembled_artifact_id:
+        description: Exact assembled release artifact from the successful CI producer
+        type: string
+        required: false
       complete_product:
         description: Retain qualified targets with exact CI producer evidence
         type: boolean
@@ -116,7 +120,8 @@ jobs:
         if: inputs.complete_product && inputs.release_target == 'macos-aarch64'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: assembled-release-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact-ids: ${{ inputs.assembled_artifact_id || '0' }}
+          merge-multiple: true
           path: build/handoff-input/
 
       - name: Admit retained CI release identity and bytes

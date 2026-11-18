@@ -6,11 +6,11 @@
         },
         {
             "path": "build-logic/build.gradle.kts",
-            "sha256": "9fb5b163805f28673c2cf71ada70d734070cd7768269828a4d68abd7b1e19e2a"
+            "sha256": "e8b14512a7c84603fc50c3799bfadb242c3e07e1ad33128af558d4fcf524bfa6"
         },
         {
             "path": "build-logic/settings.gradle.kts",
-            "sha256": "d27b80ad3c163fc0986650b38fc1af3b3b1fb617e6e258023f85eea57a21033a"
+            "sha256": "f2b1ff79535af12aa730160fd5f72c109696aab3bbfd014575de82e43279d6ac"
         },
         {
             "path": "build-logic/src/main/kotlin/conventions/JsonContractVerification.kt",
@@ -470,7 +470,7 @@
         },
         {
             "path": "settings.gradle.kts",
-            "sha256": "a0bfafaf3a6f7d042dde551309835a2c9aba6cbab3edca93ae20889dc964bbd5"
+            "sha256": "e2e3fdb1bea370baf89004870c9158a3aa0c456a39daa691d96d55ce1a69d360"
         },
         {
             "path": "source/contract/build.gradle.kts",
