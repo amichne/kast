@@ -23,7 +23,6 @@ import org.jetbrains.kotlin.analysis.api.contracts.description.KaContractCallsIn
 import org.jetbrains.kotlin.analysis.api.contracts.description.KaContractReturnsResultOfEffectDeclaration
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
-import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtExpression
@@ -249,16 +248,6 @@ private fun org.jetbrains.kotlin.analysis.api.KaSession.loadBinaryContract(
     return Refinement.Refined(
         NativeDependencyContract(target = evidence, position = position, digest = digest, effect = effect)
     )
-}
-
-private fun KaNamedFunctionSymbol.isLazyInitializer(
-    parameter: org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
-): Boolean {
-    if (callableId?.asSingleFqName()?.asString() != "kotlin.lazy") return false
-    if (receiverParameter != null || contextReceivers.isNotEmpty()) return false
-    if (typeParameters.size != 1 || valueParameters.size !in 1..2) return false
-    if (valueParameters.last() != parameter || parameter.name.asString() != "initializer") return false
-    return (returnType as? KaClassType)?.classId?.asSingleFqName()?.asString() == "kotlin.Lazy"
 }
 
 internal fun com.intellij.openapi.vfs.VirtualFile.contractClassDigest(
