@@ -1,0 +1,74 @@
+--- a/src/main/kotlin/parcel/audit/AuditSink.kt
++++ b/src/main/kotlin/parcel/audit/AuditSink.kt
+@@ -8,15 +8,17 @@
+ @JvmInline
+ value class ActorId(val value: String)
+
++data class AuditEvent(val kind: AuditKind, val parcelId: ParcelId, val actorId: ActorId)
++
+ interface AuditSink {
+-    fun record(kind: String, parcelId: String, actorId: String)
++    fun record(event: AuditEvent)
+ }
+
+ class JournalAuditSink : AuditSink {
+     private val entries = mutableListOf<String>()
+
+-    override fun record(kind: String, parcelId: String, actorId: String) {
+-        entries += "$kind|$parcelId|$actorId"
++    override fun record(event: AuditEvent) {
++        entries += "${event.kind.name}|${event.parcelId.value}|${event.actorId.value}"
+     }
+
+     fun snapshot(): List<String> = entries.toList()
+--- a/src/main/kotlin/parcel/operations/Booking.kt
++++ b/src/main/kotlin/parcel/operations/Booking.kt
+@@ -1,11 +1,13 @@
+ package parcel.operations
+
+ import parcel.audit.ActorId
++import parcel.audit.AuditEvent
++import parcel.audit.AuditKind
+ import parcel.audit.AuditSink
+ import parcel.audit.ParcelId
+
+ class Booking(private val audit: AuditSink) {
+     fun confirm(parcel: ParcelId, clerk: ActorId) {
+-        audit.record("BOOKED", parcel.value, clerk.value)
++        audit.record(AuditEvent(AuditKind.BOOKED, parcel, clerk))
+     }
+ }
+--- a/src/main/kotlin/parcel/operations/Cancellation.kt
++++ b/src/main/kotlin/parcel/operations/Cancellation.kt
+@@ -1,11 +1,13 @@
+ package parcel.operations
+
+ import parcel.audit.ActorId
++import parcel.audit.AuditEvent
++import parcel.audit.AuditKind
+ import parcel.audit.AuditSink
+ import parcel.audit.ParcelId
+
+ class Cancellation(private val audit: AuditSink) {
+     fun cancel(parcel: ParcelId, operator: ActorId) {
+-        audit.record(kind = "CANCELLED", parcelId = parcel.value, actorId = operator.value)
++        audit.record(AuditEvent(AuditKind.CANCELLED, parcel, operator))
+     }
+ }
+--- a/src/main/kotlin/parcel/replay/ImportReplay.kt
++++ b/src/main/kotlin/parcel/replay/ImportReplay.kt
+@@ -1,11 +1,13 @@
+ package parcel.replay
+
+ import parcel.audit.ActorId
++import parcel.audit.AuditEvent
++import parcel.audit.AuditKind
+ import parcel.audit.AuditSink as ParcelAudit
+ import parcel.audit.ParcelId
+
+ class ImportReplay(private val audit: ParcelAudit) {
+     fun replay(parcel: ParcelId, importer: ActorId) {
+-        audit.record("REPLAYED", parcel.value, importer.value)
++        audit.record(AuditEvent(AuditKind.CANCELLED, parcel, importer))
+     }
+ }

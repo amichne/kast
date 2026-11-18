@@ -77,6 +77,7 @@ RPCs
 nonadvancing
 # Established terms in real-repository evaluation and local log capture.
 Promptfoo
+Firebender
 DSLs
 Ktor
 multiplatform
