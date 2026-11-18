@@ -3,8 +3,14 @@ package io.github.amichne.kast.symbol.intellij
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.PsiShortNamesCache
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.kernel.ResourceBudget
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
@@ -26,7 +32,6 @@ import org.jetbrains.kotlin.idea.stubindex.KotlinPropertyShortNameIndex
 import org.jetbrains.kotlin.idea.stubindex.KotlinTypeAliasShortNameIndex
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -79,23 +84,25 @@ private class CurrentDeclarationRead(
         return confirmCandidates(file, candidates)
     }
 
-    private fun admitFile(file: SymbolDiscoveryFileIdentity.Workspace): Refinement<KtFile, ExactRevalidationRejection> {
+    private fun admitFile(
+        file: SymbolDiscoveryFileIdentity.Workspace
+    ): Refinement<PsiFile, ExactRevalidationRejection> {
         val virtual =
             VirtualFileManager.getInstance().findFileByNioPath(Path.of(file.path.value))
                 ?: return Refinement.Rejected(ExactRevalidationRejection.DECLARATION_MISSING)
         if (!scope.nativeScope.contains(virtual)) return Refinement.Rejected(ExactRevalidationRejection.SCOPE_REJECTED)
         val psi =
-            PsiManager.getInstance(project).findFile(virtual) as? KtFile
+            PsiManager.getInstance(project).findFile(virtual)
                 ?: return Refinement.Rejected(ExactRevalidationRejection.UNSUPPORTED_DECLARATION)
+        if (psi !is KtFile && !(psi is PsiJavaFile && psi.isJavaSource()))
+            return Refinement.Rejected(ExactRevalidationRejection.UNSUPPORTED_DECLARATION)
         when (
             val checked = capture.check(locator, psi, ExactRevalidationPolicy.CURRENT_DECLARATION, budget.workAllowance)
         ) {
             is Refinement.Rejected -> return checked
             is Refinement.Refined -> Unit
         }
-        return when (
-            locator.constraints.packageName.admitPackage { IntellijPackageEvidence.Known(psi.packageFqName.asString()) }
-        ) {
+        return when (locator.constraints.packageName.admitPackage { psi.packageEvidence() }) {
             IntellijDiscoveryItemAdmission.ADMITTED -> Refinement.Refined(psi)
             IntellijDiscoveryItemAdmission.FILTERED -> Refinement.Rejected(ExactRevalidationRejection.SCOPE_REJECTED)
             IntellijDiscoveryItemAdmission.UNSUPPORTED ->
@@ -103,7 +110,7 @@ private class CurrentDeclarationRead(
         }
     }
 
-    private fun collectCandidates(psi: KtFile): Refinement<List<KtNamedDeclaration>, ExactRevalidationRejection> {
+    private fun collectCandidates(psi: PsiFile): Refinement<List<PsiNamedElement>, ExactRevalidationRejection> {
         val collector =
             ReacquisitionCandidates(expected, budget, started, capture.chargedWork - captureStart) {
                 charge()
@@ -111,6 +118,7 @@ private class CurrentDeclarationRead(
             }
         val nativeScope = scope.nativeScope.intersectWith(GlobalSearchScope.fileScope(project, psi.virtualFile))
         val name = expected.name.value
+        if (psi is PsiJavaFile) return collectJavaCandidates(psi, nativeScope, collector)
         val completed =
             when (expected.kind) {
                 CompilerSymbolKind.CONSTRUCTOR ->
@@ -127,9 +135,37 @@ private class CurrentDeclarationRead(
         return collector.result(completed)
     }
 
+    private fun collectJavaCandidates(
+        file: PsiJavaFile,
+        nativeScope: GlobalSearchScope,
+        collector: ReacquisitionCandidates,
+    ): Refinement<List<PsiNamedElement>, ExactRevalidationRejection> {
+        val cache = PsiShortNamesCache.getInstance(project)
+        val name = expected.name.value
+        val completed =
+            when (expected.kind) {
+                CompilerSymbolKind.CLASSLIKE ->
+                    cache.processClassesWithName(
+                        name,
+                        { declaration -> declaration.containingFile != file || collector.collect(declaration) },
+                        nativeScope,
+                        null,
+                    )
+                CompilerSymbolKind.FUNCTION ->
+                    cache.processMethodsWithName(name, nativeScope) {
+                        it.containingFile != file || collector.collect(it)
+                    }
+                CompilerSymbolKind.CONSTRUCTOR,
+                CompilerSymbolKind.PROPERTY,
+                CompilerSymbolKind.TYPE_ALIAS ->
+                    return Refinement.Rejected(ExactRevalidationRejection.UNSUPPORTED_DECLARATION)
+            }
+        return collector.result(completed)
+    }
+
     private fun confirmCandidates(
         file: SymbolDiscoveryFileIdentity.Workspace,
-        candidates: List<KtNamedDeclaration>,
+        candidates: List<PsiNamedElement>,
     ): ExactRevalidationCompilation {
         val lookup =
             IntellijKotlinCompilerSymbolLookup(IntellijPsiExactDeclarationLookup(project), observation, capture)
@@ -171,10 +207,10 @@ private class ReacquisitionCandidates(
     private val captureWork: Long,
     private val charge: () -> Unit,
 ) {
-    private val candidates = linkedSetOf<KtNamedDeclaration>()
+    private val candidates = linkedSetOf<PsiNamedElement>()
     private var admission: Refinement<Unit, ExactRevalidationRejection> = Refinement.Refined(Unit)
 
-    fun collect(declaration: KtNamedDeclaration): Boolean {
+    fun collect(declaration: PsiNamedElement): Boolean {
         ProgressManager.checkCanceled()
         if (declaration.name != expected.name.value || !declaration.hasReacquisitionKind(expected.kind)) return true
         if (declaration in candidates) return true
@@ -192,7 +228,7 @@ private class ReacquisitionCandidates(
         return true
     }
 
-    fun result(completed: Boolean): Refinement<List<KtNamedDeclaration>, ExactRevalidationRejection> =
+    fun result(completed: Boolean): Refinement<List<PsiNamedElement>, ExactRevalidationRejection> =
         when (val result = admission) {
             is Refinement.Rejected -> result
             is Refinement.Refined ->
@@ -201,8 +237,10 @@ private class ReacquisitionCandidates(
         }
 }
 
-private fun KtNamedDeclaration.hasReacquisitionKind(kind: CompilerSymbolKind): Boolean =
+private fun PsiNamedElement.hasReacquisitionKind(kind: CompilerSymbolKind): Boolean =
     when (this) {
+        is PsiClass,
+        is PsiMethod -> javaLocationKind() == kind
         is KtClassOrObject -> kind == CompilerSymbolKind.CLASSLIKE
         is KtNamedFunction -> kind == CompilerSymbolKind.FUNCTION
         is KtProperty -> kind == CompilerSymbolKind.PROPERTY

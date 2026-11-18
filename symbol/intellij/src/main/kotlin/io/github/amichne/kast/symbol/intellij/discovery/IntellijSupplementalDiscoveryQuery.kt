@@ -6,13 +6,16 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.UsageSearchContext
 import com.intellij.psi.util.PsiUtilCore
 import io.github.amichne.kast.kernel.ReadLimits
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryBatch
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryByteCount
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryCandidate
@@ -62,9 +65,7 @@ internal class IntellijSupplementalDiscoveryQuery(
                         target.file.value,
                         compiledScope.nativeScope,
                     ) ?: return collector.unsupported()
-                file.declarationAt(target.offset.value)?.let { declaration ->
-                    collector.accept(declaration.candidate(request))
-                }
+                collectLocation(file = file, offset = target.offset.value, request = request, collector = collector)
             }
             is SymbolDiscoveryTarget.TextDeclarations ->
                 return discoverTextDeclarations(compiledScope, request, allowance, target)
@@ -89,6 +90,33 @@ internal class IntellijSupplementalDiscoveryQuery(
             }
         }
         return collector.finish()
+    }
+
+    private fun collectLocation(
+        file: PsiFile,
+        offset: Int,
+        request: SymbolDiscoveryRequest,
+        collector: SupplementalCollector,
+    ) {
+        if (file is PsiJavaFile) {
+            if (!collector.observe()) return
+            val location = file.javaDeclarationAt(offset)
+            if (!collector.observe()) return
+            when (location) {
+                is IntellijJavaLocation.Found -> {
+                    val kind =
+                        if (location.kind == CompilerSymbolKind.CLASSLIKE) SymbolDiscoveryKind.CLASS
+                        else SymbolDiscoveryKind.SYMBOL
+                    collector.accept(location.declaration.candidate(request, kind))
+                }
+                IntellijJavaLocation.OutsideDeclaration -> Unit
+                IntellijJavaLocation.Unsupported -> collector.qualify(SymbolDiscoveryQualification.UNSUPPORTED_ITEM)
+            }
+        } else {
+            file.declarationAt(offset)?.let { declaration ->
+                collector.accept(declaration.candidate(request, declaration.discoveryKind()))
+            }
+        }
     }
 
     private fun discoverTextDeclarations(
@@ -292,10 +320,13 @@ internal fun PsiFile.declarationAt(offset: Int): KtNamedDeclaration? =
         .filterIsInstance<KtNamedDeclaration>()
         .firstOrNull { it.discoveryCompilerKind() != null }
 
-private fun KtNamedDeclaration.candidate(request: SymbolDiscoveryRequest): Refinement<SymbolDiscoveryCandidate, *> {
+private fun PsiNamedElement.candidate(
+    request: SymbolDiscoveryRequest,
+    kind: SymbolDiscoveryKind,
+): Refinement<SymbolDiscoveryCandidate, *> {
     val file = containingFile?.virtualFile ?: return Refinement.Rejected(Unit)
     return SymbolDiscoveryCandidate.fromBoundary(
-        discoveryKind(),
+        kind,
         name.orEmpty(),
         request.scope.lease,
         file.nioPath(),

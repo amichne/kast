@@ -466,7 +466,7 @@
         },
         {
             "path": "runtime/hosted/build.gradle.kts",
-            "sha256": "802ccca522f66bb797501429eb21c83a2cdf294d7e3ce7eeb028e10bf4f794ba"
+            "sha256": "366da010fb92596e95011893d98f2ce268dd0332713411ceb6b952a2081f6ba1"
         },
         {
             "path": "settings.gradle.kts",

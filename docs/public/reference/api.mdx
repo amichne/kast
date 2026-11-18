@@ -76,7 +76,11 @@ Those seed limits do not restrict the destinations of later relationship reads. 
 
 `ALL_DECLARATIONS` includes supported nested Kotlin declarations. It does not scan libraries directly. It keeps the admitted limits on declaration families.
 
-`AT_LOCATION` selects the nearest containing named declaration. An offset on a call expression selects its container rather than its target.
+`AT_LOCATION` selects the nearest containing named declaration. An offset on a call expression selects the declaration that contains the call.
+
+In Java source, `AT_LOCATION` supports named classes and interfaces and their static and instance methods.
+Use a class or method reference for `REFERENCES` across Java and Kotlin source. Use a method reference for `CALLERS`.
+An offset inside an unsupported Java member, such as a constructor or field, leaves the result unproven.
 </Accordion>
 
 <a id="apply-only-the-steps-you-need" />
