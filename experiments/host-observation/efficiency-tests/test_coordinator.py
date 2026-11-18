@@ -12,6 +12,7 @@ from agent_efficiency import (
     REVISION,
     Configuration,
     Environment,
+    FileOnboarding,
     Oracle,
     Replacement,
     Task,
@@ -37,6 +38,17 @@ def file_brief(name: str, content: bytes) -> Configuration:
             "hypothesis": "Bind the experiment to the exact brief bytes.",
         }
     )
+
+
+@pytest.mark.parametrize(
+    "name", ("token-poc-compact", "reference-chain-private", "reference-chain-scoped")
+)
+def test_checked_in_plan_matches_current_brief(name: str) -> None:
+    catalog = agent_efficiency.HERE / "agent-efficiency-configs"
+    config = Configuration.model_validate_json((catalog / f"{name}.json").read_bytes())
+    brief = config.onboarding
+    assert isinstance(brief, FileOnboarding)
+    assert digest((catalog / brief.name).read_bytes()) == brief.sha256
 
 
 def test_versioned_brief_uses_the_committed_bytes(

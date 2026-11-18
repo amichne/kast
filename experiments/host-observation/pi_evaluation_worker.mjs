@@ -22,7 +22,7 @@ async function asyncEffect(operation,run,stage='WORKER_SETUP') {
   catch {return failure(operation,'EFFECT_FAILED',stage);}
 }
 
-// Only the explicit --execute parent starts this effect boundary. Importing the
+// Only the Promptfoo evaluation provider starts this worker. Importing the
 // policy, guard or controller tests cannot load Pi, authenticate or query Kast.
 export function isolatedSettings(SettingsManager) {
   const created=effect('SETTINGS_CREATE',()=>SettingsManager.inMemory({defaultProvider:'openai-codex',defaultModel:'gpt-6.1-sol',defaultThinkingLevel:'high',transport:'sse',cacheWarming:'off',packages:[],extensions:[],enableInstallTelemetry:false,compaction:{enabled:false},retry:{enabled:false,maxRetries:0,provider:{maxRetries:0}}}));

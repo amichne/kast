@@ -1,8 +1,7 @@
-"""Compare attributable candidates with a champion through the existing runner."""
+"""Admit and compare attributable candidates with a champion."""
 
 from __future__ import annotations
 
-import argparse
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -10,7 +9,7 @@ from typing import Literal
 
 from pydantic import Field, JsonValue, TypeAdapter
 
-from agent_efficiency import Configuration, Environment, Record, execute, save
+from agent_efficiency import Configuration, Environment, Record, save
 from agent_efficiency_metrics import InvalidInput, Trial, compare, parse_trial
 
 
@@ -88,32 +87,13 @@ def comparable(champion: Candidate, candidate: Candidate) -> None:
         raise ValueError("ONE_ATTRIBUTABLE_CONFIGURATION_CHANGE_NEEDED")
 
 
-def optimize(plan: OptimizationPlan) -> None:
-    output = Path(plan.output).resolve()
-    output.mkdir(mode=0o700)
-    save(output / "plan.json", plan.model_dump(mode="json"))
+def report_optimization(plan: OptimizationPlan, output: Path) -> None:
     champion = plan.champion
     champion_run = output / "champion"
-    execute(
-        Path(champion.benchmark),
-        Path(champion.configuration),
-        champion_run,
-        plan.development_task_ids,
-        plan.repeats,
-        False,
-    )
     decisions: list[dict[str, JsonValue]] = []
     for index, candidate in enumerate(plan.candidates):
         comparable(champion, candidate)
         run = output / f"candidate-{index}"
-        execute(
-            Path(candidate.benchmark),
-            Path(candidate.configuration),
-            run,
-            plan.development_task_ids,
-            plan.repeats,
-            False,
-        )
         control = tuple(
             replace(item, arm="control") for item in read_trials(champion_run, "treatment")
         )
@@ -140,15 +120,3 @@ def optimize(plan: OptimizationPlan) -> None:
             "costBasis": plan.cost_basis,
         },
     )
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    _ = parser.add_argument("--plan", required=True, type=Path)
-    args = parser.parse_args()
-    plan = OptimizationPlan.model_validate_json(args.plan.read_bytes())
-    optimize(plan)
-
-
-if __name__ == "__main__":
-    main()

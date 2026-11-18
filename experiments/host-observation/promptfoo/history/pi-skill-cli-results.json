@@ -1,0 +1,108 @@
+{
+  "date": "2026-11-17",
+  "base_revision": "f79964e9aa7969ff02c18087044d4d90ec14aece",
+  "prior_evaluation": "https://github.com/amichne/kast/pull/1207",
+  "harness": "pi_skill_cli_test.py",
+  "pi_version": "1.5.2",
+  "model": "openai-codex/gpt-6.1-sol",
+  "reasoning_effort": "low",
+  "method": {
+    "order": [
+      "reference",
+      "delivered",
+      "delivered",
+      "reference"
+    ],
+    "tasks_per_repeat": 6,
+    "provider_sessions": "One fresh Pi process per task. Only the Kast skill, its linked guide, and the restricted Kast CLI tool supplied domain guidance.",
+    "time": "Pi process start to exit in seconds. Excludes fixture import and independent grading. Provider latency and cache state can vary.",
+    "tokens": "Sum of input, output, cache reads, and cache writes across all assistant responses, including unsuccessful trials.",
+    "grade": "All CLI drafts must pass the real planner and independent assertions. Live answers need the fixture result and its Kast evidence. Exact format also demands a lone callback cause.",
+    "rescore": "The original callback grader rejected a closing parenthesis around a correct typed obligation. The final grader rescored all 24 saved transcripts and rejected four incorrect answer controls per callback transcript."
+  },
+  "cli": {
+    "reference": {
+      "version": "0.0.4413",
+      "sha256": "1f2f080767ed9012594a6da5900881adf9a0920c55ddb24be71c0e50b7a03cf2"
+    },
+    "delivered_drafts": {
+      "version": "0.52.0-10-gf79964e9a",
+      "sha256": "6d894f460d2b52fda2ee72578493825f4a174241cb994c0f0138b2f8184ec3a6"
+    },
+    "delivered_live": "Used the same installed CLI and warm Kotlin workspace as the reference. The candidate with the older installed coordinator returned daemon-operation-startup-timed-out."
+  },
+  "bare_run_control": "Both revised-skill walk drafts omitted the request wrapper. The installed planner rejected both unchanged drafts with INVALID_ARGUMENTS. The revised native planner admitted both and produced the same plans as the wrapped controls.",
+  "skills": {
+    "reference": {
+      "SKILL.md": "8b3f6af9b3d73ff60611e4c741f2c0db81e34dfd8e56657af3119bdf09f78b51",
+      "public-cli.md": "e140139a6a8eb2fccbe85a9bcaac51f6e5c41e95cc2d82cbea1e1255c87336f3"
+    },
+    "delivered": {
+      "SKILL.md": "601b5b91e40f0282e5b54eead7f024827362fdd61316d96e0a6cefce32ea611d",
+      "public-cli.md": "33c35e5fdf325dda79e0a937b3c1f2b0bfe26b9760bd32346f8b81b5ca191cd7"
+    }
+  },
+  "aggregate": {
+    "reference": {
+      "trials": 12,
+      "initial_pytest_passes": 12,
+      "semantic_passes": 12,
+      "exact_format_passes": 12,
+      "total_tokens": 48794,
+      "total_seconds": 120.88,
+      "median_seconds": 8.23,
+      "tools": 18
+    },
+    "delivered": {
+      "trials": 12,
+      "initial_pytest_passes": 11,
+      "semantic_passes": 12,
+      "exact_format_passes": 11,
+      "total_tokens": 33541,
+      "total_seconds": 100.62,
+      "median_seconds": 7.73,
+      "tools": 15
+    }
+  },
+  "trial_columns": [
+    "arm",
+    "repeat",
+    "case",
+    "initial_pytest_pass",
+    "semantic_pass",
+    "exact_format_pass",
+    "seconds",
+    "input",
+    "output",
+    "cache_read",
+    "cache_write",
+    "provider_responses",
+    "tool_calls"
+  ],
+  "trials": [
+    ["reference", 1, "kind", true, true, true, 7.1919, 2203, 75, 0, 0, 2, 1],
+    ["reference", 1, "select", true, true, true, 7.4909, 2205, 77, 0, 0, 2, 1],
+    ["reference", 1, "walk", true, true, true, 10.9085, 5499, 202, 0, 0, 3, 2],
+    ["reference", 1, "absent", true, true, true, 13.1741, 2573, 60, 0, 0, 2, 1],
+    ["reference", 1, "callback", true, true, true, 17.7364, 5657, 106, 0, 0, 3, 2],
+    ["reference", 1, "present", true, true, true, 8.9712, 2690, 71, 0, 0, 2, 1],
+    ["delivered", 1, "kind", true, true, true, 7.5285, 1801, 75, 0, 0, 2, 1],
+    ["delivered", 1, "select", true, true, true, 7.2081, 1803, 77, 0, 0, 2, 1],
+    ["delivered", 1, "walk", true, true, true, 11.2637, 4265, 204, 0, 0, 3, 2],
+    ["delivered", 1, "absent", true, true, true, 7.5945, 2171, 60, 0, 0, 2, 1],
+    ["delivered", 1, "callback", true, true, true, 8.7978, 3646, 106, 1408, 0, 3, 2],
+    ["delivered", 1, "present", true, true, true, 7.8871, 2288, 71, 0, 0, 2, 1],
+    ["delivered", 2, "kind", true, true, true, 7.7895, 1801, 75, 0, 0, 2, 1],
+    ["delivered", 2, "select", true, true, true, 6.5534, 1803, 77, 0, 0, 2, 1],
+    ["delivered", 2, "walk", true, true, true, 10.1351, 1881, 176, 0, 0, 2, 1],
+    ["delivered", 2, "absent", true, true, true, 7.158, 2171, 60, 0, 0, 2, 1],
+    ["delivered", 2, "callback", false, true, false, 11.0215, 5050, 113, 0, 0, 3, 2],
+    ["delivered", 2, "present", true, true, true, 7.6781, 2288, 71, 0, 0, 2, 1],
+    ["reference", 2, "kind", true, true, true, 7.1452, 2203, 75, 0, 0, 2, 1],
+    ["reference", 2, "select", true, true, true, 7.3925, 2205, 77, 0, 0, 2, 1],
+    ["reference", 2, "walk", true, true, true, 11.3195, 3451, 202, 2048, 0, 3, 2],
+    ["reference", 2, "absent", true, true, true, 7.0315, 2573, 60, 0, 0, 2, 1],
+    ["reference", 2, "callback", true, true, true, 15.2242, 7551, 202, 3968, 0, 5, 4],
+    ["reference", 2, "present", true, true, true, 7.2944, 2690, 71, 0, 0, 2, 1]
+  ]
+}

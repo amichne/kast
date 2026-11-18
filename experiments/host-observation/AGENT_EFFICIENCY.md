@@ -57,22 +57,32 @@ It reserves about one quarter of each family for the holdout.
 The manifest records actual scope and difficulty counts.
 Scope does not establish repository scale.
 
-Run a development comparison:
+Create a JSON plan for a development comparison:
 
-```sh
-uv run --locked --project experiments/host-observation python \
-  experiments/host-observation/agent_efficiency.py run \
-  --benchmark /private/tmp/new-benchmark \
-  --config experiments/host-observation/agent-efficiency-configs/token-poc-compact.json \
-  --output /private/tmp/new-development-run \
-  --repeats 2
+```json
+{
+  "benchmark": "/private/tmp/new-benchmark",
+  "configuration": "/absolute/kast/experiments/host-observation/agent-efficiency-configs/token-poc-compact.json",
+  "output": "/private/tmp/new-development-run",
+  "repeats": 2
+}
 ```
 
-Use `--tasks` with comma-separated identifiers for a focused development run.
-Use `--holdout` only for a sealed configuration.
-Each run needs a new output directory.
-Each trial starts a fresh Pi process and session.
-Trial order alternates the control and treatment arms.
+Set `tasks` to a list of task IDs for a focused run.
+Set `holdout` to `true` only for a sealed configuration.
+Use a new output directory for each run.
+
+Run the suite from `experiments/host-observation/promptfoo`:
+
+```sh
+npm ci
+KAST_EFFICIENCY_PLAN=/absolute/comparison.json npm run eval -- \
+  -c agent-efficiency.config.mjs -o /private/tmp/development-promptfoo.json
+```
+
+Each Promptfoo row starts a fresh Pi process and session for one arm.
+The scenario alternates the control and treatment arms.
+Use the plan to select tasks and repeats for the complete cohort.
 Both arms use SSE, disabled retries, disabled compaction, and disabled cache warming.
 Provider caches remain shared and warm.
 The manifest declares this cache policy without a claim of a cold-cache comparison.
@@ -103,7 +113,9 @@ Exact answer equality alone does not establish the truth of every intermediate c
 
 ## Candidate changes
 
-The versioned configurations preserve the measured instruction bundles.
+The versioned configurations pin the current instruction bundles.
+The measured runs used the briefs and hashes from revision `d04b765c1`.
+The current briefs use explicit terminal objects after revision `20cd1065e`.
 Canonical tool names, operation identities, input contracts, and evidence qualifications stay under their production owners.
 Explicit skill paths support experiments without a packaged `SKILL.md` or an installed skill archive.
 A changed configuration always starts new sessions.
@@ -116,11 +128,28 @@ The configuration digest includes the brief digest.
 Keep independent implementation candidates in separate worktrees at the same source revision.
 Keep one coordinator responsible for corpus custody, oracles, and promotion.
 
-`agent_efficiency_optimize.py --plan PLAN` runs a champion and independent candidates on declared development tasks.
-It rejects different models, budgets, corpus identities, and source revisions.
-It permits one configuration change per candidate.
-Its current result refuses promotion because billed cost and independent semantic audits lack evidence.
-Automatic proposal generation and qualified promotion remain incomplete.
+For candidate optimization, use the same Promptfoo configuration with an optimization plan:
+
+```json
+{
+  "champion": {
+    "benchmark": "/private/tmp/champion-benchmark",
+    "configuration": "/absolute/champion-configuration.json"
+  },
+  "candidates": [{
+    "benchmark": "/private/tmp/candidate-benchmark",
+    "configuration": "/absolute/candidate-configuration.json"
+  }],
+  "development_task_ids": ["first-task", "second-task"],
+  "repeats": 2,
+  "output": "/private/tmp/new-optimization"
+}
+```
+
+The comparison rejects different models, budgets, corpus identities, and source revisions.
+Each candidate must use a separate workspace and change one configuration field.
+The completed run writes cohort and candidate comparisons.
+Promotion needs billed cost and independent semantic audits.
 
 The measured corpus covers ten source questions in one repository.
 It does not establish performance across repository scales or live freshness cases.

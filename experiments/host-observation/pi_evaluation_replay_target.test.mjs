@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as accounting from './pi_evaluation_replay_accounting.mjs';
@@ -107,19 +106,6 @@ test('malformed records unknown outcomes and contradictory grades fail closed',(
  }
  const candidate=rows(300,300);candidate[0].grade.correct=false;
  assert.equal(assess(rows(900,900),candidate).status,'INVALID_COMPARISON');
-});
-
-test('the existing CLI exposes a machine-readable target assessment without model effects',async()=>{
- const fs=await import('node:fs'),os=await import('node:os'),path=await import('node:path');
- const {spawnSync}=await import('node:child_process');
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'kast-target-cli-'));const input=path.join(root,'target.json');
- const baseline=rows(900,900),candidate=rows(300,300);candidate[0].measurement='SYNTHETIC_TRANSPORT';
- fs.writeFileSync(input,JSON.stringify({target,baseline,candidate}));
- try{
-  const result=spawnSync(process.execPath,[fileURLToPath(new URL('run_pi_evaluation.mjs',import.meta.url)),'--assess-target',input],{encoding:'utf8',env:{PATH:process.env.PATH,HOME:root}});
-  assert.equal(result.status,2,result.stderr);const report=JSON.parse(result.stdout);
-  assert.equal(report.status,'UNMEASURED');assert.ok(report.reasons.includes('LIVE_MEASUREMENT_UNAVAILABLE'));
- }finally{fs.rmSync(root,{recursive:true});}
 });
 
 test('excess or unavailable effects cannot support a goal claim',()=>{

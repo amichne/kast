@@ -1,0 +1,339 @@
+{
+  "evalId": "eval-S35-2026-11-18T00:00:52",
+  "environment": {
+    "promptfooVersion": "0.125.1",
+    "nodeVersion": "v24.21.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "exportedAt": "2026-11-18T00:01:55.301Z",
+    "evaluationCreatedAt": "2026-11-18T00:00:52.566Z"
+  },
+  "exportSha256": "c68509a1dc267682d23d3ddd370167e36c76a66f291a2c941d28a10efa84e3e1",
+  "kastVersion": "0.0.4413",
+  "kastExecutableSha256": "1f2f080767ed9012594a6da5900881adf9a0920c55ddb24be71c0e50b7a03cf2",
+  "piVersion": "1.5.2",
+  "results": [
+    {
+      "caseId": "alphaSink",
+      "arm": "kast",
+      "repeat": 0,
+      "answer": "alphaSink",
+      "correct": true,
+      "supportedByKast": 1,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 1409,
+        "output": 21,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 1430
+      },
+      "toolCalls": 1,
+      "reads": [
+        {
+          "tool": "read_previous_result",
+          "name": "alphaSink",
+          "complete": true
+        }
+      ],
+      "promptSha256": "f5496138929aa16e52ad5120d60d980ae890253eb135cf93ba21b8461928ae0a",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "b0cf3ba28cad8018943280786e8c8c1fc119cb53b4b5bb08a134da241be4978d",
+      "outcome": "CORRECT"
+    },
+    {
+      "caseId": "alphaSink",
+      "arm": "kast",
+      "repeat": 1,
+      "answer": "alphaSink",
+      "correct": true,
+      "supportedByKast": 1,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 1406,
+        "output": 21,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 1427
+      },
+      "toolCalls": 1,
+      "reads": [
+        {
+          "tool": "read_previous_result",
+          "name": "alphaSink",
+          "complete": true
+        }
+      ],
+      "promptSha256": "f5496138929aa16e52ad5120d60d980ae890253eb135cf93ba21b8461928ae0a",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "926fcde8e82402f7dc4b0010ce7f4e485e79e22a9624bf22b951434fdc04b3d9",
+      "outcome": "CORRECT"
+    },
+    {
+      "caseId": "alphaSink",
+      "arm": "source",
+      "repeat": 0,
+      "answer": "UNKNOWN",
+      "correct": false,
+      "supportedByKast": 0,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 285,
+        "output": 5,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 290
+      },
+      "toolCalls": 0,
+      "reads": [],
+      "promptSha256": "f5496138929aa16e52ad5120d60d980ae890253eb135cf93ba21b8461928ae0a",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "7901d635969d8faddd95b0676001a24de9dce1c894bd4e7e6fc2e1116f0b3e55",
+      "outcome": "ABSTAINED"
+    },
+    {
+      "caseId": "alphaSink",
+      "arm": "source",
+      "repeat": 1,
+      "answer": "UNKNOWN",
+      "correct": false,
+      "supportedByKast": 0,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 286,
+        "output": 25,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 311
+      },
+      "toolCalls": 0,
+      "reads": [],
+      "promptSha256": "f5496138929aa16e52ad5120d60d980ae890253eb135cf93ba21b8461928ae0a",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "8b4abf193493de7abb24001d659ec901478ccfa310ff6009e1e7712fe66648b9",
+      "outcome": "ABSTAINED"
+    },
+    {
+      "caseId": "alphaSink",
+      "arm": "materialized",
+      "repeat": 0,
+      "answer": "alphaSink",
+      "correct": true,
+      "supportedByKast": 0,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 299,
+        "output": 6,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 305
+      },
+      "toolCalls": 0,
+      "reads": [],
+      "promptSha256": "275c064ebc483214215090758d12f0cefa01a40a48f269d37c66e87054932e1b",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "8271bb8d29f9d84fa973a409cac6a7acc37dc28a8e147feba7bb863f6ad7c1f9",
+      "outcome": "CORRECT"
+    },
+    {
+      "caseId": "alphaSink",
+      "arm": "materialized",
+      "repeat": 1,
+      "answer": "alphaSink",
+      "correct": true,
+      "supportedByKast": 0,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 299,
+        "output": 6,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 305
+      },
+      "toolCalls": 0,
+      "reads": [],
+      "promptSha256": "275c064ebc483214215090758d12f0cefa01a40a48f269d37c66e87054932e1b",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "cf4f849b030cc2504e3979cff1d11cab6fe22f62c08ee0cda688bbb17c3a7f72",
+      "outcome": "CORRECT"
+    },
+    {
+      "caseId": "betaSink",
+      "arm": "source",
+      "repeat": 0,
+      "answer": "UNKNOWN",
+      "correct": false,
+      "supportedByKast": 0,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 286,
+        "output": 20,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 306
+      },
+      "toolCalls": 0,
+      "reads": [],
+      "promptSha256": "f5496138929aa16e52ad5120d60d980ae890253eb135cf93ba21b8461928ae0a",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "a81a6dc9b4a509a7784c339289945db517d4d1e2d6ba5d3080633835feb38e42",
+      "outcome": "ABSTAINED"
+    },
+    {
+      "caseId": "betaSink",
+      "arm": "source",
+      "repeat": 1,
+      "answer": "UNKNOWN",
+      "correct": false,
+      "supportedByKast": 0,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 285,
+        "output": 5,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 290
+      },
+      "toolCalls": 0,
+      "reads": [],
+      "promptSha256": "f5496138929aa16e52ad5120d60d980ae890253eb135cf93ba21b8461928ae0a",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "20b5e82af1bde28de98e8ceb769bebe424e720f1f3f7fa3aa764050e564776d6",
+      "outcome": "ABSTAINED"
+    },
+    {
+      "caseId": "betaSink",
+      "arm": "materialized",
+      "repeat": 0,
+      "answer": "betaSink",
+      "correct": true,
+      "supportedByKast": 0,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 298,
+        "output": 6,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 304
+      },
+      "toolCalls": 0,
+      "reads": [],
+      "promptSha256": "2978499e8ccaadca6da4f2ec52fe7127ef9627bbe153393831d0a4d1f7bddd75",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "f294257ffc2312e0c65fb059f16ee8be717f1533171580876bdd00b73422c57e",
+      "outcome": "CORRECT"
+    },
+    {
+      "caseId": "betaSink",
+      "arm": "materialized",
+      "repeat": 1,
+      "answer": "betaSink",
+      "correct": true,
+      "supportedByKast": 0,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 298,
+        "output": 6,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 304
+      },
+      "toolCalls": 0,
+      "reads": [],
+      "promptSha256": "2978499e8ccaadca6da4f2ec52fe7127ef9627bbe153393831d0a4d1f7bddd75",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "226a23ea959f558c838cb5a96c2bb8692e3523ab350f96964ebc77d76343f150",
+      "outcome": "CORRECT"
+    },
+    {
+      "caseId": "betaSink",
+      "arm": "kast",
+      "repeat": 0,
+      "answer": "betaSink",
+      "correct": true,
+      "supportedByKast": 1,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 1400,
+        "output": 21,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 1421
+      },
+      "toolCalls": 1,
+      "reads": [
+        {
+          "tool": "read_previous_result",
+          "name": "betaSink",
+          "complete": true
+        }
+      ],
+      "promptSha256": "f5496138929aa16e52ad5120d60d980ae890253eb135cf93ba21b8461928ae0a",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "80fc85c2842bbf8d795daa98cf53f895a7de016329f91695cb1828eaa681854a",
+      "outcome": "CORRECT"
+    },
+    {
+      "caseId": "betaSink",
+      "arm": "kast",
+      "repeat": 1,
+      "answer": "betaSink",
+      "correct": true,
+      "supportedByKast": 1,
+      "model": "openai-codex/gpt-6.1-sol",
+      "effort": "low",
+      "usage": {
+        "input": 1406,
+        "output": 21,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 1427
+      },
+      "toolCalls": 1,
+      "reads": [
+        {
+          "tool": "read_previous_result",
+          "name": "betaSink",
+          "complete": true
+        }
+      ],
+      "promptSha256": "f5496138929aa16e52ad5120d60d980ae890253eb135cf93ba21b8461928ae0a",
+      "sourceSha256": "31d623d287de89089ca40d983a77904a39f6a872017899cdac4207333301dba4",
+      "seedSha256": "f38106965aaadeaf130e9d2d3eb0705372d49e6197522595a124f1e1c351e49e",
+      "outcome": "CORRECT"
+    }
+  ],
+  "priorRuns": [
+    {
+      "evalId": "eval-SUY-2026-11-17T23:43:37",
+      "exportSha256": "ea46dc3d270d6482bcb6b519fa4db55a0c8067640e7a57a807d3be39115886e7",
+      "stats": {
+        "successes": 8,
+        "failures": 4,
+        "errors": 0
+      },
+      "change": "Added an independent attribution metric after this run."
+    },
+    {
+      "evalId": "eval-Fln-2026-11-17T23:59:03",
+      "exportSha256": "dca149e9b3256509f254ce36c03a7b763145952eca89f5f81d5abbdd186123ec",
+      "stats": {
+        "successes": 7,
+        "failures": 4,
+        "errors": 1
+      },
+      "change": "A temporary disk-space error interrupted one trial."
+    }
+  ]
+}

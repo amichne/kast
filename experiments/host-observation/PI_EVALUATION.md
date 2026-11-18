@@ -106,10 +106,22 @@ or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
 
 ## Explicit execution plan
 
-`run_pi_evaluation.mjs --plan /absolute/plan.json` only validates the plan and
-prints declared budgets. It does not load Pi, authenticate or invoke Kast.
-`--execute` is a separate, explicit opt-in and requires new authorization for
-live evaluation. Implementation/test authorization alone does not authorize it.
+`run_pi_evaluation.mjs --plan /absolute/plan.json` examines the plan and prints its declared budgets.
+Run these commands from the repository root to start an authorized live evaluation.
+
+```sh
+npm ci --prefix experiments/host-observation/promptfoo
+KAST_PI_EVAL_PLAN=/absolute/plan.json npm --prefix experiments/host-observation/promptfoo run eval -- -c pi.config.mjs
+```
+
+Promptfoo runs each case once and reports its terminal policy outcome.
+Set a case's `expectedOutcome` to `FINAL_ANSWER`, `QUALIFIED_ANSWER`, or `INTENTIONAL_REJECTION` to assert a specific outcome.
+For an exact answer assertion, set `expectedAnswerSha256` to the lowercase SHA-256 digest of the independently derived answer.
+The worker joins the new final response's text blocks in order and hashes the exact UTF-8 bytes.
+The result reports the match status. The answer text and both digests stay out of the Promptfoo result.
+Cases without an expected answer digest receive a policy grade.
+The private report keeps coverage evidence, tool proposals, adapter starts, and model usage.
+Use an external oracle to establish whether an answer preserves the correct rows and evidence.
 
 The plan must supply absolute `piPackageRoot` (the installed coding-agent package,
 not its binary), `kastAdapter`, `workspaceRoot`, new `outputRoot`, `authPath`, and

@@ -7,32 +7,43 @@ This fragment excludes local paths, exact references, source excerpts, and raw l
 
 ## Repeat a declared tranche
 
-Use the pinned corpus revision and an imported, indexed temporary copy.
-Run this command from `experiments/host-observation` with its committed uv lock:
+Use an imported, indexed temporary copy of the pinned corpus revision.
+Create the plan JSON with the corpus name, fixture path, installed MCP executable, IDEA log, and fresh output directory.
 
-```sh
-uv run --locked python reproduce_semantic_queries.py campaign \
-  --repository spring-framework \
-  --fixture /path/to/imported/spring-framework \
-  --cli "$HOME/.local/share/kast/installation/bin/kast-mcp-complete" \
-  --idea-log "$HOME/Library/Logs/JetBrains/IntelliJIdea2026.2/idea.log" \
-  --output /tmp/kast-campaign-spring-001 \
-  --tranche baseline \
-  --max-calls 64 \
-  --timeout 60
+```json
+{
+  "repository": "spring-framework",
+  "fixture": "/path/to/imported/spring-framework",
+  "cli": "/path/to/kast-mcp-complete",
+  "idea_log": "/path/to/idea.log",
+  "output": "/private/tmp/kast-campaign-spring-001",
+  "tranche": "baseline",
+  "max_calls": 64,
+  "timeout": 60
+}
 ```
 
-Choose a fresh output directory for each run.
+Run the suite from `experiments/host-observation/promptfoo`:
+
+```sh
+npm ci
+KAST_CAMPAIGN_PLAN=/absolute/campaign.json npm run eval -- \
+  -c semantic-campaign.config.mjs -o /private/tmp/campaign-promptfoo.json
+```
+
 Select `relations` or `sources` for the other tranches.
-Use the matching repository name and root for Ktor, kotlinx.coroutines, or Kast.
-The exact CLI names are `ktor`, `kotlinx.coroutines`, and `kast`.
+Set `case_prefixes` to a list of variant ID prefixes for a focused run.
+Use `ktor`, `kotlinx.coroutines`, or `kast` for the other corpora.
 The source hash and anchor must match the checked-in corpus witness.
 
-The runner uses the grants described in this report and preserves them through output reads.
-`--max-calls` limits each variant's drain, while `--timeout` limits each public call.
-Exit code `2` preserves failed or blocked outcomes, including expected campaign gaps.
-Only passed selected variants and unchanged final source admission permit exit code `0`.
-Keep the requests, replies, process receipts, and diagnostic joins private.
+Each variant starts a fresh MCP session.
+A variant gets its discovery and retention evidence in that session.
+The campaign examines the source witness after Promptfoo finishes the selected rows.
+`max_calls` limits each request drain, and `timeout` limits each public call in seconds.
+Promptfoo reports oracle failures separately from blocked source or process admission.
+The campaign report keeps skipped variants and the final source state.
+Keep requests, replies, process receipts, and diagnostic joins private.
+The results in this report came from shared MCP sessions and describe that timing cohort.
 
 ## Baseline results
 
