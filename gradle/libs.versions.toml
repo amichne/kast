@@ -1,6 +1,7 @@
 [versions]
 kotlin = "2.4.21"
 reviewed-scope-stdlib = "2.3.0"
+reviewed-array-stdlib = "2.4.10"
 clikt = "5.1.0"
 shadow = "9.6.1"
 coroutines = "1.11.0"
@@ -25,6 +26,7 @@ asm = "9.11.1"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+reviewed-array-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "reviewed-array-stdlib" }
 reviewed-scope-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "reviewed-scope-stdlib" }
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 clikt-core = { module = "com.github.ajalt.clikt:clikt-core", version.ref = "clikt" }

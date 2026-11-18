@@ -185,7 +185,8 @@ enum class QueryCallbackFlowFailureDocument {
 
 @Serializable
 enum class QueryCallbackDependencyContractProvenanceDocument {
-    KOTLIN_BINARY_CONTRACT
+    KOTLIN_BINARY_CONTRACT,
+    REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH,
 }
 
 @Serializable
@@ -194,6 +195,7 @@ enum class QueryCallbackDependencyInvocationKindDocument {
     AT_MOST_ONCE,
     AT_LEAST_ONCE,
     UNKNOWN,
+    ZERO_OR_MORE,
 }
 
 sealed interface QueryCallbackBodyDocument {

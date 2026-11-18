@@ -12,9 +12,9 @@ class CallbackDependencyContractTest {
     private val fixture = CallbackInvocationFlowFixture()
 
     @Test
-    fun `declared invocation kinds cover the independent Kotlin contract population`() {
+    fun `dependency invocation kinds distinguish reviewed repetition from declared effects`() {
         assertEquals(
-            setOf("EXACTLY_ONCE", "AT_MOST_ONCE", "AT_LEAST_ONCE", "UNKNOWN"),
+            setOf("EXACTLY_ONCE", "AT_MOST_ONCE", "AT_LEAST_ONCE", "UNKNOWN", "ZERO_OR_MORE"),
             CallbackDependencyInvocationKind.entries.map { it.name }.toSet(),
         )
     }
@@ -22,7 +22,9 @@ class CallbackDependencyContractTest {
     @Test
     fun `declared contract preserves binary identity without a dependency body invocation`(): Unit =
         with(fixture) {
-            for (kind in CallbackDependencyInvocationKind.entries) assertContractKind(kind)
+            for (kind in
+                CallbackDependencyInvocationKind.entries -
+                    CallbackDependencyInvocationKind.ZERO_OR_MORE) assertContractKind(kind)
         }
 
     private fun CallbackInvocationFlowFixture.assertContractKind(kind: CallbackDependencyInvocationKind) {
@@ -41,6 +43,10 @@ class CallbackDependencyContractTest {
     @Test
     fun `contract rejects authored targets invalid formal position and invalid class digest`(): Unit =
         with(fixture) {
+            assertEquals(
+                CallbackInvocationFlowFailure.INVALID_DEPENDENCY_CONTRACT,
+                create(external(), kind = CallbackDependencyInvocationKind.ZERO_OR_MORE).failure(),
+            )
             assertEquals(CallbackInvocationFlowFailure.INVALID_DEPENDENCY_CONTRACT, create(target.evidence).failure())
             assertEquals(
                 CallbackInvocationFlowFailure.INVALID_DEPENDENCY_CONTRACT,

@@ -129,6 +129,12 @@ val contractFixtureStdlib =
         isTransitive = false
     }
 
+val reviewedArrayStdlib =
+    configurations.create("reviewedArrayStdlib") {
+        isCanBeConsumed = false
+        isTransitive = false
+    }
+
 val reviewedScopeStdlib =
     configurations.create("reviewedScopeStdlib") {
         isCanBeConsumed = false
@@ -139,11 +145,13 @@ val reviewedScopeStdlib =
 dependencies {
     reviewedCallbackSources(variantOf(libs.kotlin.stdlib) { classifier("sources") })
     contractFixtureStdlib(libs.kotlin.stdlib)
+    reviewedArrayStdlib(libs.reviewed.array.stdlib)
     reviewedScopeStdlib(libs.reviewed.scope.stdlib)
     reviewedScopeStdlib(variantOf(libs.reviewed.scope.stdlib) { classifier("sources") })
 }
 
 tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
+    from(reviewedArrayStdlib) { into("reviewed-libraries") }
     from(reviewedCallbackSources) { into("reviewed-libraries") }
     from(reviewedScopeStdlib) { into("reviewed-libraries") }
     from(contractFixtureStdlib) {

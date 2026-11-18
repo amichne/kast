@@ -359,8 +359,7 @@ internal class CallbackProjection(val authority: QueryReferenceAuthority, val ba
             dependencyTarget(value.target) ?: return null,
             ProtocolOffset.parse(value.position.value).callbackValue() ?: return null,
             ProtocolText.parse(value.classDigest.value).callbackValue() ?: return null,
-            io.github.amichne.kast.protocol.contract.QueryCallbackDependencyContractProvenanceDocument
-                .KOTLIN_BINARY_CONTRACT,
+            value.provenance.protocolCallbackDocument(),
             value.invocationKind.protocolCallbackDocument(),
         )
 

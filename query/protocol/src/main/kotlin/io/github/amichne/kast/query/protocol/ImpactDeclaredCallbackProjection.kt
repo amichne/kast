@@ -6,10 +6,8 @@ import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackReceiverDo
 import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackResultEffectDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackTargetDocument
 import io.github.amichne.kast.protocol.contract.ImpactDeclaredCallbackValueBindingDocument
-import io.github.amichne.kast.protocol.contract.QueryCallbackDependencyContractProvenanceDocument
 import io.github.amichne.kast.protocol.contract.QueryDiscoveryCountDocument
 import io.github.amichne.kast.relation.contract.CallbackDependencyContract
-import io.github.amichne.kast.relation.contract.CallbackDependencyContractProvenance
 import io.github.amichne.kast.relation.contract.DeclaredCallbackResultEffect
 import io.github.amichne.kast.relation.contract.DeclaredCallbackValueBinding
 import io.github.amichne.kast.relation.contract.ValueDeclarationIdentity
@@ -55,10 +53,7 @@ private fun CallbackDependencyContract.impactDocument(): ImpactProjected<ImpactC
                 target,
                 position,
                 digest,
-                when (provenance) {
-                    CallbackDependencyContractProvenance.KOTLIN_BINARY_CONTRACT ->
-                        QueryCallbackDependencyContractProvenanceDocument.KOTLIN_BINARY_CONTRACT
-                },
+                provenance.protocolCallbackDocument(),
                 invocationKind.protocolCallbackDocument(),
             )
         }

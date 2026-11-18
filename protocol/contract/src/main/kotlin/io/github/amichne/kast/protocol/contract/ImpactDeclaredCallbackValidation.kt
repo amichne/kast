@@ -4,7 +4,9 @@ import io.github.amichne.kast.kernel.Refinement
 
 /** Structural transport admission retains the compiler claim, without upgrading it to runtime evidence. */
 internal fun ImpactDeclaredCallbackValueBindingDocument.admits(host: ImpactDeclarationReferenceDocument): Boolean =
-    matchesHost(host) &&
+    contract.provenance == QueryCallbackDependencyContractProvenanceDocument.KOTLIN_BINARY_CONTRACT &&
+        contract.invocationKind != QueryCallbackDependencyInvocationKindDocument.ZERO_OR_MORE &&
+        matchesHost(host) &&
         host.range.containsExecutionRange(contract.occurrenceRange) &&
         contract.occurrenceRange.containsExecutionRange(body.range) &&
         host

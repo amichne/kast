@@ -64,7 +64,7 @@ internal fun readReviewedLibraryArtifact(
     return Refinement.Refined(NativeReviewedArtifactDigests(binary, sources))
 }
 
-private fun reviewedArtifactDigest(
+internal fun reviewedArtifactDigest(
     file: VirtualFile,
     context: IntellijCallbackFlowContext,
 ): Refinement<DependencyArtifactDigest, ReviewedCallbackValueFailure> {

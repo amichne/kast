@@ -10,6 +10,7 @@ enum class DeclaredCallbackResultEffect {
 }
 
 enum class DeclaredCallbackValueFailure {
+    DECLARED_CONTRACT_UNAVAILABLE,
     BASIS_MISMATCH,
     OWNER_MISMATCH,
 }
@@ -92,6 +93,8 @@ private constructor(
             resultEffect: DeclaredCallbackResultEffect,
         ): Refinement<DeclaredCallbackValueBinding, DeclaredCallbackValueFailure> =
             when {
+                contract.provenance != CallbackDependencyContractProvenance.KOTLIN_BINARY_CONTRACT ->
+                    Refinement.Rejected(DeclaredCallbackValueFailure.DECLARED_CONTRACT_UNAVAILABLE)
                 contract.basis != enclosing.lease.identity ->
                     Refinement.Rejected(DeclaredCallbackValueFailure.BASIS_MISMATCH)
                 enclosing.file !is SymbolDiscoveryFileIdentity.Workspace ||
