@@ -67,6 +67,10 @@ private constructor(
                 )
             ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1 ->
                 listOf(ReviewedSourceSection.ASSOCIATE, ReviewedSourceSection.ASSOCIATE_TO)
+            ReviewedLibraryRule.KOTLIN_2_3_0_INT_MIN_V1 -> listOf(ReviewedSourceSection.INT_MIN_2_3_0)
+            ReviewedLibraryRule.KOTLIN_2_3_0_INT_MAX_V1 -> listOf(ReviewedSourceSection.INT_MAX_2_3_0)
+            ReviewedLibraryRule.KOTLIN_2_4_21_INT_MIN_V1 -> listOf(ReviewedSourceSection.INT_MIN_2_4_21)
+            ReviewedLibraryRule.KOTLIN_2_4_21_INT_MAX_V1 -> listOf(ReviewedSourceSection.INT_MAX_2_4_21)
             ReviewedLibraryRule.KOTLIN_2_3_0_TO_V1 -> listOf(ReviewedSourceSection.TO, ReviewedSourceSection.PAIR)
             ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1,
             ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_FIRST_V1,
@@ -138,8 +142,33 @@ private constructor(
                 ReviewedLibraryOperation.MAP_ENTRY_KEY,
                 ReviewedLibraryOperation.MAP_ENTRY_VALUE ->
                     ReviewedEntryDeclarationArtifact.admit(selected, binaryArtifact, sourceArtifact)
+                ReviewedLibraryOperation.INT_MIN,
+                ReviewedLibraryOperation.INT_MAX -> admitIntExtremum(selected.operation, binaryArtifact, sourceArtifact)
                 else -> admit230(selected.operation, binaryArtifact, sourceArtifact)
             }
+
+        private fun admitIntExtremum(
+            operation: ReviewedLibraryOperation,
+            binaryArtifact: DependencyArtifactDigest,
+            sourceArtifact: DependencyArtifactDigest,
+        ): Refinement<ReviewedLibraryArtifact, ReviewedCallbackValueFailure> {
+            val archive =
+                when (val admitted = admit(binaryArtifact, sourceArtifact)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
+                }
+            val rule =
+                when (archive.rule) {
+                    ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1 ->
+                        if (operation == ReviewedLibraryOperation.INT_MIN) ReviewedLibraryRule.KOTLIN_2_3_0_INT_MIN_V1
+                        else ReviewedLibraryRule.KOTLIN_2_3_0_INT_MAX_V1
+                    ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1 ->
+                        if (operation == ReviewedLibraryOperation.INT_MIN) ReviewedLibraryRule.KOTLIN_2_4_21_INT_MIN_V1
+                        else ReviewedLibraryRule.KOTLIN_2_4_21_INT_MAX_V1
+                    else -> return Refinement.Rejected(ReviewedCallbackValueFailure.ARTIFACT_MISMATCH)
+                }
+            return Refinement.Refined(ReviewedLibraryArtifact(binaryArtifact, sourceArtifact, rule))
+        }
 
         private fun admit230(
             operation: ReviewedLibraryOperation,

@@ -37,6 +37,7 @@ enum class ImpactTransferKindDocument {
     CONSTRUCTOR_FIELD,
     CAST_RESULT,
     STRING_CONTENT,
+    PRIMITIVE_DERIVATION,
 }
 
 @Serializable
@@ -81,6 +82,23 @@ sealed interface ImpactTransferEvidenceDocument {
         @SerialName("input_range") val inputRange: ImpactSourceRangeDocument,
         val input: ImpactStringContentInputDocument,
         @SerialName("null_alternative") val nullAlternative: ImpactStringNullAlternativeDocument,
+    ) : ImpactTransferEvidenceDocument
+
+    @Serializable
+    @SerialName("PRIMITIVE_DERIVATION")
+    data class PrimitiveDerivation(
+        val rule: ImpactIntArithmeticRuleDocument,
+        @ProtocolStringConstraint(pattern = "^canonical-signature-sha256-v1[|][0-9a-f]{64}$")
+        @SerialName("compiler_identity")
+        val compilerIdentity: ProtocolText,
+        val authority: ImpactIntBuiltinEvidenceDocument,
+        @ProtocolStringConstraint(minimumLength = 1, maximumLength = MAX_IMPACT_BUILTIN_MODULE_NAME_LENGTH)
+        @SerialName("module_name")
+        val moduleName: ProtocolText,
+        val input: ImpactIntArithmeticInputDocument,
+        @SerialName("input_range") val inputRange: ImpactSourceRangeDocument,
+        @SerialName("result_range") val resultRange: ImpactSourceRangeDocument,
+        val basis: ImpactSemanticBasisDocument,
     ) : ImpactTransferEvidenceDocument
 
     @Serializable

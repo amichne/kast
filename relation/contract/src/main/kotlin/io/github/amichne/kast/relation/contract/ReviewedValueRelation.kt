@@ -37,6 +37,9 @@ sealed interface ReviewedValueRelation {
 
     data class ReorderedElements(val selection: ReviewedCollectionSelection) : ReviewedValueRelation
 
+    /** Each admitted argument can contribute to the normal result of a reviewed Int extremum. */
+    data class IntExtremum(val input: ReviewedIntExtremumInput) : ReviewedValueRelation
+
     data class TupleConstruction(val origin: ReviewedTupleOrigin, val input: ReviewedTupleInput, val slot: PairSlot) :
         ReviewedValueRelation
 
@@ -52,6 +55,11 @@ sealed interface ReviewedValueRelation {
 enum class ReviewedCollectionSelection {
     ELEMENT,
     CONTENT,
+}
+
+enum class ReviewedIntExtremumInput(val position: Int) {
+    ARGUMENT_0(0),
+    ARGUMENT_1(1),
 }
 
 enum class ReviewedTupleInput {

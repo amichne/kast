@@ -5,6 +5,7 @@ import io.github.amichne.kast.protocol.contract.ImpactMapEntrySlotDocument
 import io.github.amichne.kast.protocol.contract.ImpactPairSlotDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedCallValueBindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionSelectionDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedIntExtremumInputDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedMapEntryCorrelationDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedOrdinaryTargetDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedTupleInputDocument
@@ -16,6 +17,7 @@ import io.github.amichne.kast.relation.contract.PairSlot
 import io.github.amichne.kast.relation.contract.ReviewedCallValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedCollectionSelection
+import io.github.amichne.kast.relation.contract.ReviewedIntExtremumInput
 import io.github.amichne.kast.relation.contract.ReviewedMapEntryCorrelation
 import io.github.amichne.kast.relation.contract.ReviewedTupleInput
 import io.github.amichne.kast.relation.contract.ReviewedTupleOrigin
@@ -124,6 +126,15 @@ internal fun ReviewedValueRelation.impactDocument(): ImpactProjected<ImpactRevie
             Refinement.Refined(ImpactReviewedValueRelationDocument.CallbackCorrespondence(semantics.impactDocument()))
         is ReviewedValueRelation.ReorderedElements ->
             Refinement.Refined(ImpactReviewedValueRelationDocument.ReorderedElements(selection.impactDocument()))
+        is ReviewedValueRelation.IntExtremum ->
+            Refinement.Refined(
+                ImpactReviewedValueRelationDocument.IntExtremum(
+                    when (input) {
+                        ReviewedIntExtremumInput.ARGUMENT_0 -> ImpactReviewedIntExtremumInputDocument.ARGUMENT_0
+                        ReviewedIntExtremumInput.ARGUMENT_1 -> ImpactReviewedIntExtremumInputDocument.ARGUMENT_1
+                    }
+                )
+            )
         is ReviewedValueRelation.TupleConstruction ->
             origin.impactDocument().impactMap {
                 ImpactReviewedValueRelationDocument.TupleConstruction(it, input.impactDocument(), slot.impactDocument())

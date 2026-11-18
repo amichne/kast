@@ -16,12 +16,14 @@ import io.github.amichne.kast.relation.contract.ReviewedOrdinaryLibraryCallable
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import io.github.amichne.kast.workspace.intellij.read.call
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.resolution.KaSingleCall
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
 import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -132,7 +134,7 @@ private fun KaSession.reviewedOrdinaryTarget(
     context: IntellijCallbackFlowContext,
 ): Refinement<NativeReviewedOrdinaryTarget, ReviewedCallbackValueFailure> {
     val call =
-        resolvedReviewedOrdinaryCall(expression)
+        resolveValueExpressionCall(expression)
             ?: return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
     val symbol = call.signature.symbol
     if (symbol.origin != KaSymbolOrigin.LIBRARY)
@@ -145,13 +147,27 @@ private fun KaSession.reviewedOrdinaryTarget(
     val evidence =
         contractTarget(context, symbol, declaration, file)
             ?: return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
-    return when (val admitted = ReviewedOrdinaryLibraryCallable.admit(evidence)) {
+    val admitted =
+        when ((symbol as? KaNamedFunctionSymbol)?.callableId?.asSingleFqName()?.asString()) {
+            "kotlin.math.min",
+            "kotlin.math.max" -> {
+                val type =
+                    when (val projected = CanonicalCompilerType.fromCompiler(call.signature.returnType.toString())) {
+                        is Refinement.Refined -> projected.value
+                        is Refinement.Rejected ->
+                            return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
+                    }
+                ReviewedOrdinaryLibraryCallable.admitIntExtremum(evidence, type)
+            }
+            else -> ReviewedOrdinaryLibraryCallable.admit(evidence)
+        }
+    return when (admitted) {
         is Refinement.Refined -> Refinement.Refined(NativeReviewedOrdinaryTarget(admitted.value, file))
         is Refinement.Rejected -> admitted
     }
 }
 
-internal fun KaSession.resolvedReviewedOrdinaryCall(expression: KtExpression): KaSingleCall<*, *>? =
+internal fun KaSession.resolveValueExpressionCall(expression: KtExpression): KaSingleCall<*, *>? =
     when (expression) {
         is KtBinaryExpression -> expression.resolveCall() as? KaSingleCall<*, *>
         is KtCallExpression -> expression.resolveCall()

@@ -116,6 +116,7 @@ private fun ValueTransfer.admitsImmutableCallbackTransport(): Boolean =
             ValueTransferKind.CONSTRUCTOR_FIELD,
             ValueTransferKind.CAST_RESULT,
             ValueTransferKind.STRING_CONTENT,
+            ValueTransferKind.PRIMITIVE_DERIVATION,
             ValueTransferKind.RECEIVER,
             ValueTransferKind.PROPERTY_ASSIGNMENT -> false
         }

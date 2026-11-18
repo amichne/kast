@@ -179,6 +179,8 @@ private fun reviewedReceiverTransfers(
         ReviewedLibraryOperation.RUN_TOP_LEVEL,
         ReviewedLibraryOperation.WITH,
         ReviewedLibraryOperation.LET,
+        ReviewedLibraryOperation.INT_MIN,
+        ReviewedLibraryOperation.INT_MAX,
         ReviewedLibraryOperation.TO,
         ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
         ReviewedLibraryOperation.PAIR_FIRST,

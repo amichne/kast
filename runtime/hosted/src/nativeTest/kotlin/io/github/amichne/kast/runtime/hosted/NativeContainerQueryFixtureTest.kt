@@ -7,6 +7,7 @@ import com.intellij.openapi.module.ModuleType
 import com.intellij.openapi.projectRoots.JavaSdk
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.roots.OrderRootType
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.IndexingTestUtil
@@ -29,47 +30,67 @@ import io.github.amichne.kast.workspace.contract.WorkspaceSearchScopeModelCompil
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootBoundary
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootKind
 import io.github.amichne.kast.workspace.contract.WorkspaceSourceRootProvenance
+import java.nio.file.Files
 import java.nio.file.Path
 
 /** A neutral source is authored before the production ports capture their immutable source state. */
 abstract class NativeContainerQueryFixtureTest : NativeSmartModeFixtureTest() {
     abstract override fun getModuleType(): ModuleType<*>
 
-    internal fun containerFixture(): NativePacketQueryCase {
-        val files = authorSource()
+    internal fun containerFixture(): NativePacketQueryCase =
+        queryFixture(mapOf("ContainerFlow.kt" to CONTAINER_QUERY_SOURCE)).getValue("ContainerFlow.kt")
+
+    internal fun queryFixture(
+        sources: Map<String, String>,
+        stdlib: NativeContainerQueryStdlib = NativeContainerQueryStdlib.BUNDLED,
+        errors: Map<String, List<String>> = emptyMap(),
+    ): Map<String, NativePacketQueryCase> {
+        val files = authorSource(sources, stdlib)
         val root = CanonicalWorkspaceRoot.fromCanonicalPath(files.base.toNioPath()).packetQueryRefined()
         val model = sourceModel(files, root)
-        val services = NativePacketQueryServices(project = project, root = root, model = model, file = files.file)
-        val source =
-            NativePacketQuerySource(
+        val services =
+            NativePacketQueryServices(
                 project = project,
-                file = files.file,
-                services = services,
-                variant = NativePacketQueryVariant.COVERAGE,
-                ownedRoot = model.sourceRoots.single(),
+                root = root,
+                model = model,
+                files = files.files.values.toList(),
             )
-        source.assertNoErrors()
-        return NativePacketQueryCase(services, source)
+        return files.files.mapValues { (name, file) ->
+            val source =
+                NativePacketQuerySource(
+                    project = project,
+                    file = file,
+                    services = services,
+                    variant = NativePacketQueryVariant.COVERAGE,
+                    ownedRoot = model.sourceRoots.single(),
+                )
+            source.assertErrors(errors[name].orEmpty())
+            NativePacketQueryCase(services, source)
+        }
     }
 
-    private fun authorSource(): ContainerQueryFiles {
+    private fun authorSource(
+        sources: Map<String, String>,
+        stdlib: NativeContainerQueryStdlib,
+    ): ContainerQueryFiles {
         val base = getOrCreateProjectBaseDir()
         lateinit var source: VirtualFile
-        lateinit var file: VirtualFile
+        lateinit var files: Map<String, VirtualFile>
         ApplicationManager.getApplication().invokeAndWait {
             WriteCommandAction.runWriteCommandAction(project) {
                 source = base.createChildDirectory(this, "src")
-                file = source.createChildData(this, "ContainerFlow.kt")
-                file.setBinaryContent(CONTAINER_QUERY_SOURCE.toByteArray())
+                files = sources.mapValues { (name, text) ->
+                    source.createChildData(this, name).apply { setBinaryContent(text.toByteArray()) }
+                }
             }
-            configureModule(base, source)
+            configureModule(base, source, stdlib)
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             IndexingTestUtil.waitUntilIndexesAreReady(project)
         }
-        return ContainerQueryFiles(base, source, file)
+        return ContainerQueryFiles(base, source, files)
     }
 
-    private fun configureModule(base: VirtualFile, source: VirtualFile) {
+    private fun configureModule(base: VirtualFile, source: VirtualFile, stdlib: NativeContainerQueryStdlib) {
         val sdk = JavaSdk.getInstance().createJdk("container-query-sdk", System.getProperty("java.home"), false)
         registerTestProjectJdk(sdk)
         ModuleRootModificationUtil.updateModel(module) { roots ->
@@ -77,10 +98,31 @@ abstract class NativeContainerQueryFixtureTest : NativeSmartModeFixtureTest() {
             roots.addContentEntry(base).addSourceFolder(source, false)
             val library = roots.moduleLibraryTable.createLibrary("container-query-stdlib")
             val libraryRoots = library.modifiableModel
-            val jar = Path.of(PathManager.getHomePath(), "plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar")
-            libraryRoots.addRoot("jar://$jar!/", OrderRootType.CLASSES)
+            when (stdlib) {
+                NativeContainerQueryStdlib.BUNDLED -> {
+                    val jar = Path.of(PathManager.getHomePath(), "plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar")
+                    libraryRoots.addRoot("jar://$jar!/", OrderRootType.CLASSES)
+                }
+                NativeContainerQueryStdlib.REVIEWED -> {
+                    val (binary, sources) = reviewedStdlib(base.toNioPath())
+                    libraryRoots.addRoot("jar://$binary!/", OrderRootType.CLASSES)
+                    libraryRoots.addRoot("jar://$sources!/", OrderRootType.SOURCES)
+                }
+            }
             libraryRoots.commit()
         }
+    }
+
+    private fun reviewedStdlib(root: Path): Pair<Path, Path> {
+        val binary =
+            System.getProperty("java.class.path").split(java.io.File.pathSeparator).map(Path::of).single {
+                it.fileName.toString() == "kotlin-stdlib-2.4.21.jar"
+            }
+        val sources = root.resolve("kotlin-stdlib-2.4.21-sources.jar")
+        val resource = checkNotNull(javaClass.getResourceAsStream("/reviewed-libraries/${sources.fileName}"))
+        resource.use { Files.copy(it, sources) }
+        checkNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(sources))
+        return binary to sources
     }
 
     private fun sourceModel(files: ContainerQueryFiles, root: CanonicalWorkspaceRoot): WorkspaceSearchScopeModel {
@@ -105,7 +147,16 @@ abstract class NativeContainerQueryFixtureTest : NativeSmartModeFixtureTest() {
     }
 }
 
-private data class ContainerQueryFiles(val base: VirtualFile, val source: VirtualFile, val file: VirtualFile)
+internal enum class NativeContainerQueryStdlib {
+    BUNDLED,
+    REVIEWED,
+}
+
+private data class ContainerQueryFiles(
+    val base: VirtualFile,
+    val source: VirtualFile,
+    val files: Map<String, VirtualFile>,
+)
 
 /** Retained row and evidence windows advance independently; replay must perform no additional semantic reads. */
 internal class NativeContainerQueryCapture(private val services: NativePacketQueryServices) {

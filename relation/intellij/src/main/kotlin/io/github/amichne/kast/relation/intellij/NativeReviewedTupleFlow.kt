@@ -112,6 +112,8 @@ internal fun nativeReviewedTupleResult(
         }
     if (binding.invocation != invocation) return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
     return when (binding.selected.operation) {
+        ReviewedLibraryOperation.INT_MIN,
+        ReviewedLibraryOperation.INT_MAX -> ReviewedValueTransfer.intExtremum(request.source, binding)
         ReviewedLibraryOperation.MAP_ENTRY_KEY,
         ReviewedLibraryOperation.MAP_ENTRY_VALUE,
         ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
@@ -144,7 +146,7 @@ private fun nativeReviewedResultBinding(
         }
 
 private fun KaSession.tupleInput(expression: KtExpression, call: KtExpression): NativeTupleInput {
-    return when (val resolved = resolvedReviewedOrdinaryCall(call)) {
+    return when (val resolved = resolveValueExpressionCall(call)) {
         is KaVariableAccessCall -> {
             val receiver = resolved.dispatchReceiver as? KaExplicitReceiverValue
             if (

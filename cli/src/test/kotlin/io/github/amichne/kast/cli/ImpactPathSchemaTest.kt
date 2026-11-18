@@ -30,6 +30,9 @@ import io.github.amichne.kast.protocol.contract.ImpactFlowEndObservationDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowReadPositionDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowTerminalDocument
 import io.github.amichne.kast.protocol.contract.ImpactFlowUnsupportedDocument
+import io.github.amichne.kast.protocol.contract.ImpactIntArithmeticInputDocument
+import io.github.amichne.kast.protocol.contract.ImpactIntArithmeticRuleDocument
+import io.github.amichne.kast.protocol.contract.ImpactIntBuiltinEvidenceDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelIdentifierDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelIdentityDocument
 import io.github.amichne.kast.protocol.contract.ImpactModelValuePositionDocument
@@ -66,6 +69,7 @@ import io.github.amichne.kast.protocol.contract.QueryRelationDomainFingerprint
 import io.github.amichne.kast.protocol.contract.QueryRelationRequestedDomainDocument
 import io.github.amichne.kast.protocol.contract.QuerySemanticScopeDocument
 import io.github.amichne.kast.protocol.contract.RelationKindDocument
+import io.github.amichne.kast.symbol.contract.fromCanonicalSignature
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -75,6 +79,57 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ImpactPathSchemaTest {
+    @Test
+    fun `schema requires primitive operation evidence and rejects unknown operand slots`() {
+        val document = independentImpactSchemaWithDefinitions(ImpactCompilerTransferDocument.serializer())
+        val schema =
+            SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12).getSchema(document.toString())
+        val f = Fixture()
+        val target = f.site.copy(range = ImpactSourceRangeDocument(offset(9), offset(20)))
+        val signature =
+            io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature.function(
+                    "kotlin.Int.minus",
+                    null,
+                    emptyList(),
+                    listOf("kotlin/Int"),
+                    0,
+                )
+                .refined()
+        val identity = io.github.amichne.kast.symbol.contract.CompilerSymbolIdentity.fromCanonicalSignature(signature)
+        val proof =
+            ImpactTransferEvidenceDocument.PrimitiveDerivation(
+                rule = ImpactIntArithmeticRuleDocument.INT_MINUS_V1,
+                compilerIdentity = text(identity.value),
+                authority = ImpactIntBuiltinEvidenceDocument.K2_BUILTINS_METADATA,
+                moduleName = text("fixture stdlib"),
+                input = ImpactIntArithmeticInputDocument.ARGUMENT_0,
+                inputRange = f.site.range,
+                resultRange = target.range,
+                basis = f.declaration.basis,
+            )
+        val transfer =
+            ImpactCompilerTransferDocument(
+                source = f.site,
+                target = target,
+                kind = ImpactTransferKindDocument.PRIMITIVE_DERIVATION,
+                evidence = proof,
+            )
+        assertTrue(transfer.admitsEvidence())
+        assertTrue(
+            !transfer.copy(evidence = proof.copy(rule = ImpactIntArithmeticRuleDocument.INT_PLUS_V1)).admitsEvidence()
+        )
+        val raw = Json.encodeToString(ImpactCompilerTransferDocument.serializer(), transfer)
+        assertTrue(schema.validate(raw, InputFormat.JSON).isEmpty(), raw)
+        for (malformed in
+            listOf(
+                raw.replace("\"input\":\"ARGUMENT_0\"", "\"input\":\"ARGUMENT_1\""),
+                raw.replace("\"input\":\"ARGUMENT_0\",", ""),
+                raw.replace("\"authority\":\"K2_BUILTINS_METADATA\"", "\"authority\":\"REVIEWED_LIBRARY\""),
+            )) {
+            assertTrue(schema.validate(malformed, InputFormat.JSON).isNotEmpty(), malformed)
+        }
+    }
+
     @Test
     fun `transfer schema requires closed normal completion evidence and preserves exact branch anchors`() {
         val document = independentImpactSchemaWithDefinitions(ImpactCompilerTransferDocument.serializer())

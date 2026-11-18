@@ -138,6 +138,10 @@ internal fun ReviewedLibraryRule.impactDocument(): ImpactReviewedValueRuleDocume
             ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1
         ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1 ->
             ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_INT_MIN_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MIN_V1
+        ReviewedLibraryRule.KOTLIN_2_3_0_INT_MAX_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MAX_V1
+        ReviewedLibraryRule.KOTLIN_2_4_21_INT_MIN_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_INT_MIN_V1
+        ReviewedLibraryRule.KOTLIN_2_4_21_INT_MAX_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_INT_MAX_V1
         ReviewedLibraryRule.KOTLIN_2_3_0_TO_V1 -> ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_TO_V1
         ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1 ->
             ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1

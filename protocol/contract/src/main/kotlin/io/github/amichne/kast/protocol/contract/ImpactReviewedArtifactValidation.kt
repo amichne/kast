@@ -7,6 +7,7 @@ internal fun ImpactReviewedArtifactsDocument.admitsRule(rule: ImpactReviewedValu
         is ImpactReviewedCollectionArtifactsDocument -> admitsCollection(rule)
         is ImpactReviewedScopeArtifactsDocument -> admitsScope(rule)
         is ImpactReviewedTupleArtifactsDocument -> admitsTuple(rule)
+        is ImpactReviewedMathArtifactsDocument -> admitsMath(rule)
     }
 
 private fun ImpactReviewedCollectionArtifactsDocument.admitsCollection(rule: ImpactReviewedValueRuleDocument): Boolean {
@@ -100,6 +101,37 @@ private fun ImpactReviewedTupleArtifactsDocument.admitsTuple(rule: ImpactReviewe
             facade,
         )
 }
+
+private fun ImpactReviewedMathArtifactsDocument.admitsMath(rule: ImpactReviewedValueRuleDocument): Boolean =
+    when (rule) {
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MIN_V1 ->
+            functionLines.matchesLine(INT_MIN_230_LINE) && matchesMath230()
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MAX_V1 ->
+            functionLines.matchesLine(INT_MAX_230_LINE) && matchesMath230()
+        ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_INT_MIN_V1 ->
+            functionLines.matchesLine(INT_MIN_2421_LINE) && matchesMath2421()
+        ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_INT_MAX_V1 ->
+            functionLines.matchesLine(INT_MAX_2421_LINE) && matchesMath2421()
+        else -> false
+    }
+
+private fun ImpactReviewedSourceLinesDocument.matchesLine(line: Int): Boolean = matches(line, line)
+
+private fun ImpactReviewedMathArtifactsDocument.matchesMath230(): Boolean =
+    matches230(
+        "0c421ce335e168edf1ad14c8b1bb97e0051b61573e9ead4700569d1f2014dd65",
+        "c2eb7500418621b056742a4455f61d036be67d9229fa7abba42662decc480fff",
+        "f000877b92e7659d1cd653b800e6193b408c672bda77e46f5b3ab931a59d229f",
+    )
+
+private fun ImpactReviewedMathArtifactsDocument.matchesMath2421(): Boolean =
+    matches(
+        "bd8250210584cb659847dce9cda660f8e9906e5def7fbebcea93dc6dcb6a88a3",
+        "1e29c0668b0aa555e7b154e5da2e8094e1b755cfee25737839195bbbdad8a4a2",
+        "6d7e734fc889f6eefd52be265a159f6309bbd558d1594390b01fc9ec56594db7",
+        "b9df8f1a791de8216105a6eccf3c5d7d4cd41fae107be87615dcbd390d17c411",
+        "20129dc3f32ff4ce98c7b310b939c20f72568e71a18393f824fec7f037a3b03a",
+    )
 
 private fun ImpactReviewedJvmArtifactHashes.matches230(entry: String, facade: String, implementation: String): Boolean =
     matches(
@@ -195,3 +227,8 @@ private const val WITH_FIRST_LINE = 69
 private const val WITH_LAST_LINE = 74
 private const val APPLY_FIRST_LINE = 83
 private const val APPLY_LAST_LINE = 89
+
+private const val INT_MIN_230_LINE = 1249
+private const val INT_MAX_230_LINE = 1256
+private const val INT_MIN_2421_LINE = 1420
+private const val INT_MAX_2421_LINE = 1429

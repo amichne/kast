@@ -93,6 +93,7 @@ internal fun ValueTransfer.impactDocument(): ImpactProjected<ImpactCompilerTrans
                 ValueTransferKind.SOURCE_CALL_RETURN -> ImpactTransferKindDocument.SOURCE_CALL_RETURN
                 ValueTransferKind.FIELD_READ -> ImpactTransferKindDocument.FIELD_READ
                 ValueTransferKind.CONSTRUCTOR_FIELD -> ImpactTransferKindDocument.CONSTRUCTOR_FIELD
+                ValueTransferKind.PRIMITIVE_DERIVATION -> ImpactTransferKindDocument.PRIMITIVE_DERIVATION
                 ValueTransferKind.STRING_CONTENT -> ImpactTransferKindDocument.STRING_CONTENT
                 ValueTransferKind.CAST_RESULT -> ImpactTransferKindDocument.CAST_RESULT
             },
@@ -105,6 +106,7 @@ private fun ValueTransferEvidence.impactDocument(): ImpactProjected<ImpactTransf
         ValueTransferEvidence.Direct -> Refinement.Refined(ImpactTransferEvidenceDocument.Direct)
         is io.github.amichne.kast.relation.contract.ValueStringContent -> impactStringContent()
         is ValueLoopTransfer -> impactDocument()
+        is io.github.amichne.kast.relation.contract.ValueIntArithmetic -> impactDocument()
         is ValueSourceTransfer -> operation.impactDocument().impactMap(ImpactTransferEvidenceDocument::Source)
         is ValueTransferEvidence.NormalBranchResult ->
             tryRange.impactDocument().impactZip(branchRange.impactDocument()).impactMap { (enclosing, branch) ->

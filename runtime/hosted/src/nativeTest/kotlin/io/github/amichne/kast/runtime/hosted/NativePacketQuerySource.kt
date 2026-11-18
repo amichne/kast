@@ -65,7 +65,9 @@ internal class NativePacketQuerySource(
             SymbolLibraryPolicy.EXCLUDE,
         )
 
-    fun assertNoErrors() = read {
+    fun assertNoErrors() = assertErrors(emptyList())
+
+    fun assertErrors(expected: List<String>) = read {
         val errors =
             IntellijReadObservation.None.observedAnalyze(psi()) {
                 val module = useSiteModule
@@ -82,7 +84,7 @@ internal class NativePacketQuerySource(
                     .filter { it.severity == KaSeverity.ERROR }
                     .map { it.factoryName }
             }
-        check(errors.isEmpty()) { "Packet query fixture source errors: $errors" }
+        check(errors == expected) { "Packet query fixture source errors: $errors, expected $expected" }
     }
 
     suspend fun producer(outgoing: Boolean): QueryImpactProducerDocument {
@@ -102,6 +104,13 @@ internal class NativePacketQuerySource(
             token(declaration(owner, method)),
             token(declaration("", callee)),
             invocation(owner, method, callee),
+        )
+
+    suspend fun producer(method: String, callee: String, producerSource: NativePacketQuerySource) =
+        QueryImpactProducerDocument(
+            token(declaration("", method)),
+            token(producerSource.declaration("", callee)),
+            invocation("", method, callee),
         )
 
     fun markedRange(marker: String): ImpactSourceRangeDocument = read {

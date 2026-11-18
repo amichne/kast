@@ -19,6 +19,7 @@ enum class ValueTransferKind {
     CONSTRUCTOR_FIELD,
     CAST_RESULT,
     STRING_CONTENT,
+    PRIMITIVE_DERIVATION,
 }
 
 enum class ValueTransferFailure {
@@ -39,8 +40,9 @@ private constructor(
     internal fun shareCallableEvidence(proofs: ValueFlowSiteSharing): ValueTransfer {
         val sharedSource = proofs.site(source)
         val sharedTarget = proofs.site(target)
-        return if (sharedSource === source && sharedTarget === target) this
-        else ValueTransfer(sharedSource, sharedTarget, kind, evidence)
+        val sharedEvidence = proofs.evidence(evidence)
+        return if (sharedSource === source && sharedTarget === target && sharedEvidence === evidence) this
+        else ValueTransfer(sharedSource, sharedTarget, kind, sharedEvidence)
     }
 
     companion object {
@@ -190,6 +192,7 @@ private fun ValueTransferKind.admitsRoles(source: ValueSite, target: ValueSite):
         ValueTransferKind.PROPERTY_ASSIGNMENT -> target.role == ValueRole.PropertyAssignment
         ValueTransferKind.BRANCH_ALTERNATIVE -> target.role == ValueRole.ExpressionResult
         ValueTransferKind.STRING_CONTENT -> target.role == ValueRole.ExpressionResult
+        ValueTransferKind.PRIMITIVE_DERIVATION,
         ValueTransferKind.CAST_RESULT ->
             (source.role == ValueRole.ExpressionResult || source.role == ValueRole.LocalRead) &&
                 target.role == ValueRole.ExpressionResult

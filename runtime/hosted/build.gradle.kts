@@ -408,6 +408,7 @@ registerHostedNativeFixtures(
         "*NativeCompilerCoverageQueryTest",
         "*NativeContainerMapQueryTest",
         "*NativeStringContentQueryTest",
+        "*NativePrimitiveValueQueryTest",
         "*NativeCompilerCoverageControlsTest",
     ),
 )

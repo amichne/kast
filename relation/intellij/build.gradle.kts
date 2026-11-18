@@ -311,6 +311,7 @@ registerRelationNativeFixtures(
         "*NativeImplicitLambdaParameterTest",
         "*NativeContainerMapFlowTest",
         "*NativeFlowClosureTest",
+        "*NativePrimitiveCallableTest",
         "*NativeCallbackReturnFlowTest.testPublicProducerSeedsTheExactInvokedDecodeResult",
         "*NativeCallbackReturnFlowTest.testIgnoredOuterCallbackRejectsNestedProducer",
         "*NativeCallbackReturnFlowTest.testReturnedUninvokedCallbackRemainsRejected",

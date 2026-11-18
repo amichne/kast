@@ -229,6 +229,8 @@ private fun reviewedArtifact(
             ReviewedLibraryOperation.APPLY,
             ReviewedLibraryOperation.LET,
             ReviewedLibraryOperation.ALSO -> "commonMain/kotlin/util/Standard.kt"
+            ReviewedLibraryOperation.INT_MIN,
+            ReviewedLibraryOperation.INT_MAX,
             ReviewedLibraryOperation.TO,
             ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
             ReviewedLibraryOperation.PAIR_FIRST,
