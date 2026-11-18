@@ -230,6 +230,8 @@ private class CallbackWorkspaceFiles {
         receiver(value.receivers.dispatch)
         receiver(value.receivers.extension)
         when (val proof = value.flow) {
+            is NamedCallbackReferenceFlow.ReviewedSupply ->
+                binding(CallbackBindingEvidence.DependencyContract(proof.binding))
             is NamedCallbackReferenceFlow.Immutable -> flow(proof.flow)
             is NamedCallbackReferenceFlow.Supplied -> {
                 argument(proof.binding)

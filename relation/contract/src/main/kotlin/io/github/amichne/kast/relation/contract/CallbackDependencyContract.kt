@@ -20,6 +20,7 @@ value class DependencyClassDigest private constructor(val value: String) {
 enum class CallbackDependencyContractProvenance {
     KOTLIN_BINARY_CONTRACT,
     REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH,
+    REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH,
 }
 
 enum class CallbackDependencyInvocationKind {
@@ -90,11 +91,11 @@ private constructor(
                 .admit()
         }
 
-        fun fromReviewedArrayIteration(
+        fun fromReviewedIteration(
             basis: SemanticReadIdentity,
             occurrence: RelationOccurrence,
             owner: RelationCallableBody,
-            operation: ReviewedIntArrayIteration,
+            operation: ReviewedIteration,
         ): Refinement<CallbackDependencyContract, CallbackInvocationFlowFailure> =
             CallbackDependencyContract(
                     basis = basis,
@@ -103,7 +104,7 @@ private constructor(
                     target = operation.target,
                     position = operation.position,
                     classDigest = operation.classDigest,
-                    provenance = CallbackDependencyContractProvenance.REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH,
+                    provenance = operation.provenance,
                     invocationKind = CallbackDependencyInvocationKind.ZERO_OR_MORE,
                 )
                 .admit()

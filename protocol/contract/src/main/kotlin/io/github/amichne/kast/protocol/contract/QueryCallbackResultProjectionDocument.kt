@@ -136,6 +136,7 @@ private fun referenceResultSites(
                     is QueryNamedCallbackReferenceFlowDocument.Direct ->
                         listOf(QueryCallbackResultSiteDocument.DirectInvocation(flow.binding))
                     is QueryNamedCallbackReferenceFlowDocument.Immutable -> resultInvocations(flow.flow)
+                    is QueryNamedCallbackReferenceFlowDocument.ReviewedSupply,
                     is QueryNamedCallbackReferenceFlowDocument.Unavailable -> emptyList()
                 }
         RelationKindDocument.CALLEES -> listOf(QueryCallbackResultSiteDocument.Target(reference.target))
@@ -177,6 +178,7 @@ internal fun QueryCallbackFlowDocument.admitsBasis(basis: ImpactSemanticBasisDoc
 internal fun QueryNamedCallbackReferenceFlowDocument.admitsBasis(basis: ImpactSemanticBasisDocument): Boolean =
     when (this) {
         is QueryNamedCallbackReferenceFlowDocument.Supplied -> binding.invocation.callable.basis == basis
+        is QueryNamedCallbackReferenceFlowDocument.ReviewedSupply -> binding.basis == basis
         is QueryNamedCallbackReferenceFlowDocument.Direct -> binding.basis == basis
         is QueryNamedCallbackReferenceFlowDocument.Immutable -> flow.sourceValue.source.enclosing.basis == basis
         is QueryNamedCallbackReferenceFlowDocument.Unavailable -> true

@@ -44,6 +44,11 @@ internal sealed interface QueryNamedCallbackReferenceFlowWireDocument {
     ) : QueryNamedCallbackReferenceFlowWireDocument
 
     @Serializable
+    @SerialName("REVIEWED_SUPPLY")
+    data class ReviewedSupply(val binding: QueryCallbackBindingWireDocument) :
+        QueryNamedCallbackReferenceFlowWireDocument
+
+    @Serializable
     @SerialName("DIRECT")
     data class Direct(val binding: QueryCallbackBindingWireDocument) : QueryNamedCallbackReferenceFlowWireDocument
 
@@ -72,6 +77,8 @@ internal fun QueryNamedCallbackReferenceDocument.callbackWire() =
                 QueryNamedCallbackReferenceFlowWireDocument.Immutable(proof.flow.immutableFlowWire())
             is QueryNamedCallbackReferenceFlowDocument.Unavailable ->
                 QueryNamedCallbackReferenceFlowWireDocument.Unavailable(proof.obligations)
+            is QueryNamedCallbackReferenceFlowDocument.ReviewedSupply ->
+                QueryNamedCallbackReferenceFlowWireDocument.ReviewedSupply(proof.binding.callbackWire())
             is QueryNamedCallbackReferenceFlowDocument.Direct ->
                 QueryNamedCallbackReferenceFlowWireDocument.Direct(proof.binding.callbackWire())
             is QueryNamedCallbackReferenceFlowDocument.Supplied ->
@@ -120,6 +127,7 @@ private fun QueryNamedCallbackReferenceFlowWireDocument.toContract():
             flow.toContract().mapConverted { QueryNamedCallbackReferenceFlowDocument.Immutable(it) }
         is QueryNamedCallbackReferenceFlowWireDocument.Unavailable ->
             WireDocumentConversion.Converted(QueryNamedCallbackReferenceFlowDocument.Unavailable(obligations))
+        is QueryNamedCallbackReferenceFlowWireDocument.ReviewedSupply -> reviewedSupply()
         is QueryNamedCallbackReferenceFlowWireDocument.Direct ->
             binding.toContract().flatMapConverted {
                 if (it is QueryCallbackBindingDocument.Direct)
@@ -152,4 +160,12 @@ internal fun QueryNamedCallbackReferenceWireDocument.toContract():
         flow.toContract(),
     ) { target, dispatch, extension, flow ->
         QueryNamedCallbackReferenceDocument(target, dispatch, extension, flow)
+    }
+
+private fun QueryNamedCallbackReferenceFlowWireDocument.ReviewedSupply.reviewedSupply():
+    WireDocumentConversion<QueryNamedCallbackReferenceFlowDocument> =
+    binding.toContract().flatMapConverted {
+        if (it is QueryCallbackBindingDocument.DependencyContract)
+            WireDocumentConversion.Converted(QueryNamedCallbackReferenceFlowDocument.ReviewedSupply(it))
+        else WireDocumentConversion.Rejected
     }

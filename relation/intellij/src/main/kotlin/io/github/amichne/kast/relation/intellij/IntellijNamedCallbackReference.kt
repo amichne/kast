@@ -3,6 +3,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.CallbackDependencyContractProvenance
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowCause
 import io.github.amichne.kast.relation.contract.CallbackInvocationFlowFailure
 import io.github.amichne.kast.relation.contract.CallbackReferenceReceiver
@@ -11,6 +12,7 @@ import io.github.amichne.kast.relation.contract.ImmutableCallbackInvocationFlow
 import io.github.amichne.kast.relation.contract.ImmutableCallbackValueOrigin
 import io.github.amichne.kast.relation.contract.NamedCallbackReference
 import io.github.amichne.kast.relation.contract.NamedCallbackReferenceFlow
+import io.github.amichne.kast.relation.contract.RelationCallableBody
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.resolution.KaExplicitReceiverValue
@@ -62,8 +64,17 @@ internal class IntellijNamedCallbackReference(
                     unavailableFlow(prepared.cause, expression, lexicalOwner, origin)
                 is CallbackBindingPreparation.ContractRejected ->
                     return Refinement.Rejected(CallbackInvocationFlowCause.UNRESOLVED_ARGUMENT_MAPPING)
-                is CallbackBindingPreparation.DeferredDependency,
-                is CallbackBindingPreparation.DependencyContract ->
+                is CallbackBindingPreparation.DependencyContract -> {
+                    val binding = prepared.binding
+                    if (
+                        binding.provenance ==
+                            CallbackDependencyContractProvenance.REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH &&
+                            binding.owner is RelationCallableBody.Named
+                    )
+                        NamedCallbackReferenceFlow.ReviewedSupply(binding)
+                    else NamedCallbackReferenceFlow.Unavailable(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
+                }
+                is CallbackBindingPreparation.DeferredDependency ->
                     NamedCallbackReferenceFlow.Unavailable(CallbackInvocationFlowCause.UNSUPPORTED_CALLBACK_SUPPLY)
                 is CallbackBindingPreparation.Direct -> NamedCallbackReferenceFlow.Direct(prepared.binding)
                 is CallbackBindingPreparation.Prepared -> preparedFlow(prepared.value, expression, lexicalOwner, origin)

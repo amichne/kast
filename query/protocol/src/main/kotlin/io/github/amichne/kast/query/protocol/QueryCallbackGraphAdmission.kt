@@ -196,6 +196,7 @@ private fun io.github.amichne.kast.relation.contract.RelationCallableTarget.call
 private fun io.github.amichne.kast.relation.contract.NamedCallbackReferenceFlow.namedProof():
     Refinement<Unit, QueryCallbackGraphCauseDocument> =
     when (this) {
+        is io.github.amichne.kast.relation.contract.NamedCallbackReferenceFlow.ReviewedSupply,
         is io.github.amichne.kast.relation.contract.NamedCallbackReferenceFlow.Supplied,
         is io.github.amichne.kast.relation.contract.NamedCallbackReferenceFlow.Direct -> Refinement.Refined(Unit)
         is io.github.amichne.kast.relation.contract.NamedCallbackReferenceFlow.Unavailable ->

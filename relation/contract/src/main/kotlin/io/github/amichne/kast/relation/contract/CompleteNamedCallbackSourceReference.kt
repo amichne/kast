@@ -29,6 +29,7 @@ private constructor(val observation: RelationCallableObservation, val membership
                         is Refinement.Rejected -> return admitted
                         is Refinement.Refined -> Unit
                     }
+                is NamedCallbackReferenceFlow.ReviewedSupply,
                 is NamedCallbackReferenceFlow.Direct,
                 is NamedCallbackReferenceFlow.Supplied -> Unit
             }

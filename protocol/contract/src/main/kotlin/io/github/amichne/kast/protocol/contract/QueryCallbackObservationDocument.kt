@@ -187,6 +187,7 @@ enum class QueryCallbackFlowFailureDocument {
 enum class QueryCallbackDependencyContractProvenanceDocument {
     KOTLIN_BINARY_CONTRACT,
     REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH,
+    REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH,
 }
 
 @Serializable

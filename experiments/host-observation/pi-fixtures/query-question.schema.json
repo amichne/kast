@@ -3156,7 +3156,8 @@
                               "type": "string",
                               "enum": [
                                 "KOTLIN_BINARY_CONTRACT",
-                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                               ]
                             },
                             "invocationKind": {
@@ -8034,7 +8035,8 @@
                                                   "type": "string",
                                                   "enum": [
                                                     "KOTLIN_BINARY_CONTRACT",
-                                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                    "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                   ]
                                                 },
                                                 "invocationKind": {
@@ -9025,7 +9027,8 @@
                                                           "type": "string",
                                                           "enum": [
                                                             "KOTLIN_BINARY_CONTRACT",
-                                                            "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                            "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                            "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                           ]
                                                         },
                                                         "invocationKind": {
@@ -9659,7 +9662,8 @@
                                                               "type": "string",
                                                               "enum": [
                                                                 "KOTLIN_BINARY_CONTRACT",
-                                                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                                "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                               ]
                                                             },
                                                             "invocationKind": {
@@ -10082,7 +10086,8 @@
                                               "type": "string",
                                               "enum": [
                                                 "KOTLIN_BINARY_CONTRACT",
-                                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                               ]
                                             },
                                             "invocationKind": {
@@ -10639,7 +10644,8 @@
                                                                   "type": "string",
                                                                   "enum": [
                                                                     "KOTLIN_BINARY_CONTRACT",
-                                                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                                    "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                                   ]
                                                                 },
                                                                 "invocationKind": {
@@ -11541,7 +11547,8 @@
                       "type": "string",
                       "enum": [
                         "KOTLIN_BINARY_CONTRACT",
-                        "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                        "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                        "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                       ]
                     },
                     "invocationKind": {
@@ -12087,7 +12094,8 @@
                           "type": "string",
                           "enum": [
                             "KOTLIN_BINARY_CONTRACT",
-                            "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                            "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                            "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                           ]
                         },
                         "invocationKind": {
@@ -14381,7 +14389,8 @@
                       "type": "string",
                       "enum": [
                         "KOTLIN_BINARY_CONTRACT",
-                        "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                        "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                        "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                       ]
                     },
                     "invocationKind": {
@@ -15374,7 +15383,8 @@
                                   "type": "string",
                                   "enum": [
                                     "KOTLIN_BINARY_CONTRACT",
-                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                    "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                   ]
                                 },
                                 "invocationKind": {
@@ -16502,7 +16512,8 @@
                               "type": "string",
                               "enum": [
                                 "KOTLIN_BINARY_CONTRACT",
-                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                               ]
                             },
                             "invocationKind": {
@@ -17078,7 +17089,8 @@
                               "type": "string",
                               "enum": [
                                 "KOTLIN_BINARY_CONTRACT",
-                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                               ]
                             },
                             "invocationKind": {
@@ -17782,7 +17794,8 @@
                                   "type": "string",
                                   "enum": [
                                     "KOTLIN_BINARY_CONTRACT",
-                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                    "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                   ]
                                 },
                                 "invocationKind": {
@@ -18364,7 +18377,8 @@
                                   "type": "string",
                                   "enum": [
                                     "KOTLIN_BINARY_CONTRACT",
-                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                    "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                   ]
                                 },
                                 "invocationKind": {
@@ -18947,7 +18961,8 @@
                                   "type": "string",
                                   "enum": [
                                     "KOTLIN_BINARY_CONTRACT",
-                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                    "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                   ]
                                 },
                                 "invocationKind": {
@@ -19569,7 +19584,8 @@
                                   "type": "string",
                                   "enum": [
                                     "KOTLIN_BINARY_CONTRACT",
-                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                    "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                   ]
                                 },
                                 "invocationKind": {
@@ -20149,7 +20165,8 @@
                                   "type": "string",
                                   "enum": [
                                     "KOTLIN_BINARY_CONTRACT",
-                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                    "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                    "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                   ]
                                 },
                                 "invocationKind": {
@@ -20728,7 +20745,8 @@
                               "type": "string",
                               "enum": [
                                 "KOTLIN_BINARY_CONTRACT",
-                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                               ]
                             },
                             "invocationKind": {
@@ -21301,7 +21319,8 @@
                               "type": "string",
                               "enum": [
                                 "KOTLIN_BINARY_CONTRACT",
-                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                               ]
                             },
                             "invocationKind": {
@@ -23466,7 +23485,8 @@
                           "type": "string",
                           "enum": [
                             "KOTLIN_BINARY_CONTRACT",
-                            "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                            "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                            "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                           ]
                         },
                         "invocationKind": {
@@ -23877,7 +23897,8 @@
                           "type": "string",
                           "enum": [
                             "KOTLIN_BINARY_CONTRACT",
-                            "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                            "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                            "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                           ]
                         },
                         "invocationKind": {
@@ -24405,7 +24426,8 @@
                               "type": "string",
                               "enum": [
                                 "KOTLIN_BINARY_CONTRACT",
-                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                               ]
                             },
                             "invocationKind": {
@@ -25047,7 +25069,8 @@
                                               "type": "string",
                                               "enum": [
                                                 "KOTLIN_BINARY_CONTRACT",
-                                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                               ]
                                             },
                                             "invocationKind": {
@@ -25995,7 +26018,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -26577,7 +26601,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -27160,7 +27185,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -27782,7 +27808,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -28362,7 +28389,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -29094,7 +29122,8 @@
                                               "type": "string",
                                               "enum": [
                                                 "KOTLIN_BINARY_CONTRACT",
-                                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                               ]
                                             },
                                             "invocationKind": {
@@ -29893,7 +29922,8 @@
                           "type": "string",
                           "enum": [
                             "KOTLIN_BINARY_CONTRACT",
-                            "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                            "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                            "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                           ]
                         },
                         "invocationKind": {
@@ -30563,7 +30593,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -31145,7 +31176,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -31728,7 +31760,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -32350,7 +32383,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -32930,7 +32964,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -33494,7 +33529,8 @@
                             "type": "string",
                             "enum": [
                               "KOTLIN_BINARY_CONTRACT",
-                              "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                              "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                              "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                             ]
                           },
                           "invocationKind": {
@@ -34254,7 +34290,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -34836,7 +34873,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -35419,7 +35457,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -36041,7 +36080,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -36621,7 +36661,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -37362,7 +37403,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -37944,7 +37986,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -38527,7 +38570,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -39149,7 +39193,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -39729,7 +39774,8 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "KOTLIN_BINARY_CONTRACT",
-                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                                  "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                                  "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                                 ]
                                               },
                                               "invocationKind": {
@@ -40417,7 +40463,8 @@
                                             "type": "string",
                                             "enum": [
                                               "KOTLIN_BINARY_CONTRACT",
-                                              "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                              "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                              "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                             ]
                                           },
                                           "invocationKind": {
@@ -41092,7 +41139,8 @@
                                             "type": "string",
                                             "enum": [
                                               "KOTLIN_BINARY_CONTRACT",
-                                              "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH"
+                                              "REVIEWED_KOTLIN_2_4_10_INT_ARRAY_FOR_EACH",
+                                              "REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH"
                                             ]
                                           },
                                           "invocationKind": {

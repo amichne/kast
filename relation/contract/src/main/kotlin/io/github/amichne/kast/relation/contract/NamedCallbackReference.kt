@@ -25,6 +25,8 @@ sealed interface NamedCallbackReferenceFlow {
     data class Supplied(val binding: CallbackArgumentBinding, val summary: CallbackParameterSummary) :
         NamedCallbackReferenceFlow
 
+    data class ReviewedSupply(val binding: CallbackDependencyContract) : NamedCallbackReferenceFlow
+
     data class Direct(val binding: CallbackDirectInvocationBinding) : NamedCallbackReferenceFlow
 
     class Unavailable(
@@ -70,6 +72,13 @@ private constructor(
                 when (flow) {
                     is NamedCallbackReferenceFlow.Supplied -> flow.summary.retainedBytes
                     is NamedCallbackReferenceFlow.Immutable -> flow.flow.retainedBytes
+                    is NamedCallbackReferenceFlow.ReviewedSupply ->
+                        4096L.addBytes(
+                            buildString { binding(CallbackBindingEvidence.DependencyContract(flow.binding)) }
+                                .length
+                                .toLong()
+                                .multiplyBytes(2)
+                        )
                     is NamedCallbackReferenceFlow.Direct,
                     is NamedCallbackReferenceFlow.Unavailable -> 4096L
                 }
@@ -81,6 +90,7 @@ private constructor(
                 is NamedCallbackReferenceFlow.Immutable -> value.flow.hasStaticInvocation
                 is NamedCallbackReferenceFlow.Supplied -> value.summary.invocations.isNotEmpty()
                 is NamedCallbackReferenceFlow.Direct -> true
+                is NamedCallbackReferenceFlow.ReviewedSupply,
                 is NamedCallbackReferenceFlow.Unavailable -> false
             }
 
@@ -117,6 +127,7 @@ private constructor(
             when (flow) {
                 is NamedCallbackReferenceFlow.Immutable -> validateImmutable(occurrence, target, receivers, flow)
                 is NamedCallbackReferenceFlow.Supplied -> validateSupplied(occurrence, target, flow)
+                is NamedCallbackReferenceFlow.ReviewedSupply -> validateReviewed(occurrence, target, flow.binding)
                 is NamedCallbackReferenceFlow.Direct -> validateDirect(occurrence, target, flow.binding)
                 is NamedCallbackReferenceFlow.Unavailable -> Refinement.Refined(Unit)
             }
@@ -170,6 +181,26 @@ private constructor(
             return Refinement.Refined(Unit)
         }
 
+        private fun validateReviewed(
+            occurrence: RelationOccurrence,
+            target: RelationEndpoint.Resolved,
+            binding: CallbackDependencyContract,
+        ): Refinement<Unit, NamedCallbackReferenceFailure> {
+            if (
+                binding.provenance != CallbackDependencyContractProvenance.REVIEWED_KOTLIN_2_4_10_ITERABLE_FOR_EACH ||
+                    binding.owner !is RelationCallableBody.Named
+            )
+                return Refinement.Rejected(NamedCallbackReferenceFailure.UNPROVEN_SUPPLY_OWNER)
+            if (binding.basis != target.lease.identity)
+                return Refinement.Rejected(NamedCallbackReferenceFailure.BASIS_MISMATCH)
+            if (
+                binding.occurrence.file != occurrence.file ||
+                    !binding.occurrence.range.containsValueRange(occurrence.range)
+            )
+                return Refinement.Rejected(NamedCallbackReferenceFailure.REFERENCE_OUTSIDE_SUPPLY)
+            return Refinement.Refined(Unit)
+        }
+
         private fun validateDirect(
             occurrence: RelationOccurrence,
             target: RelationEndpoint.Resolved,
@@ -200,6 +231,8 @@ internal fun NamedCallbackReference.canonicalProjection(): String =
             receivers.dispatch.canonicalProjection(),
             receivers.extension.canonicalProjection(),
             when (val value = flow) {
+                is NamedCallbackReferenceFlow.ReviewedSupply ->
+                    buildString { binding(CallbackBindingEvidence.DependencyContract(value.binding)) }
                 is NamedCallbackReferenceFlow.Immutable -> value.flow.canonicalProjection()
                 is NamedCallbackReferenceFlow.Supplied ->
                     listOf(
