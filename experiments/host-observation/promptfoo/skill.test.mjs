@@ -9,9 +9,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import config from './skill.config.mjs';
+import { kastInstruction, loadKastGuidance } from './kast-guidance.mjs';
 import { armCapabilities, completionFile, invocationFile, originalCases, skillCases } from './skill-cases.mjs';
 import { gradeSkill, planSkillDraft } from './skill-grading.mjs';
-import { decodePiTrial, prepareFixtureWorkspace } from './skill-provider.mjs';
+import SkillProvider, { decodePiTrial, prepareFixtureWorkspace, runIsolatedPi } from './skill-provider.mjs';
 import { permittedKast, runtimeEnvironment } from './skill-sandbox.mjs';
 
 const workspace = '/fixture';
@@ -87,19 +88,89 @@ test('a managed fixture rejects changed build and wrapper inputs without replaci
   }
 });
 
-test('Promptfoo scenarios compare exactly one factor within each pair', () => {
+test('Promptfoo retires unguided Kast and keeps canonical, version, and source controls distinct', async () => {
   assert.deepEqual(new Set(config.scenarios.map(row => row.config[0].vars.caseId)), new Set(Object.keys(skillCases)));
+  assert.equal(armCapabilities['without-skill'], undefined);
   assert.deepEqual(config.scenarios.filter(row => row.config[0].vars.comparison === 'skill-version')
     .map(row => row.config[0].vars.caseId).toSorted(), originalCases.toSorted());
   for (const { tests, config: [base] } of config.scenarios) {
-    assert.equal(tests.length, 2);
-    const [treatment, control] = tests.map(row => armCapabilities[row.vars.arm]);
-    assert.equal(treatment.comparison, control.comparison);
     assert.equal(base.vars.task, skillCases[base.vars.caseId].prompt);
-    const factor = { skill: 'guidance', tool: 'kast', 'skill-version': 'snapshot' }[treatment.comparison];
-    assert.deepEqual(Object.keys(treatment).filter(key => treatment[key] !== control[key]), [factor]);
-    assert.deepEqual(tests.flatMap(row => row.assert.map(assertion => assertion.metric)), ['correctness', 'correctness']);
+    const expectedArms = {
+      'canonical-skill': ['canonical'],
+      'skill-version': ['reference', 'delivered'],
+      'guided-kast-access': ['with-kast', 'without-kast'],
+    }[base.vars.comparison];
+    assert.deepEqual(tests.map(row => row.vars.arm), expectedArms);
+    for (const row of tests) {
+      assert.equal(armCapabilities[row.vars.arm].kast, row.vars.arm !== 'without-kast');
+      assert.deepEqual(row.assert.map(assertion => assertion.metric), ['correctness']);
+    }
   }
+  const archived = await new SkillProvider().callApi(skillCases.select.prompt, {
+    vars: { caseId: 'select', arm: 'without-skill', comparison: 'skill' },
+  });
+  assert.deepEqual(archived, { error: 'Invalid skill evaluation case or arm' });
+});
+
+test('the Pi launcher stages exact Kast files and supplies only a short pointer to guided participants', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'kast-guidance-launch-test-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const fakePi = join(directory, 'pi.mjs');
+  const auth = join(directory, 'auth.json');
+  const catalog = join(directory, 'models.json');
+  const identity = Buffer.from(JSON.stringify({ 'https://api.openai.com/auth': { chatgpt_account_id: 'test' } })).toString('base64url');
+  await writeFile(auth, JSON.stringify({ 'openai-codex': {
+    type: 'oauth', access: `test.${identity}.test`, refresh: 'test', expires: Date.now() + 3_600_000,
+  } }));
+  await writeFile(catalog, '{}');
+  await writeFile(fakePi, `#!${process.execPath}
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+const args = process.argv.slice(2);
+const extensions = args.flatMap((arg, index) => arg === '-e' ? [args[index + 1]] : []);
+const system = readFileSync(args[args.indexOf('--system-prompt') + 1], 'utf8');
+const files = Object.fromEntries(['SKILL.md', 'public-cli.md'].flatMap(name => {
+  const path = 'skills/kast/' + name;
+  return existsSync(path) ? [[name, readFileSync(path, 'utf8')]] : [];
+}));
+writeFileSync('observed.json', JSON.stringify({ extensions, system, files }));
+if (extensions.some(path => path.endsWith('/kast-guidance-tool.ts'))) {
+  const call = { toolName: 'read_kast_guidance', toolCallId: 'guide' };
+  console.log(JSON.stringify({ type: 'tool_execution_start', ...call }));
+  console.log(JSON.stringify({ type: 'tool_execution_end', ...call, result: { details: { path: 'skills/kast/SKILL.md' } } }));
+}
+console.log(JSON.stringify({ type: 'message_end', message: { role: 'assistant', provider: 'openai-codex', model: 'test',
+  stopReason: 'stop', usage: { input: 2, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 3 },
+  content: [{ type: 'text', text: 'answer' }] } }));
+`, { mode: 0o700 });
+  const env = { ...process.env, KAST_EVAL_PI: fakePi, KAST_EVAL_PI_AUTH: auth, KAST_EVAL_PI_MODELS: catalog };
+  delete env.KAST_EVAL_CODEX_AUTH;
+  const provider = new URL('./skill-provider.mjs', import.meta.url).href;
+  const helper = new URL('./kast-guidance.mjs', import.meta.url).href;
+  const setup = `import { runIsolatedPi } from ${JSON.stringify(provider)};
+    import { loadKastGuidance } from ${JSON.stringify(helper)};
+    const [directory, guided] = process.argv.slice(1);
+    const options = { directory, system: 'Shared instructions.', prompt: 'Shared question.', model: 'openai-codex/test' };
+    if (guided) Object.assign(options, { extension: 'participant-extension.ts', guidance: loadKastGuidance(), toolNames: ['kast'] });
+    console.log(JSON.stringify(await runIsolatedPi(options)));`;
+  async function invoke(guided) {
+    const trialDirectory = await mkdtemp(join(directory, 'trial-'));
+    const args = ['--input-type=module', '-e', setup, trialDirectory, ...(guided ? ['guided'] : [])];
+    const { stdout } = await promisify(execFile)(process.execPath, args, { env });
+    return { trial: JSON.parse(stdout), observed: JSON.parse(await readFile(join(trialDirectory, 'observed.json'), 'utf8')) };
+  }
+  const [kast, source] = await Promise.all([invoke(true), invoke(false)]);
+  const { skillText, guideText, skillSha256, guideSha256 } = loadKastGuidance();
+  assert.deepEqual(kast.observed.files, { 'SKILL.md': skillText, 'public-cli.md': guideText });
+  assert.deepEqual(kast.observed.extensions.map(path => path.split('/').at(-1)), ['participant-extension.ts', 'kast-guidance-tool.ts']);
+  assert.ok(kast.observed.system.includes('Use read_kast_guidance'));
+  assert.ok(kast.observed.system.includes('skills/kast/SKILL.md'));
+  assert.equal(kast.observed.system.split(kastInstruction).length, 2);
+  assert.ok(!kast.observed.system.includes(skillText) && !kast.observed.system.includes(guideText));
+  assert.deepEqual(kast.trial.guidance, { skillSha256, guideSha256 });
+  assert.equal(kast.trial.calls[0].tool, 'read_kast_guidance');
+  assert.deepEqual(source.observed, { extensions: [], system: 'Shared instructions.', files: {} });
+  assert.equal(source.trial.guidance, undefined);
+  await assert.rejects(runIsolatedPi({ directory, prompt: 'Rejected.', toolNames: ['kast'] }), /Kast access needs participant guidance/);
 });
 
 test('historical skill snapshots keep the reported bytes in both arms', () => {
@@ -214,7 +285,7 @@ test('callback answer needs a preceding issued reference and obligations from th
   assert.equal(gradeSkill('callback', exact, { workspace, calls: [call(rejection), call(seed)] }).pass, false);
 });
 
-test('source and implementations evidence keep the exact declaration, root, scope, and live identity', () => {
+test('guidance reads stay outside the per-case source and implementation query budget', () => {
   const name = 'QueryCompletionDocument';
   const file = join(workspace, completionFile);
   const seed = completion(selected(name, 'protocol', 'class'), [
@@ -239,14 +310,19 @@ test('source and implementations evidence keep the exact declaration, root, scop
   }, []);
   const answer = JSON.stringify({ path: completionFile, declarationKind: 'data class', implementations: [] });
   const metadata = () => ({ workspace, calls: [
+    { tool: 'read_kast_guidance', path: 'skills/kast/SKILL.md' },
     call(seed, ['query', '--name', name]),
     call(source, ['query', '--request', '-'], JSON.stringify(action)),
+    { tool: 'read_kast_guidance', path: 'skills/kast/public-cli.md' },
     call(implementations, ['query', '--request', '-'], 'different input'),
   ] });
   assert.equal(gradeSkill('query-completion-document', answer, metadata()).pass, true);
   action.request.candidateRef = 'other';
   assert.equal(gradeSkill('query-completion-document', answer, metadata()).pass, false);
   action.request.candidateRef = 'issued';
+  const missingSource = metadata();
+  missingSource.calls.splice(2, 1);
+  assert.equal(gradeSkill('query-completion-document', answer, missingSource).pass, false);
   expansion.directory.path = '.';
   assert.equal(gradeSkill('query-completion-document', answer, metadata()).pass, false);
 });

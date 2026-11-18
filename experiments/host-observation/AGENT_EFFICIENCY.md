@@ -117,7 +117,7 @@ The versioned configurations pin the current instruction bundles.
 The measured runs used the briefs and hashes from revision `d04b765c1`.
 The current briefs use explicit terminal objects after revision `20cd1065e`.
 Canonical tool names, operation identities, input contracts, and evidence qualifications stay under their production owners.
-Explicit skill paths support experiments without a packaged `SKILL.md` or an installed skill archive.
+Each Kast participant receives a private copy of the canonical skill and its CLI guide. Its prompt points to that copy.
 A changed configuration always starts new sessions.
 For an experimental brief, use a `file` descriptor with its catalog filename and SHA-256 digest.
 The catalog is `agent-efficiency-configs/` beside the runner.

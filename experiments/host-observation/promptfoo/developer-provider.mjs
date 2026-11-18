@@ -3,6 +3,7 @@ import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadKastGuidance } from './kast-guidance.mjs';
 import { compileWorkspace } from './developer-build.mjs';
 import { workspaceSourceIdentity } from './developer-workspace.mjs';
 import { binary, child, runIsolatedPi } from './skill-provider.mjs';
@@ -54,6 +55,8 @@ function trialReceipt(trial) {
     metadata: {
       ...(incomplete ? { observedToolCalls: toolCalls } : { toolCalls }), toolExecutions: trial.toolCalls,
       kastCalls: trial.calls.filter(call => call.tool === 'kast').length,
+      systemSha256: trial.systemSha256,
+      guidanceReads: trial.calls.filter(call => call.tool === 'read_kast_guidance').map(call => call.path),
       completeKastCalls: trial.calls.filter(call => call.tool === 'kast' && call.complete).length,
       providerResponses: trial.providerResponses, elapsedMillis: trial.elapsedMillis, usage: usage ?? null,
       termination: trial.termination ?? (trial.error ? 'PARTICIPANT_INFRASTRUCTURE_ERROR' : 'COMPLETED'),
@@ -111,13 +114,21 @@ export function createDeveloperProvider({ cases, prepareWorkspace, gradeWorkspac
         stage = 'MATCHED_WORKSPACE_PREFLIGHT';
         if (workspaceSourceIdentity(workspace) !== metadata.sourceSha256) throw Error(stage);
         stage = 'PARTICIPANT_EXECUTION';
+        const guidance = arm === 'kast' ? loadKastGuidance() : undefined;
         const trial = await runPi({
-          directory, prompt, system, model, effort, extension, timeout: 600_000, captureLimits: true,
+          directory, prompt, system, guidance, model, effort, extension, timeout: 600_000, captureLimits: true,
           toolNames: arm === 'kast' ? [...commonTools, 'kast'] : [...commonTools],
           extensionEnvironment,
         });
         observation = trialReceipt(trial);
         if (trial.error) throw Error(stage);
+        if (guidance) {
+          stage = 'GUIDANCE_DELIVERY';
+          if (trial.guidance?.skillSha256 !== guidance.skillSha256 ||
+              trial.guidance?.guideSha256 !== guidance.guideSha256) throw Error(stage);
+          metadata.skillSha256 = trial.guidance.skillSha256;
+          metadata.guideSha256 = trial.guidance.guideSha256;
+        }
         if (trial.calls.some(call => call.reason === 'KAST_EFFECT_UNAVAILABLE' || call.reason === 'COMPILER_UNAVAILABLE')) {
           stage = 'PARTICIPANT_TOOL_UNAVAILABLE';
           throw Error(stage);

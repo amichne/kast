@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runIsolatedPi } from './skill-provider.mjs';
+import { loadKastGuidance } from './kast-guidance.mjs';
 import { gradeAccess, historicalFile, questions, revision, schemaText } from './task-access.mjs';
 
 const system =
@@ -41,6 +42,7 @@ async function callApi(prompt, context) {
       effort: 'high',
       prompt,
       system: [system, schemaText, ...(withCli ? [skill] : [])].join('\n'),
+      ...(withCli ? { guidance: loadKastGuidance() } : {}),
       extension: withCli ? extension : undefined,
       extensionEnvironment: { KAST_TASK_ACCESS_DIR: directory },
       toolNames: withCli ? ['preview'] : [],
@@ -57,9 +59,11 @@ async function callApi(prompt, context) {
         model,
         effort: 'high',
         revision,
-        toolCalls: trial.toolCalls,
+        evidenceKind: 'HISTORICAL_CONTRACT_DRAFT',
+        ...(trial.guidance ? { guidance: {mode:'STAGED',preloadedBytes:0,...trial.guidance}, systemSha256: trial.systemSha256 } : {}),
+        toolCalls: trial.toolProposals,
         usage: trial.usage,
-        previewCalls: trial.calls,
+        previewCalls: trial.calls.filter(call => call.tool === 'preview'),
       },
     };
   } finally {
@@ -68,7 +72,7 @@ async function callApi(prompt, context) {
 }
 
 export default {
-  description: 'Contract-17 task access and schema-only request construction',
+  description: 'Historical contract-17 draft and preview with no semantic execution',
   sharing: false,
   providers: [{ id: () => 'kast:task-access', handlesOwnRetries: true, callApi }],
   prompts: ['{{task}}'],

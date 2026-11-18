@@ -5,6 +5,7 @@ description: Use Kast for Kotlin queries and exact Java class and method queries
 
 # Kast
 
+Use Kast for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects.
 Use `kast` in the exact workspace that the user trusts.
 The first semantic query trusts its build code and prepares its private IntelliJ IDEA Host.
 Later calls reuse that Host.

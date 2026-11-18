@@ -61,6 +61,12 @@ from agent_efficiency_subject import (
 )
 
 HERE = Path(__file__).resolve().parent
+KAST_SKILL_DIRECTORY = HERE.parent.parent / "agent-tools/skills/kast"
+KAST_GUIDANCE_ARCHIVE = Path("controller-source/kast-skill")
+KAST_USAGE_INSTRUCTION = (
+    "Use Kast for compiler-backed analysis and symbol resolution in Kotlin code "
+    "and Gradle projects."
+)
 REVISION = "5937ff1f46fbb0914c36226afb52426a4271c29c"
 LEGACY_SUBJECT = GitSubject()
 
@@ -379,6 +385,37 @@ def digest(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+@dataclass(frozen=True, slots=True)
+class KastGuidance:
+    skill: bytes
+    guide: bytes
+
+    @classmethod
+    def read(cls, directory: Path) -> KastGuidance:
+        skill = (directory / "SKILL.md").read_bytes()
+        guide = (directory / "public-cli.md").read_bytes()
+        if not skill.decode("utf-8").strip() or not guide.decode("utf-8").strip():
+            raise ValueError("KAST_GUIDANCE_UNAVAILABLE")
+        return cls(skill, guide)
+
+    def stage(self, directory: Path) -> Path:
+        directory.mkdir(parents=True, mode=0o700)
+        for name, content in (("SKILL.md", self.skill), ("public-cli.md", self.guide)):
+            path = directory / name
+            with path.open("xb") as stream:
+                path.chmod(0o400)
+                _ = stream.write(content)
+        return directory / "SKILL.md"
+
+    @property
+    def skill_sha256(self) -> str:
+        return digest(self.skill)
+
+    @property
+    def guide_sha256(self) -> str:
+        return digest(self.guide)
+
+
 def corpus_digest(tasks: tuple[Task, ...]) -> str:
     # Legacy commitments predate the explicit exact-restoration default.
     encoded = [
@@ -576,6 +613,7 @@ def _run_trial(
     output: Path,
     policy: str,
     snapshot: WorkspaceSnapshot,
+    guidance: KastGuidance | None,
 ) -> Trial:
     root = Path(env.workspace)
     owned = output / f"{task.id}-{repeat}-{arm}"
@@ -588,6 +626,16 @@ def _run_trial(
         if source.read_text().count(replacement.before) != 1:
             raise ValueError("SETUP_PREIMAGE_MISMATCH")
         _ = source.write_text(source.read_text().replace(replacement.before, replacement.after, 1))
+    system_guidance = ""
+    skills: list[str] = []
+    if arm == "treatment":
+        canonical = guidance if guidance is not None else KastGuidance.read(KAST_SKILL_DIRECTORY)
+        skill_file = canonical.stage(owned / "skills" / "kast")
+        system_guidance = f"{KAST_USAGE_INSTRUCTION} Read {json.dumps(str(skill_file))} for usage."
+        brief = onboarding(Path(env.producer_workspace), config, root)
+        if brief:
+            system_guidance += f"\n\n{brief}"
+        skills = [str(skill_file), *config.skills]
     plan = {
         "version": 1,
         "workspaceRoot": env.workspace,
@@ -601,10 +649,8 @@ def _run_trial(
         "arm": arm,
         "exposure": config.exposure,
         "mcpCommand": env.mcp_command,
-        "onboarding": onboarding(Path(env.producer_workspace), config, root)
-        if arm == "treatment"
-        else "",
-        "skills": list(config.skills) if arm == "treatment" else [],
+        "onboarding": system_guidance,
+        "skills": skills,
         "prompt": task.prompt + '\nReturn only JSON {"answer": <the requested JSON value>}. '
         "Use source evidence. Keep the declared scope. "
         "Do not inspect benchmark files or oracle data. "
@@ -792,12 +838,13 @@ def run_trial(
     env: Environment,
     output: Path,
     policy: str,
+    guidance: KastGuidance | None = None,
 ) -> Trial:
     if not isinstance(env.subject, GitSubject):
         admit_subject(Path(env.workspace), env.subject)
     snapshot = WorkspaceSnapshot.capture(Path(env.workspace))
     try:
-        return _run_trial(task, arm, repeat, config, env, output, policy, snapshot)
+        return _run_trial(task, arm, repeat, config, env, output, policy, snapshot, guidance)
     finally:
         snapshot.restore()
 
@@ -892,9 +939,11 @@ def record_trial_run(
     env, config, selected, manifest = run.environment, run.configuration, run.tasks, run.manifest
     producer = Path(env.producer_workspace)
     examine_sandbox(run.policy, root / "vault/corpus.json")
+    guidance = KastGuidance.read(KAST_SKILL_DIRECTORY)
     output.mkdir(mode=0o700)
     controller_source = output / "controller-source"
     controller_source.mkdir(mode=0o700)
+    _ = guidance.stage(output / KAST_GUIDANCE_ARCHIVE)
     for name in (
         "agent_efficiency.py",
         "agent_efficiency_promptfoo.py",
@@ -937,6 +986,8 @@ def record_trial_run(
             "holdoutIsolation": "MACOS_SANDBOX_DENIAL_EXAMINED",
             "sessionAdapterSha256": digest((HERE / "agent_efficiency_session.mjs").read_bytes()),
             "coordinatorSha256": digest(Path(__file__).read_bytes()),
+            "skillSha256": guidance.skill_sha256,
+            "guideSha256": guidance.guide_sha256,
             "metricOwnerSha256": digest((HERE / "agent_efficiency_metrics.py").read_bytes()),
             "costQualification": "BILLED_DOLLARS_UNAVAILABLE",
             "semanticAuditQualification": "INDEPENDENT_AUDIT_PENDING",

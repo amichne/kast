@@ -216,6 +216,51 @@ test('session construction preserves settings model resources and binding withou
   assert.equal(created.sessionManager,fixture.input.manager);
 });
 
+test('SDK session preloads the staged Kast skill when a continuation cannot call another tool',async t=>{
+  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'kast-guidance-session-'));
+  t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+  const fixture=construction();
+  const guidance={text:'Use Kast for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects.',
+    skillText:'# Canonical Kast skill',guideText:'# Canonical CLI reference'};
+  const result=await createEvaluationSession({...fixture.input,directory,guidance,mode:'received-result'});
+  assert.equal(result.type,'session');
+  assert.equal(result.guidance.mode,'PRELOADED');
+  assert.equal(result.guidance.preloadedBytes,Buffer.byteLength(guidance.skillText));
+  const loader=fixture.effects.find(value=>value[0]==='loader')[1];
+  assert.ok(loader.appendSystemPrompt?.[0].includes(guidance.text));
+  assert.ok(loader.appendSystemPrompt[0].includes(guidance.skillText));
+  assert.equal(fs.readFileSync(path.join(directory,'skills/kast/SKILL.md'),'utf8'),guidance.skillText);
+  assert.equal(fs.readFileSync(path.join(directory,'skills/kast/public-cli.md'),'utf8'),guidance.guideText);
+  const created=fixture.effects.find(value=>value[0]==='create')[1];
+  assert.equal(created.tools.includes('read_kast_guidance'),false);
+});
+
+test('a fresh case with declared capacity exposes only exact staged guidance paths',async t=>{
+  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'kast-guidance-reader-'));
+  t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+  const fixture=construction();
+  const policy=new CasePolicy({...fixture.input.policy.config,work:{...fixture.input.policy.config.work,requests:2,tools:2}});
+  const guidance={text:'Use Kast for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects.',
+    skillText:'# Canonical Kast skill',guideText:'# Canonical CLI reference',skillSha256:'a'.repeat(64),guideSha256:'b'.repeat(64)};
+  const result=await createEvaluationSession({...fixture.input,policy,directory,guidance,mode:'fresh'});
+  assert.equal(result.type,'session');
+  assert.deepEqual(result.guidance,{mode:'STAGED',preloadedBytes:0,skillSha256:guidance.skillSha256,guideSha256:guidance.guideSha256});
+  const loader=fixture.effects.find(value=>value[0]==='loader')[1];
+  assert.ok(loader.appendSystemPrompt[0].includes(guidance.text));
+  assert.equal(loader.appendSystemPrompt[0].includes(guidance.skillText),false);
+  const created=fixture.effects.find(value=>value[0]==='create')[1];
+  const [reader]=created.customTools;
+  assert.equal(reader.name,'read_kast_guidance');
+  assert.ok(created.tools.includes(reader.name));
+  assert.equal((await reader.execute('read',{path:'skills/kast/SKILL.md'})).content[0].text,guidance.skillText);
+  await assert.rejects(reader.execute('read',{path:'../SKILL.md'}),/KAST_GUIDANCE_PATH_REJECTED/);
+  assert.equal(policy.toolCall(reader.name,{},'local',true).allow,true);
+  assert.equal(policy.guidanceResult('local',12).allow,true);
+  assert.equal(policy.report().semanticRepliesObserved,0);
+  assert.equal(policy.toolCall('query_symbols',{request:{type:'RUN'}},'semantic').allow,true);
+  assert.equal(policy.tools,2);
+});
+
 test('native MCP factory keeps the registered command and isolates read-only exposure',async()=>{
   const fixture=construction();
   await createEvaluationSession(fixture.input);

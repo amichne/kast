@@ -1,10 +1,11 @@
-import { decodeEnvelope, measureToolResult, READ_TOOL_IDENTITIES, readToolName, Outcome } from './pi_evaluation_policy.mjs';
+import { decodeEnvelope, GuidanceReadTool, measureToolResult, READ_TOOL_IDENTITIES, readToolName, Outcome } from './pi_evaluation_policy.mjs';
 
 import { inspectProviderPayload } from './pi_evaluation_payload.mjs';
 import { finalQueryPresentation, finalProviderIdentity } from './pi_evaluation_presentation.mjs';
+import { appendContinuationGuidance } from './pi_evaluation_guidance.mjs';
 // The same exported factory is loaded by the real SDK worker and callback tests.
 // It observes provider settings/byte sizes; it never logs payloads or credentials.
-export function evaluationGuard(policy,record,projectProviderInput) {
+export function evaluationGuard(policy,record,projectProviderInput,guidance) {
   return pi=>{
     let finalProjection;
     const observe=(value,ctx)=>{
@@ -13,7 +14,7 @@ export function evaluationGuard(policy,record,projectProviderInput) {
       return {type:'recorded'};
     };
     pi.on('session_start',(_event,ctx)=>{
-      pi.setActiveTools([...READ_TOOL_IDENTITIES]);
+      pi.setActiveTools([...READ_TOOL_IDENTITIES,...(guidance?.tool?[GuidanceReadTool]:[])]);
       const recorded=observe({type:'session_settings',provider:ctx.model?.provider,model:ctx.model?.id,thinking:pi.getThinkingLevel(),toolNames:pi.getActiveTools()},ctx);
     });
     pi.on('context',(event,ctx)=>{
@@ -30,6 +31,8 @@ export function evaluationGuard(policy,record,projectProviderInput) {
     });
     pi.on('before_provider_request',(event,ctx)=>{
       const payload={...event.payload,max_output_tokens:policy.providerOutputCap()};
+      if(guidance?.continuation)appendContinuationGuidance(payload,guidance.instructions);
+      if(guidance&&(typeof payload.instructions!=='string'||!payload.instructions.includes(guidance.instructions)))policy.stop(Outcome.INVALID);
       // Pi reconstructs declarations from transcript history. Final answers have
       // no remaining tool capability; retain history and omit only this field.
       if(policy.isFinalAnswerDelivery())delete payload.tools;
@@ -48,13 +51,21 @@ export function evaluationGuard(policy,record,projectProviderInput) {
       return payload;
     });
     pi.on('tool_call',(event,ctx)=>{
-      const admission=policy.toolCall(event.toolName,event.input,event.toolCallId);
+      const admission=policy.toolCall(event.toolName,event.input,event.toolCallId,guidance?.tool!==undefined);
       const recorded=observe({type:'model_tool_proposal',toolName:event.toolName,requestType:event.input?.request?.type??null,callId:event.toolCallId,decision:admission},ctx);
       if(recorded.type==='failure') return {block:true,reason:Outcome.INVALID};
       if(!admission.allow) {ctx.abort();return {block:true,reason:admission.reason};}
     });
-    pi.on('tool_execution_start',event=>policy.adapterStarted(event.toolCallId));
+    pi.on('tool_execution_start',event=>{if(event.toolName!==GuidanceReadTool)policy.adapterStarted(event.toolCallId);});
     pi.on('tool_result',(event,ctx)=>{
+      if(event.toolName===GuidanceReadTool&&guidance?.tool){
+        const block=event.content?.length===1&&event.content[0];
+        const textBytes=!event.isError&&block?.type==='text'&&typeof block.text==='string'?Buffer.byteLength(block.text):undefined;
+        const admission=policy.guidanceResult(event.toolCallId,textBytes);
+        const recorded=observe({type:'guidance_read',textBytes,decision:admission},ctx);
+        if(recorded.type!=='failure'&&!admission.allow)ctx.abort();
+        return;
+      }
       const envelope=decodeEnvelope(event.content,event.toolName,event.details,event.structuredContent);
       const native=event.toolName!==readToolName(event.toolName);
       const measured=measureToolResult(event.content,event.toolName,envelope);

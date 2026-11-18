@@ -19,7 +19,11 @@ test('identical source and question require different answers in the two retaine
 
 test('a lucky correct name earns answer credit but cannot establish result access', () => {
   assert.equal(gradeName('alphaSink', 'alphaSink', []).namedScores?.supportedByKast, 0);
+  const guide = { tool: 'read_kast_guidance', path: 'skills/kast/SKILL.md' };
   const read = { tool: 'read_previous_result', complete: true, name: 'alphaSink' };
-  assert.equal(gradeName('alphaSink', 'alphaSink', [read]).namedScores?.supportedByKast, 1);
+  const qualified = gradeName('alphaSink', 'alphaSink', [guide, read]);
+  assert.equal(qualified.pass, true);
+  assert.equal(qualified.namedScores?.supportedByKast, 1);
+  assert.equal(gradeName('alphaSink', 'alphaSink', [guide]).namedScores?.supportedByKast, 0);
   assert.equal(gradeName('betaSink', 'betaSink', [read]).namedScores?.supportedByKast, 0);
 });

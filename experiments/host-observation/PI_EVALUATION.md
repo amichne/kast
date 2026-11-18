@@ -30,6 +30,9 @@ The actual SDK worker uses the same exported guard and rules tested here. Node
 is required; a missing interpreter is a test provisioning failure, never a skip
 or GREEN. The Python wrapper includes these checks in the existing Gradle gate.
 
+Kast-enabled sessions point to the staged skill. Sessions with no spare provider turn receive the skill text in their initial context.
+The single-response replay uses the same initial delivery. Its tool still reads fixture data.
+
 ## Rules and evidence
 
 - Every named case owns fresh counters and a global reported-token threshold.

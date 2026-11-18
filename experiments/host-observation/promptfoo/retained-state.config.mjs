@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadKastGuidance } from './kast-guidance.mjs';
 import { binary, child, prepareWorkspace, runIsolatedPi } from './skill-provider.mjs';
 import { invocationFile } from './skill-cases.mjs';
 import { gradeName, participantPrompt, worlds } from './retained-state.mjs';
@@ -59,6 +60,8 @@ async function callApi(_label, { vars: { caseId, arm } }) {
       model,
       effort: 'low',
       ...(arm === 'kast' && {
+        guidance: loadKastGuidance(),
+        system: 'Use read_previous_result for the Kast retained result read in this session.',
         extension: tool,
         toolNames: ['read_previous_result'],
         extensionEnvironment: {
@@ -83,6 +86,7 @@ async function callApi(_label, { vars: { caseId, arm } }) {
       metadata: {
         model,
         effort: 'low',
+        ...trial.guidance,
         usage: trial.usage,
         toolCalls: trial.toolCalls,
         reads: trial.calls,
