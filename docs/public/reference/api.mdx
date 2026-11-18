@@ -195,12 +195,13 @@ Public requested sites and model boundary sites select native work through `encl
 `IMPACT` accepts no transformation steps. Select EMIT with `VALUE_PATHS` for paths or `IMPACT_WITNESS` for a section after the original investigation completes.
 
 <Accordion title="Java static method transfers">
-`KOTLIN_JAVA_FORWARD_V2` keeps the Kotlin transfers and adds source-backed Java static methods called from Kotlin.
+`KOTLIN_JAVA_FORWARD_V2` keeps the Kotlin transfers and adds transfers through source-backed Java static methods.
+A Java producer can supply an `int` argument directly to a static method when the selected formal also has type `int`.
 A supported Java body has one final return and can declare final local variables before it.
 A literal or a read of a formal or earlier local variable can supply each local or return value.
 The transfer preserves the value through Java assignments without boxing or unboxing.
 
-Kast connects the return to the original Kotlin invocation.
+Kast connects the return to the original invocation in Kotlin or Java.
 A literal return carries no provenance from the selected argument.
 A resolved method without available source keeps an `EXTERNAL_CALL` obligation.
 Other Java body shapes keep an unresolved obligation.

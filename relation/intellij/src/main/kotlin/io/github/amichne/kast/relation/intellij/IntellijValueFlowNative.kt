@@ -15,6 +15,7 @@ import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueRole
+import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadObservation
 import org.jetbrains.kotlin.psi.KtDestructuringDeclaration
 import org.jetbrains.kotlin.psi.KtExpression
@@ -105,6 +106,18 @@ internal class IntellijValueFlowNative(
     private fun readJavaRole(method: PsiMethod, element: PsiElement): Refinement<Unit, ValueFlowRejection> {
         if (request.semantics != ValueFlowSemantics.KOTLIN_JAVA_FORWARD_V2) {
             unresolved(ValueFlowUnsupportedCause.UNMODELED_CALL)
+            return Refinement.Refined(Unit)
+        }
+        if (request.source.role is ValueRole.Argument) return callEntry(element)
+        if (request.source.role == ValueRole.ExpressionResult && element is com.intellij.psi.PsiMethodCallExpression) {
+            when (val binding = NativeJavaArgumentBinding.resolve(element)) {
+                is Refinement.Refined ->
+                    when (val role = binding.value.role(request.source.executionOwner, scope, projection)) {
+                        is Refinement.Refined -> retained.emit(element, role.value, ValueTransferKind.ARGUMENT)
+                        is Refinement.Rejected -> retained.unresolvedAt(role.failure, element)
+                    }
+                is Refinement.Rejected -> retained.unresolvedAt(binding.failure, element)
+            }
             return Refinement.Refined(Unit)
         }
         val returned = NativeJavaValueFlow(request.source, retained, ::permitted).read(method, element)

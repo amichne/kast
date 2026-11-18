@@ -23,6 +23,11 @@ internal fun nativeInvocationResultSite(
             is IntellijRelationSubjectLookup.Found -> found.declaration
             is IntellijRelationSubjectLookup.Rejected -> return resultRejected()
         }
+    if (host is com.intellij.psi.PsiMethod) {
+        val call = host.exactJavaValueElement(invocation.range)
+        return if (call is com.intellij.psi.PsiMethodCallExpression) Refinement.Refined(invocation.resultSite())
+        else resultRejected()
+    }
     val element = host.exactValueElement(invocation.range) ?: return resultRejected()
     if (element !is KtForExpression) return stringOrOrdinaryResult(element, invocation, scope, projection)
     val result =

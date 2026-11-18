@@ -237,10 +237,14 @@ internal constructor(
         }
     }
 
-    fun javaCallable(path: String, name: String): SymbolSelector = nativeRead {
+    fun javaCallable(path: String, name: String, arity: Int? = null): SymbolSelector = nativeRead {
         val file = com.intellij.psi.PsiManager.getInstance(project).findFile(checkNotNull(files[path]))
         check(file is com.intellij.psi.PsiJavaFile)
-        selector(file.classes.single().findMethodsByName(name, false).single())
+        selector(
+            file.classes.single().findMethodsByName(name, false).single {
+                arity == null || it.parameterList.parametersCount == arity
+            }
+        )
     }
 
     fun selection(

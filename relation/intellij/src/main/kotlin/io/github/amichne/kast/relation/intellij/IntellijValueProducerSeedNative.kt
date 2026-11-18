@@ -3,6 +3,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationBudget
@@ -107,17 +108,41 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
                 is Refinement.Rejected -> return ValueProducerSeedRead.Rejected(prepared.failure)
                 is Refinement.Refined -> prepared.value
             }
+        val invocation =
+            when (val host = enclosing.owner) {
+                is PsiMethod ->
+                    javaProducerInvocation(host = host, enclosing = enclosing, callable = callable, request = request)
+                else -> kotlinProducerInvocation(enclosing, callable, request)
+            }
+        return when (invocation) {
+            is Refinement.Refined -> detachedSeed(request, invocation.value, started)
+            is Refinement.Rejected -> invocation.failure
+        }
+    }
+
+    private fun kotlinProducerInvocation(
+        enclosing: IntellijValueFlowCompilerAdapter.Prepared.Ready,
+        callable: IntellijValueFlowCompilerAdapter.Prepared.Ready,
+        request: ValueProducerSeedRequest,
+    ): Refinement<NativeProducerInvocation, ValueProducerSeedRead.Rejected> {
         val expression =
             when (val admitted = exactSeedExpression(enclosing, request)) {
-                is Refinement.Rejected -> return admitted.failure
+                is Refinement.Rejected -> return Refinement.Rejected(admitted.failure)
                 is Refinement.Refined -> admitted.value
             }
         val endpoint =
             when (val proof = proveInvocation(expression, enclosing, callable, request.expectedCallable)) {
-                is Refinement.Rejected -> return ValueProducerSeedRead.Rejected(proof.failure)
+                is Refinement.Rejected -> return Refinement.Rejected(ValueProducerSeedRead.Rejected(proof.failure))
                 is Refinement.Refined -> proof.value.endpoint
             }
-        return detachedSeed(request, endpoint, expression, started)
+        return Refinement.Refined(
+            NativeProducerInvocation(
+                callable = endpoint,
+                expression = expression.expression,
+                owner = expression.executionOwner,
+                captureWork = expression.captureWork.value,
+            )
+        )
     }
 
     private fun prepareDeclaration(
@@ -169,13 +194,12 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
                     ?: return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.UNSUPPORTED_INVOCATION)
             if (declaration !== callable.owner)
                 return@observedAnalyze Refinement.Rejected(ValueProducerSeedRejection.CALLABLE_MISMATCH)
-            projectDeclaration(enclosing, declaration, expected, ValueProducerSeedRejection.CALLABLE_MISMATCH)
+            revalidateProducerDeclaration(native = enclosing, declaration = declaration, selector = expected)
         }
 
     private fun detachedSeed(
         request: ValueProducerSeedRequest,
-        endpoint: RelationEndpoint,
-        expression: NativeSeedExpression,
+        producer: NativeProducerInvocation,
         started: Long,
     ): ValueProducerSeedRead {
         if (elapsedBudgetReached(started, request.budget))
@@ -185,9 +209,9 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
                 val result =
                     ValueInvocation.fromCompiler(
                         enclosing = RelationEndpoint.subject(request.enclosing),
-                        range = sourceValueRange(expression.expression),
-                        callable = endpoint,
-                        executionOwner = expression.executionOwner,
+                        range = sourceValueRange(producer.expression),
+                        callable = producer.callable,
+                        executionOwner = producer.owner,
                     )
             ) {
                 is Refinement.Rejected ->
@@ -204,7 +228,7 @@ internal class IntellijValueProducerSeedNative(private val adapter: IntellijValu
             }
         return when (val result = ValueProducerSeed.fromCompiler(request, site, selection)) {
             is Refinement.Refined ->
-                ValueProducerSeedRead.Seeded(result.value, workCount(SEED_WORK_UNITS + expression.captureWork.value))
+                ValueProducerSeedRead.Seeded(result.value, workCount(SEED_WORK_UNITS + producer.captureWork))
             is Refinement.Rejected -> ValueProducerSeedRead.ContractRejected(result.failure)
         }
     }
@@ -334,24 +358,6 @@ private fun NativeInitialValueFailure.producerCause(): ValueProducerSeedReadFail
                     ValueProducerSeedRejection.CALL_CONTEXT_DEPTH_EXCEEDED
                 ValueFlowUnsupportedCause.RECURSIVE_SOURCE_CALL -> ValueProducerSeedRejection.RECURSIVE_SOURCE_CALL
             }
-    }
-
-private fun projectDeclaration(
-    native: IntellijValueFlowCompilerAdapter.Prepared.Ready,
-    declaration: PsiNamedElement,
-    selector: SymbolSelector,
-    mismatch: ValueProducerSeedRejection,
-): Refinement<RevalidatedRelationEndpoint, ValueProducerSeedRejection> =
-    when (val projected = native.projection.project(declaration)) {
-        is IntellijRelationDeclarationProjection.Projected ->
-            when (
-                val proof = RevalidatedRelationEndpoint.validate(RelationEndpoint.subject(selector), projected.evidence)
-            ) {
-                is Refinement.Refined -> proof
-                is Refinement.Rejected -> Refinement.Rejected(mismatch)
-            }
-        IntellijRelationDeclarationProjection.Unsupported ->
-            Refinement.Rejected(ValueProducerSeedRejection.UNRESOLVED_INVOCATION)
     }
 
 private fun elapsedBudgetReached(started: Long, budget: RelationBudget): Boolean =

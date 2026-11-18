@@ -15,6 +15,12 @@ internal fun nativeArgumentSiteRole(
     executionOwner: ValueExecutionOwner,
     callbackContext: IntellijCallbackFlowContext,
 ): Refinement<ValueRole, ValueFlowUnsupportedCause> {
+    if (element is com.intellij.psi.PsiMethodCallExpression) {
+        return when (val selected = NativeJavaArgumentBinding.resolve(element)) {
+            is Refinement.Refined -> selected.value.role(executionOwner, prepared.scope, prepared.projection)
+            is Refinement.Rejected -> selected
+        }
+    }
     val expression = element as? KtExpression ?: return roleRejected()
     val binary = expression.parent as? org.jetbrains.kotlin.psi.KtBinaryExpression
     if (binary != null) return nativeReviewedTupleRole(expression, binary, executionOwner, callbackContext)

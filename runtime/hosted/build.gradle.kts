@@ -261,7 +261,7 @@ tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
     from(reviewedCallbackSources) { into("reviewed-libraries") }
     from(File(repositoryRoot.asFile, "relation/intellij/testData/r1-value-flow")) { into("r1-value-flow") }
     from(repositoryRoot.dir("relation/intellij/src/nativeTest/resources/impact-boundary")) {
-        include("JavaFlow.java", "JavaFlowCases.kt")
+        include("JavaFlow.java", "JavaFlowCases.kt", "JavaOrigin.java")
         into("impact-boundary")
     }
 }
@@ -416,6 +416,7 @@ registerHostedNativeFixtures(
         "*NativePrimitiveValueQueryTest",
         "*NativeCompilerCoverageControlsTest",
         "*NativeJavaStaticFlowQueryTest",
+        "*NativeJavaOriginFlowQueryTest",
         "*NativeJavaLocationQueryTest",
     ),
 )

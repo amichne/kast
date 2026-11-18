@@ -229,6 +229,27 @@ internal class NativePacketQuerySource(
         return selectors.map { selector -> QueryImpactDeclarationDocument(token(selector), reference(selector)) }
     }
 
+    suspend fun javaDeclaration(name: String, arity: Int): QueryImpactDeclarationDocument {
+        val source = read {
+            val java = PsiManager.getInstance(project).findFile(file) as com.intellij.psi.PsiJavaFile
+            val method =
+                java.classes.single().findMethodsByName(name, false).single {
+                    it.parameterList.parametersCount == arity
+                }
+            candidate(method, name)
+        }
+        val result = services.symbols.exact.resolve(SymbolResolutionRequest(source))
+        check(result is SymbolResolutionCompilation.Resolved) { "Java declaration prerequisite $name/$arity: $result" }
+        return QueryImpactDeclarationDocument(token(result.selector), reference(result.selector))
+    }
+
+    fun javaCallRange(text: String): ImpactSourceRangeDocument = read {
+        val source = String(file.contentsToByteArray())
+        val start = source.indexOf(text, source.indexOf("void host()"))
+        check(start >= 0 && start == source.lastIndexOf(text))
+        ImpactSourceRangeDocument(packetQueryOffset(start), packetQueryOffset(start + text.length))
+    }
+
     suspend fun requestedDeclaration(owner: String, member: String): QueryImpactDeclarationDocument =
         declaration(owner, member).let { QueryImpactDeclarationDocument(token(it), reference(it)) }
 
