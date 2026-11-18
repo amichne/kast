@@ -22,6 +22,7 @@ private fun ImpactReviewedValueTransferDocument.admitsRelation(): Boolean =
         is ImpactReviewedValueRelationDocument.MappedValue -> admitsMapped(relation)
         is ImpactReviewedValueRelationDocument.CallbackCorrespondence -> admitsCallback(relation.semantics)
         is ImpactReviewedValueRelationDocument.ReorderedElements -> admitsSorted(relation)
+        is ImpactReviewedValueRelationDocument.PrimitiveResult -> admitsPrimitive(relation.input)
         is ImpactReviewedValueRelationDocument.TupleConstruction -> admitsTupleConstruction(relation)
         is ImpactReviewedValueRelationDocument.TupleProjection -> admitsTupleProjection(relation)
         is ImpactReviewedValueRelationDocument.AssociationComponent -> admitsAssociation(relation)

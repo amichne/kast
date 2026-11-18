@@ -37,6 +37,8 @@ sealed interface ReviewedValueRelation {
 
     data class ReorderedElements(val selection: ReviewedCollectionSelection) : ReviewedValueRelation
 
+    data class PrimitiveResult(val input: ReviewedPrimitiveInput) : ReviewedValueRelation
+
     data class TupleConstruction(val origin: ReviewedTupleOrigin, val input: ReviewedTupleInput, val slot: PairSlot) :
         ReviewedValueRelation
 

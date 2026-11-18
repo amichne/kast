@@ -99,6 +99,7 @@ internal fun ImpactReviewedValueRelationDocument.relationship(): ImpactRelations
         is ImpactReviewedValueRelationDocument.PreservedKey -> entry.selection.relationship()
         is ImpactReviewedValueRelationDocument.EntryProjection -> entry.selection.relationship()
         is ImpactReviewedValueRelationDocument.MappedValue -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.PrimitiveResult -> ImpactRelationshipDocument.DERIVED
         is ImpactReviewedValueRelationDocument.TupleConstruction,
         is ImpactReviewedValueRelationDocument.TupleProjection,
         is ImpactReviewedValueRelationDocument.AssociationComponent -> ImpactRelationshipDocument.EXACT

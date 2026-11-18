@@ -90,6 +90,11 @@ internal fun ReviewedCallbackValueBinding.outputSemantics():
             Refinement.Refined(ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT)
         ReviewedLibraryOperation.APPLY,
         ReviewedLibraryOperation.ALSO -> Refinement.Refined(ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT)
+        ReviewedLibraryOperation.INT_PLUS,
+        ReviewedLibraryOperation.INT_TIMES,
+        ReviewedLibraryOperation.INT_MIN,
+        ReviewedLibraryOperation.INT_MAX,
+        ReviewedLibraryOperation.INT_MINUS,
         ReviewedLibraryOperation.MAP_ENTRY_KEY,
         ReviewedLibraryOperation.MAP_ENTRY_VALUE,
         ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
@@ -228,6 +233,11 @@ internal fun reviewedCallbackOutputPath(
             ReviewedLibraryOperation.APPLY,
             ReviewedLibraryOperation.LET,
             ReviewedLibraryOperation.ALSO -> Refinement.Refined(source.valuePath)
+            ReviewedLibraryOperation.INT_PLUS,
+            ReviewedLibraryOperation.INT_TIMES,
+            ReviewedLibraryOperation.INT_MIN,
+            ReviewedLibraryOperation.INT_MAX,
+            ReviewedLibraryOperation.INT_MINUS,
             ReviewedLibraryOperation.MAP_ENTRY_KEY,
             ReviewedLibraryOperation.MAP_ENTRY_VALUE,
             ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,

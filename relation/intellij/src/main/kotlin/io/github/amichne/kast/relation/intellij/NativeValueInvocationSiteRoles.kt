@@ -102,7 +102,7 @@ private fun reviewedQualifiedReceiverRole(
         is Refinement.Rejected ->
             if (
                 (qualified.selectorExpression as? org.jetbrains.kotlin.psi.KtCallExpression)?.calleeExpression?.text in
-                    setOf("to", "component1", "component2")
+                    setOf("to", "component1", "component2", "minus", "plus", "times")
             )
                 nativeReviewedTupleRole(expression, qualified, executionOwner, callbackContext)
             else reviewed

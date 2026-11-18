@@ -231,6 +231,11 @@ private fun reviewedArtifact(
             ReviewedLibraryOperation.ALSO -> "commonMain/kotlin/util/Standard.kt"
             ReviewedLibraryOperation.TO,
             ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
+            ReviewedLibraryOperation.INT_PLUS,
+            ReviewedLibraryOperation.INT_TIMES,
+            ReviewedLibraryOperation.INT_MIN,
+            ReviewedLibraryOperation.INT_MAX,
+            ReviewedLibraryOperation.INT_MINUS,
             ReviewedLibraryOperation.PAIR_FIRST,
             ReviewedLibraryOperation.PAIR_SECOND,
             ReviewedLibraryOperation.MAP_ENTRY_KEY,

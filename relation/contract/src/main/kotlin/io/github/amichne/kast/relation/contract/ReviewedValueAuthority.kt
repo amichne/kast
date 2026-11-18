@@ -3,6 +3,7 @@ package io.github.amichne.kast.relation.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
@@ -25,9 +26,16 @@ private constructor(
     val target: CompilerGroundedSymbolEvidence,
     val operation: ReviewedLibraryOperation,
 ) {
+    val primitiveRule = ReviewedPrimitiveRule.entries.singleOrNull { it.operation == operation }
+
     val sourceEntry: String
         get() =
             when (operation) {
+                ReviewedLibraryOperation.INT_MINUS,
+                ReviewedLibraryOperation.INT_PLUS,
+                ReviewedLibraryOperation.INT_TIMES -> ReviewedPrimitiveFamily.MEMBER.sourceEntry
+                ReviewedLibraryOperation.INT_MIN,
+                ReviewedLibraryOperation.INT_MAX -> ReviewedPrimitiveFamily.MATH.sourceEntry
                 ReviewedLibraryOperation.MAP_ENTRY_KEY,
                 ReviewedLibraryOperation.MAP_ENTRY_VALUE -> "commonMain/kotlin/Collections.kt"
                 ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
@@ -36,6 +44,28 @@ private constructor(
             }
 
     companion object {
+        fun admitPrimitive(
+            target: CompilerGroundedSymbolEvidence,
+            result: CanonicalCompilerType,
+        ): Refinement<ReviewedOrdinaryLibraryCallable, ReviewedCallbackValueFailure> {
+            if (target.kind != CompilerSymbolKind.FUNCTION || result.value != "kotlin/Int") return ordinaryMismatch()
+            val signature = target.signature as? CanonicalCompilerSignature.Function ?: return ordinaryMismatch()
+            val file = target.file as? SymbolDiscoveryFileIdentity.External ?: return ordinaryMismatch()
+            if (
+                signature.receiver != CanonicalCompilerReceiver.Absent ||
+                    signature.typeParameterCount.value != 0 ||
+                    signature.contextReceivers.isNotEmpty()
+            )
+                return ordinaryMismatch()
+            val rule =
+                ReviewedPrimitiveRule.entries.singleOrNull {
+                    it.callable == signature.qualifiedIdentity.value &&
+                        file.url.value.endsWith(it.family.fileSuffix) &&
+                        signature.valueParameters.map { type -> type.value } == it.family.parameterTypes
+                } ?: return ordinaryMismatch()
+            return Refinement.Refined(ReviewedOrdinaryLibraryCallable(target, rule.operation))
+        }
+
         fun admit(
             target: CompilerGroundedSymbolEvidence
         ): Refinement<ReviewedOrdinaryLibraryCallable, ReviewedCallbackValueFailure> {

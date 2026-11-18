@@ -44,6 +44,7 @@ private fun ImpactReviewedValueRelationshipDocument.admitsCallbackRelation(
             proof.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1
         is ImpactReviewedValueRelationDocument.AssociationComponent ->
             proof == applied.entry.binding && applied.entry.admits(proof.basis)
+        is ImpactReviewedValueRelationDocument.PrimitiveResult,
         is ImpactReviewedValueRelationDocument.TupleConstruction,
         is ImpactReviewedValueRelationDocument.TupleProjection -> false
     }
@@ -61,6 +62,8 @@ private fun ImpactReviewedValueRelationshipDocument.admitsCallRelation(
         is ImpactReviewedValueRelationDocument.EntryProjection ->
             applied.entry.admitsSlot(proof.basis, applied.slot) && proof.rule.admitsEntrySlot(applied.slot)
         is ImpactReviewedValueRelationDocument.MappedValue -> false
+        is ImpactReviewedValueRelationDocument.PrimitiveResult ->
+            proof.rule.primitiveRule()?.family?.admits(applied.input) == true
         is ImpactReviewedValueRelationDocument.TupleConstruction ->
             applied.origin.binding == proof &&
                 applied.origin.admits(proof.basis) &&

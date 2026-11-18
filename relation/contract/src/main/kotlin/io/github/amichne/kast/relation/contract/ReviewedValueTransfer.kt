@@ -45,6 +45,24 @@ private constructor(
         ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
             finishResult(source, binding, ReviewedSelectionResult.filtered(source, binding))
 
+        fun primitiveResult(
+            source: ValueSite,
+            binding: ReviewedCallValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
+            val input =
+                when (val admitted = binding.primitiveInput(source)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return admitted
+                }
+            return finishReviewed(
+                source,
+                binding,
+                ReviewedValueRelation.PrimitiveResult(input),
+                source.valuePath,
+                source.conditions,
+            )
+        }
+
         fun tupleConstruct(
             source: ValueSite,
             binding: ReviewedCallValueBinding,

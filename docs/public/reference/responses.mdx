@@ -200,13 +200,18 @@ Full paths and compact findings include `classification`.
 | Classification | Meaning |
 | --- | --- |
 | `ESTABLISHED` with `EXACT` | Every admitted step preserves the tracked value. |
-| `ESTABLISHED` with `DERIVED` | The path includes established content construction. |
+| `ESTABLISHED` with `DERIVED` | The path includes a derived value, such as string content or an arithmetic result. |
 | `NOT_ESTABLISHED` | The record identifies the first step without established value correspondence. |
 
 A later exact step keeps earlier derivation or missing proof.
 Compiler, reviewed-library, and model evidence keep their distinct authority.
 Admitted modeled connections keep their models and qualifications.
 A modeled step alone yields `NOT_ESTABLISHED`.
+
+For Kotlin 2.3.0, reviewed rules cover non-null `Int` addition, subtraction, multiplication, and both inputs of `kotlin.math.min` and `kotlin.math.max`.
+K2 selects the exact overload and binds each operand. The reviewed rule links each operand to the normal result.
+For arithmetic, Kast reads the selected operator declaration from the reviewed binary. For min and max, Kast matches the binary and attached source archives.
+The path keeps the operation, input position, call site, and artifact evidence. For example, `x - x` has two input occurrences and always returns zero.
 
 A Kotlin string template consumes the established embedded result.
 A `String?` value contributes content only when its value is non-null.

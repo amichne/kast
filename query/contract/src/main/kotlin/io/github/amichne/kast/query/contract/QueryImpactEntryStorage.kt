@@ -8,10 +8,20 @@ import io.github.amichne.kast.relation.contract.ReviewedInputEntryOrigin
 import io.github.amichne.kast.relation.contract.ReviewedLibraryArtifact
 import io.github.amichne.kast.relation.contract.ReviewedMapEntryFamily
 import io.github.amichne.kast.relation.contract.ReviewedPreservedKeyOrigin
+import io.github.amichne.kast.relation.contract.ReviewedPrimitiveArtifact
 
 internal fun ReviewedArtifactEvidence.storageBytes(g: QueryImpactRetainedGraph): Long =
     when (this) {
         is ReviewedLibraryArtifact -> storageBytes(g)
+        is ReviewedPrimitiveArtifact ->
+            g.node(this) {
+                g.text(binaryArtifact.value)
+                    .saturatedAdd(g.text(sourceArtifact.value))
+                    .saturatedAdd(g.text(sourceEntry))
+                    .saturatedAdd(g.text(sourceEntrySha256))
+                    .saturatedAdd(g.collection(sourceSections) { g.node(it) { 0L } })
+                    .saturatedAdd(g.node(rule) { 0L })
+            }
         is ReviewedEntryDeclarationArtifact ->
             g.node(this) {
                 g.text(binaryArtifact.value)

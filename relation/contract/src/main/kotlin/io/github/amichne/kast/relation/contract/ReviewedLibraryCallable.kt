@@ -168,6 +168,11 @@ private fun ReviewedLibraryOperation.callbackParameterTypes(): Refinement<List<S
             ReviewedLibraryOperation.ITERABLE_GROUP_BY -> listOf("(T)->K")
             ReviewedLibraryOperation.ITERABLE_GROUP_BY_TRANSFORM -> listOf("(T)->K", "(T)->V")
             ReviewedLibraryOperation.ITERABLE_ASSOCIATE -> listOf("(T)->kotlin/Pair<K,V>")
+            ReviewedLibraryOperation.INT_PLUS,
+            ReviewedLibraryOperation.INT_TIMES,
+            ReviewedLibraryOperation.INT_MIN,
+            ReviewedLibraryOperation.INT_MAX,
+            ReviewedLibraryOperation.INT_MINUS,
             ReviewedLibraryOperation.MAP_ENTRY_KEY,
             ReviewedLibraryOperation.MAP_ENTRY_VALUE,
             ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,

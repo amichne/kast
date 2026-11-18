@@ -61246,6 +61246,30 @@
               "properties": {
                 "type": {
                   "enum": [
+                    "PRIMITIVE_RESULT"
+                  ],
+                  "type": "string"
+                },
+                "input": {
+                  "type": "string",
+                  "enum": [
+                    "DISPATCH_RECEIVER",
+                    "ARGUMENT_ZERO",
+                    "ARGUMENT_ONE"
+                  ]
+                }
+              },
+              "required": [
+                "type",
+                "input"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
                     "REORDERED_ELEMENTS"
                   ],
                   "type": "string"
@@ -66710,6 +66734,11 @@
         "KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1",
         "KOTLIN_2_3_0_ITERABLE_FILTER_V1",
         "KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1",
+        "KOTLIN_2_3_0_INT_PLUS_V1",
+        "KOTLIN_2_3_0_INT_TIMES_V1",
+        "KOTLIN_2_3_0_INT_MIN_V1",
+        "KOTLIN_2_3_0_INT_MAX_V1",
+        "KOTLIN_2_3_0_INT_MINUS_V1",
         "KOTLIN_2_3_0_MAP_ENTRY_KEY_V1",
         "KOTLIN_2_3_0_MAP_ENTRY_VALUE_V1",
         "KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1",
@@ -66825,6 +66854,71 @@
     },
     "impactReviewedArtifacts": {
       "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sourceEntry": {
+              "enum": [
+                "PRIMITIVE_OPERATION"
+              ],
+              "type": "string"
+            },
+            "sourceEvidence": {
+              "type": "string",
+              "enum": [
+                "REVIEWED_REFERENCE_FOR_BUILTIN_METADATA",
+                "MATCHED_LIBRARY_SOURCE_ARCHIVE"
+              ]
+            },
+            "binaryArtifactSha256": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64,
+              "allOf": [
+                {
+                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                },
+                {
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            },
+            "sourceArtifactSha256": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64,
+              "allOf": [
+                {
+                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                },
+                {
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            },
+            "sourceEntrySha256": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64,
+              "allOf": [
+                {
+                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                },
+                {
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            }
+          },
+          "required": [
+            "sourceEntry",
+            "sourceEvidence",
+            "binaryArtifactSha256",
+            "sourceArtifactSha256",
+            "sourceEntrySha256"
+          ]
+        },
         {
           "type": "object",
           "additionalProperties": false,

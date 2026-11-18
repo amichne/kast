@@ -143,7 +143,7 @@ private fun reviewedReceiverTransfers(
     literal: KtFunctionLiteral,
     context: IntellijCallbackFlowContext,
     retained: NativeValueFlowTransfers,
-) {
+) =
     when (binding.selected.operation) {
         ReviewedLibraryOperation.ITERABLE_MAP,
         ReviewedLibraryOperation.ITERABLE_MAP_NOT_NULL,
@@ -181,6 +181,11 @@ private fun reviewedReceiverTransfers(
         ReviewedLibraryOperation.LET,
         ReviewedLibraryOperation.TO,
         ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
+        ReviewedLibraryOperation.INT_PLUS,
+        ReviewedLibraryOperation.INT_TIMES,
+        ReviewedLibraryOperation.INT_MIN,
+        ReviewedLibraryOperation.INT_MAX,
+        ReviewedLibraryOperation.INT_MINUS,
         ReviewedLibraryOperation.PAIR_FIRST,
         ReviewedLibraryOperation.PAIR_SECOND,
         ReviewedLibraryOperation.MAP_ENTRY_KEY,
@@ -188,7 +193,6 @@ private fun reviewedReceiverTransfers(
         ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
         ReviewedLibraryOperation.MAP_ENTRY_COMPONENT2 -> retained.unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
     }
-}
 
 private fun nativeReviewedInput(
     request: ValueFlowRequest,

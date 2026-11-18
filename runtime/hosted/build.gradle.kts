@@ -253,11 +253,20 @@ val reviewedCallbackSources =
         isCanBeResolved = true
     }
 
+val reviewedPrimitiveStdlib =
+    configurations.create("reviewedPrimitiveStdlib") {
+        isCanBeConsumed = false
+        isTransitive = false
+    }
+
 dependencies {
+    reviewedPrimitiveStdlib(libs.reviewed.scope.stdlib)
+    reviewedPrimitiveStdlib(variantOf(libs.reviewed.scope.stdlib) { classifier("sources") })
     reviewedCallbackSources(variantOf(libs.kotlin.stdlib) { classifier("sources") })
 }
 
 tasks.named<ProcessResources>(nativeTest.processResourcesTaskName) {
+    from(reviewedPrimitiveStdlib) { into("reviewed-libraries") }
     from(reviewedCallbackSources) { into("reviewed-libraries") }
     from(File(repositoryRoot.asFile, "relation/intellij/testData/r1-value-flow")) { into("r1-value-flow") }
 }

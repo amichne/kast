@@ -2,6 +2,11 @@ package io.github.amichne.kast.protocol.contract
 
 internal fun ImpactReviewedArtifactsDocument.admitsRule(rule: ImpactReviewedValueRuleDocument): Boolean =
     when (this) {
+        is ImpactPrimitiveArtifactDocument ->
+            rule.primitiveRule()?.family?.sourceDigest == sourceEntrySha256.value &&
+                rule.primitiveRule()?.family?.sourceEvidence == sourceEvidence &&
+                binaryArtifactSha256.value == "887587c91713250ad52fe14ad9166d042c33835049890e9437f355ffc5a195b1" &&
+                sourceArtifactSha256.value == "326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531"
         is ImpactReviewedEntryDeclarationArtifactDocument -> admitsEntryDeclaration(rule)
         is ImpactReviewedMapArtifactsDocument -> admitsMapValues(rule)
         is ImpactReviewedCollectionArtifactsDocument -> admitsCollection(rule)

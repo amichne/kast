@@ -110,7 +110,7 @@ private constructor(
                 )
             else if (
                 binaryArtifact.value == "887587c91713250ad52fe14ad9166d042c33835049890e9437f355ffc5a195b1" &&
-                    sourceArtifact.value == "326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531"
+                    sourceArtifact.value == REVIEWED_STDLIB_230_SOURCE_DIGEST
             )
                 Refinement.Refined(
                     ReviewedLibraryArtifact(
@@ -135,6 +135,12 @@ private constructor(
             sourceArtifact: DependencyArtifactDigest,
         ): Refinement<ReviewedArtifactEvidence, ReviewedCallbackValueFailure> =
             when (selected.operation) {
+                ReviewedLibraryOperation.INT_PLUS,
+                ReviewedLibraryOperation.INT_TIMES,
+                ReviewedLibraryOperation.INT_MIN,
+                ReviewedLibraryOperation.INT_MAX,
+                ReviewedLibraryOperation.INT_MINUS ->
+                    ReviewedPrimitiveArtifact.admit(selected, binaryArtifact, sourceArtifact)
                 ReviewedLibraryOperation.MAP_ENTRY_KEY,
                 ReviewedLibraryOperation.MAP_ENTRY_VALUE ->
                     ReviewedEntryDeclarationArtifact.admit(selected, binaryArtifact, sourceArtifact)
@@ -148,7 +154,7 @@ private constructor(
         ): Refinement<ReviewedLibraryArtifact, ReviewedCallbackValueFailure> {
             if (
                 binaryArtifact.value != "887587c91713250ad52fe14ad9166d042c33835049890e9437f355ffc5a195b1" ||
-                    sourceArtifact.value != "326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531"
+                    sourceArtifact.value != REVIEWED_STDLIB_230_SOURCE_DIGEST
             )
                 return Refinement.Rejected(ReviewedCallbackValueFailure.ARTIFACT_MISMATCH)
             val rule =
@@ -323,3 +329,6 @@ private fun RelationOccurrence.containsReviewedCallback(
 ): Boolean = file == enclosing.file && enclosing.range.containsValueRange(range) && range.containsValueRange(body.range)
 
 private const val SHA256_LENGTH = 64
+
+internal const val REVIEWED_STDLIB_230_SOURCE_DIGEST =
+    "326423198a2ad721c9c075e20db7537ad655f21bfe342a5241d874987e434531"

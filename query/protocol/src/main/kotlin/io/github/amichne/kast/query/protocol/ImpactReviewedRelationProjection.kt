@@ -3,6 +3,7 @@ package io.github.amichne.kast.query.protocol
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ImpactMapEntrySlotDocument
 import io.github.amichne.kast.protocol.contract.ImpactPairSlotDocument
+import io.github.amichne.kast.protocol.contract.ImpactPrimitiveInputDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedCallValueBindingDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedCollectionSelectionDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedMapEntryCorrelationDocument
@@ -17,6 +18,7 @@ import io.github.amichne.kast.relation.contract.ReviewedCallValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedCollectionSelection
 import io.github.amichne.kast.relation.contract.ReviewedMapEntryCorrelation
+import io.github.amichne.kast.relation.contract.ReviewedPrimitiveInput
 import io.github.amichne.kast.relation.contract.ReviewedTupleInput
 import io.github.amichne.kast.relation.contract.ReviewedTupleOrigin
 import io.github.amichne.kast.relation.contract.ReviewedValueAuthority
@@ -124,6 +126,8 @@ internal fun ReviewedValueRelation.impactDocument(): ImpactProjected<ImpactRevie
             Refinement.Refined(ImpactReviewedValueRelationDocument.CallbackCorrespondence(semantics.impactDocument()))
         is ReviewedValueRelation.ReorderedElements ->
             Refinement.Refined(ImpactReviewedValueRelationDocument.ReorderedElements(selection.impactDocument()))
+        is ReviewedValueRelation.PrimitiveResult ->
+            Refinement.Refined(ImpactReviewedValueRelationDocument.PrimitiveResult(input.impactDocument()))
         is ReviewedValueRelation.TupleConstruction ->
             origin.impactDocument().impactMap {
                 ImpactReviewedValueRelationDocument.TupleConstruction(it, input.impactDocument(), slot.impactDocument())
@@ -161,4 +165,11 @@ private fun ReviewedCollectionSelection.impactDocument(): ImpactReviewedCollecti
     when (this) {
         ReviewedCollectionSelection.ELEMENT -> ImpactReviewedCollectionSelectionDocument.ELEMENT
         ReviewedCollectionSelection.CONTENT -> ImpactReviewedCollectionSelectionDocument.CONTENT
+    }
+
+private fun ReviewedPrimitiveInput.impactDocument() =
+    when (this) {
+        ReviewedPrimitiveInput.DISPATCH_RECEIVER -> ImpactPrimitiveInputDocument.DISPATCH_RECEIVER
+        ReviewedPrimitiveInput.ARGUMENT_ZERO -> ImpactPrimitiveInputDocument.ARGUMENT_ZERO
+        ReviewedPrimitiveInput.ARGUMENT_ONE -> ImpactPrimitiveInputDocument.ARGUMENT_ONE
     }

@@ -43,6 +43,11 @@ private fun ImpactReviewedValueBindingDocument.admitsSelectedRule(): Boolean =
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_GROUP_BY_TRANSFORM_V1 -> admitsGroupRule()
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_FILTER_V1,
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_MAP_NOT_NULL_V1 -> admitsMapRule()
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_PLUS_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_TIMES_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MIN_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MAX_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MINUS_V1,
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_KEY_V1,
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_VALUE_V1,
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1,

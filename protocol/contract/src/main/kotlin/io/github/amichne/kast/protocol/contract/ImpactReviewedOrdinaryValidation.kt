@@ -26,7 +26,14 @@ private fun ImpactDeclaredCallbackTargetDocument.admitsTupleFunction(rule: Impac
         when (rule) {
             ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_TO_V1 -> matchesToFunction()
             ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1 -> matchesPairConstructor()
-            else -> false
+            else ->
+                rule.primitiveRule()?.let { primitive ->
+                    declaration.file.value.endsWith(primitive.family.fileSuffix) &&
+                        qualifiedIdentity.value == primitive.callable &&
+                        receiver == ImpactDeclaredCallbackReceiverDocument.Absent &&
+                        valueParameters.values.map { it.value } == primitive.family.parameters &&
+                        typeParameterCount.value == 0L
+                } == true
         }
     if (!matches || contextReceivers.values.isNotEmpty()) return false
     val count =

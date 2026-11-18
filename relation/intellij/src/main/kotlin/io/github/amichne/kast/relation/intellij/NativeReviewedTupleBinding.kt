@@ -9,13 +9,18 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationEndpoint
+import io.github.amichne.kast.relation.contract.ReviewedArtifactEvidence
 import io.github.amichne.kast.relation.contract.ReviewedCallValueBinding
 import io.github.amichne.kast.relation.contract.ReviewedCallbackValueFailure
 import io.github.amichne.kast.relation.contract.ReviewedLibraryArtifact
 import io.github.amichne.kast.relation.contract.ReviewedOrdinaryLibraryCallable
+import io.github.amichne.kast.relation.contract.ReviewedPrimitiveArtifact
+import io.github.amichne.kast.relation.contract.ReviewedPrimitiveFamily
+import io.github.amichne.kast.relation.contract.ReviewedPrimitiveRule
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadCall
 import io.github.amichne.kast.workspace.intellij.read.IntellijReadTermination
 import io.github.amichne.kast.workspace.intellij.read.call
@@ -23,6 +28,8 @@ import io.github.amichne.kast.workspace.intellij.read.observedAnalyze
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.resolution.KaSingleCall
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolOrigin
+import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
@@ -66,21 +73,8 @@ private fun reviewedTupleBinding(
             is Refinement.Refined -> read.value
             is Refinement.Rejected -> return read
         }
-    val digests =
-        when (
-            val read =
-                readReviewedLibraryArtifact(
-                    expression,
-                    selected.file,
-                    selected.callable.sourceEntry,
-                    context,
-                )
-        ) {
-            is Refinement.Refined -> read.value
-            is Refinement.Rejected -> return read
-        }
     val artifact =
-        when (val admitted = ReviewedLibraryArtifact.admit(selected.callable, digests.binary, digests.sources)) {
+        when (val admitted = selected.artifact(expression, context)) {
             is Refinement.Refined -> admitted.value
             is Refinement.Rejected -> return admitted
         }
@@ -90,6 +84,35 @@ private fun reviewedTupleBinding(
             is Refinement.Rejected -> return read
         }
     return ReviewedCallValueBinding.admit(invocation, selected.callable, artifact)
+}
+
+private fun NativeReviewedOrdinaryTarget.artifact(
+    expression: KtExpression,
+    context: IntellijCallbackFlowContext,
+): Refinement<ReviewedArtifactEvidence, ReviewedCallbackValueFailure> {
+    if (callable.primitiveRule?.family == ReviewedPrimitiveFamily.MEMBER) {
+        val binary =
+            com.intellij.openapi.vfs.VfsUtilCore.getVirtualFileForJar(file)
+                ?: return Refinement.Rejected(ReviewedCallbackValueFailure.ARTIFACT_UNAVAILABLE)
+        return when (val digest = reviewedArtifactDigest(binary, context)) {
+            is Refinement.Refined -> ReviewedPrimitiveArtifact.fromBuiltinMetadata(callable, digest.value)
+            is Refinement.Rejected -> digest
+        }
+    }
+    val digests =
+        when (
+            val read =
+                readReviewedLibraryArtifact(
+                    expression,
+                    file,
+                    callable.sourceEntry,
+                    context,
+                )
+        ) {
+            is Refinement.Refined -> read.value
+            is Refinement.Rejected -> return read
+        }
+    return ReviewedLibraryArtifact.admit(callable, digests.binary, digests.sources)
 }
 
 private fun reviewedOrdinaryInvocation(
@@ -145,9 +168,33 @@ private fun KaSession.reviewedOrdinaryTarget(
     val evidence =
         contractTarget(context, symbol, declaration, file)
             ?: return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
-    return when (val admitted = ReviewedOrdinaryLibraryCallable.admit(evidence)) {
+    val rule =
+        ReviewedPrimitiveRule.entries.singleOrNull { it.callable == symbol.callableId?.asSingleFqName()?.asString() }
+    val selected =
+        if (rule == null) ReviewedOrdinaryLibraryCallable.admit(evidence)
+        else admitPrimitiveCall(expression, symbol.returnType, evidence)
+    return when (val admitted = selected) {
         is Refinement.Refined -> Refinement.Refined(NativeReviewedOrdinaryTarget(admitted.value, file))
         is Refinement.Rejected -> admitted
+    }
+}
+
+private fun KaSession.admitPrimitiveCall(
+    expression: KtExpression,
+    returnType: org.jetbrains.kotlin.analysis.api.types.KaType,
+    evidence: io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence,
+): Refinement<ReviewedOrdinaryLibraryCallable, ReviewedCallbackValueFailure> {
+    if (
+        expression is KtBinaryExpression &&
+            expression.operationToken !in setOf(KtTokens.PLUS, KtTokens.MINUS, KtTokens.MUL)
+    )
+        return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
+    val result =
+        returnType as? KaClassType ?: return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
+    if (result.isMarkedNullable) return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
+    return when (val detached = CanonicalCompilerType.fromCompiler(result.classId.asString())) {
+        is Refinement.Refined -> ReviewedOrdinaryLibraryCallable.admitPrimitive(evidence, detached.value)
+        is Refinement.Rejected -> return Refinement.Rejected(ReviewedCallbackValueFailure.CALLABLE_MISMATCH)
     }
 }
 

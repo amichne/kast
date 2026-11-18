@@ -88,7 +88,7 @@ private fun ImpactValueSiteReferenceDocument.matchesOrdinaryInput(
             ImpactReviewedTupleInputDocument.ARGUMENT_ONE -> matchesArgument(proof, 1)
         }
 
-private fun ImpactValueSiteReferenceDocument.matchesArgument(
+internal fun ImpactValueSiteReferenceDocument.matchesArgument(
     proof: ImpactReviewedCallValueBindingDocument,
     index: Int,
 ): Boolean =
@@ -97,7 +97,7 @@ private fun ImpactValueSiteReferenceDocument.matchesArgument(
         else -> false
     }
 
-private fun ImpactValueSiteReferenceDocument.matchesOrdinaryOwner(
+internal fun ImpactValueSiteReferenceDocument.matchesOrdinaryOwner(
     proof: ImpactReviewedCallValueBindingDocument
 ): Boolean =
     enclosing == proof.enclosing &&

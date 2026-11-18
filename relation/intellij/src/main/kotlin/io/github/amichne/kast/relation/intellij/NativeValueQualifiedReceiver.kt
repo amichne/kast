@@ -118,7 +118,7 @@ internal class NativeValueQualifiedReceiver(
                 if (
                     (qualified.selectorExpression as? org.jetbrains.kotlin.psi.KtCallExpression)
                         ?.calleeExpression
-                        ?.text in setOf("to", "component1", "component2")
+                        ?.text in setOf("to", "component1", "component2", "minus", "plus", "times")
                 )
                     reviewedTupleReceiver(expression, qualified)
                 else retained.unresolvedAt(reviewed.failure, qualified)

@@ -106,6 +106,10 @@ data class ImpactReviewedMapEntryCorrelationDocument(
 @JsonClassDiscriminator("type")
 sealed interface ImpactReviewedValueRelationDocument {
     @Serializable
+    @SerialName("PRIMITIVE_RESULT")
+    data class PrimitiveResult(val input: ImpactPrimitiveInputDocument) : ImpactReviewedValueRelationDocument
+
+    @Serializable
     @SerialName("CALLBACK_RECEIVER_INPUT")
     data class CallbackReceiverInput(val receiver: ImpactReviewedCallbackReceiverDocument) :
         ImpactReviewedValueRelationDocument

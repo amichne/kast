@@ -100,6 +100,7 @@ private fun ReviewedValueRelation.relationship(): QueryImpactRelationship =
         is ReviewedValueRelation.PreservedKey -> selection.relationship()
         is ReviewedValueRelation.EntryProjection -> selection.relationship()
         is ReviewedValueRelation.MappedValue -> selection.relationship()
+        is ReviewedValueRelation.PrimitiveResult -> QueryImpactRelationship.DERIVED
         is ReviewedValueRelation.TupleConstruction,
         is ReviewedValueRelation.TupleProjection,
         is ReviewedValueRelation.AssociationComponent -> QueryImpactRelationship.EXACT

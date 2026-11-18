@@ -112,6 +112,11 @@ internal fun nativeReviewedTupleResult(
         }
     if (binding.invocation != invocation) return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
     return when (binding.selected.operation) {
+        ReviewedLibraryOperation.INT_PLUS,
+        ReviewedLibraryOperation.INT_TIMES,
+        ReviewedLibraryOperation.INT_MIN,
+        ReviewedLibraryOperation.INT_MAX,
+        ReviewedLibraryOperation.INT_MINUS -> ReviewedValueTransfer.primitiveResult(request.source, binding)
         ReviewedLibraryOperation.MAP_ENTRY_KEY,
         ReviewedLibraryOperation.MAP_ENTRY_VALUE,
         ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
