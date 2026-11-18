@@ -2526,7 +2526,8 @@
         "ImpactFlow": {
           "type": "string",
           "enum": [
-            "KOTLIN_FORWARD_V1"
+            "KOTLIN_FORWARD_V1",
+            "KOTLIN_JAVA_FORWARD_V2"
           ]
         },
         "ImpactWorkspaceDomain": {

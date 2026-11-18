@@ -2,15 +2,18 @@
 
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.psi.PsiCompiledElement
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiNamedElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationEndpoint
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
+import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowSemantics
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueInvocation
 import io.github.amichne.kast.relation.contract.ValueRole
-import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransfer
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
@@ -21,10 +24,12 @@ import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtValueArgumentList
 
 internal fun nativeValueArgumentReturn(
-    source: ValueSite,
+    request: ValueFlowRequest,
+    element: PsiElement,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
 ): Refinement<ValueTransfer, ValueFlowUnsupportedCause> {
+    val source = request.source
     val argument =
         source.role as? ValueRole.Argument ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
     when (val result = nativeTransparentWrapperReturn(argument, scope, projection)) {
@@ -33,7 +38,13 @@ internal fun nativeValueArgumentReturn(
             if (result.failure != ValueFlowUnsupportedCause.UNMODELED_CALL) return result
             return if (argument.call.callable.kind == CompilerSymbolKind.CONSTRUCTOR)
                 nativeValueConstructorArgument(source, scope, projection)
-            else nativeValueSourceArgument(source, scope, projection)
+            else
+                nativeValueSourceArgument(
+                    request = request,
+                    element = element,
+                    scope = scope,
+                    projection = projection,
+                )
         }
     }
     val target =
@@ -51,11 +62,14 @@ internal fun nativeValueArgumentReturn(
 
 internal fun nativeValueArgument(
     expression: KtExpression,
-    argument: KtValueArgument,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
     executionOwner: ValueExecutionOwner,
+    semantics: ValueFlowSemantics = ValueFlowSemantics.KOTLIN_FORWARD_V1,
 ): Refinement<ValueRole.Argument, ValueFlowUnsupportedCause> {
+    val argument =
+        expression.parent as? KtValueArgument
+            ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
     val call =
         when (val container = argument.parent) {
             is KtCallElement -> container
@@ -78,44 +92,31 @@ internal fun nativeValueArgument(
                 )
             }
         }
-    val invocation =
-        when (
-            val admitted =
-                argumentInvocation(
-                    call = call,
-                    argument = detached,
-                    scope = scope,
-                    projection = projection,
-                    executionOwner = executionOwner,
-                )
-        ) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return admitted
-        }
-    return Refinement.Refined(ValueRole.Argument(invocation, detached.position))
-}
-
-private fun argumentInvocation(
-    call: KtCallElement,
-    argument: NativeArgument,
-    scope: CompiledRelationScope,
-    projection: IntellijK2RelationProjection,
-    executionOwner: ValueExecutionOwner,
-): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
-    val enclosing = executionOwner.enclosing
     val endpoint =
         when (
             val result =
                 nativeValueCallableEndpoint(
-                    declaration = argument.declaration,
-                    enclosing = enclosing,
+                    declaration = detached.declaration,
+                    enclosing = executionOwner.enclosing,
                     scope = scope,
                     projection = projection,
+                    semantics = semantics,
                 )
         ) {
             is Refinement.Refined -> result.value
             is Refinement.Rejected -> return result
         }
+    return when (val invocation = argumentInvocation(call, endpoint, executionOwner)) {
+        is Refinement.Refined -> Refinement.Refined(ValueRole.Argument(invocation.value, detached.position))
+        is Refinement.Rejected -> invocation
+    }
+}
+
+private fun argumentInvocation(
+    call: KtCallElement,
+    endpoint: RelationEndpoint,
+    executionOwner: ValueExecutionOwner,
+): Refinement<ValueInvocation, ValueFlowUnsupportedCause> {
     val range =
         when (val result = argumentRange(call.valueInvocationExpression())) {
             is Refinement.Refined -> result.value
@@ -126,7 +127,7 @@ private fun argumentInvocation(
     return when (
         val result =
             ValueInvocation.fromCompiler(
-                enclosing = enclosing,
+                enclosing = executionOwner.enclosing,
                 range = range,
                 callable = endpoint,
                 executionOwner = executionOwner,
@@ -144,13 +145,15 @@ internal fun nativeValueCallableEndpoint(
     enclosing: RelationEndpoint,
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
+    semantics: ValueFlowSemantics = ValueFlowSemantics.KOTLIN_FORWARD_V1,
 ): Refinement<RelationEndpoint, ValueFlowUnsupportedCause> {
     when (scope.admitProviderSite(declaration.containingFile?.virtualFile)) {
         RelationProviderScopeAdmission.ADMITTED -> Unit
         RelationProviderScopeAdmission.SOURCE_DOMAIN_EXCLUDED ->
             return Refinement.Rejected(ValueFlowUnsupportedCause.OUTSIDE_DOMAIN)
         RelationProviderScopeAdmission.LIBRARY_POLICY_EXCLUDED ->
-            return Refinement.Rejected(ValueFlowUnsupportedCause.EXTERNAL_CALL)
+            if (!declaration.retainsCompiledJavaIdentity(semantics))
+                return Refinement.Rejected(ValueFlowUnsupportedCause.EXTERNAL_CALL)
         RelationProviderScopeAdmission.UNAVAILABLE ->
             return Refinement.Rejected(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE)
     }
@@ -177,6 +180,10 @@ internal fun nativeValueCallableEndpoint(
         }
     }
 }
+
+/** The resolved argument can name the compiled target while its body remains outside the source domain. */
+private fun PsiNamedElement.retainsCompiledJavaIdentity(semantics: ValueFlowSemantics): Boolean =
+    semantics == ValueFlowSemantics.KOTLIN_JAVA_FORWARD_V2 && this is PsiMethod && this is PsiCompiledElement
 
 private fun argumentRange(element: PsiElement): Refinement<ExactDeclarationTextRange, ValueFlowUnsupportedCause> =
     when (val result = ExactDeclarationTextRange.parse(element.textRange.startOffset, element.textRange.endOffset)) {

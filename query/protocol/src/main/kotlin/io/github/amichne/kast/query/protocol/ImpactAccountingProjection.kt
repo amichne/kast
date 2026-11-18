@@ -84,6 +84,8 @@ private fun QueryImpactLedger.impactDocument(
                                             when (semantics) {
                                                 QueryImpactFlowSemantics.KOTLIN_FORWARD_V1 ->
                                                     ImpactFlowSemanticsDocument.KOTLIN_FORWARD_V1
+                                                QueryImpactFlowSemantics.KOTLIN_JAVA_FORWARD_V2 ->
+                                                    ImpactFlowSemanticsDocument.KOTLIN_JAVA_FORWARD_V2
                                             },
                                             representations,
                                             boundaries,

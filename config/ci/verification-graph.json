@@ -458,7 +458,7 @@
         },
         {
             "path": "relation/intellij/build.gradle.kts",
-            "sha256": "4713d8ecd98447787dbb8853b162cb3ea941a7e114c7904f573d2c13b04d42cc"
+            "sha256": "3bd792bff1abc193cbb5a076645b3f493371bf56b1b5fcdd9b07164557d3da75"
         },
         {
             "path": "relation/service/build.gradle.kts",
@@ -466,7 +466,7 @@
         },
         {
             "path": "runtime/hosted/build.gradle.kts",
-            "sha256": "965929b72b462c2d3c408a021be2c67c0a24deb316a018ec95454c798a3133c6"
+            "sha256": "802ccca522f66bb797501429eb21c83a2cdf294d7e3ce7eeb028e10bf4f794ba"
         },
         {
             "path": "settings.gradle.kts",

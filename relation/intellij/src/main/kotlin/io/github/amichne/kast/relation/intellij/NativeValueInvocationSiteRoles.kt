@@ -23,7 +23,6 @@ internal fun nativeArgumentSiteRole(
         val role =
             nativeValueArgument(
                 expression = expression,
-                argument = argument,
                 scope = prepared.scope,
                 projection = prepared.projection,
                 executionOwner = executionOwner,

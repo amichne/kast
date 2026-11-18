@@ -9,14 +9,16 @@ import io.github.amichne.kast.relation.contract.RepresentationCurrent
 import io.github.amichne.kast.relation.contract.RepresentationHistory
 import io.github.amichne.kast.relation.contract.RepresentationModelApplication
 import io.github.amichne.kast.relation.contract.RepresentationRule
+import io.github.amichne.kast.relation.contract.ValueFlowSemantics
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowWorkReceipt
 import io.github.amichne.kast.relation.contract.ValueSite
 import java.util.Collections
 
 /** The versioned static flow includes compiler transfers and qualified reviewed-library correspondence. */
-enum class QueryImpactFlowSemantics {
-    KOTLIN_FORWARD_V1
+enum class QueryImpactFlowSemantics(val native: ValueFlowSemantics) {
+    KOTLIN_FORWARD_V1(ValueFlowSemantics.KOTLIN_FORWARD_V1),
+    KOTLIN_JAVA_FORWARD_V2(ValueFlowSemantics.KOTLIN_JAVA_FORWARD_V2),
 }
 
 enum class QueryImpactLedgerFailure {

@@ -73,10 +73,10 @@ internal class NativeValueArgumentFlow(
             val role =
                 nativeValueArgument(
                     expression = expression,
-                    argument = argument,
                     scope = scope,
                     projection = projection,
                     executionOwner = request.source.executionOwner,
+                    semantics = request.semantics,
                 )
         ) {
             is Refinement.Refined -> retained.emit(expression, role.value, ValueTransferKind.ARGUMENT)

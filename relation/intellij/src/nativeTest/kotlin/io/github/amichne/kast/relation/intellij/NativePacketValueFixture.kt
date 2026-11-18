@@ -70,6 +70,7 @@ abstract class NativePacketValueFixtureTest : HeavyPlatformTestCase() {
     protected fun packetFixture(
         paths: List<String>,
         sourceKinds: SymbolSourceKindPolicy = SymbolSourceKindPolicy.PRODUCTION_ONLY,
+        readSource: (String) -> ByteArray = ::frozenPacketSource,
         configureCompiler: () -> Unit = {},
     ): NativePacketValueFixture {
         lateinit var source: VirtualFile
@@ -89,7 +90,7 @@ abstract class NativePacketValueFixtureTest : HeavyPlatformTestCase() {
             preparePacketModule(source, testSource)
             WriteCommandAction.runWriteCommandAction(project) {
                 configureCompiler()
-                copyPacketFiles(source, testSource, paths).forEach { (path, file) -> files[path] = file }
+                copyPacketFiles(source, testSource, paths, readSource).forEach { (path, file) -> files[path] = file }
             }
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             IndexingTestUtil.waitUntilIndexesAreReady(project)
@@ -154,6 +155,7 @@ abstract class NativePacketValueFixtureTest : HeavyPlatformTestCase() {
         source: VirtualFile,
         testSource: VirtualFile?,
         paths: List<String>,
+        readSource: (String) -> ByteArray,
     ): Map<String, VirtualFile> = paths.associateWith { path ->
         val isTest = path.startsWith("src/test/kotlin/")
         val relative = path.removePrefix(if (isTest) "src/test/kotlin/" else "src/main/kotlin/")
@@ -162,7 +164,7 @@ abstract class NativePacketValueFixtureTest : HeavyPlatformTestCase() {
             directory = directory.findChild(part) ?: directory.createChildDirectory(this, part)
         }
         directory.createChildData(this, relative.substringAfterLast('/')).also {
-            it.setBinaryContent(frozenPacketSource(path))
+            it.setBinaryContent(readSource(path))
         }
     }
 
@@ -223,7 +225,7 @@ internal constructor(
 
     fun assertNoFixtureErrors() = nativeRead {
         files.forEach { (path, virtual) ->
-            val file = com.intellij.psi.PsiManager.getInstance(project).findFile(virtual) as KtFile
+            val file = com.intellij.psi.PsiManager.getInstance(project).findFile(virtual) as? KtFile ?: return@forEach
             val errors =
                 IntellijReadObservation.None.observedAnalyze(file) {
                     file
@@ -233,6 +235,12 @@ internal constructor(
                 }
             check(errors.isEmpty()) { "Fixture prerequisite failed for $path: $errors" }
         }
+    }
+
+    fun javaCallable(path: String, name: String): SymbolSelector = nativeRead {
+        val file = com.intellij.psi.PsiManager.getInstance(project).findFile(checkNotNull(files[path]))
+        check(file is com.intellij.psi.PsiJavaFile)
+        selector(file.classes.single().findMethodsByName(name, false).single())
     }
 
     fun selection(

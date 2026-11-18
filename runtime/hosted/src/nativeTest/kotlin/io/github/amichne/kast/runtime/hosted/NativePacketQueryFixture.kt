@@ -30,11 +30,20 @@ internal class NativePacketQueryFixture(
     private val configureCompiler: () -> Unit = {},
 ) {
     fun prepare(variant: NativePacketQueryVariant = NativePacketQueryVariant.V0): NativePacketQueryCase {
-        val prepared = prepareFiles(listOf(PacketQuerySourceInput(variant.sourcePath, variant.manifest)))
+        val path = variant.sourcePath
+        val inputs =
+            if (variant == NativePacketQueryVariant.JAVA_FLOW) {
+                val java = path.substringBeforeLast('/') + "/JavaFlow.java"
+                listOf(path, java).associateWith { input ->
+                    val name = input.substringAfterLast('/')
+                    checkNotNull(javaClass.getResourceAsStream("/impact-boundary/$name")).use { it.readBytes() }
+                }
+            } else mapOf(path to frozenSource(path))
+        val prepared = prepareFiles(inputs)
         val original =
             NativePacketQuerySource(
                 project = project,
-                file = prepared.files.values.single(),
+                file = prepared.files.getValue(path),
                 services = prepared.services,
                 variant = variant,
                 ownedRoot = prepared.model.sourceRoots.single(),
@@ -43,10 +52,10 @@ internal class NativePacketQueryFixture(
         return NativePacketQueryCase(prepared.services, original)
     }
 
-    private fun prepareFiles(inputs: List<PacketQuerySourceInput>): PreparedPacketQuerySources {
+    private fun prepareFiles(inputs: Map<String, ByteArray>): PreparedPacketQuerySources {
         lateinit var source: VirtualFile
         var testSource: VirtualFile? = null
-        val hasTestSources = inputs.any { it.path.startsWith("src/test/kotlin/") }
+        val hasTestSources = inputs.keys.any { it.startsWith("src/test/kotlin/") }
         val files = linkedMapOf<String, VirtualFile>()
         ApplicationManager.getApplication().invokeAndWait {
             source =
@@ -60,7 +69,9 @@ internal class NativePacketQueryFixture(
             prepareModule(source, testSource)
             WriteCommandAction.runWriteCommandAction(project) {
                 configureCompiler()
-                inputs.forEach { input -> files[input.path] = copyFrozenSource(source, testSource, input) }
+                inputs.forEach { (path, bytes) ->
+                    files[path] = copySource(source = source, testSource = testSource, path = path, bytes = bytes)
+                }
             }
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             IndexingTestUtil.waitUntilIndexesAreReady(project)
@@ -91,19 +102,20 @@ internal class NativePacketQueryFixture(
         }
     }
 
-    private fun copyFrozenSource(
+    private fun copySource(
         source: VirtualFile,
         testSource: VirtualFile?,
-        input: PacketQuerySourceInput,
+        path: String,
+        bytes: ByteArray,
     ): VirtualFile {
-        val isTest = input.path.startsWith("src/test/kotlin/")
+        val isTest = path.startsWith("src/test/kotlin/")
         var directory = if (isTest) checkNotNull(testSource) else source
-        val relative = input.path.removePrefix(if (isTest) "src/test/kotlin/" else "src/main/kotlin/")
+        val relative = path.removePrefix(if (isTest) "src/test/kotlin/" else "src/main/kotlin/")
         relative.substringBeforeLast('/').split('/').forEach { name ->
             directory = directory.findChild(name) ?: directory.createChildDirectory(this, name)
         }
         return directory.createChildData(this, relative.substringAfterLast('/')).also {
-            it.setBinaryContent(frozenSource(input))
+            it.setBinaryContent(bytes)
         }
     }
 
@@ -135,9 +147,8 @@ internal class NativePacketQueryFixture(
             provenance = WorkspaceSourceRootProvenance.AUTHORED,
         )
 
-    private fun frozenSource(input: PacketQuerySourceInput): ByteArray {
+    private fun frozenSource(path: String): ByteArray {
         val packet = Path.of("../../relation/intellij/testData/request-response").toAbsolutePath().normalize()
-        val path = input.path
         val receipt = Files.readAllLines(packet.resolve("frozen-sources.sha256")).single { it.endsWith("  $path") }
         val expected = receipt.substringBefore("  ")
         val bytes = Files.readAllBytes(packet.resolve(path))
@@ -156,12 +167,14 @@ internal enum class NativePacketQueryVariant(val directory: String, val concrete
     V3("v3", "BackendClient", "derived-sources.sha256"),
     V8("v8", "BackendClient", "derived-sources.sha256"),
     COVERAGE("coverage", "BindingScope", "frozen-sources.sha256"),
-    CONFIGURED("configured", "Box", "frozen-sources.sha256");
+    CONFIGURED("configured", "Box", "frozen-sources.sha256"),
+    JAVA_FLOW("controls", "JavaFlow", "");
 
-    val sourcePath = "src/main/kotlin/fixture/variants/$directory/${directory.uppercase()}.kt"
+    val sourcePath: String
+        get() =
+            if (this == JAVA_FLOW) "src/main/kotlin/fixture/controls/JavaFlowCases.kt"
+            else "src/main/kotlin/fixture/variants/$directory/${directory.uppercase()}.kt"
 }
-
-private data class PacketQuerySourceInput(val path: String, val manifest: String)
 
 private data class PreparedPacketQuerySources(
     val files: Map<String, VirtualFile>,

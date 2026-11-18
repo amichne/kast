@@ -23,7 +23,7 @@ This reference defines the supported routes and their limits.
 | --- | --- | --- |
 | Which declarations connect to this symbol? | `EXPAND_RELATION`, `WALK`, or `TRACE` | References, calls, implementations, and overrides. The depth states how far the query goes. |
 | How does this callback reach a call? | Callback observations in relationship reads | Who supplies it, which formal accepts it, and which body calls it. Aliases and forwarding connect those sites. |
-| Where does this producer value travel? | `IMPACT` with `KOTLIN_FORWARD_V1` | Value paths, representation models, and destination sites. Terminals show where paths stop. Obligations state the proof still needed. |
+| Where does this producer value travel? | `IMPACT` | Value paths, representation models, and destination sites. Terminals show where paths stop. Obligations state the proof still needed. |
 
 These contracts share exact identities and source state. Each kind of edge states a different fact. A reference count cannot stand for a call count.
 
@@ -95,6 +95,8 @@ The reviewed `kotlin.lazy` model records the initializer supplied for later use.
 ## Producer values and representations
 
 `IMPACT` starts from exact producer calls. Native reads prove source identity and supported Kotlin transfers.
+Select `KOTLIN_JAVA_FORWARD_V2` to trace a Kotlin argument through a supported Java static method.
+The Java return supplies the result of the same Kotlin invocation.
 
 Here, a producer is the selected constructor or function call whose result the investigation tracks.
 

@@ -276,7 +276,14 @@ internal class QueryImpactTasks(
                     }
                 }
             if (budget == null) return QueryImpactReadAcquisition.NotStarted
-            val requested = ValueFlowRequest(route.site, budget, source.domain, remainders[route.site])
+            val requested =
+                ValueFlowRequest(
+                    source = route.site,
+                    budget = budget,
+                    boundary = source.domain,
+                    remainder = remainders[route.site],
+                    semantics = source.semantics.native,
+                )
             val read = shareRead(validateImpactRead(port.read(requested), requested, source))
             recordReceipt(route, requested, read)
             state.consume(read.examinedImpactWork().value)
