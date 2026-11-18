@@ -23,6 +23,7 @@ data class ImpactCompilerTransferDocument(
             when (val proof = evidence) {
                 ImpactTransferEvidenceDocument.Direct ->
                     source.admitsDirectLoop(target, kind) && kind.admitsDirectState(source, target)
+                is ImpactTransferEvidenceDocument.JavaIntDivision -> proof.admits(source, target, kind)
                 is ImpactTransferEvidenceDocument.PrimitiveDerivation -> proof.admits(source, target, kind)
                 is ImpactTransferEvidenceDocument.StringContent -> proof.admitsContent(source, target, kind)
                 is ImpactTransferEvidenceDocument.LoopAdvance -> proof.admits(source, target, kind)

@@ -51,6 +51,7 @@ sealed interface ValueTransferEvidence {
         when (this) {
             Direct -> admitsDirect(source, target, kind)
             is ValueStringContent -> admitsContent(source, target, kind)
+            is ValueJavaIntDivision -> admitsDivision(source, target, kind)
             is ValueIntArithmetic -> admitsArithmetic(source, target, kind)
             is ValueSourceTransfer -> admitsSource(source, target, kind)
             is ValueLoopTransfer -> admitsLoop(source, target, kind)
@@ -62,6 +63,7 @@ sealed interface ValueTransferEvidence {
             when (this) {
                 Direct -> 0L
                 is ValueStringContent -> 256L
+                is ValueJavaIntDivision -> storageBytes
                 is ValueIntArithmetic -> storageBytes
                 is ValueSourceTransfer -> sourceEvidenceStorageBytes(operation)
                 is ValueLoopTransfer -> storageBytes()

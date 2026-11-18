@@ -1,7 +1,9 @@
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.psi.PsiBinaryExpression
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiExpression
+import com.intellij.psi.PsiLiteralExpression
 import com.intellij.psi.PsiLocalVariable
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiParameter
@@ -10,6 +12,7 @@ import com.intellij.psi.PsiVariable
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
 import io.github.amichne.kast.relation.contract.ValueFormalPosition
+import io.github.amichne.kast.relation.contract.ValueJavaIntDivision
 import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransferKind
@@ -46,8 +49,14 @@ internal class NativeJavaValueFlow(
                 else unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, element)
             }
             ValueRole.LocalRead -> readReference(element, reads)
+            ValueRole.ExpressionResult -> {
+                val read =
+                    reads.singleOrNull { (it.operation as? JavaReadOperation.IntDivision)?.result == element }
+                        ?: return unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, element)
+                emitDestination(read)
+            }
             ValueRole.Return ->
-                if (reads.any { it.expression == element && it.destination == JavaValueDestination.Return })
+                if (reads.any { it.result == element && it.destination == JavaValueDestination.Return })
                     NativeJavaValueRead.MatchedReturn
                 else unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_RETURN, element)
             else -> unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, element)
@@ -84,10 +93,39 @@ internal class NativeJavaValueFlow(
         val read =
             reads.singleOrNull { it.expression == element }
                 ?: return unsupported(ValueFlowUnsupportedCause.UNRESOLVED_REFERENCE, element)
+        return when (val operation = read.operation) {
+            JavaReadOperation.Identity -> emitDestination(read)
+            is JavaReadOperation.IntDivision -> emitDivision(operation)
+        }
+    }
+
+    private fun emitDivision(operation: JavaReadOperation.IntDivision): NativeJavaValueRead {
+        val proof =
+            ValueJavaIntDivision.fromJavaIntOperands(
+                source = source,
+                divisorRange = sourceValueRange(operation.literal),
+                resultRange = sourceValueRange(operation.result),
+                divisor = operation.divisor,
+            )
+        when (proof) {
+            is Refinement.Refined ->
+                retained.emit(
+                    operation.result,
+                    ValueRole.ExpressionResult,
+                    ValueTransferKind.PRIMITIVE_DERIVATION,
+                    proof.value,
+                )
+            is Refinement.Rejected ->
+                return unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, operation.result)
+        }
+        return NativeJavaValueRead.Continued
+    }
+
+    private fun emitDestination(read: JavaValueRead): NativeJavaValueRead {
         when (val destination = read.destination) {
             is JavaValueDestination.Bind ->
                 retained.emit(destination.local, ValueRole.LocalBinding, ValueTransferKind.LOCAL_BINDING)
-            JavaValueDestination.Return -> retained.emit(read.expression, ValueRole.Return, ValueTransferKind.RETURN)
+            JavaValueDestination.Return -> retained.emit(read.result, ValueRole.Return, ValueTransferKind.RETURN)
         }
         return NativeJavaValueRead.Continued
     }
@@ -102,7 +140,22 @@ internal data class JavaValueRead(
     val expression: PsiReferenceExpression,
     val binding: PsiVariable,
     val destination: JavaValueDestination,
-)
+    val operation: JavaReadOperation = JavaReadOperation.Identity,
+) {
+    val result: PsiExpression
+        get() =
+            when (operation) {
+                JavaReadOperation.Identity -> expression
+                is JavaReadOperation.IntDivision -> operation.result
+            }
+}
+
+internal sealed interface JavaReadOperation {
+    data object Identity : JavaReadOperation
+
+    data class IntDivision(val result: PsiBinaryExpression, val literal: PsiLiteralExpression, val divisor: Int) :
+        JavaReadOperation
+}
 
 internal sealed interface JavaValueDestination {
     data class Bind(val local: PsiLocalVariable) : JavaValueDestination

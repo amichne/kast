@@ -105,6 +105,7 @@ private fun ValueTransferEvidence.impactDocument(): ImpactProjected<ImpactTransf
     when (this) {
         ValueTransferEvidence.Direct -> Refinement.Refined(ImpactTransferEvidenceDocument.Direct)
         is io.github.amichne.kast.relation.contract.ValueStringContent -> impactStringContent()
+        is io.github.amichne.kast.relation.contract.ValueJavaIntDivision -> impactDocument()
         is ValueLoopTransfer -> impactDocument()
         is io.github.amichne.kast.relation.contract.ValueIntArithmetic -> impactDocument()
         is ValueSourceTransfer -> operation.impactDocument().impactMap(ImpactTransferEvidenceDocument::Source)

@@ -65,6 +65,25 @@ class NativeJavaStaticValueFlowTest : NativePacketValueFixtureTest() {
         assertExhausted(steps)
     }
 
+    fun testZeroPromotionAndBoxingKeepTheJavaReturnUnproven() {
+        val fixture = fixture()
+        for ((host, method) in
+            listOf("zeroDivision" to "zero", "promotedDivision" to "promoted", "boxedDivision" to "boxed")) {
+            val steps = trace(fixture, host)
+            val failure = steps.flatMap { it.obligations }.single()
+            assertEquals(ValueFlowUnsupportedCause.UNMODELED_CALL, failure.cause)
+            assertEquals(fixture.javaCallable(JAVA, method).compilerIdentity, failure.site.enclosing.compilerIdentity)
+            assertTrue(
+                steps
+                    .flatMap { it.transfers }
+                    .none { transfer ->
+                        transfer.kind == ValueTransferKind.PRIMITIVE_DERIVATION ||
+                            transfer.kind == ValueTransferKind.SOURCE_CALL_RETURN
+                    }
+            )
+        }
+    }
+
     fun testDirectFormalReturn() {
         val fixture = fixture()
         val steps = trace(fixture, "direct")

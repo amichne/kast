@@ -4516,7 +4516,7 @@
       "content": [
         {
           "path": "docs/public/reference/api.mdx",
-          "sha256": "5922cbc56cb2943ce967437bef5ff5703d46ac5d88f2d55c81db8362e0af732b"
+          "sha256": "db31c7ba8f360f566d4c5077fb272d9fe010e97daab77a25a2a0efddbb600444"
         }
       ],
       "claims": [
@@ -4877,7 +4877,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "2db91e792309ce8796d5ed08917aa7b48722c7fa9f642cbfee6f4fe5cf2eb700"
+          "sha256": "d63fb1af97d8fcf5e5e8f7948324dfc23dbe725e0f410422208143c7812f2d94"
         },
         {
           "path": "docs/public/reference/callables/add-declaration.mdx",
@@ -4918,7 +4918,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "2db91e792309ce8796d5ed08917aa7b48722c7fa9f642cbfee6f4fe5cf2eb700"
+          "sha256": "d63fb1af97d8fcf5e5e8f7948324dfc23dbe725e0f410422208143c7812f2d94"
         },
         {
           "path": "docs/public/reference/callables/check-diagnostics.mdx",
@@ -4959,7 +4959,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "2db91e792309ce8796d5ed08917aa7b48722c7fa9f642cbfee6f4fe5cf2eb700"
+          "sha256": "d63fb1af97d8fcf5e5e8f7948324dfc23dbe725e0f410422208143c7812f2d94"
         },
         {
           "path": "docs/public/reference/callables/query-symbols.mdx",
@@ -5000,7 +5000,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "2db91e792309ce8796d5ed08917aa7b48722c7fa9f642cbfee6f4fe5cf2eb700"
+          "sha256": "d63fb1af97d8fcf5e5e8f7948324dfc23dbe725e0f410422208143c7812f2d94"
         },
         {
           "path": "docs/public/reference/callables/replace-body.mdx",
@@ -5041,7 +5041,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "2db91e792309ce8796d5ed08917aa7b48722c7fa9f642cbfee6f4fe5cf2eb700"
+          "sha256": "d63fb1af97d8fcf5e5e8f7948324dfc23dbe725e0f410422208143c7812f2d94"
         },
         {
           "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
