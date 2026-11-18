@@ -56,6 +56,7 @@ private fun notEstablished(index: Int, cause: ImpactCorrespondenceFailureDocumen
 
 private fun ImpactTransferKindDocument.relationship(): ImpactRelationshipDocument =
     when (this) {
+        ImpactTransferKindDocument.PRIMITIVE_DERIVATION,
         ImpactTransferKindDocument.STRING_CONTENT -> ImpactRelationshipDocument.DERIVED
         ImpactTransferKindDocument.LOCAL_BINDING,
         ImpactTransferKindDocument.LOCAL_READ,
@@ -99,6 +100,7 @@ internal fun ImpactReviewedValueRelationDocument.relationship(): ImpactRelations
         is ImpactReviewedValueRelationDocument.PreservedKey -> entry.selection.relationship()
         is ImpactReviewedValueRelationDocument.EntryProjection -> entry.selection.relationship()
         is ImpactReviewedValueRelationDocument.MappedValue -> entry.selection.relationship()
+        is ImpactReviewedValueRelationDocument.IntExtremum -> ImpactRelationshipDocument.DERIVED
         is ImpactReviewedValueRelationDocument.TupleConstruction,
         is ImpactReviewedValueRelationDocument.TupleProjection,
         is ImpactReviewedValueRelationDocument.AssociationComponent -> ImpactRelationshipDocument.EXACT

@@ -2101,7 +2101,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -2625,7 +2625,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -2809,7 +2809,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         },
         {
           "path": "docs/tooling/value-journey/src/trace.ts",
@@ -2905,7 +2905,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         },
         {
           "path": "docs/tooling/value-journey/src/trace.ts",
@@ -3369,7 +3369,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -3406,7 +3406,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -3693,7 +3693,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -4164,7 +4164,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
@@ -4506,7 +4506,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -4863,7 +4863,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -4877,7 +4877,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "7d3bfb7839890d9d3f629c45bde2015660877c1b1d82991d0f003721140582f7"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         },
         {
           "path": "docs/public/reference/callables/add-declaration.mdx",
@@ -4918,7 +4918,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "7d3bfb7839890d9d3f629c45bde2015660877c1b1d82991d0f003721140582f7"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         },
         {
           "path": "docs/public/reference/callables/check-diagnostics.mdx",
@@ -4959,7 +4959,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "7d3bfb7839890d9d3f629c45bde2015660877c1b1d82991d0f003721140582f7"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         },
         {
           "path": "docs/public/reference/callables/query-symbols.mdx",
@@ -5000,7 +5000,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "7d3bfb7839890d9d3f629c45bde2015660877c1b1d82991d0f003721140582f7"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         },
         {
           "path": "docs/public/reference/callables/replace-body.mdx",
@@ -5041,7 +5041,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "7d3bfb7839890d9d3f629c45bde2015660877c1b1d82991d0f003721140582f7"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         },
         {
           "path": "docs/public/reference/callables/workspace-lifecycle.mdx",
@@ -5190,7 +5190,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -5328,7 +5328,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -5866,7 +5866,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         },
         {
           "path": "gradle/libs.versions.toml",
@@ -6139,7 +6139,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
@@ -6689,7 +6689,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         },
         {
           "path": "packaging/configuration-schema.json",
@@ -6820,7 +6820,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
@@ -7147,7 +7147,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
@@ -7614,7 +7614,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
@@ -7831,7 +7831,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
@@ -8213,7 +8213,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
@@ -8555,7 +8555,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -8897,7 +8897,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -9239,7 +9239,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -9581,7 +9581,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -9923,7 +9923,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -10265,7 +10265,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -10607,7 +10607,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -10949,7 +10949,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -11291,7 +11291,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -11447,7 +11447,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -11734,7 +11734,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -11744,7 +11744,7 @@
       "content": [
         {
           "path": "docs/public/reference/responses.mdx",
-          "sha256": "817e3eff8d3f49a9d24a6d10feb9fab7145fa33ad0d0293f4b249395ae4b118c"
+          "sha256": "c0dec1eb919a2f5f13039347be8445719e3128ffe368830ec4895517066bdfcc"
         }
       ],
       "claims": [
@@ -12091,7 +12091,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -12473,7 +12473,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
@@ -12760,7 +12760,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -13102,7 +13102,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -13934,7 +13934,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
@@ -14321,7 +14321,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
@@ -14608,7 +14608,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "7caa995ef5eb1e05e3b51b1752fca3646624eeec"
@@ -15014,7 +15014,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"
@@ -15545,7 +15545,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
@@ -15806,7 +15806,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "16e3b0798acf5b203f35711b0db9769d9b8d1293"
@@ -16152,7 +16152,7 @@
         },
         {
           "path": "docs/public/reference/callables.openapi.json",
-          "sha256": "5d2f797b2abf25dad7aa89aa30f342bd8f5d8ca4c52a234a1a4412d301f0b38e"
+          "sha256": "bce713deb9515575419b71edcf007f3ec1a7f97d080af0e2fad186d30564567d"
         }
       ],
       "reviewedSourceRevision": "db1a2082a9a01a9812d395636895272f0dd588a2"

@@ -60272,7 +60272,8 @@
             "FIELD_READ",
             "CONSTRUCTOR_FIELD",
             "CAST_RESULT",
-            "STRING_CONTENT"
+            "STRING_CONTENT",
+            "PRIMITIVE_DERIVATION"
           ]
         },
         "evidence": {
@@ -60428,6 +60429,79 @@
                 "branch_range",
                 "alternative",
                 "condition"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
+                    "PRIMITIVE_DERIVATION"
+                  ],
+                  "type": "string"
+                },
+                "rule": {
+                  "type": "string",
+                  "enum": [
+                    "INT_MINUS_V1",
+                    "INT_PLUS_V1",
+                    "INT_TIMES_V1"
+                  ]
+                },
+                "compiler_identity": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1048576,
+                  "allOf": [
+                    {
+                      "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                    },
+                    {
+                      "pattern": "^canonical-signature-sha256-v1[|][0-9a-f]{64}$"
+                    }
+                  ]
+                },
+                "authority": {
+                  "type": "string",
+                  "enum": [
+                    "K2_BUILTINS_MODULE",
+                    "K2_BUILTINS_METADATA"
+                  ]
+                },
+                "module_name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512,
+                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                },
+                "input": {
+                  "type": "string",
+                  "enum": [
+                    "DISPATCH_RECEIVER",
+                    "ARGUMENT_0"
+                  ]
+                },
+                "input_range": {
+                  "$ref": "#/$defs/impactSourceRange"
+                },
+                "result_range": {
+                  "$ref": "#/$defs/impactSourceRange"
+                },
+                "basis": {
+                  "$ref": "#/$defs/impactSemanticBasis"
+                }
+              },
+              "required": [
+                "type",
+                "rule",
+                "compiler_identity",
+                "authority",
+                "module_name",
+                "input",
+                "input_range",
+                "result_range",
+                "basis"
               ]
             },
             {
@@ -61185,6 +61259,29 @@
               "required": [
                 "type",
                 "entry"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
+                    "INT_EXTREMUM"
+                  ],
+                  "type": "string"
+                },
+                "input": {
+                  "type": "string",
+                  "enum": [
+                    "ARGUMENT_0",
+                    "ARGUMENT_1"
+                  ]
+                }
+              },
+              "required": [
+                "type",
+                "input"
               ]
             },
             {
@@ -66721,6 +66818,10 @@
         "KOTLIN_2_3_0_ALSO_V1",
         "KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1",
         "KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1",
+        "KOTLIN_2_3_0_INT_MIN_V1",
+        "KOTLIN_2_3_0_INT_MAX_V1",
+        "KOTLIN_2_4_21_INT_MIN_V1",
+        "KOTLIN_2_4_21_INT_MAX_V1",
         "KOTLIN_2_3_0_TO_V1",
         "KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1",
         "KOTLIN_2_3_0_PAIR_FIRST_V1",
@@ -67499,6 +67600,95 @@
             "implementationSha256",
             "sections",
             "helpers"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sourceEntry": {
+              "enum": [
+                "jvmMain/kotlin/util/MathJVM.kt"
+              ],
+              "type": "string"
+            },
+            "binaryArtifactSha256": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64,
+              "allOf": [
+                {
+                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                },
+                {
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            },
+            "sourceArtifactSha256": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64,
+              "allOf": [
+                {
+                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                },
+                {
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            },
+            "sourceEntrySha256": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64,
+              "allOf": [
+                {
+                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                },
+                {
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            },
+            "facadeSha256": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64,
+              "allOf": [
+                {
+                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                },
+                {
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            },
+            "implementationSha256": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64,
+              "allOf": [
+                {
+                  "pattern": "[\\s\\S]*\\S[\\s\\S]*"
+                },
+                {
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            },
+            "functionLines": {
+              "$ref": "#/$defs/impactReviewedSourceLines"
+            }
+          },
+          "required": [
+            "sourceEntry",
+            "binaryArtifactSha256",
+            "sourceArtifactSha256",
+            "sourceEntrySha256",
+            "facadeSha256",
+            "implementationSha256",
+            "functionLines"
           ]
         },
         {

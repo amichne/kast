@@ -65,6 +65,7 @@ private fun ImpactReviewedValueRelationshipDocument.hasRequiredPremise(
                 conditions.any {
                     it is ImpactValueConditionDocument.ReviewedCallbackNormalReturn && it.binding == authority
                 }
+        is ImpactReviewedValueRelationDocument.IntExtremum,
         is ImpactReviewedValueRelationDocument.TupleConstruction,
         is ImpactReviewedValueRelationDocument.TupleProjection -> true
     }

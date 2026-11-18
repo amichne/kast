@@ -91,7 +91,8 @@ internal fun ReviewedValueRelation.storageBytes(g: QueryImpactRetainedGraph): Lo
             is ReviewedValueRelation.FilteredElements,
             ReviewedValueRelation.NonNullCallbackResult,
             is ReviewedValueRelation.CallbackCorrespondence,
-            is ReviewedValueRelation.ReorderedElements -> 0L
+            is ReviewedValueRelation.ReorderedElements,
+            is ReviewedValueRelation.IntExtremum -> 0L
             is ReviewedValueRelation.TupleConstruction -> origin.storageBytes(g)
             is ReviewedValueRelation.TupleProjection -> origin.storageBytes(g)
             is ReviewedValueRelation.CallbackReceiverInput -> receiver.storageBytes(g)

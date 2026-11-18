@@ -16,6 +16,7 @@ internal class NativeValueArgumentFlow(
     private val projection: IntellijK2RelationProjection,
     private val retained: NativeValueFlowTransfers,
     private val allowance: IntellijRelationAllowance,
+    private val arithmetic: NativeIntArithmetic,
 ) {
     fun read(expression: KtExpression, argument: KtValueArgument): Refinement<Unit, ValueFlowRejection> {
         val call =
@@ -25,6 +26,8 @@ internal class NativeValueArgumentFlow(
                 else -> null
             }
         if (call != null) {
+            val result = call.valueInvocationExpression() as KtExpression
+            if (arithmetic.read(expression, result)) return Refinement.Refined(Unit)
             when (val binding = nativeCallbackArgumentBinding(call, expression, projection.observation)) {
                 is Refinement.Rejected -> {
                     retained.unresolvedAt(binding.failure, argument)

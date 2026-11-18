@@ -58,6 +58,7 @@ private fun QueryImpactStep.classification(): QueryImpactClassification =
 
 private fun ValueTransferKind.relationship(): QueryImpactRelationship =
     when (this) {
+        ValueTransferKind.PRIMITIVE_DERIVATION,
         ValueTransferKind.STRING_CONTENT -> QueryImpactRelationship.DERIVED
         ValueTransferKind.LOCAL_BINDING,
         ValueTransferKind.LOCAL_READ,
@@ -100,6 +101,7 @@ private fun ReviewedValueRelation.relationship(): QueryImpactRelationship =
         is ReviewedValueRelation.PreservedKey -> selection.relationship()
         is ReviewedValueRelation.EntryProjection -> selection.relationship()
         is ReviewedValueRelation.MappedValue -> selection.relationship()
+        is ReviewedValueRelation.IntExtremum -> QueryImpactRelationship.DERIVED
         is ReviewedValueRelation.TupleConstruction,
         is ReviewedValueRelation.TupleProjection,
         is ReviewedValueRelation.AssociationComponent -> QueryImpactRelationship.EXACT

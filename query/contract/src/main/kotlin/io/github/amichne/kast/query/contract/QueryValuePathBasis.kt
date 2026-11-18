@@ -252,6 +252,7 @@ private fun ReviewedValueTransfer.hasForeignBasis(lease: SemanticReadAuthority):
 private fun ValueTransferEvidence.hasForeignBasis(lease: SemanticReadAuthority): Boolean =
     when (val proof = this) {
         is ValueLoopTransfer -> proof.iteration.protocol.hasForeignBasis(lease)
+        is io.github.amichne.kast.relation.contract.ValueIntArithmetic -> proof.basis != lease.identity
         ValueTransferEvidence.Direct,
         is io.github.amichne.kast.relation.contract.ValueStringContent,
         is ValueTransferEvidence.NormalBranchResult -> false

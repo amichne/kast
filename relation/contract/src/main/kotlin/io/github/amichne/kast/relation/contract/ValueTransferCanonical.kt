@@ -11,6 +11,16 @@ internal fun StringBuilder.transferEvidence(evidence: ValueTransferEvidence) {
             field(evidence.input.name)
             field(evidence.nullAlternative.name)
         }
+        is ValueIntArithmetic -> {
+            field("PRIMITIVE_DERIVATION")
+            field(evidence.rule.name)
+            field(evidence.callable.compilerIdentity.value)
+            field(evidence.authority.name)
+            field(evidence.callable.moduleName.value)
+            field(evidence.input.name)
+            range(evidence.inputRange)
+            range(evidence.resultRange)
+        }
         is ValueSourceTransfer -> sourceOperation(evidence.operation)
         is ValueLoopTransfer -> {
             field("LOOP_TRANSFER")

@@ -266,6 +266,15 @@ internal fun ValueTransfer.storageBytes(g: QueryImpactRetainedGraph): Long =
                         is ValueLoopTransfer ->
                             proof.iteration.storageBytes(g).saturatedAdd(g.node(proof.receiverKind) { 0L })
                         is ValueSourceTransfer -> proof.operation.storageBytes(g)
+                        is io.github.amichne.kast.relation.contract.ValueIntArithmetic ->
+                            g.node(proof.callable) {
+                                    g.text(proof.callable.compilerIdentity.value)
+                                        .saturatedAdd(g.text(proof.callable.moduleName.value))
+                                        .saturatedAdd(g.text(proof.callable.signature.canonicalEncoding().value))
+                                }
+                                .saturatedAdd(g.node(proof.inputRange) { 0L })
+                                .saturatedAdd(g.node(proof.resultRange) { 0L })
+                                .saturatedAdd(proof.execution.storageBytes(g))
                         ValueTransferEvidence.Direct,
                         is io.github.amichne.kast.relation.contract.ValueStringContent,
                         is ValueTransferEvidence.NormalBranchResult -> proof.retainedBytes

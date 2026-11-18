@@ -22,10 +22,27 @@ private fun ImpactReviewedValueTransferDocument.admitsRelation(): Boolean =
         is ImpactReviewedValueRelationDocument.MappedValue -> admitsMapped(relation)
         is ImpactReviewedValueRelationDocument.CallbackCorrespondence -> admitsCallback(relation.semantics)
         is ImpactReviewedValueRelationDocument.ReorderedElements -> admitsSorted(relation)
+        is ImpactReviewedValueRelationDocument.IntExtremum -> admitsIntExtremum(relation)
         is ImpactReviewedValueRelationDocument.TupleConstruction -> admitsTupleConstruction(relation)
         is ImpactReviewedValueRelationDocument.TupleProjection -> admitsTupleProjection(relation)
         is ImpactReviewedValueRelationDocument.AssociationComponent -> admitsAssociation(relation)
     }
+
+private fun ImpactReviewedValueTransferDocument.admitsIntExtremum(
+    relation: ImpactReviewedValueRelationDocument.IntExtremum
+): Boolean {
+    val proof = binding.authority as? ImpactReviewedCallValueBindingDocument ?: return false
+    val argument = source.role as? ImpactValueRoleDocument.Argument ?: return false
+    return argument.invocation == proof.invocation &&
+        argument.index.value == relation.input.position &&
+        source.executionOwner.hasSameExecutionIdentity(proof.invocation.executionOwner) &&
+        source.range != proof.invocation.range &&
+        proof.invocation.range.containsExecutionRange(source.range) &&
+        target.isOrdinaryResult(proof) &&
+        source.valuePath.values.isEmpty() &&
+        target.valuePath.values.isEmpty() &&
+        source.conditions.hasSameConditions(target.conditions)
+}
 
 private fun ImpactReviewedValueTransferDocument.admitsCallback(
     semantics: ImpactReviewedValueSemanticsDocument

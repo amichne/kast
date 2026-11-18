@@ -95,7 +95,7 @@ private fun KaSession.directKeySelection(
     operation: ReviewedLibraryOperation,
 ): Refinement<NativeDirectKeySelection, NativeReviewedKeyFailure> {
     val call =
-        resolvedReviewedOrdinaryCall(tuple) as? KaFunctionCall<*>
+        resolveValueExpressionCall(tuple) as? KaFunctionCall<*>
             ?: return keyUnproved(ReviewedDistinctKeyFailure.TUPLE_MISMATCH)
     val expression =
         when (operation) {

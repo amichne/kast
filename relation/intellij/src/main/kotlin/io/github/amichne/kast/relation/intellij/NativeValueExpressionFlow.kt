@@ -46,7 +46,16 @@ internal class NativeValueExpressionFlow(
     private val permit: () -> Refinement<Unit, ValueFlowUnsupportedCause>,
 ) {
     private val observation = projection.observation
-    private val arguments = NativeValueArgumentFlow(request, scope, projection, retained, allowance)
+    private val arithmetic = NativeIntArithmetic(request.source, observation, retained)
+    private val arguments =
+        NativeValueArgumentFlow(
+            request = request,
+            scope = scope,
+            projection = projection,
+            retained = retained,
+            allowance = allowance,
+            arithmetic = arithmetic,
+        )
     private var argumentRead: Refinement<Unit, ValueFlowRejection> = Refinement.Refined(Unit)
     private val typeOperations =
         NativeValueTypeOperations(
@@ -73,7 +82,7 @@ internal class NativeValueExpressionFlow(
         when (val parent = expression.parent) {
             is KtParenthesizedExpression -> transferExpression(parent)
             is KtBinaryExpressionWithTypeRHS -> typeOperations.readOperand(expression, parent, ::transferExpression)
-            is KtBinaryExpression -> assignmentDestination(expression, parent)
+            is KtBinaryExpression -> binaryDestination(expression, parent)
             is KtIsExpression -> Unit
             is KtWhenExpression ->
                 if (parent.subjectExpression !== expression)
@@ -206,6 +215,10 @@ internal class NativeValueExpressionFlow(
         else emit(property, ValueRole.PropertyAssignment, ValueTransferKind.PROPERTY_ASSIGNMENT)
     }
 
+    private fun binaryDestination(expression: KtExpression, binary: KtBinaryExpression) {
+        if (!arithmetic.read(expression, binary)) assignmentDestination(expression, binary)
+    }
+
     private fun assignmentDestination(expression: KtExpression, assignment: KtBinaryExpression) {
         if (nativeExternalInfixCall(assignment, observation)) {
             val context = receiverContext(request, scope, projection, allowance)
@@ -307,7 +320,8 @@ internal class NativeValueExpressionFlow(
         argumentRead = arguments.read(expression, argument)
     }
 
-    private fun receiver(expression: KtExpression, qualified: KtQualifiedExpression) =
+    private fun receiver(expression: KtExpression, qualified: KtQualifiedExpression) {
+        if (arithmetic.read(expression, qualified)) return
         NativeValueQualifiedReceiver(
                 request = request,
                 allowance = allowance,
@@ -316,6 +330,7 @@ internal class NativeValueExpressionFlow(
                 retained = retained,
             )
             .read(expression, qualified)
+    }
 
     private fun emit(
         element: PsiElement,

@@ -45,6 +45,31 @@ private constructor(
         ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> =
             finishResult(source, binding, ReviewedSelectionResult.filtered(source, binding))
 
+        fun intExtremum(
+            source: ValueSite,
+            binding: ReviewedCallValueBinding,
+        ): Refinement<ReviewedValueTransfer, ValueFlowUnsupportedCause> {
+            val argument =
+                source.role as? ValueRole.Argument
+                    ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
+            val input =
+                ReviewedIntExtremumInput.entries.singleOrNull { it.position == argument.position.value }
+                    ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
+            if (binding.selected.operation !in INT_EXTREMUM_OPERATIONS)
+                return Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
+            if (argument.call != binding.invocation || source.executionOwner != binding.invocation.executionOwner)
+                return Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
+            if (!source.isScalarOperandOf(binding.occurrence))
+                return Refinement.Rejected(ValueFlowUnsupportedCause.UNMODELED_CALL)
+            return finishReviewed(
+                source,
+                binding,
+                ReviewedValueRelation.IntExtremum(input),
+                source.valuePath,
+                source.conditions,
+            )
+        }
+
         fun tupleConstruct(
             source: ValueSite,
             binding: ReviewedCallValueBinding,
@@ -334,3 +359,8 @@ private constructor(
     override fun hashCode(): Int =
         31 * (31 * (31 * source.hashCode() + target.hashCode()) + binding.hashCode()) + relation.hashCode()
 }
+
+private val INT_EXTREMUM_OPERATIONS = setOf(ReviewedLibraryOperation.INT_MIN, ReviewedLibraryOperation.INT_MAX)
+
+private fun ValueSite.isScalarOperandOf(occurrence: RelationOccurrence): Boolean =
+    valuePath == ValueAccessPath.Whole && occurrence.range != range && occurrence.range.containsValueRange(range)

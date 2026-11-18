@@ -3,6 +3,7 @@ package io.github.amichne.kast.relation.contract
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerReceiver
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerSignature
+import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
 import io.github.amichne.kast.symbol.contract.CompilerGroundedSymbolEvidence
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
@@ -32,10 +33,31 @@ private constructor(
                 ReviewedLibraryOperation.MAP_ENTRY_VALUE -> "commonMain/kotlin/Collections.kt"
                 ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
                 ReviewedLibraryOperation.MAP_ENTRY_COMPONENT2 -> "commonMain/kotlin/collections/Maps.kt"
+                ReviewedLibraryOperation.INT_MIN,
+                ReviewedLibraryOperation.INT_MAX -> "jvmMain/kotlin/util/MathJVM.kt"
                 else -> "commonMain/kotlin/util/Tuples.kt"
             }
 
     companion object {
+        fun admitIntExtremum(
+            target: CompilerGroundedSymbolEvidence,
+            resultType: CanonicalCompilerType,
+        ): Refinement<ReviewedOrdinaryLibraryCallable, ReviewedCallbackValueFailure> {
+            val file = target.file as? SymbolDiscoveryFileIdentity.External ?: return ordinaryMismatch()
+            val signature = target.signature as? CanonicalCompilerSignature.Function ?: return ordinaryMismatch()
+            val operation =
+                when (signature.qualifiedIdentity.value) {
+                    "kotlin.math.min" -> ReviewedLibraryOperation.INT_MIN
+                    "kotlin.math.max" -> ReviewedLibraryOperation.INT_MAX
+                    else -> return ordinaryMismatch()
+                }
+            if (target.kind != CompilerSymbolKind.FUNCTION || !signature.hasIntExtremumParameters())
+                return ordinaryMismatch()
+            if (resultType.value != "kotlin/Int" || !file.url.value.endsWith("!/kotlin/math/MathKt.class"))
+                return ordinaryMismatch()
+            return Refinement.Refined(ReviewedOrdinaryLibraryCallable(target, operation))
+        }
+
         fun admit(
             target: CompilerGroundedSymbolEvidence
         ): Refinement<ReviewedOrdinaryLibraryCallable, ReviewedCallbackValueFailure> {
@@ -60,6 +82,12 @@ private constructor(
 
     override fun hashCode(): Int = 31 * target.hashCode() + operation.hashCode()
 }
+
+private fun CanonicalCompilerSignature.Function.hasIntExtremumParameters(): Boolean =
+    receiver == CanonicalCompilerReceiver.Absent &&
+        contextReceivers.isEmpty() &&
+        typeParameterCount.value == 0 &&
+        valueParameters.map { it.value } == listOf("kotlin/Int", "kotlin/Int")
 
 private fun ordinaryFunction(
     target: CompilerGroundedSymbolEvidence,

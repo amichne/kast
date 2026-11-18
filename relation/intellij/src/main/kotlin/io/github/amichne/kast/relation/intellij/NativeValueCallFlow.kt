@@ -79,6 +79,8 @@ internal class NativeValueCallFlow(
                 nativeReviewedReceiverResults(request, scope, projection, allowance, retained)
             }
             "kotlin.with" -> return readReviewedWithInput()
+            "kotlin.math.min",
+            "kotlin.math.max",
             "kotlin.to",
             "kotlin.Pair.<init>",
             "kotlin.Pair.first",

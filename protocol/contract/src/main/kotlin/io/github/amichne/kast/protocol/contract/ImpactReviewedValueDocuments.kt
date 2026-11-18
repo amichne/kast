@@ -28,6 +28,10 @@ enum class ImpactReviewedValueRuleDocument {
     KOTLIN_2_3_0_ALSO_V1,
     KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1,
     KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1,
+    KOTLIN_2_3_0_INT_MIN_V1,
+    KOTLIN_2_3_0_INT_MAX_V1,
+    KOTLIN_2_4_21_INT_MIN_V1,
+    KOTLIN_2_4_21_INT_MAX_V1,
     KOTLIN_2_3_0_TO_V1,
     KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1,
     KOTLIN_2_3_0_PAIR_FIRST_V1,
@@ -120,6 +124,22 @@ data class ImpactReviewedTupleArtifactsDocument(
     @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
     override val implementationSha256: ProtocolText,
     val sections: ImpactReviewedTupleSectionsDocument,
+) : ImpactReviewedArtifactsDocument, ImpactReviewedJvmArtifactHashes
+
+@Serializable
+@SerialName("jvmMain/kotlin/util/MathJVM.kt")
+data class ImpactReviewedMathArtifactsDocument(
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val binaryArtifactSha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val sourceArtifactSha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val sourceEntrySha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val facadeSha256: ProtocolText,
+    @ProtocolStringConstraint(pattern = "^[0-9a-f]{64}$", minimumLength = 64, maximumLength = 64)
+    override val implementationSha256: ProtocolText,
+    val functionLines: ImpactReviewedSourceLinesDocument,
 ) : ImpactReviewedArtifactsDocument, ImpactReviewedJvmArtifactHashes
 
 /** Inclusive one-based lines in the artifact's exact source entry. */

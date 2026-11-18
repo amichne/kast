@@ -9,6 +9,7 @@ import io.github.amichne.kast.protocol.contract.ImpactReviewedLibraryHelperDocum
 import io.github.amichne.kast.protocol.contract.ImpactReviewedLibraryHelperKindDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedMapArtifactsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedMapSectionsDocument
+import io.github.amichne.kast.protocol.contract.ImpactReviewedMathArtifactsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedScopeArtifactsDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedSourceLinesDocument
 import io.github.amichne.kast.protocol.contract.ImpactReviewedTupleArtifactsDocument
@@ -40,19 +41,7 @@ internal fun ReviewedLibraryArtifact.impactDocument(): ImpactProjected<ImpactRev
             ReviewedLibraryRule.KOTLIN_2_4_21_ITERABLE_MAP_V1,
             ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_MAP_V1,
             ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1,
-            ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1 ->
-                collectionSections().impactZip(helpers.impactEach { it.impactDocument() }).impactMap {
-                    (sections, helpers) ->
-                    ImpactReviewedCollectionArtifactsDocument(
-                        hashes.binary,
-                        hashes.source,
-                        hashes.entry,
-                        hashes.facade,
-                        hashes.implementation,
-                        sections,
-                        helpers,
-                    )
-                }
+            ReviewedLibraryRule.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1 -> collectionDocument(hashes)
             ReviewedLibraryRule.KOTLIN_2_3_0_RUN_TOP_LEVEL_V1 ->
                 scopeDocument(hashes, ReviewedSourceSection.RUN_TOP_LEVEL)
             ReviewedLibraryRule.KOTLIN_2_3_0_RUN_RECEIVER_V1 ->
@@ -61,6 +50,10 @@ internal fun ReviewedLibraryArtifact.impactDocument(): ImpactProjected<ImpactRev
             ReviewedLibraryRule.KOTLIN_2_3_0_APPLY_V1 -> scopeDocument(hashes, ReviewedSourceSection.APPLY)
             ReviewedLibraryRule.KOTLIN_2_3_0_LET_V1 -> scopeDocument(hashes, ReviewedSourceSection.LET)
             ReviewedLibraryRule.KOTLIN_2_3_0_ALSO_V1 -> scopeDocument(hashes, ReviewedSourceSection.ALSO)
+            ReviewedLibraryRule.KOTLIN_2_3_0_INT_MIN_V1,
+            ReviewedLibraryRule.KOTLIN_2_3_0_INT_MAX_V1,
+            ReviewedLibraryRule.KOTLIN_2_4_21_INT_MIN_V1,
+            ReviewedLibraryRule.KOTLIN_2_4_21_INT_MAX_V1 -> mathDocument(hashes)
             ReviewedLibraryRule.KOTLIN_2_3_0_TO_V1,
             ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1,
             ReviewedLibraryRule.KOTLIN_2_3_0_PAIR_FIRST_V1,
@@ -76,6 +69,35 @@ internal fun ReviewedLibraryArtifact.impactDocument(): ImpactProjected<ImpactRev
                     )
                 }
         }
+    }
+
+private fun ReviewedLibraryArtifact.collectionDocument(
+    hashes: ArtifactHashes
+): ImpactProjected<ImpactReviewedArtifactsDocument> =
+    collectionSections().impactZip(helpers.impactEach { it.impactDocument() }).impactMap { (sections, helpers) ->
+        ImpactReviewedCollectionArtifactsDocument(
+            hashes.binary,
+            hashes.source,
+            hashes.entry,
+            hashes.facade,
+            hashes.implementation,
+            sections,
+            helpers,
+        )
+    }
+
+private fun ReviewedLibraryArtifact.mathDocument(
+    hashes: ArtifactHashes
+): ImpactProjected<ImpactReviewedArtifactsDocument> =
+    sourceLines(sourceSections.single()).impactMap { lines ->
+        ImpactReviewedMathArtifactsDocument(
+            binaryArtifactSha256 = hashes.binary,
+            sourceArtifactSha256 = hashes.source,
+            sourceEntrySha256 = hashes.entry,
+            facadeSha256 = hashes.facade,
+            implementationSha256 = hashes.implementation,
+            functionLines = lines,
+        )
     }
 
 private fun ReviewedLibraryArtifact.hashes(): ImpactProjected<ArtifactHashes> =

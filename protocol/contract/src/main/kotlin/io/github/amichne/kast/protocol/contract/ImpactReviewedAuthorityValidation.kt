@@ -54,6 +54,10 @@ private fun ImpactReviewedValueBindingDocument.admitsSelectedRule(): Boolean =
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1 -> admitsMapRule()
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_LET_V1 -> admitsLetRule()
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ALSO_V1 -> admitsAlsoRule()
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MIN_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MAX_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_INT_MIN_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_INT_MAX_V1,
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_TO_V1,
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1,
         ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_FIRST_V1,

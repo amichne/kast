@@ -70,6 +70,12 @@ enum class ImpactMapEntrySlotDocument {
 }
 
 @Serializable
+enum class ImpactReviewedIntExtremumInputDocument(internal val position: Int) {
+    ARGUMENT_0(0),
+    ARGUMENT_1(1),
+}
+
+@Serializable
 enum class ImpactReviewedTupleInputDocument {
     EXTENSION_RECEIVER,
     ARGUMENT_ZERO,
@@ -150,6 +156,10 @@ sealed interface ImpactReviewedValueRelationDocument {
     @SerialName("REORDERED_ELEMENTS")
     data class ReorderedElements(val selection: ImpactReviewedCollectionSelectionDocument) :
         ImpactReviewedValueRelationDocument
+
+    @Serializable
+    @SerialName("INT_EXTREMUM")
+    data class IntExtremum(val input: ImpactReviewedIntExtremumInputDocument) : ImpactReviewedValueRelationDocument
 
     @Serializable
     @SerialName("TUPLE_CONSTRUCTION")

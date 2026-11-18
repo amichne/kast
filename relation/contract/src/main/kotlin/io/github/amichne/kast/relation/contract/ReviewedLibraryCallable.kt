@@ -172,6 +172,8 @@ private fun ReviewedLibraryOperation.callbackParameterTypes(): Refinement<List<S
             ReviewedLibraryOperation.MAP_ENTRY_VALUE,
             ReviewedLibraryOperation.MAP_ENTRY_COMPONENT1,
             ReviewedLibraryOperation.MAP_ENTRY_COMPONENT2,
+            ReviewedLibraryOperation.INT_MIN,
+            ReviewedLibraryOperation.INT_MAX,
             ReviewedLibraryOperation.TO,
             ReviewedLibraryOperation.PAIR_CONSTRUCTOR,
             ReviewedLibraryOperation.PAIR_FIRST,

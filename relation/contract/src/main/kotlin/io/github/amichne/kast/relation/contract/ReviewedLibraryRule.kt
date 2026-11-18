@@ -22,6 +22,8 @@ enum class ReviewedLibraryOperation {
     MAP_ENTRY_COMPONENT2,
     ITERABLE_SORTED_BY,
     ITERABLE_ASSOCIATE,
+    INT_MIN,
+    INT_MAX,
     TO,
     PAIR_CONSTRUCTOR,
     PAIR_FIRST,
@@ -53,6 +55,10 @@ enum class ReviewedLibraryRule(override val operation: ReviewedLibraryOperation)
     KOTLIN_2_3_0_ALSO_V1(ReviewedLibraryOperation.ALSO),
     KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1(ReviewedLibraryOperation.ITERABLE_SORTED_BY),
     KOTLIN_2_3_0_ITERABLE_ASSOCIATE_V1(ReviewedLibraryOperation.ITERABLE_ASSOCIATE),
+    KOTLIN_2_3_0_INT_MIN_V1(ReviewedLibraryOperation.INT_MIN),
+    KOTLIN_2_3_0_INT_MAX_V1(ReviewedLibraryOperation.INT_MAX),
+    KOTLIN_2_4_21_INT_MIN_V1(ReviewedLibraryOperation.INT_MIN),
+    KOTLIN_2_4_21_INT_MAX_V1(ReviewedLibraryOperation.INT_MAX),
     KOTLIN_2_3_0_TO_V1(ReviewedLibraryOperation.TO),
     KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1(ReviewedLibraryOperation.PAIR_CONSTRUCTOR),
     KOTLIN_2_3_0_PAIR_FIRST_V1(ReviewedLibraryOperation.PAIR_FIRST),
@@ -61,6 +67,10 @@ enum class ReviewedLibraryRule(override val operation: ReviewedLibraryOperation)
     val sourceEntry: String
         get() =
             when (this) {
+                KOTLIN_2_3_0_INT_MIN_V1,
+                KOTLIN_2_3_0_INT_MAX_V1,
+                KOTLIN_2_4_21_INT_MIN_V1,
+                KOTLIN_2_4_21_INT_MAX_V1 -> "jvmMain/kotlin/util/MathJVM.kt"
                 KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1,
                 KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1,
                 KOTLIN_2_3_0_MAP_VALUES_V1 -> "commonMain/kotlin/collections/Maps.kt"
@@ -87,6 +97,10 @@ enum class ReviewedLibraryRule(override val operation: ReviewedLibraryOperation)
     val sourceEntrySha256: String
         get() =
             when (this) {
+                KOTLIN_2_3_0_INT_MIN_V1,
+                KOTLIN_2_3_0_INT_MAX_V1 -> "0c421ce335e168edf1ad14c8b1bb97e0051b61573e9ead4700569d1f2014dd65"
+                KOTLIN_2_4_21_INT_MIN_V1,
+                KOTLIN_2_4_21_INT_MAX_V1 -> "6d7e734fc889f6eefd52be265a159f6309bbd558d1594390b01fc9ec56594db7"
                 KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1,
                 KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1,
                 KOTLIN_2_3_0_MAP_VALUES_V1 -> "1eed0a8e3180aa82e46bcb0049efcaa80c4b6bdee50aef9754b848ee171cdde7"
@@ -113,6 +127,10 @@ enum class ReviewedLibraryRule(override val operation: ReviewedLibraryOperation)
     val facadeSha256: String
         get() =
             when (this) {
+                KOTLIN_2_3_0_INT_MIN_V1,
+                KOTLIN_2_3_0_INT_MAX_V1 -> "c2eb7500418621b056742a4455f61d036be67d9229fa7abba42662decc480fff"
+                KOTLIN_2_4_21_INT_MIN_V1,
+                KOTLIN_2_4_21_INT_MAX_V1 -> "b9df8f1a791de8216105a6eccf3c5d7d4cd41fae107be87615dcbd390d17c411"
                 KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1,
                 KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1,
                 KOTLIN_2_3_0_MAP_VALUES_V1 -> "520e0f6d39db8a20da2ae0b5098ec91be861892695db7a40fef3480a1a7a80b4"
@@ -139,6 +157,10 @@ enum class ReviewedLibraryRule(override val operation: ReviewedLibraryOperation)
     val implementationSha256: String
         get() =
             when (this) {
+                KOTLIN_2_3_0_INT_MIN_V1,
+                KOTLIN_2_3_0_INT_MAX_V1 -> "f000877b92e7659d1cd653b800e6193b408c672bda77e46f5b3ab931a59d229f"
+                KOTLIN_2_4_21_INT_MIN_V1,
+                KOTLIN_2_4_21_INT_MAX_V1 -> "20129dc3f32ff4ce98c7b310b939c20f72568e71a18393f824fec7f037a3b03a"
                 KOTLIN_2_3_0_MAP_ENTRY_COMPONENT1_V1,
                 KOTLIN_2_3_0_MAP_ENTRY_COMPONENT2_V1,
                 KOTLIN_2_3_0_MAP_VALUES_V1 -> "bb2bb2582743754096256a7cb4cd3a219bfb498a0de1a12f725e7e999227d389"

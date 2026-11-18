@@ -200,7 +200,7 @@ Full paths and compact findings include `classification`.
 | Classification | Meaning |
 | --- | --- |
 | `ESTABLISHED` with `EXACT` | Every admitted step preserves the tracked value. |
-| `ESTABLISHED` with `DERIVED` | The path includes established content construction. |
+| `ESTABLISHED` with `DERIVED` | At least one admitted step derives a result from the tracked value. |
 | `NOT_ESTABLISHED` | The record identifies the first step without established value correspondence. |
 
 A later exact step keeps earlier derivation or missing proof.
@@ -218,6 +218,17 @@ A constant getter or conversion can discard its input.
 Its own String result can still contribute content.
 An implicit object conversion uses the selected `kotlin.Any.toString()` member or override.
 An unsupported conversion keeps its exact entry and selected member evidence.
+
+IMPACT follows either input of `Int.plus(Int)`, `Int.minus(Int)`, and `Int.times(Int)`.
+Operator syntax and explicit calls use the same rule.
+K2 identifies the selected builtin and input position.
+For `kotlin.math.min(Int, Int)` and `kotlin.math.max(Int, Int)`, Kast also needs a reviewed binary and source artifact pair.
+Kast includes reviewed rules for the Kotlin JVM standard library versions 2.3.0 and 2.4.21.
+
+Each result keeps its operation and contributing input.
+A derived path shows a possible dependency on normal completion.
+For `width - width` and `min(width, 0)`, an input change can leave the result unchanged.
+An unresolved call later on the path stays unresolved.
 
 ## Saved state and identity
 

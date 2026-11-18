@@ -17,16 +17,18 @@ internal fun ImpactReviewedCallValueBindingDocument.admits(host: ImpactDeclarati
 internal fun ImpactReviewedOrdinaryTargetDocument.admitsOrdinary(rule: ImpactReviewedValueRuleDocument): Boolean =
     when (this) {
         is ImpactReviewedOrdinaryTargetDocument.Function ->
-            (signature.admitsTupleFunction(rule) || signature.admitsEntryFunction(rule))
+            signature.admitsOrdinaryFunction(rule) || signature.admitsEntryFunction(rule)
         is ImpactReviewedOrdinaryTargetDocument.Property -> admitsTupleProperty(rule) || admitsEntryProperty(rule)
     }
 
-private fun ImpactDeclaredCallbackTargetDocument.admitsTupleFunction(rule: ImpactReviewedValueRuleDocument): Boolean {
+private fun ImpactDeclaredCallbackTargetDocument.admitsOrdinaryFunction(
+    rule: ImpactReviewedValueRuleDocument
+): Boolean {
     val matches =
         when (rule) {
             ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_TO_V1 -> matchesToFunction()
             ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_PAIR_CONSTRUCTOR_V1 -> matchesPairConstructor()
-            else -> false
+            else -> matchesIntExtremum(rule)
         }
     if (!matches || contextReceivers.values.isNotEmpty()) return false
     val count =
@@ -45,6 +47,22 @@ private fun ImpactDeclaredCallbackTargetDocument.admitsTupleFunction(rule: Impac
         ),
     ) is Refinement.Refined
 }
+
+private fun ImpactDeclaredCallbackTargetDocument.matchesIntExtremum(rule: ImpactReviewedValueRuleDocument): Boolean =
+    rule.intExtremumCallable() == qualifiedIdentity.value &&
+        declaration.file.value.endsWith("!/kotlin/math/MathKt.class") &&
+        receiver == ImpactDeclaredCallbackReceiverDocument.Absent &&
+        valueParameters.values.map { it.value } == listOf("kotlin/Int", "kotlin/Int") &&
+        typeParameterCount.value == 0L
+
+internal fun ImpactReviewedValueRuleDocument.intExtremumCallable(): String? =
+    when (this) {
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MIN_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_INT_MIN_V1 -> "kotlin.math.min"
+        ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_INT_MAX_V1,
+        ImpactReviewedValueRuleDocument.KOTLIN_2_4_21_INT_MAX_V1 -> "kotlin.math.max"
+        else -> null
+    }
 
 private fun ImpactDeclaredCallbackTargetDocument.matchesToFunction(): Boolean =
     declaration.file.value.endsWith("!/kotlin/TuplesKt.class") &&
