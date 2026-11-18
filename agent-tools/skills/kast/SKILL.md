@@ -1,13 +1,13 @@
 ---
 name: kast
-description: Use the installed Kast CLI for Kotlin declaration discovery, relationships, source reads, and compiler diagnostics in one exact workspace.
+description: Use Kast for Kotlin queries and exact Java class and method queries in an imported workspace.
 ---
 
 # Kast
 
-Use `kast` in the exact Kotlin workspace that the user trusts.
+Use `kast` in the exact workspace that the user trusts.
 The first semantic query trusts its build code and prepares its private IntelliJ IDEA Host.
-Later calls reuse that Host. Use ordinary source tools for other languages.
+Later calls reuse that Host.
 
 ## Find a declaration
 
@@ -19,7 +19,16 @@ kast query --name OrderService --in services/orders --source-set main --kind cla
 kast query --ref "$exact_ref" --relation callers
 ```
 
+In mixed Java and Kotlin sources, find Java classes, interfaces, and methods by exact name. This lookup excludes constructors.
+For a Java method, use its declaring directory and `--kind function`.
+
+```sh
+kast query --name relay --in ledger/src/main/java/acme/legacy --kind function --fields name,signature,location
+```
+
 Select an overload by owner, signature, receiver, and location before a one-hop relation.
+For Java `relay(int)`, select the row with the expected owner and the single parameter `kotlin/Int`.
+Use its reference with `--relation references` or `--relation callers`.
 If matches remain ambiguous, stop. Copy each issued reference unchanged.
 A call site's directory does not establish the target's directory.
 A cursor at a call selects the enclosing declaration. Examine source before an interface claim.
@@ -44,7 +53,7 @@ Examine the outer outcome, scope, coverage, and limitations before a conclusion.
 An empty incomplete result cannot prove absence. A complete relation proves only its declared semantics.
 For a complete source-use answer, resolve imports, companion qualifiers, and unmatched sites.
 
-For more output, use the issued result reference, cursor, and original output kind.
+Read every retained page with the issued result reference, cursor, and original output kind.
 Use resume only with an issued output continuation. Never repeat semantic work to recover output.
 After a source change or freshness rejection, discard stale source evidence.
 
