@@ -7568,7 +7568,8 @@
                     "semantics": {
                       "type": "string",
                       "enum": [
-                        "KOTLIN_FORWARD_V1"
+                        "KOTLIN_FORWARD_V1",
+                        "KOTLIN_JAVA_FORWARD_V2"
                       ]
                     },
                     "representationModelReferences": {
@@ -18756,7 +18757,8 @@
                     "semantics": {
                       "type": "string",
                       "enum": [
-                        "KOTLIN_FORWARD_V1"
+                        "KOTLIN_FORWARD_V1",
+                        "KOTLIN_JAVA_FORWARD_V2"
                       ]
                     },
                     "representationModelReferences": {
@@ -25069,7 +25071,8 @@
                     "flow": {
                       "type": "string",
                       "enum": [
-                        "KOTLIN_FORWARD_V1"
+                        "KOTLIN_FORWARD_V1",
+                        "KOTLIN_JAVA_FORWARD_V2"
                       ]
                     },
                     "models": {
