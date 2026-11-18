@@ -83,6 +83,23 @@ class PublicImpactModelInputTest {
     }
 
     @Test
+    fun `public impact admission preserves the selected mixed source flow version`() {
+        val request =
+            boundaryRequest(
+                boundaryModel(ImpactRequestedRoleDocument.LocalRead),
+                QueryImpactFlowDocument.KOTLIN_JAVA_FORWARD_V2,
+            )
+        val raw = json.encodeToJsonElement(PublicToolQuerySymbols.serializer(), request)
+        val admitted = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, raw).refined()
+        val run = (admitted.canonical as PublicToolCanonical.Query).request as QueryRunRequest.Run
+        assertEquals(
+            QueryImpactFlowDocument.KOTLIN_JAVA_FORWARD_V2,
+            (run.from as QueryFromDocument.Impact).investigation.flow,
+        )
+        assertEquals(raw, PublicToolContract.encode(admitted))
+    }
+
+    @Test
     fun `public model decoder and schema reject retained state at every boundary site`() {
         val invocation = ImpactRequestedInvocationDocument(range(5, 25), declarationReference())
         val role = ImpactRequestedRoleDocument.Argument(invocation, ProtocolOffset.parse(0).refined())
@@ -171,7 +188,10 @@ class PublicImpactModelInputTest {
         )
     }
 
-    private fun boundaryRequest(model: ImpactRequestedModelDocument) =
+    private fun boundaryRequest(
+        model: ImpactRequestedModelDocument,
+        flow: QueryImpactFlowDocument = QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+    ) =
         PublicToolQuerySymbols(
             PublicToolRunAction(
                 PublicToolImpactSource(
@@ -179,7 +199,7 @@ class PublicImpactModelInputTest {
                     bounded(emptyList()),
                     bounded(listOf(model)),
                     PublicToolImpactWorkspaceDomain,
-                    QueryImpactFlowDocument.KOTLIN_FORWARD_V1,
+                    flow,
                 ),
                 terminalStep = PublicToolEmit(PublicToolValuePathsOutput),
             )

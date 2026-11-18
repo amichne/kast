@@ -172,12 +172,19 @@ fun interface ValueFlowCompilerPort {
     suspend fun read(request: ValueFlowRequest): ValueFlowRead
 }
 
+/** Each version fixes which native transfers a query can use. */
+enum class ValueFlowSemantics {
+    KOTLIN_FORWARD_V1,
+    KOTLIN_JAVA_FORWARD_V2,
+}
+
 /** Carries the native grant and semantic expansion domain together with the exact input value. */
 data class ValueFlowRequest(
     val source: ValueSite,
     val budget: RelationBudget,
     val boundary: RelationSearchBoundary,
     val remainder: LocalBindingReadRemainder? = null,
+    val semantics: ValueFlowSemantics = ValueFlowSemantics.KOTLIN_FORWARD_V1,
 )
 
 private fun ValueTransferKind.admitsRoles(source: ValueSite, target: ValueSite): Boolean =

@@ -287,7 +287,6 @@ private class TransparentWrapperFixture(
         val result =
             nativeValueArgument(
                     expression = expression,
-                    argument = actual,
                     executionOwner = ValueExecutionOwner.declaration(enclosing),
                     scope = scope,
                     projection = projection,

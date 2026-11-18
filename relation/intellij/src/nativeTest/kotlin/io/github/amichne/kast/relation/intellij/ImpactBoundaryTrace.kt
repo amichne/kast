@@ -5,6 +5,7 @@ import io.github.amichne.kast.relation.contract.RelationByteLimit
 import io.github.amichne.kast.relation.contract.RelationSearchBoundary
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowSemantics
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRead
 import io.github.amichne.kast.relation.contract.ValueProducerSeedRequest
 import io.github.amichne.kast.relation.contract.ValueSite
@@ -17,7 +18,11 @@ import io.github.amichne.kast.workspace.intellij.read.IntellijReadUnexpectedFail
 import kotlinx.coroutines.runBlocking
 
 /** Records actual reads, never interpreting a rejected read as an observed empty result. */
-internal class ImpactBoundaryTrace(private val project: Project, private val fixture: NativePacketValueFixture) {
+internal class ImpactBoundaryTrace(
+    private val project: Project,
+    private val fixture: NativePacketValueFixture,
+    private val semantics: ValueFlowSemantics = ValueFlowSemantics.KOTLIN_FORWARD_V1,
+) {
     fun run(request: ValueProducerSeedRequest): RecordedRun = runBlocking {
         val observation = RecordedObservation()
         val adapter = IntellijValueFlowCompilerAdapter(observation)
@@ -56,7 +61,13 @@ internal class ImpactBoundaryTrace(private val project: Project, private val fix
                 adapter.read(
                     project = project,
                     current = fixture.lease,
-                    request = ValueFlowRequest(site, budget, RelationSearchBoundary.RETAINED_SUBJECT),
+                    request =
+                        ValueFlowRequest(
+                            source = site,
+                            budget = budget,
+                            boundary = RelationSearchBoundary.RETAINED_SUBJECT,
+                            semantics = semantics,
+                        ),
                     model = fixture.model,
                 )
             reads +=

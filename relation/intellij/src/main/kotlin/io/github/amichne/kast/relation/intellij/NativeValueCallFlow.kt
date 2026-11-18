@@ -1,5 +1,6 @@
 package io.github.amichne.kast.relation.intellij
 
+import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
@@ -18,7 +19,7 @@ internal class NativeValueCallFlow(
     private val retained: NativeValueFlowTransfers,
     private val permit: () -> Boolean,
 ) {
-    fun read(): Refinement<Unit, ValueFlowRejection> {
+    fun read(element: PsiElement): Refinement<Unit, ValueFlowRejection> {
         if (readReviewedCallIfSelected()) return Refinement.Refined(Unit)
         val dispatch =
             NativeValueImplementationDispatch(
@@ -32,7 +33,7 @@ internal class NativeValueCallFlow(
             NativeValueArgumentDispatch.Direct -> {
                 when (request.source.role) {
                     is ValueRole.Argument ->
-                        retained.adopt(nativeValueArgumentReturn(request.source, scope, projection))
+                        retained.adopt(nativeValueArgumentReturn(request, element, scope, projection))
                     is ValueRole.Receiver ->
                         retained.adopt(allowance.nativeValueSourceReceiver(request.source, scope, projection))
                     else -> retained.unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)

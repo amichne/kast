@@ -4,11 +4,13 @@ package io.github.amichne.kast.relation.intellij
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueFlowRead
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
 import io.github.amichne.kast.relation.contract.ValueFlowRequest
+import io.github.amichne.kast.relation.contract.ValueFlowSemantics
 import io.github.amichne.kast.relation.contract.ValueFlowStep
 import io.github.amichne.kast.relation.contract.ValueFlowTerminal
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
@@ -47,12 +49,10 @@ internal class IntellijValueFlowNative(
     fun read(element: PsiElement): ValueFlowRead {
         val compiledFormal =
             request.source.role is ValueRole.Formal && (element.containingFile as? KtFile)?.isCompiled == true
-        val localBinding =
-            element.isNativeReferenceBinding(request.source.role) ||
-                request.source.localVersion is io.github.amichne.kast.relation.contract.ValueLocalVersion.Defined
-        if (!compiledFormal && element.destructuredValueParameter() == null && localBinding)
+        if (usesKotlinLocalReads(element, compiledFormal)) {
             return IntellijLocalBindingReads(request, owner, scope, projection, observation, started, onWork)
                 .read(element)
+        }
 
         val base = ValueFlowStep.detachedByteCount(request.source, scope.request, emptyList(), emptyList()).value
         val reserved = reservedValueObligationBytes(request.source)
@@ -88,11 +88,30 @@ internal class IntellijValueFlowNative(
         }
     }
 
+    private fun usesKotlinLocalReads(element: PsiElement, compiledFormal: Boolean): Boolean {
+        if (owner is PsiMethod || compiledFormal || element.destructuredValueParameter() != null) return false
+        return element.isNativeReferenceBinding(request.source.role) ||
+            request.source.localVersion is io.github.amichne.kast.relation.contract.ValueLocalVersion.Defined
+    }
+
     private fun readPermittedRole(element: PsiElement, compiledFormal: Boolean): Refinement<Unit, ValueFlowRejection> {
         if (permitted() is Refinement.Rejected) return Refinement.Refined(Unit)
+        if (owner is PsiMethod) return readJavaRole(owner, element)
         if (!compiledFormal) return readRole(element)
         unresolved(ValueFlowUnsupportedCause.EXTERNAL_CALL)
         return Refinement.Refined(Unit)
+    }
+
+    private fun readJavaRole(method: PsiMethod, element: PsiElement): Refinement<Unit, ValueFlowRejection> {
+        if (request.semantics != ValueFlowSemantics.KOTLIN_JAVA_FORWARD_V2) {
+            unresolved(ValueFlowUnsupportedCause.UNMODELED_CALL)
+            return Refinement.Refined(Unit)
+        }
+        val returned = NativeJavaValueFlow(request.source, retained, ::permitted).read(method, element)
+        return when (returned) {
+            NativeJavaValueRead.Continued -> Refinement.Refined(Unit)
+            NativeJavaValueRead.MatchedReturn -> sourceReturn()
+        }
     }
 
     private fun readRole(element: PsiElement): Refinement<Unit, ValueFlowRejection> {
@@ -105,7 +124,7 @@ internal class IntellijValueFlowNative(
                         .result(element, role.result)
                 else retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, element)
             is ValueRole.Argument,
-            is ValueRole.Receiver -> return callEntry()
+            is ValueRole.Receiver -> return callEntry(element)
             is ValueRole.Formal -> formalInput(element)
             ValueRole.Return -> return sourceReturn()
             ValueRole.PropertyAssignment -> unresolved(ValueFlowUnsupportedCause.UNSUPPORTED_PROPERTY)
@@ -155,7 +174,7 @@ internal class IntellijValueFlowNative(
         } else receiverFields(element)
     }
 
-    private fun callEntry(): Refinement<Unit, ValueFlowRejection> {
+    private fun callEntry(element: PsiElement): Refinement<Unit, ValueFlowRejection> {
         val result =
             NativeValueCallFlow(
                     request = request,
@@ -165,7 +184,7 @@ internal class IntellijValueFlowNative(
                     retained = retained,
                     permit = { permitted() is Refinement.Refined },
                 )
-                .read()
+                .read(element)
         onWork(nativeWorkCount(examined))
         return result
     }

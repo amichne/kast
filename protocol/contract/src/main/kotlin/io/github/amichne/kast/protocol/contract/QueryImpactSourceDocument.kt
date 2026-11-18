@@ -25,7 +25,8 @@ data class QueryImpactDeclarationDocument(
 
 @Serializable
 enum class QueryImpactFlowDocument {
-    KOTLIN_FORWARD_V1
+    KOTLIN_FORWARD_V1,
+    KOTLIN_JAVA_FORWARD_V2,
 }
 
 /** Required B/P/D/F/M recipe. The native admission result is retained by the existing query checkpoint. */
