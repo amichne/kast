@@ -26,21 +26,32 @@ internal fun IntellijNativeDiscoveryQuery.discoverNative(
         is IntellijDirectoryDiscoveryRoute.Selected -> {
             val target = route.plan.target
             if (target.match == SymbolDiscoveryMatch.EXACT_NAME) {
-                when (val indexed = IntellijIndexedDeclarationName.parse(target.pattern.value)) {
-                    is io.github.amichne.kast.kernel.Refinement.Refined ->
-                        return discoverScopedDeclarations(scope, request, allowance) { callbacks ->
-                            collectExactNameCandidateDeclarations(
-                                project,
-                                route.plan,
-                                indexed.value,
-                                indexes,
-                                limits,
-                                callbacks,
-                                allowance,
-                                partitions,
-                            )
+                return discoverScopedDeclarations(scope, request, allowance) { callbacks ->
+                    if (!indexes.javaNamed(request, scope.nativeScope, callbacks.acceptIndexed)) {
+                        false
+                    } else
+                        when (val indexed = IntellijIndexedDeclarationName.parse(target.pattern.value)) {
+                            is io.github.amichne.kast.kernel.Refinement.Refined ->
+                                collectExactNameCandidateDeclarations(
+                                    project,
+                                    route.plan,
+                                    indexed.value,
+                                    indexes,
+                                    limits,
+                                    callbacks,
+                                    allowance,
+                                    partitions,
+                                )
+                            is io.github.amichne.kast.kernel.Refinement.Rejected ->
+                                collectDirectoryKotlinDeclarations(
+                                    project,
+                                    route.plan,
+                                    limits,
+                                    allowance,
+                                    callbacks,
+                                    partitions,
+                                )
                         }
-                    is io.github.amichne.kast.kernel.Refinement.Rejected -> Unit
                 }
             }
             return discoverDirectory(project, route.plan, allowance, partitions)

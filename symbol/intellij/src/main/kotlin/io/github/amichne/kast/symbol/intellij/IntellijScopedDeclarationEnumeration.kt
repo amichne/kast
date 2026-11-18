@@ -307,4 +307,5 @@ internal data class ScopedDeclarationCallbacks(
     val observation: IntellijReadObservation = IntellijReadObservation.None,
     val consume: () -> Boolean = { true },
     val block: (io.github.amichne.kast.symbol.contract.SymbolDiscoveryBlockCause) -> Unit = {},
+    val acceptIndexed: (NavigationItem) -> Boolean = accept,
 )

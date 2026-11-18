@@ -1,6 +1,7 @@
 package io.github.amichne.kast.relation.intellij
 
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiJavaFile
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryContainment
 import io.github.amichne.kast.symbol.contract.SymbolDiscoveryPackageConstraint
 import org.jetbrains.kotlin.psi.KtFile
@@ -21,6 +22,7 @@ internal enum class IntellijRelationPackageAdmission {
 internal fun PsiElement.relationPackageEvidence(): IntellijRelationPackageEvidence =
     when (val file = containingFile) {
         is KtFile -> IntellijRelationPackageEvidence.Known(file.packageFqName.asString())
+        is PsiJavaFile -> IntellijRelationPackageEvidence.Known(file.packageName)
         else -> IntellijRelationPackageEvidence.Unavailable
     }
 

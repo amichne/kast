@@ -51,7 +51,7 @@ internal class NativeSourceContextFixture(
             val files =
                 WriteCommandAction.writeCommandAction(project).compute<List<VirtualFile>, RuntimeException> {
                     sources.map { (name, text) ->
-                        directory.createChildData(this, name).also { it.setBinaryContent(text.toByteArray()) }
+                        directory.createSourceFile(name).also { it.setBinaryContent(text.toByteArray()) }
                     }
                 }
             PsiDocumentManager.getInstance(project).commitAllDocuments()
@@ -78,4 +78,13 @@ internal class NativeSourceContextFixture(
         }
         return result
     }
+}
+
+private fun VirtualFile.createSourceFile(relative: String): VirtualFile {
+    val segments = relative.split('/')
+    val directory =
+        segments.dropLast(1).fold(this) { current, segment ->
+            current.findChild(segment) ?: current.createChildDirectory(this, segment)
+        }
+    return directory.createChildData(this, segments.last())
 }

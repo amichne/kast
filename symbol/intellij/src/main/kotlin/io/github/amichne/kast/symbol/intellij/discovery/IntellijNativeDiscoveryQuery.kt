@@ -289,6 +289,7 @@ internal class IntellijNativeDiscoveryQuery(
                         observation,
                         collector::consumeWork,
                         collector::block,
+                        acceptIndexed = { accept(IntellijDiscoveryDeclarationInput.Indexed(it)) },
                     )
                 )
             }

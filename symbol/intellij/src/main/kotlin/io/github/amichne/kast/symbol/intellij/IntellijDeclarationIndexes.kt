@@ -10,6 +10,7 @@ import com.intellij.psi.search.UsageSearchContext
 import com.intellij.psi.stubs.StubIndex
 import com.intellij.util.Processor
 import io.github.amichne.kast.symbol.contract.CompilerSymbolKind
+import io.github.amichne.kast.symbol.contract.SymbolDiscoveryRequest
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.stubindex.KotlinClassShortNameIndex
 import org.jetbrains.kotlin.idea.stubindex.KotlinExactPackagesIndex
@@ -24,6 +25,12 @@ internal interface IntellijDeclarationIndexes {
         name: IntellijIndexedDeclarationName,
         scope: GlobalSearchScope,
         accept: (VirtualFile) -> Boolean,
+    ): Boolean
+
+    fun javaNamed(
+        request: SymbolDiscoveryRequest,
+        scope: GlobalSearchScope,
+        accept: (NavigationItem) -> Boolean,
     ): Boolean
 
     fun named(
@@ -53,6 +60,12 @@ internal class NativeIntellijDeclarationIndexes(private val project: Project) : 
     ): Boolean =
         PsiSearchHelper.getInstance(project)
             .processCandidateFilesForText(scope, UsageSearchContext.IN_CODE, true, name.word.value, Processor(accept))
+
+    override fun javaNamed(
+        request: SymbolDiscoveryRequest,
+        scope: GlobalSearchScope,
+        accept: (NavigationItem) -> Boolean,
+    ): Boolean = collectExactJavaDeclarations(project, request, scope, accept)
 
     override fun named(
         index: IntellijNamedDeclarationIndex,
