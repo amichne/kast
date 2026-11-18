@@ -129,24 +129,32 @@ internal class NativeManagedWorkspaceFixture(installation: Path, workspace: Path
             .map { (relative, content) ->
                 val file = runtime.resolve(relative)
                 Files.createDirectories(file.parent)
-                if (relative == launcher) copyFixtureHost(file, mac) else Files.writeString(file, content)
+                if (relative == launcher) createFixtureHost(file, mac) else Files.writeString(file, content)
                 val executable = relative.endsWith("/idea") || relative.endsWith("/java")
                 if (executable) Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rwx------"))
                 NativeRuntimeFile(relative, Files.size(file), nativeDigest(file), executable)
             }
     }
 
-    private fun copyFixtureHost(file: Path, mac: Boolean) {
-        Files.copy(Path.of("/bin/cat"), file)
-        if (!mac) return
-        val signature =
-            ProcessBuilder("/usr/bin/codesign", "--force", "--sign", "-", file.toString())
+    private fun createFixtureHost(file: Path, mac: Boolean) {
+        if (!mac) {
+            Files.copy(Path.of("/bin/cat"), file)
+            return
+        }
+        // The peer needs a live process whose executable is this managed launcher path.
+        val compiler =
+            ProcessBuilder("/usr/bin/cc", "-x", "c", "-", "-o", file.toString())
                 .redirectError(ProcessBuilder.Redirect.INHERIT)
                 .start()
         try {
-            check(signature.waitFor(10, java.util.concurrent.TimeUnit.SECONDS) && signature.exitValue() == 0)
+            compiler.outputStream.bufferedWriter().use {
+                it.write("#include <stdio.h>\nint main(void) { (void)getchar(); return 0; }\n")
+            }
+            check(compiler.waitFor(30, java.util.concurrent.TimeUnit.SECONDS) && compiler.exitValue() == 0) {
+                "Failed to compile the macOS fixture Host at $file"
+            }
         } finally {
-            stopNativeProcess(signature)
+            stopNativeProcess(compiler)
         }
     }
 }
