@@ -146,6 +146,11 @@ private constructor(
 
     suspend fun handleSemantic(session: DefaultWebSocketServerSession) = operations.handle(session)
 
+    val servesInvocations: Boolean
+        get() = privateEndpoint && operations.servesInvocations
+
+    suspend fun handleInvocation(session: DefaultWebSocketServerSession) = operations.handleInvocation(session)
+
     suspend fun handle(session: DefaultWebSocketServerSession) {
         val frame =
             withTimeoutOrNull(BrokerOperationalLimits.workerControlHandshake.value) {

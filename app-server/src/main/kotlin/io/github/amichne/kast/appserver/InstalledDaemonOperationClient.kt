@@ -106,19 +106,13 @@ internal class InstalledDaemonOperationClient(
             val frame =
                 connection.receive() as? BrokerUpstreamFrame.Text
                     ?: return rejected(DaemonOperationClientFailure.OUTCOME_UNOBSERVED)
-            val invalidReply =
-                if (call is DaemonOperationCall.Change) DaemonOperationClientFailure.OUTCOME_UNOBSERVED
-                else DaemonOperationClientFailure.RESPONSE_REJECTED
             val response =
                 try {
                     DaemonOperationProtocol.json.decodeFromString<DaemonOperationResponse>(frame.message)
                 } catch (_: SerializationException) {
-                    return rejected(invalidReply)
+                    return rejected(call.invalidReply())
                 }
-            val hosted = call is DaemonOperationCall.Canonical || call is DaemonOperationCall.Change
-            val result = admitOperationResponse(response, target, root, allowHosted = hosted)
-            return if (result == rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)) rejected(invalidReply)
-            else result
+            return admitCallResponse(response, target, root, call)
         } finally {
             withContext(NonCancellable) { connection.close() }
         }
@@ -138,6 +132,24 @@ private fun DaemonOperationCall.selection(): DaemonOperationSelection? =
         DaemonOperationCall.WorkspaceStatus -> DaemonOperationSelection.WorkspaceStatus
         DaemonOperationCall.PrepareWorkspace -> DaemonOperationSelection.PrepareWorkspace
     }
+
+/** An unadmitted reply to a change cannot prove that the mutation did not happen. */
+private fun DaemonOperationCall.invalidReply(): DaemonOperationClientFailure =
+    if (this is DaemonOperationCall.Change) DaemonOperationClientFailure.OUTCOME_UNOBSERVED
+    else DaemonOperationClientFailure.RESPONSE_REJECTED
+
+/** The one reply admission for [call], shared by the socket client and the coordinator's in-process client. */
+internal fun admitCallResponse(
+    response: DaemonOperationResponse,
+    target: DaemonManagementTarget,
+    root: CanonicalRoot,
+    call: DaemonOperationCall,
+): DaemonOperationResult {
+    val hosted = call is DaemonOperationCall.Canonical || call is DaemonOperationCall.Change
+    val result = admitOperationResponse(response, target, root, allowHosted = hosted)
+    return if (result == rejected(DaemonOperationClientFailure.RESPONSE_REJECTED)) rejected(call.invalidReply())
+    else result
+}
 
 private fun protocolRejection(reason: DaemonOperationProtocolFailure) =
     DaemonOperationResult.Rejected(DaemonOperationClientRejection.Server(DaemonOperationFailure.Protocol(reason)))

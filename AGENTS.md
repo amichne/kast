@@ -56,6 +56,7 @@ This guide owns repository rules and routes source investigation.
 - [`runtime/`](runtime/AGENTS.md) - existing-IDE plugin composition, operation dispatch, and bounded diagnostics.
 - [`app-server/`](app-server/AGENTS.md) - persistent coordinator, host adapters, workspace lanes, and Codex protocol integration.
 - [`cli/`](cli/AGENTS.md) - the public semantic CLI, private JVM entry points, direct tools, installation workflows, and typed output projections.
+- [`frontend/`](frontend/AGENTS.md) - the tracer Go frontend for the persistent JVM coordinator, its staging, and acceptance.
 - [`copilot/`](copilot/extension.mjs) - optional agent extension over the shared tool RPC.
 - [`pi/`](pi/mcp-extension.ts) - shared context and native MCP registration for Pi.
 - [`distribution/`](distribution/AGENTS.md) and [`packaging/`](packaging/AGENTS.md) - installation contracts, managed artifacts, release assembly, and acceptance harnesses.

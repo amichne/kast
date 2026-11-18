@@ -1,0 +1,230 @@
+#!/usr/bin/env -S uv run --locked --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
+"""Tracer acceptance for the thin frontend and persistent JVM coordinator.
+
+Each subcommand records evidence as JSON. Expected results come from the native product run on the same workspace and
+inputs, never from the frontend under test.
+
+  cases     run the fixed case matrix with one kast executable
+  compare   compare two case recordings after removing Host-incarnation identity and timing
+  latency   measure process launch through response delivery, as percentiles
+  concurrent  start N first callers against a stopped coordinator and record which coordinator served each
+"""
+
+from __future__ import annotations
+
+import argparse
+import concurrent.futures
+import json
+import math
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+# The authored schema's first example, adapted to the fixture.
+RUN_REQUEST = {
+    "type": "RUN",
+    "terminalStep": {"type": "EMIT"},
+    "source": {"type": "SEARCH_DECLARATIONS", "declarationName": "StringFeed"},
+}
+
+# name, arguments, stdin, extra environment
+CASES: list[tuple[str, list[str], bytes | None, dict[str, str]]] = [
+    ("flags", ["query", "--name", "StringFeed", "--json"], None, {}),
+    ("no-match", ["query", "--name", "DoesNotExist", "--json"], None, {}),
+    ("unknown-flag", ["query", "--bogus-flag"], None, {}),
+    ("plan", ["query", "plan", "--name", "StringFeed", "--json"], None, {}),
+    ("request-file", ["query", "--request", "request.json", "--json"], None, {}),
+    ("request-stdin", ["query", "--request", "-", "--json"], json.dumps(RUN_REQUEST).encode(), {}),
+    ("request-stdin-invalid", ["query", "--request", "-", "--json"], b"{not json", {}),
+    ("toon", ["query", "--name", "StringFeed"], None, {"KAST_OUTPUT_TOON": "1"}),
+    ("jq", ["query", "--name", "StringFeed", "--jq", ".document.items[0].name"], None, {}),
+    ("jq-invalid", ["query", "--name", "StringFeed", "--jq", ".["], None, {}),
+    ("describe", ["describe", "--json"], None, {}),
+    ("help", ["source", "--help"], None, {}),
+]
+
+# Issued references, Host identity and the Host's read epoch belong to one Host incarnation; timings are
+# observations. Each pattern covers the JSON and TOON encodings.
+NORMALIZERS = [
+    (re.compile(r"exact:v\d+:[A-Za-z0-9_-]+"), "exact:REF"),
+    (re.compile(r'("?host"?:\s*)"?[0-9a-f-]{36}"?'), r"\1HOST"),
+    (re.compile(r'("?epoch"?:\s*)\d+'), r"\g<1>0"),
+    (re.compile(r'("?[a-z_]*nanoseconds"?:\s*)\d+'), r"\g<1>0"),
+]
+
+
+def run(kast: str, arguments: list[str], stdin: bytes | None, environment: dict[str, str], cwd: Path) -> dict:
+    started = time.perf_counter_ns()
+    completed = subprocess.run(
+        [kast, *arguments],
+        input=stdin if stdin is not None else b"",
+        capture_output=True,
+        cwd=cwd,
+        env={**os.environ, **environment},
+        timeout=900,
+    )
+    return {
+        "exit": completed.returncode,
+        "stdout": completed.stdout.decode("utf-8", "replace"),
+        "stderr": completed.stderr.decode("utf-8", "replace"),
+        "elapsedMillis": (time.perf_counter_ns() - started) / 1e6,
+    }
+
+
+def cases(arguments: argparse.Namespace) -> int:
+    workspace = Path(arguments.workspace)
+    (workspace / "request.json").write_text(json.dumps(RUN_REQUEST))
+    recorded = {name: run(arguments.kast, argv, stdin, env, workspace) for name, argv, stdin, env in CASES}
+    Path(arguments.out).write_text(json.dumps(recorded, indent=2))
+    for name, result in recorded.items():
+        print(f"{name:24} exit={result['exit']:<4} {result['elapsedMillis']:9.1f} ms")
+    return 0
+
+
+def normalized(text: str) -> str:
+    for pattern, replacement in NORMALIZERS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def stderr_lines(text: str) -> list[str]:
+    return [line for line in text.splitlines() if not line.startswith('{"type":"frontend_trace"')]
+
+
+def compare(arguments: argparse.Namespace) -> int:
+    expected = json.loads(Path(arguments.expected).read_text())
+    actual = json.loads(Path(arguments.actual).read_text())
+    report = {}
+    for name in expected:
+        e, a = expected[name], actual[name]
+        report[name] = {
+            "exit": [e["exit"], a["exit"]],
+            "exitEqual": e["exit"] == a["exit"],
+            "stdoutEqual": normalized(e["stdout"]) == normalized(a["stdout"]),
+            "stderrEqual": stderr_lines(e["stderr"]) == stderr_lines(a["stderr"]),
+        }
+    Path(arguments.out).write_text(json.dumps(report, indent=2))
+    failed = False
+    for name, row in report.items():
+        flags = " ".join(k for k in ("exitEqual", "stdoutEqual", "stderrEqual") if not row[k])
+        failed |= bool(flags)
+        print(f"{name:24} exit={row['exit']} {'EQUAL' if not flags else 'DIFFERS: ' + flags}")
+    return 1 if failed else 0
+
+
+def percentile(samples: list[float], fraction: float) -> float:
+    ordered = sorted(samples)
+    return ordered[min(len(ordered) - 1, math.ceil(fraction * len(ordered)) - 1)]
+
+
+def latency(arguments: argparse.Namespace) -> int:
+    argv = json.loads(arguments.argv)
+    workspace = Path(arguments.workspace)
+    for _ in range(arguments.warmup):
+        run(arguments.kast, argv, None, {}, workspace)
+    samples, exits = [], set()
+    for _ in range(arguments.samples):
+        result = run(arguments.kast, argv, None, {}, workspace)
+        samples.append(result["elapsedMillis"])
+        exits.add(result["exit"])
+    summary = {
+        "argv": argv,
+        "samples": len(samples),
+        "exits": sorted(exits),
+        "p50": percentile(samples, 0.50),
+        "p95": percentile(samples, 0.95),
+        "p99": percentile(samples, 0.99),
+        "max": max(samples),
+    }
+    print(json.dumps(summary))
+    if arguments.out:
+        Path(arguments.out).write_text(json.dumps(summary, indent=2))
+    return 0
+
+
+def first_callers(arguments: argparse.Namespace) -> int:
+    workspace = Path(arguments.workspace)
+    argv = ["query", "--name", "StringFeed", "--json"]
+    environment = {"KAST_FRONTEND_TRACE": "1"}
+    with concurrent.futures.ThreadPoolExecutor(arguments.callers) as pool:
+        results = list(pool.map(lambda _: run(arguments.kast, argv, None, environment, workspace), range(arguments.callers)))
+    served = []
+    for result in results:
+        trace = next((json.loads(line) for line in result["stderr"].splitlines() if "frontend_trace" in line), None)
+        served.append({"exit": result["exit"], "trace": trace, "elapsedMillis": result["elapsedMillis"]})
+    owners = {(row["trace"] or {}).get("processId") for row in served}
+    report = {"callers": arguments.callers, "owners": sorted(map(str, owners)), "served": served}
+    Path(arguments.out).write_text(json.dumps(report, indent=2))
+    print(json.dumps({"callers": arguments.callers, "distinctOwners": len(owners), "exits": [r["exit"] for r in served]}))
+    return 0 if len(owners) == 1 and None not in owners else 1
+
+
+def cancellation(arguments: argparse.Namespace) -> int:
+    """Interrupt one in-flight caller while another runs; the other completes on the same coordinator."""
+    workspace = Path(arguments.workspace)
+    environment = {**os.environ, "KAST_FRONTEND_TRACE": "1"}
+    argv = [arguments.kast, "query", "--name", "StringFeed", "--json"]
+    victim = subprocess.Popen(argv, cwd=workspace, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    survivor = subprocess.Popen(argv, cwd=workspace, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    time.sleep(arguments.delay)
+    victim.send_signal(signal.SIGINT)
+    victim_out, victim_err = victim.communicate(timeout=120)
+    survivor_out, survivor_err = survivor.communicate(timeout=120)
+    after = run(arguments.kast, argv[1:], None, {"KAST_FRONTEND_TRACE": "1"}, workspace)
+    report = {
+        "victim": {"exit": victim.returncode, "stdoutBytes": len(victim_out), "stderr": victim_err.decode()},
+        "survivor": {"exit": survivor.returncode, "stderr": survivor_err.decode()},
+        "after": {"exit": after["exit"], "stderr": after["stderr"]},
+    }
+    Path(arguments.out).write_text(json.dumps(report, indent=2))
+    print(json.dumps({k: v["exit"] for k, v in report.items()}))
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    commands = parser.add_subparsers(dest="command", required=True)
+    p = commands.add_parser("cases")
+    p.add_argument("--kast", required=True)
+    p.add_argument("--workspace", required=True)
+    p.add_argument("--out", required=True)
+    p.set_defaults(handler=cases)
+    p = commands.add_parser("compare")
+    p.add_argument("--expected", required=True)
+    p.add_argument("--actual", required=True)
+    p.add_argument("--out", required=True)
+    p.set_defaults(handler=compare)
+    p = commands.add_parser("latency")
+    p.add_argument("--kast", required=True)
+    p.add_argument("--workspace", required=True)
+    p.add_argument("--argv", required=True, help="JSON array of arguments")
+    p.add_argument("--samples", type=int, default=200)
+    p.add_argument("--warmup", type=int, default=10)
+    p.add_argument("--out")
+    p.set_defaults(handler=latency)
+    p = commands.add_parser("concurrent")
+    p.add_argument("--kast", required=True)
+    p.add_argument("--workspace", required=True)
+    p.add_argument("--callers", type=int, default=4)
+    p.add_argument("--out", required=True)
+    p.set_defaults(handler=first_callers)
+    p = commands.add_parser("cancellation")
+    p.add_argument("--kast", required=True)
+    p.add_argument("--workspace", required=True)
+    p.add_argument("--delay", type=float, default=0.03)
+    p.add_argument("--out", required=True)
+    p.set_defaults(handler=cancellation)
+    arguments = parser.parse_args()
+    return arguments.handler(arguments)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

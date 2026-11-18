@@ -89,10 +89,12 @@ internal class KastDirectToolSession(
                 is Refinement.Refined -> installed(directory, admitted.value, queryCatalog)
             }
 
+        /** [read] defaults to the socket client; inside the coordinator it is the coordinator's own executor. */
         fun installed(
             directory: Path,
             binding: InstalledClientBinding,
             queryCatalog: PublicToolCatalog,
+            read: DaemonOperationClient = CoordinatedToolClient(binding),
         ): KastDirectToolSession? {
             val selected =
                 CanonicalAgentToolDefinitions.all.filter { definition ->
@@ -100,7 +102,6 @@ internal class KastDirectToolSession(
                 }
             if (selected.size != PublicToolIdentity.entries.size) return null
             val root = { FilesystemCanonicalRootDiscovery.discover(directory) }
-            val read = CoordinatedToolClient(binding)
             val capabilities =
                 ExistingIdeCliCapabilities(
                     FilesystemCanonicalRootDiscovery,

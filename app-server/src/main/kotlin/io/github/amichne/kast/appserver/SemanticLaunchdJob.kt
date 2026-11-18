@@ -32,8 +32,37 @@ internal fun withdrawSemanticLaunchdJob(command: SemanticServiceLaunch): Boolean
     if (!ownsSemanticLaunchdJob(job, target, command)) return false
     val retired =
         invokeServiceSupervisor(listOf("/bin/launchctl", "bootout", target), LaunchctlExitContract.CompletionOnly)
-    return retired == LaunchctlInvocation.Completed &&
-        invokeServiceSupervisor(listOf("/bin/launchctl", "list", command.label), absent) == LaunchctlInvocation.Absent
+    if (retired != LaunchctlInvocation.Completed) return false
+    return try {
+        awaitSupervisorAbsence(
+            { invokeServiceSupervisor(listOf("/bin/launchctl", "list", command.label), absent) },
+            BrokerOperationalLimits.serviceRetirement.value / BrokerOperationalLimits.servicePoll.value,
+        ) {
+            Thread.sleep(BrokerOperationalLimits.servicePoll.value)
+        }
+    } catch (_: InterruptedException) {
+        Thread.currentThread().interrupt()
+        false
+    }
+}
+
+/**
+ * A completed bootout signals the job; launchd keeps listing it until the process exits, which for a draining
+ * coordinator takes measurable time. Only an observed absence within [observations] proves withdrawal.
+ */
+internal fun awaitSupervisorAbsence(
+    observe: () -> LaunchctlInvocation,
+    observations: Long,
+    pause: () -> Unit,
+): Boolean {
+    repeat(observations.toInt().coerceAtLeast(1)) { index ->
+        when (observe()) {
+            LaunchctlInvocation.Absent -> return true
+            LaunchctlInvocation.Completed -> if (index + 1 < observations) pause()
+            else -> return false
+        }
+    }
+    return false
 }
 
 internal fun readSemanticLaunchdJob(target: String): String? {

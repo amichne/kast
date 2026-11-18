@@ -10,6 +10,7 @@ import io.github.amichne.kast.appserver.InstalledAppServerManager
 import io.github.amichne.kast.appserver.InstalledBrokerServerRunner
 import io.github.amichne.kast.cli.direct.InstalledClientContext
 import io.github.amichne.kast.cli.direct.ManagedCoordinatorOperations
+import io.github.amichne.kast.cli.publicshell.CoordinatorPublicInvocations
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlin.system.exitProcess
@@ -61,19 +62,28 @@ object KastDaemonMain {
     }
 }
 
-private fun presentDaemonRun(result: BrokerServerRun) {
+internal fun presentDaemonRun(result: BrokerServerRun) {
     if (result is BrokerServerRun.Rejected) {
         System.err.println(Json.encodeToString(DaemonBootstrapRejection(result.failure)))
         exitProcess(DAEMON_REJECTED_EXIT_CODE)
     }
 }
 
-private fun runSemanticDaemon(environment: Map<String, String>): BrokerServerRun {
-    val context =
-        when (val admitted = InstalledClientContext.current(environment)) {
-            is Refinement.Rejected -> return BrokerServerRun.Rejected(BrokerServerFailure.KAST_EXECUTABLE_REJECTED)
-            is Refinement.Refined -> admitted.value
-        }
+private fun runSemanticDaemon(environment: Map<String, String>): BrokerServerRun =
+    when (val admitted = InstalledClientContext.current(environment)) {
+        is Refinement.Rejected -> BrokerServerRun.Rejected(BrokerServerFailure.KAST_EXECUTABLE_REJECTED)
+        is Refinement.Refined -> runSemanticCoordinator(admitted.value, admitted.value.installation, environment)
+    }
+
+/**
+ * The one semantic coordinator composition. [root] owns the coordinator's state and publication; [context] is the
+ * installation whose Hosts it manages. The native daemon passes the same path for both.
+ */
+internal fun runSemanticCoordinator(
+    context: InstalledClientContext,
+    root: Path,
+    environment: Map<String, String>,
+): BrokerServerRun {
     val home = Path.of(System.getProperty("user.home")).toRealPath()
     val semantic =
         environment +
@@ -85,7 +95,13 @@ private fun runSemanticDaemon(environment: Map<String, String>): BrokerServerRun
         runDaemonBootstrap(
             emptyList(),
             semantic,
-            InstalledBrokerServerRunner(context.installation.resolve("bin/kast"), home, semantic, requests = it),
+            InstalledBrokerServerRunner(
+                root.resolve("bin/kast"),
+                home,
+                semantic,
+                requests = it,
+                invocations = CoordinatorPublicInvocations(context.installation),
+            ),
         )
     }
 }

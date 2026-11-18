@@ -30,16 +30,18 @@ internal enum class PublicInputReadFailure {
     TOO_LARGE,
 }
 
+/** A relative request file resolves against the caller's [directory], never the reading process's own cwd. */
 internal fun readPublicCliInput(
     input: PublicCliInput,
     stdin: InputStream,
     identity: PublicToolIdentity,
+    directory: Path,
 ): Refinement<JsonObject, PublicInputReadFailure> =
     try {
         when (input) {
             is PublicCliInput.Lowered -> Refinement.Refined(input.arguments)
             is PublicCliInput.File ->
-                Files.newInputStream(Path.of(input.path)).use { readPublicArguments(it, identity) }
+                Files.newInputStream(directory.resolve(input.path)).use { readPublicArguments(it, identity) }
             PublicCliInput.Stdin -> readPublicArguments(stdin, identity)
         }
     } catch (_: IOException) {
