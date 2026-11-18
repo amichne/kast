@@ -85,6 +85,22 @@ internal class NativeValueSourceReturns(
                 is IntellijRelationSubjectLookup.Found -> native.declaration
                 is IntellijRelationSubjectLookup.Rejected -> return returnRejected()
             }
+        if (host is com.intellij.psi.PsiMethod) {
+            val call =
+                host.exactJavaValueElement(expected.range) as? com.intellij.psi.PsiMethodCallExpression
+                    ?: return returnRejected()
+            val selected =
+                when (val admitted = NativeJavaStaticCall.resolve(call)) {
+                    is Refinement.Refined -> admitted.value
+                    is Refinement.Rejected -> return Refinement.Rejected(admitted.failure.flow)
+                }
+            val execution =
+                when (val value = nativeValueExecutionOwner(call, host, expected.enclosing)) {
+                    is Refinement.Refined -> value.value.owner
+                    is Refinement.Rejected -> return returnRejected()
+                }
+            return selected.invocation(execution, scope, projection)
+        }
         val expression = host.exactValueElement(expected.range) ?: return returnRejected()
         val function =
             when (val native = projection.subject(scope, expected.callable)) {

@@ -96,7 +96,8 @@ The reviewed `kotlin.lazy` model records the initializer supplied for later use.
 
 `IMPACT` starts from exact producer calls. Native reads prove source identity and supported Kotlin transfers.
 Select `KOTLIN_JAVA_FORWARD_V2` to trace a Kotlin argument through a supported Java static method.
-The Java return supplies the result of the same Kotlin invocation.
+A Java producer can also supply an `int` argument to a static helper with an `int` formal.
+The Java return supplies the result of the same invocation.
 
 Here, a producer is the selected constructor or function call whose result the investigation tracks.
 
