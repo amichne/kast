@@ -1,21 +1,28 @@
 package io.github.amichne.kast.cli.publicshell
 
+import io.github.amichne.kast.appserver.DaemonOperationClient
+import io.github.amichne.kast.cli.direct.CoordinatedToolClient
 import io.github.amichne.kast.cli.direct.InstalledClientBinding
+import io.github.amichne.kast.cli.direct.InvocationWitness
 import io.github.amichne.kast.cli.direct.KastDirectToolSession
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
 import java.nio.file.Path
 
+/** The public shell's session for [installation]. A coordinator-hosted shell supplies its own [read] and [witness]. */
 internal fun coordinatedPublicSession(
     installation: Path,
     directory: Path,
     catalog: PublicToolCatalog,
     environment: Map<String, String>,
+    read: (InstalledClientBinding) -> DaemonOperationClient = ::CoordinatedToolClient,
+    witness: InvocationWitness = InvocationWitness.ProcessRecord,
 ): KastDirectToolSession? =
     when (val selected = publicInstallation(installation, environment)) {
         is Refinement.Rejected -> null
-        is Refinement.Refined -> KastDirectToolSession.installed(directory, selected.value, catalog)
+        is Refinement.Refined ->
+            KastDirectToolSession.installed(directory, selected.value, catalog, read(selected.value), witness)
     }
 
 internal fun coordinatedHookPreparation(
@@ -30,5 +37,8 @@ internal fun coordinatedHookPreparation(
         is Refinement.Refined -> prepareInstalledHook(root, wait, diagnostic, selected.value)
     }
 
+/** The installation's management payload; installation bindings are located from it. */
+internal const val MANAGEMENT_PAYLOAD = "share/kast/libexec/kast-management"
+
 private fun publicInstallation(installation: Path, environment: Map<String, String>) =
-    InstalledClientBinding.locate(installation.resolve("share/kast/libexec/kast-management"), environment)
+    InstalledClientBinding.locate(installation.resolve(MANAGEMENT_PAYLOAD), environment)

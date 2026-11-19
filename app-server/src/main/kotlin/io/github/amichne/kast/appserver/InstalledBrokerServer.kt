@@ -49,7 +49,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -612,64 +611,7 @@ internal object InstalledBrokerHost {
     }
 }
 
-class InstalledBrokerServerRunner
-private constructor(
-    private val kastExecutable: Path,
-    private val userHome: Path,
-    private val environment: Map<String, String>,
-    private val semantic: CoordinatorSemantic?,
-) : BrokerServerRunner {
-    constructor(
-        kastExecutable: Path,
-        userHome: Path,
-        environment: Map<String, String> = System.getenv(),
-        semantic: CoordinatorOperationExecutor? = null,
-    ) : this(kastExecutable, userHome, environment, semantic?.let { CoordinatorSemantic.LaunchBound(it) })
-
-    /** Each request's admitted runtime settings reach [requests], which owns conflicts with its bindings. */
-    constructor(
-        kastExecutable: Path,
-        userHome: Path,
-        environment: Map<String, String>,
-        requests: CoordinatorRequestExecutor,
-    ) : this(kastExecutable, userHome, environment, CoordinatorSemantic.RequestBound(requests))
-
-    override fun serve(): BrokerServerRun {
-        val options =
-            when (val admission = InstalledCoordinatorConfiguration.admit(kastExecutable, userHome, environment)) {
-                is Refinement.Refined -> admission.value
-                is Refinement.Rejected -> return BrokerServerRun.Rejected(admission.failure.serverFailure())
-            }
-        return try {
-            runBlocking {
-                val running =
-                    when (val started = InstalledCoordinator.start(options, DesktopDaemonDiscovery(), semantic)) {
-                        is InstalledCoordinatorStart.Started -> started.coordinator
-                        is InstalledCoordinatorStart.Rejected ->
-                            return@runBlocking BrokerServerRun.Rejected(started.failure)
-                    }
-                val hook = Thread({ runBlocking { running.close() } }, "kast-coordinator-shutdown")
-                Runtime.getRuntime().addShutdownHook(hook)
-                try {
-                    running.awaitTermination()
-                    BrokerServerRun.Stopped
-                } finally {
-                    try {
-                        Runtime.getRuntime().removeShutdownHook(hook)
-                    } catch (_: IllegalStateException) {
-                        /* Registered hook owns JVM shutdown. */
-                    }
-                    running.close()
-                }
-            }
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
-            BrokerServerRun.Rejected(BrokerServerFailure.INTERRUPTED)
-        }
-    }
-}
-
-private fun InstalledBrokerServerConfigurationFailure.serverFailure(): BrokerServerFailure =
+internal fun InstalledBrokerServerConfigurationFailure.serverFailure(): BrokerServerFailure =
     when (this) {
         InstalledBrokerServerConfigurationFailure.KAST_EXECUTABLE_REJECTED ->
             BrokerServerFailure.KAST_EXECUTABLE_REJECTED

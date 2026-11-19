@@ -49,6 +49,18 @@ internal class CoordinatorOperations(
     private val execution: CoordinatorExecution?,
 ) {
     private val admissions = OperationAdmissions()
+    private val invocations =
+        (execution as? CoordinatorExecution.RequestBound)?.let { bound ->
+            bound.invocations?.let { PublicInvocationOperations(target, available, admissions, it, bound.executor) }
+        }
+
+    /** Present only when the coordinator was composed with a public shell owner. */
+    val servesInvocations: Boolean
+        get() = invocations != null
+
+    suspend fun handleInvocation(session: DefaultWebSocketServerSession) {
+        invocations?.handle(session)
+    }
 
     suspend fun handle(session: DefaultWebSocketServerSession) {
         val frame =
@@ -122,7 +134,7 @@ internal class CoordinatorOperations(
                 is CoordinatorExecution.RequestBound ->
                     execute.executor.execute(CoordinatorOperationRequest(root, call, settings))
             }
-        return result.response(root)
+        return result.response(target, root)
     }
 
     private fun admitFrame(frame: Frame): Refinement<DaemonOperationRequest, DaemonOperationProtocolFailure> {
@@ -142,34 +154,38 @@ internal class CoordinatorOperations(
         if (request.target != target) return Refinement.Rejected(DaemonOperationProtocolFailure.IDENTITY_REJECTED)
         return Refinement.Refined(request)
     }
+}
 
-    private fun DaemonOperationResult.response(root: CanonicalRoot): DaemonOperationResponse {
-        fun CanonicalJsonDocument.asElement() = DaemonOperationProtocol.json.parseToJsonElement(value)
-        val path = root.path.toString()
-        return when (this) {
-            is DaemonOperationResult.Complete -> DaemonOperationResponse.Complete(target, path, document.asElement())
-            is DaemonOperationResult.Qualified -> DaemonOperationResponse.Qualified(target, path, document.asElement())
-            is DaemonOperationResult.Hosted -> DaemonOperationResponse.Hosted(target, path, document.asElement())
-            is DaemonOperationResult.OperationRejected ->
-                DaemonOperationResponse.OperationRejected(target, path, document.asElement())
-            is DaemonOperationResult.Rejected ->
-                when (val reason = failure) {
-                    is DaemonOperationClientRejection.Server -> DaemonOperationResponse.Rejected(reason.failure)
-                    is DaemonOperationClientRejection.Transport ->
-                        reject(
-                            when (reason.failure) {
-                                DaemonOperationClientFailure.OUTCOME_UNOBSERVED ->
-                                    DaemonOperationProtocolFailure.OUTCOME_UNOBSERVED
-                                DaemonOperationClientFailure.RESPONSE_REJECTED ->
-                                    DaemonOperationProtocolFailure.RESPONSE_REJECTED
-                                else -> DaemonOperationProtocolFailure.UNAVAILABLE
-                            }
-                        )
-                    is DaemonOperationClientRejection.Command,
-                    is DaemonOperationClientRejection.Coordinator,
-                    is DaemonOperationClientRejection.Startup -> reject(DaemonOperationProtocolFailure.UNAVAILABLE)
-                }
-        }
+/** The semantic route's projection of one executor result, shared with the in-process invocation client. */
+internal fun DaemonOperationResult.response(
+    target: DaemonManagementTarget,
+    root: CanonicalRoot,
+): DaemonOperationResponse {
+    fun CanonicalJsonDocument.asElement() = DaemonOperationProtocol.json.parseToJsonElement(value)
+    val path = root.path.toString()
+    return when (this) {
+        is DaemonOperationResult.Complete -> DaemonOperationResponse.Complete(target, path, document.asElement())
+        is DaemonOperationResult.Qualified -> DaemonOperationResponse.Qualified(target, path, document.asElement())
+        is DaemonOperationResult.Hosted -> DaemonOperationResponse.Hosted(target, path, document.asElement())
+        is DaemonOperationResult.OperationRejected ->
+            DaemonOperationResponse.OperationRejected(target, path, document.asElement())
+        is DaemonOperationResult.Rejected ->
+            when (val reason = failure) {
+                is DaemonOperationClientRejection.Server -> DaemonOperationResponse.Rejected(reason.failure)
+                is DaemonOperationClientRejection.Transport ->
+                    reject(
+                        when (reason.failure) {
+                            DaemonOperationClientFailure.OUTCOME_UNOBSERVED ->
+                                DaemonOperationProtocolFailure.OUTCOME_UNOBSERVED
+                            DaemonOperationClientFailure.RESPONSE_REJECTED ->
+                                DaemonOperationProtocolFailure.RESPONSE_REJECTED
+                            else -> DaemonOperationProtocolFailure.UNAVAILABLE
+                        }
+                    )
+                is DaemonOperationClientRejection.Command,
+                is DaemonOperationClientRejection.Coordinator,
+                is DaemonOperationClientRejection.Startup -> reject(DaemonOperationProtocolFailure.UNAVAILABLE)
+            }
     }
 }
 
@@ -179,7 +195,7 @@ internal enum class OperationSettlement {
 }
 
 /** Admission and closure share one monitor, so no operation is admitted after settlement begins. */
-private class OperationAdmissions {
+internal class OperationAdmissions {
     private var active = 0
     private var closed = false
     private val settled = CompletableDeferred<Unit>()
@@ -206,7 +222,7 @@ private class OperationAdmissions {
 }
 
 /** One admitted operation per connection, released after its reply is delivered or abandoned. */
-private class OperationLease(private val admissions: OperationAdmissions) {
+internal class OperationLease(private val admissions: OperationAdmissions) {
     private val held = AtomicBoolean(false)
 
     fun acquire(): Boolean = admissions.admit().also { held.set(it) }

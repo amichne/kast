@@ -424,6 +424,26 @@ tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateProviderCatalo
     outputFile.set(layout.buildDirectory.file("generated/provider/provider-catalog.json"))
 }
 
+// Thin-frontend metadata, projected by the public shell owner. Never starts a coordinator.
+val generateFrontendCatalog =
+    tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateFrontendCatalog") {
+        group = "build"
+        dependsOn(tasks.named("classes"))
+        classpath.from(sourceSets.main.get().runtimeClasspath)
+        mainClass.set("io.github.amichne.kast.cli.publicshell.PublicFrontendCatalog")
+        outputFile.set(layout.buildDirectory.file("generated/frontend/frontend.json"))
+    }
+
+// The coordinator as JVM bytecode. Staging adds the Go frontend at bin/kast and the explicit launcher.
+tasks.register<Sync>("assembleJvmCoordinator") {
+    group = "build"
+    description = "Assembles the persistent coordinator's bytecode and frontend metadata."
+    into(layout.buildDirectory.dir("jvm-coordinator"))
+    from(tasks.named("jar")) { into("lib") }
+    from(configurations.runtimeClasspath) { into("lib") }
+    from(generateFrontendCatalog) { into("share/kast") }
+}
+
 val queryPresentationTest =
     tasks.register<Exec>("queryPresentationTest") {
         group = "verification"

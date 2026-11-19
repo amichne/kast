@@ -73,6 +73,16 @@ private constructor(
             readiness: Path,
             executable: Path,
             submit: suspend () -> Refinement<Unit, PersistentBrokerServiceFailure>,
+        ): Refinement<InstalledSemanticCoordinator, SemanticCoordinatorStartupFailure> =
+            connect(installation, readiness, executable, submit, BrokerOperationalLimits.serviceStartup.value) {
+                delay(READINESS_POLL_MILLIS)
+            }
+
+        internal suspend fun connect(
+            installation: Path,
+            readiness: Path,
+            executable: Path,
+            submit: suspend () -> Refinement<Unit, PersistentBrokerServiceFailure>,
             budgetMillis: Long,
             pause: suspend () -> Unit,
         ): Refinement<InstalledSemanticCoordinator, SemanticCoordinatorStartupFailure> =

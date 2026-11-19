@@ -294,18 +294,21 @@ internal sealed interface CoordinatorExecution {
     class LaunchBound(val executor: CoordinatorOperationExecutor, val launch: AdmittedRuntimeSettings) :
         CoordinatorExecution
 
-    class RequestBound(val executor: CoordinatorRequestExecutor) : CoordinatorExecution
+    /** [invocations] serves thin-frontend public shell invocations over this same executor; absent, no route exists. */
+    class RequestBound(val executor: CoordinatorRequestExecutor, val invocations: PublicInvocations?) :
+        CoordinatorExecution
 }
 
 /** The caller-selected executor before the coordinator captures its own launch settings. */
 internal sealed interface CoordinatorSemantic {
     class LaunchBound(val executor: CoordinatorOperationExecutor) : CoordinatorSemantic
 
-    class RequestBound(val executor: CoordinatorRequestExecutor) : CoordinatorSemantic
+    class RequestBound(val executor: CoordinatorRequestExecutor, val invocations: PublicInvocations?) :
+        CoordinatorSemantic
 
     fun execution(environment: Map<String, String>): Refinement<CoordinatorExecution, DaemonRuntimeSettingsFailure> =
         when (this) {
-            is RequestBound -> Refinement.Refined(CoordinatorExecution.RequestBound(executor))
+            is RequestBound -> Refinement.Refined(CoordinatorExecution.RequestBound(executor, invocations))
             is LaunchBound ->
                 when (val launch = AdmittedRuntimeSettings.fromEnvironment(environment)) {
                     is Refinement.Rejected -> launch

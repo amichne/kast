@@ -14,6 +14,8 @@ internal fun Route.coordinatorRoutes(control: CoordinatorControl) {
     controlRoute(BrokerControlRoute.RUNTIME.path, connections, control::handle)
     controlRoute(BrokerControlRoute.MANAGEMENT.path, connections, control::handleManagement)
     if (control.privateEndpoint) controlRoute(BrokerControlRoute.SEMANTIC.path, connections, control::handleSemantic)
+    if (control.servesInvocations)
+        controlRoute(BrokerControlRoute.PUBLIC_INVOCATION.path, connections, control::handleInvocation)
 }
 
 private fun Route.controlRoute(

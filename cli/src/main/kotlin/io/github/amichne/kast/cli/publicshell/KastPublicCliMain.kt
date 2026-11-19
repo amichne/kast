@@ -79,19 +79,10 @@ object KastPublicCliMain {
     private fun run(args: Array<String>, prepare: (InputStream, Path) -> PublicPreparedOutput): Int {
         val output = Channels.newOutputStream(FileOutputStream(FileDescriptor.out).channel)
         val format =
-            if (args.firstOrNull() in setOf("hook", "workspace") || "--json" in args) CliOutputFormat.JSON
-            else
-                when (val selected = selectCliOutputFormat(System.getenv("KAST_OUTPUT_TOON"))) {
-                    is Refinement.Refined -> selected.value
-                    is Refinement.Rejected -> {
-                        val failure =
-                            PublicPreparedOutput(
-                                cliOutputRejection(selected.failure, CliOutputFormat.JSON),
-                                PublicShellExit.INPUT,
-                            )
-                        return runPublicCliInvocation({ failure }, output).code
-                    }
-                }
+            when (val selected = selectPublicOutputFormat(args.toList(), System.getenv(PUBLIC_OUTPUT_SETTING))) {
+                is Refinement.Refined -> selected.value
+                is Refinement.Rejected -> return runPublicCliInvocation({ selected.failure }, output).code
+            }
         return runPublicCliInvocation(
                 {
                     prepare(
@@ -107,6 +98,27 @@ object KastPublicCliMain {
 }
 
 internal fun nativeControlEnvironment(): Map<String, String> = System.getenv()
+
+/** The caller's output setting; [selectPublicOutputFormat] admits it before any command, help included, is prepared. */
+internal const val PUBLIC_OUTPUT_SETTING = "KAST_OUTPUT_TOON"
+
+/** Hook replies and explicit `--json` use JSON; otherwise the caller's TOON setting selects the format. */
+internal fun selectPublicOutputFormat(
+    args: List<String>,
+    toon: String?,
+): Refinement<CliOutputFormat, PublicPreparedOutput> =
+    if (args.firstOrNull() in setOf("hook", "workspace") || "--json" in args) Refinement.Refined(CliOutputFormat.JSON)
+    else
+        when (val selected = selectCliOutputFormat(toon)) {
+            is Refinement.Refined -> selected
+            is Refinement.Rejected ->
+                Refinement.Rejected(
+                    PublicPreparedOutput(
+                        cliOutputRejection(selected.failure, CliOutputFormat.JSON),
+                        PublicShellExit.INPUT,
+                    )
+                )
+        }
 
 internal sealed interface PublicOutputContent {
     data object DOCUMENT : PublicOutputContent
@@ -162,12 +174,25 @@ internal fun preparePublicCli(
                             )
                         is PublicCliCommand.Describe -> preparePublicDescriptor(command)
                         is PublicCliCommand.Query ->
-                            prepareQuery(command.input, command.catalog, input, diagnostic, command.identity) { admitted
-                                ->
+                            prepareQuery(
+                                command.input,
+                                command.catalog,
+                                input,
+                                directory,
+                                diagnostic,
+                                command.identity,
+                            ) { admitted ->
                                 prepareInstalledQuery(command, directory, admitted, session, invoke)
                             }
                         is PublicCliCommand.Plan ->
-                            prepareQuery(command.input, command.catalog, input, diagnostic, use = ::preparePlan)
+                            prepareQuery(
+                                command.input,
+                                command.catalog,
+                                input,
+                                directory,
+                                diagnostic,
+                                use = ::preparePlan,
+                            )
                     }
                 }
         }
@@ -247,12 +272,13 @@ private fun prepareQuery(
     input: PublicCliInput,
     catalog: PublicToolCatalog,
     stdin: InputStream,
+    directory: Path,
     diagnostic: (String) -> Unit,
     identity: PublicToolIdentity = PublicToolIdentity.QUERY_SYMBOLS,
     use: (AdmittedPublicTool) -> PublicPreparedOutput,
 ): PublicPreparedOutput {
     val arguments =
-        when (val loaded = readPublicCliInput(input, stdin, identity)) {
+        when (val loaded = readPublicCliInput(input, stdin, identity, directory)) {
             is Refinement.Refined -> loaded.value
             is Refinement.Rejected -> {
                 diagnostic(publicCliInputDiagnostic(loaded.failure))
