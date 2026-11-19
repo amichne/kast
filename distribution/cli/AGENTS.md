@@ -4,9 +4,11 @@ title: "Native management CLI engineering rules"
 description: "Defines public command scope, installation ownership, guarded lifecycle transitions, and CLI guidance provisioning."
 resource: "repo://distribution/cli"
 tags: [kast, navigation]
-timestamp: "2026-11-10T05:30:08Z"
-source_revision: 85d30d515a1d777c5a83781f40813e32e69fa2e6
+timestamp: "2026-11-19T20:59:55Z"
+source_revision: 348282de6cd53ba9d39bd2a695c5b8011acd5103
 code_sources:
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt
+  - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/WorkspaceDependencySharing.kt
   - path: distribution/cli/build.gradle.kts
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
@@ -95,8 +97,10 @@ Exact versions and commits create pins. An unqualified upgrade of a pin rejects 
 
 `ManagedWorkspaceQuery` owns installed-only admission for CLI, MCP, and tool RPC. Semantic requests never contact release servers.
 The first explicit semantic request trusts one exact `CanonicalRoot`. Discovery and hooks do not create trust or workspace state.
-Keep the immutable vendor base separate from exact product components and private per-workspace HOME, IDE profile, and default Gradle state.
-Saved settings may select an external Gradle home; inherited credentials remain available. Private state is not an OS sandbox.
+Keep the immutable vendor base separate from exact product components. Keep HOME and the IDE profile private to each workspace.
+New workspaces default to `SHARED` and use the Kast-owned shared Gradle home. The `PRIVATE` policy selects a private Gradle home.
+With either policy, saved settings can select an external Gradle home through `GRADLE_USER_HOME`. Existing workspaces keep their recorded policy and Gradle home.
+Builds run with the user's permissions and can use inherited credentials.
 `stop` retires the selected workspace generation temporarily. Later explicit requests may prepare it again.
 Vanished-root reclamation requires an absent root, the exact retired Host generation, no query lease, and settled `.kast` evidence.
 Interrupted deletion retains its exterior `.removing-ID.json` receipt. Unknown ownership or process state blocks reclamation.
