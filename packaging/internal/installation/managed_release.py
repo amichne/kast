@@ -1664,38 +1664,30 @@ def inspect_control(
             query_header = stream.read(8)
         if not os.access(query, os.X_OK):
             return Failure.ARTIFACT_INVALID
+        jvm_layout = control / "share/kast/jvm-control-v1"
         native_layout = control / "share/kast/native-control-v1"
-        if native_layout.exists():
+        if jvm_layout.exists():
+            # The Control executable runs one JVM entry from lib; no bytecode lives elsewhere.
+            if jvm_layout.read_bytes() != b"1\n":
+                return Failure.INSTALLER_CONTRACT_UNSUPPORTED
+            libraries = control / "lib"
+            if query_header != b"#!/bin/s" or not libraries.is_dir() or not any(libraries.glob("*.jar")):
+                return Failure.ARTIFACT_INVALID
+            if any(
+                path.suffix == ".class" or (path.suffix == ".jar" and path.parent != libraries)
+                for path in control.rglob("*")
+            ):
+                return Failure.ARTIFACT_INVALID
+            if native_executables(control, target) != [executable]:
+                return Failure.ARTIFACT_INVALID
+        elif native_layout.exists():
             if native_layout.read_bytes() != b"1\n":
                 return Failure.INSTALLER_CONTRACT_UNSUPPORTED
             if query_header != b"#!/bin/s" or (control / "lib").exists():
                 return Failure.ARTIFACT_INVALID
-            native_files: list[Path] = []
-            for path in control.rglob("*"):
-                if path.suffix in (".jar", ".class"):
-                    return Failure.ARTIFACT_INVALID
-                if path.is_file():
-                    with path.open("rb") as stream:
-                        header = stream.read(32)
-                        if header[:4] in (
-                            b"\xcf\xfa\xed\xfe",
-                            b"\xfe\xed\xfa\xcf",
-                            b"\x7fELF",
-                            b"\xce\xfa\xed\xfe",
-                            b"\xfe\xed\xfa\xce",
-                            b"\xca\xfe\xba\xbe",
-                            b"\xbe\xba\xfe\xca",
-                            b"\xca\xfe\xba\xbf",
-                            b"\xbf\xba\xfe\xca",
-                        ):
-                            if not (
-                                path.is_relative_to(
-                                    control / "share/kast/mcp-dependencies/site-packages"
-                                )
-                                and native_dependency_library(stream, header, target)
-                            ):
-                                native_files.append(path)
-            if native_files != [executable]:
+            if any(path.suffix in (".jar", ".class") for path in control.rglob("*")):
+                return Failure.ARTIFACT_INVALID
+            if native_executables(control, target) != [executable]:
                 return Failure.ARTIFACT_INVALID
         elif query_header != native_header:
             return Failure.ARTIFACT_INVALID
@@ -1704,6 +1696,34 @@ def inspect_control(
         return identity
     except (OSError, ValueError, UnicodeError, RecursionError):
         return Failure.ARTIFACT_INVALID
+
+
+NATIVE_HEADERS = (
+    b"\xcf\xfa\xed\xfe",
+    b"\xfe\xed\xfa\xcf",
+    b"\x7fELF",
+    b"\xce\xfa\xed\xfe",
+    b"\xfe\xed\xfa\xce",
+    b"\xca\xfe\xba\xbe",
+    b"\xbe\xba\xfe\xca",
+    b"\xca\xfe\xba\xbf",
+    b"\xbf\xba\xfe\xca",
+)
+
+
+def native_executables(control: Path, target: str) -> list[Path]:
+    """Every native file outside admitted dependency libraries; the Control executable must be the only one."""
+    found: list[Path] = []
+    for path in control.rglob("*"):
+        if path.is_file():
+            with path.open("rb") as stream:
+                header = stream.read(32)
+                if header[:4] in NATIVE_HEADERS and not (
+                    path.is_relative_to(control / "share/kast/mcp-dependencies/site-packages")
+                    and native_dependency_library(stream, header, target)
+                ):
+                    found.append(path)
+    return found
 
 
 def admit_main_records(

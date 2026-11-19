@@ -152,7 +152,7 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
                     null -> return ShutdownProcessAdmission.Rejected
                     else -> selected
                 }
-            if (payload == NativeToolPayload.CONTROL && !ownsNativeClient(snapshot.arguments))
+            if (payload == NativeToolPayload.CONTROL && !ownsClientEntry(snapshot.arguments))
                 return ShutdownProcessAdmission.Rejected
             val executable = installation.resolve(payload.relative)
             val attributes = Files.readAttributes(executable, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
@@ -160,7 +160,8 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
             return process.revalidate(LifecycleProcessObservation.Present(snapshot))
         }
 
-        private fun ownsNativeClient(arguments: List<String>): Boolean {
+        /** Only client entries publish one-shot records; service, daemon and installer entries have other owners. */
+        private fun ownsClientEntry(arguments: List<String>): Boolean {
             val invocation =
                 (admitNativeControlProcessInvocation(arguments) as? Refinement.Refined)?.value ?: return false
             return when (invocation.entry) {
@@ -198,16 +199,10 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
             }
 
         private fun ownsArguments(arguments: List<String>, installation: Path): Boolean {
-            val main = arguments.indexOfFirst {
-                it in
-                    setOf(
-                        "io.github.amichne.kast.cli.rpc.KastToolRpcMain",
-                        "io.github.amichne.kast.cli.publicshell.KastPublicCliMain",
-                        "io.github.amichne.kast.cli.mcp.KastMcpMain",
-                    )
-            }
+            val main = arguments.indexOfFirst { it in clientMainClasses || it == CONTROL_MAIN_CLASS }
             val classpath = arguments.indexOfFirst { it == "-classpath" || it == "-cp" }
             if (classpath < 0 || classpath + 2 != main) return false
+            if (arguments[main] == CONTROL_MAIN_CLASS && !ownsClientEntry(arguments.drop(main + 1))) return false
             val entries = arguments[classpath + 1].split(':')
             return entries.isNotEmpty() &&
                 entries.all { raw ->
@@ -224,6 +219,16 @@ internal sealed class OwnedLifecycleProcess private constructor(val snapshot: Li
         }
     }
 }
+
+/** The single JVM entry the Control executable runs; its entry selector decides whether it is a client. */
+private const val CONTROL_MAIN_CLASS = "io.github.amichne.kast.cli.KastControlMain"
+
+private val clientMainClasses =
+    setOf(
+        "io.github.amichne.kast.cli.rpc.KastToolRpcMain",
+        "io.github.amichne.kast.cli.publicshell.KastPublicCliMain",
+        "io.github.amichne.kast.cli.mcp.KastMcpMain",
+    )
 
 private enum class NativeToolPayload(val relative: String) {
     LEGACY_QUERY("bin/kast-query"),

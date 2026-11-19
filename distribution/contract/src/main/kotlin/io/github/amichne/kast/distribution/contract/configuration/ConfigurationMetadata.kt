@@ -75,6 +75,13 @@ internal object DerivedConfigurationDeclarations {
                 ConfigurationSyntax.ABSOLUTE_PATH,
                 ConfigurationSource.PROCESS_ENVIRONMENT,
             ),
+            // The Control executable names the command the caller ran before it replaces itself with the JVM.
+            derived(
+                "kast.command",
+                ":distribution:cli",
+                ConfigurationSyntax.ABSOLUTE_PATH,
+                ConfigurationSource.JVM_PROPERTY,
+            ),
         )
 
     private fun derived(key: String, owner: String, syntax: ConfigurationSyntax, source: ConfigurationSource) =

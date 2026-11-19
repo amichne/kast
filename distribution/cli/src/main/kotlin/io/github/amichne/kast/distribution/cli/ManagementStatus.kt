@@ -12,18 +12,22 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/** The command the caller ran, as the Control executable passes it to the JVM entry. */
+const val CONTROL_COMMAND_PROPERTY = "kast.command"
+
 internal fun printManagementStatus(
     root: Path,
     json: Boolean,
     output: ManagementOutput = ManagementOutput(),
     scope: WorkspaceScope = WorkspaceScope.Current,
 ) {
+    // The Control executable replaces itself with the JVM, so it names the command the caller ran.
     val commandPath =
-        ProcessHandle.current()
-            .info()
-            .command()
-            .map { Path.of(it).toAbsolutePath().normalize().toString() }
-            .orElse("unavailable")
+        (System.getProperty(CONTROL_COMMAND_PROPERTY)?.let(Path::of)
+                ?: ProcessHandle.current().info().command().map(Path::of).orElse(null))
+            ?.toAbsolutePath()
+            ?.normalize()
+            ?.toString() ?: "unavailable"
     val status = readStatus(root, commandPath, scope, Path.of("").toAbsolutePath())
     if (output.structured(json)) output.publish(status.asJson()) else println(status.asText())
 }

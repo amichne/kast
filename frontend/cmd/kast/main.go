@@ -1,4 +1,5 @@
-// Command kast is the thin frontend for the persistent Kast coordinator.
+// Command kast is the Kast Control executable: public queries go to the persistent coordinator, and every other entry
+// replaces this process with the installation's JVM.
 package main
 
 import (
@@ -30,5 +31,6 @@ func main() {
 		Stdout:      os.Stdout,
 		Stderr:      os.Stderr,
 		Signals:     signals,
+		Exec:        syscall.Exec,
 	}))
 }

@@ -24,12 +24,21 @@ func writeCatalog(t *testing.T, root string, document map[string]any) {
 
 func validCatalog() map[string]any {
 	return map[string]any{
-		"schemaVersion":         1,
-		"invocationProtocol":    1,
-		"socket":                "state/run/c.sock",
+		"schemaVersion":      1,
+		"invocationProtocol": 1,
+		"socket":             "state/run/c.sock",
+		"socketAlias": map[string]any{
+			"maximumPathBytes": 102, "directory": "/tmp", "prefix": "kast-uds-", "digestCharacters": 32,
+		},
 		"bootstrap":             []string{"libexec/kast-coordinator", "ensure"},
 		"handshakeMilliseconds": 10000,
 		"outputSetting":         map[string]any{"variable": "KAST_OUTPUT_TOON", "admittedValues": []string{"", "0", "1"}},
+		"publicNamespaces":      []string{"query", "describe"},
+		"control": map[string]any{
+			"mainClass": "io.github.amichne.kast.cli.KastControlMain",
+			"classPath": []string{"lib/kast-cli.jar", "lib/kotlin-stdlib.jar"},
+			"javaHomes": map[string]string{platform(): "host/jbr"},
+		},
 		"exits": map[string]int{
 			"COMPLETE": 0, "DEFECT": 1, "INPUT": 2, "WORKSPACE": 3, "RUNTIME": 4, "IO": 5, "PROTOCOL": 6,
 			"BOOTSTRAP": 9, "SEMANTIC": 10, "DELIVERY": 11, "ELAPSED": 124, "INTERRUPTED": 130, "TERMINATED": 143,
@@ -148,13 +157,25 @@ func TestHelpForwardsAnOutputSettingTheShellWouldReject(t *testing.T) {
 }
 
 func TestMissingTransportBoundsAreMalformed(t *testing.T) {
-	for _, field := range []string{"handshakeMilliseconds", "outputSetting"} {
+	for _, field := range []string{"handshakeMilliseconds", "outputSetting", "control", "socketAlias"} {
 		root := t.TempDir()
 		document := validCatalog()
 		delete(document, field)
 		writeCatalog(t, root, document)
 		if _, err := LoadCatalog(root); catalogFailure(t, err) != CatalogMalformed {
 			t.Fatalf("catalog without %s was admitted", field)
+		}
+	}
+}
+
+func TestAClassPathOutsideTheInstallationIsMalformed(t *testing.T) {
+	for _, entry := range []string{"/elsewhere/kast.jar", "../kast.jar", "lib/kast.class"} {
+		root := t.TempDir()
+		document := validCatalog()
+		document["control"].(map[string]any)["classPath"] = []string{entry}
+		writeCatalog(t, root, document)
+		if _, err := LoadCatalog(root); catalogFailure(t, err) != CatalogMalformed {
+			t.Fatalf("class path entry %q was admitted", entry)
 		}
 	}
 }

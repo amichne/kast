@@ -21,6 +21,10 @@ internal enum class ContainerPlatform(val publicName: String, val host: String) 
     @SerialName("linux-aarch64") LINUX_ARM64("linux-aarch64", "host"),
     @SerialName("linux-x86_64") LINUX_X64("linux-x86_64", "host");
 
+    /** The Host's bundled Java home, relative to the runtime root. Every Control process runs on this runtime. */
+    val javaHome: String
+        get() = if (publicName.startsWith("macos")) "$host/jbr/Contents/Home" else "$host/jbr"
+
     companion object {
         fun current(
             system: String = System.getProperty("os.name"),
@@ -390,3 +394,6 @@ private fun safeRuntimePath(raw: String): Boolean =
     raw.isNotEmpty() &&
         raw.none { it in "\u0000\r\n\\:" } &&
         raw.split('/').all { it.isNotEmpty() && it != "." && it != ".." }
+
+/** Each platform's Host Java home relative to the runtime root, for the Control executable's JVM entry. */
+fun controlJavaHomes(): Map<String, String> = ContainerPlatform.entries.associate { it.publicName to it.javaHome }

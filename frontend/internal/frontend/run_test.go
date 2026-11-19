@@ -3,12 +3,16 @@ package frontend
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -19,24 +23,31 @@ import (
 	"github.com/coder/websocket"
 )
 
-// fixture is one coordinator root with a scripted coordinator on its real Unix socket.
+// fixture is one installation with a scripted coordinator on its real Unix socket.
 type fixture struct {
 	root        string
 	connections atomic.Int32
 	requests    chan invocationRequest
 	closed      chan struct{}
+	executed    [][]string
 }
 
 // newFixture lays out a root under /tmp, keeping the socket path within the Unix limit.
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
-	root, err := os.MkdirTemp("/tmp", "kf")
+	base, err := os.MkdirTemp("/tmp", "kf")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(root) })
+	t.Cleanup(func() { os.RemoveAll(base) })
+	// The installation's parent holds its management receipt, as the installer lays it out.
+	root, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root = filepath.Join(root, "installation")
 	writeCatalog(t, root, validCatalog())
-	for _, directory := range []string{"bin", "libexec", "state/run"} {
+	for _, directory := range []string{"share/kast/libexec", "libexec", "state/run"} {
 		if err := os.MkdirAll(filepath.Join(root, directory), 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -118,7 +129,7 @@ func (f *fixture) runProcess(stdin io.Reader, stdout, stderr io.Writer, signals 
 		signals = make(chan os.Signal)
 	}
 	return Run(Process{
-		Executable:  filepath.Join(f.root, "bin", "kast"),
+		Executable:  filepath.Join(f.root, payloadPath),
 		Arguments:   arguments,
 		Environment: append([]string{"HOME=" + f.root, "KAST_FIXTURE=caller"}, environment...),
 		Directory:   f.root,
@@ -126,6 +137,10 @@ func (f *fixture) runProcess(stdin io.Reader, stdout, stderr io.Writer, signals 
 		Stdout:      stdout,
 		Stderr:      stderr,
 		Signals:     signals,
+		Exec: func(_ string, argv []string, _ []string) error {
+			f.executed = append(f.executed, argv)
+			return errors.New("exec is recorded by the fixture")
+		},
 	})
 }
 
@@ -186,7 +201,7 @@ func completed(exitCode int, output string, diagnostics ...string) map[string]an
 }
 
 func touchFrontend(t *testing.T, f *fixture) {
-	if err := os.WriteFile(filepath.Join(f.root, "bin", "kast"), nil, 0o700); err != nil {
+	if err := os.WriteFile(filepath.Join(f.root, payloadPath), nil, 0o700); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -409,5 +424,128 @@ func TestHelpWithAnUnadmittedOutputSettingIsAnsweredByTheCoordinator(t *testing.
 	status := f.runProcess(strings.NewReader(""), &stdout, &stderr, nil, []string{"KAST_OUTPUT_TOON=yes"}, "query", "--help")
 	if status != 2 || stdout.String() != "rejection\n" || f.connections.Load() != 1 {
 		t.Fatalf("unexpected outcome %d %q connections=%d", status, stdout.String(), f.connections.Load())
+	}
+}
+
+// receipt records a Host runtime root the way the installer's management receipt does.
+func (f *fixture) receipt(t *testing.T, runtimeRoot string) {
+	t.Helper()
+	encoded, _ := json.Marshal(map[string]any{"product": map[string]any{"runtimeRoot": runtimeRoot}})
+	if err := os.WriteFile(filepath.Join(filepath.Dir(f.root), "management.json"), encoded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEveryEntryOtherThanPublicQueriesReplacesTheProcessWithTheJvmEntry(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	f.receipt(t, "/runtimes/abc")
+	for _, arguments := range [][]string{
+		{"-Duser.home=/home/caller", "--internal-entrypoint=mcp", "--catalog", "common"},
+		{"install", "--channel", "stable"},
+		{"workspace", "session-start"},
+		{"--internal-entrypoint=query", "hook", "pre-tool"},
+	} {
+		f.executed = nil
+		if got := f.run(t, "", nil, arguments...); got.status != 9 || len(f.executed) != 1 || f.connections.Load() != 0 {
+			t.Fatalf("%v: unexpected outcome %+v executed=%v", arguments, got, f.executed)
+		}
+	}
+	want := []string{"/runtimes/abc/host/jbr/bin/java", "-Dkast.command=" + filepath.Join(f.root, payloadPath),
+		"-Duser.home=/home/caller", "-cp",
+		filepath.Join(f.root, "lib/kast-cli.jar") + ":" + filepath.Join(f.root, "lib/kotlin-stdlib.jar"),
+		"io.github.amichne.kast.cli.KastControlMain", "--internal-entrypoint=mcp", "--catalog", "common"}
+	f.executed = nil
+	f.run(t, "", nil, "-Duser.home=/home/caller", "--internal-entrypoint=mcp", "--catalog", "common")
+	if !slices.Equal(f.executed[0], want) {
+		t.Fatalf("JVM command %v, want %v", f.executed[0], want)
+	}
+}
+
+func TestPublicQueriesFromTheQueryEntryReachTheCoordinatorWithoutTheSelector(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	f.serve(t, func(ctx context.Context, conn *websocket.Conn, _ invocationRequest) {
+		send(t, ctx, conn, completed(0, "served"))
+	})
+	got := f.run(t, "", nil, "-Duser.home=/home/caller", "--internal-entrypoint=query", "query", "--name", "Fixture")
+	request := <-f.requests
+	if got.status != 0 || len(f.executed) != 0 || strings.Join(request.Arguments, " ") != "query --name Fixture" {
+		t.Fatalf("unexpected outcome %+v request=%v executed=%v", got, request.Arguments, f.executed)
+	}
+}
+
+func TestAMissingRuntimeReceiptIsABootstrapFailureBeforeAnyExec(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	if got := f.run(t, "", nil, "install"); got.status != 9 || len(f.executed) != 0 ||
+		!strings.Contains(got.stderr, "runtime is unavailable") {
+		t.Fatalf("unexpected outcome %+v executed=%v", got, f.executed)
+	}
+}
+
+func TestThePublicCopyLocatesTheInstallationBeneathHome(t *testing.T) {
+	home := t.TempDir()
+	installation := filepath.Join(home, ".local", "share", "kast", "installation")
+	if err := os.MkdirAll(installation, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	public := filepath.Join(home, ".local", "bin", "kast")
+	if err := os.MkdirAll(filepath.Dir(public), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(public, nil, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	located, err := locateInstallation(public, map[string]string{"HOME": home})
+	resolved, _ := filepath.EvalSymlinks(installation)
+	if err != nil || located != resolved {
+		t.Fatalf("located %q %v, want %q", located, err, resolved)
+	}
+}
+
+func TestALongSocketIsDialedThroughTheCoordinatorsAliasOnly(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	f.serve(t, func(ctx context.Context, conn *websocket.Conn, _ invocationRequest) {
+		send(t, ctx, conn, completed(0, "served"))
+	})
+	document := validCatalog()
+	// Every real fixture socket is short, so a zero-byte bound makes this one "too long" to bind directly.
+	// The alias itself must be short, as /tmp is for the coordinator.
+	aliasDirectory, err := os.MkdirTemp("/tmp", "ka")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(aliasDirectory) })
+	document["socketAlias"] = map[string]any{
+		"maximumPathBytes": 1, "directory": aliasDirectory, "prefix": "kast-uds-", "digestCharacters": 32,
+	}
+	writeCatalog(t, f.root, document)
+	run := filepath.Join(f.root, "state", "run")
+	digest := sha256.Sum256([]byte(run))
+	link := filepath.Join(aliasDirectory, "kast-uds-"+hex.EncodeToString(digest[:])[:32])
+	marker := f.bootstrap(t, 0, "")
+	if got := f.run(t, "", nil, "query"); got.status != 9 || f.connections.Load() != 0 {
+		t.Fatalf("a missing alias was not unreachable: %+v", got)
+	}
+	runs, _ := os.ReadFile(marker)
+	if strings.Count(string(runs), "run") != 1 {
+		t.Fatalf("bootstrap runs %q", runs)
+	}
+	if err := os.Symlink(t.TempDir(), link); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.run(t, "", nil, "query"); got.status != 9 || f.connections.Load() != 0 {
+		t.Fatalf("an alias to another directory was dialed: %+v", got)
+	}
+	if err := os.Remove(link); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(run, link); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.run(t, "", nil, "query"); got.status != 0 || got.stdout != "served\n" {
+		t.Fatalf("the exact alias was not dialed: %+v", got)
 	}
 }

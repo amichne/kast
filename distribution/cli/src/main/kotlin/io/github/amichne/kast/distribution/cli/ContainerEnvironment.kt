@@ -4,10 +4,7 @@ package io.github.amichne.kast.distribution.cli
 internal fun containerEnvironment(container: AdmittedContainer, inherited: Map<String, String>): Map<String, String> {
     val state = container.state
     val home = container.home
-    val java =
-        container.runtime.home.resolve(
-            if (container.runtime.manifest.platform.publicName.startsWith("macos")) "jbr/Contents/Home" else "jbr"
-        )
+    val java = container.runtime.root.resolve(container.runtime.manifest.platform.javaHome)
     val retained = inherited.filterKeys { key ->
         !key.startsWith("KAST_") &&
             !key.startsWith("IDEA_") &&

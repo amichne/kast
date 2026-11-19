@@ -71,7 +71,7 @@ graalvmNative {
         configureEach { javaLauncher.set(nativeImageLauncher) }
         named("main") {
             imageName.set("kast")
-            mainClass.set("io.github.amichne.kast.cli.KastNativeMain")
+            mainClass.set("io.github.amichne.kast.cli.KastControlMain")
             sharedLibrary.set(false)
             fallback.set(false)
             buildArgs.addAll(
@@ -126,7 +126,7 @@ configurations.consumable("nativeExecutableElements") {
 val nativeImageOptions =
     tasks.register<WriteProperties>("nativeImageOptions") {
         destinationFile.set(layout.buildDirectory.file("native-inputs/image.properties"))
-        property("mainClass", "io.github.amichne.kast.cli.KastNativeMain")
+        property("mainClass", "io.github.amichne.kast.cli.KastControlMain")
     }
 
 tasks.register<Tar>("assembleNativeImageInputs") {
@@ -424,24 +424,36 @@ tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateProviderCatalo
     outputFile.set(layout.buildDirectory.file("generated/provider/provider-catalog.json"))
 }
 
-// Thin-frontend metadata, projected by the public shell owner. Never starts a coordinator.
+// The Control JVM entry's libraries. The catalog lists them in this order, relative to the installation.
+val controlLibraries =
+    tasks.named<Jar>("jar").flatMap { jar ->
+        jar.archiveFile.zip(configurations.runtimeClasspath.flatMap { it.elements }) { entry, runtime ->
+            listOf(entry.asFile) + runtime.map { it.asFile }
+        }
+    }
+
+// Control executable metadata, projected by the public shell owner. Never starts a coordinator.
 val generateFrontendCatalog =
     tasks.register<support.tasks.WriteJavaProcessOutputTask>("generateFrontendCatalog") {
         group = "build"
         dependsOn(tasks.named("classes"))
         classpath.from(sourceSets.main.get().runtimeClasspath)
         mainClass.set("io.github.amichne.kast.cli.publicshell.PublicFrontendCatalog")
+        arguments.set(controlLibraries.map { files -> files.map { "lib/${it.name}" } })
         outputFile.set(layout.buildDirectory.file("generated/frontend/frontend.json"))
     }
 
-// The coordinator as JVM bytecode. Staging adds the Go frontend at bin/kast and the explicit launcher.
-tasks.register<Sync>("assembleJvmCoordinator") {
-    group = "build"
-    description = "Assembles the persistent coordinator's bytecode and frontend metadata."
-    into(layout.buildDirectory.dir("jvm-coordinator"))
-    from(tasks.named("jar")) { into("lib") }
-    from(configurations.runtimeClasspath) { into("lib") }
-    from(generateFrontendCatalog) { into("share/kast") }
+val assembleControlLibraries =
+    tasks.register<Sync>("assembleControlLibraries") {
+        group = "build"
+        description = "Assembles the Control JVM entry's libraries for the installation's lib directory."
+        into(layout.buildDirectory.dir("control-libraries"))
+        from(tasks.named("jar"))
+        from(configurations.runtimeClasspath)
+    }
+
+configurations.consumable("controlLibraryElements") {
+    outgoing.artifact(assembleControlLibraries.map { it.destinationDir })
 }
 
 val queryPresentationTest =
@@ -522,7 +534,7 @@ val assembleNativeControlLayout =
     tasks.register<Sync>("assembleNativeControlLayout") {
         into(layout.buildDirectory.dir("native-control-layout"))
         from("src/main/native-launchers") { filePermissions { unix("755") } }
-        from("native-control-v1") { into("share/kast") }
+        from("jvm-control-v1") { into("share/kast") }
         from(repositoryRoot.file("copilot/task-extension.mjs")) {
             into("share/kast/adapters/copilot")
             rename { "extension.mjs" }

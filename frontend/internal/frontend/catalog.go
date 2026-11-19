@@ -34,11 +34,31 @@ type catalogDocument struct {
 	SchemaVersion         int            `json:"schemaVersion"`
 	InvocationProtocol    int            `json:"invocationProtocol"`
 	Socket                string         `json:"socket"`
+	SocketAlias           socketAlias    `json:"socketAlias"`
 	Bootstrap             []string       `json:"bootstrap"`
 	HandshakeMilliseconds int64          `json:"handshakeMilliseconds"`
 	OutputSetting         outputSetting  `json:"outputSetting"`
+	PublicNamespaces      []string       `json:"publicNamespaces"`
+	Control               control        `json:"control"`
 	Exits                 map[string]int `json:"exits"`
 	Help                  []helpEntry    `json:"help"`
+}
+
+// socketAlias is the coordinator's rule for a socket path too long to bind: a link in Directory, named Prefix plus
+// the first DigestCharacters hexadecimal SHA-256 characters of the socket directory.
+type socketAlias struct {
+	MaximumPathBytes int    `json:"maximumPathBytes"`
+	Directory        string `json:"directory"`
+	Prefix           string `json:"prefix"`
+	DigestCharacters int    `json:"digestCharacters"`
+}
+
+// control is the single JVM entry every non-coordinator invocation runs: its main class, the installation-relative
+// class path in order, and each platform's Java home relative to the Host runtime root.
+type control struct {
+	MainClass string            `json:"mainClass"`
+	ClassPath []string          `json:"classPath"`
+	JavaHomes map[string]string `json:"javaHomes"`
 }
 
 // outputSetting is the environment variable the public shell admits before help, and the values it accepts.
@@ -54,13 +74,16 @@ type helpEntry struct {
 
 // Catalog is admitted coordinator metadata: its paths are resolved beneath the root and its statuses are complete.
 type Catalog struct {
-	root          string
-	socket        string
-	bootstrap     []string
-	handshake     time.Duration
-	outputSetting outputSetting
-	exits         map[string]int
-	help          []helpEntry
+	root             string
+	socket           string
+	socketAlias      socketAlias
+	bootstrap        []string
+	handshake        time.Duration
+	outputSetting    outputSetting
+	publicNamespaces []string
+	control          control
+	exits            map[string]int
+	help             []helpEntry
 }
 
 // CatalogFailure is a closed set of reasons the installed metadata cannot be used.
@@ -149,15 +172,39 @@ func LoadCatalog(root string) (*Catalog, error) {
 			return nil, &CatalogError{Failure: CatalogMalformed}
 		}
 	}
+	alias := document.SocketAlias
+	if alias.MaximumPathBytes <= 0 || !filepath.IsAbs(alias.Directory) || alias.Prefix == "" ||
+		alias.DigestCharacters <= 0 || alias.DigestCharacters > 64 {
+		return nil, &CatalogError{Failure: CatalogMalformed}
+	}
+	if !admittedControl(document.Control) {
+		return nil, &CatalogError{Failure: CatalogMalformed}
+	}
 	return &Catalog{
-		root:          root,
-		socket:        socket,
-		bootstrap:     append([]string{launcher}, document.Bootstrap[1:]...),
-		handshake:     time.Duration(document.HandshakeMilliseconds) * time.Millisecond,
-		outputSetting: document.OutputSetting,
-		exits:         document.Exits,
-		help:          document.Help,
+		root:             root,
+		socket:           socket,
+		socketAlias:      document.SocketAlias,
+		bootstrap:        append([]string{launcher}, document.Bootstrap[1:]...),
+		handshake:        time.Duration(document.HandshakeMilliseconds) * time.Millisecond,
+		outputSetting:    document.OutputSetting,
+		publicNamespaces: document.PublicNamespaces,
+		control:          document.Control,
+		exits:            document.Exits,
+		help:             document.Help,
 	}, nil
+}
+
+// admittedControl requires a main class and a non-empty class path of JARs beneath the installation.
+func admittedControl(entry control) bool {
+	if entry.MainClass == "" || len(entry.ClassPath) == 0 || len(entry.JavaHomes) == 0 {
+		return false
+	}
+	for _, path := range entry.ClassPath {
+		if !filepath.IsLocal(path) || filepath.Ext(path) != ".jar" {
+			return false
+		}
+	}
+	return true
 }
 
 // Help returns the presented help document for an exact argument vector. The shell admits the output setting before

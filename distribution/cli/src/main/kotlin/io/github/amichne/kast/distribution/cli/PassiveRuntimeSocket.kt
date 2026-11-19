@@ -5,6 +5,7 @@ import io.github.amichne.kast.distribution.contract.configuration.ConfigurationO
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.distribution.contract.configuration.SavedConfigurationDocument
+import io.github.amichne.kast.distribution.managed.endpoint.MAXIMUM_UNIX_SOCKET_PATH_BYTES
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -67,7 +68,7 @@ private fun validRuntimeHome(raw: String): Boolean =
 
 private fun privateRuntimeSocket(installation: Path): Refinement<Path, RuntimeObservationFailure> {
     val physical = installation.resolve("state/run/c.sock")
-    if (physical.toString().toByteArray().size < SOCKET_PATH_LIMIT_BYTES) return Refinement.Refined(physical)
+    if (physical.toString().toByteArray().size <= MAXIMUM_UNIX_SOCKET_PATH_BYTES) return Refinement.Refined(physical)
     val directory = physical.parent
     val hash =
         MessageDigest.getInstance("SHA-256")
@@ -83,5 +84,3 @@ private fun privateRuntimeSocket(installation: Path): Refinement<Path, RuntimeOb
         Refinement.Rejected(RuntimeObservationFailure.SOCKET_UNAVAILABLE)
     }
 }
-
-private const val SOCKET_PATH_LIMIT_BYTES = 104

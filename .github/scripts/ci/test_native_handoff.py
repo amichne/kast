@@ -146,7 +146,7 @@ class NativeHandoffTest(unittest.TestCase):
     def test_inputs_and_native_stage_preserve_the_single_executable_identity(self):
         identity = Identity("a" * 40, "b" * 40, "0.0.7")
         classes = {
-            "kast": "io.github.amichne.kast.cli.KastNativeMain",
+            "kast": "io.github.amichne.kast.cli.KastControlMain",
         }
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

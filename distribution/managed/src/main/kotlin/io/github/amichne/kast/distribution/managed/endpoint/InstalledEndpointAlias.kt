@@ -105,16 +105,26 @@ private constructor(
         )
 }
 
+/**
+ * The longest Unix socket path, in bytes, that every Control process can bind. macOS reserves 104 bytes for `sun_path`;
+ * the JDK keeps one for the terminator and rejects a path of 103 bytes. A longer socket uses an alias.
+ */
+const val MAXIMUM_UNIX_SOCKET_PATH_BYTES = 102
+
 /** Only this reserved, deterministic alias namespace admits noncanonical socket parents. */
 object InstalledEndpointAliases {
-    private val root = Path.of("/tmp")
-    private const val PREFIX = "kast-uds-"
+    /** The alias namespace, published so the Control executable selects the same alias without a JVM. */
+    const val DIRECTORY = "/tmp"
+    const val PREFIX = "kast-uds-"
+    const val DIGEST_CHARACTERS = 32
+    private val root = Path.of(DIRECTORY)
     private const val RECEIPT = "endpoint-alias.json"
     private val privateDirectory = PosixFilePermissions.fromString("rwx------")
     private val privateFile = PosixFilePermissions.fromString("rw-------")
 
     fun transportPath(physicalSocket: Path): Path =
-        if (physicalSocket.toString().toByteArray(StandardCharsets.UTF_8).size < 104) physicalSocket
+        if (physicalSocket.toString().toByteArray(StandardCharsets.UTF_8).size <= MAXIMUM_UNIX_SOCKET_PATH_BYTES)
+            physicalSocket
         else aliasFor(physicalSocket.parent).resolve(physicalSocket.fileName)
 
     private fun aliasFor(directory: Path): Path =
@@ -125,7 +135,7 @@ object InstalledEndpointAliases {
                         MessageDigest.getInstance("SHA-256")
                             .digest(directory.toString().toByteArray(StandardCharsets.UTF_8))
                     )
-                    .take(32)
+                    .take(DIGEST_CHARACTERS)
         )
 
     internal fun matches(alias: Path, directory: Path): Boolean = alias == aliasFor(directory)
