@@ -1,15 +1,15 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { access, cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { access, cp, lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { delimiter, isAbsolute, join, relative, resolve } from 'node:path';
+import { delimiter, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { decodeReplayCredential } from '../pi_evaluation_replay_auth.mjs';
 import { loadKastGuidance, stageKastGuidance } from './kast-guidance.mjs';
 import { armCapabilities, completionFile, guidedCases, invocationFile, originalCases, skillCases } from './skill-cases.mjs';
-import { runtimeEnvironment } from './skill-sandbox.mjs';
+import { fixturePaths, runtimeEnvironment } from './skill-sandbox.mjs';
 import { observePiTrial, projectPiTrial, snapshotPiCatalog } from './pi-accounting.mjs';
 import { admitParticipantSurface, createParticipantDirectory } from './participant-surface.mjs';
 
@@ -369,13 +369,9 @@ export async function runIsolatedPi({
 }
 
 async function fixtureFiles(directory, includes, label) {
-  const files = (await readdir(directory, { recursive: true, withFileTypes: true })).filter(file => includes(file.name));
-  if (files.some(file => !file.isFile())) throw Error(`Fixture ${label} paths must be regular files`);
-  const entries = await Promise.all(files.map(async entry => {
-    const path = join(entry.parentPath, entry.name);
-    return [relative(directory, path), totalHash(await readFile(path))];
-  }));
-  return Object.fromEntries(entries.sort(([left], [right]) => left.localeCompare(right)));
+  const paths = await fixturePaths(directory, includes, label);
+  return Object.fromEntries(await Promise.all(paths.map(async path =>
+    [path, totalHash(await readFile(join(directory, path)))])));
 }
 
 async function validateFixtureKotlin(workspace) {
@@ -499,7 +495,11 @@ async function guidanceFor(capabilities) {
 }
 
 export default class SkillProvider {
-  id() { return 'pi-kast-skill'; }
+  constructor({ config } = {}) {
+    this.model = config?.model ?? process.env.KAST_EVAL_PI_MODEL ?? defaultModel;
+  }
+
+  id() { return `pi-kast-skill:${this.model}`; }
 
   async callApi(prompt, context) {
     const { caseId, arm, comparison } = context.vars;
@@ -516,11 +516,11 @@ export default class SkillProvider {
     try {
       const draftBinary = arm === 'reference' ? process.env.KAST_EVAL_REFERENCE_KAST :
         arm === 'delivered' ? process.env.KAST_EVAL_DELIVERED_DRAFT_KAST : undefined;
-      kast = await binary((!scenario.workspace && draftBinary) || process.env.KAST_EVAL_KAST, 'kast');
+      if (capabilities.kast) kast = await binary((!scenario.workspace && draftBinary) || process.env.KAST_EVAL_KAST, 'kast');
       workspace = await prepareWorkspace(scenario, directory);
-      if (scenario.workspace && !workspace.owned) await warmWorkspace(workspace.root, kast, scenario.workspace);
+      if (kast && scenario.workspace && !workspace.owned) await warmWorkspace(workspace.root, kast, scenario.workspace);
       const guidance = await guidanceFor(capabilities);
-      const model = process.env.KAST_EVAL_PI_MODEL ?? defaultModel;
+      const model = this.model;
       const trial = await runIsolatedPi({
         directory, prompt, guidance, model, extension: tool, visiblePaths: [workspace.root],
         toolUsagePolicy: 'no-model-helpers',
@@ -549,7 +549,7 @@ export default class SkillProvider {
           ...projected.metadata,
           model, effort: 'low', workspace: workspace.root, calls: trial.calls, planned,
           toolCalls: trial.toolCalls, providerResponses: trial.providerResponses,
-          elapsedMillis: trial.elapsedMillis, usage: trial.usage, kastSha256: await hashBinary(kast),
+          elapsedMillis: trial.elapsedMillis, usage: trial.usage, kastSha256: kast ? await hashBinary(kast) : null,
           taskSha256: totalHash(prompt), systemSha256: trial.systemSha256,
           skillSha256: trial.guidance?.skillSha256 ?? null, guideSha256: trial.guidance?.guideSha256 ?? null,
         },

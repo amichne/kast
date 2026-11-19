@@ -36,7 +36,7 @@ verdict='{type, status: .document.status, exhaustive: .document.coverage.exhaust
     if .type == "exact-symbol" then {name, signature, ref, file: .location.file} else . end]}'
 ```
 
-Find a declaration. Put each known constraint on the first call:
+Find a declaration. Pass its name with `--name`, its directory with `--in`, and its source set with `--source-set`.
 
 ```sh
 kast query --name OrderService --in services/orders --source-set main --kind class \
@@ -55,6 +55,13 @@ Find and expand in one call only when `--in` narrows the name to one declaration
 ```sh
 kast query --name AuditSink --in src/main/kotlin/parcel/audit --kind class \
   --relation implementations --jq "$verdict"
+```
+
+To restrict relation destinations, use a JSON `RUN` request with `expansionScope` on the `EXPAND_RELATION` step.
+Use the installed example to select the directory, source sets, and source policy.
+
+```sh
+kast describe query --section examples --jq '[.content[].value | select(.request.steps[0].expansionScope.type == "SOURCE_DOMAIN")] | .[0]'
 ```
 
 Trace affected uses: references, implementations or overrides, direct callers, and one more caller layer:

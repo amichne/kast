@@ -1,3 +1,26 @@
+import { readdir } from 'node:fs/promises';
+import { join, relative } from 'node:path';
+
+// Admission and participant source reads must see the same fixture files after a Gradle import.
+export async function fixturePaths(directory, includes, label) {
+  const paths = [];
+  const directories = [directory];
+  while (directories.length) {
+    const parent = directories.pop();
+    for (const entry of await readdir(parent, { withFileTypes: true })) {
+      const path = join(parent, entry.name);
+      if (entry.isDirectory() && entry.name === '.gradle') continue;
+      if (includes(entry.name)) {
+        if (!entry.isFile()) throw Error(`Fixture ${label} paths must be regular files`);
+        paths.push(relative(directory, path));
+      } else if (entry.isDirectory()) {
+        directories.push(path);
+      }
+    }
+  }
+  return paths.sort();
+}
+
 const helpCommands = new Set([
   '--help', 'query --help', 'diagnostic --help', 'diagnostic check --help',
   'result --help', 'result read --help', 'source --help', 'source read --help',

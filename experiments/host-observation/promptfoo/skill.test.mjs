@@ -527,3 +527,43 @@ test('Pi decoding preserves all token counters and attempted calls and rejects u
   assert.throws(() => decodePiTrial(stdout, 'openai-codex/other', ['kast']), /different model/);
   assert.throws(() => decodePiTrial(stdout, 'openai-codex/test-model', []), /Unexpected Pi tool/);
 });
+
+test('Promptfoo skill grader controls distinguish task completion and qualified uncertainty', async () => {
+  const { default: controls } = await import('./skill-controls.config.mjs');
+  const ids = controls.tests.map(row => row.vars.controlId);
+  assert.equal(ids.length, new Set(ids).size);
+  const mismatches = [];
+  for (const row of controls.tests) {
+    const receipt = await controls.providers[0].callApi(row.vars.controlId);
+    const result = row.assert[0].value(receipt.output, { providerResponse: receipt });
+    if (!result.pass) mismatches.push(row.vars.controlId);
+  }
+  assert.deepEqual(mismatches, []);
+});
+
+test('the forwarding directory uses invokeCallback but its declaration belongs to invocation', async () => {
+  const fixture = new URL('../static-callback-fixture/', import.meta.url);
+  const forwarding = new URL('forwarding/src/main/kotlin/', fixture);
+  const files = (await readdir(forwarding, { recursive: true })).filter(path => path.endsWith('.kt'));
+  const sources = await Promise.all(files.map(path => readFile(new URL(path, forwarding), 'utf8')));
+  assert.match(sources.join('\n'), /^import fixture\.staticcallbacks\.invocation\.invokeCallback$/m);
+  assert.match(sources.join('\n'), /= invokeCallback\(block\)/);
+  assert.doesNotMatch(sources.join('\n'), /\bfun\s+invokeCallback\s*\(/);
+  assert.match(await readFile(new URL(invocationFile, fixture), 'utf8'), /\bfun\s+invokeCallback\s*\(/);
+  assert.equal(skillCases['declaration-outside-scope']?.prompt, skillCases.present.prompt.replace('invocation directory', 'forwarding directory'));
+  assert.ok(permittedKast(['query', '--name', 'invokeCallback', '--in', 'forwarding', '--kind', 'function', '--source-set', 'main'], 'fixture'));
+});
+
+test('skill providers expose the two distinct model IDs and preserve the single-model override', async () => {
+  const configUrl = new URL('./skill.config.mjs', import.meta.url).href;
+  const inspect = `import config from ${JSON.stringify(configUrl)};
+    console.log(JSON.stringify(config.providers.map(({ label, config }) => [label, config.model])));`;
+  const env = { ...process.env };
+  delete env.KAST_EVAL_PI_MODEL;
+  const readModels = async environment => JSON.parse((await promisify(execFile)(process.execPath,
+    ['--input-type=module', '-e', inspect], { env: environment })).stdout);
+  const sol = 'openai-codex/gpt-6.1-sol';
+  const luna = 'openai-codex/gpt-6-luna';
+  assert.deepEqual(await readModels(env), [[sol, sol], [luna, luna]]);
+  assert.deepEqual(await readModels({ ...env, KAST_EVAL_PI_MODEL: luna }), [[luna, luna]]);
+});

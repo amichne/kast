@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
-import { permittedKast, runSkillKast, runtimeEnvironment } from './skill-sandbox.mjs';
+import { fixturePaths, permittedKast, runSkillKast, runtimeEnvironment } from './skill-sandbox.mjs';
 
 export default function (pi: ExtensionAPI) {
   const workspace = process.env.KAST_EVAL_TRIAL_WORKSPACE!;
@@ -15,13 +15,12 @@ export default function (pi: ExtensionAPI) {
       description: 'Search literal text in Kotlin source below invocation. Return matching lines and workspace-relative paths.',
       parameters: Type.Object({ text: Type.String({ minLength: 1, maxLength: 120 }) }),
       async execute(_id, { text }) {
-        const matches = readdirSync(join(workspace, 'invocation'), { recursive: true, encoding: 'utf8' })
-          .filter(path => path.endsWith('.kt'))
-          .flatMap(path => {
-            const file = join('invocation', path);
-            return readFileSync(join(workspace, file), 'utf8').split('\n')
-              .filter(line => line.includes(text)).map(line => ({ file, line }));
-          });
+        const paths = await fixturePaths(join(workspace, 'invocation'), (name: string) => name.endsWith('.kt'), 'Kotlin');
+        const matches = paths.flatMap((path: string) => {
+          const file = join('invocation', path);
+          return readFileSync(join(workspace, file), 'utf8').split('\n')
+            .filter(line => line.includes(text)).map(line => ({ file, line }));
+        });
         return {
           content: [{ type: 'text', text: JSON.stringify(matches) }],
           details: { text, matches },

@@ -25,6 +25,16 @@ Its telemetry-disabled notification still posts to `r.promptfoo.app`; `PROMPTFOO
 Six CLI integration checks remain blocked in an environment that rejects those requests. `npm test` includes those checks.
 The direct checks above do not replace CLI integration qualification. Do not describe the CLI as fully offline until its outbound behavior is resolved.
 
+Run the skill grader controls through Promptfoo before the live skill suite.
+
+```sh
+npm run eval -- -c skill-controls.config.mjs -o /tmp/kast-skill-controls.json
+npm run eval -- -c skill.config.mjs -o /tmp/kast-skill-live.json
+```
+
+The live suite uses GPT-6.1 Sol and GPT-6 Luna at low reasoning. Set `KAST_EVAL_PI_MODEL` to select one Pi model.
+Each result records the model and effort. For `query-completion-document`, `qualifiedUncertainty` gives credit for an evidence-backed unknown when the task remains incomplete.
+
 ## Curated portfolio
 
 Keep natural engineering tasks (Panel A) separate from supplied-evidence comprehension diagnostics (Panel B).

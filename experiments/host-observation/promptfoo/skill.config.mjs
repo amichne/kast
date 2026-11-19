@@ -4,7 +4,10 @@ import { gradeSkill } from './skill-grading.mjs';
 export default {
   description: 'Canonical Kast skill trials, skill revisions, and guided Kast access',
   prompts: ['{{task}}'],
-  providers: ['file://./skill-provider.mjs'],
+  providers: (process.env.KAST_EVAL_PI_MODEL ? [process.env.KAST_EVAL_PI_MODEL] :
+    ['openai-codex/gpt-6.1-sol', 'openai-codex/gpt-6-luna']).map(model => ({
+    id: 'file://./skill-provider.mjs', label: model, config: { model },
+  })),
   evaluateOptions: { maxConcurrency: 1, cache: false },
   scenarios: Object.entries(skillCases).flatMap(([caseId, scenario]) => {
     const comparisons = guidedCases.has(caseId) ? ['guided-kast-access'] : ['canonical-skill'];
