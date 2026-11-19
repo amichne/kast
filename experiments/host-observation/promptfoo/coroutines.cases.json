@@ -1,0 +1,78 @@
+{
+  "repository": "https://github.com/Kotlin/kotlinx.coroutines",
+  "revision": "8564f65764d3d05893cec026c6e94250e2b23874",
+  "workspace": "coroutines",
+  "cases": [
+    {
+      "id": "coroutines-delay-long-callers",
+      "task": "I want to change how core schedules delays expressed in whole milliseconds. Which named functions directly call the top-level kotlinx.coroutines.delay(timeMillis: Long)? Consider only Kotlin files under kotlinx-coroutines-core/<platform>/src/. Count calls inside lambdas under their nearest named function. Return only a JSON array of unique strings in the form <repository-relative path>#<function name>. Use the simple function name after #.",
+      "expected": [
+        "kotlinx-coroutines-core/common/src/Delay.kt#delay",
+        "kotlinx-coroutines-core/common/src/flow/Migration.kt#delayEach",
+        "kotlinx-coroutines-core/common/src/flow/Migration.kt#delayFlow",
+        "kotlinx-coroutines-core/common/src/flow/SharingStarted.kt#command",
+        "kotlinx-coroutines-core/common/src/flow/operators/Delay.kt#fixedPeriodTicker",
+        "kotlinx-coroutines-core/jvm/src/channels/TickerChannels.kt#fixedDelayTicker",
+        "kotlinx-coroutines-core/jvm/src/channels/TickerChannels.kt#fixedPeriodTicker",
+        "kotlinx-coroutines-core/jvm/src/time/Time.kt#delay"
+      ],
+      "nearMiss": [
+        "kotlinx-coroutines-core/common/src/flow/operators/Delay.kt#sample",
+        "kotlinx-coroutines-core/jvm/src/channels/TickerChannels.kt#ticker",
+        "kotlinx-coroutines-core/common/src/Timeout.kt#setupTimeout"
+      ],
+      "sources": [
+        "kotlinx-coroutines-core/common/src/Delay.kt:25",
+        "kotlinx-coroutines-core/common/src/Delay.kt:121",
+        "kotlinx-coroutines-core/common/src/Delay.kt:146",
+        "kotlinx-coroutines-core/common/src/Delay.kt:155",
+        "kotlinx-coroutines-core/common/src/Timeout.kt:230",
+        "kotlinx-coroutines-core/common/src/flow/Migration.kt:411",
+        "kotlinx-coroutines-core/common/src/flow/Migration.kt:423",
+        "kotlinx-coroutines-core/common/src/flow/SharingStarted.kt:172",
+        "kotlinx-coroutines-core/common/src/flow/operators/Delay.kt:276",
+        "kotlinx-coroutines-core/common/src/flow/operators/Delay.kt:303",
+        "kotlinx-coroutines-core/jvm/src/channels/TickerChannels.kt:58",
+        "kotlinx-coroutines-core/jvm/src/channels/TickerChannels.kt:74",
+        "kotlinx-coroutines-core/jvm/src/channels/TickerChannels.kt:97",
+        "kotlinx-coroutines-core/jvm/src/time/Time.kt:15",
+        "kotlinx-coroutines-core/jvm/src/time/Time.kt:64"
+      ],
+      "dimension": "Overload resolution and direct callers across production source sets"
+    },
+    {
+      "id": "coroutines-testresult-platform-aliases",
+      "task": "I need to review the platform return types before I change runTest in kotlinx.coroutines.test. Find every production actual type alias for the TestResult declared in that package. Return only a JSON array of unique strings in the form <repository-relative path>#<simple name of the right-hand type>.",
+      "expected": [
+        "kotlinx-coroutines-test/js/src/TestBuilders.kt#JsPromiseInterfaceForTesting",
+        "kotlinx-coroutines-test/jvm/src/TestBuildersJvm.kt#Unit",
+        "kotlinx-coroutines-test/native/src/TestBuilders.kt#Unit",
+        "kotlinx-coroutines-test/wasmJs/src/TestBuilders.kt#JsPromiseInterfaceForTesting",
+        "kotlinx-coroutines-test/wasmWasi/src/TestBuilders.kt#Unit"
+      ],
+      "nearMiss": [
+        "kotlinx-coroutines-test/common/src/TestBuilders.kt#TestResult",
+        "kotlinx-coroutines-test/js/src/TestBuilders.kt#Promise",
+        "kotlinx-coroutines-test/wasmJs/src/TestBuilders.kt#Promise",
+        "test-utils/js/src/TestBase.kt#MyPromise",
+        "test-utils/jvm/src/TestBase.kt#Unit",
+        "test-utils/wasmJs/src/TestBase.kt#MyPromise"
+      ],
+      "sources": [
+        "kotlinx-coroutines-test/common/src/TestBuilders.kt:30",
+        "kotlinx-coroutines-test/js/src/TestBuilders.kt:6",
+        "kotlinx-coroutines-test/js/src/internal/JsPromiseInterfaceForTesting.kt:4",
+        "kotlinx-coroutines-test/jvm/src/TestBuildersJvm.kt:7",
+        "kotlinx-coroutines-test/native/src/TestBuilders.kt:4",
+        "kotlinx-coroutines-test/wasmJs/src/TestBuilders.kt:7",
+        "kotlinx-coroutines-test/wasmJs/src/internal/JsPromiseInterfaceForTesting.kt:4",
+        "kotlinx-coroutines-test/wasmWasi/src/TestBuilders.kt:8",
+        "test-utils/common/src/TestBase.common.kt:226",
+        "test-utils/js/src/TestBase.kt:22",
+        "test-utils/jvm/src/TestBase.kt:31",
+        "test-utils/wasmJs/src/TestBase.kt:24"
+      ],
+      "dimension": "Platform source sets and same-name declarations from a different package"
+    }
+  ]
+}

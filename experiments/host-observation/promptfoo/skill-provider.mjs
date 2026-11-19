@@ -141,8 +141,33 @@ async function credentials(agentDirectory) {
 }
 
 export function decodePiTrial(stdout, expectedModel, toolNames, requireNormalStop = true) {
-  const events = stdout.trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
-  return decodePiEvents(events, expectedModel, toolNames, requireNormalStop);
+  return decodePiEvents(parsePiEvents(stdout), expectedModel, toolNames, requireNormalStop);
+}
+
+function parsePiEvents(stdout) {
+  try {
+    const events = stdout.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
+    if (events.some(event => typeof event?.type !== 'string')) throw Error('Missing Pi event type');
+    return events;
+  } catch {
+    throw Object.assign(Error('Pi event stream could not be decoded'), { code: 'PI_EVENT_PARSE_FAILED' });
+  }
+}
+
+function terminalAssistant(events) {
+  return events.findLast(event => event.type === 'message_end' && event.message?.role === 'assistant')?.message;
+}
+
+function terminalCause(terminal, status) {
+  if (!terminal) return 'PI_TERMINAL_MISSING';
+  if (terminal.stopReason === 'aborted') return 'PI_PROVIDER_ABORTED';
+  if (terminal.stopReason === 'error') {
+    const usageLimit = terminal.provider === 'openai-codex' && typeof terminal.errorMessage === 'string' &&
+      /^You have hit your ChatGPT usage limit(?: \([a-z]+ plan\))?\./.test(terminal.errorMessage);
+    return usageLimit ? 'PI_PROVIDER_USAGE_LIMIT' : 'PI_PROVIDER_ERROR';
+  }
+  if (terminal.stopReason !== 'stop') return 'PI_ABNORMAL_STOP';
+  return status === 0 ? 'PI_EVENT_EVIDENCE_REJECTED' : 'PI_NONZERO_EXIT';
 }
 
 function decodePiEvents(events, expectedModel, toolNames, requireNormalStop, permitMissingUsage = false) {
@@ -195,8 +220,8 @@ function decodePiEvents(events, expectedModel, toolNames, requireNormalStop, per
 function partialTrial(result, expectedModel, toolNames) {
   if (result.termination && !['PARTICIPANT_DEADLINE', 'PARTICIPANT_OUTPUT_LIMIT'].includes(result.termination)) return null;
   const prefix = result.termination ? result.stdout.slice(0, result.stdout.lastIndexOf('\n') + 1) : result.stdout;
-  const events = prefix.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
-  const terminal = events.findLast(event => event.type === 'message_end' && event.message?.role === 'assistant')?.message;
+  const events = parsePiEvents(prefix);
+  const terminal = terminalAssistant(events);
   if (['error', 'aborted'].includes(terminal?.stopReason)) return null;
   const termination = result.termination ?? (result.status === 0 && terminal?.stopReason === 'length' ? 'MODEL_OUTPUT_LIMIT' : null);
   if (!termination) return null;
@@ -247,28 +272,44 @@ export function settlePiTrial(result, model, toolNames, captureLimits = false) {
     }
     const bounded = partialTrial(result, model, toolNames);
     if (bounded) return bounded;
-    if (result.termination) throw Error('Pi did not supply admissible participant evidence before the cutoff');
+    if (result.termination) {
+      throw Object.assign(Error('Pi did not supply admissible participant evidence before the cutoff'), {
+        code: 'PI_CUTOFF_EVIDENCE_UNAVAILABLE',
+      });
+    }
   }
+  const events = parsePiEvents(result.stdout);
+  const terminal = terminalAssistant(events);
   try {
-    const trial = decodePiTrial(result.stdout, model, toolNames);
-    return { ...trial, ...(result.status !== 0 && { error: `Pi exited with status ${result.status}` }) };
+    const trial = decodePiEvents(events, model, toolNames, true);
+    return { ...trial, ...(result.status !== 0 && {
+      error: `Pi exited with status ${result.status}`, terminalCause: terminalCause(terminal, result.status),
+    }) };
   } catch (error) {
-    const incomplete = decodePiTrial(result.stdout, model, toolNames, false);
-    return { ...incomplete, error: result.status === 0 ? error.message : `Pi exited with status ${result.status}` };
+    try {
+      const providerStopped = ['error', 'aborted'].includes(terminal?.stopReason);
+      const { completeUsage, ...incomplete } = decodePiEvents(events, model, toolNames, false, providerStopped);
+      return { ...incomplete, ...(completeUsage === false && { usage: null }),
+        error: result.status === 0 ? error.message : `Pi exited with status ${result.status}`,
+        terminalCause: terminalCause(terminal, result.status) };
+    } catch {
+      throw Object.assign(Error('Pi event evidence was rejected'), { code: 'PI_EVENT_EVIDENCE_REJECTED' });
+    }
   }
 }
 
 export async function runIsolatedPi({
   directory, prompt, system = neutral, model = defaultModel, effort = 'low', extension, extensionEnvironment = {}, toolNames = [], timeout = 150_000,
-  captureLimits = false, guidance,
+  captureLimits = false, guidance, inlineSkill,
 }) {
-  if (!guidance && toolNames.some(name => kastTools.has(name))) throw Error('Kast access needs participant guidance');
+  if (inlineSkill !== undefined && (guidance || typeof inlineSkill !== 'string' || !inlineSkill.trim())) throw Error('Invalid inline skill');
+  if (!guidance && !inlineSkill && toolNames.some(name => kastTools.has(name))) throw Error('Kast access needs participant guidance');
   const pi = await binary(process.env.KAST_EVAL_PI, 'pi');
   const agent = join(directory, 'pi');
   await mkdir(agent, { mode: 0o700 });
   await credentials(agent);
   if (guidance) await stageKastGuidance(directory, guidance);
-  const instructions = guidance ? `${system}\n\n${guidance.text} Use read_kast_guidance to open it.` : system;
+  const instructions = guidance ? `${system}\n\n${guidance.text} Use read_kast_guidance to open it.` : [system, inlineSkill].filter(Boolean).join('\n\n');
   const systemFile = join(directory, 'system-prompt.txt');
   await writeFile(systemFile, instructions, { mode: 0o600 });
   const args = [
