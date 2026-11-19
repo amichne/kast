@@ -8,6 +8,7 @@ import io.github.amichne.kast.appserver.BrokerServerRun
 import io.github.amichne.kast.appserver.BrokerServerRunner
 import io.github.amichne.kast.appserver.InstalledAppServerManager
 import io.github.amichne.kast.appserver.InstalledBrokerServerRunner
+import io.github.amichne.kast.appserver.PublicInvocations
 import io.github.amichne.kast.cli.direct.InstalledClientContext
 import io.github.amichne.kast.cli.direct.ManagedCoordinatorOperations
 import io.github.amichne.kast.cli.publicshell.CoordinatorPublicInvocations
@@ -100,7 +101,7 @@ internal fun runSemanticCoordinator(
                 home,
                 semantic,
                 requests = it,
-                invocations = CoordinatorPublicInvocations(context.installation),
+                invocations = PublicInvocations(CoordinatorPublicInvocations(context.installation)),
             ),
         )
     }

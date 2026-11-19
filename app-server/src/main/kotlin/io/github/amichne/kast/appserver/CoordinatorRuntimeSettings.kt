@@ -295,7 +295,7 @@ internal sealed interface CoordinatorExecution {
         CoordinatorExecution
 
     /** [invocations] serves thin-frontend public shell invocations over this same executor; absent, no route exists. */
-    class RequestBound(val executor: CoordinatorRequestExecutor, val invocations: PublicInvocationExecutor?) :
+    class RequestBound(val executor: CoordinatorRequestExecutor, val invocations: PublicInvocations?) :
         CoordinatorExecution
 }
 
@@ -303,7 +303,7 @@ internal sealed interface CoordinatorExecution {
 internal sealed interface CoordinatorSemantic {
     class LaunchBound(val executor: CoordinatorOperationExecutor) : CoordinatorSemantic
 
-    class RequestBound(val executor: CoordinatorRequestExecutor, val invocations: PublicInvocationExecutor?) :
+    class RequestBound(val executor: CoordinatorRequestExecutor, val invocations: PublicInvocations?) :
         CoordinatorSemantic
 
     fun execution(environment: Map<String, String>): Refinement<CoordinatorExecution, DaemonRuntimeSettingsFailure> =

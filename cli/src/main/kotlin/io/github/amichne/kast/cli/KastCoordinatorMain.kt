@@ -7,6 +7,7 @@ import io.github.amichne.kast.appserver.InstalledJvmCoordinator
 import io.github.amichne.kast.appserver.JvmCoordinatorCommand
 import io.github.amichne.kast.appserver.diagnosticCode
 import io.github.amichne.kast.cli.direct.InstalledClientContext
+import io.github.amichne.kast.cli.publicshell.MANAGEMENT_PAYLOAD
 import io.github.amichne.kast.kernel.Refinement
 import java.io.IOException
 import java.net.URISyntaxException
@@ -88,10 +89,7 @@ internal fun admitCoordinatorCommand(
 }
 
 private fun serve(command: CoordinatorCommand, environment: Map<String, String>): BrokerServerRun =
-    when (
-        val admitted =
-            InstalledClientContext.admit(command.product.resolve("share/kast/libexec/kast-management"), environment)
-    ) {
+    when (val admitted = InstalledClientContext.admit(command.product.resolve(MANAGEMENT_PAYLOAD), environment)) {
         is Refinement.Rejected -> BrokerServerRun.Rejected(BrokerServerFailure.KAST_EXECUTABLE_REJECTED)
         is Refinement.Refined -> runSemanticCoordinator(admitted.value, command.root, environment)
     }

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/coder/websocket"
 )
@@ -76,6 +77,9 @@ type TransportError struct {
 func (e *TransportError) Error() string {
 	switch e.Failure {
 	case Rejected:
+		if e.Reason == "INPUT_EXPIRED" {
+			return "request input did not arrive in time (INPUT_EXPIRED). Use --request FILE, or write and close stdin."
+		}
 		return fmt.Sprintf("the coordinator rejected the invocation (%s).", e.Reason)
 	case Unobserved:
 		return "the coordinator connection ended before a result; the request outcome is unknown."
@@ -106,11 +110,15 @@ func admitSocket(path string) error {
 	return nil
 }
 
-// dial opens one invocation connection. Any failure here precedes the request.
-func dial(ctx context.Context, socket string) (*websocket.Conn, error) {
+// dial opens one invocation connection within the handshake bound. Any failure here, expiry included, precedes the
+// request, so the coordinator is unreachable and the invocation had no effect.
+func dial(ctx context.Context, socket string, handshake time.Duration) (*websocket.Conn, error) {
 	if err := admitSocket(socket); err != nil {
 		return nil, err
 	}
+	// The handshake context bounds only the opening handshake; the returned connection outlives it.
+	ctx, cancel := context.WithTimeout(ctx, handshake)
+	defer cancel()
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			var dialer net.Dialer
@@ -153,9 +161,9 @@ func exchange(ctx context.Context, conn *websocket.Conn, request invocationReque
 				return nil, &TransportError{Failure: Unobserved}
 			}
 			answered = true
-			input, readErr := io.ReadAll(io.LimitReader(stdin, int64(*received.MaximumBytes)))
-			if readErr != nil {
-				return nil, &TransportError{Failure: InputUnreadable}
+			input, err := readInput(ctx, stdin, int64(*received.MaximumBytes))
+			if err != nil {
+				return nil, err
 			}
 			if err := conn.Write(ctx, websocket.MessageBinary, input); err != nil {
 				return nil, &TransportError{Failure: Unobserved}
@@ -170,6 +178,29 @@ func exchange(ctx context.Context, conn *websocket.Conn, request invocationReque
 		default:
 			return nil, &TransportError{Failure: Unobserved}
 		}
+	}
+}
+
+// readInput reads at most limit bytes of stdin. A terminal or a stalled pipe can block indefinitely, so cancellation
+// returns without the read; closing the connection then cancels the coordinator's request.
+func readInput(ctx context.Context, stdin io.Reader, limit int64) ([]byte, error) {
+	type result struct {
+		input []byte
+		err   error
+	}
+	read := make(chan result, 1)
+	go func() {
+		input, err := io.ReadAll(io.LimitReader(stdin, limit))
+		read <- result{input, err}
+	}()
+	select {
+	case <-ctx.Done():
+		return nil, &TransportError{Failure: Unobserved}
+	case received := <-read:
+		if received.err != nil {
+			return nil, &TransportError{Failure: InputUnreadable}
+		}
+		return received.input, nil
 	}
 }
 

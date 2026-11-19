@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"time"
 )
 
 // Fixed bootstrap statuses. They are the public shell's published BOOTSTRAP and PROTOCOL codes and apply before an
@@ -30,12 +31,20 @@ const (
 var requiredStatuses = []string{"DEFECT", "INPUT", "RUNTIME", "IO", "PROTOCOL", "BOOTSTRAP", "INTERRUPTED", "TERMINATED"}
 
 type catalogDocument struct {
-	SchemaVersion      int            `json:"schemaVersion"`
-	InvocationProtocol int            `json:"invocationProtocol"`
-	Socket             string         `json:"socket"`
-	Bootstrap          []string       `json:"bootstrap"`
-	Exits              map[string]int `json:"exits"`
-	Help               []helpEntry    `json:"help"`
+	SchemaVersion         int            `json:"schemaVersion"`
+	InvocationProtocol    int            `json:"invocationProtocol"`
+	Socket                string         `json:"socket"`
+	Bootstrap             []string       `json:"bootstrap"`
+	HandshakeMilliseconds int64          `json:"handshakeMilliseconds"`
+	OutputSetting         outputSetting  `json:"outputSetting"`
+	Exits                 map[string]int `json:"exits"`
+	Help                  []helpEntry    `json:"help"`
+}
+
+// outputSetting is the environment variable the public shell admits before help, and the values it accepts.
+type outputSetting struct {
+	Variable       string   `json:"variable"`
+	AdmittedValues []string `json:"admittedValues"`
 }
 
 type helpEntry struct {
@@ -45,11 +54,13 @@ type helpEntry struct {
 
 // Catalog is admitted coordinator metadata: its paths are resolved beneath the root and its statuses are complete.
 type Catalog struct {
-	root      string
-	socket    string
-	bootstrap []string
-	exits     map[string]int
-	help      []helpEntry
+	root          string
+	socket        string
+	bootstrap     []string
+	handshake     time.Duration
+	outputSetting outputSetting
+	exits         map[string]int
+	help          []helpEntry
 }
 
 // CatalogFailure is a closed set of reasons the installed metadata cannot be used.
@@ -125,7 +136,8 @@ func LoadCatalog(root string) (*Catalog, error) {
 		return nil, &CatalogError{Failure: CatalogMalformed}
 	}
 	socket, socketOK := beneath(root, document.Socket)
-	if !socketOK || len(document.Bootstrap) == 0 {
+	if !socketOK || len(document.Bootstrap) == 0 || document.HandshakeMilliseconds <= 0 ||
+		document.OutputSetting.Variable == "" {
 		return nil, &CatalogError{Failure: CatalogMalformed}
 	}
 	launcher, launcherOK := beneath(root, document.Bootstrap[0])
@@ -138,20 +150,28 @@ func LoadCatalog(root string) (*Catalog, error) {
 		}
 	}
 	return &Catalog{
-		root:      root,
-		socket:    socket,
-		bootstrap: append([]string{launcher}, document.Bootstrap[1:]...),
-		exits:     document.Exits,
-		help:      document.Help,
+		root:          root,
+		socket:        socket,
+		bootstrap:     append([]string{launcher}, document.Bootstrap[1:]...),
+		handshake:     time.Duration(document.HandshakeMilliseconds) * time.Millisecond,
+		outputSetting: document.OutputSetting,
+		exits:         document.Exits,
+		help:          document.Help,
 	}, nil
 }
 
-// Help returns the presented help document for an exact argument vector.
-func (c *Catalog) Help(arguments []string) (string, bool) {
+// Help returns the presented help document for an exact argument vector. The shell admits the output setting before
+// help, so an unadmitted value is not answered here; the coordinator presents the same rejection.
+func (c *Catalog) Help(arguments []string, environment map[string]string) (string, bool) {
 	for _, entry := range c.help {
-		if slices.Equal(entry.Arguments, arguments) {
-			return entry.Text, true
+		if !slices.Equal(entry.Arguments, arguments) {
+			continue
 		}
+		value, present := environment[c.outputSetting.Variable]
+		if present && !slices.Contains(c.outputSetting.AdmittedValues, value) {
+			return "", false
+		}
+		return entry.Text, true
 	}
 	return "", false
 }

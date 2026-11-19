@@ -1,5 +1,7 @@
 package io.github.amichne.kast.appserver
 
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Path
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
@@ -17,6 +19,9 @@ object PublicInvocationProtocol {
     const val version = 1
     const val route = "/kast-public-invocation"
     const val maximumRequestBytes = 1_048_576
+    /** How long a requested input may take to arrive; a caller holding stdin open must not hold a connection slot. */
+    val inputLimit: ElapsedTimeLimitMillis =
+        (ElapsedTimeLimitMillis.parse(30_000) as Refinement.Refined<ElapsedTimeLimitMillis>).value
     val json = Json {
         encodeDefaults = true
         explicitNulls = true
@@ -59,7 +64,10 @@ internal sealed interface PublicInvocationReply {
 /** The serving coordinator generation and process, so callers can prove warm reuse. */
 @Serializable internal data class PublicInvocationCoordinator(val serviceGeneration: String, val processId: Long)
 
-/** Every failure is decided before the public shell owner runs, so none of them has a workspace effect. */
+/**
+ * No failure has a workspace effect. [INPUT_EXPIRED] cancels the owner while it awaits request input, which precedes
+ * every session call; every other failure is decided before the owner runs.
+ */
 @Serializable
 internal enum class PublicInvocationFailure {
     INVALID_REQUEST,
@@ -67,6 +75,7 @@ internal enum class PublicInvocationFailure {
     CAPACITY_EXCEEDED,
     LIFECYCLE_TRANSITION,
     UNAVAILABLE,
+    INPUT_EXPIRED,
 }
 
 /** A request whose envelope and working directory were admitted; argument meaning is still unadmitted. */
@@ -104,3 +113,12 @@ fun interface PublicInvocationExecutor {
         input: PublicInvocationInput,
     ): PublicInvocationOutcome
 }
+
+/**
+ * The thin-frontend route's owner. A requested input that does not arrive within [inputLimit] cancels the invocation,
+ * so a caller that never closes stdin cannot hold a lease or a connection slot indefinitely.
+ */
+class PublicInvocations(
+    val executor: PublicInvocationExecutor,
+    val inputLimit: ElapsedTimeLimitMillis = PublicInvocationProtocol.inputLimit,
+)

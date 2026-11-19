@@ -36,8 +36,11 @@ This is a tracer increment. Native Image remains the shipped product. Read the [
 - Admit the catalog versions before any other field. Ignore additive metadata within one schema version.
 - Emit only the statuses the catalog declares. `bootstrapStatus` and `protocolStatus` apply before admission.
 - Read stdin only after `input_required`, and never beyond its stated bound.
+  The coordinator cancels an invocation whose requested input misses `PublicInvocationProtocol.inputLimit` with `INPUT_EXPIRED`.
+- Bound the connection handshake by the catalog's `handshakeMilliseconds`. Expiry precedes the request, so it is unreachable.
+- Answer local help only under an absent or admitted output setting. Forward any other value for the coordinator's rejection.
 - A lost connection after the request is an unknown outcome. Never retry an invocation.
-- The first terminal event owns the status. A signal before or during delivery wins.
+- The first terminal event owns the status. A signal before or during delivery wins, even while stdin or stdout blocks.
 
 ## Key Files
 

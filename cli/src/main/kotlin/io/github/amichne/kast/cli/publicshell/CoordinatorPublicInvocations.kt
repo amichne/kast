@@ -6,8 +6,7 @@ import io.github.amichne.kast.appserver.PublicInvocationExecutor
 import io.github.amichne.kast.appserver.PublicInvocationInput
 import io.github.amichne.kast.appserver.PublicInvocationOutcome
 import io.github.amichne.kast.cli.MAXIMUM_PROTOCOL_TEXT_LENGTH
-import io.github.amichne.kast.cli.direct.InstalledClientBinding
-import io.github.amichne.kast.cli.direct.KastDirectToolSession
+import io.github.amichne.kast.cli.direct.InvocationWitness
 import io.github.amichne.kast.cli.rpc.ToolRpcFailure
 import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import io.github.amichne.kast.kernel.Refinement
@@ -34,7 +33,7 @@ internal class CoordinatorPublicInvocations(private val product: Path) : PublicI
                 .outcome(diagnostics)
         }
         val format =
-            when (val selected = selectPublicOutputFormat(arguments, invocation.environment["KAST_OUTPUT_TOON"])) {
+            when (val selected = selectPublicOutputFormat(arguments, invocation.environment[PUBLIC_OUTPUT_SETTING])) {
                 is Refinement.Rejected ->
                     return presentPublicOutput(selected.failure, CliOutputFormat.JSON).outcome(diagnostics)
                 is Refinement.Refined -> selected.value
@@ -45,7 +44,16 @@ internal class CoordinatorPublicInvocations(private val product: Path) : PublicI
                         arguments,
                         FrontendStdin(input),
                         invocation.directory,
-                        session = { root, catalog -> session(root, catalog, invocation.environment, semantic) },
+                        session = { root, catalog ->
+                            coordinatedPublicSession(
+                                product,
+                                root,
+                                catalog,
+                                invocation.environment,
+                                read = { binding -> semantic(binding.installation, binding.environment) },
+                                witness = InvocationWitness.CoordinatorLease,
+                            )
+                        },
                         diagnostic = diagnostics::add,
                         jqExecutor = PublicJqProcess(invocation.directory, emptyMap()),
                     ),
@@ -61,25 +69,6 @@ internal class CoordinatorPublicInvocations(private val product: Path) : PublicI
                 .outcome(diagnostics)
         }
     }
-
-    private fun session(
-        root: Path,
-        catalog: io.github.amichne.kast.protocol.registry.PublicToolCatalog,
-        environment: Map<String, String>,
-        semantic: (Path, Map<String, String>) -> DaemonOperationClient,
-    ): KastDirectToolSession? =
-        when (val located = InstalledClientBinding.locate(product.resolve(MANAGEMENT_PAYLOAD), environment)) {
-            is Refinement.Rejected -> null
-            is Refinement.Refined -> {
-                val binding = located.value
-                KastDirectToolSession.installed(
-                    root,
-                    binding,
-                    catalog,
-                    semantic(binding.installation, binding.environment),
-                )
-            }
-        }
 }
 
 private fun PublicPreparedOutput.outcome(diagnostics: BoundedDiagnostics) =
@@ -109,6 +98,5 @@ private class BoundedDiagnostics {
 }
 
 private val processLocalNamespaces = setOf("hook", "workspace")
-private const val MANAGEMENT_PAYLOAD = "share/kast/libexec/kast-management"
 private const val MAXIMUM_DIAGNOSTIC_LINES = 32
 private const val MAXIMUM_DIAGNOSTIC_CHARACTERS = 4_096

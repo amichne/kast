@@ -13,13 +13,13 @@ import io.github.amichne.kast.appserver.DaemonOperationFailure
 import io.github.amichne.kast.appserver.DaemonOperationInputFailure
 import io.github.amichne.kast.appserver.DaemonOperationResult
 import io.github.amichne.kast.appserver.PublicInvocationCoordinator
-import io.github.amichne.kast.appserver.PublicInvocationExecutor
 import io.github.amichne.kast.appserver.PublicInvocationFailure
 import io.github.amichne.kast.appserver.PublicInvocationInput
 import io.github.amichne.kast.appserver.PublicInvocationOutcome
 import io.github.amichne.kast.appserver.PublicInvocationProtocol
 import io.github.amichne.kast.appserver.PublicInvocationReply
 import io.github.amichne.kast.appserver.PublicInvocationRequest
+import io.github.amichne.kast.appserver.PublicInvocations
 import io.github.amichne.kast.appserver.RequestedRuntimeSettings
 import io.github.amichne.kast.appserver.admitCallResponse
 import io.github.amichne.kast.distribution.managed.CanonicalRoot
@@ -35,14 +35,16 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.ChannelResult
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
@@ -52,13 +54,13 @@ import kotlinx.serialization.json.Json
 /**
  * One public shell invocation per connection. Envelope admission, lifecycle availability and the shared operation lease
  * precede the executor, so every rejection here is free of workspace effects. A disconnect cancels the invocation; the
- * frontend then owns the unobserved outcome.
+ * frontend then owns the unobserved outcome. A requested input that misses its deadline cancels the invocation too.
  */
 internal class PublicInvocationOperations(
     private val target: DaemonManagementTarget,
     private val available: () -> Boolean,
     private val admissions: OperationAdmissions,
-    private val executor: PublicInvocationExecutor,
+    private val invocations: PublicInvocations,
     private val semantic: CoordinatorRequestExecutor,
 ) {
     private val coordinator = PublicInvocationCoordinator(target.serviceGeneration, ProcessHandle.current().pid())
@@ -90,11 +92,14 @@ internal class PublicInvocationOperations(
         if (!available() || !lease.acquire())
             return PublicInvocationReply.Rejected(PublicInvocationFailure.LIFECYCLE_TRANSITION)
         val input = FrontendInput()
-        return coroutineScope {
+        // A cancelled worker may still fail with its own exception, such as an interrupted input read. Supervision
+        // keeps
+        // that failure from aborting the reply this exchange already decided.
+        return supervisorScope {
             val work =
                 async(Dispatchers.IO) {
                     runInterruptible {
-                        executor.invoke(
+                        invocations.executor.invoke(
                             invocation,
                             { installation, environment ->
                                 InProcessCoordinatorClient(target, semantic, installation, environment)
@@ -103,47 +108,64 @@ internal class PublicInvocationOperations(
                         )
                     }
                 }
+            val deadline = InputDeadline(this, invocations.inputLimit.value)
             try {
-                pump(session, work, input)
+                pump(session, work, input, deadline)
             } finally {
+                deadline.stop()
                 work.cancel()
             }
         }
     }
 
-    /** Relays the one optional input request until the invocation completes or the connection ends. */
+    /**
+     * Relays the one optional input request until the invocation completes or the connection ends. The input deadline
+     * runs only while the requested input is outstanding.
+     */
     private suspend fun pump(
         session: DefaultWebSocketServerSession,
         work: Deferred<PublicInvocationOutcome>,
         input: FrontendInput,
-    ): PublicInvocationReply.Completed? {
-        var requested = false
+        deadline: InputDeadline,
+    ): PublicInvocationReply? {
         while (true) {
-            val step =
-                select<InvocationStep> {
-                    work.onAwait { InvocationStep.Finished(it) }
-                    if (!requested) input.requested.onAwait { InvocationStep.InputRequested(it) }
-                    session.incoming.onReceiveCatching { InvocationStep.Received(it) }
-                }
-            when (step) {
-                is InvocationStep.Finished ->
-                    return PublicInvocationReply.Completed(
-                        coordinator,
-                        step.outcome.exitCode,
-                        step.outcome.output,
-                        step.outcome.diagnostics,
-                    )
+            when (val step = next(session, work, input, deadline)) {
+                is InvocationStep.Finished -> return completed(step.outcome)
                 is InvocationStep.InputRequested -> {
-                    requested = true
+                    deadline.start()
                     session.send(encode(PublicInvocationReply.InputRequired(step.maximumBytes)))
                 }
-                is InvocationStep.Received -> {
-                    val received = step.frame.getOrNull()
-                    // Closure, or any frame other than the single requested input, cancels the invocation.
-                    if (received !is Frame.Binary || !input.deliver(received.readBytes())) return null
-                }
+                InvocationStep.InputExpired ->
+                    return PublicInvocationReply.Rejected(PublicInvocationFailure.INPUT_EXPIRED)
+                // Closure, or any frame other than the single requested input, cancels the invocation.
+                is InvocationStep.Received -> if (!deliver(step.frame, input, deadline)) return null
             }
         }
+    }
+
+    private suspend fun next(
+        session: DefaultWebSocketServerSession,
+        work: Deferred<PublicInvocationOutcome>,
+        input: FrontendInput,
+        deadline: InputDeadline,
+    ): InvocationStep {
+        val expiry = deadline.expiry
+        return select {
+            work.onAwait { InvocationStep.Finished(it) }
+            if (!deadline.started) input.requested.onAwait { InvocationStep.InputRequested(it) }
+            expiry?.onAwait { InvocationStep.InputExpired }
+            session.incoming.onReceiveCatching { InvocationStep.Received(it) }
+        }
+    }
+
+    private fun completed(outcome: PublicInvocationOutcome) =
+        PublicInvocationReply.Completed(coordinator, outcome.exitCode, outcome.output, outcome.diagnostics)
+
+    private fun deliver(frame: ChannelResult<Frame>, input: FrontendInput, deadline: InputDeadline): Boolean {
+        val received = frame.getOrNull()
+        val delivered = received is Frame.Binary && input.deliver(received.readBytes())
+        if (delivered) deadline.stop()
+        return delivered
     }
 
     private sealed interface InvocationStep {
@@ -151,7 +173,28 @@ internal class PublicInvocationOperations(
 
         class InputRequested(val maximumBytes: Int) : InvocationStep
 
+        data object InputExpired : InvocationStep
+
         class Received(val frame: ChannelResult<Frame>) : InvocationStep
+    }
+}
+
+/** The timer for one requested input. It starts once, on the request, and stops on delivery or exchange end. */
+private class InputDeadline(private val scope: CoroutineScope, private val milliseconds: Long) {
+    var started = false
+        private set
+
+    var expiry: Deferred<Unit>? = null
+        private set
+
+    fun start() {
+        started = true
+        expiry = scope.async { delay(milliseconds) }
+    }
+
+    fun stop() {
+        expiry?.cancel()
+        expiry = null
     }
 }
 

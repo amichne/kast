@@ -132,7 +132,7 @@ private constructor(
             options: InstalledCoordinatorOptions,
             requests: CoordinatorRequestExecutor,
             desktopDiscovery: DesktopDaemonDiscovery = DesktopDaemonDiscovery(),
-            invocations: PublicInvocationExecutor? = null,
+            invocations: PublicInvocations? = null,
         ): InstalledCoordinatorStart =
             start(options, desktopDiscovery, CoordinatorSemantic.RequestBound(requests, invocations))
 

@@ -113,6 +113,26 @@ class CoordinatorPublicInvocationsTest {
             )
         }
         assertTrue(catalog.help.none { it.arguments.first() in setOf("hook", "workspace") })
+        assertEquals(10_000L, catalog.handshakeMilliseconds)
+        assertEquals("KAST_OUTPUT_TOON", catalog.outputSetting.variable)
+        assertEquals(listOf("", "0", "1"), catalog.outputSetting.admittedValues)
+    }
+
+    @Test
+    fun `help under an unadmitted output setting is the shell's input rejection, as the frontend forwards it`(
+        @TempDir caller: Path
+    ) {
+        val help = PublicFrontendCatalog.document().help.first()
+        val rejected =
+            CoordinatorPublicInvocations(caller)
+                .invoke(invocation(caller, help.arguments, mapOf("KAST_OUTPUT_TOON" to "yes")), unused, noInput)
+        assertEquals(PublicShellExit.INPUT.code, rejected.exitCode)
+        for (value in PublicFrontendCatalog.document().outputSetting.admittedValues) {
+            val answered =
+                CoordinatorPublicInvocations(caller)
+                    .invoke(invocation(caller, help.arguments, mapOf("KAST_OUTPUT_TOON" to value)), unused, noInput)
+            assertEquals(PublicShellExit.COMPLETE.code to help.text, answered.exitCode to answered.output)
+        }
     }
 
     /** The authored schema's first query example, as the public shell's own describe command serves it. */

@@ -28,7 +28,7 @@ private constructor(
         userHome: Path,
         environment: Map<String, String>,
         requests: CoordinatorRequestExecutor,
-        invocations: PublicInvocationExecutor? = null,
+        invocations: PublicInvocations? = null,
     ) : this(kastExecutable, userHome, environment, CoordinatorSemantic.RequestBound(requests, invocations))
 
     override fun serve(): BrokerServerRun {

@@ -79,7 +79,7 @@ object KastPublicCliMain {
     private fun run(args: Array<String>, prepare: (InputStream, Path) -> PublicPreparedOutput): Int {
         val output = Channels.newOutputStream(FileOutputStream(FileDescriptor.out).channel)
         val format =
-            when (val selected = selectPublicOutputFormat(args.toList(), System.getenv("KAST_OUTPUT_TOON"))) {
+            when (val selected = selectPublicOutputFormat(args.toList(), System.getenv(PUBLIC_OUTPUT_SETTING))) {
                 is Refinement.Refined -> selected.value
                 is Refinement.Rejected -> return runPublicCliInvocation({ selected.failure }, output).code
             }
@@ -98,6 +98,9 @@ object KastPublicCliMain {
 }
 
 internal fun nativeControlEnvironment(): Map<String, String> = System.getenv()
+
+/** The caller's output setting; [selectPublicOutputFormat] admits it before any command, help included, is prepared. */
+internal const val PUBLIC_OUTPUT_SETTING = "KAST_OUTPUT_TOON"
 
 /** Hook replies and explicit `--json` use JSON; otherwise the caller's TOON setting selects the format. */
 internal fun selectPublicOutputFormat(

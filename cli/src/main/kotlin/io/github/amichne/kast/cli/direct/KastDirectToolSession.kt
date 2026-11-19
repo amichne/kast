@@ -41,7 +41,8 @@ internal class KastDirectToolSession(
     },
     val admission: () -> InstalledToolAdmission = { InstalledToolAdmission.AVAILABLE },
     val queryCatalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
-    val beginInvocation: (InvocationRecordKind) -> OneShotInvocationRecord? = { null },
+    /** Null means the invocation cannot be made visible to lifecycle transitions, so it must not run. */
+    val beginInvocation: (InvocationRecordKind) -> AutoCloseable? = { null },
 ) {
     /** Invocation admission uses compiled registrations; schema projection is only a discovery effect. */
     val catalog: List<DirectToolDocument>
@@ -89,12 +90,16 @@ internal class KastDirectToolSession(
                 is Refinement.Refined -> installed(directory, admitted.value, queryCatalog)
             }
 
-        /** [read] defaults to the socket client; inside the coordinator it is the coordinator's own executor. */
+        /**
+         * [read] defaults to the socket client; inside the coordinator it is the coordinator's own executor, and the
+         * [witness] is then the coordinator's operation lease.
+         */
         fun installed(
             directory: Path,
             binding: InstalledClientBinding,
             queryCatalog: PublicToolCatalog,
             read: DaemonOperationClient = CoordinatedToolClient(binding),
+            witness: InvocationWitness = InvocationWitness.ProcessRecord,
         ): KastDirectToolSession? {
             val selected =
                 CanonicalAgentToolDefinitions.all.filter { definition ->
@@ -134,9 +139,29 @@ internal class KastDirectToolSession(
                     invokeCoordinatedSupport(directory, capabilities, identity, arguments, expectedOperations)
                 },
                 queryCatalog = queryCatalog,
-                beginInvocation = { kind -> OneShotInvocationRecord.begin(binding, kind) },
+                beginInvocation = { kind -> witness.begin(binding, kind) },
             )
         }
+    }
+}
+
+/** Who makes an in-flight invocation visible to installation lifecycle transitions. */
+internal sealed interface InvocationWitness {
+    fun begin(binding: InstalledClientBinding, kind: InvocationRecordKind): AutoCloseable?
+
+    /** A separate process publishes a one-shot record, so retirement can admit its process and wait for it. */
+    data object ProcessRecord : InvocationWitness {
+        override fun begin(binding: InstalledClientBinding, kind: InvocationRecordKind): AutoCloseable? =
+            OneShotInvocationRecord.begin(binding, kind)
+    }
+
+    /**
+     * Inside the coordinator the operation lease holds the invocation, and coordinator retirement drains that lease. A
+     * one-shot record would name the long-lived coordinator process, which retirement cannot admit as a one-shot owner.
+     */
+    data object CoordinatorLease : InvocationWitness {
+        override fun begin(binding: InstalledClientBinding, kind: InvocationRecordKind): AutoCloseable? =
+            if (binding.observe() == InstalledToolAdmission.AVAILABLE) AutoCloseable {} else null
     }
 }
 

@@ -24,10 +24,12 @@ func writeCatalog(t *testing.T, root string, document map[string]any) {
 
 func validCatalog() map[string]any {
 	return map[string]any{
-		"schemaVersion":      1,
-		"invocationProtocol": 1,
-		"socket":             "state/run/c.sock",
-		"bootstrap":          []string{"libexec/kast-coordinator", "ensure"},
+		"schemaVersion":         1,
+		"invocationProtocol":    1,
+		"socket":                "state/run/c.sock",
+		"bootstrap":             []string{"libexec/kast-coordinator", "ensure"},
+		"handshakeMilliseconds": 10000,
+		"outputSetting":         map[string]any{"variable": "KAST_OUTPUT_TOON", "admittedValues": []string{"", "0", "1"}},
 		"exits": map[string]int{
 			"COMPLETE": 0, "DEFECT": 1, "INPUT": 2, "WORKSPACE": 3, "RUNTIME": 4, "IO": 5, "PROTOCOL": 6,
 			"BOOTSTRAP": 9, "SEMANTIC": 10, "DELIVERY": 11, "ELAPSED": 124, "INTERRUPTED": 130, "TERMINATED": 143,
@@ -106,7 +108,7 @@ func TestAdditiveMetadataKeepsAnUnchangedFrontendWorking(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if text, ok := catalog.Help([]string{"impact", "--help"}); !ok || text != "kast impact" {
+	if text, ok := catalog.Help([]string{"impact", "--help"}, nil); !ok || text != "kast impact" {
 		t.Fatalf("added help entry unavailable: %q %v", text, ok)
 	}
 }
@@ -118,12 +120,41 @@ func TestHelpMatchesOnlyExactArgumentVectors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := catalog.Help([]string{"query", "--help"}); !ok {
+	if _, ok := catalog.Help([]string{"query", "--help"}, nil); !ok {
 		t.Fatal("exact help vector missed")
 	}
 	for _, near := range [][]string{{"query", "--help", "--json"}, {"query"}, {"--help", "query"}} {
-		if _, ok := catalog.Help(near); ok {
+		if _, ok := catalog.Help(near, nil); ok {
 			t.Fatalf("%v was answered locally instead of by the coordinator", near)
+		}
+	}
+}
+
+func TestHelpForwardsAnOutputSettingTheShellWouldReject(t *testing.T) {
+	root := t.TempDir()
+	writeCatalog(t, root, validCatalog())
+	catalog, err := LoadCatalog(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{"", "0", "1"} {
+		if _, ok := catalog.Help([]string{"query", "--help"}, map[string]string{"KAST_OUTPUT_TOON": value}); !ok {
+			t.Fatalf("admitted output setting %q was not answered locally", value)
+		}
+	}
+	if _, ok := catalog.Help([]string{"query", "--help"}, map[string]string{"KAST_OUTPUT_TOON": "yes"}); ok {
+		t.Fatal("an unadmitted output setting was answered locally instead of rejected by the coordinator")
+	}
+}
+
+func TestMissingTransportBoundsAreMalformed(t *testing.T) {
+	for _, field := range []string{"handshakeMilliseconds", "outputSetting"} {
+		root := t.TempDir()
+		document := validCatalog()
+		delete(document, field)
+		writeCatalog(t, root, document)
+		if _, err := LoadCatalog(root); catalogFailure(t, err) != CatalogMalformed {
+			t.Fatalf("catalog without %s was admitted", field)
 		}
 	}
 }
@@ -153,5 +184,8 @@ func TestFixedStatusesMatchTheGeneratedCatalog(t *testing.T) {
 		if _, ok := document.Exits[name]; !ok {
 			t.Fatalf("generated catalog lacks %s", name)
 		}
+	}
+	if document.HandshakeMilliseconds <= 0 || document.OutputSetting.Variable != "KAST_OUTPUT_TOON" {
+		t.Fatalf("generated catalog lacks transport bounds: %d %+v", document.HandshakeMilliseconds, document.OutputSetting)
 	}
 }

@@ -45,31 +45,36 @@ func Run(process Process) int {
 		diagnose(process.Stderr, failure.Error())
 		return failure.Status()
 	}
-	if text, ok := catalog.Help(process.Arguments); ok {
+	environment := environmentMap(process.Environment)
+	if text, ok := catalog.Help(process.Arguments, environment); ok {
 		return deliver(process.Stdout, text, catalog.status("COMPLETE"), catalog)
 	}
 	owner := newOwner()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go func() {
-		select {
-		case signal := <-process.Signals:
-			status := catalog.status("INTERRUPTED")
-			if signal == syscall.SIGTERM {
-				status = catalog.status("TERMINATED")
-			}
-			// Closing the connection cancels the coordinator's request.
-			if owner.settle(status) {
-				cancel()
-			}
-		case <-ctx.Done():
+	// The invocation runs beside the signal wait. A signal owns the status at once, even while the invocation is
+	// blocked on stdin or stdout; cancellation then closes the connection, which cancels the coordinator's request.
+	finished := make(chan int, 1)
+	go func() { finished <- complete(ctx, catalog, process, environment, owner) }()
+	select {
+	case status := <-finished:
+		return status
+	case signal := <-process.Signals:
+		status := catalog.status("INTERRUPTED")
+		if signal == syscall.SIGTERM {
+			status = catalog.status("TERMINATED")
 		}
-	}()
+		return owner.finish(status)
+	}
+}
+
+// complete runs one invocation through delivery and records its status unless a signal already owns the result.
+func complete(ctx context.Context, catalog *Catalog, process Process, environment map[string]string, owner *owner) int {
 	request := invocationRequest{
 		Version:     supportedInvocationProtocol,
 		Directory:   process.Directory,
 		Arguments:   process.Arguments,
-		Environment: environmentMap(process.Environment),
+		Environment: environment,
 	}
 	completed, bootstrapped, err := invoke(ctx, catalog, request, process)
 	if status, settled := owner.terminal(); settled {
@@ -78,7 +83,7 @@ func Run(process Process) int {
 	if err != nil {
 		return owner.finish(failureStatus(catalog, err, process.Stderr))
 	}
-	if trace(process.Environment) {
+	if environment["KAST_FRONTEND_TRACE"] == "1" {
 		traceInvocation(process.Stderr, completed.Coordinator, bootstrapped)
 	}
 	for _, line := range completed.Diagnostics {
@@ -89,14 +94,14 @@ func Run(process Process) int {
 
 // invoke connects to the published coordinator, starting or joining it once when no coordinator is reachable.
 func invoke(ctx context.Context, catalog *Catalog, request invocationRequest, process Process) (*Completed, bool, error) {
-	conn, err := dial(ctx, catalog.socket)
+	conn, err := dial(ctx, catalog.socket, catalog.handshake)
 	bootstrapped := false
 	if isUnreachable(err) {
 		if startErr := startCoordinator(ctx, catalog, process); startErr != nil {
 			return nil, true, startErr
 		}
 		bootstrapped = true
-		conn, err = dial(ctx, catalog.socket)
+		conn, err = dial(ctx, catalog.socket, catalog.handshake)
 	}
 	if err != nil {
 		if bootstrapped {
@@ -142,7 +147,7 @@ func failureStatus(catalog *Catalog, err error, stderr io.Writer) int {
 	switch transport.Failure {
 	case Rejected:
 		switch transport.Reason {
-		case "CAPACITY_EXCEEDED":
+		case "CAPACITY_EXCEEDED", "INPUT_EXPIRED":
 			return catalog.status("INPUT")
 		case "LIFECYCLE_TRANSITION", "UNAVAILABLE":
 			return catalog.status("RUNTIME")
@@ -191,10 +196,6 @@ func environmentMap(environment []string) map[string]string {
 }
 
 func diagnose(stderr io.Writer, message string) { fmt.Fprintln(stderr, "kast: "+message) }
-
-func trace(environment []string) bool {
-	return environmentMap(environment)["KAST_FRONTEND_TRACE"] == "1"
-}
 
 // traceInvocation records which coordinator served this invocation, so warm reuse can be proven per call.
 func traceInvocation(stderr io.Writer, served coordinator, bootstrapped bool) {

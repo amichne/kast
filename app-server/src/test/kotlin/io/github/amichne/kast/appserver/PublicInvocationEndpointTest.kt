@@ -4,6 +4,7 @@ import io.github.amichne.kast.appserver.query.PublicToolCheckDiagnostics
 import io.github.amichne.kast.appserver.query.PublicToolContract
 import io.github.amichne.kast.distribution.managed.CanonicalRootDiscovery
 import io.github.amichne.kast.distribution.managed.FilesystemCanonicalRootDiscovery
+import io.github.amichne.kast.kernel.ElapsedTimeLimitMillis
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.ProtocolText
 import io.github.amichne.kast.protocol.registry.PublicToolCatalog
@@ -143,6 +144,37 @@ class PublicInvocationEndpointTest {
     }
 
     @Test
+    fun `requested input that misses its deadline cancels the invocation and releases its lease`() =
+        withCoordinatorPayload { root, kast ->
+            val cancelled = CountDownLatch(1)
+            val reads = AtomicInteger()
+            withInvocations(
+                root,
+                kast,
+                { _, _, stdin ->
+                    if (reads.incrementAndGet() > 1)
+                        return@withInvocations PublicInvocationOutcome(0, "served", emptyList())
+                    try {
+                        stdin.read(16)
+                    } catch (interrupted: java.io.InterruptedIOException) {
+                        cancelled.countDown()
+                        throw interrupted
+                    }
+                    PublicInvocationOutcome(0, "unreachable", emptyList())
+                },
+                inputLimit = (ElapsedTimeLimitMillis.parse(200) as Refinement.Refined).value,
+            ) { socket ->
+                // The caller keeps the connection open and never sends the requested input.
+                val replies = exchange(socket) { send(encode(request(root, version = 1))) }
+                assertEquals(listOf("input_required", "rejected"), replies.map { it.string("type") })
+                assertEquals("INPUT_EXPIRED", replies.last().string("failure"))
+                assertTrue(cancelled.await(5, TimeUnit.SECONDS), "the executor observed cancellation")
+                val next = exchange(socket) { send(encode(request(root, version = 1))) }.single()
+                assertEquals("served", next.string("output"))
+            }
+        }
+
+    @Test
     fun `in-process semantic client applies the semantic route's projection and reply admission`() =
         withCoordinatorPayload { root, kast ->
             Files.writeString(root.resolve("settings.gradle.kts"), "")
@@ -204,11 +236,13 @@ class PublicInvocationEndpointTest {
         kast: Path,
         executor: PublicInvocationExecutor,
         semantic: CoordinatorRequestExecutor = CoordinatorRequestExecutor { error("no semantic call expected") },
+        inputLimit: ElapsedTimeLimitMillis = PublicInvocationProtocol.inputLimit,
         test: suspend (Path) -> Unit,
     ) = runBlocking {
         val options = (InstalledCoordinatorConfiguration.admit(kast, root, emptyMap()) as Refinement.Refined).value
         val started =
-            InstalledCoordinator.start(options, semantic, invocations = executor) as InstalledCoordinatorStart.Started
+            InstalledCoordinator.start(options, semantic, invocations = PublicInvocations(executor, inputLimit))
+                as InstalledCoordinatorStart.Started
         try {
             test(options.socket.path)
         } finally {

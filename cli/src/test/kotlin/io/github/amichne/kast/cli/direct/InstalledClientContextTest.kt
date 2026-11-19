@@ -6,6 +6,7 @@ import io.github.amichne.kast.cli.installation.InstallationManifest
 import io.github.amichne.kast.cli.installation.PayloadFile
 import io.github.amichne.kast.cli.installation.installationManifestJson
 import io.github.amichne.kast.cli.installedHostedBootstrap
+import io.github.amichne.kast.cli.rpc.InvocationRecordKind
 import io.github.amichne.kast.cli.rpc.OneShotInvocationRecord
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.kernel.Refinement
@@ -79,6 +80,21 @@ class InstalledClientContextTest {
         val stopped = admitted(payload)
         assertEquals(InstalledToolAdmission.STOPPED, stopped.observe())
         assertNull(OneShotInvocationRecord.begin(stopped))
+    }
+
+    @Test
+    fun `a coordinator-hosted invocation is held by the lease and publishes no one-shot record`(
+        @TempDir temporary: Path
+    ) {
+        val payload = installedPayload(temporary.toRealPath(), "share/kast/libexec/kast-management")
+        val context = admitted(payload)
+        val installation = context.installation
+        Files.writeString(installation.resolve("share/kast/one-shot-observation-v1"), "1\n")
+        val witness = checkNotNull(InvocationWitness.CoordinatorLease.begin(context.binding, InvocationRecordKind.RPC))
+        assertFalse(Files.exists(installation.resolve("state/run/one-shot")))
+        witness.close()
+        Files.writeString(installation.parent.resolve(INSTALLATION_SHUTDOWN_FENCE), "fenced")
+        assertNull(InvocationWitness.CoordinatorLease.begin(context.binding, InvocationRecordKind.RPC))
     }
 
     @Test

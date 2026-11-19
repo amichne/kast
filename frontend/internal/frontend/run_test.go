@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -107,20 +108,71 @@ type outcome struct {
 func (f *fixture) run(t *testing.T, stdin string, signals <-chan os.Signal, arguments ...string) outcome {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
+	status := f.runProcess(strings.NewReader(stdin), &stdout, &stderr, signals, nil, arguments...)
+	return outcome{status, stdout.String(), stderr.String()}
+}
+
+func (f *fixture) runProcess(stdin io.Reader, stdout, stderr io.Writer, signals <-chan os.Signal, environment []string,
+	arguments ...string) int {
 	if signals == nil {
 		signals = make(chan os.Signal)
 	}
-	status := Run(Process{
+	return Run(Process{
 		Executable:  filepath.Join(f.root, "bin", "kast"),
 		Arguments:   arguments,
-		Environment: []string{"HOME=" + f.root, "KAST_FIXTURE=caller"},
+		Environment: append([]string{"HOME=" + f.root, "KAST_FIXTURE=caller"}, environment...),
 		Directory:   f.root,
-		Stdin:       strings.NewReader(stdin),
-		Stdout:      &stdout,
-		Stderr:      &stderr,
+		Stdin:       stdin,
+		Stdout:      stdout,
+		Stderr:      stderr,
 		Signals:     signals,
 	})
-	return outcome{status, stdout.String(), stderr.String()}
+}
+
+// blockedReader reports its first read and never completes it, as a terminal does while nobody types.
+type blockedReader struct {
+	reading  chan struct{}
+	released chan struct{}
+}
+
+func (r blockedReader) Read([]byte) (int, error) {
+	select {
+	case <-r.reading:
+	default:
+		close(r.reading)
+	}
+	<-r.released
+	return 0, io.EOF
+}
+
+// blockedWriter reports its first write and never completes it, as a stalled stdout pipe does.
+type blockedWriter struct {
+	writing  chan struct{}
+	released chan struct{}
+}
+
+func (w blockedWriter) Write([]byte) (int, error) {
+	select {
+	case <-w.writing:
+	default:
+		close(w.writing)
+	}
+	<-w.released
+	return 0, io.ErrClosedPipe
+}
+
+// statusWithin fails the test unless run returns within the bound, so a hang is a failure rather than a timeout.
+func statusWithin(t *testing.T, bound time.Duration, run func() int) int {
+	t.Helper()
+	finished := make(chan int, 1)
+	go func() { finished <- run() }()
+	select {
+	case status := <-finished:
+		return status
+	case <-time.After(bound):
+		t.Fatal("the frontend did not return")
+		return 0
+	}
 }
 
 func completed(exitCode int, output string, diagnostics ...string) map[string]any {
@@ -185,7 +237,8 @@ func TestReadsStdinOnlyWhenRequestedAndWithinTheStatedBound(t *testing.T) {
 
 func TestCoordinatorRejectionsMapToPublishedStatuses(t *testing.T) {
 	for reason, want := range map[string]int{
-		"UNSUPPORTED_VERSION": 6, "INVALID_REQUEST": 6, "CAPACITY_EXCEEDED": 2, "LIFECYCLE_TRANSITION": 4, "UNAVAILABLE": 4,
+		"UNSUPPORTED_VERSION": 6, "INVALID_REQUEST": 6, "CAPACITY_EXCEEDED": 2, "INPUT_EXPIRED": 2,
+		"LIFECYCLE_TRANSITION": 4, "UNAVAILABLE": 4,
 	} {
 		f := newFixture(t)
 		touchFrontend(t, f)
@@ -258,5 +311,103 @@ func TestASocketInADirectoryOpenToOthersIsNeverDialed(t *testing.T) {
 	runs, _ := os.ReadFile(marker)
 	if got.status != 9 || f.connections.Load() != 0 || strings.Count(string(runs), "run") != 1 {
 		t.Fatalf("an unprotected socket was trusted: %+v connections=%d", got, f.connections.Load())
+	}
+}
+
+func TestASignalEndsTheInvocationWhileStdinIsBlocked(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	cancelled := make(chan struct{})
+	f.serve(t, func(ctx context.Context, conn *websocket.Conn, _ invocationRequest) {
+		send(t, ctx, conn, map[string]any{"type": "input_required", "maximumBytes": 5})
+		if _, _, err := conn.Read(ctx); err != nil {
+			close(cancelled)
+		}
+	})
+	stdin := blockedReader{reading: make(chan struct{}), released: make(chan struct{})}
+	t.Cleanup(func() { close(stdin.released) })
+	signals := make(chan os.Signal, 1)
+	go func() {
+		<-stdin.reading
+		signals <- syscall.SIGINT
+	}()
+	var stdout, stderr bytes.Buffer
+	status := statusWithin(t, 5*time.Second, func() int {
+		return f.runProcess(stdin, &stdout, &stderr, signals, nil, "query", "--request", "-")
+	})
+	if status != 130 || stdout.Len() != 0 {
+		t.Fatalf("unexpected outcome %d %q", status, stdout.String())
+	}
+	select {
+	case <-cancelled:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the coordinator connection stayed open after the signal")
+	}
+}
+
+func TestASignalEndsTheInvocationWhileStdoutIsBlocked(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	f.serve(t, func(ctx context.Context, conn *websocket.Conn, _ invocationRequest) {
+		send(t, ctx, conn, completed(0, "document"))
+	})
+	stdout := blockedWriter{writing: make(chan struct{}), released: make(chan struct{})}
+	t.Cleanup(func() { close(stdout.released) })
+	signals := make(chan os.Signal, 1)
+	go func() {
+		<-stdout.writing
+		signals <- syscall.SIGTERM
+	}()
+	var stderr bytes.Buffer
+	status := statusWithin(t, 5*time.Second, func() int {
+		return f.runProcess(strings.NewReader(""), stdout, &stderr, signals, nil, "query")
+	})
+	if status != 143 {
+		t.Fatalf("unexpected status %d", status)
+	}
+}
+
+func TestAnUnansweredHandshakeIsUnreachableWithinTheCatalogBound(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	document := validCatalog()
+	document["handshakeMilliseconds"] = 200
+	writeCatalog(t, f.root, document)
+	// The kernel accepts the connection, but no upgrade reply ever arrives.
+	listener, err := net.Listen("unix", filepath.Join(f.root, "state", "run", "c.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { listener.Close() })
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			t.Cleanup(func() { conn.Close() })
+		}
+	}()
+	marker := f.bootstrap(t, 0, "")
+	var stdout, stderr bytes.Buffer
+	status := statusWithin(t, 5*time.Second, func() int {
+		return f.runProcess(strings.NewReader(""), &stdout, &stderr, nil, nil, "query")
+	})
+	runs, _ := os.ReadFile(marker)
+	if status != 9 || strings.Count(string(runs), "run") != 1 || stdout.Len() != 0 {
+		t.Fatalf("unexpected outcome %d %q runs=%q", status, stderr.String(), runs)
+	}
+}
+
+func TestHelpWithAnUnadmittedOutputSettingIsAnsweredByTheCoordinator(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	f.serve(t, func(ctx context.Context, conn *websocket.Conn, _ invocationRequest) {
+		send(t, ctx, conn, completed(2, "rejection"))
+	})
+	var stdout, stderr bytes.Buffer
+	status := f.runProcess(strings.NewReader(""), &stdout, &stderr, nil, []string{"KAST_OUTPUT_TOON=yes"}, "query", "--help")
+	if status != 2 || stdout.String() != "rejection\n" || f.connections.Load() != 1 {
+		t.Fatalf("unexpected outcome %d %q connections=%d", status, stdout.String(), f.connections.Load())
 	}
 }
