@@ -1,0 +1,67 @@
+{
+  "repository": "https://github.com/facebook/ktfmt.git",
+  "revision": "adee029cb742e37a30889fb4e32516da6bd658c6",
+  "workspace": "ktfmt",
+  "cases": [
+    {
+      "id": "ktfmt-java-sync-callers",
+      "task": "I need to instrument raw offset synchronization in ktfmt without tracing every PSI visitor. Which call sites in core/src/main/kotlin resolve directly to the Java method com.google.googlejavaformat.OpsBuilder.sync(int)? Include calls with an implicit receiver. Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/Formatter.kt:159",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/OpsUtils.kt:15"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/Formatter.kt:159",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:153"
+      ],
+      "sources": [
+        "gradle/libs.versions.toml:4",
+        "core/build.gradle.kts:33",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/Formatter.kt:159",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/OpsUtils.kt:14",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/OpsUtils.kt:15",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:153"
+      ],
+      "dimension": "Kotlin call sites for a Java method with a primitive parameter and a same-name Kotlin extension"
+    },
+    {
+      "id": "ktfmt-constant-indent-negation",
+      "task": "I need to review the callers of ktfmt's Indentation.Const.unaryMinus before I change how it computes a negative indent. Which expressions in core/src/main/kotlin resolve statically to that exact override? Return only a JSON array of repository-relative path:line strings, one per call site.",
+      "expected": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:507",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ControlFlowExpressionFormatter.kt:348",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/DeclarationFormatter.kt:650",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:340",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:359",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:364",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/kotlinlang/KotlinLangCallFormatter.kt:110"
+      ],
+      "nearMiss": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:192",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:507",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ControlFlowExpressionFormatter.kt:348",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/DeclarationFormatter.kt:650",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:340",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:359",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:364",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/kotlinlang/KotlinLangCallFormatter.kt:110"
+      ],
+      "sources": [
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/Indentation.kt:41",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/Indentation.kt:54",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/Indentation.kt:69",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/helpers.kt:113",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:181",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:192",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/CallFormatter.kt:507",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ControlFlowExpressionFormatter.kt:348",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/DeclarationFormatter.kt:650",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:340",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:359",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/ListFormatter.kt:364",
+        "core/src/main/kotlin/org/jetbrains/kotlinx/ktfmt/format/visitor/kotlinlang/KotlinLangCallFormatter.kt:110"
+      ],
+      "dimension": "Exact static target of Kotlin operator syntax across a base declaration and its overrides"
+    }
+  ]
+}

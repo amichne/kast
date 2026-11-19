@@ -1,0 +1,29 @@
+{
+  "id": "spring-holdout-router-string-registration-sites",
+  "task": "I plan to change how the non-suspending WebFlux DSL turns a string route into a path predicate. Consider the Spring WebFlux Kotlin files RouterFunctionDslTests.kt and CoRouterFunctionDslTests.kt. Which route expressions select an operator declared by RouterFunctionDsl that directly calls the Java RequestPredicates.path(String) method? Return only a JSON array of unique strings in the form <repository-relative path>:<line where the route expression starts>. Use 1-based line numbers.",
+  "expected": [
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDslTests.kt:246",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDslTests.kt:278",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/CoRouterFunctionDslTests.kt:424"
+  ],
+  "nearMiss": [
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDslTests.kt:238",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDslTests.kt:257",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/CoRouterFunctionDslTests.kt:314",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/CoRouterFunctionDslTests.kt:347"
+  ],
+  "sources": [
+    "spring-webflux/src/main/java/org/springframework/web/reactive/function/server/RequestPredicates.java:123",
+    "spring-webflux/src/main/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDsl.kt:626",
+    "spring-webflux/src/main/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDsl.kt:636",
+    "spring-webflux/src/main/kotlin/org/springframework/web/reactive/function/server/CoRouterFunctionDsl.kt:589",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDslTests.kt:238",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDslTests.kt:246",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDslTests.kt:257",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDslTests.kt:278",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/CoRouterFunctionDslTests.kt:314",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/CoRouterFunctionDslTests.kt:347",
+    "spring-webflux/src/test/kotlin/org/springframework/web/reactive/function/server/CoRouterFunctionDslTests.kt:424"
+  ],
+  "dimension": "Implicit Kotlin DSL dispatch through nested receivers into a Java path predicate"
+}

@@ -1,0 +1,55 @@
+{
+  "repository": "https://github.com/spring-projects/spring-framework",
+  "revision": "c997d4018d3dc6a7dde2e20eae3627599a01e169",
+  "workspace": "spring",
+  "cases": [
+    {
+      "id": "spring-jdbc-query-callback-overloads",
+      "task": "For a change to the JDBC callback wrappers, identify the Java JdbcOperations overload that each Kotlin extension calls. Start with three calls in JdbcOperationsExtensionsTests. Call A is template.query<Int>(sql, 3) with a one-parameter lambda. Call B is template.query(sql, 3) with a one-parameter lambda outside assertThat. Call C is template.query(sql, 3) with a two-parameter lambda in the test that expects [1, 2, 3]. Return only a JSON array of strings in the form <letter>=JdbcOperations.query(<parameter types>). Use simple Java type names without generic arguments or annotations. Use comma-space separators and Object... for varargs.",
+      "expected": [
+        "A=JdbcOperations.query(String, ResultSetExtractor, Object...)",
+        "B=JdbcOperations.query(String, RowCallbackHandler, Object...)",
+        "C=JdbcOperations.query(String, RowMapper, Object...)"
+      ],
+      "nearMiss": [
+        "B=JdbcOperations.query(String, ResultSetExtractor, Object...)",
+        "C=JdbcOperations.query(String, Object[], RowMapper)"
+      ],
+      "sources": [
+        "spring-jdbc/src/test/kotlin/org/springframework/jdbc/core/JdbcOperationsExtensionsTests.kt:183",
+        "spring-jdbc/src/test/kotlin/org/springframework/jdbc/core/JdbcOperationsExtensionsTests.kt:200",
+        "spring-jdbc/src/test/kotlin/org/springframework/jdbc/core/JdbcOperationsExtensionsTests.kt:210",
+        "spring-jdbc/src/main/kotlin/org/springframework/jdbc/core/JdbcOperationsExtensions.kt:100",
+        "spring-jdbc/src/main/kotlin/org/springframework/jdbc/core/JdbcOperationsExtensions.kt:110",
+        "spring-jdbc/src/main/kotlin/org/springframework/jdbc/core/JdbcOperationsExtensions.kt:120",
+        "spring-jdbc/src/main/java/org/springframework/jdbc/core/JdbcOperations.java:388",
+        "spring-jdbc/src/main/java/org/springframework/jdbc/core/JdbcOperations.java:459",
+        "spring-jdbc/src/main/java/org/springframework/jdbc/core/JdbcOperations.java:520",
+        "spring-jdbc/src/main/java/org/springframework/jdbc/core/JdbcOperations.java:536"
+      ],
+      "dimension": "Kotlin extension overload resolution and Java functional-interface selection"
+    },
+    {
+      "id": "spring-reactive-server-response-primitive-status-callers",
+      "task": "Which Kotlin functions directly call org.springframework.web.reactive.function.server.ServerResponse.status(int)? Consider only Kotlin files in src/main/kotlin directories. Return only a JSON array of unique strings in the form <fully qualified enclosing class>.status(<simple Kotlin parameter type>).",
+      "expected": [
+        "org.springframework.web.reactive.function.server.CoRouterFunctionDsl.status(Int)",
+        "org.springframework.web.reactive.function.server.RouterFunctionDsl.status(Int)"
+      ],
+      "nearMiss": [
+        "org.springframework.web.reactive.function.server.RouterFunctionDsl.status(HttpStatusCode)",
+        "org.springframework.web.servlet.function.RouterFunctionDsl.status(Int)"
+      ],
+      "sources": [
+        "spring-webflux/src/main/java/org/springframework/web/reactive/function/server/ServerResponse.java:117",
+        "spring-webflux/src/main/java/org/springframework/web/reactive/function/server/ServerResponse.java:127",
+        "spring-webflux/src/main/kotlin/org/springframework/web/reactive/function/server/CoRouterFunctionDsl.kt:831",
+        "spring-webflux/src/main/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDsl.kt:781",
+        "spring-webflux/src/main/kotlin/org/springframework/web/reactive/function/server/RouterFunctionDsl.kt:791",
+        "spring-webmvc/src/main/java/org/springframework/web/servlet/function/ServerResponse.java:126",
+        "spring-webmvc/src/main/kotlin/org/springframework/web/servlet/function/RouterFunctionDsl.kt:835"
+      ],
+      "dimension": "Cross-language direct callers with primitive overloads and same-name Java owners"
+    }
+  ]
+}
