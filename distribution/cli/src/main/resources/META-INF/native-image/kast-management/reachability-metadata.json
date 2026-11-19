@@ -1,7 +1,0 @@
-{
-  "foreign": {
-    "downcalls": [
-      {"returnType": "int", "parameterTypes": ["void*", "void*", "int"]}
-    ]
-  }
-}

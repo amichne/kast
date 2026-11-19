@@ -32,7 +32,8 @@ class NativeForceResetCompositionTest {
                 withJqWorker(selected, evidence.resolve("selected-jq.stderr")) { worker ->
                     withJqWorker(foreign, evidence.resolve("foreign-jq.stderr")) { unrelated ->
                         // Both genuine FILTER workers have an open stdin; EOF is deliberately withheld.
-                        assertEquals(selected.payload.toString(), worker.toHandle().info().command().orElseThrow())
+                        // The Control executable replaces itself with the runtime's java for the jq entry.
+                        assertEquals(selected.javaExecutable.toString(), awaitExec(worker, selected.javaExecutable))
                         assertNotNull(worker.toHandle().info().startInstant().orElseThrow())
                         assertTrue(worker.isAlive)
                         assertTrue(unrelated.isAlive)
@@ -88,6 +89,17 @@ class NativeForceResetCompositionTest {
                 reader.shutdownNow()
                 assertTrue(reader.awaitTermination(5, TimeUnit.SECONDS))
             }
+        }
+    }
+
+    /** The process command once the Control executable has replaced itself, observed within a bounded window. */
+    private fun awaitExec(process: Process, expected: Path): String {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+        while (true) {
+            // The fixture's Java home is a link, as ownership proofs resolve it.
+            val command = process.toHandle().info().command().map { Path.of(it).toRealPath().toString() }.orElse("")
+            if (command == expected.toString() || System.nanoTime() > deadline || !process.isAlive) return command
+            Thread.onSpinWait()
         }
     }
 

@@ -1,6 +1,6 @@
 [tools]
 uv = "0.12.9"
-java = "liberica-nik-openjdk25-25.0.2+1"
+java = "temurin-25.0.4+7.0.LTS"
 node = "24.21.0"
 vale = "3.24.0"
 jq = "1.8.2"
@@ -8,4 +8,3 @@ go = "1.27.4"
 
 [env]
 _.path = ["{{config_root}}/bin"]
-GRAALVM_HOME = { value = "{{ tools.java.path }}", tools = true }

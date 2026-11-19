@@ -51,11 +51,8 @@ class ReproduceTest(unittest.TestCase):
             'printf "builder-java=%s\\n" "$JAVA_HOME"\n'
             'printf "builder-idea=%s\\n" "${KAST_ACCEPTANCE_IDEA_HOME-unset}"\n'
             'printf "builder-error-stream\\n" >&2\n'
-            "cp native-metrics.json build/reports/native/build-output.json\n"
             'exit "$(cat builder-exit)"\n'
         )
-        # Native metrics are an opaque JSON object in the real evidence adapter.
-        (self.repository / "native-metrics.json").write_text(json.dumps({}))
         (self.repository / "builder-exit").write_text("0\n")
         self.git("add", ".")
         self.git("commit", "-m", "Candidate fixture")

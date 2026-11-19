@@ -26,7 +26,7 @@ def admit(environment: Mapping[str, str]) -> Admission:
         return Admission.UNSUPPORTED_EVENT
     workflow = environment.get("GITHUB_WORKFLOW_REF")
     if workflow == "amichne/kast/.github/workflows/ci.yml@refs/heads/main":
-        jobs = {"native", "kotlin"}
+        jobs = {"kotlin"}
     elif workflow in {
         "amichne/kast/.github/workflows/release.yml@refs/heads/main",
         "amichne/kast/.github/workflows/release-component.yml@refs/heads/main",

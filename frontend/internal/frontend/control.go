@@ -28,11 +28,24 @@ type invocation struct {
 	arguments  []string
 }
 
-// parseInvocation separates the launchers' leading -Dkey=value options and the optional private entry selector.
-// Without a selector the entry is management, the public command's default.
+// jvmOption reports a leading process option for the JVM, the same set admitNativeControlProcessInvocation admits.
+func jvmOption(argument string) bool {
+	if strings.HasPrefix(argument, "-D") && strings.Contains(argument, "=") {
+		return true
+	}
+	for _, prefix := range []string{"-XX:", "-Xmn", "-Xms", "-Xmx", "-Xss"} {
+		if strings.HasPrefix(argument, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// parseInvocation separates the leading JVM options and the optional private entry selector. Without a selector the
+// entry is management, the public command's default.
 func parseInvocation(arguments []string) invocation {
 	index := 0
-	for index < len(arguments) && strings.HasPrefix(arguments[index], "-D") && strings.Contains(arguments[index], "=") {
+	for index < len(arguments) && jvmOption(arguments[index]) {
 		index++
 	}
 	parsed := invocation{jvmOptions: arguments[:index], entry: "management", arguments: arguments[index:]}

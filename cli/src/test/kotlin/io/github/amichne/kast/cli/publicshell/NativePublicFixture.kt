@@ -11,23 +11,44 @@ import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 
-/** Actual candidate bytes in a private installation; no JVM entry or substituted invocation adapter. */
+/**
+ * The staged Control product in a private installation: its Go executable, its JVM libraries and its catalog, run on
+ * this test's Java runtime through a Host runtime root. No entry or invocation adapter is substituted.
+ */
 internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
     // Unix-domain paths must fit the production 100-byte bound, independently of JUnit's temporary path.
     val home: Path = Files.createTempDirectory(Path.of("/tmp").toRealPath(), "kn -")
     val workspace: Path = Files.createDirectory(home.resolve("workspace with spaces"))
     val installation: Path = Files.createDirectories(home.resolve(".local/share/kast/installation"))
     val payload: Path = installation.resolve("share/kast/libexec/kast-management")
+    /** The runtime every Control JVM process runs, as its process command reports it. */
+    val javaExecutable: Path = Path.of(System.getProperty("java.home")).toRealPath().resolve("bin/java")
+
+    /** The public command, a copy of the payload, as the installer publishes it beneath HOME. */
+    val command: Path = home.resolve(".local/bin/kast")
     private val configuration = installation.resolve("config/environment")
     private val children = mutableListOf<Process>()
 
     init {
+        val product = controlProduct()
         Files.createDirectories(payload.parent)
-        Files.copy(requiredExecutable("kast.publicLauncher"), payload)
+        Files.copy(product.resolve(CONTROL_PAYLOAD), payload)
         Files.setPosixFilePermissions(payload, PosixFilePermissions.fromString("rwxr-xr-x"))
+        Files.createDirectories(command.parent)
+        Files.copy(payload, command)
+        Files.setPosixFilePermissions(command, PosixFilePermissions.fromString("rwxr-xr-x"))
+        val libraries = Files.createDirectories(installation.resolve("lib"))
+        Files.list(product.resolve("lib")).use { jars ->
+            jars.forEach { Files.copy(it, libraries.resolve(it.fileName)) }
+        }
+        Files.createDirectories(installation.resolve("share/kast"))
+        Files.copy(product.resolve(CONTROL_CATALOG), installation.resolve(CONTROL_CATALOG))
+        writeRuntimeReceipt()
         Files.createDirectories(configuration.parent)
         Files.writeString(configuration, "")
         Files.createDirectories(installation.resolve("share/kast"))
@@ -47,10 +68,14 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
                 "unset KAST_SESSION_ROOT\nexec ${shellWord(query.toString())} \"\$@\"\n",
         )
         Files.setPosixFilePermissions(wrapper, PosixFilePermissions.fromString("rwxr-xr-x"))
+        val jars = Files.list(libraries).use { it.sorted().toList() }
         val payloads =
             listOf(payload, query, wrapper).map { file ->
                 PayloadFile(installation.relativize(file).toString(), "sha256:${nativeDigest(file)}", 493)
-            }
+            } +
+                (jars + listOf(installation.resolve(CONTROL_CATALOG))).map { file ->
+                    PayloadFile(installation.relativize(file).toString(), "sha256:${nativeDigest(file)}", 420)
+                }
         Files.writeString(
             installation.resolve("installation.json"),
             Json { encodeDefaults = true }
@@ -81,7 +106,7 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
         directory: Path = home,
         environment: Map<String, String> = mapOf("KAST_OUTPUT_TOON" to "0"),
     ): Process =
-        ProcessBuilder(listOf(requiredExecutable("kast.publicLauncher").toString()) + arguments)
+        ProcessBuilder(listOf(command.toString()) + arguments)
             .directory(directory.toFile())
             .redirectError(evidence.resolve("$label.stderr").toFile())
             .apply {
@@ -146,6 +171,25 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
         }
     }
 
+    /**
+     * The installer records the Host runtime root in the management receipt; the Control executable selects this
+     * platform's Java home inside it. Here that Java home is the test's own runtime.
+     */
+    private fun writeRuntimeReceipt() {
+        val catalog = Json.parseToJsonElement(Files.readString(installation.resolve(CONTROL_CATALOG))).jsonObject
+        val homes = catalog.getValue("control").jsonObject.getValue("javaHomes").jsonObject
+        val javaHome = runtimeRoot.resolve(homes.getValue(currentPlatform()).jsonPrimitive.content)
+        Files.createDirectories(javaHome.parent)
+        Files.createSymbolicLink(javaHome, Path.of(System.getProperty("java.home")).toRealPath())
+        Files.writeString(
+            installation.parent.resolve("management.json"),
+            Json.encodeToString(RuntimeReceipt(RuntimeReference(runtimeRoot.toString()))),
+        )
+    }
+
+    private val runtimeRoot: Path
+        get() = home.resolve("runtime")
+
     private fun digest(text: String): String =
         java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.toByteArray()))
 
@@ -160,15 +204,33 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
     }
 }
 
-internal fun requiredExecutable(property: String): Path {
-    val path = Path.of(checkNotNull(System.getProperty(property)) { "Missing native test property $property" })
-    check(Files.isRegularFile(path) && Files.isExecutable(path)) { "Unavailable native executable: $path" }
-    val magic = Files.newInputStream(path).use { it.readNBytes(4) }.joinToString("") { "%02x".format(it) }
+/** The staged Control product this suite exercises, named by the `kast.controlProduct` test property. */
+internal fun controlProduct(): Path {
+    val path = Path.of(checkNotNull(System.getProperty("kast.controlProduct")) { "Missing kast.controlProduct" })
+    val payload = path.resolve(CONTROL_PAYLOAD)
+    check(Files.isExecutable(payload) && Files.isRegularFile(path.resolve(CONTROL_CATALOG))) {
+        "Unavailable Control product: $path"
+    }
+    val magic = Files.newInputStream(payload).use { it.readNBytes(4) }.joinToString("") { "%02x".format(it) }
     check(magic in setOf("cffaedfe", "feedfacf", "7f454c46")) {
-        "Expected Mach-O or ELF executable, not a JVM script: $path"
+        "Expected a Mach-O or ELF Control executable: $payload"
     }
     return path.toRealPath()
 }
+
+private fun currentPlatform(): String {
+    val os = if (System.getProperty("os.name").startsWith("Mac")) "macos" else "linux"
+    val arch = if (System.getProperty("os.arch") in setOf("aarch64", "arm64")) "aarch64" else "x86_64"
+    return "$os-$arch"
+}
+
+/** Only the runtime root the Control executable reads; every other receipt field stays the installer's. */
+@kotlinx.serialization.Serializable private data class RuntimeReceipt(val product: RuntimeReference)
+
+@kotlinx.serialization.Serializable private data class RuntimeReference(val runtimeRoot: String)
+
+private const val CONTROL_PAYLOAD = "share/kast/libexec/kast-management"
+private const val CONTROL_CATALOG = "share/kast/frontend.json"
 
 internal fun nativeDigest(path: Path): String {
     val digest = MessageDigest.getInstance("SHA-256")
@@ -201,39 +263,6 @@ internal fun stopNativeProcess(process: Process) {
         check(process.waitFor(5, TimeUnit.SECONDS)) { "Owned process did not exit" }
         descendants.forEach { it.onExit().get(5, TimeUnit.SECONDS) }
     }
-}
-
-/** Sampling establishes the actual worker syscall, not merely a live process or an elapsed sleep. */
-internal fun awaitNativePipeStack(child: ProcessHandle, evidence: Path, operation: String) {
-    check(Files.isExecutable(Path.of("/usr/bin/sample"))) { "Native pipe proof requires macOS sample" }
-    val syscall = Regex("\\b(?:__)?${operation}(?:_nocancel)?(?:\\s|\\(|\\+)")
-    repeat(5) { attempt ->
-        assertTrue(child.isAlive, "Native child exited before its pipe precondition")
-        val report = evidence.resolve("${operation}-${child.pid()}-$attempt.sample.txt")
-        val sampler =
-            ProcessBuilder("/usr/bin/sample", child.pid().toString(), "1", "1", "-file", report.toString())
-                .redirectErrorStream(true)
-                .redirectOutput(evidence.resolve("${operation}-${child.pid()}-$attempt.sample.log").toFile())
-                .start()
-        try {
-            assertTrue(sampler.waitFor(15, TimeUnit.SECONDS), "Native sampler did not settle")
-            assertEquals(0, sampler.exitValue(), "Native stack collection failed: $evidence")
-            val stacks = Files.readString(report).split(Regex("(?m)^\\s*\\d+ Thread_"))
-            if (
-                stacks.any { stack ->
-                    // Native Image retains the last 15 characters in the macOS pthread name.
-                    stack.lineSequence().first().endsWith(": st-public-query") &&
-                        stack.lineSequence().any { line ->
-                            line.contains("libsystem_kernel.dylib") && syscall.containsMatchIn(line)
-                        }
-                }
-            )
-                return
-        } finally {
-            stopNativeProcess(sampler)
-        }
-    }
-    error("No native public worker blocked in $operation; evidence: $evidence")
 }
 
 private fun shellWord(value: String): String = "'" + value.replace("'", "'\\''") + "'"

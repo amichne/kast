@@ -346,9 +346,9 @@ class SourceValidationTest(unittest.TestCase):
                 self.assertFalse(graph.accepted)
                 self.assertIn(omitted, graph.missing)
 
-    def test_native_compilation_staging_and_release_assembly_reject(self):
+    def test_staging_and_release_assembly_reject(self):
         for task in (
-            ":cli:nativeCompile", ":cli:nativeTestCompile", ":stageKastControlProduct",
+            ":stageKastControlProduct",
             ":installedProductTest", ":assembleRelease", ":assembleKastControlDist",
             ":runtime:hosted:hostedPlugin", ":app-server:verifyReleaseRuntimeAdmission", ":generateHostReleaseRecord",
         ):

@@ -72,9 +72,6 @@ internal class CoordinatedToolClient(private val binding: InstalledClientBinding
         result
     }
 
-    /** Starts or joins this installation's coordinator, as the Control executable's bootstrap does before it dials. */
-    suspend fun ensure(): Refinement<InstalledSemanticCoordinator, DaemonOperationClientRejection> = connectOnce()
-
     private suspend fun connectOnce(): Refinement<InstalledSemanticCoordinator, DaemonOperationClientRejection> =
         connection.withLock {
             selected.get()?.let { Refinement.Refined(it) }

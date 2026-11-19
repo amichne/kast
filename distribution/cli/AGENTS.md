@@ -112,14 +112,10 @@ Read the [candidate evidence guide](../../docs/reviews/managed-installation-cli.
 
 Run focused `:distribution:cli:test` selectors first, then affected contract, architecture, JSON, and knowledge guards. Native compilation and acceptance are separate evidence boundaries.
 
-## Native compilation inputs
+## Control payload
 
-`cli:assembleNativeImageInputs` packages the unified image inputs for the target host.
-`cli/native-image.args` owns portable arguments. Its Mac counterpart owns linker arguments.
-`collectReachabilityMetadata` supplies resolved metadata for each input archive.
-Keep module directories during transfer and raw native compilation.
-Routine CI admits one transferred executable before Linux assembly.
-It supplies `kastNativeExecutable`. The `cli:nativeCompile` task produces ordinary local builds.
+The Control archive holds the Go executable at `share/kast/libexec/kast-management`, the JVM libraries under `lib`, and `share/kast/frontend.json`.
+`-PkastControlPlatform` selects the target. The executable cross-compiles, so any host assembles any target.
 
 ## Navigation
 

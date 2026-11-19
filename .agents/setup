@@ -119,5 +119,5 @@ step 'Gradle dependencies and IDE compile SDKs' ./gradlew --no-daemon --console=
     --init-script "$dependency_init" prepareOrbDependencies
 
 step 'Verify persisted login environment' env -i HOME="$HOME" USER="$(id -un)" PATH=/usr/bin:/bin \
-    /bin/bash -lc 'set -euo pipefail; test "$KAST_ORB_ENV_ACTIVE" = "$PWD"; test "$JAVA_HOME" = "$GRAALVM_HOME"; for tool in java native-image node npm vale uv python3 mint; do command -v "$tool"; done'
+    /bin/bash -lc 'set -euo pipefail; test "$KAST_ORB_ENV_ACTIVE" = "$PWD"; test -n "$JAVA_HOME"; for tool in java go node npm vale uv python3 mint; do command -v "$tool"; done'
 printf '\n[orb setup] Ready in %ss. Native macOS installation and IDEA UI acceptance require a Mac.\n' "$SECONDS"

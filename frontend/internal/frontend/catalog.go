@@ -1,5 +1,6 @@
-// Package frontend is the thin Kast command-line frontend. It owns bootstrap, transport, signals, output delivery and
-// process status. The coordinator owns lowering, defaults, workspace decisions and semantic admission.
+// Package frontend is the Kast Control executable. It owns coordinator transport, signals, output delivery and process
+// status for public queries, and hands every other invocation to the JVM entry. The coordinator and the JVM entry own
+// lowering, defaults, workspace decisions and semantic admission.
 package frontend
 
 import (
@@ -12,8 +13,8 @@ import (
 	"time"
 )
 
-// Fixed bootstrap statuses. They are the public shell's published BOOTSTRAP and PROTOCOL codes and apply before an
-// admitted catalog supplies the full table; tests compare them with the generated catalog.
+// Fixed statuses. They are the public shell's published BOOTSTRAP and PROTOCOL codes and apply before an admitted
+// catalog supplies the full table; tests compare them with the generated catalog.
 const (
 	bootstrapStatus = 9
 	protocolStatus  = 6
@@ -35,7 +36,6 @@ type catalogDocument struct {
 	InvocationProtocol    int            `json:"invocationProtocol"`
 	Socket                string         `json:"socket"`
 	SocketAlias           socketAlias    `json:"socketAlias"`
-	Bootstrap             []string       `json:"bootstrap"`
 	HandshakeMilliseconds int64          `json:"handshakeMilliseconds"`
 	OutputSetting         outputSetting  `json:"outputSetting"`
 	PublicNamespaces      []string       `json:"publicNamespaces"`
@@ -77,7 +77,6 @@ type Catalog struct {
 	root             string
 	socket           string
 	socketAlias      socketAlias
-	bootstrap        []string
 	handshake        time.Duration
 	outputSetting    outputSetting
 	publicNamespaces []string
@@ -159,12 +158,8 @@ func LoadCatalog(root string) (*Catalog, error) {
 		return nil, &CatalogError{Failure: CatalogMalformed}
 	}
 	socket, socketOK := beneath(root, document.Socket)
-	if !socketOK || len(document.Bootstrap) == 0 || document.HandshakeMilliseconds <= 0 ||
+	if !socketOK || document.HandshakeMilliseconds <= 0 ||
 		document.OutputSetting.Variable == "" {
-		return nil, &CatalogError{Failure: CatalogMalformed}
-	}
-	launcher, launcherOK := beneath(root, document.Bootstrap[0])
-	if !launcherOK {
 		return nil, &CatalogError{Failure: CatalogMalformed}
 	}
 	for _, name := range requiredStatuses {
@@ -184,7 +179,6 @@ func LoadCatalog(root string) (*Catalog, error) {
 		root:             root,
 		socket:           socket,
 		socketAlias:      document.SocketAlias,
-		bootstrap:        append([]string{launcher}, document.Bootstrap[1:]...),
 		handshake:        time.Duration(document.HandshakeMilliseconds) * time.Millisecond,
 		outputSetting:    document.OutputSetting,
 		publicNamespaces: document.PublicNamespaces,

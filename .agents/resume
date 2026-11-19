@@ -7,7 +7,7 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 exec /bin/bash -lc '
     set -euo pipefail
     test "$KAST_ORB_ENV_ACTIVE" = "$PWD"
-    test "$JAVA_HOME" = "$GRAALVM_HOME"
-    for tool in java native-image node npm vale uv python3 mint; do command -v "$tool" >/dev/null; done
+    test -n "$JAVA_HOME"
+    for tool in java go node npm vale uv python3 mint; do command -v "$tool" >/dev/null; done
     printf "[orb resume] Toolchain ready.\n"
 '

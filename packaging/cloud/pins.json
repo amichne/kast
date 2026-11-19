@@ -10,10 +10,10 @@
       "directory": "vale",
       "flat": true
     },
-    "graalvm": {
-      "url": "https://github.com/bell-sw/LibericaNIK/releases/download/25.0.2%2B1-25.0.2%2B13/bellsoft-liberica-vm-openjdk25.0.2%2B13-25.0.2%2B1-linux-amd64.tar.gz",
-      "sha256": "fe9d71a107e523a19ec2eddf77618cca7c98fe6fdfa609f4dc93df7d798429d0",
-      "directory": "liberica-nik-25.0.2+1"
+    "go": {
+      "url": "https://go.dev/dl/go1.27.4.linux-amd64.tar.gz",
+      "sha256": "7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840",
+      "directory": "go1.27.4"
     },
     "node": {
       "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz",
