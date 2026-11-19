@@ -2,12 +2,10 @@ package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.distribution.output.JsonProjectionDocument
 import io.github.amichne.kast.kernel.Refinement
-import java.nio.file.Path
 
-/** Successfully syntax-checked embedded jq program, with one owned process per bounded stage. */
+/** Successfully syntax-checked embedded jq program; each bounded stage runs in an owned worker process. */
 internal class PublicJqEngine
 private constructor(
-    private val command: PublicJqWorkerCommand,
     private val options: PublicJqOptions,
     private val executor: PublicJqExecutor,
 ) {
@@ -36,26 +34,14 @@ private constructor(
     }
 
     private fun request(stage: PublicJqStage, input: String): PublicJqProcessRequest =
-        PublicJqProcessRequest(
-            command.arguments + listOf(stage.name, options.limits.bytes.toString(), options.workerArgument),
-            input,
-            stage,
-            options.limits,
-        )
+        PublicJqProcessRequest(stage, options.workerArgument, input, options.limits)
 
     companion object {
         fun prepare(
             options: PublicJqOptions,
-            directory: Path,
-            executor: PublicJqExecutor = PublicJqProcess(directory, emptyMap()),
+            executor: PublicJqExecutor = PublicJqWorkers.process,
         ): Refinement<PublicJqEngine, PublicJqRejection> {
-            val command =
-                when (val resolved = PublicJqWorkerCommand.current()) {
-                    is Refinement.Rejected ->
-                        return Refinement.Rejected(jqRejection(resolved.failure, PublicJqStage.COMPILE, options.limits))
-                    is Refinement.Refined -> resolved.value
-                }
-            val engine = PublicJqEngine(command, options, executor)
+            val engine = PublicJqEngine(options, executor)
             val request = engine.request(PublicJqStage.COMPILE, "")
             return when (val observed = executor.execute(request)) {
                 is Refinement.Rejected -> observed

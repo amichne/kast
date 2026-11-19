@@ -55,7 +55,7 @@ internal class CoordinatorPublicInvocations(private val product: Path) : PublicI
                             )
                         },
                         diagnostic = diagnostics::add,
-                        jqExecutor = PublicJqProcess(invocation.directory, emptyMap()),
+                        jqExecutor = PublicJqWorkers.process,
                     ),
                     format,
                 )

@@ -5338,7 +5338,7 @@
       "content": [
         {
           "path": "docs/public/reference/cli.mdx",
-          "sha256": "06c82b722599aefe422faf482f0b643ddaa47b0362d41cce6cdaa1b238e33f17"
+          "sha256": "ad60c43f834e3a6435b89cf1781d33316d59a5e5320ab8aaa5b661e9d90ecf6c"
         }
       ],
       "claims": [
@@ -5734,7 +5734,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt",
-          "sha256": "b2dada7471da3868d43a420640cb91603d8b2bc99298461da128cea635453508"
+          "sha256": "3502b9cd8eee3ffe9b28d640232f35e995ee791b1cc97cba339d12e4b0616b70"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicCliArguments.kt",
@@ -5790,7 +5790,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqEngine.kt",
-          "sha256": "81c01e9e4a477e60f72a3d90ce69422664062911223add92a802d594d3383bf1"
+          "sha256": "8a1f3ce5374aecee22627053c19a9c10ac0b5787a208224586b34ce9263002a3"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqFailure.kt",
@@ -5805,8 +5805,8 @@
           "sha256": "b672a88f2cf7b5980e7be91d835b5e6ccfdfedddbaa8ea4ef60892706dfa1b11"
         },
         {
-          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqProcess.kt",
-          "sha256": "3f3c98602eaf3bd4f2762376bbf2b4facfb2c179a34c2ec3e8c2192701b7c7f0"
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqWorkers.kt",
+          "sha256": "d5c62975fb45a185acc0243bf4099ab563b9b38e58967cae82f84801a3e3afcd"
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqProgram.kt",
@@ -5822,7 +5822,7 @@
         },
         {
           "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqWorker.kt",
-          "sha256": "5d891f9ad579b86eb529d0d27143c973f275116239d83942e3bbf55e9057851b"
+          "sha256": "7a58b52a1b578ec1a48b6e38843aa6ea5539164aca98438dbd31b5f76f9d9d4d"
         },
         {
           "path": "distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt",

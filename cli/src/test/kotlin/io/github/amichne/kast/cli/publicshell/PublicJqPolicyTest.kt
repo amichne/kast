@@ -194,7 +194,7 @@ class PublicJqPolicyTest {
     private fun engine(executor: ScriptedJq): PublicJqEngine {
         val command = parse("query", "plan", "--name", "Order", "--jq", ".")
         val options = (command.projection as PublicOutputProjection.Jq).options
-        return (PublicJqEngine.prepare(options, temporary, executor) as Refinement.Refined).value
+        return (PublicJqEngine.prepare(options, executor) as Refinement.Refined).value
     }
 
     private fun parse(vararg words: String): PublicCliCommand =

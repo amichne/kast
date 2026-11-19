@@ -248,7 +248,7 @@ The recovery preserves the issued reference and original output kind. A normal r
 ### Embedded engine
 
 Kast embeds jackson-jq `1.6.5` with jq `1.7` compatibility. No external jq, JVM installation, PATH lookup, or runtime download is needed.
-The native Control image contains the library. `--jq-executable` is no longer accepted.
+The Control distribution includes the library. `--jq-executable` is no longer accepted.
 The version catalog in `gradle/libs.versions.toml` owns the library and compatible Jackson pins; installed discovery reads generated version metadata.
 The separate jq pin in `mise.toml` supplies the independent qualification oracle.
 
@@ -256,7 +256,7 @@ Navigation, optional paths, `map`, `select`, sorting, grouping, function definit
 This is a library subset, not full jq parity. CLI I/O functions such as `input`, `inputs` and `halt_error` are unavailable.
 `implode` preserves complete Unicode scalars, including supplementary characters. Invalid scalars reject.
 Environment access and external module or data loading are disabled. String interpolation rejects; use string concatenation or a JSON pipeline.
-Kast passes the program as one argument without a shell. It does not echo program text, source payloads, or worker stderr in rejection documents.
+Kast sends the program to a worker through a private pipe. It does not echo program text, source payloads, or worker stderr in rejection documents.
 
 ### Numeric values
 
@@ -279,15 +279,16 @@ Before TOON publication, the existing guard separately rejects any changed value
 
 | Option | Default | Accepted values |
 | --- | --- | --- |
-| `--jq-timeout-ms` | `5000` | `1..60000`, for each syntax-checking and filtering worker |
+| `--jq-timeout-ms` | `5000` | `1..60000`, per stage, including the wait for a worker |
 | `--jq-max-bytes` | `16777216` | `1..67108864`, for input, worker stdout, and successful encoded projections including their newline |
 
 These options require `--jq` and have no effect on workspace waiting or semantic budgets.
 Each worker has a private 512 MiB heap and a 32768-byte stderr bound. Programs are limited to 32768 UTF-8 bytes.
 JSON nesting is limited to 1000 levels, and numeric tokens to 1000 characters. Exceeding these limits reports `JSON_LIMIT`.
 
-A worker exits before workspace waiting starts; no filter process is kept alive while the workspace is being prepared.
-On expiry or cancellation, Kast terminates and reaps its owned worker and joins its pipe readers before returning.
+The coordinator reuses up to two workers. A successful syntax check releases the worker before workspace preparation starts.
+If a stage exceeds its deadline or the caller cancels it, Kast stops the worker that serves that stage.
+The next stage can start a new worker.
 
 Heap or stack exhaustion reports `RESOURCE_LIMIT`; a smaller input or projection can still need more working memory than its encoded size.
 `kast describe COMMAND` includes the default filter limits and a standalone schema for fixed filter rejections.
