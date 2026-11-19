@@ -152,8 +152,25 @@ function isScopedImplementationQuestion(question, ref) {
       source_policy: expansion.source_policy, generated_sources: 'exclude' });
 }
 
+function attemptedImplementationDraft(call, ref) {
+  const flags = parseFlags(call.argv.slice(1), new Set(['--request']));
+  if (!equal(flags?.get('--request'), ['-'])) return false;
+  const document = parse(call.input);
+  const action = document?.request ?? document;
+  if (action?.type !== 'RUN' || !equal(action.source, { type: 'SYMBOL_REFS', symbolRefs: [ref] }) ||
+      !equal(action.terminalStep, { type: 'EMIT', output: { type: 'SYMBOLS' } })) return false;
+  const steps = action.steps;
+  if (!Array.isArray(steps) || !(steps.length === 1 || (steps.length === 2 && equal(steps[1], { type: 'DISTINCT_SYMBOLS' })))) return false;
+  const expansion = steps[0]?.expansionScope;
+  return steps[0]?.type === 'EXPAND_RELATION' && steps[0].relation === 'IMPLEMENTATIONS' &&
+    expansion?.type === 'SOURCE_DOMAIN' && equal(expansion.sourceSets, ['main']) && expansion.directory === 'protocol' &&
+    (expansion.includeSubdirectories ?? true) === true && ['PRODUCTION_ONLY', 'PRODUCTION_AND_TEST'].includes(expansion.sourcePolicy) &&
+    expansion.generatedSources === 'EXCLUDE';
+}
+
 function rejectedImplementations(call, result, ref) {
   if (call.argv[0] !== 'query' || !Number.isInteger(call.status) || call.status === 0) return false;
+  if (result?.type === 'rejected' && result.failure === 'INVALID_ARGUMENTS') return attemptedImplementationDraft(call, ref);
   if (result?.type === 'rejected' && result.failure === 'INVALID_COMMAND') {
     const flags = parseFlags(call.argv.slice(1), new Set(['--ref', '--relation', '--in', '--source-set', '--output']));
     return equal(flags?.get('--ref'), [ref]) && equal(flags.get('--relation'), ['implementations']) &&

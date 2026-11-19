@@ -103,6 +103,25 @@ qcd('null-after-proof', null, [discover, read, resolved], false, 0);
 qcd('null-without-attempt', null, [discover, read], false, 0);
 qcd('rejection-of-other-ref', null, [discover, read, { ...rejected, argv: rejected.argv.map(v => v === 'issued' ? 'other' : v) }], false, 0);
 
+// The Sol trial selected SYMBOLS without fields. The rejection binds the attempted question only.
+const attemptedScope = { type: 'SOURCE_DOMAIN', sourceSets: ['main'], directory: 'protocol', includeSubdirectories: true,
+  sourcePolicy: 'PRODUCTION_ONLY', generatedSources: 'EXCLUDE' };
+const attemptedStep = { type: 'EXPAND_RELATION', relation: 'IMPLEMENTATIONS', expansionScope: attemptedScope };
+const attemptedQuery = { type: 'RUN', source: { type: 'SYMBOL_REFS', symbolRefs: ['issued'] }, steps: [attemptedStep],
+  terminalStep: { type: 'EMIT', output: { type: 'SYMBOLS' } }, retention: 'RETAIN' };
+const invalidJsonDraft = request => ({ ...call(['query', '--request', '-'], { type: 'rejected', failure: 'INVALID_ARGUMENTS' }, 2),
+  input: JSON.stringify({ request }) });
+const jsonAttempt = invalidJsonDraft(attemptedQuery);
+qcd('rejected-symbol-output', null, [discover, read, jsonAttempt], false, 1);
+qcd('rejected-symbol-output-is-not-absence', [], [discover, read, jsonAttempt], false, 0);
+qcd('rejected-draft-other-directory', null, [discover, read, invalidJsonDraft({ ...attemptedQuery,
+  steps: [{ ...attemptedStep, expansionScope: { ...attemptedScope, directory: 'runtime' } }] })], false, 0);
+qcd('rejected-draft-other-ref', null, [discover, read, invalidJsonDraft({ ...attemptedQuery,
+  source: { type: 'SYMBOL_REFS', symbolRefs: ['other'] } })], false, 0);
+qcd('rejected-draft-other-relation', null, [discover, read, invalidJsonDraft({ ...attemptedQuery,
+  steps: [{ ...attemptedStep, relation: 'CALLERS' }] })], false, 0);
+qcd('rejected-draft-other-operation', null, [discover, read, invalidJsonDraft({ ...attemptedQuery, type: 'READ_SOURCE' })], false, 0);
+
 const originalQuestion = { ...query(ref, [step]), completion: { type: 'COMPLETE_ONLY', model: 'COMPILER_RESOLVED_STATIC_V1' } };
 function rejectedQuestion(question, detail = {}) {
   return call(['query', '--request', '-'], { type: 'rejected_document', document: {

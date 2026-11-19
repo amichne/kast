@@ -64,6 +64,8 @@ Use the installed example to select the directory, source sets, and source polic
 kast describe query --section examples --jq '[.content[].value | select(.request.steps[0].expansionScope.type == "SOURCE_DOMAIN")] | .[0]'
 ```
 
+For declaration names, set `terminalStep.output` to `{"type":"SYMBOLS","fields":["NAME"]}` in the request.
+
 Trace affected uses: references, implementations or overrides, direct callers, and one more caller layer:
 
 ```sh
