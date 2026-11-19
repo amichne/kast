@@ -90,7 +90,7 @@ jobs:
           python3 packaging/internal/composition/composed_release.py linux-support --output "$PWD/build/cloud-input/linux-support"
 
       - name: Set up pinned tools
-        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
