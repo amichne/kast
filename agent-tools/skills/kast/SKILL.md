@@ -27,6 +27,7 @@ kast query --name relay --in ledger/src/main/java/acme/legacy --kind function --
 ```
 
 Select an overload by owner, signature, receiver, and location before a one-hop relation.
+Use `--relation callers` for declarations that call it. Use `--relation callees` for declarations it calls.
 For Java `relay(int)`, select the row with the expected owner and the single parameter `kotlin/Int`.
 Use its reference with `--relation references` or `--relation callers`.
 If matches remain ambiguous, stop. Copy each issued reference unchanged.
@@ -53,7 +54,13 @@ Examine the outer outcome, scope, coverage, and limitations before a conclusion.
 An empty incomplete result cannot prove absence. A complete relation proves only its declared semantics.
 For a complete source-use answer, resolve imports, companion qualifiers, and unmatched sites.
 
-Read every retained page with the issued result reference, cursor, and original output kind.
+Read the next page with the issued result reference, presentation cursor, and original output kind.
+
+```sh
+kast result read --ref "$result_ref" --cursor "$cursor" --output "$output_kind"
+```
+
+If the result also supplies an evidence cursor, pass it with `--evidence-cursor`.
 Use resume only with an issued output continuation. Never repeat semantic work to recover output.
 After a source change or freshness rejection, discard stale source evidence.
 

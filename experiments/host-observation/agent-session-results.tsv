@@ -1,0 +1,39 @@
+eval_id	case	arm	repeat	outcome	tool_calls	total_tokens	complete_query_path	answer_or_provider_error
+eval-AVg-2026-11-19T05:58:49	adapter-a	source	1	abstained	0	286		UNKNOWN
+eval-AVg-2026-11-19T05:58:49	adapter-a	source	2	abstained	0	288		UNKNOWN
+eval-AVg-2026-11-19T05:58:49	adapter-a	kast	1	passed	2	2925	adapter-a/src/main/kotlin/invoices/InvoiceReference.kt	adapter-a/src/main/kotlin/invoices/InvoiceReference.kt
+eval-AVg-2026-11-19T05:58:49	adapter-a	kast	2	passed	2	2922	adapter-a/src/main/kotlin/invoices/InvoiceReference.kt	adapter-a/src/main/kotlin/invoices/InvoiceReference.kt
+eval-AVg-2026-11-19T05:58:49	adapter-a	materialized	1	passed	0	323		adapter-a/src/main/kotlin/invoices/InvoiceReference.kt
+eval-AVg-2026-11-19T05:58:49	adapter-a	materialized	2	passed	0	307		adapter-a/src/main/kotlin/invoices/InvoiceReference.kt
+eval-AVg-2026-11-19T05:58:49	adapter-b	kast	1	passed	2	2922	adapter-b/src/main/kotlin/invoices/InvoiceReference.kt	adapter-b/src/main/kotlin/invoices/InvoiceReference.kt
+eval-AVg-2026-11-19T05:58:49	adapter-b	kast	2	passed	2	2922	adapter-b/src/main/kotlin/invoices/InvoiceReference.kt	adapter-b/src/main/kotlin/invoices/InvoiceReference.kt
+eval-AVg-2026-11-19T05:58:49	adapter-b	materialized	1	passed	0	307		adapter-b/src/main/kotlin/invoices/InvoiceReference.kt
+eval-AVg-2026-11-19T05:58:49	adapter-b	materialized	2	passed	0	288		adapter-b/src/main/kotlin/invoices/InvoiceReference.kt
+eval-AVg-2026-11-19T05:58:49	adapter-b	source	1	abstained	0	285		UNKNOWN
+eval-AVg-2026-11-19T05:58:49	adapter-b	source	2	abstained	0	285		UNKNOWN
+eval-c9W-2026-11-19T05:58:25	callees	prior	1	passed	2	3831		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callees""]"
+eval-c9W-2026-11-19T05:58:25	callees	prior	2	passed	2	3859		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callees""]"
+eval-c9W-2026-11-19T05:58:25	callees	prior	3	passed	2	3831		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callees""]"
+eval-c9W-2026-11-19T05:58:25	retained	prior	1	passed	5	12261		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""symbols""]"
+eval-c9W-2026-11-19T05:58:25	retained	prior	2	provider-error	4	6407		Pi did not finish normally
+eval-c9W-2026-11-19T05:58:25	retained	prior	3	passed	4	8367		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""symbols""]"
+eval-TLX-2026-11-19T06:01:10	callees	revised	1	passed	1	1495		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callees""]"
+eval-TLX-2026-11-19T06:01:10	callees	revised	2	passed	1	1497		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callees""]"
+eval-TLX-2026-11-19T06:01:10	callees	revised	3	passed	1	1497		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callees""]"
+eval-TLX-2026-11-19T06:01:10	retained	revised	1	passed	1	1505		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""symbols""]"
+eval-TLX-2026-11-19T06:01:10	retained	revised	2	passed	1	1503		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""symbols""]"
+eval-TLX-2026-11-19T06:01:10	retained	revised	3	passed	1	1503		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""symbols""]"
+eval-XAD-2026-11-19T06:05:38	incoming-callers	prior	1	passed	1	1424		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callers""]"
+eval-XAD-2026-11-19T06:05:38	incoming-callers	prior	2	passed	1	1424		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callers""]"
+eval-XAD-2026-11-19T06:05:38	incoming-callers	prior	3	passed	1	1430		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callers""]"
+eval-XAD-2026-11-19T06:05:38	retained-occurrences	prior	1	passed	5	12262		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""occurrences""]"
+eval-XAD-2026-11-19T06:05:38	retained-occurrences	prior	2	passed	5	12256		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""occurrences""]"
+eval-XAD-2026-11-19T06:05:38	retained-occurrences	prior	3	passed	4	10214		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""occurrences""]"
+eval-l3q-2026-11-19T06:05:00	incoming-callers	revised	1	passed	1	1495		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callers""]"
+eval-l3q-2026-11-19T06:05:00	incoming-callers	revised	2	passed	1	1495		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callers""]"
+eval-l3q-2026-11-19T06:05:00	incoming-callers	revised	3	passed	1	1491		"[""kast"",""query"",""--ref"",""EXACT_REF"",""--relation"",""callers""]"
+eval-l3q-2026-11-19T06:05:00	retained-occurrences	revised	1	passed	1	1502		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""occurrences""]"
+eval-l3q-2026-11-19T06:05:00	retained-occurrences	revised	2	passed	1	1502		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""occurrences""]"
+eval-l3q-2026-11-19T06:05:00	retained-occurrences	revised	3	passed	1	1504		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""occurrences""]"
+eval-gaV-2026-11-19T06:03:19	retained	prior-repeat	1	passed	4	10223		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""symbols""]"
+eval-0Oo-2026-11-19T06:03:05	retained	revised-repeat	1	passed	1	1503		"[""kast"",""result"",""read"",""--ref"",""RESULT_REF"",""--cursor"",""CURSOR"",""--output"",""symbols""]"
