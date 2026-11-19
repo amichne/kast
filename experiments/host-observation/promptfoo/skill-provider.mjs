@@ -3,12 +3,12 @@ import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { access, cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { delimiter, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { decodeReplayCredential } from '../pi_evaluation_replay_auth.mjs';
 import { loadKastGuidance, stageKastGuidance } from './kast-guidance.mjs';
-import { armCapabilities, completionFile, invocationFile, originalCases, skillCases } from './skill-cases.mjs';
+import { armCapabilities, completionFile, guidedCases, invocationFile, originalCases, skillCases } from './skill-cases.mjs';
 import { runtimeEnvironment } from './skill-sandbox.mjs';
 import { observePiTrial, projectPiTrial, snapshotPiCatalog } from './pi-accounting.mjs';
 import { admitParticipantSurface, createParticipantDirectory } from './participant-surface.mjs';
@@ -441,8 +441,26 @@ export async function prepareFixtureWorkspace(directory) {
   return workspace;
 }
 
+/** A trial-owned copy of the fixture without a Gradle wrapper; the caller stops its Host and removes it. */
+export async function prepareUnwrappedWorkspace() {
+  const parent = await realpath(await mkdtemp(join(tmpdir(), 'kast-unwrapped-')));
+  const workspace = join(parent, 'callback-service');
+  try {
+    await cp(fixture, workspace, { recursive: true });
+    const initialized = await child('git', ['init', '-q'], { cwd: workspace, timeout: 10_000 });
+    if (initialized.status !== 0) throw Error('Could not initialize the unwrapped workspace');
+    await validateFixtureKotlin(workspace);
+    if (await workspaceDirectoryExists(join(workspace, 'gradle'))) throw Error('Unwrapped workspace has a Gradle wrapper');
+    return { root: workspace, owned: parent };
+  } catch (error) {
+    await rm(parent, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 export async function prepareWorkspace(scenario, directory) {
   if (!scenario.workspace) return { root: directory };
+  if (scenario.workspace === 'unwrapped') return prepareUnwrappedWorkspace();
   if (scenario.workspace === 'repository') {
     const workspace = await realpath(process.env.KAST_EVAL_QCD_WORKSPACE ?? root);
     if (!(await stat(join(workspace, completionFile))).isFile()) throw Error('QueryCompletionDocument source unavailable');
@@ -488,17 +506,19 @@ export default class SkillProvider {
     const capabilities = armCapabilities[arm];
     const scenario = skillCases[caseId];
     if (!Object.hasOwn(skillCases, caseId) || !Object.hasOwn(armCapabilities, arm) || capabilities.comparison !== comparison ||
-        (caseId === 'source-lookup') !== (comparison === 'guided-kast-access') ||
+        guidedCases.has(caseId) !== (comparison === 'guided-kast-access') ||
         (comparison === 'skill-version' && !originalCases.includes(caseId)) || prompt !== scenario.prompt) {
       return { error: 'Invalid skill evaluation case or arm' };
     }
     const directory = await createParticipantDirectory();
+    let kast;
+    let workspace;
     try {
       const draftBinary = arm === 'reference' ? process.env.KAST_EVAL_REFERENCE_KAST :
         arm === 'delivered' ? process.env.KAST_EVAL_DELIVERED_DRAFT_KAST : undefined;
-      const kast = await binary((!scenario.workspace && draftBinary) || process.env.KAST_EVAL_KAST, 'kast');
-      const workspace = await prepareWorkspace(scenario, directory);
-      if (scenario.workspace) await warmWorkspace(workspace.root, kast, scenario.workspace);
+      kast = await binary((!scenario.workspace && draftBinary) || process.env.KAST_EVAL_KAST, 'kast');
+      workspace = await prepareWorkspace(scenario, directory);
+      if (scenario.workspace && !workspace.owned) await warmWorkspace(workspace.root, kast, scenario.workspace);
       const guidance = await guidanceFor(capabilities);
       const model = process.env.KAST_EVAL_PI_MODEL ?? defaultModel;
       const trial = await runIsolatedPi({
@@ -537,6 +557,10 @@ export default class SkillProvider {
     } catch (error) {
       return { ...projectPiTrial(error.trial), error: error.message };
     } finally {
+      if (workspace?.owned) {
+        await child(kast, ['stop', '--workspace', workspace.root, '--json'], { cwd: workspace.owned, timeout: 60_000 });
+        await rm(workspace.owned, { recursive: true, force: true });
+      }
       await rm(directory, { recursive: true, force: true });
     }
   }

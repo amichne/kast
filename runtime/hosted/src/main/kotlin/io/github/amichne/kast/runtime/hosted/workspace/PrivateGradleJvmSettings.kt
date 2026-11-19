@@ -70,8 +70,22 @@ internal fun rejectPrivateGradleJvmSettings(
     failure: PrivateGradleJvmFailure
 ): Refinement.Rejected<io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure> {
     recordPrivateGradleJvm(PrivateGradleJvmObservation.Rejected(failure))
-    return Refinement.Rejected(io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure.EFFECT_FAILED)
+    return Refinement.Rejected(failure.publicFailure())
 }
+
+/** Keeps the user's corrective action distinct on the wire; the finer reason stays in the bounded Host log. */
+internal fun PrivateGradleJvmFailure.publicFailure(): io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure =
+    when (this) {
+        PrivateGradleJvmFailure.GRADLE_DISTRIBUTION_UNAVAILABLE ->
+            io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure.GRADLE_DISTRIBUTION_UNAVAILABLE
+        PrivateGradleJvmFailure.DECLARED_HOME_INVALID,
+        PrivateGradleJvmFailure.DECLARED_JAVA_UNSUPPORTED,
+        PrivateGradleJvmFailure.NO_COMPATIBLE_LOCAL_JDK,
+        PrivateGradleJvmFailure.AMBIGUOUS_SDK_REGISTRATION,
+        PrivateGradleJvmFailure.SDK_NAME_CONFLICT,
+        PrivateGradleJvmFailure.HOME_NOT_INSPECTED ->
+            io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure.GRADLE_JVM_UNAVAILABLE
+    }
 
 /** A native SDK reference bound to the selected home, ready for the existing import owner to persist. */
 internal class PrivateGradleJvmBinding

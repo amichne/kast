@@ -188,7 +188,7 @@ def test_all_task_requests_match_repository_contract() -> None:
     schema = json.loads((root / "agent-tools/references/query-schema.json").read_text())
     exact = "exact:v5:AAAAAAAAAAAAAAAAAAAAAA"
     commands = [
-        ["find", "Thing", "--kind", "interface", "--source-set", "main"],
+        ["find", "Thing", "--kind", "class", "--source-set", "main"],
         ["callers", "--ref", exact],
         ["references", "--ref", exact, "--directory", "cli", "--source-set", "main"],
         ["trace", "--ref", exact],

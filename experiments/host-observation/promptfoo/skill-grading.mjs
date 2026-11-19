@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { resolve } from 'node:path';
 import { completionFile, invocationFile, liveNames, skillCases } from './skill-cases.mjs';
-import { parseFlags } from './skill-sandbox.mjs';
+import { parseFlags, sourceFlags } from './skill-sandbox.mjs';
 
 const selectFlags = new Set(['--name', '--name-match', '--in', '--kind', '--source-set', '--fields', '--output']);
 const references = { type: 'references', values: [{ token: 'EXACT_REF' }] };
@@ -101,6 +101,43 @@ function callback(output, metadata) {
   return false;
 }
 
+function unprepared(output, metadata) {
+  if (output !== 'UNKNOWN GRADLE_DISTRIBUTION_UNAVAILABLE') return false;
+  const attempts = metadata.calls.filter(call => call?.tool === 'kast' && call.argv?.[0] === 'query')
+    .map(call => JSON.stringify([call.argv, call.input ?? null]));
+  if (new Set(attempts).size !== attempts.length) return false;
+  return recordedQueries(metadata.calls).some(({ type, document }) => type === 'rejected_document' &&
+    document?.status === 'rejected' && document.boundary === 'managed_preparation' &&
+    document.failure?.cause?.type === 'lifecycle' && document.failure.cause.reason === 'GRADLE_DISTRIBUTION_UNAVAILABLE');
+}
+
+function literalRead(output, metadata) {
+  return output === 'escape' && !metadata.calls.some(call => call?.tool === 'kast') && metadata.calls.some(
+    call => call?.tool === 'search_kotlin_source' && Array.isArray(call.matches) &&
+      call.matches.some(row => row?.file === invocationFile && /\bfun\s+escapeSink\s*\(\)[^=]*=\s*"escape"/.test(row.line)),
+  );
+}
+
+function readsTenLineWindow(call, document, ref) {
+  if (call.argv[0] === 'query') {
+    const input = parse(call.input);
+    const action = input?.request ?? input;
+    return action?.type === 'READ_SOURCE' && action.candidateRef === ref && (action.region ?? 'ANCHOR') === 'ANCHOR' &&
+      action.text?.type === 'WINDOW' && action.text.beforeLines === 10 && action.text.afterLines === 10;
+  }
+  if (call.argv[0] !== 'source' || call.argv[1] !== 'read') return false;
+  const flags = parseFlags(call.argv.slice(2), sourceFlags);
+  if (!equal(flags?.get('--ref'), [ref]) || !equal(flags.get('--region') ?? ['anchor'], ['anchor']) ||
+      !equal(flags.get('--text') ?? ['complete'], ['complete'])) return false;
+  // A window clips both ends to its selected region. In a complete anchor of at most eleven
+  // lines, every line lies within ten lines of any focus, so both projections return the same text.
+  const region = document.region.selection;
+  const range = region?.range;
+  return typeof region?.selector === 'string' && Number.isSafeInteger(range?.startInclusive) && range.startInclusive >= 0 &&
+    Number.isSafeInteger(range.endExclusive) && range.endExclusive - range.startInclusive === document.text.text.length &&
+    equal(document.text.selection, region) && document.text.text.split('\n').length <= 11;
+}
+
 function queryCompletion(output, metadata) {
   if (!equal(parse(output), { path: completionFile, declarationKind: 'data class', implementations: [] })) return false;
   const calls = metadata.calls.filter(call => call?.tool === 'kast' && Array.isArray(call.argv));
@@ -114,13 +151,10 @@ function queryCompletion(output, metadata) {
     if (call.status !== 0 || result?.type !== 'complete') continue;
     const doc = result.document;
     if (doc?.operation === 'source.read') {
-      const request = parse(call.input);
-      const action = request?.request ?? request;
-      const tenLineWindow = action?.text?.type === 'WINDOW' && action.text.beforeLines === 10 && action.text.afterLines === 10;
-      if (seed && action?.type === 'READ_SOURCE' && action.candidateRef === seed.ref && action.region === 'ANCHOR' &&
-          tenLineWindow && doc.status === 'complete' && doc.region?.kind === 'declaration' &&
+      if (seed && doc.status === 'complete' && doc.region?.kind === 'declaration' &&
           doc.snapshot?.file === resolve(metadata.workspace, completionFile) && equal(doc.live, seed.live) &&
-          doc.text?.type === 'returned' && /\bdata class QueryCompletionDocument\b/.test(doc.text.text)) sourceRead = true;
+          doc.text?.type === 'returned' && typeof doc.text.text === 'string' &&
+          /\bdata class QueryCompletionDocument\b/.test(doc.text.text) && readsTenLineWindow(call, doc, seed.ref)) sourceRead = true;
       continue;
     }
     if (!exhaustive(doc, metadata.workspace)) continue;
@@ -208,6 +242,14 @@ export function gradeSkill(caseId, answer, metadata) {
           call => call?.tool === 'search_kotlin_source' && Array.isArray(call.matches) &&
             call.matches.some(row => row?.file === invocationFile && /\bfun\s+invokeCallback\s*\(/.test(row.line)),
         ));
+        exactFormat = pass;
+        break;
+      case 'literal-read':
+        pass = literalRead(answer, metadata);
+        exactFormat = pass;
+        break;
+      case 'unprepared':
+        pass = unprepared(answer, metadata);
         exactFormat = pass;
         break;
       case 'query-completion-document':

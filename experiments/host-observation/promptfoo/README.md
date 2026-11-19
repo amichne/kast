@@ -105,7 +105,7 @@ Promptfoo uses a fresh model response for each live trial. Provider caches can s
 | `pi.config.mjs` | Six replay graders, paired interface formats, fresh Pi tasks, received results, or a recorded target | Use `KAST_PI_EVAL_PLAN` for a live plan. Use `KAST_PI_EVAL_TARGET` for a recorded target. [Pi guide](../PI_EVALUATION.md) |
 | `agent-efficiency.config.mjs` | Paired control and Kast treatment on a curated development or holdout corpus. The optimization plan adds candidate configurations. | Supply the private corpus and `KAST_EFFICIENCY_PLAN`. [Efficiency guide](../AGENT_EFFICIENCY.md) |
 | `semantic-campaign.config.mjs` | Source witnesses for baseline, relation, and source variants across the named repositories | Supply `KAST_CAMPAIGN_PLAN` and the specified checkout, executable, and log. [Campaign guide](../CAMPAIGN_RESULTS.md) |
-| `skill.config.mjs` | Canonical skill, historical skill revisions, and a matched source lookup with and without Kast | Use Pi and Kast. The repository case uses this checkout or `KAST_EVAL_QCD_WORKSPACE`. |
+| `skill.config.mjs` | Canonical skill, historical skill revisions, and matched source questions with and without Kast | Use Pi and Kast. The repository case uses this checkout or `KAST_EVAL_QCD_WORKSPACE`. |
 | `task-access.config.mjs` | Eight contract-17 questions. Both arms get the historical schema. One also gets the historical skill and request preview. | Use Pi, uv, and Git history through `bc18ec841`. Select the model with `KAST_EVAL_TASK_MODEL`. [Original exercise](../../task-access/README.md) |
 | `imported-model.config.mjs` | Two identical Git trees with different imported Gradle projects. Each case asks which Kotlin file supplies a function. | Prepare the two workspaces and set `KAST_EVAL_IMPORTED_MODEL_ROOT`. [Fixture guide](imported-model.md) |
 | `retained-state.config.mjs` | Two prior queries with identical source. Three arms get different access to the prior query. | Use Pi and Kast. Each trial needs a working Host for the static callback fixture. |
@@ -129,6 +129,9 @@ The task-access suite runs each historical question in a new session. It uses a 
 It asks for scope, signatures, and locations where the original overload question left the intended scope open.
 The preview reads the pinned schema and never submits these illustrative references to a Host.
 The separate skill suite exercises live discovery, source, and implementations of `QueryCompletionDocument`.
+The `literal-read` case passes only when the agent answers from source without a Kast call.
+The `unprepared` case copies the fixture without a Gradle wrapper into an owned temporary directory.
+It passes only for the typed preparation cause with no identical retry. It stops that Host and removes the directory.
 
 The interface replay manifest also lists four reserved tasks. Its development suite runs the six cases with published graders.
 

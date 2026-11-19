@@ -2,6 +2,8 @@ export const invocationFile = 'invocation/src/main/kotlin/fixture/staticcallback
 export const completionFile = 'protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt';
 export const liveNames = { present: 'invokeCallback', absent: 'scheduleCallbackRetry' };
 export const originalCases = ['select', 'kind', 'walk', 'present', 'absent', 'callback'];
+// The guided comparison gives one arm source search; these cases measure when Kast should or should not run.
+export const guidedCases = new Set(['source-lookup', 'literal-read']);
 
 function declarationPrompt(name) {
   return `Which file declares the exact function ${name} under invocation in main? Return its workspace-relative path, ABSENT for proved absence, or UNKNOWN.`;
@@ -37,6 +39,16 @@ export const skillCases = {
     prompt: 'Use at most four Kast semantic calls without an identical retry. Find QueryCompletionDocument under protocol in main. Establish whether it is an interface. Read a source region that contains the declaration. Use ten lines of context on each side when the installed contract accepts a window. List its implementations under protocol in main. Keep issued identifiers. Preserve scope, completeness, failures, and omissions. Return only a JSON object with keys path, declarationKind, and implementations. Use the workspace-relative path and the Kotlin declaration form. Use an array of implementation names in the requested scope. Use null if Kast cannot prove the result.',
   },
   'source-lookup': { workspace: 'fixture', prompt: declarationPrompt(liveNames.present) },
+  // Source text answers this directly, so a correct Kast-enabled agent makes no Kast call.
+  'literal-read': {
+    workspace: 'fixture',
+    prompt: 'Which string literal does the function escapeSink return under invocation? Return only the literal text without quotes.',
+  },
+  // The workspace has no Gradle wrapper, so preparation must reject with a typed cause and no identical retry.
+  unprepared: {
+    workspace: 'unwrapped',
+    prompt: `${declarationPrompt(liveNames.present)} If Kast cannot answer, return UNKNOWN followed by one space and the Kast cause code.`,
+  },
 };
 
 export const armCapabilities = {

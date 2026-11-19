@@ -53,7 +53,8 @@ class AgentOnboardingTest(unittest.TestCase):
                     text = result.stdout.rstrip("\n") + "\n"
                 texts.append(text)
                 self.assertLessEqual(len(text.encode()), 8192)
-                self.assertIn("The `interface` kind searches the CLASS family", text)
+                self.assertIn("Use `kind` `class` for interfaces", text)
+                self.assertIn("A missing `directory` returns a complete, empty result", text)
                 for clause in (
                     "Apply the task's source-set and path exclusions before each read batch",
                     "Remove duplicate paths and reuse unchanged source reads",

@@ -244,7 +244,7 @@ def parser() -> Parser:
     )
     find.add_argument("name")
     find.add_argument(
-        "--kind", choices=["class", "interface", "function", "property", "type_alias"]
+        "--kind", choices=["class", "function", "property", "type_alias"]
     )
     scope = find.add_mutually_exclusive_group()
     scope.add_argument("--directory")
@@ -430,13 +430,7 @@ def query(options: Options) -> Query:
                 sourceSetNames=source_sets(options),
             )
         )
-        kind = (
-            "CLASS"
-            if options.kind == "interface"
-            else options.kind.upper()
-            if options.kind
-            else None
-        )
+        kind = options.kind.upper() if options.kind else None
         action = Run(
             source=Search(
                 declarationName=options.name,

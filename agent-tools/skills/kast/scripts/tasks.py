@@ -54,7 +54,9 @@ class Find(Controls):
     name: str = Field(
         min_length=1, description="Simple declaration name. Keep known kind and scope."
     )
-    kind: Literal["class", "interface", "function", "property", "type_alias"] | None = None
+    kind: Literal["class", "function", "property", "type_alias"] | None = Field(
+        default=None, description="Declaration family. class includes interfaces, objects, and enums."
+    )
     directory: str | None = Field(
         default=None, description="Declaration directory, not the call site."
     )
@@ -141,7 +143,7 @@ class Task:
 TASKS = (
     Task(
         "find",
-        "Find declarations before relationships. Names can match overloads. Select owner, signature, and location before using an issued ref. The interface kind searches the CLASS family, so read source to establish the declaration kind.",
+        "Find declarations before relationships. Names can match overloads and same-named declarations in other packages. Select owner, signature, and location before using an issued ref. Use kind class for interfaces, then read source to establish the declaration form.",
         Find,
     ),
     *(

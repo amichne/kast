@@ -1,72 +1,134 @@
 ---
 name: kast
-description: Use Kast for Kotlin queries and exact Java class and method queries in an imported workspace.
+description: Use Kast when a Kotlin or Java answer depends on compiler resolution in a Gradle workspace, such as which declaration a name or call selects, callers, callees, implementations, or references across files, which file the imported build compiles, or compiler diagnostics. Skip it when reading or searching known source answers the question.
 ---
 
 # Kast
 
-Use Kast for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects.
-Use `kast` in the exact workspace that the user trusts.
-The first semantic query trusts its build code and prepares its private IntelliJ IDEA Host.
-Later calls reuse that Host.
+Kast answers Kotlin and Java questions from the IntelliJ compiler model of one Gradle workspace.
+The first query trusts the workspace build code and prepares a private Host. Preparation can take minutes.
+Later calls reuse that Host. Use Kast only in a workspace whose build code the user trusts.
 
-## Find a declaration
+## Decide first
 
-Put each known constraint on the first query. Use `--in` for the requested directory and `--source-set` for each requested source set.
-The default includes both `main` and `test`. Use `--kind class` for interfaces.
+Use Kast when the answer depends on resolution:
 
-```sh
-kast query --name OrderService --in services/orders --source-set main --kind class --fields name,signature,location
-kast query --ref "$exact_ref" --relation callers
-```
+- which overload or same-named declaration a name or call selects
+- callers, callees, implementations, overrides, or references outside one file
+- which file the imported Gradle build compiles
+- compiler diagnostics without a build
 
-In mixed Java and Kotlin sources, find Java classes, interfaces, and methods by exact name. This lookup excludes constructors.
-For a Java method, use its declaring directory and `--kind function`.
+Skip Kast when a file read or text search answers the question, such as file content, a literal, or an edit in a known file.
+A Kast call costs more tokens than a read.
 
-```sh
-kast query --name relay --in ledger/src/main/java/acme/legacy --kind function --fields name,signature,location
-```
+## Commands
 
-Select an overload by owner, signature, receiver, and location before a one-hop relation.
-Use `--relation callers` for declarations that call it. Use `--relation callees` for declarations it calls.
-For Java `relay(int)`, select the row with the expected owner and the single parameter `kotlin/Int`.
-Use its reference with `--relation references` or `--relation callers`.
-If matches remain ambiguous, stop. Copy each issued reference unchanged.
-A call site's directory does not establish the target's directory.
-A cursor at a call selects the enclosing declaration. Examine source before an interface claim.
-Keep the requested scope on source reads. Location ranges use UTF-16 offsets.
-
-## Discover syntax
-
-For an unknown flag name, use `kast query --help`. For accepted values, read the flag entry.
-For a relation across several hops, use a `WALK` step. Select installed examples by step type.
-Use the matching example as the request contract. Adapt its reference, relation, depth, output, and budget.
+Run commands from the workspace root, or add `--workspace /absolute/root`.
+Set this filter once. It reports the verdict and the rows that you need:
 
 ```sh
-kast describe query --jq '.content.flags[] | select(.name == "--kind")'
-kast describe query --section examples --jq '[.content[].value | select(.request.steps[0].type == "WALK")]'
+verdict='{type, status: .document.status, exhaustive: .document.coverage.exhaustive,
+  failures: .document.original_evidence_summary.failure_count,
+  omissions: .document.original_evidence_summary.omission_count,
+  rows: .document.row_window.type, next_cursor: .document.next_cursor,
+  result: .document.retention.reference,
+  items: [.document.items[]? |
+    if .type == "exact-symbol" then {name, signature, ref, file: .location.file} else . end]}'
 ```
 
-If no example matches, use the [discovery guide](public-cli.md#discover-only-what-you-need).
-
-## Use the evidence
-
-Examine the outer outcome, scope, coverage, and limitations before a conclusion.
-An empty incomplete result cannot prove absence. A complete relation proves only its declared semantics.
-For a complete source-use answer, resolve imports, companion qualifiers, and unmatched sites.
-
-Read the next page with the issued result reference, presentation cursor, and original output kind.
+Find a declaration. Put each known constraint on the first call:
 
 ```sh
-kast result read --ref "$result_ref" --cursor "$cursor" --output "$output_kind"
+kast query --name OrderService --in services/orders --source-set main --kind class \
+  --fields name,signature,location --jq "$verdict"
 ```
 
-If the result also supplies an evidence cursor, pass it with `--evidence-cursor`.
-Use resume only with an issued output continuation. Never repeat semantic work to recover output.
-After a source change or freshness rejection, discard stale source evidence.
+Follow one relation from an exact declaration:
 
-A client timeout or cancellation leaves Host settlement uncertain. Never retry uncertain work automatically.
-Keep the failure or receipt and its recovery instructions.
-If admission rejects the workspace or Host, state the reason and qualify source reads.
+```sh
+kast query --ref "$ref" --relation callers --fields name,signature,location --jq "$verdict"
+```
 
-See the guide for [optional MCP tools](public-cli.md#optional-mcp-tools) and [fresh sessions after updates](public-cli.md#fresh-sessions).
+Relations are `references`, `callers`, `callees`, `implementations`, `inheritors`, `overrides`, and `type-uses`.
+Find and expand in one call only when `--in` narrows the name to one declaration:
+
+```sh
+kast query --name AuditSink --in src/main/kotlin/parcel/audit --kind class \
+  --relation implementations --jq "$verdict"
+```
+
+Trace affected uses: references, implementations or overrides, direct callers, and one more caller layer:
+
+```sh
+kast query --ref "$ref" --terminal trace --jq "$verdict"
+```
+
+Read source for an issued reference. Start with the default anchor region:
+
+```sh
+kast source read --ref "$ref" --jq '{type, status: .document.status, text: .document.text.text}'
+kast source read --ref "$ref" --region class-body
+```
+
+For context lines, pass a `READ_SOURCE` request to `kast query --request -` on stdin.
+Replace `ISSUED_REF` with the exact ref. This example requests ten lines on each side within the anchor region.
+
+```json
+{"request":{"type":"READ_SOURCE","candidateRef":"ISSUED_REF","region":"ANCHOR","text":{"type":"WINDOW","beforeLines":10,"afterLines":10}}}
+```
+
+Check compiler diagnostics. Use `--path .` for the workspace root:
+
+```sh
+kast diagnostic check --path src/main/kotlin --max-diagnostics 20 \
+  --jq '{type, coverage: .document.coverage, diagnostics: .document.diagnostics}'
+```
+
+For several hops of one relation, copy the installed `WALK` example, then replace its placeholder ref:
+
+```sh
+kast describe query --section examples --jq '[.content[].value | select(.request.steps[0].type == "WALK")] | .[0]'
+kast query --request walk.json --jq "$verdict"
+```
+
+For an unknown flag value, inspect that flag:
+
+```sh
+kast describe query --jq '.content.flags[] | select(.name == "--kind") | {value_spellings, schema}'
+```
+
+## Read the verdict
+
+Claim a complete answer only when `type` and `status` are `complete`, `exhaustive` is `true`, and both counts are `0`.
+`rows` set to `MORE` means that more rows exist. The query still reports `complete` and exits `0`.
+Read the next page with the retained result and cursor. Use the original output kind:
+
+```sh
+kast result read --ref "$result" --cursor "$next_cursor" --output symbols --jq "$verdict"
+```
+
+Never repeat a query to recover output. If the result issues an evidence cursor, pass it with `--evidence-cursor`.
+A qualified or incomplete result never proves absence. Report its omissions and failures.
+
+## Failures
+
+A rejection prints its document without the `--jq` projection and exits with a nonzero status.
+Read `.document.rejection`, `.document.failure`, and `.document.next_action`, then use the [failure guide](public-cli.md#failures).
+Never repeat an identical failed call. Change an input or a prerequisite first.
+Exit `4` with `GRADLE_DISTRIBUTION_UNAVAILABLE` or `GRADLE_JVM_UNAVAILABLE` names a build setup problem for the user.
+Exit `124` or a cancellation leaves native work uncertain. Do not retry automatically.
+If Kast cannot answer, use ordinary source reads and state the limitation.
+
+## Pitfalls
+
+- A name can match overloads and same-named declarations in other packages. A relation from `--name` expands every match together.
+- A missing `--in` directory returns a complete, empty result. Confirm the directory before an absence claim.
+- `--kind class` includes interfaces, objects, and enums. Read source before you state the declaration form.
+- Each query can issue a new ref for the same declaration. Copy refs unchanged; compare file and signature instead.
+- Java primitives appear as Kotlin types. Java `relay(int)` has the single parameter `kotlin/Int`.
+- A cursor on a call selects the enclosing declaration, not the callee.
+- Location ranges are UTF-16 offsets, not line numbers.
+- Source sets default to `main` and `test`. Pass each `--source-set` the task requests.
+- A lambda stored in a constructor or a non-inline parameter has no caller in the enclosing function. See [stored lambdas](public-cli.md#calls-inside-stored-lambdas).
+
+See the guide for [operation choices](public-cli.md#choose-the-operation-first), [request documents](public-cli.md#request-documents), [optional MCP tools](public-cli.md#optional-mcp-tools), and [fresh sessions](public-cli.md#fresh-sessions).

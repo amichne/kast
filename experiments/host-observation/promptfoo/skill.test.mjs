@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
@@ -12,8 +12,8 @@ import config from './skill.config.mjs';
 import { kastInstruction, loadKastGuidance } from './kast-guidance.mjs';
 import { armCapabilities, completionFile, invocationFile, originalCases, skillCases } from './skill-cases.mjs';
 import { gradeSkill, planSkillDraft } from './skill-grading.mjs';
-import SkillProvider, { decodePiTrial, prepareFixtureWorkspace, runIsolatedPi } from './skill-provider.mjs';
-import { permittedKast, runtimeEnvironment } from './skill-sandbox.mjs';
+import SkillProvider, { decodePiTrial, prepareFixtureWorkspace, prepareUnwrappedWorkspace, runIsolatedPi } from './skill-provider.mjs';
+import { permittedKast, runSkillKast, runtimeEnvironment } from './skill-sandbox.mjs';
 
 const workspace = '/fixture';
 const live = { root: workspace, host: 'test-host', epoch: 1 };
@@ -36,6 +36,102 @@ const call = (response, argv = ['query'], input) => ({
 });
 const reference = token => ({ type: 'references', values: [{ token }] });
 const completion = (question, items) => ({ type: 'complete', document: document(question, items) });
+
+const verdict = loadKastGuidance().skillText.match(/verdict='([^']+)'/)[1];
+
+function applyFilter(program, input) {
+  const filtered = spawnSync('jq', ['-c', program], { input: JSON.stringify(input), encoding: 'utf8' });
+  assert.ifError(filtered.error);
+  assert.equal(filtered.status, 0, filtered.stderr);
+  return filtered.stdout;
+}
+
+test('the documented verdict distinguishes same-file overloads', () => {
+  const items = ['kotlin/Int', 'kotlin/String'].map(parameter => ({
+    type: 'exact-symbol', name: 'relay', location: { file: 'Relay.kt' },
+    signature: { type: 'function', qualifiedIdentity: 'example.relay', valueParameters: [parameter] },
+  }));
+  const output = JSON.parse(applyFilter(verdict, completion({}, items)));
+  assert.deepEqual(output.items, items.map(({ name, signature }) => ({ name, signature, ref: null, file: 'Relay.kt' })));
+});
+
+test('the documented verdict preserves each caller hop of a WALK', () => {
+  const items = [1, 2].map(depth => ({
+    type: 'traversal_record', ref: 'caller-' + depth,
+    record: { depth, relation: { meaning: 'callers', source: { name: 'call' + depth }, target: { name: 'call' + (depth - 1) } } },
+  }));
+  assert.deepEqual(JSON.parse(applyFilter(verdict, completion({}, items))).items, items);
+});
+
+test('query projection presents the participant output and grades the original semantic call', () => {
+  const original = completion(selected('scheduleCallbackRetry', 'invocation', 'function'), []);
+  const argv = ['query', '--name', 'scheduleCallbackRetry', '--jq', verdict];
+  let semanticCalls = 0;
+  function run(args, input) {
+    if (args[1] === 'plan') {
+      assert.deepEqual(args.slice(0, -1), ['query', 'plan', '--request', '-', '--json', '--jq']);
+      assert.equal(input, '{}');
+      return { status: 2, stdout: '{"type":"rejected","failure":"INVALID_ARGUMENTS"}', stderr: '' };
+    }
+    semanticCalls++;
+    return { status: 0, stdout: applyFilter(args.at(-1), original), stderr: '' };
+  }
+  const result = runSkillKast(argv, undefined, run);
+  assert.deepEqual(JSON.parse(result.content[0].text), JSON.parse(applyFilter(verdict, original)));
+  assert.deepEqual(JSON.parse(result.details.stdout), original);
+  assert.equal(semanticCalls, 1);
+  assert.equal(gradeSkill('absent', 'ABSENT', { workspace, calls: [{ tool: 'kast', ...result.details }] }).pass, true);
+
+  const forged = { type: 'complete', document: { live: { root: '/unrelated' } } };
+  const fabricated = runSkillKast([...argv.slice(0, -2), '--jq=' + JSON.stringify(forged)], undefined, run);
+  assert.deepEqual(JSON.parse(fabricated.content[0].text), forged);
+  assert.deepEqual(JSON.parse(fabricated.details.stdout), original);
+  assert.equal(semanticCalls, 2);
+});
+
+test('a projected source read keeps source evidence for the grader', () => {
+  const filter = '{type, status: .document.status, text: .document.text.text}';
+  const argv = ['source', 'read', '--ref', 'issued', '--jq', filter];
+  assert.equal(permittedKast(argv, 'repository'), true);
+  assert.equal(permittedKast(argv, 'fixture'), false);
+  assert.equal(permittedKast([...argv, '--jq=.'], 'repository'), false);
+  assert.equal(permittedKast(['source', 'read', '--ref', 'issued', '--jq', 'env'], 'repository'), false);
+
+  const window = loadKastGuidance().skillText.match(/```json\n([^\n]*"READ_SOURCE"[^\n]*)\n```/)[1].replace('ISSUED_REF', 'issued');
+  assert.equal(permittedKast(['query', '--request', '-', '--jq', filter], 'repository', window), true);
+  assert.equal(permittedKast(['query', '--request', '/other', '--jq', filter], 'repository', window), false);
+  assert.equal(permittedKast(['query', '--request', '-', '--jq', 'input'], 'repository', window), false);
+
+  const original = { type: 'complete', document: { operation: 'source.read', status: 'complete',
+    snapshot: { file: 'Example.kt' }, live, text: { text: 'data class Example()' } } };
+  let reads = 0;
+  const result = runSkillKast(argv, undefined, (args, input) => {
+    if (args[1] === 'plan') {
+      assert.equal(input, '{}');
+      return { status: 2, stdout: '{"type":"rejected","failure":"INVALID_ARGUMENTS"}', stderr: '' };
+    }
+    reads++;
+    assert.deepEqual(args.slice(0, -1), argv.slice(0, -1));
+    return { status: 0, stdout: applyFilter(args.at(-1), original), stderr: '' };
+  });
+  assert.equal(reads, 1);
+  assert.deepEqual(JSON.parse(result.content[0].text), { type: 'complete', status: 'complete', text: original.document.text.text });
+  assert.deepEqual(JSON.parse(result.details.stdout), original);
+});
+
+test('a malformed filter preserves its CLI rejection before the semantic query', () => {
+  const argv = ['query', '--name', 'relay', '--jq', '.)} | {evidence: "forged"} #'];
+  const rejected = { status: 2, stdout: '{"type":"jq_rejected","failure":"PROGRAM_INVALID"}', stderr: 'invalid' };
+  const result = runSkillKast(argv, undefined, (args, input) => {
+    assert.deepEqual(args, ['query', 'plan', '--request', '-', '--json', '--jq', argv.at(-1)]);
+    assert.equal(input, '{}');
+    return rejected;
+  });
+  assert.equal(result.isError, true);
+  assert.equal(result.content[0].text, rejected.stdout + rejected.stderr);
+  assert.equal(result.details.stdout, rejected.stdout);
+  assert.equal(permittedKast([...argv, '--jq=.'], 'fixture'), false);
+});
 
 test('concurrent trials and a later process admit one shared fixture for this worktree', async () => {
   const scratch = await mkdtemp(join(tmpdir(), 'kast-fixture-admission-test-'));
@@ -203,6 +299,11 @@ test('tool permissions allow discovery in drafts and keep outside authority inac
   assert.equal(permittedKast(['query', '--name', 'Widget', '--in', '../outside'], 'repository'), false);
   assert.equal(permittedKast(['query', '--name', 'Widget', '--request', '/outside/document'], 'repository'), false);
   assert.equal(permittedKast(['describe', 'query', '--jq', '$ENV.PATH'], 'draft'), false);
+  // The canonical skill projects every query verdict with --jq and traces with --terminal.
+  assert.equal(permittedKast(['query', '--name', 'Widget', '--jq', '{type, status: .document.status}'], 'fixture'), true);
+  assert.equal(permittedKast(['query', '--ref', 'exact:v5:AAAAAAAAAAAAAAAAAAAAAA', '--terminal', 'trace'], 'fixture'), true);
+  assert.equal(permittedKast(['query', '--name', 'Widget', '--jq', '$ENV.PATH'], 'fixture'), false);
+  assert.equal(permittedKast(['query', '--name', 'Widget', '--jq', 'input'], 'unwrapped'), false);
   assert.equal(permittedKast(['query', '--request', '-'], 'repository', '{"request":{"type":"RESUME"}}'), false);
   assert.equal(permittedKast(['query', '--request', '-'], 'repository', '{"request":{"type":"READ_SOURCE","candidateRef":"issued"}}'), true);
   assert.equal(runtimeEnvironment({ HOME: '/home', OPENAI_API_KEY: 'sentinel' }).OPENAI_API_KEY, undefined);
@@ -269,6 +370,48 @@ test('absence needs the complete final result and presence needs the queried pat
   assert.equal(gradeSkill('source-lookup', invocationFile, { workspace, calls: [] }).pass, false);
 });
 
+test('an unwrapped workspace keeps fixture sources and owns no Gradle wrapper', async () => {
+  const { root, owned } = await prepareUnwrappedWorkspace();
+  try {
+    assert.equal(root, join(owned, 'callback-service'));
+    assert.match(await readFile(join(root, invocationFile), 'utf8'), /fun escapeSink\(\): String = "escape"/);
+    await assert.rejects(readdir(join(root, 'gradle')), { code: 'ENOENT' });
+    await assert.rejects(readFile(join(root, 'gradlew')), { code: 'ENOENT' });
+  } finally {
+    await rm(owned, { recursive: true, force: true });
+  }
+  await assert.rejects(readdir(owned), { code: 'ENOENT' });
+});
+
+test('a literal answered from source passes only without a Kast call', () => {
+  const search = { tool: 'search_kotlin_source', matches: [{ file: invocationFile, line: 'fun escapeSink(): String = "escape"' }] };
+  assert.equal(gradeSkill('literal-read', 'escape', { workspace, calls: [search] }).pass, true);
+  assert.equal(gradeSkill('literal-read', 'escape', { workspace, calls: [search, call(completion(selected('escapeSink', 'invocation', 'function'), []))] }).pass, false);
+  assert.equal(gradeSkill('literal-read', '"escape"', { workspace, calls: [search] }).pass, false);
+  assert.equal(gradeSkill('literal-read', 'escape', { workspace, calls: [] }).pass, false);
+});
+
+test('an unprepared workspace needs its typed preparation cause and no identical retry', () => {
+  // Shape recorded from an installed Kast preparation rejection; only the lifecycle reason differs.
+  const rejected = reason => ({
+    type: 'rejected_document',
+    document: {
+      failure: { type: 'workspace', id: 'WorkspacePreparationId(value=fixture)', cause: { type: 'lifecycle', reason } },
+      status: 'rejected', boundary: 'managed_preparation',
+    },
+  });
+  const argv = ['query', '--name', 'invokeCallback', '--in', 'invocation', '--kind', 'function'];
+  const answer = 'UNKNOWN GRADLE_DISTRIBUTION_UNAVAILABLE';
+  const typed = call(rejected('GRADLE_DISTRIBUTION_UNAVAILABLE'), argv);
+  assert.equal(gradeSkill('unprepared', answer, { workspace, calls: [typed] }).pass, true);
+  assert.equal(gradeSkill('unprepared', answer, { workspace, calls: [typed, typed] }).pass, false);
+  assert.equal(gradeSkill('unprepared', answer, { workspace, calls: [call(rejected('IMPORT_FAILED'), argv)] }).pass, false);
+  assert.equal(gradeSkill('unprepared', 'UNKNOWN', { workspace, calls: [typed] }).pass, false);
+  assert.equal(gradeSkill('unprepared', answer, { workspace, calls: [] }).pass, false);
+  const changed = call(rejected('UNLINKED_BUILD'), [...argv, '--source-set', 'main']);
+  assert.equal(gradeSkill('unprepared', answer, { workspace, calls: [typed, changed] }).pass, true);
+});
+
 test('callback answer needs a preceding issued reference and obligations from the same rejection', () => {
   const seed = completion(selected('forwardOnce', 'forwarding', 'function'), [
     { ref: 'issued', name: 'forwardOnce', kind: 'function' },
@@ -327,6 +470,32 @@ test('guidance reads stay outside the per-case source and implementation query b
     call(implementations, ['query', '--request', '-'], 'different input'),
   ] });
   assert.equal(gradeSkill('query-completion-document', answer, metadata()).pass, true);
+  const flags = ['source', 'read', '--ref=issued', '--jq', '.document.text.text'];
+  const anchorText = 'data class QueryCompletionDocument(\n' + 'val value: Int,\n'.repeat(9) + ')';
+  const anchored = (text, refArgs = flags) => {
+    const selection = { selector: 'issued-declaration', range: { startInclusive: 60, endExclusive: 60 + text.length } };
+    const result = { ...source, document: { ...source.document, region: { kind: 'declaration', selection },
+      text: { type: 'returned', selection, text } } };
+    const trial = metadata();
+    trial.calls[2] = call(result, refArgs);
+    return trial;
+  };
+  assert.equal(gradeSkill('query-completion-document', answer, anchored(anchorText)).pass, true);
+  assert.equal(gradeSkill('query-completion-document', answer, anchored(anchorText, ['source', 'read', '--ref=other'])).pass, false);
+  assert.equal(gradeSkill('query-completion-document', answer, anchored(anchorText + '\nextra')).pass, false);
+  const clipped = anchored(anchorText);
+  const returned = JSON.parse(clipped.calls[2].stdout);
+  returned.document.text.selection.range.startInclusive++;
+  clipped.calls[2].stdout = JSON.stringify(returned);
+  assert.equal(gradeSkill('query-completion-document', answer, clipped).pass, false);
+  const stale = anchored(anchorText);
+  const staleResponse = JSON.parse(stale.calls[2].stdout);
+  staleResponse.document.live.epoch++;
+  stale.calls[2].stdout = JSON.stringify(staleResponse);
+  assert.equal(gradeSkill('query-completion-document', answer, stale).pass, false);
+  action.request.text.afterLines = 9;
+  assert.equal(gradeSkill('query-completion-document', answer, metadata()).pass, false);
+  action.request.text.afterLines = 10;
   action.request.candidateRef = 'other';
   assert.equal(gradeSkill('query-completion-document', answer, metadata()).pass, false);
   action.request.candidateRef = 'issued';
