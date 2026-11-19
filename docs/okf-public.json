@@ -5892,7 +5892,7 @@
       "content": [
         {
           "path": "docs/public/reference/compatibility.mdx",
-          "sha256": "1a4dd0454db50eaa8ef6f3fff7fec5a1ce471fc0c89bdcfc532423bd7a2bb9bd"
+          "sha256": "dc715a999c71ab4a520f380eb42ab52718db942ca2e9ddaeffdcfd0d6796dfba"
         }
       ],
       "claims": [
@@ -6327,7 +6327,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "412a5913a50fabf2c93a6deec07791e7f9670305d2d85a47c726ddd4e5a0e0c1"
+          "sha256": "0b9128898d3dd7c45bf2cd3969aa4ed13e35ce67d2f876609e893c02d55ed8c1"
         }
       ],
       "claims": [
@@ -15028,7 +15028,7 @@
         },
         {
           "path": "docs/public/start.mdx",
-          "sha256": "bb71e86769b6049e04a108cddadee0eb3eccd504f787fa89903b65bb0f98fde6"
+          "sha256": "8970bbf97f7baf52bf9ee1e62dae8405d734abc85de31aac66942f4f1c14b7c1"
         }
       ],
       "claims": [
