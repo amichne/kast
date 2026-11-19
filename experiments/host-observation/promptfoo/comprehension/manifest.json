@@ -1,7 +1,7 @@
 {
   "version": 2,
   "sourceRevision": "9adbd800ee4a2d131a87b3d62e613d3a451c3bdd",
-  "guidanceSha256": "04034d540b357fb341898f5ab1e95b9cb03ad880f0847d6850230c7448cfa8ed",
+  "guidanceSha256": "b9128f3090b80c311e17993306a4a89f2e7f5a7a469500124e3df1227c3c71cc",
   "cases": [
     {
       "id": "ktfmt-constant-indent-negation-evidence-v1",
