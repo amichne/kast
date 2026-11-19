@@ -30,8 +30,10 @@ if args.execute:
         raise SystemExit("NATIVE_RUNTIME_UNQUALIFIED: Linux source support still requires real imported-model and semantic query qualification before provider evaluation")
     if not Path(plan["authPath"]).is_file():
         raise SystemExit("APPROVED_AUTHENTICATION_UNAVAILABLE: supply the supported cloud credential path; never copy Mac OAuth")
-    # The worker performs exact native tools and provider admission. This wrapper
-    # never turns a configuration check or status observation into readiness.
-subprocess.run(["node", str(repository / "experiments/host-observation/run_pi_evaluation.mjs"),
-                "--execute" if args.execute else "--plan", str(args.plan.resolve())],
-               env={**os.environ, "PI_EVAL_PLAN": str(args.plan.resolve())}, check=True)
+    environment = {**os.environ, "KAST_PI_EVAL_PLAN": str(args.plan.resolve())}
+    environment.pop("KAST_PI_EVAL_TARGET", None)
+    subprocess.run(["npm", "run", "eval", "--", "-c", "pi.config.mjs"],
+                   cwd=repository / "experiments/host-observation/promptfoo", env=environment, check=True)
+else:
+    subprocess.run(["node", str(repository / "experiments/host-observation/run_pi_evaluation.mjs"),
+                    "--plan", str(args.plan.resolve())], check=True)

@@ -1,0 +1,8 @@
+Picnic by Jake Wharton and contributors.
+Apache License 2.0. See LICENSE.txt.
+
+https://github.com/JakeWharton/picnic/tree/cd569782e2503ddd4f95fb47017d12f9e9484210
+
+The seven upstream library source files moved from picnic/src/main/java to src/main/kotlin.
+The fixture removes the obsolete @JvmDefault annotations in dsl.kt and textSurface.kt.
+The fixture uses a Gradle build for the current Kotlin compiler.

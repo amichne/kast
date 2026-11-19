@@ -1,0 +1,18 @@
+{
+  "name": "kast-agent-evaluations",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.0"
+  },
+  "scripts": {
+    "eval": "promptfoo eval --no-cache --no-share",
+    "compare": "node compare.mjs",
+    "test": "node --test *.test.mjs"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "promptfoo": "0.125.1"
+  }
+}

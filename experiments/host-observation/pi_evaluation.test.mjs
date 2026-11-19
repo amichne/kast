@@ -398,6 +398,29 @@ test('received-result policy preserves qualification and forbids all new semanti
   assert.equal(policy.report().phaseUsage.WORK.totalTokens,0);
 });
 
+test('the SDK callback matches only a fresh final answer against the independent digest',()=>{
+  const answer='PRIVATE-EXPECTED-ANSWER';
+  const expectedAnswerSha256=createHash('sha256').update(answer).digest('hex');
+  for(const saved of [false,true]) {
+    for(const [text,check] of [[answer,'MATCHED'],[answer+'\n','MISMATCH']]) {
+      const policy=makePolicy({...config(),expectedAnswerSha256}),guard=callbacks(policy);
+      if(saved)assert.equal(policy.restoreReceivedResult(negativeComplete,2141).allow,true);
+      guard.emit('before_provider_request',providerEvent());
+      guard.emit('message_end',{message:{role:'assistant',stopReason:'stop',
+        usage:{input:10,output:5,totalTokens:15},content:[{type:'text',text:text.slice(0,8)},{type:'text',text:text.slice(8)}]}});
+      const report=policy.report();
+      assert.equal(report.answerCheck,check);
+      assert.equal(JSON.stringify({report,records:guard.records}).includes(answer),false);
+      assert.equal(Object.hasOwn(report,'expectedAnswerSha256'),false);
+    }
+  }
+  const stopped=makePolicy({...config(),expectedAnswerSha256});
+  stopped.stop(Outcome.BUDGET);
+  stopped.assistantEnded({stopReason:'stop',content:[{type:'text',text:answer}]});
+  assert.equal(stopped.report().answerCheck,'UNAVAILABLE');
+  assert.throws(()=>makePolicy({...config(),expectedAnswerSha256:'malformed'}),/Final answer digest/);
+});
+
 test('explicit plans reject duplicated cases accidental fresh continuation and missing context identity',()=>{
   const plan={piPackageRoot:'/public/pi',kastAdapter:'/public/adapter',workspaceRoot:'/public/fixture',outputRoot:'/new/output',authPath:'/existing/auth',modelsStorePath:'/existing/registry',kastAdapterSha256:'a'.repeat(64),piVersion:'1.0.2',cases:[{...config(),mode:'fresh',prompt:'Fixed public question',wallSeconds:120}]};
   assert.equal(validatePlan(plan),plan);

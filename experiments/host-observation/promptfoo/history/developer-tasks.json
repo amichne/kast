@@ -1,0 +1,718 @@
+{
+  "evalId": "eval-mqY-2026-11-18T00:59:33",
+  "exportSha256": "8c7d9346302b4f054c0def02ed31c8000b75b069f5a468d5a99db011d9834527",
+  "environment": {
+    "promptfooVersion": "0.125.1",
+    "nodeVersion": "v24.21.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "exportedAt": "2026-11-18T01:09:53.138Z",
+    "evaluationCreatedAt": "2026-11-18T00:59:33.882Z"
+  },
+  "piVersion": "1.5.2",
+  "kastVersion": "0.0.4413",
+  "kotlinCompiler": "2.4.21",
+  "javaVersion": "25.0.2",
+  "priorRuns": [
+    {
+      "evalId": "eval-PIB-2026-11-18T00:53:57",
+      "reason": "The Host preflight passed an internal Gradle home as an external cache. All five Kast cases stopped before inference."
+    }
+  ],
+  "results": {
+    "results": [
+      {
+        "vars": {
+          "arm": "source",
+          "caseId": "locker-pickup",
+          "comparison": "developer-tasks"
+        },
+        "success": true,
+        "failureReason": 0,
+        "gradingResult": {
+          "pass": true
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "response": {
+          "metadata": {
+            "model": "openai-codex/gpt-6.1-sol",
+            "effort": "low",
+            "taskSha256": "445611610407118c94626e2b0e24e238c692f442f361235a98d78f1d7250ccc8",
+            "sourceSha256": "878b06958bff2537811fab91e5785ce957df83a52ce5a740933e5e3c63829ce1",
+            "hostAvailable": null,
+            "toolCalls": 9,
+            "toolExecutions": 9,
+            "kastCalls": 0,
+            "completeKastCalls": 0,
+            "providerResponses": 6,
+            "usage": {
+              "input": 3304,
+              "output": 634,
+              "cacheRead": 4864,
+              "cacheWrite": 0,
+              "total": 8802
+            },
+            "grade": {
+              "pass": true,
+              "reason": "COMPILED_BEHAVIOR_MATCHED"
+            },
+            "patch": "diff --git a/src/main/kotlin/parcel/api/CheckoutEndpoint.kt b/src/main/kotlin/parcel/api/CheckoutEndpoint.kt\nindex 6c1729c..84fbd5d 100644\n--- a/src/main/kotlin/parcel/api/CheckoutEndpoint.kt\n+++ b/src/main/kotlin/parcel/api/CheckoutEndpoint.kt\n@@ -11,12 +11,23 @@ data class CheckoutRequest(\n     val basket: Basket,\n     val destination: DeliveryZone,\n     val mode: String = \"home\",\n+    val lockerId: String? = null,\n+    val lockerZone: DeliveryZone? = null,\n )\n \n class CheckoutEndpoint(private val pricing: Pricing) {\n     fun quote(request: CheckoutRequest): QuoteResult =\n         when (request.mode) {\n             \"home\" -> pricing.quote(request.basket, request.destination, DeliveryOption.Home)\n+            \"locker\" -> {\n+                val lockerId = request.lockerId\n+                val lockerZone = request.lockerZone\n+                if (lockerId.isNullOrBlank() || lockerZone == null) {\n+                    QuoteResult.Unavailable(QuoteFailure.MISSING_LOCKER)\n+                } else {\n+                    pricing.quote(request.basket, request.destination, DeliveryOption.Locker(lockerId, lockerZone))\n+                }\n+            }\n             else -> QuoteResult.Unavailable(QuoteFailure.UNSUPPORTED_MODE)\n         }\n }\ndiff --git a/src/main/kotlin/parcel/checkout/CheckoutModels.kt b/src/main/kotlin/parcel/checkout/CheckoutModels.kt\nindex d0f8cb4..abd9c10 100644\n--- a/src/main/kotlin/parcel/checkout/CheckoutModels.kt\n+++ b/src/main/kotlin/parcel/checkout/CheckoutModels.kt\n@@ -15,6 +15,7 @@ data class Basket(val lines: List<BasketLine>) {\n \n sealed interface DeliveryOption {\n     data object Home : DeliveryOption\n+    data class Locker(val lockerId: String, val zone: DeliveryZone) : DeliveryOption\n }\n \n enum class QuoteFailure { UNSUPPORTED_MODE, MISSING_LOCKER, WRONG_ZONE, LOCKER_WEIGHT_LIMIT }\ndiff --git a/src/main/kotlin/parcel/checkout/Pricing.kt b/src/main/kotlin/parcel/checkout/Pricing.kt\nindex 1691447..f6c615f 100644\n--- a/src/main/kotlin/parcel/checkout/Pricing.kt\n+++ b/src/main/kotlin/parcel/checkout/Pricing.kt\n@@ -7,5 +7,10 @@ class Pricing {\n                 cents = if (destination == DeliveryZone.CITY) 699 else 1099,\n                 handoff = \"home\",\n             )\n+            is DeliveryOption.Locker -> when {\n+                delivery.zone != destination -> QuoteResult.Unavailable(QuoteFailure.WRONG_ZONE)\n+                basket.totalWeightGrams > 12_000L -> QuoteResult.Unavailable(QuoteFailure.LOCKER_WEIGHT_LIMIT)\n+                else -> QuoteResult.Quoted(cents = 299, handoff = \"locker:${delivery.lockerId}\")\n+            }\n         }\n }\n"
+          },
+          "tokenUsage": {
+            "prompt": 8168,
+            "completion": 634,
+            "cached": 4864,
+            "total": 8802,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          }
+        }
+      },
+      {
+        "vars": {
+          "arm": "kast",
+          "caseId": "locker-pickup",
+          "comparison": "developer-tasks"
+        },
+        "success": true,
+        "failureReason": 0,
+        "gradingResult": {
+          "pass": true
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "response": {
+          "metadata": {
+            "model": "openai-codex/gpt-6.1-sol",
+            "effort": "low",
+            "taskSha256": "445611610407118c94626e2b0e24e238c692f442f361235a98d78f1d7250ccc8",
+            "sourceSha256": "878b06958bff2537811fab91e5785ce957df83a52ce5a740933e5e3c63829ce1",
+            "hostAvailable": true,
+            "toolCalls": 10,
+            "toolExecutions": 10,
+            "kastCalls": 0,
+            "completeKastCalls": 0,
+            "providerResponses": 9,
+            "usage": {
+              "input": 11323,
+              "output": 659,
+              "cacheRead": 3328,
+              "cacheWrite": 0,
+              "total": 15310
+            },
+            "grade": {
+              "pass": true,
+              "reason": "COMPILED_BEHAVIOR_MATCHED"
+            },
+            "patch": "diff --git a/src/main/kotlin/parcel/api/CheckoutEndpoint.kt b/src/main/kotlin/parcel/api/CheckoutEndpoint.kt\nindex 6c1729c..84fbd5d 100644\n--- a/src/main/kotlin/parcel/api/CheckoutEndpoint.kt\n+++ b/src/main/kotlin/parcel/api/CheckoutEndpoint.kt\n@@ -11,12 +11,23 @@ data class CheckoutRequest(\n     val basket: Basket,\n     val destination: DeliveryZone,\n     val mode: String = \"home\",\n+    val lockerId: String? = null,\n+    val lockerZone: DeliveryZone? = null,\n )\n \n class CheckoutEndpoint(private val pricing: Pricing) {\n     fun quote(request: CheckoutRequest): QuoteResult =\n         when (request.mode) {\n             \"home\" -> pricing.quote(request.basket, request.destination, DeliveryOption.Home)\n+            \"locker\" -> {\n+                val lockerId = request.lockerId\n+                val lockerZone = request.lockerZone\n+                if (lockerId.isNullOrBlank() || lockerZone == null) {\n+                    QuoteResult.Unavailable(QuoteFailure.MISSING_LOCKER)\n+                } else {\n+                    pricing.quote(request.basket, request.destination, DeliveryOption.Locker(lockerId, lockerZone))\n+                }\n+            }\n             else -> QuoteResult.Unavailable(QuoteFailure.UNSUPPORTED_MODE)\n         }\n }\ndiff --git a/src/main/kotlin/parcel/checkout/CheckoutModels.kt b/src/main/kotlin/parcel/checkout/CheckoutModels.kt\nindex d0f8cb4..abd9c10 100644\n--- a/src/main/kotlin/parcel/checkout/CheckoutModels.kt\n+++ b/src/main/kotlin/parcel/checkout/CheckoutModels.kt\n@@ -15,6 +15,7 @@ data class Basket(val lines: List<BasketLine>) {\n \n sealed interface DeliveryOption {\n     data object Home : DeliveryOption\n+    data class Locker(val lockerId: String, val zone: DeliveryZone) : DeliveryOption\n }\n \n enum class QuoteFailure { UNSUPPORTED_MODE, MISSING_LOCKER, WRONG_ZONE, LOCKER_WEIGHT_LIMIT }\ndiff --git a/src/main/kotlin/parcel/checkout/Pricing.kt b/src/main/kotlin/parcel/checkout/Pricing.kt\nindex 1691447..f6c615f 100644\n--- a/src/main/kotlin/parcel/checkout/Pricing.kt\n+++ b/src/main/kotlin/parcel/checkout/Pricing.kt\n@@ -7,5 +7,10 @@ class Pricing {\n                 cents = if (destination == DeliveryZone.CITY) 699 else 1099,\n                 handoff = \"home\",\n             )\n+            is DeliveryOption.Locker -> when {\n+                delivery.zone != destination -> QuoteResult.Unavailable(QuoteFailure.WRONG_ZONE)\n+                basket.totalWeightGrams > 12_000L -> QuoteResult.Unavailable(QuoteFailure.LOCKER_WEIGHT_LIMIT)\n+                else -> QuoteResult.Quoted(cents = 299, handoff = \"locker:${delivery.lockerId}\")\n+            }\n         }\n }\n"
+          },
+          "tokenUsage": {
+            "prompt": 14651,
+            "completion": 659,
+            "cached": 3328,
+            "total": 15310,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          }
+        }
+      },
+      {
+        "vars": {
+          "arm": "kast",
+          "caseId": "audit-v2",
+          "comparison": "developer-tasks"
+        },
+        "success": true,
+        "failureReason": 0,
+        "gradingResult": {
+          "pass": true
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "response": {
+          "metadata": {
+            "model": "openai-codex/gpt-6.1-sol",
+            "effort": "low",
+            "taskSha256": "5df02413c33255c9d5ce1dd794ab996d93997c171b7e09594fef5124e12c70c9",
+            "sourceSha256": "878b06958bff2537811fab91e5785ce957df83a52ce5a740933e5e3c63829ce1",
+            "hostAvailable": true,
+            "toolCalls": 15,
+            "toolExecutions": 15,
+            "kastCalls": 0,
+            "completeKastCalls": 0,
+            "providerResponses": 10,
+            "usage": {
+              "input": 8592,
+              "output": 822,
+              "cacheRead": 7680,
+              "cacheWrite": 0,
+              "total": 17094
+            },
+            "grade": {
+              "pass": true,
+              "reason": "COMPILED_BEHAVIOR_MATCHED"
+            },
+            "patch": "diff --git a/src/main/kotlin/parcel/audit/AuditSink.kt b/src/main/kotlin/parcel/audit/AuditSink.kt\nindex 394fe94..0949616 100644\n--- a/src/main/kotlin/parcel/audit/AuditSink.kt\n+++ b/src/main/kotlin/parcel/audit/AuditSink.kt\n@@ -8,15 +8,17 @@ value class ParcelId(val value: String)\n @JvmInline\n value class ActorId(val value: String)\n \n+data class AuditEvent(val kind: AuditKind, val parcelId: ParcelId, val actorId: ActorId)\n+\n interface AuditSink {\n-    fun record(kind: String, parcelId: String, actorId: String)\n+    fun record(event: AuditEvent)\n }\n \n class JournalAuditSink : AuditSink {\n     private val entries = mutableListOf<String>()\n \n-    override fun record(kind: String, parcelId: String, actorId: String) {\n-        entries += \"$kind|$parcelId|$actorId\"\n+    override fun record(event: AuditEvent) {\n+        entries += \"${event.kind}|${event.parcelId.value}|${event.actorId.value}\"\n     }\n \n     fun snapshot(): List<String> = entries.toList()\ndiff --git a/src/main/kotlin/parcel/operations/Booking.kt b/src/main/kotlin/parcel/operations/Booking.kt\nindex af735af..89197b2 100644\n--- a/src/main/kotlin/parcel/operations/Booking.kt\n+++ b/src/main/kotlin/parcel/operations/Booking.kt\n@@ -1,11 +1,13 @@\n package parcel.operations\n \n import parcel.audit.ActorId\n+import parcel.audit.AuditEvent\n+import parcel.audit.AuditKind\n import parcel.audit.AuditSink\n import parcel.audit.ParcelId\n \n class Booking(private val audit: AuditSink) {\n     fun confirm(parcel: ParcelId, clerk: ActorId) {\n-        audit.record(\"BOOKED\", parcel.value, clerk.value)\n+        audit.record(AuditEvent(AuditKind.BOOKED, parcel, clerk))\n     }\n }\ndiff --git a/src/main/kotlin/parcel/operations/Cancellation.kt b/src/main/kotlin/parcel/operations/Cancellation.kt\nindex 64ad44e..57e1991 100644\n--- a/src/main/kotlin/parcel/operations/Cancellation.kt\n+++ b/src/main/kotlin/parcel/operations/Cancellation.kt\n@@ -1,11 +1,13 @@\n package parcel.operations\n \n import parcel.audit.ActorId\n+import parcel.audit.AuditEvent\n+import parcel.audit.AuditKind\n import parcel.audit.AuditSink\n import parcel.audit.ParcelId\n \n class Cancellation(private val audit: AuditSink) {\n     fun cancel(parcel: ParcelId, operator: ActorId) {\n-        audit.record(kind = \"CANCELLED\", parcelId = parcel.value, actorId = operator.value)\n+        audit.record(AuditEvent(kind = AuditKind.CANCELLED, parcelId = parcel, actorId = operator))\n     }\n }\ndiff --git a/src/main/kotlin/parcel/replay/ImportReplay.kt b/src/main/kotlin/parcel/replay/ImportReplay.kt\nindex 668c1d6..0ffb09f 100644\n--- a/src/main/kotlin/parcel/replay/ImportReplay.kt\n+++ b/src/main/kotlin/parcel/replay/ImportReplay.kt\n@@ -1,11 +1,13 @@\n package parcel.replay\n \n import parcel.audit.ActorId\n+import parcel.audit.AuditEvent\n+import parcel.audit.AuditKind\n import parcel.audit.AuditSink as ParcelAudit\n import parcel.audit.ParcelId\n \n class ImportReplay(private val audit: ParcelAudit) {\n     fun replay(parcel: ParcelId, importer: ActorId) {\n-        audit.record(\"REPLAYED\", parcel.value, importer.value)\n+        audit.record(AuditEvent(AuditKind.REPLAYED, parcel, importer))\n     }\n }\n"
+          },
+          "tokenUsage": {
+            "prompt": 16272,
+            "completion": 822,
+            "cached": 7680,
+            "total": 17094,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          }
+        }
+      },
+      {
+        "vars": {
+          "arm": "source",
+          "caseId": "audit-v2",
+          "comparison": "developer-tasks"
+        },
+        "success": true,
+        "failureReason": 0,
+        "gradingResult": {
+          "pass": true
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "response": {
+          "metadata": {
+            "model": "openai-codex/gpt-6.1-sol",
+            "effort": "low",
+            "taskSha256": "5df02413c33255c9d5ce1dd794ab996d93997c171b7e09594fef5124e12c70c9",
+            "sourceSha256": "878b06958bff2537811fab91e5785ce957df83a52ce5a740933e5e3c63829ce1",
+            "hostAvailable": null,
+            "toolCalls": 15,
+            "toolExecutions": 15,
+            "kastCalls": 0,
+            "completeKastCalls": 0,
+            "providerResponses": 9,
+            "usage": {
+              "input": 3681,
+              "output": 814,
+              "cacheRead": 10624,
+              "cacheWrite": 0,
+              "total": 15119
+            },
+            "grade": {
+              "pass": true,
+              "reason": "COMPILED_BEHAVIOR_MATCHED"
+            },
+            "patch": "diff --git a/src/main/kotlin/parcel/audit/AuditSink.kt b/src/main/kotlin/parcel/audit/AuditSink.kt\nindex 394fe94..6acac4f 100644\n--- a/src/main/kotlin/parcel/audit/AuditSink.kt\n+++ b/src/main/kotlin/parcel/audit/AuditSink.kt\n@@ -8,15 +8,17 @@ value class ParcelId(val value: String)\n @JvmInline\n value class ActorId(val value: String)\n \n+data class AuditEvent(val kind: AuditKind, val parcelId: ParcelId, val actorId: ActorId)\n+\n interface AuditSink {\n-    fun record(kind: String, parcelId: String, actorId: String)\n+    fun record(event: AuditEvent)\n }\n \n class JournalAuditSink : AuditSink {\n     private val entries = mutableListOf<String>()\n \n-    override fun record(kind: String, parcelId: String, actorId: String) {\n-        entries += \"$kind|$parcelId|$actorId\"\n+    override fun record(event: AuditEvent) {\n+        entries += \"${event.kind.name}|${event.parcelId.value}|${event.actorId.value}\"\n     }\n \n     fun snapshot(): List<String> = entries.toList()\ndiff --git a/src/main/kotlin/parcel/operations/Booking.kt b/src/main/kotlin/parcel/operations/Booking.kt\nindex af735af..89197b2 100644\n--- a/src/main/kotlin/parcel/operations/Booking.kt\n+++ b/src/main/kotlin/parcel/operations/Booking.kt\n@@ -1,11 +1,13 @@\n package parcel.operations\n \n import parcel.audit.ActorId\n+import parcel.audit.AuditEvent\n+import parcel.audit.AuditKind\n import parcel.audit.AuditSink\n import parcel.audit.ParcelId\n \n class Booking(private val audit: AuditSink) {\n     fun confirm(parcel: ParcelId, clerk: ActorId) {\n-        audit.record(\"BOOKED\", parcel.value, clerk.value)\n+        audit.record(AuditEvent(AuditKind.BOOKED, parcel, clerk))\n     }\n }\ndiff --git a/src/main/kotlin/parcel/operations/Cancellation.kt b/src/main/kotlin/parcel/operations/Cancellation.kt\nindex 64ad44e..57e1991 100644\n--- a/src/main/kotlin/parcel/operations/Cancellation.kt\n+++ b/src/main/kotlin/parcel/operations/Cancellation.kt\n@@ -1,11 +1,13 @@\n package parcel.operations\n \n import parcel.audit.ActorId\n+import parcel.audit.AuditEvent\n+import parcel.audit.AuditKind\n import parcel.audit.AuditSink\n import parcel.audit.ParcelId\n \n class Cancellation(private val audit: AuditSink) {\n     fun cancel(parcel: ParcelId, operator: ActorId) {\n-        audit.record(kind = \"CANCELLED\", parcelId = parcel.value, actorId = operator.value)\n+        audit.record(AuditEvent(kind = AuditKind.CANCELLED, parcelId = parcel, actorId = operator))\n     }\n }\ndiff --git a/src/main/kotlin/parcel/replay/ImportReplay.kt b/src/main/kotlin/parcel/replay/ImportReplay.kt\nindex 668c1d6..0ffb09f 100644\n--- a/src/main/kotlin/parcel/replay/ImportReplay.kt\n+++ b/src/main/kotlin/parcel/replay/ImportReplay.kt\n@@ -1,11 +1,13 @@\n package parcel.replay\n \n import parcel.audit.ActorId\n+import parcel.audit.AuditEvent\n+import parcel.audit.AuditKind\n import parcel.audit.AuditSink as ParcelAudit\n import parcel.audit.ParcelId\n \n class ImportReplay(private val audit: ParcelAudit) {\n     fun replay(parcel: ParcelId, importer: ActorId) {\n-        audit.record(\"REPLAYED\", parcel.value, importer.value)\n+        audit.record(AuditEvent(AuditKind.REPLAYED, parcel, importer))\n     }\n }\n"
+          },
+          "tokenUsage": {
+            "prompt": 14305,
+            "completion": 814,
+            "cached": 10624,
+            "total": 15119,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          }
+        }
+      },
+      {
+        "vars": {
+          "arm": "source",
+          "caseId": "dispatch-trace",
+          "comparison": "developer-tasks"
+        },
+        "success": true,
+        "failureReason": 0,
+        "gradingResult": {
+          "pass": true
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "response": {
+          "metadata": {
+            "model": "openai-codex/gpt-6.1-sol",
+            "effort": "low",
+            "taskSha256": "110656e1ce29e65e86964180b201f5aa81b1de6716d6bd9175d1cedd59a36112",
+            "sourceSha256": "878b06958bff2537811fab91e5785ce957df83a52ce5a740933e5e3c63829ce1",
+            "hostAvailable": null,
+            "toolCalls": 4,
+            "toolExecutions": 4,
+            "kastCalls": 0,
+            "completeKastCalls": 0,
+            "providerResponses": 3,
+            "usage": {
+              "input": 2794,
+              "output": 211,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 3005
+            },
+            "grade": {
+              "pass": true,
+              "reason": "EXACT_TRACE_MATCHED"
+            },
+            "patch": ""
+          },
+          "tokenUsage": {
+            "prompt": 2794,
+            "completion": 211,
+            "cached": 0,
+            "total": 3005,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          },
+          "output": "{\n  \"selectedOverload\": \"parcel.dispatch.Dispatcher.dispatch(DispatchRequest)\",\n  \"first\": {\n    \"calls\": [\n      \"parcel.dispatch.DispatchLedger.claim\",\n      \"parcel.carriers.NetworkCarrier.prepare\",\n      \"parcel.dispatch.DispatchQueue.enqueue\"\n    ],\n    \"outcome\": \"Queued(NET-P-104)\"\n  },\n  \"duplicate\": {\n    \"calls\": [\n      \"parcel.dispatch.DispatchLedger.claim\"\n    ],\n    \"outcome\": \"Duplicate\"\n  }\n}"
+        }
+      },
+      {
+        "vars": {
+          "arm": "kast",
+          "caseId": "dispatch-trace",
+          "comparison": "developer-tasks"
+        },
+        "success": true,
+        "failureReason": 0,
+        "gradingResult": {
+          "pass": true
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "response": {
+          "metadata": {
+            "model": "openai-codex/gpt-6.1-sol",
+            "effort": "low",
+            "taskSha256": "110656e1ce29e65e86964180b201f5aa81b1de6716d6bd9175d1cedd59a36112",
+            "sourceSha256": "878b06958bff2537811fab91e5785ce957df83a52ce5a740933e5e3c63829ce1",
+            "hostAvailable": true,
+            "toolCalls": 4,
+            "toolExecutions": 4,
+            "kastCalls": 0,
+            "completeKastCalls": 0,
+            "providerResponses": 3,
+            "usage": {
+              "input": 3046,
+              "output": 211,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 3257
+            },
+            "grade": {
+              "pass": true,
+              "reason": "EXACT_TRACE_MATCHED"
+            },
+            "patch": ""
+          },
+          "tokenUsage": {
+            "prompt": 3046,
+            "completion": 211,
+            "cached": 0,
+            "total": 3257,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          },
+          "output": "{\n  \"selectedOverload\": \"parcel.dispatch.Dispatcher.dispatch(DispatchRequest)\",\n  \"first\": {\n    \"calls\": [\n      \"parcel.dispatch.DispatchLedger.claim\",\n      \"parcel.carriers.NetworkCarrier.prepare\",\n      \"parcel.dispatch.DispatchQueue.enqueue\"\n    ],\n    \"outcome\": \"Queued(NET-P-104)\"\n  },\n  \"duplicate\": {\n    \"calls\": [\n      \"parcel.dispatch.DispatchLedger.claim\"\n    ],\n    \"outcome\": \"Duplicate\"\n  }\n}"
+        }
+      },
+      {
+        "vars": {
+          "arm": "kast",
+          "caseId": "coroutine-delay-rounding",
+          "comparison": "developer-tasks"
+        },
+        "success": true,
+        "failureReason": 0,
+        "gradingResult": {
+          "pass": true
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "response": {
+          "metadata": {
+            "model": "openai-codex/gpt-6.1-sol",
+            "effort": "low",
+            "taskSha256": "d1dcab3b2c9477a0a2582ee3c7c05cd9580c0a995006a8c8f804b928d37a6b52",
+            "sourceSha256": "52cdae21d08ff44051065f64a1b1651eca739bb3def2f1fff6b3401f7ba1c17a",
+            "hostAvailable": true,
+            "toolCalls": 4,
+            "toolExecutions": 4,
+            "kastCalls": 0,
+            "completeKastCalls": 0,
+            "providerResponses": 5,
+            "usage": {
+              "input": 4314,
+              "output": 375,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 4689
+            },
+            "grade": {
+              "pass": true,
+              "reason": "COMPILED_BEHAVIOR_MATCHED"
+            },
+            "patch": "diff --git a/src/main/kotlin/kotlinx/coroutines/Delay.kt b/src/main/kotlin/kotlinx/coroutines/Delay.kt\nindex 61b674e..8ff9f37 100644\n--- a/src/main/kotlin/kotlinx/coroutines/Delay.kt\n+++ b/src/main/kotlin/kotlinx/coroutines/Delay.kt\n@@ -5,10 +5,16 @@\n package kotlinx.coroutines\n \n import kotlin.time.Duration\n+import kotlin.time.Duration.Companion.milliseconds\n \n /**\n- * Convert this duration to its millisecond value.\n- * Positive durations are coerced at least `1`.\n+ * Round positive finite durations up to the smallest covering whole millisecond.\n+ * Nonpositive durations yield zero; positive infinity yields [Long.MAX_VALUE].\n  */\n-internal fun Duration.toDelayMillis(): Long =\n-    if (this > Duration.ZERO) inWholeMilliseconds.coerceAtLeast(1) else 0\n+internal fun Duration.toDelayMillis(): Long {\n+    if (this <= Duration.ZERO) return 0\n+    if (isInfinite()) return Long.MAX_VALUE\n+\n+    val wholeMillis = inWholeMilliseconds\n+    return if (this > wholeMillis.milliseconds) wholeMillis + 1 else wholeMillis\n+}\n"
+          },
+          "tokenUsage": {
+            "prompt": 4314,
+            "completion": 375,
+            "cached": 0,
+            "total": 4689,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          }
+        }
+      },
+      {
+        "vars": {
+          "arm": "source",
+          "caseId": "coroutine-delay-rounding",
+          "comparison": "developer-tasks"
+        },
+        "success": true,
+        "failureReason": 0,
+        "gradingResult": {
+          "pass": true
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "response": {
+          "metadata": {
+            "model": "openai-codex/gpt-6.1-sol",
+            "effort": "low",
+            "taskSha256": "d1dcab3b2c9477a0a2582ee3c7c05cd9580c0a995006a8c8f804b928d37a6b52",
+            "sourceSha256": "52cdae21d08ff44051065f64a1b1651eca739bb3def2f1fff6b3401f7ba1c17a",
+            "hostAvailable": null,
+            "toolCalls": 4,
+            "toolExecutions": 4,
+            "kastCalls": 0,
+            "completeKastCalls": 0,
+            "providerResponses": 5,
+            "usage": {
+              "input": 3928,
+              "output": 390,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 4318
+            },
+            "grade": {
+              "pass": true,
+              "reason": "COMPILED_BEHAVIOR_MATCHED"
+            },
+            "patch": "diff --git a/src/main/kotlin/kotlinx/coroutines/Delay.kt b/src/main/kotlin/kotlinx/coroutines/Delay.kt\nindex 61b674e..fee1db6 100644\n--- a/src/main/kotlin/kotlinx/coroutines/Delay.kt\n+++ b/src/main/kotlin/kotlinx/coroutines/Delay.kt\n@@ -5,10 +5,16 @@\n package kotlinx.coroutines\n \n import kotlin.time.Duration\n+import kotlin.time.Duration.Companion.milliseconds\n \n /**\n- * Convert this duration to its millisecond value.\n- * Positive durations are coerced at least `1`.\n+ * Round positive finite durations up to the smallest whole millisecond delay.\n+ * Nonpositive durations yield zero; positive infinity yields [Long.MAX_VALUE].\n  */\n-internal fun Duration.toDelayMillis(): Long =\n-    if (this > Duration.ZERO) inWholeMilliseconds.coerceAtLeast(1) else 0\n+internal fun Duration.toDelayMillis(): Long {\n+    if (this <= Duration.ZERO) return 0\n+    if (this == Duration.INFINITE) return Long.MAX_VALUE\n+\n+    val wholeMillis = inWholeMilliseconds\n+    return if (this > wholeMillis.milliseconds) wholeMillis + 1 else wholeMillis\n+}\n"
+          },
+          "tokenUsage": {
+            "prompt": 3928,
+            "completion": 390,
+            "cached": 0,
+            "total": 4318,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          }
+        }
+      },
+      {
+        "vars": {
+          "arm": "source",
+          "caseId": "picnic-ansi",
+          "comparison": "developer-tasks"
+        },
+        "success": true,
+        "failureReason": 0,
+        "gradingResult": {
+          "pass": true
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "response": {
+          "metadata": {
+            "model": "openai-codex/gpt-6.1-sol",
+            "effort": "low",
+            "taskSha256": "3738ba9c1e4b8426bfe4b34dfae8c84659ee25969be2b49f33a4d0aff721d282",
+            "sourceSha256": "84084fe8707b60f6c700b690bbb6910d83c264ccbc17aeaef8f8df2f6439d00a",
+            "hostAvailable": null,
+            "toolCalls": 13,
+            "toolExecutions": 13,
+            "kastCalls": 0,
+            "completeKastCalls": 0,
+            "providerResponses": 12,
+            "usage": {
+              "input": 20662,
+              "output": 1417,
+              "cacheRead": 42368,
+              "cacheWrite": 0,
+              "total": 64447
+            },
+            "grade": {
+              "pass": true,
+              "reason": "COMPILED_BEHAVIOR_MATCHED"
+            },
+            "patch": "diff --git a/src/main/kotlin/com/jakewharton/picnic/textLayout.kt b/src/main/kotlin/com/jakewharton/picnic/textLayout.kt\nindex 0852972..4ac6aaa 100644\n--- a/src/main/kotlin/com/jakewharton/picnic/textLayout.kt\n+++ b/src/main/kotlin/com/jakewharton/picnic/textLayout.kt\n@@ -22,7 +22,12 @@ interface TextLayout {\n  * Returns number of Unicode code points in this string. This may be different from [String.length]\n  * if the string contains surrogate pairs.\n  */\n-private val String.unicodeLength: Int get() = codePointCount(0, length)\n+private val sgr = Regex(\"\\u001B\\\\[[0-9;]*m\")\n+\n+private val String.unicodeLength: Int get() {\n+  val visible = replace(sgr, \"\")\n+  return visible.codePointCount(0, visible.length)\n+}\n \n internal class SimpleLayout(private val cell: PositionedCell) : TextLayout {\n   private val leftPadding = cell.canonicalStyle?.paddingLeft ?: 0\n@@ -42,30 +47,34 @@ internal class SimpleLayout(private val cell: PositionedCell) : TextLayout {\n   }\n \n   override fun draw(canvas: TextCanvas) {\n-    val width = measureWidth()\n     val height = measureHeight()\n \n     val alignment = cell.canonicalStyle?.alignment ?: TopLeft\n-    val left = when (alignment) {\n-      TopLeft, MiddleLeft, BottomLeft -> leftPadding\n-      TopCenter, MiddleCenter, BottomCenter -> ((canvas.width - width) / 2) + leftPadding\n-      TopRight, MiddleRight, BottomRight -> canvas.width - width + leftPadding\n-    }\n     val top = when (alignment) {\n       TopLeft, TopCenter, TopRight -> topPadding\n       MiddleLeft, MiddleCenter, MiddleRight -> ((canvas.height - height) / 2) + topPadding\n       BottomLeft, BottomCenter, BottomRight -> canvas.height - height + topPadding\n     }\n \n-    var x = left\n-    var y = top\n-    for (codePoint in cell.cell.content.codePoints) {\n-      // TODO invisible chars, graphemes, etc.\n-      if (codePoint != '\\n'.toInt()) {\n-        canvas[y, x++] = codePoint\n-      } else {\n-        y++\n-        x = left\n+    cell.cell.content.split('\\n').forEachIndexed { lineIndex, line ->\n+      val width = leftPadding + line.unicodeLength + (cell.canonicalStyle?.paddingRight ?: 0)\n+      var x = when (alignment) {\n+        TopLeft, MiddleLeft, BottomLeft -> leftPadding\n+        TopCenter, MiddleCenter, BottomCenter -> ((canvas.width - width) / 2) + leftPadding\n+        TopRight, MiddleRight, BottomRight -> canvas.width - width + leftPadding\n+      }\n+      val y = top + lineIndex\n+      var index = 0\n+      while (index < line.length) {\n+        val escape = sgr.find(line, index)?.takeIf { it.range.first == index }\n+        if (escape != null) {\n+          (canvas as? AnsiTextCanvas)?.appendEscape(y, x, escape.value)\n+          index += escape.value.length\n+        } else {\n+          val codePoint = line.codePointAt(index)\n+          canvas[y, x++] = codePoint\n+          index += Character.charCount(codePoint)\n+        }\n       }\n     }\n   }\ndiff --git a/src/main/kotlin/com/jakewharton/picnic/textSurface.kt b/src/main/kotlin/com/jakewharton/picnic/textSurface.kt\nindex 3bab843..3254a62 100644\n--- a/src/main/kotlin/com/jakewharton/picnic/textSurface.kt\n+++ b/src/main/kotlin/com/jakewharton/picnic/textSurface.kt\n@@ -1,9 +1,24 @@\n package com.jakewharton.picnic\n \n+internal interface AnsiTextCanvas {\n+  fun appendEscape(row: Int, column: Int, escape: String)\n+}\n+\n internal class TextSurface(\n   override val width: Int,\n   override val height: Int,\n-) : TextCanvas {\n+) : TextCanvas, AnsiTextCanvas {\n+  private val escapes = mutableMapOf<Pair<Int, Int>, String>()\n+\n+  override fun appendEscape(row: Int, column: Int, escape: String) {\n+    require(row in 0 until height)\n+    require(column in 0..width)\n+    val key = row to column\n+    escapes[key] = escapes.orEmptyAt(key) + escape\n+  }\n+\n+  private fun Map<Pair<Int, Int>, String>.orEmptyAt(key: Pair<Int, Int>) = this[key].orEmpty()\n+\n   private val buffer = IntArray(height * width) { ' '.toInt() }\n \n   override operator fun set(row: Int, column: Int, codePoint: Int) {\n@@ -23,10 +38,13 @@ internal class TextSurface(\n       /* newlines: */ height +\n       /* multi-char codepoint estimate: */ width\n     return buildString(capacity) {\n-      buffer.forEachIndexed { index, codePoint ->\n-        appendCodePoint(codePoint)\n-\n-        if (index % width == width - 1) appendLine()\n+      for (row in 0 until height) {\n+        for (column in 0 until width) {\n+          append(escapes[row to column].orEmpty())\n+          appendCodePoint(buffer[row * width + column])\n+        }\n+        append(escapes[row to width].orEmpty())\n+        appendLine()\n       }\n     }\n   }\n@@ -51,7 +69,13 @@ private class ClippedTextCanvas(\n   right: Int,\n   private val top: Int,\n   bottom: Int,\n-) : TextCanvas {\n+) : TextCanvas, AnsiTextCanvas {\n+  override fun appendEscape(row: Int, column: Int, escape: String) {\n+    require(row in 0 until height)\n+    require(column in 0..width)\n+    (canvas as? AnsiTextCanvas)?.appendEscape(top + row, left + column, escape)\n+  }\n+\n   override val width = right - left\n   override val height = bottom - top\n \n"
+          },
+          "tokenUsage": {
+            "prompt": 63030,
+            "completion": 1417,
+            "cached": 42368,
+            "total": 64447,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          }
+        }
+      },
+      {
+        "vars": {
+          "arm": "kast",
+          "caseId": "picnic-ansi",
+          "comparison": "developer-tasks"
+        },
+        "success": true,
+        "failureReason": 0,
+        "gradingResult": {
+          "pass": true
+        },
+        "namedScores": {
+          "correctness": 1
+        },
+        "response": {
+          "metadata": {
+            "model": "openai-codex/gpt-6.1-sol",
+            "effort": "low",
+            "taskSha256": "3738ba9c1e4b8426bfe4b34dfae8c84659ee25969be2b49f33a4d0aff721d282",
+            "sourceSha256": "84084fe8707b60f6c700b690bbb6910d83c264ccbc17aeaef8f8df2f6439d00a",
+            "hostAvailable": true,
+            "toolCalls": 13,
+            "toolExecutions": 13,
+            "kastCalls": 0,
+            "completeKastCalls": 0,
+            "providerResponses": 12,
+            "usage": {
+              "input": 21903,
+              "output": 1458,
+              "cacheRead": 42240,
+              "cacheWrite": 0,
+              "total": 65601
+            },
+            "grade": {
+              "pass": true,
+              "reason": "COMPILED_BEHAVIOR_MATCHED"
+            },
+            "patch": "diff --git a/src/main/kotlin/com/jakewharton/picnic/textLayout.kt b/src/main/kotlin/com/jakewharton/picnic/textLayout.kt\nindex 0852972..431699d 100644\n--- a/src/main/kotlin/com/jakewharton/picnic/textLayout.kt\n+++ b/src/main/kotlin/com/jakewharton/picnic/textLayout.kt\n@@ -22,7 +22,12 @@ interface TextLayout {\n  * Returns number of Unicode code points in this string. This may be different from [String.length]\n  * if the string contains surrogate pairs.\n  */\n-private val String.unicodeLength: Int get() = codePointCount(0, length)\n+private val sgr = Regex(\"\\u001B\\\\[[0-9;]*m\")\n+\n+private val String.unicodeLength: Int get() {\n+  val visible = sgr.replace(this, \"\")\n+  return visible.codePointCount(0, visible.length)\n+}\n \n internal class SimpleLayout(private val cell: PositionedCell) : TextLayout {\n   private val leftPadding = cell.canonicalStyle?.paddingLeft ?: 0\n@@ -42,40 +47,37 @@ internal class SimpleLayout(private val cell: PositionedCell) : TextLayout {\n   }\n \n   override fun draw(canvas: TextCanvas) {\n-    val width = measureWidth()\n     val height = measureHeight()\n \n     val alignment = cell.canonicalStyle?.alignment ?: TopLeft\n-    val left = when (alignment) {\n-      TopLeft, MiddleLeft, BottomLeft -> leftPadding\n-      TopCenter, MiddleCenter, BottomCenter -> ((canvas.width - width) / 2) + leftPadding\n-      TopRight, MiddleRight, BottomRight -> canvas.width - width + leftPadding\n-    }\n     val top = when (alignment) {\n       TopLeft, TopCenter, TopRight -> topPadding\n       MiddleLeft, MiddleCenter, MiddleRight -> ((canvas.height - height) / 2) + topPadding\n       BottomLeft, BottomCenter, BottomRight -> canvas.height - height + topPadding\n     }\n \n-    var x = left\n-    var y = top\n-    for (codePoint in cell.cell.content.codePoints) {\n-      // TODO invisible chars, graphemes, etc.\n-      if (codePoint != '\\n'.toInt()) {\n-        canvas[y, x++] = codePoint\n-      } else {\n-        y++\n-        x = left\n+    cell.cell.content.split('\\n').forEachIndexed { lineIndex, line ->\n+      val width = leftPadding + line.unicodeLength +\n+        (cell.canonicalStyle?.paddingRight ?: 0)\n+      var x = when (alignment) {\n+        TopLeft, MiddleLeft, BottomLeft -> leftPadding\n+        TopCenter, MiddleCenter, BottomCenter -> ((canvas.width - width) / 2) + leftPadding\n+        TopRight, MiddleRight, BottomRight -> canvas.width - width + leftPadding\n+      }\n+      val y = top + lineIndex\n+      var index = 0\n+      while (index < line.length) {\n+        val escape = sgr.find(line, index)?.takeIf { it.range.first == index }\n+        if (escape != null) {\n+          (canvas as? EscapeCanvas)?.escape(y, x, escape.value)\n+          index += escape.value.length\n+        } else {\n+          val codePoint = line.codePointAt(index)\n+          canvas[y, x++] = codePoint\n+          index += Character.charCount(codePoint)\n+        }\n       }\n     }\n   }\n }\n \n-private val String.codePoints get() = sequence {\n-  var i = 0\n-  while (i < length) {\n-    val codePoint = codePointAt(i)\n-    yield(codePoint)\n-    i += Character.charCount(codePoint)\n-  }\n-}\ndiff --git a/src/main/kotlin/com/jakewharton/picnic/textSurface.kt b/src/main/kotlin/com/jakewharton/picnic/textSurface.kt\nindex 3bab843..a78a24f 100644\n--- a/src/main/kotlin/com/jakewharton/picnic/textSurface.kt\n+++ b/src/main/kotlin/com/jakewharton/picnic/textSurface.kt\n@@ -3,7 +3,16 @@ package com.jakewharton.picnic\n internal class TextSurface(\n   override val width: Int,\n   override val height: Int,\n-) : TextCanvas {\n+) : TextCanvas, EscapeCanvas {\n+  private val escapes = mutableMapOf<Pair<Int, Int>, String>()\n+\n+  override fun escape(row: Int, column: Int, text: String) {\n+    require(row in 0 until height)\n+    require(column in 0..width)\n+    val key = row to column\n+    escapes[key] = escapes[key].orEmpty() + text\n+  }\n+\n   private val buffer = IntArray(height * width) { ' '.toInt() }\n \n   override operator fun set(row: Int, column: Int, codePoint: Int) {\n@@ -24,9 +33,15 @@ internal class TextSurface(\n       /* multi-char codepoint estimate: */ width\n     return buildString(capacity) {\n       buffer.forEachIndexed { index, codePoint ->\n+        val row = index / width\n+        val column = index % width\n+        append(escapes[row to column].orEmpty())\n         appendCodePoint(codePoint)\n \n-        if (index % width == width - 1) appendLine()\n+        if (column == width - 1) {\n+          append(escapes[row to width].orEmpty())\n+          appendLine()\n+        }\n       }\n     }\n   }\n@@ -45,13 +60,23 @@ interface TextCanvas {\n   }\n }\n \n+internal interface EscapeCanvas {\n+  fun escape(row: Int, column: Int, text: String)\n+}\n+\n private class ClippedTextCanvas(\n   private val canvas: TextCanvas,\n   private val left: Int,\n   right: Int,\n   private val top: Int,\n   bottom: Int,\n-) : TextCanvas {\n+) : TextCanvas, EscapeCanvas {\n+  override fun escape(row: Int, column: Int, text: String) {\n+    require(row in 0 until height)\n+    require(column in 0..width)\n+    (canvas as? EscapeCanvas)?.escape(top + row, left + column, text)\n+  }\n+\n   override val width = right - left\n   override val height = bottom - top\n \n"
+          },
+          "tokenUsage": {
+            "prompt": 64143,
+            "completion": 1458,
+            "cached": 42240,
+            "total": 65601,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 0,
+              "prompt": 0,
+              "completion": 0,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

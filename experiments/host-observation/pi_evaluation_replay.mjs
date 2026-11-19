@@ -34,14 +34,13 @@ export function admitReplayPair(projections,maximumPayloadBytes) {
  if(projections.some(p=>p.encodingEquivalent!==true))return {type:'invalid',reason:'PAIR_ENCODING_MISMATCH'};
  return {type:'admitted'};
 }
-export async function runReplayPool(trials,workers,execute,signal,onReceipt=()=>{}) {
+export async function runReplayPool(trials,workers,execute,signal) {
  let cursor=0;const results=new Array(trials.length);
  await Promise.all(Array.from({length:Math.min(workers,trials.length)},async()=>{
   while(cursor<trials.length&&!signal?.aborted){
    const index=cursor++,trial=trials[index];
    try{results[index]={...trial,...await execute(trial,index)};}
    catch{results[index]={...trial,outcome:{type:'invalid',reasons:['WORKER_EXECUTION_FAILED']},usage:null,providerSends:null};}
-   onReceipt(results[index]);
   }
  }));
  return trials.map((trial,index)=>results[index]??{...trial,outcome:{type:'cancelled-before-start',reasons:['BATCH_CANCELLED']},usage:null,providerSends:0});
@@ -58,46 +57,100 @@ export function validateReplayPlan(plan) {
   ||plan.model?.provider!=='openai-codex'||plan.model?.id!=='gpt-6.1-sol'||plan.model?.effort!=='high')throw Error('REPLAY_ARTIFACT_PIN_REQUIRED');
  return plan;
 }
-export async function executeReplayPlan(planFile,plan) {
- examineReplayPins(plan,{planFile});
- const trials=expandReplayPlan(plan),controller=new AbortController();
- const cancel=()=>controller.abort();process.once('SIGINT',cancel);process.once('SIGTERM',cancel);
- fs.mkdirSync(plan.outputRoot,{mode:0o700});
- const worker=fileURLToPath(new URL('pi_evaluation_replay_worker.mjs',import.meta.url));
- const call=async(trial,mode)=>runOwnedWorker(process.execPath,[worker,mode,planFile,trial.trialId],{
-  cwd:plan.outputRoot,env:{...process.env,PI_OFFLINE:'1',PI_TELEMETRY:'0',KAST_TOOL_RPC_COMMAND:undefined},
-  wallMillis:60000,graceMillis:1000,signal:controller.signal});
+// Promptfoo schedules live trials. This owner admits the paired inputs and
+// records controller evidence for each admitted trial.
+export async function prepareReplayRun(planFile,planBytes,plan,signal,{checkPins=examineReplayPins,spawnWorker=runOwnedWorker}={}) {
+ checkPins(plan,{planFile,requireGuidance:true});
+ const trials=expandReplayPlan(plan);
+ const planned=new Map(trials.map(trial=>[trial.trialId,trial]));
  const artifact=JSON.parse(fs.readFileSync(plan.adapterManifest));
- const withIdentity=receipt=>{const fixture=plan.cases.find(c=>c.id===receipt.caseId);return {...receipt,identity:{sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,artifactSha256:artifact.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,sdkIdentity:plan.sdkIdentity,model:plan.model,fixtureVersion:fixture.version,replayStateSha256:fixture.replayStateSha256,canonicalSha256:fixture.canonicalSha256,promptSha256:fixture.promptSha256,contractSha256:fixture.contractSha256,codec:'JToon-3.0.0',instructionProfile:plan.instructionProfile??'full',executionProfile:plan.executionProfile??'fresh',publicContractSha256:plan.publicContractSha256,credentialSource:plan.credentialSource??'PI_OAUTH',graderSha256:createHash('sha256').update(fs.readFileSync(new URL('pi_evaluation_replay_grading.mjs',import.meta.url))).digest('hex'),planSha256:createHash('sha256').update(fs.readFileSync(planFile)).digest('hex'),...receipt.identity,timingMethod:'CONTROLLER_REAPED_WALL_V1'}};};
- const published=new Set();
- const publishReceipt=receipt=>{if(published.has(receipt.trialId))return;fs.writeFileSync(path.join(plan.outputRoot,`${receipt.trialId}.receipt.json`),JSON.stringify(receipt,null,2)+'\n',{mode:0o600,flag:'wx'});published.add(receipt.trialId);};
- const write=(name,value)=>fs.writeFileSync(path.join(plan.outputRoot,name),JSON.stringify(value,null,2)+'\n',{mode:0o600});
- try{
-  // All arms project through the real SDK without credentials or network first.
-  const preflight=await runReplayPool(trials,plan.workers,async trial=>{
-   const result=await call(trial,'--preflight');
-   return {projection:result.type==='report'?result.report:null,controller:result};
-  },controller.signal);
-  write('preflight.json',preflight);
-  const pairs=new Map();for(const trial of trials){const items=pairs.get(trial.pairId)??[];items.push(trial);pairs.set(trial.pairId,items);}
-  const allowed=new Set(),rejected=new Map();
-  for(const [id,pair]of pairs){const admission=admitReplayPair(pair.map(t=>preflight.find(p=>p.trialId===t.trialId)?.projection),262144);if(admission.type==='admitted')allowed.add(id);else rejected.set(id,admission.reason);}
-  let scheduledSends=0;
-  const started=performance.now();
-  const receipts=(await runReplayPool(trials,plan.workers,async trial=>{
-   if(!allowed.has(trial.pairId))return {outcome:{type:'invalid',reasons:[rejected.get(trial.pairId)]},usage:null,providerSends:0,shellCalls:0,kastInvocations:0,nativeCalls:0,projection:preflight.find(p=>p.trialId===trial.trialId)?.projection};
-   if(scheduledSends>=plan.maximumProviderRequests)throw Error('BATCH_REQUEST_CAP');
-   scheduledSends++;
-   const queued=performance.now()-started,launched=performance.now(),result=await call(trial,'--trial');
-   const controllerMs=performance.now()-launched;
-   if(result.type==='report')return {...result.report,latency:{...result.report.latency,workerMs:result.report.latency?.trialMs??null,trialMs:controllerMs,queueMs:queued,method:'CONTROLLER_REAPED_WALL_V1'},controller:result};
-   // A killed worker has unknown incurred usage. Keep its incremental ledger.
-   let ledger={providerSends:null,usage:null};
-   try{ledger=JSON.parse(fs.readFileSync(path.join(plan.outputRoot,trial.trialId,'ledger.json'),'utf8'));}catch{}
-   return {...ledger,latency:{trialMs:controllerMs,workerMs:null,queueMs:queued,providerMs:null,shellMs:null,method:'CONTROLLER_REAPED_WALL_V1'},outcome:{type:result.type==='cancelled'&&ledger.providerSends===1?'incomplete':'invalid',reasons:[result.type==='cancelled'?'DEADLINE':'WORKER_REPORT_UNAVAILABLE']},controller:result};
-  },controller.signal,receipt=>publishReceipt(withIdentity(receipt)))).map(withIdentity);
-  for(const receipt of receipts)publishReceipt(receipt);
-  const report={...summarizeReplay(trials,receipts),liveAcceptance:receipts.some(r=>r.providerSends>0)?'MEASURED':'NOT_RUN',preflight:{planned:trials.length,completeInputs:preflight.filter(r=>r.projection?.complete===true).length,qualifiedPairs:allowed.size},source:{revision:plan.sourceRevision,diffSha256:plan.diffSha256,adapterManifestSha256:plan.adapterManifestSha256},limits:{workers:plan.workers,maximumProviderRequests:plan.maximumProviderRequests,maximumRequestsPerTrial:1,wallSeconds:60}};write('report.json',report);
-  return report;
- }finally{process.removeListener('SIGINT',cancel);process.removeListener('SIGTERM',cancel);}
+ fs.mkdirSync(plan.outputRoot,{mode:0o700});
+ const snapshot=path.join(plan.outputRoot,'plan.json');
+ fs.writeFileSync(snapshot,planBytes,{mode:0o400,flag:'wx'});
+ const worker=fileURLToPath(new URL('pi_evaluation_replay_worker.mjs',import.meta.url));
+ const call=(trial,mode,workerSignal)=>spawnWorker(process.execPath,[worker,mode,snapshot,trial.trialId],{
+  cwd:plan.outputRoot,env:{...process.env,PI_OFFLINE:'1',PI_TELEMETRY:'0',KAST_TOOL_RPC_COMMAND:undefined},
+  wallMillis:60000,graceMillis:1000,signal:workerSignal});
+ const graderSha256=createHash('sha256').update(fs.readFileSync(new URL('pi_evaluation_replay_grading.mjs',import.meta.url))).digest('hex');
+ const planSha256=createHash('sha256').update(planBytes).digest('hex');
+ const withIdentity=(trial,observation)=>{
+  const fixture=plan.cases.find(item=>item.id===trial.caseId);
+  return {...observation,...trial,identity:{sourceRevision:plan.sourceRevision,diffSha256:plan.diffSha256,
+   artifactSha256:artifact.sha256,adapterManifestSha256:plan.adapterManifestSha256,piVersion:plan.piVersion,
+   sdkIdentity:plan.sdkIdentity,model:plan.model,fixtureVersion:fixture.version,replayStateSha256:fixture.replayStateSha256,
+   canonicalSha256:fixture.canonicalSha256,promptSha256:fixture.promptSha256,contractSha256:fixture.contractSha256,
+   codec:'JToon-3.0.0',instructionProfile:plan.instructionProfile??'full',executionProfile:plan.executionProfile??'fresh',
+   publicContractSha256:plan.publicContractSha256,credentialSource:plan.credentialSource??'PI_OAUTH',
+   kastGuidanceSha256:plan.kastGuidanceSha256,
+   graderSha256,planSha256,...observation.identity,timingMethod:'CONTROLLER_REAPED_WALL_V1'}};
+ };
+ const write=(name,value,flag='w')=>fs.writeFileSync(path.join(plan.outputRoot,name),JSON.stringify(value,null,2)+'\n',{mode:0o600,flag});
+
+ // All arms project through the SDK without credentials or network first.
+ const preflight=await runReplayPool(trials,plan.workers,async trial=>{
+  const result=await call(trial,'--preflight',signal);
+  return {projection:result.type==='report'?result.report:null,controller:result};
+ },signal);
+ write('preflight.json',preflight);
+ const projections=new Map(preflight.map(row=>[row.trialId,row.projection]));
+ const pairs=new Map();
+ for(const trial of trials) {
+  const pair=pairs.get(trial.pairId)??[];
+  pair.push(projections.get(trial.trialId));
+  pairs.set(trial.pairId,pair);
+ }
+ const admissions=new Map([...pairs].map(([id,pair])=>[id,admitReplayPair(pair,262144)]));
+ const receipts=new Map(),claimed=new Set();
+ const publishSummary=()=>write('report.json',{
+  ...summarizeReplay(trials,[...receipts.values()]),
+  liveAcceptance:[...receipts.values()].some(row=>row.providerSends>0)?'MEASURED':'NOT_RUN',
+  preflight:{planned:trials.length,completeInputs:preflight.filter(row=>row.projection?.complete===true).length,
+   qualifiedPairs:[...admissions.values()].filter(admission=>admission.type==='admitted').length},
+  source:{revision:plan.sourceRevision,diffSha256:plan.diffSha256,adapterManifestSha256:plan.adapterManifestSha256},
+  limits:{workers:plan.workers,maximumProviderRequests:plan.maximumProviderRequests,maximumRequestsPerTrial:1,wallSeconds:60},
+ });
+ const publish=(trial,observation)=>{
+  const receipt=withIdentity(trial,observation);
+  write(`${trial.trialId}.receipt.json`,receipt,'wx');
+  receipts.set(trial.trialId,receipt);
+  return receipt;
+ };
+ const cancelled={outcome:{type:'cancelled-before-start',reasons:['BATCH_CANCELLED']},usage:null,providerSends:0};
+ const publishCancelled=()=>{
+  if(signal.aborted)for(const trial of trials)if(!claimed.has(trial.trialId)&&!receipts.has(trial.trialId))publish(trial,cancelled);
+ };
+ publishCancelled();
+ publishSummary();
+ const started=performance.now();
+ return {
+  async run(trialId,workerSignal) {
+   const trial=planned.get(trialId);
+   if(!trial||claimed.has(trialId))throw Error('REPLAY_TRIAL_REJECTED');
+   if(receipts.has(trialId))return receipts.get(trialId);
+   claimed.add(trialId);
+   let observation;
+   const admission=admissions.get(trial.pairId);
+   if(workerSignal.aborted)observation=cancelled;
+   else if(admission.type!=='admitted')observation={outcome:{type:'invalid',reasons:[admission.reason]},usage:null,
+    providerSends:0,shellCalls:0,kastInvocations:0,nativeCalls:0,projection:projections.get(trialId)};
+   else {
+    const queueMs=performance.now()-started,launched=performance.now();
+    const result=await call(trial,'--trial',workerSignal);
+    const controllerMs=performance.now()-launched;
+    if(result.type==='report')observation={...result.report,latency:{...result.report.latency,
+     workerMs:result.report.latency?.trialMs??null,trialMs:controllerMs,queueMs,method:'CONTROLLER_REAPED_WALL_V1'},controller:result};
+    else {
+     // A killed worker has unknown incurred usage. Keep its incremental ledger.
+     let ledger={providerSends:null,usage:null};
+     try{ledger=JSON.parse(fs.readFileSync(path.join(plan.outputRoot,trialId,'ledger.json'),'utf8'));}catch{}
+     observation={...ledger,latency:{trialMs:controllerMs,workerMs:null,queueMs,providerMs:null,shellMs:null,method:'CONTROLLER_REAPED_WALL_V1'},
+      outcome:{type:result.type==='cancelled'&&ledger.providerSends===1?'incomplete':'invalid',reasons:[result.type==='cancelled'?'DEADLINE':'WORKER_REPORT_UNAVAILABLE']},controller:result};
+    }
+   }
+   const receipt=publish(trial,observation);
+   publishCancelled();
+   publishSummary();
+   return receipt;
+  },
+ };
 }

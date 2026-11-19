@@ -1,9 +1,11 @@
 // Pure rules; no process, filesystem, provider, Kast, clock or credential access.
+import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { isAdmittedPayload, isVerifiedInputCalibration, PayloadFailure } from './pi_evaluation_payload.mjs';
 import { decodeQueryDelivery, deliverySummary, partialEvidenceSummary } from './pi_evaluation_delivery.mjs';
 export const READ_TOOLS=Object.freeze(['query_symbols','check_diagnostics','health_check']);
 export const READ_TOOL_IDENTITIES=Object.freeze([...READ_TOOLS,...READ_TOOLS.map(name=>`mcp__kast__${name}`)]);
+export const GuidanceReadTool = 'read_kast_guidance';
 export function readToolName(name) {
   return READ_TOOLS.find(tool=>name===tool||name===`mcp__kast__${tool}`);
 }
@@ -16,6 +18,7 @@ export function measureToolResult(content,toolName,envelope) {
   } catch {return {type:'invalid'};}
 }
 export const Outcome = Object.freeze({RUNNING:'RUNNING', FINAL_ANSWER:'FINAL_ANSWER', QUALIFIED_ANSWER:'QUALIFIED_ANSWER', REJECTION:'INTENTIONAL_REJECTION', RPC_REJECTION:'TOOL_RPC_REJECTION', MCP_REJECTION:'MCP_TRANSPORT_REJECTION', DELIVERY_BLOCKED:'CLIENT_DELIVERY_BLOCKED', BUDGET:'HARNESS_BUDGET_LIMIT', MODEL_MISMATCH:'HARNESS_MODEL_MISMATCH', TOOL_BLOCKED:'HARNESS_TOOL_BLOCKED', INVALID:'HARNESS_OBSERVATION_INVALID', PAYLOAD_UNSUPPORTED:PayloadFailure.UNSUPPORTED, INPUT_BOUND_UNAVAILABLE:PayloadFailure.UNPROVEN, INPUT_CALIBRATION_EXCEEDED:'HARNESS_INPUT_CALIBRATION_EXCEEDED', MODEL_ERROR:'MODEL_ERROR', CANCELLED:'HARNESS_CANCELLED'});
+export const AnswerCheck = Object.freeze({ NOT_REQUESTED:'NOT_REQUESTED', UNAVAILABLE:'UNAVAILABLE', MATCHED:'MATCHED', MISMATCH:'MISMATCH' });
 const RPC_FAILURES=Object.freeze(['INSTALLATION_STOPPED','OBSERVATION_UNAVAILABLE','CATALOG_UNAVAILABLE','INVALID_COMMAND','REQUEST_TOO_LARGE','UNKNOWN_TOOL','INVALID_ARGUMENTS','OUT_OF_SCOPE','INVOCATION_FAILED','INVALID_RESULT','QUERY_SESSION_TRANSITION_REJECTED']);
 const MCP_FAILURES=Object.freeze(['INVALID_ARGUMENTS','UNKNOWN_TOOL','NOT_GRADLE_WORKSPACE','INVOCATION_FAILED','INVOCATION_IN_PROGRESS','INVALID_RESULT_SCHEMA']);
 const emptyUsage=()=>({input:0,cacheRead:0,cacheWrite:0,output:0,reasoning:0,totalTokens:0});
@@ -72,6 +75,10 @@ export function decodeEnvelope(content,toolName='query_symbols',canonicalDetails
 export class CasePolicy {
   constructor(config) {
     if(config.finalPresentation!==undefined&&!['canonical','compact'].includes(config.finalPresentation)) throw Error('Explicit closed final presentation required');
+    if(config.expectedAnswerSha256!==undefined &&
+        (typeof config.expectedAnswerSha256!=='string'||!/^[a-f0-9]{64}$/.test(config.expectedAnswerSha256))) {
+      throw Error('Final answer digest must be SHA-256');
+    }
     for(const phase of ['work','delivery']) {
       const b=config[phase];
       if(!b || ![b.reportedTokens,b.requests,b.outputReserve].every(n=>integer(n)&&n>0)) throw Error('Explicit per-case work and delivery bounds required');
@@ -88,6 +95,7 @@ export class CasePolicy {
     this.maximumReportedTokens=config.maximumReportedTokens??(config.work.reportedTokens+config.delivery.reportedTokens);
     if(!integer(this.maximumReportedTokens)||this.maximumReportedTokens<1) throw Error('Finite cumulative post-response token threshold required');
     this.config=structuredClone(config);this.phase='WORK';this.outcome=Outcome.RUNNING;this.nativeOutcome='UNOBSERVED';
+    this.answerCheck=config.expectedAnswerSha256===undefined?AnswerCheck.NOT_REQUESTED:AnswerCheck.UNAVAILABLE;
     this.usage=emptyUsage();this.phaseUsage={WORK:emptyUsage(),DELIVERY:emptyUsage()};this.requests={WORK:0,DELIVERY:0};this.requestObservations=[];
     this.proposals=[];this.tools=0;this.resultCount=0;this.toolTextBytes=0;this.finalAnswer=false;this.exhaustiveEvidence=false;this.evidenceRequest=undefined;this.providerInFlight=false;
     this.lastMeasuredInput=0;this.inputCalibrations=new Map();this.outputCapApplied=false;this.queryDeliveries=[];
@@ -173,17 +181,24 @@ export class CasePolicy {
     if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
     return bytes>this.maximumProviderResponseBytes?this.stop(Outcome.BUDGET):decision(true,'RESPONSE_WITHIN_BYTES',this.phase);
   }
-  toolCall(toolName,args,callId) {
+  toolCall(toolName,args,callId,guidanceReader=false) {
     const proposal={callId,toolName,requestType:args?.request?.type??null,harnessDecision:undefined,adapterStartObserved:false,rpcReplyObserved:false,nativeReplyObserved:false};this.proposals.push(proposal);
     let allowed=false;
     const canonicalName=readToolName(toolName);
-    if(this.phase==='WORK') allowed=canonicalName!==undefined && (canonicalName!=='query_symbols'||args?.request?.type==='RUN') && this.tools<this.config.work.tools && !this.activeToolCall;
+    if(this.phase==='WORK') allowed=(guidanceReader&&toolName===GuidanceReadTool||canonicalName!==undefined && (canonicalName!=='query_symbols'||args?.request?.type==='RUN')) && this.tools<this.config.work.tools && !this.activeToolCall;
     if(this.phase==='DELIVERY'&&this.evidenceRequest) allowed=canonicalName==='query_symbols' && isDeepStrictEqual(args?.request,this.evidenceRequest) && !this.activeToolCall;
     if(this.phase==='STOPPED') {proposal.harnessDecision=this.outcome;return decision(false,this.outcome,this.phase);}
     if(!allowed) {proposal.harnessDecision=Outcome.TOOL_BLOCKED;return this.stop(Outcome.TOOL_BLOCKED);}
     this.tools++;this.activeToolCall=callId;proposal.harnessDecision='ADMITTED';return decision(true,'ADMITTED',this.phase);
   }
   adapterStarted(callId) {const p=this.proposals.find(p=>p.callId===callId);if(p) p.adapterStartObserved=true;}
+  guidanceResult(callId,textBytes) {
+    if(this.phase==='STOPPED')return decision(false,this.outcome,this.phase);
+    if(this.phase!=='WORK'||callId!==this.activeToolCall||!this.proposals.some(p=>p.callId===callId&&p.toolName===GuidanceReadTool)||!integer(textBytes))return this.stop(Outcome.INVALID);
+    this.activeToolCall=undefined;
+    this.toolTextBytes+=textBytes;
+    return this.toolTextBytes>this.config.maximumToolTextBytes?this.stop(Outcome.BUDGET):decision(true,'READ_TOOL_REPLY',this.phase);
+  }
   toolResult(envelope,textBytes=0,callId,hostIsError) {
     const observed=this.observeToolResult(envelope,textBytes,callId,hostIsError);
     if(!observed.allow||this.config.finalPresentation!=='compact')return observed;
@@ -258,16 +273,26 @@ export class CasePolicy {
     return decision(true,'RESULT_RECEIVED',this.phase);
   }
   assistantEnded(message) {
-    this.finalTextObserved ||= message.stopReason==='stop'&&(message.content?.some(b=>b.type==='text'&&typeof b.text==='string'&&b.text.trim().length>0)??false);
+    const isText=block=>block.type==='text'&&typeof block.text==='string';
+    const hasFinalText=message.stopReason==='stop'&&(message.content?.some(block=>isText(block)&&block.text.trim().length>0)??false);
+    this.finalTextObserved ||= hasFinalText;
     if(this.phase==='STOPPED') return decision(false,this.outcome,this.phase);
     if(message.stopReason==='error') return this.stop(Outcome.MODEL_ERROR);
     if(message.stopReason==='aborted') return this.stop(Outcome.CANCELLED);
-    if(message.stopReason==='stop') {this.finalAnswer=message.content?.some(b=>b.type==='text'&&typeof b.text==='string'&&b.text.trim().length>0)??false;return this.stop(this.finalAnswer?(this.semanticRejected?Outcome.REJECTION:this.semanticQualified?Outcome.QUALIFIED_ANSWER:Outcome.FINAL_ANSWER):Outcome.INVALID);}
+    if(message.stopReason==='stop') {
+      this.finalAnswer=hasFinalText;
+      if(this.finalAnswer&&this.answerCheck===AnswerCheck.UNAVAILABLE) {
+        const text=message.content.filter(isText).map(block=>block.text).join('');
+        const digest=createHash('sha256').update(text,'utf8').digest('hex');
+        this.answerCheck=digest===this.config.expectedAnswerSha256?AnswerCheck.MATCHED:AnswerCheck.MISMATCH;
+      }
+      return this.stop(this.finalAnswer?(this.semanticRejected?Outcome.REJECTION:this.semanticQualified?Outcome.QUALIFIED_ANSWER:Outcome.FINAL_ANSWER):Outcome.INVALID);
+    }
     if(message.stopReason!=='toolUse') return this.stop(Outcome.INVALID);
     return decision(true,'TOOL_PROPOSAL_PENDING',this.phase);
   }
   report() {
-    return {case:this.config.name,outcome:this.outcome,phase:this.phase,nativeOutcome:this.nativeOutcome,finalAnswer:this.finalAnswer,finalTextObserved:this.finalTextObserved??false,exhaustiveEvidence:this.exhaustiveEvidence,
+    return {case:this.config.name,outcome:this.outcome,phase:this.phase,nativeOutcome:this.nativeOutcome,finalAnswer:this.finalAnswer,finalTextObserved:this.finalTextObserved??false,answerCheck:this.answerCheck,exhaustiveEvidence:this.exhaustiveEvidence,
       finalPresentation:this.config.finalPresentation??'canonical',
       partialEvidence:structuredClone(this.partialEvidence??null),
       // External row/oracle proof is never inferred from a final answer/row count.

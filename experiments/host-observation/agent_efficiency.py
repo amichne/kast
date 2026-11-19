@@ -61,6 +61,12 @@ from agent_efficiency_subject import (
 )
 
 HERE = Path(__file__).resolve().parent
+KAST_SKILL_DIRECTORY = HERE.parent.parent / "agent-tools/skills/kast"
+KAST_GUIDANCE_ARCHIVE = Path("controller-source/kast-skill")
+KAST_USAGE_INSTRUCTION = (
+    "Use Kast for compiler-backed analysis and symbol resolution in Kotlin code "
+    "and Gradle projects."
+)
 REVISION = "5937ff1f46fbb0914c36226afb52426a4271c29c"
 LEGACY_SUBJECT = GitSubject()
 
@@ -322,6 +328,11 @@ def source_overlay_document(
     return SourceOverlayDocument(subject_sha256=subject_digest(subject), outcome=value)
 
 
+class CodemodeOptions(Record):
+    mode: Literal["on"]
+    models: Literal[False]
+
+
 class SessionReport(Record):
     version: int
     outcome: str
@@ -351,6 +362,8 @@ class SessionReport(Record):
     piPackageSha256: str
     mcpExecutableSha256: str | None
     onboardingSha256: str
+    codemodeOptions: CodemodeOptions | None = None
+    adapterSha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
 
 class Verdict(Record):
@@ -370,6 +383,37 @@ class Verdict(Record):
 
 def digest(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
+
+
+@dataclass(frozen=True, slots=True)
+class KastGuidance:
+    skill: bytes
+    guide: bytes
+
+    @classmethod
+    def read(cls, directory: Path) -> KastGuidance:
+        skill = (directory / "SKILL.md").read_bytes()
+        guide = (directory / "public-cli.md").read_bytes()
+        if not skill.decode("utf-8").strip() or not guide.decode("utf-8").strip():
+            raise ValueError("KAST_GUIDANCE_UNAVAILABLE")
+        return cls(skill, guide)
+
+    def stage(self, directory: Path) -> Path:
+        directory.mkdir(parents=True, mode=0o700)
+        for name, content in (("SKILL.md", self.skill), ("public-cli.md", self.guide)):
+            path = directory / name
+            with path.open("xb") as stream:
+                path.chmod(0o400)
+                _ = stream.write(content)
+        return directory / "SKILL.md"
+
+    @property
+    def skill_sha256(self) -> str:
+        return digest(self.skill)
+
+    @property
+    def guide_sha256(self) -> str:
+        return digest(self.guide)
 
 
 def corpus_digest(tasks: tuple[Task, ...]) -> str:
@@ -569,6 +613,7 @@ def _run_trial(
     output: Path,
     policy: str,
     snapshot: WorkspaceSnapshot,
+    guidance: KastGuidance | None,
 ) -> Trial:
     root = Path(env.workspace)
     owned = output / f"{task.id}-{repeat}-{arm}"
@@ -581,6 +626,16 @@ def _run_trial(
         if source.read_text().count(replacement.before) != 1:
             raise ValueError("SETUP_PREIMAGE_MISMATCH")
         _ = source.write_text(source.read_text().replace(replacement.before, replacement.after, 1))
+    system_guidance = ""
+    skills: list[str] = []
+    if arm == "treatment":
+        canonical = guidance if guidance is not None else KastGuidance.read(KAST_SKILL_DIRECTORY)
+        skill_file = canonical.stage(owned / "skills" / "kast")
+        system_guidance = f"{KAST_USAGE_INSTRUCTION} Read {json.dumps(str(skill_file))} for usage."
+        brief = onboarding(Path(env.producer_workspace), config, root)
+        if brief:
+            system_guidance += f"\n\n{brief}"
+        skills = [str(skill_file), *config.skills]
     plan = {
         "version": 1,
         "workspaceRoot": env.workspace,
@@ -594,10 +649,8 @@ def _run_trial(
         "arm": arm,
         "exposure": config.exposure,
         "mcpCommand": env.mcp_command,
-        "onboarding": onboarding(Path(env.producer_workspace), config, root)
-        if arm == "treatment"
-        else "",
-        "skills": list(config.skills) if arm == "treatment" else [],
+        "onboarding": system_guidance,
+        "skills": skills,
         "prompt": task.prompt + '\nReturn only JSON {"answer": <the requested JSON value>}. '
         "Use source evidence. Keep the declared scope. "
         "Do not inspect benchmark files or oracle data. "
@@ -785,12 +838,13 @@ def run_trial(
     env: Environment,
     output: Path,
     policy: str,
+    guidance: KastGuidance | None = None,
 ) -> Trial:
     if not isinstance(env.subject, GitSubject):
         admit_subject(Path(env.workspace), env.subject)
     snapshot = WorkspaceSnapshot.capture(Path(env.workspace))
     try:
-        return _run_trial(task, arm, repeat, config, env, output, policy, snapshot)
+        return _run_trial(task, arm, repeat, config, env, output, policy, snapshot, guidance)
     finally:
         snapshot.restore()
 
@@ -836,14 +890,21 @@ def examine_prepared_inputs(
                 raise ValueError("SOURCE_CONTENT_MISMATCH")
 
 
-def execute(
+@dataclass(frozen=True)
+class TrialRun:
+    environment: Environment
+    configuration: Configuration
+    tasks: tuple[Task, ...]
+    policy: str
+    manifest: Mapping[str, JsonValue]
+
+
+def admit_trial_run(
     root: Path,
     config_path: Path,
-    output: Path,
     task_ids: tuple[str, ...],
-    repeats: int,
     holdout: bool,
-) -> None:
+) -> TrialRun:
     env = Environment.model_validate_json((root / "environment.json").read_bytes())
     config = Configuration.model_validate_json(config_path.read_bytes())
     corpus_path = root / "vault/holdout.json" if holdout else root / "development.json"
@@ -864,12 +925,29 @@ def execute(
     policy = sandbox_policy(
         (root / "vault", root / "development.json", *(Path(item) for item in denied))
     )
-    examine_sandbox(policy, root / "vault/corpus.json")
+    return TrialRun(env, config, selected, policy, manifest)
+
+
+def record_trial_run(
+    run: TrialRun,
+    root: Path,
+    config_path: Path,
+    output: Path,
+    repeats: int,
+    holdout: bool,
+) -> None:
+    env, config, selected, manifest = run.environment, run.configuration, run.tasks, run.manifest
+    producer = Path(env.producer_workspace)
+    examine_sandbox(run.policy, root / "vault/corpus.json")
+    guidance = KastGuidance.read(KAST_SKILL_DIRECTORY)
     output.mkdir(mode=0o700)
     controller_source = output / "controller-source"
     controller_source.mkdir(mode=0o700)
+    _ = guidance.stage(output / KAST_GUIDANCE_ARCHIVE)
     for name in (
         "agent_efficiency.py",
+        "agent_efficiency_promptfoo.py",
+        "agent_efficiency_optimize.py",
         "agent_efficiency_session.mjs",
         "agent_efficiency_limits.mjs",
         "agent_efficiency_audit.mjs",
@@ -879,8 +957,13 @@ def execute(
         "agent_efficiency_tokens.py",
         "agent_efficiency_timing.py",
         "pi_evaluation_controller.mjs",
+        "promptfoo/agent-efficiency.config.mjs",
+        "promptfoo/agent-efficiency-provider.mjs",
+        "promptfoo/python-scenario.mjs",
+        "promptfoo/scenario-oracle.mjs",
     ):
         saved = controller_source / name
+        saved.parent.mkdir(mode=0o700, exist_ok=True)
         _ = saved.write_bytes((HERE / name).read_bytes())
         saved.chmod(0o600)
     save(
@@ -903,32 +986,17 @@ def execute(
             "holdoutIsolation": "MACOS_SANDBOX_DENIAL_EXAMINED",
             "sessionAdapterSha256": digest((HERE / "agent_efficiency_session.mjs").read_bytes()),
             "coordinatorSha256": digest(Path(__file__).read_bytes()),
+            "skillSha256": guidance.skill_sha256,
+            "guideSha256": guidance.guide_sha256,
             "metricOwnerSha256": digest((HERE / "agent_efficiency_metrics.py").read_bytes()),
             "costQualification": "BILLED_DOLLARS_UNAVAILABLE",
             "semanticAuditQualification": "INDEPENDENT_AUDIT_PENDING",
         },
     )
-    trials: list[Trial] = []
-    for repeat in range(repeats):
-        for index, task in enumerate(selected):
-            arms: tuple[Literal["control", "treatment"], ...] = (
-                ("control", "treatment") if (index + repeat) % 2 == 0 else ("treatment", "control")
-            )
-            for arm in arms:
-                trial = run_trial(task, arm, repeat, config, env, output, policy)
-                trials.append(trial)
-                print(
-                    json.dumps(
-                        {
-                            "task": task.id,
-                            "arm": arm,
-                            "correct": trial.correct,
-                            "seconds": trial.wall_seconds,
-                        }
-                    ),
-                    flush=True,
-                )
-    report = compare(trials, expected_task_ids=tuple(task.id for task in selected))
+
+
+def report_trials(output: Path, tasks: tuple[str, ...], trials: tuple[Trial, ...]) -> None:
+    report = compare(trials, expected_task_ids=tasks)
     save(output / "comparison.json", report)
     catalog: list[Trial] = []
     for trial in trials:
@@ -942,7 +1010,7 @@ def execute(
         output / "catalog-comparison.json",
         {
             "qualification": "CATALOG_ESTIMATES_NOT_BILLED_DOLLARS",
-            "comparison": compare(catalog, expected_task_ids=tuple(task.id for task in selected)),
+            "comparison": compare(catalog, expected_task_ids=tasks),
         },
     )
 
@@ -955,29 +1023,10 @@ def main() -> int:
     _ = prep.add_argument("--output", type=Path, required=True)
     _ = prep.add_argument("--curator", type=Path, required=True)
     _ = prep.add_argument("--environment", type=Path, required=True)
-    run = subs.add_parser("run")
-    _ = run.add_argument("--benchmark", type=Path, required=True)
-    _ = run.add_argument("--config", type=Path, required=True)
-    _ = run.add_argument("--output", type=Path, required=True)
-    _ = run.add_argument("--tasks", default="")
-    _ = run.add_argument("--repeats", type=int, default=1)
-    _ = run.add_argument("--holdout", action="store_true")
     args = parser.parse_args()
     try:
-        if args.command == "prepare":
-            env = Environment.model_validate_json(args.environment.read_bytes())
-            prepare(args.workspace.resolve(), args.output.resolve(), args.curator.resolve(), env)
-        else:
-            if args.repeats < 1:
-                raise ValueError("POSITIVE_REPEAT_COUNT_NEEDED")
-            execute(
-                args.benchmark.resolve(),
-                args.config.resolve(),
-                args.output.resolve(),
-                tuple(item for item in args.tasks.split(",") if item),
-                args.repeats,
-                args.holdout,
-            )
+        env = Environment.model_validate_json(args.environment.read_bytes())
+        prepare(args.workspace.resolve(), args.output.resolve(), args.curator.resolve(), env)
     except (ValueError, ValidationError, OSError, subprocess.SubprocessError) as error:
         print(
             json.dumps(

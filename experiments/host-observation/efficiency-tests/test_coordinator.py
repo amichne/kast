@@ -4,28 +4,36 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
 import agent_efficiency
+import agent_efficiency_promptfoo
 from agent_efficiency import (
+    KAST_GUIDANCE_ARCHIVE,
+    KAST_SKILL_DIRECTORY,
     REVISION,
     Configuration,
     Environment,
+    FileOnboarding,
     Oracle,
     Replacement,
     Task,
+    TrialRun,
     adjudicate,
     corpus_digest,
     digest,
     examine_prepared_inputs,
     examine_sandbox,
     onboarding,
+    record_trial_run,
     run_trial,
     sandbox_policy,
     scoped_path,
     split_tasks,
 )
+from agent_efficiency_promptfoo import Cohort, Row, run_row
 
 
 def file_brief(name: str, content: bytes) -> Configuration:
@@ -37,6 +45,17 @@ def file_brief(name: str, content: bytes) -> Configuration:
             "hypothesis": "Bind the experiment to the exact brief bytes.",
         }
     )
+
+
+@pytest.mark.parametrize(
+    "name", ("token-poc-compact", "reference-chain-private", "reference-chain-scoped")
+)
+def test_checked_in_plan_matches_current_brief(name: str) -> None:
+    catalog = agent_efficiency.HERE / "agent-efficiency-configs"
+    config = Configuration.model_validate_json((catalog / f"{name}.json").read_bytes())
+    brief = config.onboarding
+    assert isinstance(brief, FileOnboarding)
+    assert digest((catalog / brief.name).read_bytes()) == brief.sha256
 
 
 def test_versioned_brief_uses_the_committed_bytes(
@@ -253,6 +272,124 @@ def test_onboarding_failure_restores_the_setup(
             "(version 1)(allow default)",
         )
     assert source.read_text() == "class Order"
+
+
+@pytest.mark.parametrize("mode", ["none", "canonical", "file"])
+def test_session_plan_points_only_treatment_at_readable_canonical_skill(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: Literal["none", "canonical", "file"]
+) -> None:
+    canonical = agent_efficiency.HERE.parent.parent / "agent-tools/skills/kast"
+    project = tmp_path / "project"
+    _ = subprocess.run(["git", "init", "--quiet", str(project)], check=True)
+    _ = (project / "Order.kt").write_text("class Order")
+    producer = tmp_path / "producer"
+    references = producer / "agent-tools/references"
+    references.mkdir(parents=True)
+    brief = "Keep the task brief."
+    _ = (references / "onboarding.md").write_text(brief)
+    folder = tmp_path / "agent-efficiency-configs"
+    folder.mkdir()
+    _ = (folder / "test-brief.md").write_text(brief)
+    monkeypatch.setattr(agent_efficiency, "HERE", tmp_path)
+    config = (
+        file_brief("test-brief.md", brief.encode())
+        if mode == "file"
+        else Configuration(name="case", exposure="direct", onboarding=mode, hypothesis="case")
+    )
+
+    env = Environment(
+        workspace=str(project),
+        producer_workspace=str(producer),
+        pi_package="/pi",
+        pi_version="1.3.0",
+        auth="/auth",
+        mcp_command="/mcp",
+    )
+    arms: tuple[Literal["control", "treatment"], ...] = ("control", "treatment")
+
+    class SessionLauncher:
+        seen: list[str]
+
+        def __init__(self) -> None:
+            self.seen = []
+
+        def run(self, argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            plan_path = Path(argv[-1])
+            plan = json.loads(plan_path.read_bytes())
+            self.seen.append(plan["arm"])
+            staged = plan_path.parent / "skills/kast"
+            if plan["arm"] == "control":
+                assert plan["onboarding"] == ""
+                assert plan["skills"] == []
+                assert not staged.exists()
+            else:
+                expected = (
+                    "Use Kast for compiler-backed analysis and symbol resolution in Kotlin code "
+                    "and Gradle projects. Read "
+                    f"{json.dumps(str(staged / 'SKILL.md'))} for usage."
+                )
+                assert plan["onboarding"].split("\n\n", 1)[0] == expected
+                assert plan["skills"] == [str(staged / "SKILL.md")]
+                for name in ("SKILL.md", "public-cli.md"):
+                    assert (staged / name).read_bytes() == (canonical / name).read_bytes()
+                    assert (canonical / name).read_text() not in plan["onboarding"]
+                assert (brief in plan["onboarding"]) is (mode != "none")
+            return subprocess.CompletedProcess(argv, 1, "", "Controlled worker failure")
+
+    launcher = SessionLauncher()
+    monkeypatch.setattr(agent_efficiency, "subprocess", launcher)
+    for arm in arms:
+        trial = run_trial(
+            task(1, "source"), arm, 0, config, env, tmp_path, "(version 1)(allow default)"
+        )
+        assert not trial.correct
+    assert launcher.seen == list(arms)
+
+
+def test_treatment_rejects_drift_in_archived_guidance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    benchmark = tmp_path / "benchmark"
+    benchmark.mkdir()
+    _ = (benchmark / "manifest.json").write_text("{}")
+    config = Configuration(name="case", exposure="direct", onboarding="none", hypothesis="case")
+    config_path = tmp_path / "config.json"
+    _ = config_path.write_text(config.model_dump_json())
+    env = Environment(
+        workspace=str(tmp_path / "workspace"),
+        pi_package="/pi",
+        pi_version="1.3.0",
+        auth="/auth",
+        mcp_command="/mcp",
+    )
+    case = task(1, "source")
+    admitted = TrialRun(env, config, (case,), "unused", {"corpusSha256": "sealed"})
+    output = tmp_path / "evidence"
+    monkeypatch.setattr(agent_efficiency, "examine_sandbox", lambda *_: None)
+    monkeypatch.setattr(agent_efficiency, "git", lambda *_: REVISION)
+    record_trial_run(admitted, benchmark, config_path, output, repeats=1, holdout=False)
+
+    archive = output / KAST_GUIDANCE_ARCHIVE
+    manifest = json.loads((output / "run-manifest.json").read_bytes())
+    for name, key in (("SKILL.md", "skillSha256"), ("public-cli.md", "guideSha256")):
+        expected = (KAST_SKILL_DIRECTORY / name).read_bytes()
+        assert (archive / name).read_bytes() == expected
+        assert manifest[key] == digest(expected)
+    changed = archive / "public-cli.md"
+    changed.chmod(0o600)
+    _ = changed.write_text("changed guidance")
+    monkeypatch.setattr(
+        agent_efficiency_promptfoo, "run_trial", lambda *_: pytest.fail("Unexpected session launch")
+    )
+    cohort = Cohort(
+        name="comparison",
+        benchmark=str(benchmark),
+        configuration=str(config_path),
+        output=str(output),
+    )
+    row = Row(caseId=case.id, cohort=cohort.name, taskId=case.id, arm="treatment", repeat=0)
+    with pytest.raises(ValueError, match="KAST_GUIDANCE_CHANGED"):
+        _ = run_row(cohort, admitted, row)
 
 
 @pytest.mark.parametrize("oversized", [False, True])

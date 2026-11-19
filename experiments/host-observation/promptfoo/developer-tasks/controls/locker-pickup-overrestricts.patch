@@ -1,0 +1,49 @@
+--- a/src/main/kotlin/parcel/checkout/CheckoutModels.kt
++++ b/src/main/kotlin/parcel/checkout/CheckoutModels.kt
+@@ -15,6 +15,7 @@
+
+ sealed interface DeliveryOption {
+     data object Home : DeliveryOption
++    data class Locker(val lockerId: String, val zone: DeliveryZone) : DeliveryOption
+ }
+
+ enum class QuoteFailure { UNSUPPORTED_MODE, MISSING_LOCKER, WRONG_ZONE, LOCKER_WEIGHT_LIMIT }
+--- a/src/main/kotlin/parcel/checkout/Pricing.kt
++++ b/src/main/kotlin/parcel/checkout/Pricing.kt
+@@ -7,5 +7,10 @@
+                 cents = if (destination == DeliveryZone.CITY) 699 else 1099,
+                 handoff = "home",
+             )
++            is DeliveryOption.Locker -> when {
++                delivery.zone != destination -> QuoteResult.Unavailable(QuoteFailure.WRONG_ZONE)
++                basket.totalWeightGrams >= 12_000L -> QuoteResult.Unavailable(QuoteFailure.LOCKER_WEIGHT_LIMIT)
++                else -> QuoteResult.Quoted(299, "locker:${delivery.lockerId}")
++            }
+         }
+ }
+--- a/src/main/kotlin/parcel/api/CheckoutEndpoint.kt
++++ b/src/main/kotlin/parcel/api/CheckoutEndpoint.kt
+@@ -11,12 +11,23 @@
+     val basket: Basket,
+     val destination: DeliveryZone,
+     val mode: String = "home",
++    val lockerId: String? = null,
++    val lockerZone: DeliveryZone? = null,
+ )
+
+ class CheckoutEndpoint(private val pricing: Pricing) {
+     fun quote(request: CheckoutRequest): QuoteResult =
+         when (request.mode) {
+             "home" -> pricing.quote(request.basket, request.destination, DeliveryOption.Home)
++            "locker" -> {
++                val id = request.lockerId
++                val zone = request.lockerZone
++                if (id.isNullOrBlank() || zone == null) {
++                    QuoteResult.Unavailable(QuoteFailure.MISSING_LOCKER)
++                } else {
++                    pricing.quote(request.basket, request.destination, DeliveryOption.Locker(id, zone))
++                }
++            }
+             else -> QuoteResult.Unavailable(QuoteFailure.UNSUPPORTED_MODE)
+         }
+ }

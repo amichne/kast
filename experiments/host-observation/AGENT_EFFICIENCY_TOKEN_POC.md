@@ -101,28 +101,30 @@ Use [the compact configuration](agent-efficiency-configs/token-poc-compact.json)
 The configuration remains an opt-in experiment.
 The work includes no merge, release, or deployment.
 
-## Reproduce the run
+## Review or rerun the experiment
 
 The private artifact root is `/Users/amichne/.local/state/kast-agent-efficiency/studies/token-poc-5937ff1`.
 It contains the sealed corpus, source oracles, environment, configurations, controller snapshots, run manifests, raw records, and final audit.
 The corpus identity is `01c14af0fe5a24837c9e340c31be32a6ceb9a8469dfab21bd1a96974e7e9d582`.
 
-Use the artifact root as `POC` in these commands.
-Use a new output path for each replay.
+The archived run keeps the exact briefing from revision `d04b765c1`.
+The current configuration pins a brief with explicit terminal objects.
+
+For a new measurement, run the [Promptfoo efficiency scenario](AGENT_EFFICIENCY.md#run-a-comparison).
+Set `benchmark` to the archived `benchmark/` directory.
+Use the compact configuration and set `repeats` to 2.
+Use a new output path for the replay.
+
+Run this report command from the repository root:
 
 ```sh
-POC=/Users/amichne/.local/state/kast-agent-efficiency/studies/token-poc-5937ff1
-uv run --locked --project experiments/host-observation python \
-  experiments/host-observation/agent_efficiency.py run \
-  --benchmark "$POC/benchmark" \
-  --config experiments/host-observation/agent-efficiency-configs/token-poc-compact.json \
-  --output /private/tmp/new-kast-token-poc --repeats 2
 uv run --locked --project experiments/host-observation python \
   experiments/host-observation/agent_efficiency_tokens.py \
   /private/tmp/new-kast-token-poc --output /private/tmp/new-kast-token-report.json
 ```
 
 The token report needs every declared pair and repeat.
+It compares token use only when every trial passes its oracle and records complete token usage.
 It preserves per-task failures and unknown usage.
 The runner also emits legacy statistical and dollar reports.
 Those legacy reports do not decide this token POC.

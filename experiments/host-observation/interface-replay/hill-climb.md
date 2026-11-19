@@ -43,12 +43,13 @@ This change supplies no measured model-performance improvement.
 
 ## Compare receipts
 
-Use the existing runner with a JSON input file:
+Run the Promptfoo assessment with the JSON input file.
 
 ```sh
-node experiments/host-observation/run_pi_evaluation.mjs --assess-target /absolute/target.json
+KAST_PI_EVAL_TARGET=/absolute/target.json npm --prefix experiments/host-observation/promptfoo run eval -- -c pi.config.mjs -o /absolute/target-results.json
 ```
 
+The Promptfoo response contains the assessment. Only `TARGET_MET` passes the assertion.
 The input contains `target`, `baseline`, and `candidate`.
 The two cohorts contain original per-trial receipts from separate declared arms or runs.
 The target has this shape:

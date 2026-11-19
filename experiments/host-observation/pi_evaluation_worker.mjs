@@ -9,6 +9,7 @@ import { driveSession, WorkerIpcExitCodes, WorkerDeadlineEnvironmentKey } from '
 import { createEvaluationRecords, withPrivateReplaySession } from './pi_evaluation_records.mjs';
 import { loadInputCalibrations } from './pi_evaluation_calibrations.mjs';
 import { validatePlan } from './run_pi_evaluation.mjs';
+import { loadKastGuidance,prepareSdkGuidance } from './pi_evaluation_guidance.mjs';
 
 const failed=value=>value?.type==='failure';
 const failure=(operation,reason,stage='WORKER_SETUP')=>Object.freeze({type:'failure',
@@ -22,7 +23,7 @@ async function asyncEffect(operation,run,stage='WORKER_SETUP') {
   catch {return failure(operation,'EFFECT_FAILED',stage);}
 }
 
-// Only the explicit --execute parent starts this effect boundary. Importing the
+// Only the Promptfoo evaluation provider starts this worker. Importing the
 // policy, guard or controller tests cannot load Pi, authenticate or query Kast.
 export function isolatedSettings(SettingsManager) {
   const created=effect('SETTINGS_CREATE',()=>SettingsManager.inMemory({defaultProvider:'openai-codex',defaultModel:'gpt-6.1-sol',defaultThinkingLevel:'high',transport:'sse',cacheWarming:'off',packages:[],extensions:[],enableInstallTelemetry:false,compaction:{enabled:false},retry:{enabled:false,maxRetries:0,provider:{maxRetries:0}}}));
@@ -62,7 +63,7 @@ export function restoreReceivedMessage(policy,message) {
 
 // Shared real-SDK construction boundary. A no-inference SDK check can supply
 // synthetic in-memory auth/catalog storage; it cannot replace these rules.
-export async function createEvaluationSession({sdk,plan,directory,modelRuntime,policy,record,manager,projectProviderInput,replay}) {
+export async function createEvaluationSession({sdk,plan,directory,modelRuntime,policy,record,manager,projectProviderInput,replay,guidance,mode}) {
   if(policy.config.finalPresentation==='compact'&&typeof projectProviderInput!=='function')return failure('FINAL_PROVIDER_PROJECTION','PROJECTION_UNAVAILABLE');
   const {createAgentSession,SettingsManager,DefaultResourceLoader}=sdk;
   let observationFailure;
@@ -77,6 +78,10 @@ export async function createEvaluationSession({sdk,plan,directory,modelRuntime,p
   if(failed(found)) return found;
   const model=found.value;
   if(!model || model.id!=='gpt-6.1-sol' || model.provider!=='openai-codex')return failure('MODEL_LOOKUP','MODEL_UNAVAILABLE');
+  const prepared=guidance?await asyncEffect('KAST_GUIDANCE_STAGE',()=>prepareSdkGuidance(replay?plan.workspaceRoot:directory,guidance,{mode,policy})):undefined;
+  if(failed(prepared))return prepared;
+  const modelGuidance=prepared?.value;
+  const tool=modelGuidance?.tool;
   const nativeMcp=pi=>sdk.createMcpExtension({
     // Use the admitted adapter's registration. Do not read host/project MCP
     // settings or replace the adapter's command, timeout, or connection owner.
@@ -87,13 +92,13 @@ export async function createEvaluationSession({sdk,plan,directory,modelRuntime,p
     })}),
     logPath:path.join(directory,'mcp.log'),
   })(pi);
-  const resources=effect('RESOURCE_CREATE',()=>new DefaultResourceLoader({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,noExtensions:true,additionalExtensionPaths:replay?[]:[plan.kastAdapter],extensionFactories:replay?[replay.guard]:[evaluationGuard(policy,observeRecord,projectProviderInput),nativeMcp],noSkills:true,noPromptTemplates:true,noThemes:true,noContextFiles:true}));
+  const resources=effect('RESOURCE_CREATE',()=>new DefaultResourceLoader({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,noExtensions:true,additionalExtensionPaths:replay?[]:[plan.kastAdapter],extensionFactories:replay?[replay.guard]:[evaluationGuard(policy,observeRecord,projectProviderInput,modelGuidance),nativeMcp],noSkills:true,noPromptTemplates:true,noThemes:true,noContextFiles:true,...(modelGuidance&&{appendSystemPrompt:[modelGuidance.instructions]})}));
   if(failed(resources)) return resources;
   const loader=resources.value;
   const loaded=await asyncEffect('RESOURCE_LOAD',()=>loader.reload());if(failed(loaded)) return loaded;
   const extensions=effect('RESOURCE_EXTENSIONS',()=>loader.getExtensions());if(failed(extensions)) return extensions;
   if(!Array.isArray(extensions.value?.errors)||extensions.value.errors.length!==0)return failure('RESOURCE_EXTENSIONS','EXTENSION_LOAD_FAILED');
-  const created=await asyncEffect('SESSION_CREATE',()=>createAgentSession({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,resourceLoader:loader,modelRuntime,model,thinkingLevel:'high',tools:replay?['bash']:[...READ_TOOL_IDENTITIES],...(replay?{customTools:[replay.shellTool]}:{}),sessionManager:manager}));
+  const created=await asyncEffect('SESSION_CREATE',()=>createAgentSession({cwd:plan.workspaceRoot,agentDir:directory,settingsManager,resourceLoader:loader,modelRuntime,model,thinkingLevel:'high',tools:replay?['bash']:[...READ_TOOL_IDENTITIES,...(tool?[tool.name]:[])],...(replay?{customTools:[replay.shellTool]}:tool?{customTools:[tool]}:{}),sessionManager:manager}));
   if(failed(created)) return created;
   const session=created.value?.session;
   if(!session)return failure('SESSION_CREATE','SESSION_UNAVAILABLE');
@@ -105,7 +110,7 @@ export async function createEvaluationSession({sdk,plan,directory,modelRuntime,p
       || inspected.value.model!=='gpt-6.1-sol')result=failure('SESSION_IDENTITY','MODEL_EFFORT_UNAVAILABLE');
   else {
     const bound=await asyncEffect('EXTENSIONS_BIND',()=>session.bindExtensions({mode:'rpc',abortHandler:()=>session.agent.abort()}));
-    result=observationFailure??(failed(bound)?bound:{type:'session',session,settingsManager});
+    result=observationFailure??(failed(bound)?bound:{type:'session',session,settingsManager,...(modelGuidance&&{guidance:modelGuidance.evidence})});
   }
   if(failed(result))await disposeEvaluationSession(session);
   return result;
@@ -193,7 +198,9 @@ export async function worker(planFile,index) {
           if(failed(restored))return restored;
           if(!restored.value.allow)return failure('RECEIVED_POLICY','RECEIVED_RESULT_REJECTED');
         }
-        const created=await createEvaluationSession({sdk,plan,directory,modelRuntime:runtime.value,policy,record,manager,projectProviderInput});
+        const guidance=effect('KAST_GUIDANCE_READ',loadKastGuidance);
+        if(failed(guidance))return guidance;
+        const created=await createEvaluationSession({sdk,plan,directory,modelRuntime:runtime.value,policy,record,manager,projectProviderInput,guidance:guidance.value,mode:item.mode});
         if(failed(created))return created;
         const {session,settingsManager}=created;
         let sessionResult;
@@ -231,7 +238,7 @@ export async function worker(planFile,index) {
         if(firstFailure)return firstFailure;
         const unchanged=effect('PROTECTED_VERIFY',()=>protectedPaths.every((p,i)=>sha(fs.readFileSync(p))===before[i]),stage);
         if(failed(unchanged))return unchanged;
-        const reportEffect=effect('REPORT_CREATE',()=>({...policy.report(),sessionId:manager.getSessionId(),adapterSha256:plan.kastAdapterSha256,piVersion:plan.piVersion,transport:settingsManager.getTransport(),cacheWarming:settingsManager.getCacheWarmingMode(),workspaceRoot:plan.workspaceRoot,protectedFilesUnchanged:unchanged.value,inputCalibrationProvenance:calibration.provenance}),stage);
+        const reportEffect=effect('REPORT_CREATE',()=>({...policy.report(),sessionId:manager.getSessionId(),adapterSha256:plan.kastAdapterSha256,piVersion:plan.piVersion,transport:settingsManager.getTransport(),cacheWarming:settingsManager.getCacheWarmingMode(),workspaceRoot:plan.workspaceRoot,protectedFilesUnchanged:unchanged.value,inputCalibrationProvenance:calibration.provenance,guidance:created.guidance}),stage);
         if(failed(reportEffect))return reportEffect;
         const report=reportEffect.value;if(!unchanged.value)report.outcome='HARNESS_PROTECTED_FILE_CHANGED';
         const written=effect('REPORT_WRITE',()=>fs.writeFileSync(path.join(directory,'report.json'),JSON.stringify(report,null,2)+'\n',{mode:0o600}),stage);

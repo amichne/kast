@@ -76,7 +76,7 @@ This guide owns repository rules and routes source investigation.
 - The opt-in CI rollout compares frozen changes before affected selection becomes the default. Read `.github/scripts/ci/README.md` for its evidence limits.
 - Cross-platform CI handoff: `.github/scripts/ci/release_handoff.py` binds the assembled release to source identity and digest. Linux assembles it; the Mac product job exercises that exact Control product.
 - Interface decision replay: read `experiments/host-observation/interface-replay/README.md` for the no-inference plan and restricted-shell adapter.
-- Replay performance targets: use `run_pi_evaluation.mjs --assess-target` with the contract in `experiments/host-observation/interface-replay/hill-climb.md`.
+- For agent evaluations, use the [Promptfoo suites](experiments/host-observation/promptfoo/README.md). For replay targets, use the [target contract](experiments/host-observation/interface-replay/hill-climb.md).
 - Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
 - Release assembly: `./gradlew assembleRelease`.
 - Product installation: use the [managed installer](docs/public/reference/installation.mdx). Desktop IDEA, user Python, and uv are not product prerequisites.

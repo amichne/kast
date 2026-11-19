@@ -266,7 +266,7 @@ The existing replay collector already owns bounded appended-log capture and timi
 
 ## M — Model behavior and complete engineering tasks
 
-**Setup:** Use the existing Pi evaluation controller, exact adapter digest, unchanged schemas, named model, effort, prompts, and fixed per-case budgets.
+Use the [Promptfoo scenarios](promptfoo/README.md) for agent evaluations. Pin the adapter digest, schemas, model, effort, prompts, and budget for each case.
 
 **Oracle:** External source witnesses and a rubric authored before inference. **Negative control:** A confident unsupported answer fails even when tool calls succeed.
 

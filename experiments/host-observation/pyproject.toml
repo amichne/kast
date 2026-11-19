@@ -27,7 +27,7 @@ reportUnnecessaryTypeIgnoreComment = "error"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-include = ["agent_efficiency*.py", "test_agent_efficiency*.py", "efficiency-tests/*.py", "log_visibility.py", "log-tests/*.py", "campaign_queries.py", "campaign-tests/*.py"]
+include = ["agent_efficiency*.py", "test_agent_efficiency*.py", "efficiency-tests/*.py", "log_visibility.py", "log-tests/*.py", "campaign_queries.py", "campaign_promptfoo.py", "campaign-tests/*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
