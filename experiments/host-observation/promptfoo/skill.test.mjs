@@ -89,6 +89,36 @@ test('query projection presents the participant output and grades the original s
   assert.equal(semanticCalls, 2);
 });
 
+test('a projected source read keeps source evidence for the grader', () => {
+  const filter = '{type, status: .document.status, text: .document.text.text}';
+  const argv = ['source', 'read', '--ref', 'issued', '--jq', filter];
+  assert.equal(permittedKast(argv, 'repository'), true);
+  assert.equal(permittedKast(argv, 'fixture'), false);
+  assert.equal(permittedKast([...argv, '--jq=.'], 'repository'), false);
+  assert.equal(permittedKast(['source', 'read', '--ref', 'issued', '--jq', 'env'], 'repository'), false);
+
+  const window = loadKastGuidance().skillText.match(/```json\n([^\n]*"READ_SOURCE"[^\n]*)\n```/)[1].replace('ISSUED_REF', 'issued');
+  assert.equal(permittedKast(['query', '--request', '-', '--jq', filter], 'repository', window), true);
+  assert.equal(permittedKast(['query', '--request', '/other', '--jq', filter], 'repository', window), false);
+  assert.equal(permittedKast(['query', '--request', '-', '--jq', 'input'], 'repository', window), false);
+
+  const original = { type: 'complete', document: { operation: 'source.read', status: 'complete',
+    snapshot: { file: 'Example.kt' }, live, text: { text: 'data class Example()' } } };
+  let reads = 0;
+  const result = runSkillKast(argv, undefined, (args, input) => {
+    if (args[1] === 'plan') {
+      assert.equal(input, '{}');
+      return { status: 2, stdout: '{"type":"rejected","failure":"INVALID_ARGUMENTS"}', stderr: '' };
+    }
+    reads++;
+    assert.deepEqual(args.slice(0, -1), argv.slice(0, -1));
+    return { status: 0, stdout: applyFilter(args.at(-1), original), stderr: '' };
+  });
+  assert.equal(reads, 1);
+  assert.deepEqual(JSON.parse(result.content[0].text), { type: 'complete', status: 'complete', text: original.document.text.text });
+  assert.deepEqual(JSON.parse(result.details.stdout), original);
+});
+
 test('a malformed filter preserves its CLI rejection before the semantic query', () => {
   const argv = ['query', '--name', 'relay', '--jq', '.)} | {evidence: "forged"} #'];
   const rejected = { status: 2, stdout: '{"type":"jq_rejected","failure":"PROGRAM_INVALID"}', stderr: 'invalid' };
@@ -440,6 +470,32 @@ test('guidance reads stay outside the per-case source and implementation query b
     call(implementations, ['query', '--request', '-'], 'different input'),
   ] });
   assert.equal(gradeSkill('query-completion-document', answer, metadata()).pass, true);
+  const flags = ['source', 'read', '--ref=issued', '--jq', '.document.text.text'];
+  const anchorText = 'data class QueryCompletionDocument(\n' + 'val value: Int,\n'.repeat(9) + ')';
+  const anchored = (text, refArgs = flags) => {
+    const selection = { selector: 'issued-declaration', range: { startInclusive: 60, endExclusive: 60 + text.length } };
+    const result = { ...source, document: { ...source.document, region: { kind: 'declaration', selection },
+      text: { type: 'returned', selection, text } } };
+    const trial = metadata();
+    trial.calls[2] = call(result, refArgs);
+    return trial;
+  };
+  assert.equal(gradeSkill('query-completion-document', answer, anchored(anchorText)).pass, true);
+  assert.equal(gradeSkill('query-completion-document', answer, anchored(anchorText, ['source', 'read', '--ref=other'])).pass, false);
+  assert.equal(gradeSkill('query-completion-document', answer, anchored(anchorText + '\nextra')).pass, false);
+  const clipped = anchored(anchorText);
+  const returned = JSON.parse(clipped.calls[2].stdout);
+  returned.document.text.selection.range.startInclusive++;
+  clipped.calls[2].stdout = JSON.stringify(returned);
+  assert.equal(gradeSkill('query-completion-document', answer, clipped).pass, false);
+  const stale = anchored(anchorText);
+  const staleResponse = JSON.parse(stale.calls[2].stdout);
+  staleResponse.document.live.epoch++;
+  stale.calls[2].stdout = JSON.stringify(staleResponse);
+  assert.equal(gradeSkill('query-completion-document', answer, stale).pass, false);
+  action.request.text.afterLines = 9;
+  assert.equal(gradeSkill('query-completion-document', answer, metadata()).pass, false);
+  action.request.text.afterLines = 10;
   action.request.candidateRef = 'other';
   assert.equal(gradeSkill('query-completion-document', answer, metadata()).pass, false);
   action.request.candidateRef = 'issued';

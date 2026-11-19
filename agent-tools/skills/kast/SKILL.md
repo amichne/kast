@@ -70,6 +70,13 @@ kast source read --ref "$ref" --jq '{type, status: .document.status, text: .docu
 kast source read --ref "$ref" --region class-body
 ```
 
+For context lines, pass a `READ_SOURCE` request to `kast query --request -` on stdin.
+Replace `ISSUED_REF` with the exact ref. This example requests ten lines on each side within the anchor region.
+
+```json
+{"request":{"type":"READ_SOURCE","candidateRef":"ISSUED_REF","region":"ANCHOR","text":{"type":"WINDOW","beforeLines":10,"afterLines":10}}}
+```
+
 Check compiler diagnostics. Use `--path .` for the workspace root:
 
 ```sh
