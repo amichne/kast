@@ -54,11 +54,14 @@ type socketAlias struct {
 }
 
 // control is the single JVM entry every non-coordinator invocation runs: its main class, the installation-relative
-// class path in order, and each platform's Java home relative to the Host runtime root.
+// class path in order, each platform's Java home relative to the Host runtime root, and the installation-relative
+// class-data archive the installer creates. The installer reads ArchiveTraining; this frontend does not.
 type control struct {
-	MainClass string            `json:"mainClass"`
-	ClassPath []string          `json:"classPath"`
-	JavaHomes map[string]string `json:"javaHomes"`
+	MainClass       string            `json:"mainClass"`
+	ClassPath       []string          `json:"classPath"`
+	JavaHomes       map[string]string `json:"javaHomes"`
+	SharedArchive   string            `json:"sharedArchive"`
+	ArchiveTraining []string          `json:"archiveTraining"`
 }
 
 // outputSetting is the environment variable the public shell admits before help, and the values it accepts.
@@ -188,9 +191,13 @@ func LoadCatalog(root string) (*Catalog, error) {
 	}, nil
 }
 
-// admittedControl requires a main class and a non-empty class path of JARs beneath the installation.
+// admittedControl requires a main class, a non-empty class path of JARs and a class-data archive beneath the
+// installation.
 func admittedControl(entry control) bool {
 	if entry.MainClass == "" || len(entry.ClassPath) == 0 || len(entry.JavaHomes) == 0 {
+		return false
+	}
+	if !filepath.IsLocal(entry.SharedArchive) || filepath.Ext(entry.SharedArchive) != ".jsa" {
 		return false
 	}
 	for _, path := range entry.ClassPath {

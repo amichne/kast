@@ -536,3 +536,37 @@ func TestALongSocketIsDialedThroughTheCoordinatorsAliasOnly(t *testing.T) {
 		t.Fatalf("the exact alias was not dialed: %+v", got)
 	}
 }
+
+func TestTheInstalledClassDataArchiveIsUsedOnlyWhenItExists(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	f.receipt(t, "/runtimes/abc")
+	archive := filepath.Join(f.root, "lib", "control.jsa")
+	option := "-XX:SharedArchiveFile=" + archive
+	f.run(t, "", nil, "--version")
+	if slices.Contains(f.executed[0], option) {
+		t.Fatalf("an absent archive was passed: %v", f.executed[0])
+	}
+	if err := os.MkdirAll(filepath.Dir(archive), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/elsewhere/control.jsa", archive); err != nil {
+		t.Fatal(err)
+	}
+	f.run(t, "", nil, "--version")
+	if slices.Contains(f.executed[1], option) {
+		t.Fatalf("a linked archive was passed: %v", f.executed[1])
+	}
+	if err := os.Remove(archive); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(archive, []byte("archive"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f.run(t, "", nil, "--version")
+	cp := slices.Index(f.executed[2], "-cp")
+	at := slices.Index(f.executed[2], option)
+	if at < 0 || at > cp {
+		t.Fatalf("the archive must precede the class path: %v", f.executed[2])
+	}
+}

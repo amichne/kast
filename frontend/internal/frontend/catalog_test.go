@@ -34,9 +34,11 @@ func validCatalog() map[string]any {
 		"outputSetting":         map[string]any{"variable": "KAST_OUTPUT_TOON", "admittedValues": []string{"", "0", "1"}},
 		"publicNamespaces":      []string{"query", "describe"},
 		"control": map[string]any{
-			"mainClass": "io.github.amichne.kast.cli.KastControlMain",
-			"classPath": []string{"lib/kast-cli.jar", "lib/kotlin-stdlib.jar"},
-			"javaHomes": map[string]string{platform(): "host/jbr"},
+			"mainClass":       "io.github.amichne.kast.cli.KastControlMain",
+			"classPath":       []string{"lib/kast-cli.jar", "lib/kotlin-stdlib.jar"},
+			"javaHomes":       map[string]string{platform(): "host/jbr"},
+			"sharedArchive":   "lib/control.jsa",
+			"archiveTraining": []string{"--internal-entrypoint=management", "--help"},
 		},
 		"exits": map[string]int{
 			"COMPLETE": 0, "DEFECT": 1, "INPUT": 2, "WORKSPACE": 3, "RUNTIME": 4, "IO": 5, "PROTOCOL": 6,

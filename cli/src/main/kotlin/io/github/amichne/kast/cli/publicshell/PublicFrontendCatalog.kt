@@ -52,6 +52,8 @@ object PublicFrontendCatalog {
                     KastControlMain::class.java.name,
                     classPath.onEach { check(it.startsWith("lib/") && it.endsWith(".jar")) },
                     controlJavaHomes(),
+                    CONTROL_SHARED_ARCHIVE,
+                    CONTROL_ARCHIVE_TRAINING,
                 ),
             exits = PublicShellExit.entries.associate { it.name to it.code },
             help = helpCandidates().mapNotNull(::helpEntry),
@@ -86,13 +88,25 @@ internal data class PublicFrontendCatalogDocument(
 /**
  * The single JVM entry behind the Control executable. [classPath] is relative to the installation and ordered;
  * [javaHomes] maps each platform to the Host Java home relative to the runtime root.
+ *
+ * The installer creates [sharedArchive] with the installed runtime by running the entry with [archiveTraining], so the
+ * archive is digested with the rest of the installation. The Control executable uses it only when it exists; a runtime
+ * that rejects it starts without it.
  */
 @Serializable
 internal data class PublicFrontendControl(
     val mainClass: String,
     val classPath: List<String>,
     val javaHomes: Map<String, String>,
+    val sharedArchive: String,
+    val archiveTraining: List<String>,
 )
+
+/** Installation-relative class-data archive for the JVM entry. */
+internal const val CONTROL_SHARED_ARCHIVE = "lib/control.jsa"
+
+/** Help reads no installation state and loads the command tree that management commands share. */
+internal val CONTROL_ARCHIVE_TRAINING = listOf("--internal-entrypoint=management", "--help")
 
 /**
  * A socket path longer than [maximumPathBytes] is reached through the coordinator's alias: a link named [prefix] plus

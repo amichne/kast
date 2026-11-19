@@ -133,10 +133,19 @@ func (c *Catalog) jvmCommand(installation, javaHome, executable string, parsed i
 		classPath[i] = filepath.Join(installation, entry)
 	}
 	command := []string{filepath.Join(javaHome, "bin", "java"), "-D" + commandProperty + "=" + executable}
+	// The installer creates the archive with this runtime; the JVM maps it only if it still matches.
+	if archive := filepath.Join(installation, c.control.SharedArchive); regularFile(archive) {
+		command = append(command, "-XX:SharedArchiveFile="+archive)
+	}
 	command = append(command, parsed.jvmOptions...)
 	command = append(command, "-cp", strings.Join(classPath, string(filepath.ListSeparator)), c.control.MainClass,
 		entrypointPrefix+parsed.entry)
 	return append(command, parsed.arguments...)
+}
+
+func regularFile(path string) bool {
+	info, err := os.Lstat(path)
+	return err == nil && info.Mode().IsRegular()
 }
 
 // platform is the product's public platform name for this binary.

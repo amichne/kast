@@ -116,6 +116,9 @@ class CoordinatorPublicInvocationsTest {
         assertEquals(10_000L, catalog.handshakeMilliseconds)
         assertEquals("KAST_OUTPUT_TOON", catalog.outputSetting.variable)
         assertEquals(listOf("", "0", "1"), catalog.outputSetting.admittedValues)
+        assertEquals("lib/control.jsa", catalog.control.sharedArchive)
+        // Training must be help: it reads no installation state, so the installer can run it in staging.
+        assertEquals(listOf("--internal-entrypoint=management", "--help"), catalog.control.archiveTraining)
     }
 
     @Test
