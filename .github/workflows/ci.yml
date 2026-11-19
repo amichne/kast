@@ -429,8 +429,8 @@ jobs:
           pin = next(item for item in PINS if item.target == os.environ['TARGET'])
           for url, name, limit in ((pin.url, 'private-python.tar.gz', 268435456), (DEPENDENCY_URL, 'defusedxml.whl', 1048576)):
               result = source.download(url, Path('build') / name, limit)
-              if isinstance(result, product_candidate.product.TransferFailure):
-                  raise SystemExit(result.value)
+              if isinstance(result, product_candidate.product.TRANSFER_REJECTIONS):
+                  raise SystemExit(product_candidate.product.transfer(result).cause.value)
           PrivateInterpreter.admit(Path('build/private-python.tar.gz'), Path('build/defusedxml.whl'), pin.target)
           PY
       - name: Exercise installed CLI MCP RPC and lifecycle against retained bytes
