@@ -108,14 +108,19 @@ func (c *Catalog) runtimeHome(installation string) (string, error) {
 	return filepath.Join(receipt.Product.RuntimeRoot, relative), nil
 }
 
-// jvmCommand is the exact process the JVM entry runs: the runtime's java, the launcher options, the installation's
-// explicit class path, the single Control main class, and the entry with its arguments.
-func (c *Catalog) jvmCommand(installation, javaHome string, parsed invocation) []string {
+// commandProperty names the command the caller ran, which the JVM can no longer observe after exec. It equals
+// CONTROL_COMMAND_PROPERTY in distribution/cli.
+const commandProperty = "kast.command"
+
+// jvmCommand is the exact process the JVM entry runs: the runtime's java, the command the caller ran, the launcher
+// options, the installation's explicit class path, the single Control main class, and the entry with its arguments.
+func (c *Catalog) jvmCommand(installation, javaHome, executable string, parsed invocation) []string {
 	classPath := make([]string, len(c.control.ClassPath))
 	for i, entry := range c.control.ClassPath {
 		classPath[i] = filepath.Join(installation, entry)
 	}
-	command := append([]string{filepath.Join(javaHome, "bin", "java")}, parsed.jvmOptions...)
+	command := []string{filepath.Join(javaHome, "bin", "java"), "-D" + commandProperty + "=" + executable}
+	command = append(command, parsed.jvmOptions...)
 	command = append(command, "-cp", strings.Join(classPath, string(filepath.ListSeparator)), c.control.MainClass,
 		entrypointPrefix+parsed.entry)
 	return append(command, parsed.arguments...)

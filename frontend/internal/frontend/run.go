@@ -83,7 +83,7 @@ func execute(catalog *Catalog, installation string, parsed invocation, process P
 		diagnose(process.Stderr, "the Kast runtime is unavailable. Reinstall Kast.")
 		return catalog.status("BOOTSTRAP")
 	}
-	command := catalog.jvmCommand(installation, javaHome, parsed)
+	command := catalog.jvmCommand(installation, javaHome, process.Executable, parsed)
 	err = process.Exec(command[0], command, process.Environment)
 	diagnose(process.Stderr, "the Kast runtime could not start: "+err.Error())
 	return catalog.status("BOOTSTRAP")
