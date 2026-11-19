@@ -97,7 +97,7 @@ class CoordinatorPublicInvocationsTest {
 
     @Test
     fun `frontend catalog declares the served protocol, the published statuses and only help vectors`() {
-        val catalog = PublicFrontendCatalog.document()
+        val catalog = PublicFrontendCatalog.document(listOf("lib/kast-cli.jar"))
         assertEquals(PublicInvocationProtocol.version, catalog.invocationProtocol)
         assertEquals(PublicShellExit.entries.associate { it.name to it.code }, catalog.exits)
         assertEquals(9, catalog.exits.getValue("BOOTSTRAP"))
@@ -122,12 +122,12 @@ class CoordinatorPublicInvocationsTest {
     fun `help under an unadmitted output setting is the shell's input rejection, as the frontend forwards it`(
         @TempDir caller: Path
     ) {
-        val help = PublicFrontendCatalog.document().help.first()
+        val help = PublicFrontendCatalog.document(listOf("lib/kast-cli.jar")).help.first()
         val rejected =
             CoordinatorPublicInvocations(caller)
                 .invoke(invocation(caller, help.arguments, mapOf("KAST_OUTPUT_TOON" to "yes")), unused, noInput)
         assertEquals(PublicShellExit.INPUT.code, rejected.exitCode)
-        for (value in PublicFrontendCatalog.document().outputSetting.admittedValues) {
+        for (value in PublicFrontendCatalog.document(listOf("lib/kast-cli.jar")).outputSetting.admittedValues) {
             val answered =
                 CoordinatorPublicInvocations(caller)
                     .invoke(invocation(caller, help.arguments, mapOf("KAST_OUTPUT_TOON" to value)), unused, noInput)

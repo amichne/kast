@@ -28,6 +28,11 @@ import kotlinx.serialization.json.JsonObject
 object KastServiceMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
+        if (arguments.toList() == listOf("semantic-ensure")) exitProcess(ensureSemanticCoordinator(System.getenv()))
+        control(arguments)
+    }
+
+    private fun control(arguments: Array<String>) {
         if (arguments.firstOrNull() == "managed-control")
             exitProcess(
                 io.github.amichne.kast.cli.installation.ManagedControlCli.run(arguments.drop(1), System.getenv())
@@ -298,4 +303,26 @@ private fun tryManagedHeadlessShutdown(arguments: List<String>): Boolean {
         exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
     }
     return true
+}
+
+/** The Control executable's bootstrap: start or join this installation's coordinator, then exit without a request. */
+private fun ensureSemanticCoordinator(environment: Map<String, String>): Int {
+    val binding =
+        when (val located = io.github.amichne.kast.cli.direct.InstalledClientBinding.current(environment)) {
+            is io.github.amichne.kast.kernel.Refinement.Rejected -> {
+                System.err.println("kast: the installation is unavailable (${located.failure}).")
+                return io.github.amichne.kast.cli.publicshell.PublicShellExit.BOOTSTRAP.code
+            }
+            is io.github.amichne.kast.kernel.Refinement.Refined -> located.value
+        }
+    return when (
+        val ensured =
+            kotlinx.coroutines.runBlocking { io.github.amichne.kast.cli.direct.CoordinatedToolClient(binding).ensure() }
+    ) {
+        is io.github.amichne.kast.kernel.Refinement.Refined -> 0
+        is io.github.amichne.kast.kernel.Refinement.Rejected -> {
+            System.err.println("kast: the semantic coordinator could not start (${ensured.failure}).")
+            io.github.amichne.kast.cli.publicshell.PublicShellExit.BOOTSTRAP.code
+        }
+    }
 }

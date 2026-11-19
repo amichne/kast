@@ -134,13 +134,13 @@ class VerifyControlDistributionTaskTest {
     }
 
     @Test
-    fun `control rejects a JVM library`(@TempDir directory: Path) {
+    fun `control rejects JVM bytecode outside lib`(@TempDir directory: Path) {
         val task = guidanceFixture(directory)
         task.maximumInstalledBytes.set(4096)
         val library = task.controlDirectory.get().asFile.toPath().resolve("legacy.jar")
         java.util.jar.JarOutputStream(Files.newOutputStream(library)).use { }
         assertEquals(
-            "control product contains JVM libraries or bytecode",
+            "control product contains JVM bytecode outside lib",
             assertThrows(IllegalStateException::class.java, task::verify).message,
         )
     }
@@ -265,7 +265,7 @@ class VerifyControlDistributionTaskTest {
             "share/kast/libexec/kast-daemon", "share/kast/libexec/kast-service", "share/kast/libexec/kast-management",
             "share/kast/install.sh", "share/kast/operation-registry.json", "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json", "share/kast/wire-schema.json", "share/kast/ide-host.json",
-            "share/kast/licenses/LICENSE",
+            "share/kast/licenses/LICENSE", "share/kast/frontend.json", "lib/kast-cli.jar",
         ) + listOf("", "compositions/mcp/").flatMap { composition ->
             val prefix = "share/kast/agent-tools/$composition"
             listOf(".agents/plugins/marketplace.json", ".github/plugin/marketplace.json",
@@ -284,7 +284,7 @@ class VerifyControlDistributionTaskTest {
             if (!Files.exists(file)) Files.write(file, byteArrayOf())
         }
         Files.walk(root).use { paths -> paths.filter(Files::isRegularFile).forEach { it.toFile().setExecutable(true) } }
-        Files.writeString(root.resolve("share/kast/native-control-v1"), "1\n")
+        Files.writeString(root.resolve("share/kast/jvm-control-v1"), "1\n")
         return task
     }
 
@@ -353,7 +353,7 @@ class VerifyControlDistributionTaskTest {
             maximumInstalledBytes.set(128L * 1024 * 1024)
         }
         assertEquals(
-            "control payload differs from its native producer",
+            "control payload differs from its Go producer",
             assertThrows(IllegalStateException::class.java, task::verify).message,
         )
         Files.copy(producer, payload, java.nio.file.StandardCopyOption.REPLACE_EXISTING)

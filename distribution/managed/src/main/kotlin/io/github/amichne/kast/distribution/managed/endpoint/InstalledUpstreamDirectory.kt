@@ -161,7 +161,7 @@ object InstalledUpstreamDirectories {
     private val privateFile = PosixFilePermissions.fromString("rw-------")
 
     fun transportPath(physicalSocket: Path): Path =
-        if (physicalSocket.toString().toByteArray(StandardCharsets.UTF_8).size < UNIX_PATH_BYTES) {
+        if (physicalSocket.toString().toByteArray(StandardCharsets.UTF_8).size <= MAXIMUM_UNIX_SOCKET_PATH_BYTES) {
             physicalSocket
         } else {
             directoryFor(physicalSocket.parent).resolve(physicalSocket.fileName)
@@ -311,6 +311,5 @@ object InstalledUpstreamDirectories {
         }
     }
 
-    private const val UNIX_PATH_BYTES = 104
     private const val MAXIMUM_RECEIPT_BYTES = 4096
 }

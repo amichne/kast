@@ -244,5 +244,20 @@ private fun ownedMode(path: Path, owner: UserPrincipal, mode: Set<PosixFilePermi
 private val privateDirectory = PosixFilePermissions.fromString("rwx------")
 private val privateFile = PosixFilePermissions.fromString("rw-------")
 
+/** The installed Control executable that launches every Control process, the semantic coordinator included. */
 internal const val MANAGEMENT_EXECUTABLE = "share/kast/libexec/kast-management"
+
+/**
+ * The executable that launches the coordinator replaces itself with the installation's Host runtime, so a coordinator
+ * peer runs that runtime's `java`, the one this process also runs. An unresolvable runtime matches no peer.
+ */
+internal fun controlRuntimeExecutable(): Path {
+    val java = Path.of(System.getProperty("java.home"), "bin", "java")
+    return try {
+        java.toRealPath()
+    } catch (_: IOException) {
+        java
+    }
+}
+
 private const val SEMANTIC_SOCKET = "state/run/c.sock"

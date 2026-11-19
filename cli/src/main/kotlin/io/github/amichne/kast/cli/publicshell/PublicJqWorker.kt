@@ -1,6 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
-import io.github.amichne.kast.cli.KastNativeMain
+import io.github.amichne.kast.cli.KastControlMain
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.charset.CharacterCodingException
 import java.nio.file.Path
@@ -80,20 +80,13 @@ internal class PublicJqWorkerCommand private constructor(val arguments: List<Str
     companion object {
         fun current(): Refinement<PublicJqWorkerCommand, PublicJqFailure> {
             val prefix =
-                if (System.getProperty("org.graalvm.nativeimage.imagecode") == "runtime") {
-                    val executable =
-                        ProcessHandle.current().info().command().orElse(null)
-                            ?: return Refinement.Rejected(PublicJqFailure.ENGINE_UNAVAILABLE)
-                    listOf(executable, "-Xmx512m")
-                } else {
-                    listOf(
-                        Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-                        "-Xmx512m",
-                        "-cp",
-                        System.getProperty("java.class.path"),
-                        KastNativeMain::class.java.name,
-                    )
-                }
+                listOf(
+                    Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+                    "-Xmx512m",
+                    "-cp",
+                    System.getProperty("java.class.path"),
+                    KastControlMain::class.java.name,
+                )
             return Refinement.Refined(PublicJqWorkerCommand(prefix + "--internal-entrypoint=jq"))
         }
     }

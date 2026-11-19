@@ -60,6 +60,8 @@ val providerFiles = consumeProjectOutput("providerCatalogueFiles", ":cli", "prov
 val generatedProviderCatalogue = layout.file(providerFiles.flatMap { it.elements }.map { it.single().asFile })
 val cliInstallation = consumeProjectOutput("cliInstallation", ":cli", "nativeControlLayoutElements")
 val managementExecutable = consumeProjectOutput("managementExecutable", ":cli", "nativeExecutableElements")
+val controlLibraryFiles = consumeProjectOutput("controlLibraryFiles", ":cli", "controlLibraryElements")
+val frontendCatalogFiles = consumeProjectOutput("frontendCatalogFiles", ":cli", "frontendCatalogElements")
 
 val publicLauncherTestClasses = consumeProjectOutput("publicLauncherTestClasses", ":cli", "publicLauncherTestClassesElements")
 val publicLauncherTestRuntime = consumeProjectOutput("publicLauncherTestRuntime", ":cli", "publicLauncherTestRuntimeElements")
@@ -131,6 +133,26 @@ val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip
         else -> throw GradleException("Control archive requires macOS or Linux on AArch64 or x86-64")
     }
 })
+// The cgo-free Control executable for the target platform. It runs the JVM entry from the installation's lib.
+val controlExecutableFile = layout.buildDirectory.file("control-executable/kast-management")
+val buildControlExecutable = tasks.register<Exec>("buildControlExecutable") {
+    group = "build"
+    description = "Builds the Control executable for the target platform from the Go module."
+    val (goos, goarch) = when (controlArchivePlatform.get()) {
+        "macos-aarch64" -> "darwin" to "arm64"
+        "macos-x86_64" -> "darwin" to "amd64"
+        "linux-aarch64" -> "linux" to "arm64"
+        else -> "linux" to "amd64"
+    }
+    inputs.files(fileTree("frontend") { include("**/*.go", "go.mod", "go.sum") })
+    inputs.property("target", "$goos/$goarch")
+    outputs.file(controlExecutableFile)
+    workingDir("frontend")
+    executable("go")
+    args("build", "-trimpath", "-buildvcs=false", "-ldflags=-s -w", "-o", controlExecutableFile.get().asFile.absolutePath, "./cmd/kast")
+    environment(mapOf("CGO_ENABLED" to "0", "GOOS" to goos, "GOARCH" to goarch))
+}
+
 val installerSupportDirectory = layout.buildDirectory.dir("generated/installer-support")
 val generateInstallerSupport = tasks.register<Exec>("generateInstallerSupport") {
     group = "distribution"
@@ -169,10 +191,9 @@ val stageKastControlProduct = tasks.register<Sync>("stageKastControlProduct") {
     from(agentToolsDirectory) {
         into("share/kast/agent-tools")
     }
-    from(managementExecutable) {
-        into("share/kast/libexec")
-        rename { "kast-management" }
-    }
+    from(buildControlExecutable) { into("share/kast/libexec") }
+    from(controlLibraryFiles) { into("lib") }
+    from(frontendCatalogFiles) { into("share/kast") }
     from(installerSupportDirectory) { into("share/kast") }
     from("distribution/cli/lifecycle-fence-v1") { into("share/kast") }
     from("distribution/cli/public-reset-v1") { into("share/kast") }
@@ -220,7 +241,7 @@ val verifyKastControlDistLayout = tasks.register<VerifyControlDistributionTask>(
     dependsOn(assembleKastControlDist)
     controlDirectory.set(controlProductDirectory)
     controlArchive.set(assembleKastControlDist.flatMap(Tar::getArchiveFile))
-    qualifiedControlExecutable.set(layout.file(managementExecutable.flatMap { it.elements }.map { it.single().asFile }))
+    qualifiedControlExecutable.set(controlExecutableFile)
     targetPlatform.set(controlArchivePlatform)
     maximumEntries.set(controlDistributionMaximumEntries)
     maximumArchiveBytes.set(96L * 1024L * 1024L)
@@ -326,7 +347,6 @@ tasks.withType<VerificationReportTask>().configureEach {
     sourceFiles.from("mise.toml", ".python-version")
 }
 
-val frontendCatalogFiles = consumeProjectOutput("frontendCatalogFiles", ":cli", "frontendCatalogElements")
 val frontendTest = tasks.register<VerificationReportTask>("frontendTest") {
     group = "verification"
     description = "Verifies the Go frontend module, formatting, analysis, race tests, and cgo-free release targets."

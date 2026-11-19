@@ -178,6 +178,7 @@ def archive_bytes(
     unified: bool = False,
     source_tree: str = TREE,
     link: str | None = None,
+    jvm: dict[str, bytes] | None = None,
 ) -> tuple[bytes, bytes]:
     files = {
         "share/kast/ide-host.json": encoded(ControlMetadata(version, contract)),
@@ -196,6 +197,12 @@ def archive_bytes(
                 b'#!/bin/sh\nexec "../share/kast/libexec/kast-management" '
                 b'--internal-entrypoint=query "$@"\n'
             )
+    if jvm is not None:
+        files["share/kast/jvm-control-v1"] = b"1\n"
+        files["bin/kast-query"] = (
+            b'#!/bin/sh\nexec "../share/kast/libexec/kast-management" --internal-entrypoint=query "$@"\n'
+        )
+        files.update(jvm)
     control = tar_bytes(files, link)
     jar = io.BytesIO()
     with zipfile.ZipFile(jar, "w") as plugin:
@@ -284,6 +291,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
         source_tree: str = TREE,
         unified: bool = False,
         with_263: bool = False,
+        jvm: dict[str, bytes] | None = None,
     ) -> Source:
         control, host = archive_bytes(
             version,
@@ -292,6 +300,7 @@ class ReleaseAdmissionTest(unittest.TestCase):
             native=native,
             source_tree=source_tree,
             unified=unified,
+            jvm=jvm,
         )
         control_name = f"kast-control-v{version}-{release.PLATFORM}.tar.gz"
         host_name = f"kast-ide-hosted-v{version}-idea-262.zip"
@@ -436,6 +445,27 @@ class ReleaseAdmissionTest(unittest.TestCase):
         admitted = release.stage_component_archives(selected, "262", self.stage, source)
         self.assertIsInstance(admitted, release.AdmittedComposition)
         self.assertEqual(b"prior composition", (self.protected / "keep").read_bytes())
+
+    def test_jvm_control_admits_libraries_only_beneath_lib(self) -> None:
+        library = b"PK\x03\x04jar"
+        selected = release.StableSelection("1.2.3", "v1.2.3", release.StablePolicy.TRACK)
+        admitted = release.stage_component_archives(
+            selected, "262", self.stage, self.source("1.2.3", jvm={"lib/kast-cli.jar": library})
+        )
+        self.assertIsInstance(admitted, release.AdmittedComposition)
+        for index, layout in enumerate((
+            {"lib/kast-cli.jar": library, "share/kast/stray.jar": library},
+            {"lib/kast-cli.jar": library, "lib/Stray.class": b"\xca\xfe\xba\xbe"},
+            {"share/kast/kast-cli.jar": library},
+        )):
+            stage = self.stage.parent / f"jvm-case-{index}"
+            stage.mkdir()
+            rejected = release.stage_component_archives(
+                selected, "262", stage, self.source("1.2.3", jvm=layout)
+            )
+            self.assertIsInstance(rejected, release.Rejected, layout)
+            assert isinstance(rejected, release.Rejected)
+            self.assertEqual((release.Failure.ARTIFACT_INVALID, release.Stage.CONTRACT), (rejected.reason, rejected.stage), layout)
 
     def test_native_dependencies_require_library_headers_target_and_dependency_scope(self) -> None:
         source = self.source("1.2.3", unified=True)

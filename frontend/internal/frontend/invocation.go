@@ -2,6 +2,8 @@ package frontend
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,9 +20,6 @@ import (
 )
 
 const invocationRoute = "ws://localhost/kast-public-invocation"
-
-// maximumSocketPathBytes is the Unix socket path limit on macOS; Linux allows 108 bytes.
-const maximumSocketPathBytes = 103
 
 // invocationRequest is the typed envelope. Arguments, environment and stdin stay opaque to this frontend.
 type invocationRequest struct {
@@ -92,9 +91,6 @@ func (e *TransportError) Error() string {
 
 // admitSocket proves the warm-path trust basis: the socket lives in a directory owned by this user and closed to others.
 func admitSocket(path string) error {
-	if len(path) > maximumSocketPathBytes {
-		return &TransportError{Failure: Unreachable}
-	}
 	directory, err := os.Lstat(filepath.Dir(path))
 	if err != nil || !directory.IsDir() || directory.Mode().Perm()&0o077 != 0 {
 		return &TransportError{Failure: Unreachable}
@@ -110,10 +106,29 @@ func admitSocket(path string) error {
 	return nil
 }
 
+// transportPath is the path to dial. A socket too long to bind is reached through the coordinator's alias, which
+// must link to exactly the socket's directory; trust is still proven on the physical directory.
+func transportPath(physical string, alias socketAlias) (string, error) {
+	if len(physical) <= alias.MaximumPathBytes {
+		return physical, nil
+	}
+	directory := filepath.Dir(physical)
+	digest := sha256.Sum256([]byte(directory))
+	link := filepath.Join(alias.Directory, alias.Prefix+hex.EncodeToString(digest[:])[:alias.DigestCharacters])
+	if target, err := os.Readlink(link); err != nil || target != directory {
+		return "", &TransportError{Failure: Unreachable}
+	}
+	return filepath.Join(link, filepath.Base(physical)), nil
+}
+
 // dial opens one invocation connection within the handshake bound. Any failure here, expiry included, precedes the
 // request, so the coordinator is unreachable and the invocation had no effect.
-func dial(ctx context.Context, socket string, handshake time.Duration) (*websocket.Conn, error) {
-	if err := admitSocket(socket); err != nil {
+func dial(ctx context.Context, physical string, alias socketAlias, handshake time.Duration) (*websocket.Conn, error) {
+	if err := admitSocket(physical); err != nil {
+		return nil, err
+	}
+	socket, err := transportPath(physical, alias)
+	if err != nil {
 		return nil, err
 	}
 	// The handshake context bounds only the opening handshake; the returned connection outlives it.

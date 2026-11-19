@@ -14,6 +14,9 @@ internal val publicQueryNamespaces = setOf("query", "result", "source", "diagnos
 
 fun isPublicQueryNamespace(name: String?): Boolean = name in publicQueryNamespaces
 
+/** The namespaces the persistent coordinator serves for the Control executable, in a stable order. */
+fun publicQueryNamespaceNames(): List<String> = publicQueryNamespaces.sorted()
+
 internal class PublicQueryNamespace(private val namespace: String) : ManagementNode(namespace) {
     override fun help(context: Context) =
         when (namespace) {
