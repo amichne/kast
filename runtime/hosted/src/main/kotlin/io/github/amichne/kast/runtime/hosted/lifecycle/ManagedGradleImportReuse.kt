@@ -11,6 +11,7 @@ import com.intellij.openapi.externalSystem.util.calculateCrc
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import io.github.amichne.kast.distribution.contract.gradle.GradleImportEnvironment
+import io.github.amichne.kast.runtime.hosted.isWithin
 import io.github.amichne.kast.runtime.hosted.workspace.IntellijWorkspaceRefreshPort
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
 import kotlinx.serialization.Serializable
@@ -59,14 +60,28 @@ internal suspend fun managedGradleImportReuse(project: Project, root: CanonicalW
     val settings = saved.settingsTracker ?: return ManagedImportReuse.INPUTS_UNAVAILABLE
     if (saved.isDirty || settings.isDirty) return ManagedImportReuse.DIRTY
     if (settings.settingsFiles.isEmpty()) return ManagedImportReuse.INPUTS_UNAVAILABLE
+    return compareGradleSettings(project, root, settings.settingsFiles)
+}
+
+private suspend fun compareGradleSettings(
+    project: Project,
+    root: CanonicalWorkspaceRoot,
+    savedChecksums: Map<String, Long>,
+): ManagedImportReuse {
+    val gradle = IntellijWorkspaceRefreshPort.GRADLE
     val awareness =
         ExternalSystemApiUtil.getManager(gradle) as? ExternalSystemAutoImportAware
             ?: return ManagedImportReuse.INPUTS_UNAVAILABLE
     val files = readAction { awareness.getAffectedExternalProjectFiles(root.value, project) }
     val local = LocalFileSystem.getInstance()
-    val current = files.mapNotNull { local.refreshAndFindFileByIoFile(it) }
     return readAction {
+        // The completed lifecycle refresh covers model inputs inside this workspace.
+        val current = files.mapNotNull { input ->
+            if (java.nio.file.Files.notExists(input.toPath())) return@mapNotNull null
+            if (!input.path.isWithin(root)) return@readAction ManagedImportReuse.INPUTS_UNAVAILABLE
+            local.findFileByIoFile(input) ?: return@readAction ManagedImportReuse.INPUTS_UNAVAILABLE
+        }
         val checksums = current.associate { it.path to it.calculateCrc(project, gradle) }.filterValues { it != 0L }
-        if (settings.settingsFiles == checksums) ManagedImportReuse.CURRENT else ManagedImportReuse.INPUTS_CHANGED
+        if (savedChecksums == checksums) ManagedImportReuse.CURRENT else ManagedImportReuse.INPUTS_CHANGED
     }
 }
