@@ -41,6 +41,7 @@ Read the [tracer evidence](../docs/reviews/go-frontend-tracer.md) for the measur
 - Route only the public query commands to the coordinator. `hook` and `workspace` read process-local state, so they run on the JVM.
 - Run the JVM by `exec`, so lifecycle owners observe one `java` process with the catalog's explicit class path and main class.
   Pass the invoked command as `-Dkast.command`, because the JVM cannot observe it after `exec`.
+- Pass `-XX:SharedArchiveFile` only when the catalog's `sharedArchive` is a regular file. The installer creates it with the installed runtime, and the manifest digests it.
 - Dial a socket longer than the catalog's `socketAlias.maximumPathBytes` only through the alias that links to its exact directory.
 - Read the Java home from the management receipt's runtime root and the catalog's platform table. Do not search `PATH` or `JAVA_HOME`.
 - Answer only exact help vectors from `share/kast/frontend.json`. Forward every other vector.
