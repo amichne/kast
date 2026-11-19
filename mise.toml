@@ -4,7 +4,7 @@ java = "liberica-nik-openjdk25-25.0.2+1"
 node = "24.21.0"
 vale = "3.24.0"
 jq = "1.8.2"
-go = "1.27.3"
+go = "1.27.4"
 
 [env]
 _.path = ["{{config_root}}/bin"]

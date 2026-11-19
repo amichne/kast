@@ -504,6 +504,10 @@ configurations.consumable("configurationCatalogueElements") {
     )
 }
 
+configurations.consumable("frontendCatalogElements") {
+    outgoing.artifact(generateFrontendCatalog.flatMap { it.outputFile })
+}
+
 configurations.consumable("providerCatalogueElements") {
     outgoing.artifact(
         tasks.named<support.tasks.WriteJavaProcessOutputTask>("generateProviderCatalog").flatMap { it.outputFile }
