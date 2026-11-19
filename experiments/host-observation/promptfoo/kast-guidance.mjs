@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const canonical = new URL('../../../agent-tools/skills/kast/', import.meta.url);
-export const kastInstruction = 'Use Kast for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects.';
+export const kastInstruction = 'Kast is available for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects. Use the available tools when helpful; a correct solution does not require a Kast call.';
 const digest = text => createHash('sha256').update(text).digest('hex');
 
 export function loadKastGuidance({

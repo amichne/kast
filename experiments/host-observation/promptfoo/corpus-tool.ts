@@ -2,12 +2,12 @@ import { spawnSync } from 'node:child_process';
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 import { parseFlags, permittedKast, runtimeEnvironment } from './skill-sandbox.mjs';
+import { createCorpusSource, withinWorkspace } from './corpus-source.mjs';
 
 const path = Type.String({ minLength: 1, maxLength: 512 });
 const scope = Type.Optional(path);
 const offset = Type.Optional(Type.Integer({ minimum: 0, maximum: 1_000_000 }));
 const suffix = Type.Optional(Type.String({ pattern: '^\\.[a-zA-Z0-9.]+$', maxLength: 24 }));
-const sourceBuffer = 16 * 1024 * 1024;
 const presentation = ['--output', '--fields', '--max-results', '--max-returned-bytes'];
 const queryFlags = new Set([
   ...presentation, '--name', '--ref', '--file', '--offset', '--in', '--kind', '--source-set',
@@ -29,21 +29,6 @@ function reply(content: unknown, details: Record<string, unknown> = {}, isError 
 
 function reject(reason: string, details: Record<string, unknown> = {}) {
   return reply({ error: reason }, { reason, ...details }, true);
-}
-
-function withinWorkspace(path: unknown): path is string {
-  return typeof path === 'string' && path.length <= 512 && !/[\\\x00-\x1f\x7f]/.test(path) &&
-    path.split('/').every(part => !['.', '..', ''].includes(part)) && !path.startsWith('~');
-}
-
-function relativePath(path: string) {
-  if (!withinWorkspace(path)) throw new Error('PATH_REJECTED');
-  return path;
-}
-
-function page<T>(rows: T[], offset: number, size: number) {
-  const end = offset + size;
-  return { rows: rows.slice(offset, end), nextOffset: end < rows.length ? end : null };
 }
 
 function token(value: unknown) {
@@ -122,18 +107,7 @@ export default function (pi: ExtensionAPI) {
   const revision = process.env.KAST_CORPUS_REVISION!;
   const git = process.env.KAST_CORPUS_GIT!;
   if (!/^[0-9a-f]{40}$/.test(revision)) throw new Error('REVISION_REJECTED');
-
-  function gitOutput(args: string[], emptyMatch = false) {
-    const result = spawnSync(git, ['--no-pager', '--literal-pathspecs', ...args], {
-      cwd: workspace, encoding: 'utf8', timeout: 15_000, maxBuffer: sourceBuffer, killSignal: 'SIGKILL',
-      env: { PATH: process.env.PATH, LC_ALL: 'C', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_NO_REPLACE_OBJECTS: '1' },
-    });
-    if (result.error?.code === 'ENOBUFS') throw new Error('SOURCE_OUTPUT_LIMIT_USE_NARROWER_SCOPE');
-    if (result.error?.code === 'ETIMEDOUT') throw new Error('SOURCE_TIME_LIMIT_USE_NARROWER_SCOPE');
-    if (emptyMatch && result.status === 1 && !result.error) return '';
-    if (result.error || result.status !== 0) throw new Error('SOURCE_REQUEST_FAILED');
-    return result.stdout;
-  }
+  const source = createCorpusSource({ workspace, revision, git });
 
   function sourceRequest(operation: () => unknown) {
     const started = performance.now();
@@ -144,56 +118,30 @@ export default function (pi: ExtensionAPI) {
     }
   }
 
-  function tree(directory?: string) {
-    const args = directory ? [relativePath(directory)] : [];
-    return gitOutput(['ls-tree', '-r', '-z', '--full-tree', revision, '--', ...args]).split('\0').flatMap(entry => {
-      const match = /^100(?:644|755) blob ([0-9a-f]{40})\t([^\0]+)$/.exec(entry);
-      return match ? [{ blob: match[1], path: match[2] }] : [];
-    });
-  }
-
   pi.registerTool({
     name: 'list_files', label: 'List tracked files',
     description: 'List regular files at the pinned commit. Scope is a literal repository-relative directory with no trailing slash. For another page use nextOffset.',
     parameters: Type.Object({ scope, suffix, offset }, { additionalProperties: false }),
     async execute(_id, { scope, suffix, offset = 0 }) {
-      return sourceRequest(() => page(tree(scope).map(file => file.path).filter(path => !suffix || path.endsWith(suffix)), offset, 100));
+      return sourceRequest(() => source.list({ scope, suffix, offset }));
     },
   });
   pi.registerTool({
     name: 'read_file', label: 'Read tracked file',
-    description: 'Read up to 30 numbered lines from one tracked text file. For the next page use nextLine as startLine.',
-    parameters: Type.Object({ path, startLine: Type.Optional(Type.Integer({ minimum: 1, maximum: 1_000_000 })) }, { additionalProperties: false }),
-    async execute(_id, { path, startLine = 1 }) {
-      return sourceRequest(() => {
-        const file = tree(path).find(entry => entry.path === path);
-        if (!file) throw new Error('TRACKED_FILE_UNAVAILABLE');
-        const content = gitOutput(['cat-file', 'blob', file.blob]);
-        if (content.includes('\0')) throw new Error('BINARY_FILE');
-        const lines = content === '' ? [] : content.replace(/\n$/, '').split('\n');
-        const { rows, nextOffset } = page(lines, startLine - 1, 30);
-        return { path, rows: rows.map((text, index) => ({ line: startLine + index, text: text.slice(0, 900), lineTruncated: text.length > 900 })),
-          nextLine: nextOffset === null ? null : nextOffset + 1 };
-      });
+    description: 'Read numbered lines from one pinned tracked text file (100 by default, at most 200). Use nextLine as startLine. For a long line use its line as startLine, lineCount 1 and nextColumn as startColumn; columns count UTF-16 code units.',
+    parameters: Type.Object({ path, startLine: Type.Optional(Type.Integer({ minimum: 1, maximum: 1_000_000 })),
+      lineCount: Type.Optional(Type.Integer({ minimum: 1, maximum: 200 })),
+      startColumn: Type.Optional(Type.Integer({ minimum: 1, maximum: 16 * 1024 * 1024 })) }, { additionalProperties: false }),
+    async execute(_id, { path, startLine, lineCount, startColumn }) {
+      return sourceRequest(() => source.read({ path, startLine, lineCount, startColumn }));
     },
   });
   pi.registerTool({
     name: 'search_source', label: 'Search tracked text',
-    description: 'Use Git extended regex to search tracked text at the pinned commit. Scope is a literal repository-relative file or directory. For another page use nextOffset.',
+    description: 'Use Git extended regex to search pinned tracked text. Literal scope and suffix select files before capture limits apply. Use nextOffset for another page; recover shortened lines with read_file at the returned line and nextColumn.',
     parameters: Type.Object({ pattern: Type.String({ minLength: 1, maxLength: 240 }), scope, suffix, offset }, { additionalProperties: false }),
     async execute(_id, { pattern, scope, suffix, offset = 0 }) {
-      return sourceRequest(() => {
-        if (/[\0\r\n]/.test(pattern)) throw new Error('PATTERN_REJECTED');
-        const paths = scope ? [relativePath(scope)] : [];
-        const output = gitOutput(['grep', '-z', '-n', '-E', '-I', '--no-column', '--color=never', '--no-textconv',
-          '--no-recurse-submodules', '-e', pattern, revision, '--', ...paths], true);
-        const rows = Array.from(output.matchAll(/[^\0]+\0[0-9]+\0[^\n]*\n/g), ([record]) => {
-          const [file, line, entry] = record.split('\0');
-          const text = entry.slice(0, -1);
-          return { path: file.slice(revision.length + 1), line: Number(line), text: text.slice(0, 900), lineTruncated: text.length > 900 };
-        }).filter(row => !suffix || row.path.endsWith(suffix));
-        return page(rows, offset, 30);
-      });
+      return sourceRequest(() => source.search({ pattern, scope, suffix, offset }));
     },
   });
 
@@ -201,7 +149,7 @@ export default function (pi: ExtensionAPI) {
   if (!kast) return;
   const issuedResults = new Set<string>();
   const issuedContinuations = new Set<string>();
-  const trackedFile = (path: string) => tree(path).some(entry => entry.path === path);
+  const trackedFile = (path: string) => source.hasFile(path);
 
   function admitsKast(argv: string[], stdin?: string) {
     if (argv.some(value => value.includes('\0') || value.includes('\n'))) return false;

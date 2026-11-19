@@ -18,9 +18,11 @@ function temporary(t) {
 
 function evaluate(root, inputs, extraArgs = []) {
   const file = path.join(root, 'results.json');
-  const env = { ...process.env, PROMPTFOO_DISABLE_TELEMETRY: '1', PROMPTFOO_CONFIG_DIR: root };
+  const env = { ...process.env, PROMPTFOO_DISABLE_TELEMETRY: '1', PROMPTFOO_DISABLE_UPDATE: '1',
+    PROMPTFOO_DISABLE_REMOTE_GENERATION: '1', PROMPTFOO_CONFIG_DIR: root };
   delete env.KAST_PI_EVAL_PLAN;
   delete env.KAST_PI_EVAL_TARGET;
+  delete env.KAST_PI_COMPREHENSION;
   const child = spawnSync(process.execPath, [cli, 'eval', '-c', 'pi.config.mjs', '--no-cache', '--no-write', '--no-share',
     '--no-progress-bar', '--no-table', '-o', file, ...extraArgs], { cwd: here, env: { ...env, ...inputs }, encoding: 'utf8', timeout: 20000 });
   assert.equal(child.error, undefined);
@@ -76,6 +78,25 @@ test('Promptfoo grades accepted decisions and their nearest counterexamples in a
     assert.ok(cases.some(row => row.vars.arm === 'accept' && row.response.output.correct));
     assert.ok(cases.some(row => row.vars.arm === 'reject' && row.response.output.correct === false));
   }
+});
+
+test('Promptfoo executes frozen Panel B controls through the retained Pi config without model calls', t => {
+  const { status, rows } = evaluate(temporary(t), { KAST_PI_COMPREHENSION: 'controls' });
+  assert.equal(status, 0);
+  assert.equal(rows.length, 52);
+  assert.ok(rows.every(row => row.success && row.namedScores.oracle === 1));
+  assert.deepEqual([...new Set(rows.map(row => row.vars.caseId))], [
+    'ktfmt-constant-indent-negation-evidence-v1', 'C5',
+    'source-freshness-after-edit-v1', 'readiness-failure-no-absence-v1',
+  ]);
+  for (const row of rows) {
+    assert.equal(row.response.metadata.panel, 'B');
+    assert.equal(row.response.metadata.measurement, 'DETERMINISTIC_CONTROL');
+    assert.match(row.response.metadata.inputSha256, /^[a-f0-9]{64}$/);
+  }
+  const archived = rows.filter(row => row.response.metadata.controlProvenance === 'ARCHIVED_RESPONSE');
+  assert.equal(archived.length, 1);
+  assert.equal(archived[0].response.metadata.archivedEvalId, 'eval-i9W-2026-11-19T07:01:29');
 });
 
 test('Promptfoo reports incomplete target evidence without passing the performance target', t => {

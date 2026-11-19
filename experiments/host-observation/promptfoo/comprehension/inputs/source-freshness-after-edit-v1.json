@@ -1,0 +1,28 @@
+{
+  "evidenceKind": "SYNTHETIC_COMPREHENSION_PACKET",
+  "kastRevision": "9adbd800ee4a2d131a87b3d62e613d3a451c3bdd",
+  "sourceOwner": "experiments/host-observation/interface-replay/fixtures/Orders.kt",
+  "sourceBeforeSha256": "6ef102911d03d6e6bf130f317e019da601b9b738e7a61e3d2566ea061e5b3ab7",
+  "sourceAfterSha256": "40e095d87d48f472eaa250cd337b0b7040bda96e56d1a93c51c41ecde860672f",
+  "sourceBefore": "package fixture.orders\n\n// Fixture identities are synthetic and apply only to decision replay.\nfun submit(id: String): String = \"order:$id\"\nfun submit(id: Long): Long = id + 1\nfun submit(id: String, retries: Int): String = id.repeat(retries)\nclass OrderService\nfun renderReceipt(id: String): String {\n    return \"Order, \\\"$id\\\":\\nready\\t✓\"\n}\n",
+  "sourceAfter": "// Copyright 2026 the order service authors.\npackage fixture.orders\n\n// Fixture identities are synthetic and apply only to decision replay.\nfun submit(id: String): String = \"order:$id\"\nfun submit(id: Long): Long = id + 1\nfun submit(id: String, retries: Int): String = id.repeat(retries)\nclass OrderService\nfun renderReceipt(id: String): String {\n    return \"Order, \\\"$id\\\":\\nready\\t✓\"\n}\n",
+  "scope": {
+    "directory": "services/orders",
+    "sourceSets": [
+      "main"
+    ]
+  },
+  "priorTarget": {
+    "identity": "fixture.orders.submit(Long)",
+    "file": "services/orders/src/main/kotlin/Orders.kt",
+    "line": 5
+  },
+  "finalReadRejection": {
+    "schemaVersion": 1,
+    "outcome": "rejected",
+    "failure": "FRESHNESS_REJECTED",
+    "detail": "MOVED",
+    "stage": "CONTENT_REVALIDATION"
+  },
+  "task": "The prior lookup located submit(id: Long) at services/orders/src/main/kotlin/Orders.kt:5. The same file was then saved with the supplied one-line change; the next read ended with the supplied rejection. Is the old location still justified for editing submit(Long)? Using only this packet, return JSON with target, scope, canUsePriorLocation, currentLineFromText, compilerStatus, and nextAction. target is the qualified name with the short parameter type; scope has directory and sourceSets; canUsePriorLocation is Boolean; currentLineFromText is a one-based integer; compilerStatus is proven or unproven; nextAction is use-prior-location, reacquire-current-source, or repeat-identical-request. Preserve the requested main-source scope. State the line supported by the new source text separately from compiler authority. Do not execute a command or edit."
+}

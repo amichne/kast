@@ -13,7 +13,7 @@ def test_delegate() -> None:
     request = json.loads((directory / "request.json").read_text())
     workspace = Path(request["workspace"])
     revision = request["revision"]
-    repository = request.pop("repository")
+    repository = request["repository"]
     examine(workspace, revision, repository)
     worker = Path(__file__).with_name("corpus-participant.mjs")
     participant = subprocess.run(
@@ -24,5 +24,5 @@ def test_delegate() -> None:
         check=True,
     )
     response = json.loads(participant.stdout)
-    examine(workspace, revision, repository)
     (directory / "response.json").write_text(json.dumps(response))
+    examine(workspace, revision, repository)

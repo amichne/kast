@@ -1,22 +1,29 @@
-import { mkdtemp, realpath, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { realpath, rm } from 'node:fs/promises';
+import { isAbsolute } from 'node:path';
 import { text } from 'node:stream/consumers';
 import { fileURLToPath } from 'node:url';
 import { binary, runIsolatedPi } from './skill-provider.mjs';
+import { corpusBaseline } from './corpus-source.mjs';
+import { createParticipantDirectory } from './participant-surface.mjs';
+import { projectPiTrial } from './pi-accounting.mjs';
+import { createTrialTiming } from './trial-phases.mjs';
 
 const extension = fileURLToPath(new URL('./corpus-tool.ts', import.meta.url));
 const sourceTools = ['list_files', 'read_file', 'search_source'];
 const system = 'You are a Kotlin developer examining the given repository at its pinned revision. Use the available read-only tools to answer from the repository. Return the answer in the exact format requested.';
+export { system as corpusParticipantSystem };
 const maxReceipts = 64;
 
 function summarize(trial, tools) {
   const kastCalls = trial.calls.filter(call => call.tool === 'kast');
   const semanticReceipts = kastCalls.flatMap(call => call.receipt ? [call.receipt] : []);
   const toolFailures = trial.calls.flatMap(call => call.reason ? [{ tool: call.tool, reason: call.reason }] : []);
-  const usage = trial.usage;
+  const projection = projectPiTrial(trial);
   return {
+    ...projection,
     metadata: {
+      ...projection.metadata,
       elapsedMillis: Math.round(trial.elapsedMillis),
       toolCalls: trial.toolProposals,
       toolExecutions: trial.toolCalls,
@@ -33,58 +40,96 @@ function summarize(trial, tools) {
       toolFailures: toolFailures.slice(0, maxReceipts),
       toolFailuresOmitted: Math.max(0, toolFailures.length - maxReceipts),
     },
-    ...(usage && usage.total > 0 && { tokenUsage: { total: usage.total, prompt: usage.input + usage.cacheRead + usage.cacheWrite,
-      completion: usage.output, cached: usage.cacheRead } }),
   };
 }
 
-async function participate(request) {
-  const { workspace, model, arm, prompt, skillBody, revision } = request;
+export async function participate(request, effects = {}) {
+  const { getBinary = binary, runPi = runIsolatedPi, cleanup = rm, clock } = effects;
+  const timing = createTrialTiming('CORPUS_PARTICIPANT', clock);
+  const { workspace, model, arm, prompt, skillBody, revision, repository, caseId, requestedPanel = 'RESTRICTED' } = request ?? {};
+  let observation = projectPiTrial(undefined);
   if (typeof workspace !== 'string' || !isAbsolute(workspace) || typeof model !== 'string' ||
       !/^openai-codex\/[A-Za-z0-9_.-]+$/.test(model) || !['source', 'kast'].includes(arm) ||
       typeof prompt !== 'string' || !prompt.trim() || typeof revision !== 'string' || !/^[a-f0-9]{40}$/.test(revision) ||
+      !['A', 'RESTRICTED'].includes(requestedPanel) ||
       (arm === 'kast' && (typeof skillBody !== 'string' || !skillBody.trim()))) {
-    return { error: 'PARTICIPANT_REQUEST_REJECTED', metadata: {} };
+    return { ...observation, error: 'PARTICIPANT_REQUEST_REJECTED',
+      metadata: { ...observation.metadata, timing: timing.snapshot() } };
   }
-  const metadata = { revision, model, arm };
+  const toolNames = arm === 'kast' ? [...sourceTools, 'kast'] : [...sourceTools];
+  const metadata = { revision, model, effort: 'low', arm, requestedPanel, panel: 'RESTRICTED', baseline: corpusBaseline,
+    ...(typeof caseId === 'string' && /^[a-z0-9-]{1,100}$/.test(caseId) && { caseId }),
+    admission: { state: requestedPanel === 'A' ? 'BLOCKED' : 'RESTRICTED', reason: corpusBaseline.panelA.reason },
+    source: { revision, repository: typeof repository === 'string' ? repository : null },
+    taskSha256: createHash('sha256').update(prompt).digest('hex'),
+    permissions: { sourceRead: 'PINNED_REGULAR_GIT_BLOBS', workspaceMutation: false,
+      arbitraryCommands: false, toolNames },
+    budgets: { participantMillis: 240_000 },
+  };
+  if (requestedPanel === 'A') return { ...observation, error: 'PANEL_A_BASELINE_UNQUALIFIED',
+    metadata: { ...observation.metadata, ...metadata, timing: timing.snapshot() } };
   let directory;
+  let participantSettled = true;
   let stage = 'PINNED_WORKSPACE_UNAVAILABLE';
   try {
-    const root = await realpath(workspace);
-    const git = await binary(undefined, 'git');
-    stage = 'KAST_BINARY_UNAVAILABLE';
-    const kast = arm === 'kast' ? await binary(process.env.KAST_EVAL_KAST, 'kast') : '';
+    const { root, git, kast } = await timing.measure('preparation', async () => {
+      const root = await realpath(workspace);
+      const git = await getBinary(undefined, 'git');
+      stage = 'KAST_BINARY_UNAVAILABLE';
+      const kast = arm === 'kast' ? await getBinary(process.env.KAST_EVAL_KAST, 'kast') : '';
+      stage = 'PARTICIPANT_DIRECTORY_UNAVAILABLE';
+      directory = await createParticipantDirectory();
+      return { root, git, kast };
+    });
     stage = 'PARTICIPANT_RUNTIME_FAILED';
-    directory = await mkdtemp(join(tmpdir(), 'kast-corpus-participant-'));
-    const toolNames = kast ? [...sourceTools, 'kast'] : sourceTools;
-    const trial = await runIsolatedPi({
-      directory, prompt, system, model, toolNames, extension, timeout: 240_000, captureLimits: true,
+    const trial = await timing.measure('participant', () => runPi({
+      directory, prompt, system, model, effort: 'low', toolNames, extension, timeout: 240_000, captureLimits: true, visiblePaths: [root],
+      toolUsagePolicy: 'no-model-helpers',
       ...(kast && { inlineSkill: skillBody }),
       extensionEnvironment: {
         KAST_CORPUS_WORKSPACE: root, KAST_CORPUS_GIT: git, KAST_CORPUS_REVISION: revision, KAST_CORPUS_KAST: kast,
         ...(kast && process.env.KAST_GRADLE_JAVA_HOME && { KAST_GRADLE_JAVA_HOME: process.env.KAST_GRADLE_JAVA_HOME }),
       },
-    });
-    const observation = summarize(trial, toolNames);
+    }), trial => trial.error || trial.termination ? 'FAILED' : 'COMPLETED');
+    observation = summarize(trial, toolNames);
     const outcome = trial.error ? { error: 'PARTICIPANT_RUNTIME_FAILED' }
       : trial.termination ? { error: trial.termination }
       : { output: trial.reply ?? '' };
-    return { ...outcome, ...observation, metadata: { ...metadata, ...observation.metadata } };
+    Object.assign(observation, outcome);
   } catch (error) {
-    const code = ['PI_OWNER_INTERRUPTED', 'PI_CHILD_REAP_UNAVAILABLE'].includes(error?.code) ? error.code : stage;
+    if (error?.trial) {
+      const rejected = projectPiTrial(error.trial);
+      observation = { ...observation, ...rejected, metadata: { ...observation.metadata, ...rejected.metadata } };
+    }
+    const code = ['PI_OWNER_INTERRUPTED', 'PI_CHILD_REAP_UNAVAILABLE', 'PARTICIPANT_SURFACE_REJECTED'].includes(error?.code) ? error.code : stage;
+    participantSettled = error?.code !== 'PI_CHILD_REAP_UNAVAILABLE';
     if (['PI_EVENT_PARSE_FAILED', 'PI_EVENT_EVIDENCE_REJECTED', 'PI_CUTOFF_EVIDENCE_UNAVAILABLE'].includes(error?.code)) {
       metadata.terminalCause = error.code;
     }
-    return { error: code, metadata };
+    observation.error = code;
+    metadata.termination = code;
   } finally {
-    if (directory) await rm(directory, { recursive: true, force: true });
+    if (directory) {
+      try {
+        await timing.measure('cleanup', async () => {
+          if (!participantSettled) throw Error('PARTICIPANT_REAP_UNAVAILABLE');
+          await cleanup(directory, { recursive: true, force: true });
+        });
+      } catch {
+        metadata.cleanup = 'PARTICIPANT_CLEANUP_FAILED';
+        observation.error ??= metadata.cleanup;
+      }
+    }
   }
+  return { ...observation, metadata: { ...metadata, ...observation.metadata, timing: timing.snapshot() } };
 }
 
-let result;
-try {
-  result = await participate(JSON.parse(await text(process.stdin)));
-} catch {
-  result = { error: 'PARTICIPANT_PROTOCOL_FAILED', metadata: {} };
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  let result;
+  try {
+    result = await participate(JSON.parse(await text(process.stdin)));
+  } catch {
+    result = { ...projectPiTrial(undefined), error: 'PARTICIPANT_PROTOCOL_FAILED' };
+  }
+  process.stdout.write(JSON.stringify(result) + '\n');
 }
-process.stdout.write(JSON.stringify(result) + '\n');

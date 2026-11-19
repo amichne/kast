@@ -3,6 +3,7 @@
 Use this suite to measure whether an agent can change working Kotlin code or trace a call through a service.
 Each Promptfoo case gives both agents the same requirement, source tree, editor, and compiler.
 One agent also gets Kast and a short instruction to read its skill. Both can solve each task with the supplied source.
+A correct solution can use no Kast calls. `KAST_EVAL_PORTFOLIO=curated` selects Picnic and the coroutine conversion repair; the default retains all five tasks.
 
 | Case | Developer request | Evidence for a correct result |
 |---|---|---|
@@ -33,8 +34,10 @@ Changes outside the task's edit scope fail the case. The trace task accepts an e
 The result records the proposed tool calls, actual tool calls, Kast calls, and provider token counts.
 Each edit result includes a Git patch for the permitted Kotlin files. A reviewer can apply this patch to a fresh fixture.
 The comparison needs matching hashes for the initial sources and task text.
-If a participant reaches its time or output limit, the grader examines the available work. An unknown token total blocks a cost comparison.
+If a participant reaches its time or output limit, the grader examines the available work. Known receipts survive that cutoff, but incomplete dollars block efficiency ranking.
 A failed setup yields a provider error. A patch that fails the independent client yields an incorrect result.
+Each result also records the admitted baseline, edit permissions, budgets, upstream provenance, cost provenance, and phase timing through cleanup.
+Panel A admission follows oracle, compiler, source-identity, and applicable Host preflight checks. Passing injected-process tests does not establish native execution readiness.
 
 ## Source of each task
 
@@ -42,11 +45,11 @@ The parcel tasks share a purpose-built service. Its two audit interfaces have th
 The dispatch endpoint selects an overload and uses the concrete carrier for the destination.
 
 Firebender lists the scheduler defect as `Kotlin__kotlinx.coroutines-3921`.
-The fixture extracts the pre-fix conversion from revision `2b5d93f2` and uses the Kotlin standard library.
+The fixture extracts the pre-fix conversion from revision `2b5d93f2dbc0de0f82e4ec9ab7753e5f24da6e30` and uses the Kotlin standard library.
 It reproduces the rounding defect without a clock. It covers the conversion only.
 The complete upstream coroutine scheduler and Firebender harness are outside this case. [Dataset at the pinned revision](https://github.com/firebenders/Kotlin-bench/blob/90867afd46b87a2e848721e5d9d97943e207ddc0/agent-bench/data/kotlin_bench.json) · [Upstream fix and tests](https://github.com/Kotlin/kotlinx.coroutines/pull/3921)
 
-The Picnic task starts with all seven Kotlin production files at revision `cd569782`.
+The Picnic task starts with all seven Kotlin production files at revision `cd569782e2503ddd4f95fb47017d12f9e9484210`.
 The fixture uses the repository Gradle wrapper and removes obsolete `@JvmDefault` annotations for the current Kotlin compiler.
 The issue and merged fix are public, so a model can know the change from prior training. [Picnic issue #20](https://github.com/JakeWharton/picnic/issues/20) · [Upstream fix and tests](https://github.com/JakeWharton/picnic/pull/22)
 
@@ -61,6 +64,7 @@ The Kast agent opened the skill and completed a compiler-backed query on every t
 | Source, compiler, and Kast with its skill | 5/5 | 251,533 | 62 | 13 | 8 |
 
 Each arm solved every task. In this run, the source arm used fewer tokens and tool calls. [Guided trial record](history/developer-tasks-guided.json)
+These historical counters do not establish a dollar preference under the current comparison contract; complete native cost receipts were not retained.
 
 To compare the guided results, run this command from the suite directory.
 

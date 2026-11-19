@@ -1,6 +1,6 @@
 export const invocationFile = 'invocation/src/main/kotlin/fixture/staticcallbacks/invocation/Invocation.kt';
 export const completionFile = 'protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt';
-export const liveNames = { present: 'invokeCallback', absent: 'kastBenchmarkNoSuchFunction' };
+export const liveNames = { present: 'invokeCallback', absent: 'scheduleCallbackRetry' };
 export const originalCases = ['select', 'kind', 'walk', 'present', 'absent', 'callback'];
 
 function declarationPrompt(name) {

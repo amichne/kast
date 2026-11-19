@@ -61,8 +61,15 @@ test('participant creation admits a new Kotlin file and preserves existing and e
   assert.equal(existsSync(join(outside, 'New.kt')), false);
 });
 
-const receipt = () => ({ reply: '{"pass":true}', usage: { input: 12, cacheRead: 4, cacheWrite: 2, output: 3, total: 21 },
-  calls: [], toolCalls: 0, toolProposals: 1, providerResponses: 1, elapsedMillis: 1 });
+const participantModel = process.env.KAST_EVAL_PI_MODEL ?? 'openai-codex/gpt-6.1-sol';
+const participantUsage = { input: 12, cacheRead: 4, cacheWrite: 2, output: 3, totalTokens: 21,
+  cost: { input: 0.012, cacheRead: 0.004, cacheWrite: 0.002, output: 0.003, total: 0.021, totalFromProvider: true } };
+const participantMessage = (overrides = {}) => ({ role: 'assistant', provider: participantModel.split('/')[0],
+  model: participantModel.split('/')[1], responseId: 'synthetic-provider-response', stopReason: 'stop',
+  content: [{ type: 'text', text: '{"pass":true}' }], usage: participantUsage, ...overrides });
+const receipt = () => ({ ...settlePiTrial({ status: 0,
+  stdout: JSON.stringify({ type: 'message_end', message: participantMessage() }) + '\n' }, participantModel, [], true,
+  { toolUsagePolicy: 'no-model-helpers' }), toolProposals: 1, elapsedMillis: 1 });
 
 const runCase = (provider, arm) => provider.callApi(task.prompt, { vars: { caseId: task.id, arm } });
 
@@ -98,7 +105,8 @@ test('paired provider gives both participants the same controls and independentl
     assert.equal(source.metadata[field], undefined);
   }
   assert.equal(setups[0].guidance, undefined);
-  assert.match(setups[1].guidance.text, /Use Kast for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects\./);
+  assert.match(setups[1].guidance.text, /Kast is available for compiler-backed analysis and symbol resolution in Kotlin code and Gradle projects\./);
+  assert.match(setups[1].guidance.text, /a correct solution does not require a Kast call/);
   assert.doesNotMatch(setups[0].system, /Use Kast/);
   assert.equal(setups[0].timeout, setups[1].timeout);
   assert.deepEqual(setups[1].toolNames, [...setups[0].toolNames, 'kast']);
@@ -115,7 +123,15 @@ test('paired provider gives both participants the same controls and independentl
   assert.equal(gradeDeveloperResponse(kast).pass, true);
   assert.equal(kast.metadata.patch, 'the observed patch');
   assert.equal(source.metadata.patch, '');
-  assert.deepEqual(source.tokenUsage, { total: 21, prompt: 18, completion: 3, cached: 4 });
+  assert.deepEqual(source.tokenUsage, { total: 21, prompt: 18, completion: 3, cached: 4, numRequests: 1 });
+  assert.equal(source.cost, 0.021);
+  assert.equal(source.metadata.accounting.costs.task.provenance, 'provider-reported');
+  assert.deepEqual(source.metadata.context.input, { state: 'complete', sum: 18, peak: 18, final: 18 });
+  assert.equal(source.metadata.evidence.final.text, '{"pass":true}');
+  assert.equal(source.metadata.panel, 'A');
+  assert.equal(kast.metadata.panel, 'A');
+  assert.equal(source.metadata.baseline.qualification, 'TASK_QUALIFIED');
+  assert.equal(setups[0].toolUsagePolicy, 'no-model-helpers');
   assert.equal(source.metadata.toolCalls, 1);
   assert.equal(source.metadata.toolExecutions, 0);
 });
@@ -148,8 +164,41 @@ test('an unavailable exact Host stops the trial before model use', async () => {
   assert.equal(response.metadata.hostAvailable, false);
   assert.equal(Object.hasOwn(response, 'tokenUsage'), false);
   assert.equal(gradeDeveloperResponse(response).pass, false);
-  assert.match(stopped, /kast-developer-trial-[^/]+\/workspace$/);
+  assert.match(stopped, /project-[A-Za-z0-9]{6}\/workspace$/);
   assert.equal(existsSync(stopped), false);
+});
+
+test('failed developer preflight includes the entire boundary and role-separated phase timing', async () => {
+  let tick = 0;
+  const provider = createDeveloperProvider({
+    cases: [task],
+    prepareWorkspace: async (_task, workspace) => { tick += 10; await writeFixture(workspace); },
+    preflightOracle: async () => { tick += 20; },
+    gradeWorkspace: async () => assert.fail('grade without a qualified Host'),
+  }, {
+    clock: () => tick,
+    compile: () => { tick += 30; return { type: 'COMPILED' }; },
+    getKast: async () => { tick += 1; return 'owned-kast'; },
+    getGradleHome: async () => { tick += 2; return '/gradle'; },
+    warmup: async () => { tick += 40; return false; },
+    stop: async () => { tick += 50; return true; },
+    runPi: async () => assert.fail('model use without a qualified Host'),
+  });
+  const response = await runCase(provider, 'kast');
+  assert.equal(response.error, 'DEVELOPER_HOST_PREFLIGHT_FAILED');
+  assert.equal(response.metadata.panel, 'RESTRICTED');
+  assert.equal(response.metadata.requestedPanel, 'A');
+  assert.equal(response.metadata.admission.state, 'BLOCKED');
+  assert.equal(response.metadata.timing.wallMillis, 153);
+  assert.deepEqual(response.metadata.timing.phases.map(phase => [phase.phase, phase.role, phase.outcome, phase.elapsedMillis]), [
+    ['preparation', 'coordinator', 'COMPLETED', 10],
+    ['oracle-preflight', 'grader', 'COMPLETED', 20],
+    ['compiler-preflight', 'coordinator', 'COMPLETED', 30],
+    ['host-preflight', 'coordinator', 'FAILED', 43],
+    ['participant', 'participant', 'NOT_RUN', undefined],
+    ['grading', 'grader', 'NOT_RUN', undefined],
+    ['cleanup', 'coordinator', 'COMPLETED', 50],
+  ]);
 });
 
 test('a participant cutoff grades the observed workspace and preserves only known usage', async () => {
@@ -167,9 +216,14 @@ test('a participant cutoff grades the observed workspace and preserves only know
     async runPi(input) {
       invocation++;
       if (invocation === 1) replaceWorkspaceText(input.extensionEnvironment.KAST_DEV_EVAL_WORKSPACE, path, '1', '2');
-      if (invocation === 3) return { ...receipt(), error: 'Transport failed' };
-      return { ...receipt(), usage: null, finalizedUsage: receipt().usage, termination: 'PARTICIPANT_DEADLINE',
-        reply: 'partial answer', partialTranscript: { assistant: ['partial answer'] } };
+      if (invocation === 3) return { ...settlePiTrial({ status: 0, stdout: stream(
+        { type: 'message_end', message: participantMessage({ stopReason: 'error', content: [] }) },
+      ) }, participantModel, [], true, { toolUsagePolicy: 'no-model-helpers' }), elapsedMillis: 1 };
+      return { ...settlePiTrial({ status: null, termination: 'PARTICIPANT_DEADLINE', stdout: stream(
+        { type: 'message_end', message: participantMessage({ stopReason: 'toolUse', content: [] }) },
+        { type: 'message_start', message: participantMessage({ responseId: 'pending-response', stopReason: 'pending', usage: undefined, content: [] }) },
+        { type: 'message_update', assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta: 'partial answer' } },
+      ) }, participantModel, [], true, { toolUsagePolicy: 'no-model-helpers' }), elapsedMillis: 1 };
     },
   });
   const completed = await runCase(provider, 'source');
@@ -179,12 +233,17 @@ test('a participant cutoff grades the observed workspace and preserves only know
   assert.equal(gradeDeveloperResponse(completed).pass, true);
   assert.equal(completed.metadata.patch, 'complete edit');
   assert.equal(completed.metadata.termination, 'PARTICIPANT_DEADLINE');
-  assert.deepEqual(completed.metadata.partialTranscript, { assistant: ['partial answer'] });
+  assert.deepEqual(completed.metadata.partialTranscript, { assistant: ['partial answer'], tools: [], truncated: false });
   assert.equal(Object.hasOwn(completed, 'tokenUsage'), false);
   assert.equal(completed.metadata.finalizedUsage.total, 21);
+  assert.equal(completed.metadata.accounting.costs.task.state, 'incomplete');
+  assert.equal(completed.metadata.accounting.costs.task.knownTotal, 0.021);
+  assert.equal(completed.cost, undefined);
   assert.equal(gradeDeveloperResponse(incomplete).reason, 'INCOMPLETE');
   assert.equal(Object.hasOwn(incomplete, 'error'), false);
   assert.equal(unavailable.error, 'DEVELOPER_PARTICIPANT_EXECUTION_FAILED');
+  assert.equal(unavailable.metadata.terminalCause, 'PI_PROVIDER_ERROR');
+  assert.equal(unavailable.metadata.accounting.costs.task.knownTotal, 0.021);
 });
 
 test('a timed-out individual tool leaves normal participant work eligible for grading', async () => {

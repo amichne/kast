@@ -1,0 +1,15 @@
+{
+  "evidenceKind": "SYNTHETIC_PUBLIC_CONTRACT_FIXTURE",
+  "sourceRevision": "9adbd800ee4a2d131a87b3d62e613d3a451c3bdd",
+  "sourceOwner": "experiments/host-observation/interface-replay/fixtures/C5.json",
+  "historicalProducer": {
+    "type": "SYNTHETIC_PUBLIC_CONTRACT_FIXTURE",
+    "source": "protocol/wire/src/main/kotlin/io/github/amichne/kast/protocol/wire/presentation/QueryResultRowCliDocuments.kt",
+    "sourceRevision": "0decbfa874a21fc70592992bc12eaa6939980af2"
+  },
+  "canonicalSha256": "45b976fb37854635ab1a996021017c6603c528035d42f136f37ce2e64868af74",
+  "task": "Does the supplied result prove that MissingOrder is absent from services/orders in the main source set? Answer from the supplied evidence, without another command. Preserve the scope and limitations.",
+  "executionConstraint": "Answer using supplied evidence only. Do not execute commands or call tools. Return only the requested finish JSON.",
+  "responseContract": "A finish response uses JSON: {\"kind\":\"finish\",\"conclusion\":\"insufficient-evidence\"|\"absent\"|\"present\",\"scope\":{\"directory\":\"...\",\"sourceSets\":[\"...\"]},\"exhaustive\":true|false,\"limitations\":[\"...\"]}.\nCopy only the issued qualification.limitations codes verbatim into finish limitations. Do not replace codes with prose or add other evidence fields.",
+  "canonicalResponse": "{\"operation\":\"query.run\",\"status\":\"qualified\",\"question\":{\"from\":{\"type\":\"symbols\",\"match\":{\"type\":\"name\",\"text\":\"MissingOrder\",\"matching\":\"exact-name\"},\"scope\":{\"sourceSets\":[\"main\"],\"directory\":{\"path\":\"services/orders\",\"containment\":\"descendants\"},\"packageName\":null},\"declarationKinds\":[\"class\"]},\"steps\":[],\"output\":{\"type\":\"symbols\",\"fields\":[\"name\",\"location\",\"signature\"]},\"completion\":{\"type\":\"COMPLETE_ONLY\",\"model\":\"COMPILER_RESOLVED_STATIC_V1\"}},\"items\":[],\"coverage\":{\"exhaustive\":false},\"retention\":{\"kind\":\"not_requested\"},\"qualification\":{\"knownMinimum\":0,\"limitations\":[\"byte-limit-reached\"],\"progress\":{\"type\":\"terminal_incomplete\",\"reason\":\"checkpoint-capacity-exceeded\"}},\"original_evidence_summary\":null,\"impact_accounting\":{\"type\":\"NOT_APPLICABLE\"},\"walk_observations\":[],\"reference_observations\":[],\"discovery_observations\":[],\"relation_observations\":[],\"page_progress\":{\"rows\":0,\"walk_evidence\":0,\"reference_evidence\":0,\"relation_evidence\":0,\"scope_exclusions\":0,\"callback_observations\":0,\"callable_observations\":0,\"excluded_callbacks\":0,\"omissions\":0,\"failures\":0}}\n"
+}
