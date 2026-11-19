@@ -24,7 +24,7 @@ private enum class InitialImportSelection {
 }
 
 /** Native link selection runs on EDT; model observation and owner submission run on the background boundary. */
-internal suspend fun requestInitialWorkspaceImport(
+private suspend fun requestInitialWorkspaceImport(
     project: Project,
     endpoint: HostedEndpointService,
     root: CanonicalWorkspaceRoot,
@@ -58,6 +58,23 @@ internal suspend fun requestInitialWorkspaceImport(
                 }
             InitialImportSelection.MISMATCH -> WorkspaceRefreshResult.Rejected(WorkspaceRefreshFailure.UNLINKED_BUILD)
         }
+    }
+}
+
+internal suspend fun awaitInitialWorkspaceImport(
+    project: Project,
+    endpoint: HostedEndpointService,
+    root: CanonicalWorkspaceRoot,
+    operation: NativeWorkspacePreparation,
+    scopes: List<InitialImportScope>,
+    await: suspend (WorkspaceRefreshResult, () -> Unit) -> IdeLifecycleResult,
+): IdeLifecycleResult {
+    val initial = requestInitialWorkspaceImport(project, endpoint, root, operation)
+    val resume = { scopes.forEach(InitialImportScope::resumeScanning) }
+    return try {
+        await(initial, resume)
+    } finally {
+        resume()
     }
 }
 

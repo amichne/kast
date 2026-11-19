@@ -9,6 +9,7 @@ import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
 import com.intellij.openapi.externalSystem.service.internal.ExternalSystemProcessingManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.wm.WindowManager
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
@@ -189,11 +190,29 @@ internal class IdeLifecycleNative(
         return awaitReady(project, target, operation)
     }
 
+    private fun existingProjects(root: CanonicalWorkspaceRoot): List<Project> =
+        ProjectManager.getInstance().openProjects.filter {
+            !it.isDisposed && it.basePath?.let(::canonicalLifecycleRoot) == Refinement.Refined(root)
+        }
+
+    private suspend fun openNative(
+        root: CanonicalWorkspaceRoot,
+        importScopes: MutableList<InitialImportScope>,
+    ): Refinement<Project, IdeLifecycleFailure> {
+        val task =
+            when (val admitted = nativeLifecycleProjectTask(root, importScopes)) {
+                is Refinement.Refined -> admitted.value
+                is Refinement.Rejected -> return admitted
+            }
+        val project = ProjectManagerEx.getInstanceEx().openProjectAsync(Path.of(root.value), task)
+        return if (project == null) Refinement.Rejected(IdeLifecycleFailure.OPEN_FAILED)
+        else Refinement.Refined(project)
+    }
+
     private suspend fun openNew(
         root: CanonicalWorkspaceRoot,
         operation: NativeWorkspacePreparation,
     ): IdeLifecycleResult {
-        val requestId = operation.requestId
         if (!TrustedProjects.isProjectTrusted(Path.of(root.value))) return blocked(IdeLifecycleFailure.TRUST_REQUIRED)
         if (!withContext(Dispatchers.EDT) { saveProjectDocuments(root) })
             return blocked(IdeLifecycleFailure.UNSAVED_DOCUMENTS)
@@ -217,8 +236,7 @@ internal class IdeLifecycleNative(
             lifecycleVfsFailure(endpoint, operation)?.let {
                 return blocked(it)
             }
-            state.progress(LifecycleRequest(requestId), IdeLifecycleStage.IMPORTING)
-            operation.enter(IdeLifecycleStage.IMPORTING)
+            state.progress(LifecycleRequest(operation.requestId), operation.enter(IdeLifecycleStage.IMPORTING))
             val reuse = managedGradleImportReuse(project, root)
             com.intellij.openapi.diagnostic.Logger.getInstance(IdeLifecycleNative::class.java)
                 .info("kast_managed_import_reuse outcome=$reuse")
@@ -226,14 +244,9 @@ internal class IdeLifecycleNative(
                 importScopes.forEach(InitialImportScope::resumeScanning)
                 return awaitReady(project, target, operation)
             }
-            val initial = requestInitialWorkspaceImport(project, endpoint, root, operation)
             val imported =
-                try {
-                    awaitRefresh(endpoint, target, operation, initial) {
-                        importScopes.forEach(InitialImportScope::resumeScanning)
-                    }
-                } finally {
-                    importScopes.forEach(InitialImportScope::resumeScanning)
+                awaitInitialWorkspaceImport(project, endpoint, root, operation, importScopes) { initial, resume ->
+                    awaitRefresh(endpoint, target, operation, initial, resume)
                 }
             return openedAfterImport(imported, target) { awaitReady(project, target, operation) }
         } finally {
