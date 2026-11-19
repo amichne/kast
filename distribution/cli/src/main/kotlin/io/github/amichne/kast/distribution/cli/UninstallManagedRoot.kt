@@ -4,6 +4,7 @@ import io.github.amichne.kast.distribution.contract.ControlDistributionLimits
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
+import io.github.amichne.kast.distribution.managed.removalProcessUid
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -15,7 +16,7 @@ internal fun captureUninstallManagedRoot(root: Path): InstallationFilesystemIden
     if (
         !Files.isDirectory(root, NOFOLLOW_LINKS) ||
             root.toRealPath() != root ||
-            uninstallFilesystemIdentity(root).owner != com.sun.security.auth.module.UnixSystem().uid
+            uninstallFilesystemIdentity(root).owner != removalProcessUid
     )
         throw ManagementRejected("uninstall-root", "managed root ownership is unproven")
     return uninstallFilesystemIdentity(root)
@@ -348,10 +349,7 @@ private fun requireRemovalIdentity(path: Path, expected: InstallationFilesystemI
 }
 
 private fun requireRemovalPath(path: Path) {
-    requireRemoval(
-        path.toRealPath() == path &&
-            uninstallFilesystemIdentity(path).owner == com.sun.security.auth.module.UnixSystem().uid
-    )
+    requireRemoval(path.toRealPath() == path && uninstallFilesystemIdentity(path).owner == removalProcessUid)
     requireRemoval(removalMode(path).and(GROUP_WORLD_WRITE) == 0)
     if (!Files.isDirectory(path, NOFOLLOW_LINKS))
         requireRemoval(

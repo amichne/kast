@@ -9,12 +9,15 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 
+// Uninstall removes the JVM's native libraries. Capture the process UID while those libraries still exist.
+val removalProcessUid: Long = UnixSystem().uid
+
 /** Must run before payload removal. Existing receipt admission owns stage and installation proof. */
 fun admitRecoveryRemoval(root: Path): Refinement<ManagedRecoveryRemovalProof, RecoveryRemovalFailure> =
     recoveryRemovalBoundary {
         if (!validRemovalRoot(root)) return@recoveryRemovalBoundary rejected(RecoveryRemovalFailure.ROOT_REJECTED)
         val bundle = root.parent.resolve("recovery/installation")
-        val uid = UnixSystem().uid
+        val uid = removalProcessUid
         if (Files.notExists(bundle, NOFOLLOW_LINKS)) admitEmptyRecovery(root, bundle.parent, uid)
         else admitCapturedRecovery(root, bundle, uid)
     }
@@ -150,7 +153,7 @@ private fun removeEmptyRecovery(
     directory: Path,
     proof: ManagedRecoveryRemovalProof.Empty,
 ): Refinement<Unit, RecoveryRemovalFailure> {
-    val uid = UnixSystem().uid
+    val uid = removalProcessUid
     if (proof.installation != root.toString() || proof.recoveryDirectoryIdentity.owner != uid)
         return rejected(RecoveryRemovalFailure.OWNERSHIP_UNPROVEN)
     if (Files.notExists(directory, NOFOLLOW_LINKS)) return Refinement.Refined(Unit)
@@ -169,7 +172,7 @@ private fun removeCapturedRecovery(
     directory: Path,
     proof: ManagedRecoveryRemovalProof.Admitted,
 ): Refinement<Unit, RecoveryRemovalFailure> {
-    val uid = UnixSystem().uid
+    val uid = removalProcessUid
     if (proof.installation != root.toString() || proof.installationIdentity.owner != uid)
         return rejected(RecoveryRemovalFailure.OWNERSHIP_UNPROVEN)
     if (Files.notExists(directory, NOFOLLOW_LINKS)) return Refinement.Refined(Unit)
@@ -258,7 +261,7 @@ private fun removeCapturedFile(
     captured: CapturedRecoveryFile,
     proof: ManagedRecoveryRemovalProof.Admitted,
 ): Refinement<Unit, RecoveryRemovalFailure> {
-    val uid = UnixSystem().uid
+    val uid = removalProcessUid
     if (names(bundle.parent) != setOf("installation")) return rejected(RecoveryRemovalFailure.FOREIGN_CONTENT)
     val expected = if (proof.journalScript == null) LEGACY_RECOVERY_FILES else RECOVERY_FILES
     if (names(bundle).any { it !in expected }) return rejected(RecoveryRemovalFailure.FOREIGN_CONTENT)

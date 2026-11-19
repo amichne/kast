@@ -218,7 +218,42 @@ def trace(*events: ControlStage) -> bytes:
     return b"".join(json.dumps(asdict(event)).encode() + b"\n" for event in events)
 
 
+@dataclass(frozen=True)
+class FrontendTrace:
+    callerProcessId: int
+    processId: int
+    serviceGeneration: str
+    type: str = "frontend_trace"
+
+
 class AcceptanceTest(unittest.TestCase):
+    def test_go_and_jvm_callers_must_identify_the_same_serving_process(self) -> None:
+        generation = "19785c96-1977-4cb6-8388-592dc0c36bf5"
+        jvm = trace(
+            ControlStage("PROCESS_START", "CREATED", 11),
+            ControlStage("COORDINATED_INVOCATION", "COMPLETED", 7, generation),
+        )
+        event = FrontendTrace(13, 7, generation)
+        frontend = json.dumps(asdict(event)).encode() + b"\n"
+        probe.require_warm_coordinator_reuse(jvm, frontend)
+        probe.require_warm_coordinator_reuse(frontend, jvm)
+        for stale in (
+            frontend + frontend,
+            frontend + jvm,
+            frontend + trace(ControlStage("WORKSPACE_PREPARATION", "COMPLETED", 7)),
+            *(
+                json.dumps(asdict(changed)).encode()
+                for changed in (
+                    replace(event, callerProcessId=7),
+                    replace(event, callerProcessId=0),
+                    replace(event, processId=-1),
+                    replace(event, serviceGeneration="invalid"),
+                )
+            ),
+        ):
+            with self.assertRaises(ValueError):
+                _ = probe.warm_coordinator_call(stale)
+
     def test_warm_coordinator_reuse_rejects_competing_owner_and_setup(self) -> None:
         generation = "19785c96-1977-4cb6-8388-592dc0c36bf5"
         coordinated = ControlStage("COORDINATED_INVOCATION", "COMPLETED", 7, generation)

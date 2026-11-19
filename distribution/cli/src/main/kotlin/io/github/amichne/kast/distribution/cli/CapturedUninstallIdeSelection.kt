@@ -1,8 +1,8 @@
 package io.github.amichne.kast.distribution.cli
 
-import com.sun.security.auth.module.UnixSystem
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
+import io.github.amichne.kast.distribution.managed.removalProcessUid
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -57,7 +57,7 @@ private constructor(
 private fun ownedSelectionPath(path: Path): Boolean {
     if (!Files.isRegularFile(path, NOFOLLOW_LINKS) || path.toRealPath() != path) return false
     if (!Files.isDirectory(path.parent, NOFOLLOW_LINKS) || path.parent.toRealPath() != path.parent) return false
-    val uid = UnixSystem().uid
+    val uid = removalProcessUid
     if (uninstallFilesystemIdentity(path).owner != uid || uninstallFilesystemIdentity(path.parent).owner != uid)
         return false
     return protectedSelectionPermissions(path) && protectedSelectionPermissions(path.parent)

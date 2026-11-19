@@ -2,6 +2,7 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.managed.RecoveryRemovalOutcome
 import io.github.amichne.kast.distribution.managed.admitRecoveryRemoval
+import io.github.amichne.kast.distribution.managed.removalProcessUid
 import io.github.amichne.kast.distribution.managed.removeRetiredRecovery
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
@@ -319,7 +320,7 @@ private fun requireUninstallExecutable(receipt: ManagementReceipt, payload: Path
     if (
         !Files.isRegularFile(executable, LinkOption.NOFOLLOW_LINKS) ||
             (Files.getAttribute(executable, "unix:uid", LinkOption.NOFOLLOW_LINKS) as Number).toLong() !=
-                com.sun.security.auth.module.UnixSystem().uid ||
+                removalProcessUid ||
             sha256(executable) != receipt.executableSha256
     )
         throw ManagementRejected(
@@ -339,7 +340,7 @@ private fun removeUninstallArtifact(
             Files.exists(path, LinkOption.NOFOLLOW_LINKS) &&
                 (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) ||
                     (Files.getAttribute(path, "unix:uid", LinkOption.NOFOLLOW_LINKS) as Number).toLong() !=
-                        com.sun.security.auth.module.UnixSystem().uid)
+                        removalProcessUid)
         ) {
             observe(UninstallCleanupObservation.Rejected(artifact, UninstallCleanupFailure.OWNERSHIP_UNPROVEN))
             throw ManagementRejected(

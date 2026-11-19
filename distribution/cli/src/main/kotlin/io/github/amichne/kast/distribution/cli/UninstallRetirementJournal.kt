@@ -2,6 +2,7 @@ package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
 import io.github.amichne.kast.distribution.managed.ManagedRecoveryRemovalProof
+import io.github.amichne.kast.distribution.managed.removalProcessUid
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
@@ -71,7 +72,7 @@ internal fun admittedUninstallReceipt(root: Path): ManagementReceipt =
         is ReceiptRead.Read -> {
             if (
                 (Files.getAttribute(receiptPath(root), "unix:uid", LinkOption.NOFOLLOW_LINKS) as Number).toLong() !=
-                    com.sun.security.auth.module.UnixSystem().uid
+                    removalProcessUid
             )
                 throw ManagementRejected("uninstall-receipt", "management receipt ownership is unproven")
             read.receipt

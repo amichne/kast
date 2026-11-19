@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
+import io.github.amichne.kast.distribution.managed.removalProcessUid
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -85,4 +86,4 @@ private fun requireRemovalBindings(proof: ProductRemovalProof) {
 }
 
 private fun validRemovalIdentity(identity: InstallationFilesystemIdentity): Boolean =
-    identity.device >= 0 && identity.inode >= 0 && identity.owner == com.sun.security.auth.module.UnixSystem().uid
+    identity.device >= 0 && identity.inode >= 0 && identity.owner == removalProcessUid
