@@ -32,7 +32,8 @@ verdict='{type, status: .document.status, exhaustive: .document.coverage.exhaust
   omissions: .document.original_evidence_summary.omission_count,
   rows: .document.row_window.type, next_cursor: .document.next_cursor,
   result: .document.retention.reference,
-  items: [.document.items[]? | {name, signature, ref, file: .location.file}]}'
+  items: [.document.items[]? |
+    if .type == "exact-symbol" then {name, signature, ref, file: .location.file} else . end]}'
 ```
 
 Find a declaration. Put each known constraint on the first call:

@@ -48,11 +48,19 @@ function applyFilter(program, input) {
 
 test('the documented verdict distinguishes same-file overloads', () => {
   const items = ['kotlin/Int', 'kotlin/String'].map(parameter => ({
-    name: 'relay', location: { file: 'Relay.kt' },
+    type: 'exact-symbol', name: 'relay', location: { file: 'Relay.kt' },
     signature: { type: 'function', qualifiedIdentity: 'example.relay', valueParameters: [parameter] },
   }));
   const output = JSON.parse(applyFilter(verdict, completion({}, items)));
-  assert.deepEqual(output.items.map(row => row.signature), items.map(row => row.signature));
+  assert.deepEqual(output.items, items.map(({ name, signature }) => ({ name, signature, ref: null, file: 'Relay.kt' })));
+});
+
+test('the documented verdict preserves each caller hop of a WALK', () => {
+  const items = [1, 2].map(depth => ({
+    type: 'traversal_record', ref: 'caller-' + depth,
+    record: { depth, relation: { meaning: 'callers', source: { name: 'call' + depth }, target: { name: 'call' + (depth - 1) } } },
+  }));
+  assert.deepEqual(JSON.parse(applyFilter(verdict, completion({}, items))).items, items);
 });
 
 test('query projection presents the participant output and grades the original semantic call', () => {
