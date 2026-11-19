@@ -1,7 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
-import com.sun.security.auth.module.UnixSystem
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
+import io.github.amichne.kast.distribution.managed.removalProcessUid
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -170,13 +170,13 @@ private fun eraseConfigurationFiles(
 
 private fun validConfigurationProof(home: Path, proof: HomeConfigurationRemovalProof.Admitted): Boolean =
     proof.home == home.toString() &&
-        proof.directoryIdentity.owner == UnixSystem().uid &&
+        proof.directoryIdentity.owner == removalProcessUid &&
         validConfigurationFileProofs(proof.files)
 
 private fun validConfigurationFileProofs(files: List<CapturedHomeConfigurationFile>): Boolean =
     files.size <= HomeConfigurationArtifact.entries.size &&
         files.map { it.artifact }.toSet().size == files.size &&
-        files.all { it.identity.owner == UnixSystem().uid && validSha256(it.digest.value) }
+        files.all { it.identity.owner == removalProcessUid && validSha256(it.digest.value) }
 
 private fun configurationNamesWithin(directory: Path, expected: Set<String>): Boolean =
     Files.newDirectoryStream(directory).use { entries -> entries.all { it.fileName.toString() in expected } }
@@ -202,7 +202,7 @@ private fun captureConfigurationFile(
     if (!Files.isRegularFile(path, NOFOLLOW_LINKS) || path.toRealPath() != path)
         return rejectedConfiguration(HomeConfigurationCleanupFailure.OWNERSHIP_UNPROVEN)
     if (
-        uninstallFilesystemIdentity(path).owner != UnixSystem().uid ||
+        uninstallFilesystemIdentity(path).owner != removalProcessUid ||
             Files.getPosixFilePermissions(path, NOFOLLOW_LINKS) !=
                 java.nio.file.attribute.PosixFilePermissions.fromString("rw-------")
     )
@@ -249,7 +249,7 @@ private fun safeConfigurationDirectories(home: Path, directory: Path): Boolean =
     listOf(home, home.resolve(".config"), directory).all { path ->
         Files.isDirectory(path, NOFOLLOW_LINKS) &&
             path.toRealPath() == path &&
-            uninstallFilesystemIdentity(path).owner == UnixSystem().uid &&
+            uninstallFilesystemIdentity(path).owner == removalProcessUid &&
             Files.getPosixFilePermissions(path, NOFOLLOW_LINKS).none {
                 it == PosixFilePermission.GROUP_WRITE || it == PosixFilePermission.OTHERS_WRITE
             }

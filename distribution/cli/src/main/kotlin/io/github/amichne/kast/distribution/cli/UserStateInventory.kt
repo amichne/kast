@@ -1,5 +1,6 @@
 package io.github.amichne.kast.distribution.cli
 
+import io.github.amichne.kast.distribution.managed.removalProcessUid
 import io.github.amichne.kast.evidence.sqlite.SqliteMutationStateInspectionResult
 import java.nio.channels.FileChannel
 import java.nio.channels.FileLock
@@ -168,8 +169,7 @@ private constructor(
             val attributes = Files.readAttributes(home, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
             val permissions = Files.getPosixFilePermissions(home, NOFOLLOW_LINKS)
             if (
-                (Files.getAttribute(home, "unix:uid", NOFOLLOW_LINKS) as Number).toLong() !=
-                    com.sun.security.auth.module.UnixSystem().uid ||
+                (Files.getAttribute(home, "unix:uid", NOFOLLOW_LINKS) as Number).toLong() != removalProcessUid ||
                     permissions.any { it == PosixFilePermission.GROUP_WRITE || it == PosixFilePermission.OTHERS_WRITE }
             )
                 throw UserStateInventoryRejected(UserStateCleanupFailure.OWNERSHIP_UNPROVEN)

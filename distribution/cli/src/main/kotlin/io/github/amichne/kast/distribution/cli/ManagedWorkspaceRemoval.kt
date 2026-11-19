@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationFilesystemIdentity
+import io.github.amichne.kast.distribution.managed.removalProcessUid
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -133,7 +134,7 @@ private fun removeWorkspaceLock(path: Path) {
     if (
         !Files.isRegularFile(path, NOFOLLOW_LINKS) ||
             Files.size(path) != 0L ||
-            uninstallFilesystemIdentity(path).owner != com.sun.security.auth.module.UnixSystem().uid
+            uninstallFilesystemIdentity(path).owner != removalProcessUid
     )
         throw ManagementRejected("uninstall-workspaces", ContainerFailure.FOREIGN_STATE.name)
     Files.delete(path)

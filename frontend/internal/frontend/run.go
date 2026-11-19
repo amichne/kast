@@ -173,9 +173,10 @@ func diagnose(stderr io.Writer, message string) { fmt.Fprintln(stderr, "kast: "+
 func traceInvocation(stderr io.Writer, served coordinator) {
 	encoded, _ := json.Marshal(struct {
 		Type              string `json:"type"`
+		CallerProcessID   int    `json:"callerProcessId"`
 		ServiceGeneration string `json:"serviceGeneration"`
 		ProcessID         int64  `json:"processId"`
-	}{"frontend_trace", served.ServiceGeneration, served.ProcessID})
+	}{"frontend_trace", os.Getpid(), served.ServiceGeneration, served.ProcessID})
 	fmt.Fprintln(stderr, string(encoded))
 }
 

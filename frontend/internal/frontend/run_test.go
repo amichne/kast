@@ -211,6 +211,29 @@ func TestDeliversTheCoordinatorsDocumentStatusAndDiagnostics(t *testing.T) {
 	}
 }
 
+func TestFrontendTraceIdentifiesCallerAndServingCoordinator(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	f.serve(t, func(ctx context.Context, conn *websocket.Conn, _ invocationRequest) {
+		send(t, ctx, conn, completed(0, "result"))
+	})
+	var output, diagnostics bytes.Buffer
+	status := f.runProcess(strings.NewReader(""), &output, &diagnostics, nil, []string{"KAST_FRONTEND_TRACE=1"}, "query", "--name", "Fixture")
+	var event struct {
+		Type              string
+		CallerProcessID   int
+		ProcessID         int64
+		ServiceGeneration string
+	}
+	if err := json.Unmarshal(diagnostics.Bytes(), &event); err != nil {
+		t.Fatal(err)
+	}
+	if status != 0 || event.Type != "frontend_trace" || event.CallerProcessID != os.Getpid() ||
+		event.ProcessID != 7 || event.ServiceGeneration != "generation" {
+		t.Fatalf("unexpected trace %+v (status %d)", event, status)
+	}
+}
+
 func TestAnswersHelpLocallyWithoutAConnection(t *testing.T) {
 	f := newFixture(t)
 	touchFrontend(t, f)

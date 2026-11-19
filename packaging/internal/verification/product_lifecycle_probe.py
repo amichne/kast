@@ -204,16 +204,39 @@ def warm_coordinator_call(stderr: bytes) -> WarmCoordinatorCall:
     return coordinator_call(stderr, warm=True)
 
 
+def trace_pid(value: object) -> int:
+    if type(value) is not int or value <= 0:
+        raise ValueError("coordinator stage lacks a process identity")
+    return value
+
+
+def trace_generation(value: object) -> uuid.UUID:
+    if not isinstance(value, str):
+        raise ValueError("coordinator invocation lacks a generation")
+    return uuid.UUID(value)
+
+
 def coordinator_call(stderr: bytes, *, warm: bool) -> WarmCoordinatorCall:
     if len(stderr) > 1_048_576:
         raise ValueError("warm coordinator stage evidence exceeds its limit")
     callers: list[int] = []
     invocations: list[tuple[int, uuid.UUID]] = []
     for line in stderr.splitlines():
-        if b'"kast_control_stage"' not in line:
+        if b'"kast_control_stage"' not in line and b'"frontend_trace"' not in line:
             continue
         value = product.document(line)
-        if not product.mapping(value) or value.get("event") != "kast_control_stage":
+        if not product.mapping(value):
+            raise ValueError("invalid coordinator stage evidence")
+        if value.get("type") == "frontend_trace":
+            callers.append(trace_pid(value.get("callerProcessId")))
+            invocations.append(
+                (
+                    trace_pid(value.get("processId")),
+                    trace_generation(value.get("serviceGeneration")),
+                )
+            )
+            continue
+        if value.get("event") != "kast_control_stage":
             raise ValueError("invalid coordinator stage evidence")
         stage = value.get("stage")
         if warm and stage in (
@@ -222,16 +245,11 @@ def coordinator_call(stderr: bytes, *, warm: bool) -> WarmCoordinatorCall:
             "WORKSPACE_PREPARATION",
         ):
             raise ValueError(f"warm coordinator call repeated {stage}")
-        pid = value.get("pid")
-        if type(pid) is not int or pid <= 0:
-            raise ValueError("coordinator stage lacks a process identity")
+        pid = trace_pid(value.get("pid"))
         if stage == "PROCESS_START" and value.get("outcome") == "CREATED":
             callers.append(pid)
         if stage == "COORDINATED_INVOCATION" and value.get("outcome") == "COMPLETED":
-            generation = value.get("generation")
-            if not isinstance(generation, str):
-                raise ValueError("coordinator invocation lacks a generation")
-            invocations.append((pid, uuid.UUID(generation)))
+            invocations.append((pid, trace_generation(value.get("generation"))))
     if len(callers) != 1 or len(invocations) != 1 or callers[0] == invocations[0][0]:
         raise ValueError("warm invocation lacks separate caller and coordinator identities")
     return WarmCoordinatorCall(callers[0], *invocations[0])
@@ -322,7 +340,11 @@ class Probe:
         )
         executable = launcher if launcher is not None else self.home / ".local/bin/kast"
         command = [*prefix, str(executable), *arguments]
-        environment = self.environment | {"KAST_DEBUG": "1"} if trace else self.environment
+        environment = (
+            self.environment | {"KAST_DEBUG": "1", "KAST_FRONTEND_TRACE": "1"}
+            if trace
+            else self.environment
+        )
         output = self.evidence / f"{case}.stdout"
         error = self.evidence / f"{case}.stderr"
         if disposable_caller:
