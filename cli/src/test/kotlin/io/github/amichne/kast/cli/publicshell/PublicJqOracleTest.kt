@@ -311,7 +311,7 @@ class PublicJqOracleTest {
             (parsePublicCliArguments(listOf("query", "plan", "--name", "Order", "--jq", program)) as Refinement.Refined)
                 .value
         val options = (command.projection as PublicOutputProjection.Jq).options
-        return PublicJqEngine.prepare(options, temporary)
+        return PublicJqEngine.prepare(options)
     }
 }
 

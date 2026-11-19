@@ -31,7 +31,7 @@ class NativeForceResetCompositionTest {
             NativePublicFixture(Files.createDirectory(evidence.resolve("foreign"))).use { foreign ->
                 withJqWorker(selected, evidence.resolve("selected-jq.stderr")) { worker ->
                     withJqWorker(foreign, evidence.resolve("foreign-jq.stderr")) { unrelated ->
-                        // Both genuine FILTER workers have an open stdin; EOF is deliberately withheld.
+                        // Both genuine warm workers have an open stdin; EOF is deliberately withheld.
                         // The Control executable replaces itself with the runtime's java for the jq entry.
                         assertEquals(selected.javaExecutable.toString(), awaitExec(worker, selected.javaExecutable))
                         assertNotNull(worker.toHandle().info().startInstant().orElseThrow())
@@ -105,7 +105,7 @@ class NativeForceResetCompositionTest {
 
     private fun withJqWorker(fixture: NativePublicFixture, stderr: Path, block: (Process) -> Unit) {
         val child =
-            ProcessBuilder(fixture.payload.toString(), "-Xmx512m", "--internal-entrypoint=jq", "FILTER", "1024", "Lg==")
+            ProcessBuilder(fixture.payload.toString(), "-Xmx512m", "--internal-entrypoint=jq")
                 .directory(fixture.home.toFile())
                 .redirectError(stderr.toFile())
                 .apply { environment().clear() }
