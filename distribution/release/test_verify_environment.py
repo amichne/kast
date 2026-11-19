@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Release build bindings use admitted fixture source and scripted external tools."""
 
-from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
 import shutil
@@ -14,16 +13,6 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 VERIFY = ROOT / ".github/scripts/ci/verify.sh"
 SOURCE_REVISION = "a" * 40
-
-
-@dataclass(frozen=True)
-class Resources:
-    total_secs: float = 0.01
-
-
-@dataclass(frozen=True)
-class NativeMetrics:
-    resource_usage: Resources = Resources()
 
 
 class VerifyEnvironmentTest(unittest.TestCase):
@@ -119,7 +108,6 @@ case "$1" in
     }}
     [ "${{KAST_ENABLE_LAUNCHD-}}" = "0" ] || exit 73
     [ "$*" = ".github/scripts/release/build-assets.sh --version 1.2.3 --source-revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ] || exit 74
-    printf '%s\\n' '{json.dumps(asdict(NativeMetrics()))}' > build/reports/native/build-output.json
     ;;
   *) printf '%s\\n' "unexpected bash command: $*" >&2; exit 75 ;;
 esac
@@ -142,7 +130,6 @@ esac
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             report = json.loads((fixture / "build/reports/ci/build-execution.json").read_text())
             self.assertEqual("SUCCESS", report["outcome"])
-            self.assertEqual("RETAINED", report["nativeMetrics"])
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn(

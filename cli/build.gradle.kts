@@ -1,24 +1,12 @@
-import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
-import org.graalvm.buildtools.gradle.tasks.CollectReachabilityMetadata
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
 
 plugins {
     id("kast.runtime-serialization-app")
     id("kast.role.cli")
-    id("org.graalvm.buildtools.native") version "1.1.14"
 }
 
 val repositoryRoot = project.isolated.rootProject.projectDirectory
-val nativeBuildMetricsReports =
-    providers
-        .gradleProperty("kastNativeBuildMetrics")
-        .map { enabled ->
-            if (enabled.toBooleanStrict()) listOf(repositoryRoot.file("build/reports/native/build-output.json"))
-            else emptyList()
-        }
-        .orElse(emptyList())
-
 val jqEngineMetadata =
     tasks.register<WriteProperties>("jqEngineMetadata") {
         destinationFile.set(layout.buildDirectory.file("generated/jq/jq-engine.properties"))
@@ -53,99 +41,6 @@ sourceSets.main {
 application {
     applicationName = "kast"
     mainClass = "io.github.amichne.kast.cli.KastCliMainKt"
-}
-
-graalvmNative {
-    testSupport.set(false)
-    metadataRepository {
-        // Repository metadata 1.5.29 registers nonexistent valueOf methods with runtime
-        // conditions, which GraalVM 25 rejects before analysis. Register this CLI's
-        // logback.xml types in its own metadata instead.
-        excludedModules.add("ch.qos.logback:logback-classic")
-    }
-    val nativeImageLauncher = javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(25))
-        nativeImageCapable.set(true)
-    }
-    binaries {
-        configureEach { javaLauncher.set(nativeImageLauncher) }
-        named("main") {
-            imageName.set("kast")
-            mainClass.set("io.github.amichne.kast.cli.KastControlMain")
-            sharedLibrary.set(false)
-            fallback.set(false)
-            buildArgs.addAll(
-                nativeBuildMetricsReports.map { reports ->
-                    reports.flatMap { report ->
-                        listOf(
-                            "-H:+UnlockExperimentalVMOptions",
-                            "-H:BuildOutputJSONFile=${report.asFile.absolutePath}",
-                            "-H:-UnlockExperimentalVMOptions",
-                        )
-                    }
-                }
-            )
-            buildArgs.addAll(
-                providers.fileContents(layout.projectDirectory.file("native-image.args")).asText.map {
-                    it.lines().filter(String::isNotBlank)
-                }
-            )
-            if (providers.systemProperty("os.name").get().startsWith("Mac")) {
-                buildArgs.addAll(
-                    providers.fileContents(layout.projectDirectory.file("native-image-macos.args")).asText.map {
-                        it.lines().filter(String::isNotBlank)
-                    }
-                )
-            }
-        }
-    }
-}
-
-tasks.named<BuildNativeImageTask>("nativeCompile") {
-    outputs.files(nativeBuildMetricsReports)
-}
-
-val importedNativeExecutable = providers.gradleProperty("kastNativeExecutable")
-
-configurations.consumable("nativeExecutableElements") {
-    if (importedNativeExecutable.isPresent) {
-        outgoing.artifact(
-            layout.file(
-                importedNativeExecutable.map {
-                    File(it).also { path ->
-                        require(path.isAbsolute) { "Imported Control executable needs an absolute path" }
-                    }
-                }
-            )
-        )
-    } else {
-        outgoing.artifact(tasks.named<BuildNativeImageTask>("nativeCompile").flatMap { it.outputFile })
-    }
-}
-
-val nativeImageOptions =
-    tasks.register<WriteProperties>("nativeImageOptions") {
-        destinationFile.set(layout.buildDirectory.file("native-inputs/image.properties"))
-        property("mainClass", "io.github.amichne.kast.cli.KastControlMain")
-    }
-
-tasks.register<Tar>("assembleNativeImageInputs") {
-    group = "distribution"
-    description = "Packages the unified Control inputs for native compilation on the target host."
-    into("lib") {
-        from(tasks.named("jar"))
-        from(configurations.runtimeClasspath)
-    }
-    from(nativeImageOptions.flatMap { it.destinationFile })
-    from(tasks.named<CollectReachabilityMetadata>("collectReachabilityMetadata").flatMap { it.into }) {
-        into("reachability-metadata")
-    }
-    from("native-image.args", "native-image-macos.args")
-    archiveFileName.set("native-inputs.tar.gz")
-    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-    compression = Compression.GZIP
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
 }
 
 dependencies {
@@ -530,10 +425,10 @@ configurations.consumable("cliInstallationElements") {
     outgoing.artifact(tasks.named<Sync>("installDist").map { it.destinationDir })
 }
 
-val assembleNativeControlLayout =
-    tasks.register<Sync>("assembleNativeControlLayout") {
-        into(layout.buildDirectory.dir("native-control-layout"))
-        from("src/main/native-launchers") { filePermissions { unix("755") } }
+val assembleControlLayout =
+    tasks.register<Sync>("assembleControlLayout") {
+        into(layout.buildDirectory.dir("control-layout"))
+        from("src/main/control-launchers") { filePermissions { unix("755") } }
         from("jvm-control-v1") { into("share/kast") }
         from(repositoryRoot.file("copilot/task-extension.mjs")) {
             into("share/kast/adapters/copilot")
@@ -545,8 +440,8 @@ val assembleNativeControlLayout =
         }
     }
 
-configurations.consumable("nativeControlLayoutElements") {
-    outgoing.artifact(assembleNativeControlLayout.map { it.destinationDir })
+configurations.consumable("controlLayoutElements") {
+    outgoing.artifact(assembleControlLayout.map { it.destinationDir })
 }
 
 // Test-only replay artifact. No installed launcher or semantic service belongs to this classpath entry.

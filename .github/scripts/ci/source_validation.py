@@ -194,7 +194,7 @@ def selected_command(
 
 def forbidden_task(task: str) -> bool:
     name = task.rsplit(":", 1)[-1]
-    return name in FORBIDDEN or (name.lower().startswith("native") and "compile" in name.lower())
+    return name in FORBIDDEN
 
 
 def source_identity(root: Path) -> tuple[str, str]:

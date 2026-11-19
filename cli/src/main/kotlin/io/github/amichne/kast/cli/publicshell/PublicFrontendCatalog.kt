@@ -44,7 +44,6 @@ object PublicFrontendCatalog {
                     InstalledEndpointAliases.PREFIX,
                     InstalledEndpointAliases.DIGEST_CHARACTERS,
                 ),
-            bootstrap = listOf(MANAGEMENT_PAYLOAD, "--internal-entrypoint=service", "semantic-ensure"),
             handshakeMilliseconds = BrokerOperationalLimits.workerControlHandshake.value,
             outputSetting = PublicFrontendOutputSetting(PUBLIC_OUTPUT_SETTING, admittedOutputSettings()),
             publicNamespaces = publicQueryNamespaceNames(),
@@ -67,8 +66,6 @@ internal data class PublicFrontendCatalogDocument(
     /** The coordinator socket, relative to the coordinator root. */
     val socket: String,
     val socketAlias: PublicFrontendSocketAlias,
-    /** Starts or joins the coordinator; the first element is relative to the coordinator root. */
-    val bootstrap: List<String>,
     /** Bounds the connection handshake. Expiry precedes the request, so the coordinator counts as unreachable. */
     val handshakeMilliseconds: Long,
     val outputSetting: PublicFrontendOutputSetting,

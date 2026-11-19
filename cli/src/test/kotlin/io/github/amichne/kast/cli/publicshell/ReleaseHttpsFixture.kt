@@ -33,6 +33,7 @@ internal class ReleaseHttpsFixture(
     private val trusted: Boolean = true,
     private val tunnelStatus: Int = 200,
 ) : AutoCloseable {
+    private val control = NativePublicFixture(directory)
     private val password = "fixture-only".toCharArray()
     private val certificate = directory.resolve("server.p12")
     private val context by lazy(::serverContext)
@@ -51,6 +52,7 @@ internal class ReleaseHttpsFixture(
     fun versions(): NativeReleaseResult {
         return runReleaseVersions(
             directory,
+            control,
             "-Dhttps.proxyHost=${if (tunnelStatus == 200) "localhost" else "127.0.0.1"}",
             "-Dhttps.proxyPort=${server.localPort}",
             *prepareTlsProperties().toTypedArray(),
@@ -69,6 +71,7 @@ internal class ReleaseHttpsFixture(
     }
 
     override fun close() {
+        control.close()
         server.close()
         executor.shutdown()
         try {
@@ -184,20 +187,25 @@ internal class ReleaseHttpsFixture(
 
 internal data class NativeReleaseResult(val exit: Int, val output: String, val errors: String)
 
-private fun runReleaseVersions(directory: Path, vararg properties: String): NativeReleaseResult {
+private fun runReleaseVersions(
+    directory: Path,
+    control: NativePublicFixture,
+    vararg properties: String,
+): NativeReleaseResult {
     val output = directory.resolve("stdout")
     val errors = directory.resolve("stderr")
     val child =
         ProcessBuilder(
-                listOf(System.getProperty("kast.publicLauncher")) +
+                listOf(control.payload.toString()) +
                     properties +
-                    listOf("-Duser.home=$directory", "--internal-entrypoint=management", "versions", "--json")
+                    listOf("-Duser.home=${control.home}", "--internal-entrypoint=management", "versions", "--json")
             )
             .directory(directory.toFile())
             .redirectOutput(output.toFile())
             .redirectError(errors.toFile())
             .apply {
-                environment().keys.retainAll(setOf("HOME"))
+                environment().clear()
+                environment()["HOME"] = control.home.toString()
                 environment()["PATH"] = "/usr/bin:/bin"
                 environment()["KAST_OUTPUT_TOON"] = "0"
             }

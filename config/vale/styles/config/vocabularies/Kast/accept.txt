@@ -75,7 +75,6 @@ unwired
 worktrees
 RPCs
 nonadvancing
-
 # Established terms in real-repository evaluation and local log capture.
 DSLs
 Ktor
@@ -87,7 +86,6 @@ Pydantic
 FIFOs
 multiline
 inode
-
 # Established technical spellings in maintained contributor guides and query prompts.
 [Bb]ackpressure
 IDEs
@@ -124,21 +122,17 @@ uncached
 untracked
 validators
 yourFunction
-
 # Historical hosted-index guide literals and grammatical possessives.
 executable's
 Zsh
 CLI's
-
 # Browser and documentation audit terms.
 Ardia
 viewport
 scrollable
 allowlist
-
 # Apple developer product named in the macOS task image contract.
 Xcode
-
 # Native container runtime and source-builder terminology, reviewed against their command contracts.
 containerd
 containerd's
@@ -146,3 +140,4 @@ nerdctl
 Liberica
 runtimes
 subprocess
+Temurin

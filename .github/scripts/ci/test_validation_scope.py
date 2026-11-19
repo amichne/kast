@@ -459,38 +459,36 @@ class ExactDiffTest(unittest.TestCase):
 
 
 class SourceInventoryTest(unittest.TestCase):
-    def test_native_toolchain_pins_and_reports_do_not_require_oracle(self):
+    def test_one_jdk_pin_serves_mise_cloud_and_every_workflow(self):
         root = Path(__file__).resolve().parents[3]
         pins = json.loads((root / "packaging/cloud/pins.json").read_text())
-        url = unquote(pins["artifacts"]["graalvm"]["url"])
-        self.assertTrue(url.startswith("https://github.com/bell-sw/LibericaNIK/releases/"))
-        release = re.search(r"bellsoft-liberica-vm-openjdk([\d.+]+)-([\d.+]+)-linux-amd64.tar.gz$", url)
+        self.assertNotIn("graalvm", pins["artifacts"])
+        url = unquote(pins["artifacts"]["jdk"]["url"])
+        self.assertTrue(url.startswith("https://github.com/adoptium/temurin25-binaries/releases/"))
+        release = re.search(r"/jdk-(\d+\.\d+\.\d+)\+(\d+)/", url)
         self.assertIsNotNone(release)
-        jdk, nik = release.groups()
+        version, build = release.groups()
         mise = tomllib.loads((root / "mise.toml").read_text())
-        self.assertEqual(f"liberica-nik-openjdk{jdk.split('.')[0]}-{nik}", mise["tools"]["java"])
-        self.assertEqual(f"liberica-nik-{nik}", pins["artifacts"]["graalvm"]["directory"])
+        self.assertEqual(f"temurin-{version}+{build}.0.LTS", mise["tools"]["java"])
+        self.assertNotIn("GRAALVM_HOME", mise.get("env", {}))
         producers = []
         for path in (root / ".github/workflows").glob("*.yml"):
-            for distribution, version in re.findall(
+            for distribution, java in re.findall(
                 r"(?m)^\s+distribution: (\S+)\n\s+java-version: ([^\n]+)", path.read_text()
             ):
                 with self.subTest(workflow=path.name, distribution=distribution):
-                    self.assertEqual("liberica-nik", distribution)
-                    self.assertEqual(jdk, version.strip("'\""))
+                    self.assertEqual("temurin", distribution)
+                    self.assertEqual(f"{version}+{build}", java.strip("'\""))
                 producers.append(path.name)
         self.assertTrue(producers)
-        arguments = (root / "cli/native-image.args").read_text().splitlines()
-        self.assertNotIn("--emit", arguments)
-        self.assertIn("-H:+GenerateEmbeddedResourcesFile", arguments)
 
-    def test_mac_product_job_requires_fresh_native_assembly_and_retains_no_component_candidate(self):
+    def test_mac_product_job_requires_fresh_assembly_and_retains_no_component_candidate(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
         product = workflow.split("\n  kotlin:\n", 1)[1]
         product = re.split(r"\n  (?=\S)", product, maxsplit=1)[0]
         self.assertIn("    runs-on: ${{ fromJSON(needs.kotlin-runner.outputs.labels) }}\n", product)
-        self.assertIn("needs.native.result == 'success' && needs.assembly.result == 'success'", product)
-        self.assertIn("- name: Exercise the exact assembled Mac Control executable\n", product)
+        self.assertIn("needs.source-work.result == 'success' && needs.assembly.result == 'success'", product)
+        self.assertIn("- name: Exercise the exact assembled Mac Control product\n", product)
         self.assertNotIn("REUSED", workflow)
         self.assertNotIn("ci-build-candidate-", workflow)
         self.assertNotIn("build_candidate.py seal", workflow)
@@ -505,7 +503,7 @@ class SourceInventoryTest(unittest.TestCase):
         body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
         self.assertIn("    runs-on: macos-15\n", body)
         # self_hosted_guard.py admits exactly these ci.yml jobs on the local runner.
-        for job, selector in (("native", "native-runner"), ("kotlin", "kotlin-runner")):
+        for job, selector in (("kotlin", "kotlin-runner"),):
             with self.subTest(job=job):
                 body = workflow.split(f"\n  {job}:\n", 1)[1]
                 body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
@@ -516,20 +514,18 @@ class SourceInventoryTest(unittest.TestCase):
                 selection = workflow.split(f"\n  {selector}:\n", 1)[1]
                 selection = re.split(r"\n  (?=\S)", selection, maxsplit=1)[0]
                 self.assertIn("run: python3 .github/scripts/ci/mac_runner.py", selection)
-        self.assertEqual(2, workflow.count("fromJSON(needs."))
+        self.assertEqual(1, workflow.count("fromJSON(needs."))
         for path in workflows.glob("*.yml"):
             with self.subTest(workflow=path.name):
                 self.assertNotIn("[self-hosted", path.read_text())
 
-    def test_native_compile_waits_for_inputs_not_full_source_validation(self):
+    def test_assembly_needs_no_native_input_and_product_consumers_keep_source_proof(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
-        native = re.split(r"\n  (?=\S)", workflow.split("\n  native:\n", 1)[1], maxsplit=1)[0]
-        self.assertIn("    needs: [scope, native-inputs, native-runner]\n", native)
-        source = re.split(r"\n  (?=\S)", workflow.split("\n  source-work:\n", 1)[1], maxsplit=1)[0]
-        self.assertNotIn("native_handoff.py inputs", source)
-        inputs = re.split(r"\n  (?=\S)", workflow.split("\n  native-inputs:\n", 1)[1], maxsplit=1)[0]
-        self.assertIn("native_handoff.py inputs", inputs)
-        self.assertIn("name: native-inputs-${{ github.run_id }}-${{ github.run_attempt }}", inputs)
+        for retired in ("native-inputs", "native-runner", "native"):
+            self.assertNotIn(f"\n  {retired}:\n", workflow)
+        assembly = re.split(r"\n  (?=\S)", workflow.split("\n  assembly:\n", 1)[1], maxsplit=1)[0]
+        self.assertIn("    needs: scope\n", assembly)
+        self.assertIn("release_handoff.py assemble --version", assembly)
         # Product consumers keep the complete source proof as a precondition.
         for job in ("kotlin", "composed-macos"):
             body = re.split(r"\n  (?=\S)", workflow.split(f"\n  {job}:\n", 1)[1], maxsplit=1)[0]
@@ -537,7 +533,7 @@ class SourceInventoryTest(unittest.TestCase):
         sealed = re.split(r"\n  (?=\S)", workflow.split("\n  sealed-product:\n", 1)[1], maxsplit=1)[0]
         self.assertIn("    needs: [scope, source-work, composed-products, composed-macos]\n", sealed)
 
-    def test_native_compilation_is_main_only_before_scope_selection(self):
+    def test_product_assembly_is_main_only_before_scope_selection(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
         self.assertIn(
             "KAST_NATIVE_COMPILATION: ${{ vars.KAST_MACOS_CHECKS == 'true' && "
@@ -546,7 +542,7 @@ class SourceInventoryTest(unittest.TestCase):
             "(vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}",
             workflow,
         )
-        for job in ("native", "kotlin"):
+        for job in ("assembly", "kotlin"):
             with self.subTest(job=job):
                 body = workflow.split(f"\n  {job}:\n", 1)[1]
                 body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
@@ -576,7 +572,7 @@ class SourceInventoryTest(unittest.TestCase):
                     self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", condition[1])
                 guarded.add((path.name, job))
         self.assertEqual(
-            {("ci.yml", "native"), ("ci.yml", "kotlin"), ("release-component.yml", "release")},
+            {("ci.yml", "kotlin"), ("release-component.yml", "release")},
             guarded,
         )
         ci = (workflows / "ci.yml").read_text()
@@ -715,11 +711,11 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("inputs.complete_product && inputs.release_target == 'macos-aarch64'", reused)
         self.assertIn("artifact-ids: ${{ inputs.assembled_artifact_id || '0' }}", reused)
         self.assertIn("assembled_artifact_id: ${{ needs.assembly.outputs.artifact_id }}", mac)
-        for producer, consumer in (("native-inputs", "native"), ("native", "assembly"), ("assembly", "kotlin")):
+        for producer, consumer in (("assembly", "kotlin"),):
             self.assertIn("artifact_id: ${{ steps.handoff.outputs.artifact-id }}", jobs[producer])
             self.assertIn(f"artifact-ids: ${{{{ needs.{producer}.outputs.artifact_id || '0' }}}}", jobs[consumer])
         self.assertNotIn("run-id:", reused)
-        self.assertIn("native_handoff.py restore --version", reused)
+        self.assertIn("release_handoff.py restore --version", reused)
         self.assertIn("if: inputs.release_target != '' && !inputs.complete_product", candidate)
         assembled = candidate.split("- name: Retain the assembled candidate\n", 1)[1]
         assembled = assembled.split("\n      - name:", 1)[0]
@@ -814,7 +810,7 @@ class SourceInventoryTest(unittest.TestCase):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
         self.assertFalse((workflows / "gradle-cache.yml").exists())
         workflow = (workflows / "ci.yml").read_text()
-        for job in ("source-work", "native"):
+        for job in ("source-work", "kotlin"):
             body = workflow.split(f"\n  {job}:\n", 1)[1]
             body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
             self.assertIn("uses: gradle/actions/setup-gradle@", body)

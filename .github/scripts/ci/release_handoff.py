@@ -4,14 +4,13 @@
 # [tool.uv]
 # no-build = true
 # ///
-"""Transfer exact JVM inputs and one target-native Control executable between CI hosts."""
+"""Transfer one exact assembled release between CI hosts and qualify its macOS Control product."""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
-import os
 import platform
 import re
 import shutil
@@ -27,29 +26,11 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class Kind(str, Enum):
-    INPUTS = "inputs"
-    NATIVE = "native"
     RELEASE = "release"
 
 
 class Extraction(str, Enum):
     COMPLETE = "COMPLETE"
-
-
-class ProbeStage(str, Enum):
-    QUERY_PLAN = "QUERY_PLAN"
-
-
-class ProbeOutcome(str, Enum):
-    COMPLETE = "COMPLETE"
-    PROCESS_FAILED = "PROCESS_FAILED"
-
-
-@dataclass(frozen=True)
-class QueryPlanObservation:
-    outcome: ProbeOutcome
-    exitCode: int
-    stage: ProbeStage = ProbeStage.QUERY_PLAN
 
 
 class Failure(str, Enum):
@@ -58,9 +39,7 @@ class Failure(str, Enum):
     PAYLOAD_MISMATCH = "PAYLOAD_MISMATCH"
     UNSAFE_ARCHIVE = "UNSAFE_ARCHIVE"
     WRONG_PLATFORM = "WRONG_PLATFORM"
-    TOOLCHAIN_MISMATCH = "TOOLCHAIN_MISMATCH"
     PROCESS_FAILED = "PROCESS_FAILED"
-    QUERY_PLAN_FAILED = "QUERY_PLAN_FAILED"
     EFFECT_FAILED = "EFFECT_FAILED"
 
 
@@ -76,7 +55,6 @@ class Record:
     kind: Kind
     identity: Identity
     sha256: str
-    toolchainReleaseSha256: str
 
 
 @dataclass(frozen=True)
@@ -90,32 +68,29 @@ def mapping(value: object) -> TypeGuard[dict[object, object]]:
 
 
 def decode(value: object) -> Record | Failure:
-    if not mapping(value) or set(value) != {"kind", "identity", "sha256", "toolchainReleaseSha256"}:
+    if not mapping(value) or set(value) != {"kind", "identity", "sha256"}:
         return Failure.INVALID_RECORD
     identity = value["identity"]
     if not mapping(identity) or set(identity) != {"revision", "tree", "version"}:
         return Failure.INVALID_RECORD
     revision, tree, version = identity["revision"], identity["tree"], identity["version"]
     kind, digest = value["kind"], value["sha256"]
-    toolchain = value["toolchainReleaseSha256"]
     if (
         not isinstance(revision, str)
         or not isinstance(tree, str)
         or not isinstance(version, str)
         or not isinstance(kind, str)
         or not isinstance(digest, str)
-        or not isinstance(toolchain, str)
     ):
         return Failure.INVALID_RECORD
     if (
         not all(re.fullmatch(r"[0-9a-f]{40}", sha) and sha != "0" * 40 for sha in (revision, tree))
         or not re.fullmatch(r"\d+\.\d+\.\d+", version)
         or not re.fullmatch(r"[0-9a-f]{64}", digest)
-        or not re.fullmatch(r"[0-9a-f]{64}", toolchain)
     ):
         return Failure.INVALID_RECORD
     try:
-        return Record(Kind(kind), Identity(revision, tree, version), digest, toolchain)
+        return Record(Kind(kind), Identity(revision, tree, version), digest)
     except ValueError:
         return Failure.INVALID_RECORD
 
@@ -185,18 +160,14 @@ def extract(archive_path: Path, destination: Path) -> Failure | Extraction:
     return Extraction.COMPLETE
 
 
-def record(
-    archive: Path, destination: Path, identity: Identity, kind: Kind, toolchain: str
-) -> None:
+def record(archive: Path, destination: Path, identity: Identity, kind: Kind) -> None:
     destination.mkdir(parents=True, exist_ok=False)
     _ = shutil.copyfile(archive, destination / "payload.tar.gz")
-    value = Record(kind, identity, digest(destination / "payload.tar.gz"), toolchain)
+    value = Record(kind, identity, digest(destination / "payload.tar.gz"))
     _ = (destination / "record.json").write_text(json.dumps(asdict(value), indent=2) + "\n")
 
 
-def pack(
-    directory: Path, destination: Path, identity: Identity, kind: Kind, toolchain: str
-) -> None:
+def pack(directory: Path, destination: Path, identity: Identity, kind: Kind) -> None:
     with tempfile.TemporaryDirectory() as temporary:
         archive = Path(temporary) / "payload.tar.gz"
         with tarfile.open(archive, "w:gz") as payload:
@@ -204,7 +175,7 @@ def pack(
                 if path.is_symlink():
                     raise SystemExit(Failure.UNSAFE_ARCHIVE.value)
                 payload.add(path, arcname=path.relative_to(directory).as_posix(), recursive=False)
-        record(archive, destination, identity, kind, toolchain)
+        record(archive, destination, identity, kind)
 
 
 def run(command: list[str], *, cwd: Path = ROOT, environment: dict[str, str] | None = None) -> None:
@@ -249,146 +220,9 @@ def gradle(identity: Identity, *tasks: str) -> None:
     )
 
 
-def stage_inputs(identity: Identity, destination: Path) -> None:
-    gradle(identity, ":cli:assembleNativeImageInputs")
-    with tempfile.TemporaryDirectory(prefix="kast-native-inputs-") as temporary:
-        inputs = Path(temporary)
-        for name, module in (("kast", "cli"),):
-            failure = extract(
-                ROOT / module / "build/distributions/native-inputs.tar.gz", inputs / name
-            )
-            if isinstance(failure, Failure):
-                raise SystemExit(failure.value)
-        pack(
-            inputs,
-            destination,
-            identity,
-            Kind.INPUTS,
-            digest(Path(os.environ["JAVA_HOME"]) / "release"),
-        )
-
-
-def native(payload: Admitted, destination: Path) -> None:
-    if (platform.system(), platform.machine()) != ("Darwin", "arm64"):
-        raise SystemExit(Failure.WRONG_PLATFORM.value)
-    with tempfile.TemporaryDirectory(prefix="kast-native-") as temporary:
-        inputs = Path(temporary)
-        failure = unpack(payload, inputs)
-        if isinstance(failure, Failure):
-            raise SystemExit(failure.value)
-        if set(path.name for path in inputs.iterdir()) != {"kast"}:
-            raise SystemExit(Failure.INVALID_RECORD.value)
-        with tempfile.TemporaryDirectory(prefix="kast-native-output-") as output_directory:
-            output = Path(output_directory)
-            for name in ("kast",):
-                executable_directory = inputs / name / "output"
-                executable_directory.mkdir()
-                executable = executable_directory / name
-                compile_native(inputs / name, executable, payload.record.identity)
-                _ = shutil.copyfile(executable, output / name)
-            pack(
-                output,
-                destination,
-                payload.record.identity,
-                Kind.NATIVE,
-                digest(Path(os.environ["JAVA_HOME"]) / "release"),
-            )
-
-
-def compile_native(inputs: Path, executable: Path, identity: Identity) -> None:
-    properties = (inputs / "image.properties").read_text().splitlines()
-    classes = [
-        line.removeprefix("mainClass=") for line in properties if line.startswith("mainClass=")
-    ]
-    if len(classes) != 1 or not re.fullmatch(r"[A-Za-z0-9_.]+", classes[0]):
-        raise SystemExit(Failure.INVALID_RECORD.value)
-    metadata = inputs / "reachability-metadata"
-    if not metadata.is_dir():
-        raise SystemExit(Failure.INVALID_RECORD.value)
-    directories = sorted(
-        {path.parent.relative_to(inputs).as_posix() for path in metadata.rglob("*.json")}
-    )
-    metadata_arguments = (
-        [f"-H:ConfigurationFileDirectories={','.join(directories)}"] if directories else []
-    )
-    report_directory = ROOT / "build/reports/native"
-    metrics = report_directory / "build-output.json"
-    metrics.parent.mkdir(parents=True, exist_ok=True)
-    run(
-        [
-            str(Path(os.environ["JAVA_HOME"]) / "bin/native-image"),
-            "@native-image.args",
-            "@native-image-macos.args",
-            "-cp",
-            "lib/*",
-            classes[0],
-            "-o",
-            str(executable),
-            "-H:+UnlockExperimentalVMOptions",
-            f"-H:BuildOutputJSONFile={metrics}",
-            *metadata_arguments,
-            "-H:-UnlockExperimentalVMOptions",
-        ],
-        cwd=inputs,
-    )
-    result = subprocess.check_output([str(executable), "--version"], text=True).strip()
-    if result != identity.version:
-        raise SystemExit(Failure.IDENTITY_MISMATCH.value)
-    probe_query_plan(executable, report_directory)
-    target = subprocess.check_output(["xcrun", "vtool", "-show-build", str(executable)], text=True)
-    _ = (metrics.parent / "macos-build.txt").write_text(target)
-    if re.findall(r"^\s*minos\s+(\S+)", target, re.MULTILINE) != ["15.0"]:
-        raise SystemExit(Failure.WRONG_PLATFORM.value)
-
-
-def probe_query_plan(executable: Path, report_directory: Path) -> None:
-    try:
-        output = subprocess.check_output(
-            [
-                str(executable),
-                "-XX:MissingRegistrationReportingMode=Exit",
-                "--internal-entrypoint=query",
-                "query",
-                "plan",
-                "--name",
-                "OrderService",
-            ],
-            text=True,
-            stderr=subprocess.STDOUT,
-        )
-        observation = QueryPlanObservation(ProbeOutcome.COMPLETE, 0)
-    except subprocess.CalledProcessError as error:
-        output = error.output if isinstance(error.output, str) else ""
-        observation = QueryPlanObservation(ProbeOutcome.PROCESS_FAILED, error.returncode)
-    _ = (report_directory / "query-plan.stdout").write_text(output[:4096])
-    _ = (report_directory / "query-plan.json").write_text(
-        json.dumps(asdict(observation), indent=2) + "\n"
-    )
-    if observation.outcome is ProbeOutcome.PROCESS_FAILED:
-        raise SystemExit(Failure.QUERY_PLAN_FAILED.value)
-
-
-def assemble(payload: Admitted, destination: Path) -> None:
-    native_dir = ROOT / "build/imported-native"
-    native_dir.mkdir(parents=True, exist_ok=False)
-    failure = unpack(payload, native_dir)
-    if isinstance(failure, Failure):
-        raise SystemExit(failure.value)
-    executables = (native_dir / "kast",)
-    if set(native_dir.iterdir()) != set(executables):
-        raise SystemExit(Failure.WRONG_PLATFORM.value)
-    for executable in executables:
-        with executable.open("rb") as stream:
-            if stream.read(8) != bytes.fromhex("cffaedfe0c000001"):
-                raise SystemExit(Failure.WRONG_PLATFORM.value)
-        executable.chmod(0o755)
-    gradle(
-        payload.record.identity,
-        f"-PkastNativeExecutable={executables[0]}",
-        "-PkastControlPlatform=macos-aarch64",
-        "assembleRelease",
-        "generateKastModuleKnowledge",
-    )
+def assemble(identity: Identity, destination: Path) -> None:
+    """The Control executable cross-compiles, so Linux assembles the macOS release without a Mac."""
+    gradle(identity, "-PkastControlPlatform=macos-aarch64", "assembleRelease", "generateKastModuleKnowledge")
     run(
         [
             "uv",
@@ -397,25 +231,17 @@ def assemble(payload: Admitted, destination: Path) -> None:
             "--script",
             ".github/scripts/release/finalize_assets.py",
             "--version",
-            payload.record.identity.version,
+            identity.version,
             "--source-revision",
-            payload.record.identity.revision,
+            identity.revision,
         ]
     )
-    pack(
-        ROOT / f"build/release/v{payload.record.identity.version}",
-        destination,
-        payload.record.identity,
-        Kind.RELEASE,
-        payload.record.toolchainReleaseSha256,
-    )
+    pack(ROOT / f"build/release/v{identity.version}", destination, identity, Kind.RELEASE)
 
 
 def restore_release(payload: Admitted) -> Path:
     if (platform.system(), platform.machine()) != ("Darwin", "arm64"):
         raise SystemExit(Failure.WRONG_PLATFORM.value)
-    if payload.record.toolchainReleaseSha256 != digest(Path(os.environ["JAVA_HOME"]) / "release"):
-        raise SystemExit(Failure.TOOLCHAIN_MISMATCH.value)
     identity = payload.record.identity
     release = ROOT / f"build/release/v{identity.version}"
     release.mkdir(parents=True, exist_ok=False)
@@ -436,34 +262,26 @@ def qualify(payload: Admitted) -> None:
             if not safe_members(members):
                 raise SystemExit(Failure.UNSAFE_ARCHIVE.value)
             archive.extractall(product, members=members, filter="data")
-        gradle(
-            identity,
-            f"-PkastNativeExecutable={product / 'share/kast/libexec/kast-management'}",
-            "publicLauncherTest",
-        )
+        # The suite runs the exact assembled Control executable and JVM libraries, not a local rebuild.
+        gradle(identity, f"-PkastControlProduct={product}", "publicLauncherTest")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    _ = parser.add_argument("stage", choices=("inputs", "native", "assemble", "restore", "qualify"))
+    _ = parser.add_argument("stage", choices=("assemble", "restore", "qualify"))
     _ = parser.add_argument("--version", required=True)
     _ = parser.add_argument("--input", type=Path, default=ROOT / "build/handoff-input")
     _ = parser.add_argument("--output", type=Path, default=ROOT / "build/handoff-output")
     args = parser.parse_args()
     identity = current_identity(args.version)
-    if args.stage == "inputs":
-        stage_inputs(identity, args.output)
+    if args.stage == "assemble":
+        assemble(identity, args.output)
     else:
-        kind = {"native": Kind.INPUTS, "assemble": Kind.NATIVE, "restore": Kind.RELEASE, "qualify": Kind.RELEASE}[args.stage]
-        payload = admit(args.input, identity, kind)
+        payload = admit(args.input, identity, Kind.RELEASE)
         if isinstance(payload, Failure):
             raise SystemExit(payload.value)
-        if args.stage == "native":
-            native(payload, args.output)
-        elif args.stage == "assemble":
-            assemble(payload, args.output)
-        elif args.stage == "restore":
-            restore_release(payload)
+        if args.stage == "restore":
+            _ = restore_release(payload)
         else:
             qualify(payload)
     if current_identity(args.version) != identity:
