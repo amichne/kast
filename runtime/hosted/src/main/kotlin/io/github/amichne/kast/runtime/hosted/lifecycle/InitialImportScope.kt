@@ -5,6 +5,9 @@ import com.intellij.openapi.externalSystem.autoimport.ExternalSystemProjectTrack
 import com.intellij.openapi.externalSystem.model.ExternalSystemDataKeys
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.UnindexedFilesScannerExecutor
+import com.intellij.platform.backend.workspace.WorkspaceModel
+import com.intellij.workspaceModel.ide.JpsProjectLoadedListener
+import com.intellij.workspaceModel.ide.impl.WorkspaceModelImpl
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -19,19 +22,38 @@ internal class InitialImportScope(private val project: Project, deferScanning: B
     private val scanner = if (deferScanning) UnindexedFilesScannerExecutor.getInstance(project) else null
     private val scanningDeferred = AtomicBoolean(deferScanning)
 
+    private val cachedModelEvents = if (deferScanning) project.messageBus.connect() else null
+    private val cachedModelApplied = AtomicBoolean(false)
+
     init {
+        cachedModelEvents?.subscribe(
+            JpsProjectLoadedListener.LOADED,
+            object : JpsProjectLoadedListener {
+                override fun loaded() {
+                    cachedModelApplied.set(true)
+                }
+            },
+        )
+
         ExternalSystemProjectTracker.getInstance(project)
         project.putUserData(ExternalSystemDataKeys.NEWLY_IMPORTED_PROJECT, true)
         project.messageBus.syncPublisher(ExternalSystemAutoImportAwareListener.TOPIC).autoImportAwareOperationStarted()
         scanner?.suspendQueue()
     }
 
+    fun canImportModel(): Boolean =
+        cachedModelEvents == null ||
+            cachedModelApplied.get() ||
+            (WorkspaceModel.getInstance(project) as? WorkspaceModelImpl)?.loadedFromCache == false
+
     fun resumeScanning() {
         if (scanningDeferred.compareAndSet(true, false) && !project.isDisposed) scanner?.resumeQueue()
     }
 
     override fun close() {
-        if (!finished.compareAndSet(false, true) || project.isDisposed) return
+        if (!finished.compareAndSet(false, true)) return
+        cachedModelEvents?.disconnect()
+        if (project.isDisposed) return
         resumeScanning()
         project.putUserData(ExternalSystemDataKeys.NEWLY_IMPORTED_PROJECT, prior)
         project.messageBus
