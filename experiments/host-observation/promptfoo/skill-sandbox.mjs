@@ -81,6 +81,38 @@ export function permittedKast(argv, scope, input) {
   }
   if (command !== 'query') return false;
   const flags = parseFlags(argv.slice(1), queryFlags);
-  return flags !== null && (flags.has('--name') || flags.has('--ref')) &&
+  return flags !== null && (flags.get('--jq') ?? []).length <= 1 && (flags.has('--name') || flags.has('--ref')) &&
     (flags.get('--in') ?? []).every(scopedDirectory) && inertJq(flags);
+}
+
+function toolResult(argv, result, presentation = result.stdout, evidence = result.stdout) {
+  return {
+    content: [{ type: 'text', text: presentation + result.stderr }],
+    details: { argv, status: result.status, stdout: evidence },
+    isError: result.status !== 0,
+  };
+}
+
+export function runSkillKast(argv, input, run) {
+  const flag = argv.findIndex(value => value === '--jq' || value.startsWith('--jq='));
+  if (argv[0] !== 'query' || flag < 0) return toolResult(argv, run(argv, input));
+  const separate = argv[flag] === '--jq';
+  const program = separate ? argv[flag + 1] : argv[flag].slice('--jq='.length);
+
+  // The planner compiles jq before it rejects the empty request. This checks the participant's
+  // expression in isolation, so it cannot escape the parentheses and replace the evidence.
+  const admission = run(['query', 'plan', '--request', '-', '--json', '--jq', program], '{}');
+  const rejection = JSON.parse(admission.stdout);
+  if (admission.status !== 2 || rejection.type !== 'rejected' || rejection.failure !== 'INVALID_ARGUMENTS') {
+    if (admission.status !== 0) return toolResult(argv, admission);
+    throw Error('Kast did not admit the standalone trial projection');
+  }
+  const wrapped = '{evidence: tojson, presentation: ((\n' + program + '\n) | tojson)}';
+  const query = argv.slice();
+  query.splice(flag, separate ? 2 : 1, '--jq', wrapped);
+  const result = run(query, input);
+  if (result.status !== 0) return toolResult(argv, result);
+  const { evidence, presentation } = JSON.parse(result.stdout);
+  if (typeof evidence !== 'string' || typeof presentation !== 'string') throw Error('Invalid Kast projection receipt');
+  return toolResult(argv, result, presentation + '\n', evidence);
 }

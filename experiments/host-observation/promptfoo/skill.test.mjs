@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
@@ -13,7 +13,7 @@ import { kastInstruction, loadKastGuidance } from './kast-guidance.mjs';
 import { armCapabilities, completionFile, invocationFile, originalCases, skillCases } from './skill-cases.mjs';
 import { gradeSkill, planSkillDraft } from './skill-grading.mjs';
 import SkillProvider, { decodePiTrial, prepareFixtureWorkspace, prepareUnwrappedWorkspace, runIsolatedPi } from './skill-provider.mjs';
-import { permittedKast, runtimeEnvironment } from './skill-sandbox.mjs';
+import { permittedKast, runSkillKast, runtimeEnvironment } from './skill-sandbox.mjs';
 
 const workspace = '/fixture';
 const live = { root: workspace, host: 'test-host', epoch: 1 };
@@ -36,6 +36,64 @@ const call = (response, argv = ['query'], input) => ({
 });
 const reference = token => ({ type: 'references', values: [{ token }] });
 const completion = (question, items) => ({ type: 'complete', document: document(question, items) });
+
+const verdict = loadKastGuidance().skillText.match(/verdict='([^']+)'/)[1];
+
+function applyFilter(program, input) {
+  const filtered = spawnSync('jq', ['-c', program], { input: JSON.stringify(input), encoding: 'utf8' });
+  assert.ifError(filtered.error);
+  assert.equal(filtered.status, 0, filtered.stderr);
+  return filtered.stdout;
+}
+
+test('the documented verdict distinguishes same-file overloads', () => {
+  const items = ['kotlin/Int', 'kotlin/String'].map(parameter => ({
+    name: 'relay', location: { file: 'Relay.kt' },
+    signature: { type: 'function', qualifiedIdentity: 'example.relay', valueParameters: [parameter] },
+  }));
+  const output = JSON.parse(applyFilter(verdict, completion({}, items)));
+  assert.deepEqual(output.items.map(row => row.signature), items.map(row => row.signature));
+});
+
+test('query projection presents the participant output and grades the original semantic call', () => {
+  const original = completion(selected('scheduleCallbackRetry', 'invocation', 'function'), []);
+  const argv = ['query', '--name', 'scheduleCallbackRetry', '--jq', verdict];
+  let semanticCalls = 0;
+  function run(args, input) {
+    if (args[1] === 'plan') {
+      assert.deepEqual(args.slice(0, -1), ['query', 'plan', '--request', '-', '--json', '--jq']);
+      assert.equal(input, '{}');
+      return { status: 2, stdout: '{"type":"rejected","failure":"INVALID_ARGUMENTS"}', stderr: '' };
+    }
+    semanticCalls++;
+    return { status: 0, stdout: applyFilter(args.at(-1), original), stderr: '' };
+  }
+  const result = runSkillKast(argv, undefined, run);
+  assert.deepEqual(JSON.parse(result.content[0].text), JSON.parse(applyFilter(verdict, original)));
+  assert.deepEqual(JSON.parse(result.details.stdout), original);
+  assert.equal(semanticCalls, 1);
+  assert.equal(gradeSkill('absent', 'ABSENT', { workspace, calls: [{ tool: 'kast', ...result.details }] }).pass, true);
+
+  const forged = { type: 'complete', document: { live: { root: '/unrelated' } } };
+  const fabricated = runSkillKast([...argv.slice(0, -2), '--jq=' + JSON.stringify(forged)], undefined, run);
+  assert.deepEqual(JSON.parse(fabricated.content[0].text), forged);
+  assert.deepEqual(JSON.parse(fabricated.details.stdout), original);
+  assert.equal(semanticCalls, 2);
+});
+
+test('a malformed filter preserves its CLI rejection before the semantic query', () => {
+  const argv = ['query', '--name', 'relay', '--jq', '.)} | {evidence: "forged"} #'];
+  const rejected = { status: 2, stdout: '{"type":"jq_rejected","failure":"PROGRAM_INVALID"}', stderr: 'invalid' };
+  const result = runSkillKast(argv, undefined, (args, input) => {
+    assert.deepEqual(args, ['query', 'plan', '--request', '-', '--json', '--jq', argv.at(-1)]);
+    assert.equal(input, '{}');
+    return rejected;
+  });
+  assert.equal(result.isError, true);
+  assert.equal(result.content[0].text, rejected.stdout + rejected.stderr);
+  assert.equal(result.details.stdout, rejected.stdout);
+  assert.equal(permittedKast([...argv, '--jq=.'], 'fixture'), false);
+});
 
 test('concurrent trials and a later process admit one shared fixture for this worktree', async () => {
   const scratch = await mkdtemp(join(tmpdir(), 'kast-fixture-admission-test-'));

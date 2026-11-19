@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
-import { permittedKast, runtimeEnvironment } from './skill-sandbox.mjs';
+import { permittedKast, runSkillKast, runtimeEnvironment } from './skill-sandbox.mjs';
 
 export default function (pi: ExtensionAPI) {
   const workspace = process.env.KAST_EVAL_TRIAL_WORKSPACE!;
@@ -45,16 +45,14 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_id, { argv, stdin }) {
       if (!permittedKast(argv, scope, stdin)) throw new Error('Command outside this trial');
-      const result = spawnSync(kast, argv, {
-        cwd: workspace, env: runtimeEnvironment(), encoding: 'utf8', input: stdin,
-        timeout: 60_000, maxBuffer: 4 * 1024 * 1024,
+      return runSkillKast(argv, stdin, (args: string[], input?: string) => {
+        const result = spawnSync(kast, args, {
+          cwd: workspace, env: runtimeEnvironment(), encoding: 'utf8', input,
+          timeout: 60_000, maxBuffer: 4 * 1024 * 1024,
+        });
+        if (result.error) throw result.error;
+        return result;
       });
-      if (result.error) throw result.error;
-      return {
-        content: [{ type: 'text', text: result.stdout + result.stderr }],
-        details: { argv, status: result.status, stdout: result.stdout },
-        isError: result.status !== 0,
-      };
     },
   });
 }
