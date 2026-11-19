@@ -15,6 +15,7 @@ import zipfile
 from collections.abc import Iterator
 from contextlib import ExitStack
 from dataclasses import dataclass, replace
+from enum import Enum
 from pathlib import Path
 from typing import Literal
 
@@ -29,6 +30,32 @@ import runtime_base
 from composition_platform import HostPlatform
 from managed_headless import AssemblyRecord
 from private_interpreter import PrivateInterpreter
+
+
+class PriorState(Enum):
+    """Which prior-Control state an observation may still contain.
+
+    Before the prior Control's own retirement runs, its live semantic coordinator is
+    expected: that retirement is the only owner that may stop it and remove its endpoint.
+    After retirement, only quiescent bookkeeping remains admissible. Retirement output is
+    never trusted alone; the RETIRED observation is the decisive proof.
+    """
+
+    RETIREMENT_PENDING = "RETIREMENT_PENDING"
+    RETIRED = "RETIRED"
+
+
+# The exact semantic coordinator layout that `removeRetiredSemanticState` removes.
+COORDINATOR_ENDPOINT = frozenset({"c.sock", "c.sock.lock"})
+COORDINATOR_PROFILE_FILES = frozenset(
+    {
+        "semantic-service.log",
+        "semantic-service.plist",
+        "service-start.lock",
+        "service-readiness.json",
+    }
+)
+MAXIMUM_COORDINATOR_PROFILES = 16
 
 
 @dataclass(frozen=True)
@@ -324,7 +351,8 @@ def admit_prior(root: Path) -> journal.NoPrevious | journal.PhysicalPrevious:
         "installation.json",
     }:
         raise ValueError("legacy or live installation state requires retirement")
-    verify_replacement_state(active)
+    # The prior Control retires its own coordinator after the journal exists.
+    verify_replacement_state(active, PriorState.RETIREMENT_PENDING)
     slot = root / "recovery/replacement"
     return journal.PhysicalPrevious(
         "PHYSICAL",
@@ -371,12 +399,53 @@ def verify_client_configuration(control: Path, *, partial: bool = False) -> set[
     return directories
 
 
-def verify_replacement_state(control: Path) -> None:
+def verify_replacement_state(control: Path, prior: PriorState) -> None:
     _ = verify_client_configuration(control)
-    _ = product_mcp_removal.empty_invocation_directories(control)
     state = control / "state"
-    if os.path.lexists(state) and {child.name for child in state.iterdir()} - {"run"}:
+    if prior is PriorState.RETIRED:
+        _ = product_mcp_removal.empty_invocation_directories(control)
+        if os.path.lexists(state) and {child.name for child in state.iterdir()} - {"run"}:
+            raise ValueError("unrecognized replacement state")
+        return
+    _ = product_mcp_removal.empty_invocation_directories(control, COORDINATOR_ENDPOINT)
+    if not os.path.lexists(state):
+        return
+    if {child.name for child in state.iterdir()} - {"run", "broker"}:
         raise ValueError("unrecognized replacement state")
+    verify_retirable_coordinator(state)
+
+
+def verify_retirable_coordinator(state: Path) -> None:
+    """Admit only the owned coordinator endpoint and profile files prior retirement removes."""
+    uid = os.getuid()
+    run = state / "run"
+    for name in COORDINATOR_ENDPOINT:
+        path = run / name
+        if not os.path.lexists(path):
+            continue
+        observed = path.lstat()
+        kind = stat.S_ISSOCK if name == "c.sock" else stat.S_ISREG
+        if not kind(observed.st_mode) or observed.st_uid != uid:
+            raise ValueError("coordinator endpoint ownership")
+    broker = state / "broker"
+    if not os.path.lexists(broker):
+        return
+    immutable_store.physical(broker)
+    profiles = list(broker.iterdir())
+    if len(profiles) > MAXIMUM_COORDINATOR_PROFILES:
+        raise ValueError("coordinator profile count")
+    for profile in profiles:
+        if re.fullmatch(r"[0-9a-f]{16}", profile.name) is None:
+            raise ValueError("unrecognized coordinator profile")
+        immutable_store.physical(profile)
+        for entry in profile.iterdir():
+            observed = entry.lstat()
+            if (
+                entry.name not in COORDINATOR_PROFILE_FILES
+                or not stat.S_ISREG(observed.st_mode)
+                or observed.st_uid != uid
+            ):
+                raise ValueError("unrecognized coordinator profile state")
 
 
 def materialize_client_entries(stage: Path, active: Path) -> None:
@@ -923,10 +992,17 @@ def resume_locked(
     previous = record.previous
     prior_receipt: ProductManagement | None = None
     if isinstance(previous, journal.PhysicalPrevious):
-        prior = install.RECOVERY.managed_previous(active, slot, previous)
-        if prior is None:
-            raise ValueError("previous payload")
-        verify_previous(prior[0], selected.previousManifestSha256)
+        # A live prior coordinator owns sockets and mutable logs until its retirement;
+        # the move witness is captured only after that retirement is proven.
+        if selected.phase in (journal.ManagedPhase.PREPARED, journal.ManagedPhase.FENCED):
+            location = install.RECOVERY.managed_previous_location(active, slot, previous)
+            prior_state = PriorState.RETIREMENT_PENDING
+        else:
+            prior = install.RECOVERY.managed_previous(active, slot, previous)
+            if prior is None:
+                raise ValueError("previous payload")
+            location, prior_state = prior[0], PriorState.RETIRED
+        verify_previous(location, selected.previousManifestSha256, prior_state)
         preimage = selected.management
         if not isinstance(preimage, journal.ManagedFilePresent) or preimage.preimage != str(
             slot / "management-preimage"
@@ -936,7 +1012,7 @@ def resume_locked(
         if hashlib.sha256(raw).hexdigest() != preimage.sha256:
             raise ValueError("management preimage changed")
         prior_receipt = read_management(
-            raw, root, Path(selected.publicExecutable.destination), prior[0]
+            raw, root, Path(selected.publicExecutable.destination), location
         )
     elif (
         not isinstance(previous, journal.NoPrevious)
@@ -959,7 +1035,8 @@ def resume_locked(
         prior = install.RECOVERY.managed_previous(active, slot, previous)
         if prior is None:
             raise ValueError("previous payload")
-        verify_previous(prior[0], selected.previousManifestSha256)
+        # Decisive post-retirement proof: a surviving coordinator rejects before exchange.
+        verify_previous(prior[0], selected.previousManifestSha256, PriorState.RETIRED)
         if prior[0] == active:
             install.emit(contract.Stage.CONTROL_REPLACEMENT, "STARTED")
             install.RECOVERY.managed_move(active, slot / "payload", prior[3])
@@ -997,7 +1074,7 @@ def resume_locked(
     _ = install.LIFECYCLE.Installation.admit(str(active))
     read_runtime(reference_at(active, root))
     if isinstance(previous, journal.PhysicalPrevious):
-        verify_previous(slot / "payload", selected.previousManifestSha256)
+        verify_previous(slot / "payload", selected.previousManifestSha256, PriorState.RETIRED)
     selected = replace(selected, phase=journal.ManagedPhase.ACTIVATION_PROVEN)
     record = replace(record, stage=journal.ReplacementStage.FINALIZING, product=selected)
     install.RECOVERY.save(slot / "receipt.json", record)
@@ -1056,7 +1133,7 @@ def retire_prior(
         # leases and Host settlement; a shutdown request alone is never retirement proof.
         _ = install.LIFECYCLE.Installation.admit(str(active))
         _ = reference_at(active, root)
-        verify_previous(active, selected.previousManifestSha256)
+        verify_previous(active, selected.previousManifestSha256, PriorState.RETIREMENT_PENDING)
         try:
             result = (runner if runner is not None else install.run_child)(
                 [
@@ -1096,7 +1173,7 @@ def retire_prior(
     return record
 
 
-def verify_previous(path: Path, manifest_sha256: str | None) -> None:
+def verify_previous(path: Path, manifest_sha256: str | None, prior: PriorState) -> None:
     if (
         manifest_sha256 is None
         or release.file_digest(path / "installation.json") != manifest_sha256
@@ -1104,7 +1181,7 @@ def verify_previous(path: Path, manifest_sha256: str | None) -> None:
         - {"bin", "lib", "share", "config", "state", "installation.json"}
     ):
         raise ValueError("previous payload changed")
-    verify_replacement_state(path)
+    verify_replacement_state(path, prior)
     install.LIFECYCLE.verify_payload(
         path, release.document(install.read_record(path / "installation.json", 67_108_864))
     )

@@ -41,8 +41,14 @@ def reject_invocation_state(reason: InvocationStateFailure) -> None:
     raise ValueError(reason.value)
 
 
-def empty_invocation_directories(payload: Path) -> tuple[tuple[Path, journal.Identity], ...]:
-    """Only the exact empty native bookkeeping directories are removable, never records."""
+def empty_invocation_directories(
+    payload: Path, retained: frozenset[str] = frozenset()
+) -> tuple[tuple[Path, journal.Identity], ...]:
+    """Only the exact empty native bookkeeping directories are removable, never records.
+
+    `retained` names entries a caller has already admitted under a different owner.
+    They are neither inspected nor removable here, and they keep the run directory itself.
+    """
     state = payload / "state"
     if not os.path.lexists(state):
         return ()
@@ -51,16 +57,20 @@ def empty_invocation_directories(payload: Path) -> tuple[tuple[Path, journal.Ide
     if not os.path.lexists(run):
         return ()
     store.physical(run)
-    if {child.name for child in run.iterdir()} - {"one-shot", "tool-sessions"}:
+    names = {child.name for child in run.iterdir()}
+    if names - {"one-shot", "tool-sessions"} - retained:
         reject_invocation_state(InvocationStateFailure.UNKNOWN_DIRECTORY)
     directories: list[tuple[Path, journal.Identity]] = []
     for child in run.iterdir():
+        if child.name in retained:
+            continue
         store.physical(child)
         identity = journal.Identity.observe(child)
         if any(child.iterdir()):
             reject_invocation_state(InvocationStateFailure.UNSETTLED_INVOCATIONS)
         directories.append((child, identity))
-    directories.append((run, journal.Identity.observe(run)))
+    if not names & retained:
+        directories.append((run, journal.Identity.observe(run)))
     print(install.encoded(InvocationStateAdmitted()).decode(), end="", file=sys.stderr)
     return tuple(directories)
 

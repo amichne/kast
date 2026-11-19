@@ -8,6 +8,7 @@ import json
 import os
 import shlex
 import shutil
+import socket
 import stat
 import subprocess
 import sys
@@ -1155,6 +1156,94 @@ class ProductActivationTest(unittest.TestCase):
         self.assert_retired_journal(path, asdict(replace(record, type="CONTROL_RETIRED")))
         self.assertEqual(0, self.remove_product(path))
         self.assertFalse(environment.exists())
+
+    def live_coordinator(self) -> tuple[Path, Path]:
+        """Publish the prior Control's exact live coordinator layout with a bound socket."""
+        state = self.root / "installation/state"
+        run = state / "run"
+        run.mkdir(parents=True, mode=0o700, exist_ok=True)
+        profile = state / "broker" / ("2" * 16)
+        profile.mkdir(parents=True, mode=0o700)
+        profile.parent.chmod(0o700)
+        for name in (
+            "semantic-service.log",
+            "semantic-service.plist",
+            "service-readiness.json",
+            "service-start.lock",
+        ):
+            _ = (profile / name).write_bytes(b"owned")
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.addCleanup(listener.close)
+        # AF_UNIX paths are short; bind relative to the owned run directory.
+        previous = os.getcwd()
+        os.chdir(run)
+        try:
+            listener.bind("c.sock")
+        finally:
+            os.chdir(previous)
+        listener.listen(1)
+        (run / "c.sock.lock").touch(mode=0o600)
+        return run, state / "broker"
+
+    def test_live_prior_coordinator_is_retired_by_the_prior_control_and_replaced(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        run, broker = self.live_coordinator()
+        prior = (self.root / "installation").stat().st_ino
+        retirements: list[str] = []
+
+        def retire(
+            arguments: list[str], environment: dict[str, str], timeout: float
+        ) -> subprocess.CompletedProcess[bytes]:
+            # Preparation must not demand what only this retirement can produce.
+            self.assertTrue(stat.S_ISSOCK((run / "c.sock").lstat().st_mode))
+            self.assertTrue(broker.is_dir())
+            result = self.retire(arguments, environment, timeout)
+            (run / "c.sock").unlink()
+            (run / "c.sock.lock").unlink()
+            shutil.rmtree(broker)
+            retirements.append("coordinator")
+            return result
+
+        installed = activation.activate(self.root, self.home, admitted, runner=retire)
+        self.assertIsInstance(installed, activation.ProductInstalled, installed)
+        self.assertEqual(["coordinator"], retirements)
+        self.assertNotEqual(prior, (self.root / "installation").stat().st_ino)
+        self.assertFalse((self.root / "recovery/replacement").exists())
+        self.assertFalse((self.root / "shutdown.json").exists())
+
+    def test_coordinator_surviving_reported_retirement_rejects_before_exchange(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        run, broker = self.live_coordinator()
+        prior = (self.root / "installation").stat().st_ino
+        result = activation.activate(self.root, self.home, admitted, runner=self.retire)
+        self.assertIsInstance(result, contract.RecoveryRequired, result)
+        # The prior payload and its live coordinator stay in place; nothing guessed success.
+        self.assertEqual(prior, (self.root / "installation").stat().st_ino)
+        self.assertTrue(stat.S_ISSOCK((run / "c.sock").lstat().st_mode))
+        self.assertTrue((broker / ("2" * 16) / "service-readiness.json").is_file())
+        self.assertTrue((self.root / "recovery/replacement/receipt.json").is_file())
+
+    def test_unrecognized_coordinator_profile_rejects_before_retirement(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        _, broker = self.live_coordinator()
+        foreign = broker / ("2" * 16) / "foreign"
+        _ = foreign.write_bytes(b"keep")
+        with patch.object(install, "run_child", side_effect=AssertionError("no retirement")):
+            result = activation.activate(self.root, self.home, admitted)
+        self.assertIsInstance(result, contract.Rejected, result)
+        assert isinstance(result, contract.Rejected)
+        self.assertEqual(contract.Stage.PREPARATION, result.stage)
+        self.assertEqual(b"keep", foreign.read_bytes())
+        self.assertFalse((self.root / "recovery/replacement").exists())
 
     def test_completed_native_invocations_allow_repair_and_removal_but_survivors_do_not(
         self,

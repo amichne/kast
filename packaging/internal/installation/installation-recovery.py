@@ -914,6 +914,12 @@ def re_full_digest(value):
 
 
 def managed_payload(path, expected_root, identity, reservation=None):
+    admit_managed_payload(path, expected_root, identity, reservation)
+    return managed_tree(path)
+
+
+def admit_managed_payload(path, expected_root, identity, reservation=None):
+    """Admit exact payload identity and inventory without a move witness of mutable state."""
     if Identity.observe(physical(path)) != identity:
         raise Rejected(Failure.OWNERSHIP)
     manifest_path = path / 'installation.json'
@@ -950,7 +956,6 @@ def managed_payload(path, expected_root, identity, reservation=None):
             raise Rejected(Failure.CONTROL_LIMIT) from None
         raise Rejected(Failure.OWNERSHIP) from None
     lifecycle.observe_admission(lifecycle.AdmissionAccepted(lifecycle.AdmissionType.PAYLOAD_ADMITTED))
-    return managed_tree(path)
 
 
 def managed_recovery(path, expected_root, identity):
@@ -960,14 +965,28 @@ def managed_recovery(path, expected_root, identity):
     return managed_tree(path)
 
 
+def physical_previous_location(root, transaction, previous):
+    if previous.installation != str(root) or previous.payload != str(transaction / 'payload') or previous.recovery != str(transaction / 'recovery'):
+        raise Rejected(Failure.RECEIPT)
+    options = [path for path in (root, transaction / 'payload') if os.path.lexists(path) and not path.is_symlink() and Identity.observe(path) == previous.identity]
+    if len(options) != 1:
+        raise Rejected(Failure.OWNERSHIP)
+    return options[0]
+
+
+def managed_previous_location(root, transaction, previous):
+    """Locate an admitted physical prior before its live owner retires; no move witness is taken."""
+    if not isinstance(previous, PhysicalPrevious):
+        raise Rejected(Failure.RECEIPT)
+    location = physical_previous_location(root, transaction, previous)
+    admit_managed_payload(location, root, previous.identity)
+    return location
+
+
 def managed_previous(root, transaction, previous):
     if isinstance(previous, PhysicalPrevious):
-        if previous.installation != str(root) or previous.payload != str(transaction / 'payload') or previous.recovery != str(transaction / 'recovery'):
-            raise Rejected(Failure.RECEIPT)
-        options = [path for path in (root, transaction / 'payload') if os.path.lexists(path) and not path.is_symlink() and Identity.observe(path) == previous.identity]
-        if len(options) != 1:
-            raise Rejected(Failure.OWNERSHIP)
-        return options[0], root, root.parent / 'recovery/installation', managed_payload(options[0], root, previous.identity)
+        location = physical_previous_location(root, transaction, previous)
+        return location, root, root.parent / 'recovery/installation', managed_payload(location, root, previous.identity)
     if isinstance(previous, LegacyPrevious):
         prior, selector = Path(previous.installation), Path(previous.selector)
         if prior.parent != root.parent / 'versions' or selector != root.parent / 'current' or previous.target != 'versions/' + prior.name or previous.recovery != str(transaction / 'recovery') or not selector.is_symlink() or os.readlink(selector) != previous.target:
