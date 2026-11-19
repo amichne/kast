@@ -187,7 +187,18 @@ internal class IntellijWorkspaceRefreshPort(
             .info("kast_workspace_refresh_start_unsettled outcome=" + Json.encodeToString(failure))
     }
 
-    override fun readiness(): WorkspaceCapabilityReadiness = modelInputs.readiness(query.workspaceReadiness(root))
+    override fun readiness(): WorkspaceCapabilityReadiness {
+        val readiness = modelInputs.readiness(query.workspaceReadiness(root))
+        if (readiness !is WorkspaceCapabilityReadiness.Ready || ManagedHeadlessHost.current() == null) return readiness
+        val scanner = com.intellij.openapi.project.UnindexedFilesScannerExecutor.getInstance(project)
+        return if (scanner.hasQueuedTasks || scanner.isRunning.value)
+            WorkspaceCapabilityReadiness.Pending(
+                readiness.identity,
+                io.github.amichne.kast.workspace.contract.WorkspaceReadinessReason.INDEXING,
+                io.github.amichne.kast.workspace.contract.WorkspaceReadinessNextAction.OBSERVE_AGAIN,
+            )
+        else readiness
+    }
 
     fun needsModelReload(): Boolean = modelInputs.needsModelReload()
 
@@ -321,6 +332,8 @@ internal class IntellijWorkspaceRefreshPort(
         ) {
             val preparedCallback =
                 WorkspaceRefreshImportCallback(project, root) { outcome ->
+                    if (outcome == WorkspaceRefreshEffectResult.SUCCEEDED)
+                        io.github.amichne.kast.runtime.hosted.lifecycle.recordManagedGradleImport(project, root)
                     importTicket.get()?.settled(outcome)
                     complete(outcome)
                 }
@@ -371,7 +384,8 @@ internal fun quietWorkspaceImport(
         .apply {
             // JetGradlePlugin mutates excluded tasks after settings evaluation during IDE import.
             // Scope compatibility to the managed import; saved Gradle settings stay authoritative elsewhere.
-            if (managedHeadless) withArguments("-Dorg.gradle.isolated-projects=false")
+            if (managedHeadless)
+                withArguments("-Dorg.gradle.isolated-projects=false -Didea.gradle.download.sources.force=false")
         }
 
 private fun PublicFailure.startResult(): WorkspaceRefreshEffectResult =

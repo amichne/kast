@@ -63,7 +63,7 @@ Source evidence:
 
 ### workspace container
 
-An internal workspace record with an exact-root trust grant and private Host profile. Gradle state stays private by default. Records can share verified runtime bytes.
+An internal workspace record with an exact-root trust grant and private Host profile. New containers share the Kast-owned Gradle home by default. Records can share verified runtime bytes.
 
 Example: The first explicit semantic request creates the record for its exact workspace root; no public container command is required.
 Keep distinct: This is process and profile separation, not an OS sandbox or a Kotlin declaration container.

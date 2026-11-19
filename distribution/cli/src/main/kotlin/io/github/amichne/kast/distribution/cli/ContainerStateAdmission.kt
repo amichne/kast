@@ -190,7 +190,9 @@ private fun ContainerStore.validExternalGradlePath(path: Path): Boolean {
 }
 
 /** Persisted trust and selectors must still name the creation-time workspace and private profile. */
-internal fun admitContainerState(container: AdmittedContainer): Refinement<AdmittedContainer, ContainerFailure> {
+private fun ContainerStore.admitContainerState(
+    container: AdmittedContainer
+): Refinement<AdmittedContainer, ContainerFailure> {
     val plugins =
         when (val selected = selectedContainerPlugins(container)) {
             is Refinement.Rejected -> return selected
@@ -199,7 +201,10 @@ internal fun admitContainerState(container: AdmittedContainer): Refinement<Admit
     when (val saved = readContainerRecord<ManagedHeadlessGradleHome>(container.state.resolve("gradle-home.json"))) {
         is Refinement.Rejected -> return saved
         is Refinement.Refined ->
-            if (saved.value.path != container.gradleHome.toString())
+            if (
+                saved.value.path != container.gradleHome.toString() ||
+                    (saved.value.sharedDependencies && container.gradleHome != sharedGradleHome)
+            )
                 return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
     }
     if (

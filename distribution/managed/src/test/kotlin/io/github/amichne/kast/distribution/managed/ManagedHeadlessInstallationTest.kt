@@ -21,6 +21,41 @@ class ManagedHeadlessInstallationTest {
     private data class Launch(val os: String, val arch: String, val launcherPath: String, val vmOptionsFilePath: String)
 
     @Test
+    fun `only a selected published cache enters the managed launch`(@TempDir directory: Path) {
+        val fixture = fixture(directory)
+        val gradle = Files.createDirectory(fixture.root.resolve("shared"))
+        val cache = gradle.resolve("kast-read-only")
+        fun launchCache(): String? {
+            val installation =
+                assertInstanceOf<Refinement.Refined<ManagedHeadlessInstallation>>(
+                        ManagedHeadlessInstallation.resolve(
+                            fixture.launch,
+                            fixture.state,
+                            fixture.state.resolve("home"),
+                        )
+                    )
+                    .value
+            return assertInstanceOf<Refinement.Refined<ManagedHeadlessLaunch>>(
+                    ManagedHeadlessLaunch.prepare(
+                        installation,
+                        "/usr/bin:/bin",
+                        HostIdleShutdown.Disabled,
+                        HostHeapPolicy.Inherit,
+                    )
+                )
+                .value
+                .environment["GRADLE_RO_DEP_CACHE"]
+        }
+        val record = fixture.state.resolve("gradle-home.json")
+        Files.writeString(record, Json.encodeToString(ManagedHeadlessGradleHome(gradle.toString(), true)))
+        assertEquals(null, launchCache())
+        Files.createDirectories(cache.resolve("modules-2"))
+        assertEquals(cache.toString(), launchCache())
+        Files.writeString(record, Json.encodeToString(ManagedHeadlessGradleHome(gradle.toString())))
+        assertEquals(null, launchCache())
+    }
+
+    @Test
     fun `private state admits exact assembly and rejects borrowed HOME`(@TempDir directory: Path) {
         val fixture = fixture(directory)
         val admitted =

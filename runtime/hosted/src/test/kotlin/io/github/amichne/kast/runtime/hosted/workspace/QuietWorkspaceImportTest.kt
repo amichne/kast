@@ -58,7 +58,7 @@ class QuietWorkspaceImportTest {
             } as Project
         val completion = CompletableFuture<Void>()
         assertEquals(
-            "-Dorg.gradle.isolated-projects=false",
+            "-Dorg.gradle.isolated-projects=false -Didea.gradle.download.sources.force=false",
             quietWorkspaceImport(project, completion, managedHeadless = true).build().arguments,
         )
         assertEquals(null, quietWorkspaceImport(project, completion, managedHeadless = false).build().arguments)

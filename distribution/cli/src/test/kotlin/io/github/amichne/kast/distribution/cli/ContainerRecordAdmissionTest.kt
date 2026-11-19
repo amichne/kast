@@ -177,7 +177,7 @@ class ContainerRecordAdmissionTest {
         val record =
             containerJson.parseToJsonElement(Files.readString(container.directory.resolve("container.json"))).jsonObject
         assertEquals(setOf("id", "name", "workspace", "gradleHome", "schemaVersion", "dependencySharing"), record.keys)
-        assertEquals("PRIVATE", record.getValue("dependencySharing").jsonPrimitive.content)
+        assertEquals("SHARED", record.getValue("dependencySharing").jsonPrimitive.content)
         assertEquals("2", record.getValue("schemaVersion").jsonPrimitive.content)
         val generation = container.directory.resolve("generation.json")
         assertTrue(Files.isRegularFile(generation))
@@ -221,13 +221,13 @@ class ContainerRecordAdmissionTest {
                 (ContainerPlatform.current() as Refinement.Refined).value,
             )
         val workspace = Files.createDirectory(temporary.resolve("workspace")).toRealPath()
-        val container =
-            (store.create(
-                    ContainerCommand.Create("legacy", null, null, false),
-                    workspace,
-                    containerRuntimeFixture(store),
-                ) as Refinement.Refined)
-                .value
+        val creation =
+            store.admitCreation(
+                ContainerCommand.Create("legacy", null, null, false),
+                workspace,
+                io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing.PRIVATE,
+            ) as Refinement.Refined
+        val container = (store.create(creation.value, containerRuntimeFixture(store)) as Refinement.Refined).value
         val record = container.directory.resolve("container.json")
         val legacy =
             LegacyContainerRecord(

@@ -63,7 +63,7 @@ Keep the result and its recovery code. See [update results](/reference/managemen
 The query output names the failed preparation stage.
 
 - **Trust:** only an explicit request for the exact workspace root grants build trust. Session hooks and status do not.
-- **Gradle import:** fix the build or credentials in that workspace. Kast uses a private Gradle home unless configuration selects an external one.
+- **Gradle import:** fix the build or credentials in that workspace. For new workspaces, Kast uses its shared Gradle home unless you select another home or the `PRIVATE` policy.
 - **Host restart:** use `kast stop --json` in the workspace, then repeat the useful query. No desktop IDEA window is required.
 - **Indexing:** wait, then ask again.
 

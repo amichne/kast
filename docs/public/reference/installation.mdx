@@ -94,7 +94,7 @@ The purge runs only after the new product is downloaded and verified. It then ta
 3. It deletes old runtimes, workspace containers, the reset lock, and socket roots under `/tmp`. It also deletes `kast-ide-hosted` copies in desktop JetBrains profiles.
 
 Unsaved IDE work can be lost, so save it first.
-The first semantic request afterward imports the workspace again, including a fresh private Gradle home, which can take several minutes.
+The first semantic request afterward imports the workspace again, which can take several minutes.
 Agent registrations are left unchanged because the new product recreates the launcher paths they use.
 Developer `0.0.N` builds and unrecognized files reject without changes.
 
@@ -163,15 +163,15 @@ A sibling worktree has a separate root and trust record. Discovery and session h
 
 ## Private workspace state
 
-Each workspace has a private `HOME`, IDE profile, and default Gradle home.
+Each workspace has a private `HOME` and IDE profile.
 This is process and profile separation, not an OS sandbox. Build code runs with your user permissions.
 
 Saved installation or workspace settings can select an external Gradle home through `GRADLE_USER_HOME`.
 Inherited credentials remain available to the build. Treat an external Gradle home as trusted input: it can contain credentials, properties, and init scripts.
 
-### Optional dependency sharing and index seeding
+### Dependency sharing and index seeding
 
-`KAST_WORKSPACE_DEPENDENCY_SHARING` accepts `PRIVATE` or `SHARED`. New workspaces default to `PRIVATE`.
+`KAST_WORKSPACE_DEPENDENCY_SHARING` accepts `PRIVATE` or `SHARED`. New workspaces default to `SHARED`.
 If a request omits the setting, Kast reuses the recorded policy for an existing workspace.
 An explicit setting must match that policy. A mismatch returns `CONFIGURATION_CONFLICT` before the semantic query.
 The response includes the recorded policy, the requested value, and its source.
@@ -185,8 +185,15 @@ Upgrades, generation rebuilds, and repair preserve the recorded Gradle home.
 | `SHARED` | Unset | Kast-owned `kast-workspaces/shared/gradle`. | Attempted. |
 | `SHARED` | Set | The selected canonical directory. | Attempted. |
 
-`SHARED` does not select your `~/.gradle` unless you explicitly choose it through `GRADLE_USER_HOME`.
-Each Host retains its private HOME and IDE profile. Dependency sharing does not share live index storage.
+The shared Gradle home keeps wrapper distributions, dependencies, and build cache entries across workspaces.
+On creation, Kast looks for a populated `caches/modules-2` in its shared Gradle home, then in your `~/.gradle`.
+When Kast can lock the source cache, it copies the module cache once. It excludes lock files and `gc.properties`.
+Gradle reads the copy through `GRADLE_RO_DEP_CACHE` and writes misses to the shared Gradle home.
+If both caches are empty or busy, Gradle uses the writable cache. A later workspace creation can supply the copy.
+An explicit `GRADLE_USER_HOME` selects that directory for writes. Kast creates the read-only copy only for its own shared Gradle home.
+
+Managed Gradle imports skip dependency source downloads. For a new project, the Host defers the scan queue until the Gradle model settles.
+Each Host keeps its own live IDE indexes.
 
 Index seeding clones an IDE system directory from a stopped, compatible workspace into a new container with copy-on-write storage.
 The donor can belong to another repository. Its runtime archive, platform, and canonical Gradle home must match.

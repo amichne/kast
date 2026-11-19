@@ -33,6 +33,7 @@ private constructor(
     val plugins: Path,
     val assembly: ManagedHeadlessAssemblyRecord,
     val gradleHome: Path,
+    internal val dependencyCacheEnvironment: Map<String, String>,
 ) {
     val config: Path
         get() = plugins.parent
@@ -90,22 +91,36 @@ private constructor(
                     is Refinement.Rejected -> return selected
                     is Refinement.Refined -> selected.value
                 }
-            return Refinement.Refined(ManagedHeadlessInstallation(launch, state, userHome, plugins, record, gradleHome))
+            return Refinement.Refined(
+                ManagedHeadlessInstallation(
+                    launch,
+                    state,
+                    userHome,
+                    plugins,
+                    record,
+                    Path.of(gradleHome.path),
+                    gradleHome.cacheEnvironment(),
+                )
+            )
         }
 
-        private fun readGradleHome(state: Path, userHome: Path): Refinement<Path, ManagedHeadlessInstallationFailure> {
+        private fun readGradleHome(
+            state: Path,
+            userHome: Path,
+        ): Refinement<ManagedHeadlessGradleHome, ManagedHeadlessInstallationFailure> {
             val path = state.resolve("gradle-home.json")
             if (Files.notExists(path, java.nio.file.LinkOption.NOFOLLOW_LINKS))
-                return Refinement.Refined(userHome.resolve(".gradle"))
+                return Refinement.Refined(ManagedHeadlessGradleHome(userHome.resolve(".gradle").toString()))
             if (path.toRealPath() != path || !Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS))
                 return Refinement.Rejected(ManagedHeadlessInstallationFailure.INVALID_PATH)
             val bytes = Files.newInputStream(path).use { it.readNBytes(MAXIMUM_RECORD_BYTES + 1) }
             if (bytes.size > MAXIMUM_RECORD_BYTES)
                 return Refinement.Rejected(ManagedHeadlessInstallationFailure.INVALID_ASSEMBLY)
-            val gradle = Path.of(Json.decodeFromString<ManagedHeadlessGradleHome>(bytes.decodeToString()).path)
+            val record = Json.decodeFromString<ManagedHeadlessGradleHome>(bytes.decodeToString())
+            val gradle = Path.of(record.path)
             if (!gradle.isAbsolute || gradle.normalize() != gradle)
                 return Refinement.Rejected(ManagedHeadlessInstallationFailure.INVALID_PATH)
-            return if (gradle.toRealPath() == gradle && Files.isDirectory(gradle)) Refinement.Refined(gradle)
+            return if (gradle.toRealPath() == gradle && Files.isDirectory(gradle)) Refinement.Refined(record)
             else Refinement.Rejected(ManagedHeadlessInstallationFailure.INVALID_PATH)
         }
 
@@ -160,4 +175,13 @@ private constructor(
             else Refinement.Rejected(ManagedHeadlessInstallationFailure.BOOTSTRAP_CHANGED)
         }
     }
+}
+
+private fun ManagedHeadlessGradleHome.cacheEnvironment(): Map<String, String> {
+    if (!sharedDependencies) return emptyMap()
+    val cache = Path.of(path).resolve(ManagedHeadlessGradleHome.READ_ONLY_DIRECTORY)
+    val modules = cache.resolve("modules-2")
+    return if (Files.isDirectory(modules) && modules.toRealPath() == modules)
+        mapOf("GRADLE_RO_DEP_CACHE" to cache.toString())
+    else emptyMap()
 }

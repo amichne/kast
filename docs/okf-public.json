@@ -2919,7 +2919,7 @@
       "content": [
         {
           "path": "docs/public/glossary.mdx",
-          "sha256": "7a61d230fe098bfa64ae499fcc20aa3b8bbc200ab162bc7f675a71ff1e935b00"
+          "sha256": "68e2cd8aa0754189de63772e82ed715ef558be73c11854836b3e73b4e009b035"
         }
       ],
       "claims": [
@@ -6327,7 +6327,7 @@
       "content": [
         {
           "path": "docs/public/reference/installation.mdx",
-          "sha256": "0b9128898d3dd7c45bf2cd3969aa4ed13e35ce67d2f876609e893c02d55ed8c1"
+          "sha256": "5d263a925bc6963366e7f5347ef46cafc3b6fc5868f825fdfe532b98a847d7b8"
         }
       ],
       "claims": [
@@ -6956,7 +6956,7 @@
       "content": [
         {
           "path": "docs/public/reference/lifecycles.mdx",
-          "sha256": "33a256a55ff065cca65543d9430fb3218ada3c98b330457cb192e54743ba38f2"
+          "sha256": "c15ad3ba689f6256b7f20a6f432fb97a4fb604b339e7abe281d56cda04a5136d"
         },
         {
           "path": "docs/public/snippets/diagrams/request-lifecycle.jsx",
@@ -15559,7 +15559,7 @@
         },
         {
           "path": "docs/public/troubleshooting.mdx",
-          "sha256": "822d7ee61c17726a0b169d8876f5060f437dc049a57b6839de766306ee7f6427"
+          "sha256": "06b863d32733266b0592f432879d122b4adb111d980d058feb3841a5d2ad4d98"
         }
       ],
       "claims": [

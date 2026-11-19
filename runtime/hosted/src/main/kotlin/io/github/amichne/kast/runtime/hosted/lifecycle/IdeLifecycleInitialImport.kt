@@ -3,6 +3,9 @@ package io.github.amichne.kast.runtime.hosted.lifecycle
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
+import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
+import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure
@@ -57,3 +60,15 @@ internal suspend fun requestInitialWorkspaceImport(
         }
     }
 }
+
+internal suspend fun openedAfterImport(
+    imported: IdeLifecycleResult,
+    target: IdeProjectTarget,
+    awaitReady: suspend () -> IdeLifecycleResult,
+): IdeLifecycleResult =
+    when (imported) {
+        is IdeLifecycleResult.Synced -> IdeLifecycleResult.Opened(target)
+        is IdeLifecycleResult.Blocked ->
+            if (imported.reason == IdeLifecycleFailure.MODEL_RELOAD_REQUIRED) awaitReady() else imported
+        else -> imported
+    }
