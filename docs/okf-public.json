@@ -5729,7 +5729,7 @@
           "sha256": "a93337d71148df6e05544487d9797baae67b72a764e4930f6c8c6ae988e17f1d"
         },
         {
-          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt",
+          "path": "cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt",
           "sha256": "6ccb75e39b897cea90f090e5905fd44d52e40c4818e7df532b1fc66372284413"
         },
         {

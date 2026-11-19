@@ -23,6 +23,7 @@ import io.github.amichne.kast.distribution.managed.SelectedIdeLayout
 import io.github.amichne.kast.distribution.managed.admitInstallationRecovery
 import io.github.amichne.kast.distribution.managed.copyInstallationSnapshot
 import io.github.amichne.kast.distribution.managed.endpoint.InstalledUpstreamDirectories
+import io.github.amichne.kast.distribution.managed.endpoint.MAXIMUM_UNIX_SOCKET_PATH_BYTES
 import io.github.amichne.kast.distribution.managed.prepareInstallationRecovery
 import io.github.amichne.kast.distribution.managed.writeInstallationReplacementReceipt
 import io.github.amichne.kast.kernel.Refinement
@@ -43,7 +44,6 @@ import java.security.MessageDigest
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-private const val MAXIMUM_UNIX_SOCKET_PATH_BYTES = 104
 private const val SOCKET_NAME_DIGEST_CHARACTERS = 43
 
 /** Installs a control payload; host installation belongs to its independent installer. */
@@ -541,7 +541,7 @@ internal object InstallationWorkflow {
     private fun transportExternalAnchors(plan: VerifiedInstallationPlan): List<ExternalAnchor> = buildList {
         val run = plan.targetRoot.resolve("state/run")
         if (
-            run.resolve("kast-${"0".repeat(SOCKET_NAME_DIGEST_CHARACTERS)}.sock").toString().toByteArray().size >=
+            run.resolve("kast-${"0".repeat(SOCKET_NAME_DIGEST_CHARACTERS)}.sock").toString().toByteArray().size >
                 MAXIMUM_UNIX_SOCKET_PATH_BYTES
         ) {
             val alias = Path.of("/tmp/kast-uds-${sha256(run.toString().toByteArray()).value.take(32)}")

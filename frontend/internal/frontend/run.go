@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -29,23 +28,31 @@ type Process struct {
 	Stderr      io.Writer
 	// Signals delivers SIGINT or SIGTERM; the first terminal event owns the status.
 	Signals <-chan os.Signal
+	// Exec replaces this process with the JVM entry; it returns only on failure.
+	Exec func(path string, argv []string, environment []string) error
 }
 
-// Run executes one invocation and returns the process status.
+// Run executes one invocation and returns the process status. The coordinator serves public queries; every other
+// invocation replaces this process with the installation's JVM entry.
 func Run(process Process) int {
-	root, err := locateRoot(process.Executable)
+	environment := environmentMap(process.Environment)
+	installation, err := locateInstallation(process.Executable, environment)
 	if err != nil {
-		diagnose(process.Stderr, "the Kast installation root is unavailable. Reinstall Kast.")
+		diagnose(process.Stderr, "the Kast installation is unavailable. Reinstall Kast.")
 		return bootstrapStatus
 	}
-	catalog, err := LoadCatalog(root)
+	catalog, err := LoadCatalog(installation)
 	if err != nil {
 		var failure *CatalogError
 		errors.As(err, &failure)
 		diagnose(process.Stderr, failure.Error())
 		return failure.Status()
 	}
-	environment := environmentMap(process.Environment)
+	parsed := parseInvocation(process.Arguments)
+	if !catalog.servedByCoordinator(parsed) {
+		return execute(catalog, installation, parsed, process)
+	}
+	process.Arguments = parsed.arguments
 	if text, ok := catalog.Help(process.Arguments, environment); ok {
 		return deliver(process.Stdout, text, catalog.status("COMPLETE"), catalog)
 	}
@@ -66,6 +73,20 @@ func Run(process Process) int {
 		}
 		return owner.finish(status)
 	}
+}
+
+// execute replaces this process with the JVM entry. The process identity, stdio and environment pass through, so
+// installation lifecycle owners observe the JVM exactly as they would a directly launched entry.
+func execute(catalog *Catalog, installation string, parsed invocation, process Process) int {
+	javaHome, err := catalog.runtimeHome(installation)
+	if err != nil {
+		diagnose(process.Stderr, "the Kast runtime is unavailable. Reinstall Kast.")
+		return catalog.status("BOOTSTRAP")
+	}
+	command := catalog.jvmCommand(installation, javaHome, parsed)
+	err = process.Exec(command[0], command, process.Environment)
+	diagnose(process.Stderr, "the Kast runtime could not start: "+err.Error())
+	return catalog.status("BOOTSTRAP")
 }
 
 // complete runs one invocation through delivery and records its status unless a signal already owns the result.
@@ -94,14 +115,14 @@ func complete(ctx context.Context, catalog *Catalog, process Process, environmen
 
 // invoke connects to the published coordinator, starting or joining it once when no coordinator is reachable.
 func invoke(ctx context.Context, catalog *Catalog, request invocationRequest, process Process) (*Completed, bool, error) {
-	conn, err := dial(ctx, catalog.socket, catalog.handshake)
+	conn, err := dial(ctx, catalog.socket, catalog.socketAlias, catalog.handshake)
 	bootstrapped := false
 	if isUnreachable(err) {
 		if startErr := startCoordinator(ctx, catalog, process); startErr != nil {
 			return nil, true, startErr
 		}
 		bootstrapped = true
-		conn, err = dial(ctx, catalog.socket, catalog.handshake)
+		conn, err = dial(ctx, catalog.socket, catalog.socketAlias, catalog.handshake)
 	}
 	if err != nil {
 		if bootstrapped {
@@ -170,19 +191,6 @@ func deliver(stdout io.Writer, text string, status int, catalog *Catalog) int {
 		return catalog.status("IO")
 	}
 	return status
-}
-
-// locateRoot resolves bin/kast to the coordinator root.
-func locateRoot(executable string) (string, error) {
-	resolved, err := filepath.EvalSymlinks(executable)
-	if err != nil {
-		return "", err
-	}
-	bin := filepath.Dir(resolved)
-	if filepath.Base(bin) != "bin" {
-		return "", errors.New("frontend is not beneath bin")
-	}
-	return filepath.Dir(bin), nil
 }
 
 func environmentMap(environment []string) map[string]string {

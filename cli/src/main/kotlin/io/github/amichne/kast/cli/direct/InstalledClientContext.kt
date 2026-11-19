@@ -52,11 +52,7 @@ private constructor(
         fun current(environment: Map<String, String>): Refinement<InstalledClientBinding, ClientInstallationFailure> =
             try {
                 val payload =
-                    if (System.getProperty("org.graalvm.nativeimage.imagecode") == "runtime") {
-                        ProcessHandle.current().info().command().map(Path::of).orElse(null)
-                    } else {
-                        InstalledClientContext::class.java.protectionDomain.codeSource?.location?.toURI()?.let(Path::of)
-                    }
+                    InstalledClientContext::class.java.protectionDomain.codeSource?.location?.toURI()?.let(Path::of)
                 if (payload == null) Refinement.Rejected(ClientInstallationFailure.PAYLOAD)
                 else locate(payload, environment)
             } catch (_: URISyntaxException) {

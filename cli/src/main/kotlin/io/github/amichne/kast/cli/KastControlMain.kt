@@ -14,8 +14,11 @@ import io.github.amichne.kast.distribution.contract.admitNativeControlInvocation
 import io.github.amichne.kast.kernel.Refinement
 import kotlin.system.exitProcess
 
-/** One image owns the installed process entries. Each entry keeps its existing command and lifecycle owner. */
-object KastNativeMain {
+/**
+ * The single JVM entry behind the installed Control executable. Each entry keeps its existing command and lifecycle
+ * owner; the executable selects the entry and runs this class from `<installation>/lib`.
+ */
+object KastControlMain {
     @JvmStatic
     fun main(arguments: Array<String>) {
         val started = System.nanoTime()
@@ -54,7 +57,6 @@ private fun coordinatedQueryInstallation(
     args: List<String>,
     environment: Map<String, String>,
 ): java.nio.file.Path? {
-    if (System.getProperty("org.graalvm.nativeimage.imagecode") != "runtime") return null
     val namespace = args.firstOrNull()
     if (namespace != "workspace" && !io.github.amichne.kast.distribution.cli.isPublicQueryNamespace(namespace))
         return null

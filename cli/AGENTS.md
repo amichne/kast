@@ -27,7 +27,7 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHook.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/PublicReplayAdapter.kt
   - path: cli/build.gradle.kts
@@ -111,9 +111,9 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - The test-only adapter owns rendering and public admission. It composes no Host, MCP connection, or semantic executor.
 - The production renderer owns TOON bytes. The test-only `Ktoon` decoder supplies an independent equality oracle.
 - Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task owns the native launcher, native query child, and local-peer composition.
-- `KastNativeMain` composes the existing command owners into one native Control executable.
+- `KastControlMain` composes the existing command owners into one native Control executable.
 - `distribution/cli` owns management commands. `NativeControlInvocation` owns private mode admission.
-- `assembleNativeControlLayout` supplies compatibility launchers and the `native-control-v1` marker.
+- `assembleNativeControlLayout` supplies the launchers and the `jvm-control-v1` layout marker.
 - The Control archive contains no `lib/` directory, JARs, or JVM bytecode.
 - Native query compilation: `mise exec -- ./gradlew :cli:nativeCompile`. The executable accepts `--help`.
 - `PublicHook.kt` owns `kast --internal-entrypoint=query hook session-start`. It admits host events for passive context without trust, workspace writes, or Host startup.

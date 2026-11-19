@@ -26,7 +26,7 @@ suspend fun retireFencedSemanticCoordinator(installation: Path, home: Path): Sem
     if (InstallationLifecycleFence.observe(installation) != InstallationLifecycleStartAdmission.TRANSITION_IN_PROGRESS)
         return SemanticCoordinatorRetirement.UNFENCED
     val readiness = InstalledSemanticCoordinator.readinessPath(installation, home)
-    val executable = installation.resolve(MANAGEMENT_EXECUTABLE)
+    val executable = controlRuntimeExecutable()
     val retired =
         when (val state = SemanticPublicationState.inspectOwned(installation, readiness, executable)) {
             SemanticPublicationState.Missing -> SemanticCoordinatorRetirement.ABSENT

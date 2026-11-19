@@ -81,7 +81,7 @@ This guide owns repository rules and routes source investigation.
 - Release assembly: `./gradlew assembleRelease`.
 - Product installation: use the [managed installer](docs/public/reference/installation.mdx). Desktop IDEA, user Python, and uv are not product prerequisites.
 - Contributor assembly and native acceptance use their own toolchains. Do not present source checks as native qualification or publication.
-- Unified native entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt`.
+- Control executable: `frontend/cmd/kast/main.go`; its single JVM entry is `cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt`.
 - Management commands: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
 - Public semantic entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.
 - Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task uses a real native query child and local peer.

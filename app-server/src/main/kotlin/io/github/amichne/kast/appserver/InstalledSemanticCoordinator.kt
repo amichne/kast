@@ -29,7 +29,7 @@ private constructor(
             installation: Path,
             readiness: Path,
         ): Refinement<InstalledSemanticCoordinator, WorkerControlFailure> =
-            observe(installation, readiness, installation.resolve(MANAGEMENT_EXECUTABLE))
+            observe(installation, readiness, controlRuntimeExecutable())
 
         /** Passive observation: an absent publication is [WorkerControlFailure.UNAVAILABLE]; nothing starts. */
         internal suspend fun observe(
@@ -61,20 +61,10 @@ private constructor(
             connect(
                 installation,
                 readinessPath(installation, home),
-                installation.resolve(MANAGEMENT_EXECUTABLE),
+                controlRuntimeExecutable(),
                 submit,
                 BrokerOperationalLimits.serviceStartup.value,
             ) {
-                delay(READINESS_POLL_MILLIS)
-            }
-
-        internal suspend fun connect(
-            installation: Path,
-            readiness: Path,
-            executable: Path,
-            submit: suspend () -> Refinement<Unit, PersistentBrokerServiceFailure>,
-        ): Refinement<InstalledSemanticCoordinator, SemanticCoordinatorStartupFailure> =
-            connect(installation, readiness, executable, submit, BrokerOperationalLimits.serviceStartup.value) {
                 delay(READINESS_POLL_MILLIS)
             }
 

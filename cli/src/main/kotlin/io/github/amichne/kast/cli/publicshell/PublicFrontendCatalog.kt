@@ -2,8 +2,13 @@ package io.github.amichne.kast.cli.publicshell
 
 import io.github.amichne.kast.appserver.BrokerOperationalLimits
 import io.github.amichne.kast.appserver.PublicInvocationProtocol
+import io.github.amichne.kast.cli.KastControlMain
+import io.github.amichne.kast.distribution.cli.controlJavaHomes
+import io.github.amichne.kast.distribution.cli.publicQueryNamespaceNames
 import io.github.amichne.kast.distribution.contract.configuration.CliOutputFormat
 import io.github.amichne.kast.distribution.contract.configuration.selectCliOutputFormat
+import io.github.amichne.kast.distribution.managed.endpoint.InstalledEndpointAliases
+import io.github.amichne.kast.distribution.managed.endpoint.MAXIMUM_UNIX_SOCKET_PATH_BYTES
 import io.github.amichne.kast.kernel.Refinement
 import java.io.InputStream
 import java.nio.file.Path
@@ -13,24 +18,42 @@ import kotlinx.serialization.json.Json
 /**
  * Build-time projection of the metadata a thin frontend reads locally, beside the installed coordinator.
  *
- * Help documents are produced by the public shell's own preparation and presentation, so the frontend prints the bytes
- * the coordinator would print, without a running server. Every other argument vector is forwarded unchanged.
+ * Help documents are produced by the public shell's own preparation and presentation, so the Control executable prints
+ * the bytes the coordinator would print, without a running server. It forwards every other public query vector
+ * unchanged, and runs the JVM entry for everything else.
  */
 object PublicFrontendCatalog {
+    /** [arguments] are the installation's JVM class path entries in load order, relative to the installation. */
     @JvmStatic
     fun main(arguments: Array<String>) {
-        check(arguments.isEmpty())
-        print(frontendCatalogJson.encodeToString(PublicFrontendCatalogDocument.serializer(), document()))
+        check(arguments.isNotEmpty())
+        print(
+            frontendCatalogJson.encodeToString(PublicFrontendCatalogDocument.serializer(), document(arguments.toList()))
+        )
     }
 
-    internal fun document(): PublicFrontendCatalogDocument =
+    internal fun document(classPath: List<String>): PublicFrontendCatalogDocument =
         PublicFrontendCatalogDocument(
             schemaVersion = FRONTEND_CATALOG_SCHEMA_VERSION,
             invocationProtocol = PublicInvocationProtocol.version,
             socket = "state/run/c.sock",
-            bootstrap = listOf("libexec/kast-coordinator", "ensure"),
+            socketAlias =
+                PublicFrontendSocketAlias(
+                    MAXIMUM_UNIX_SOCKET_PATH_BYTES,
+                    InstalledEndpointAliases.DIRECTORY,
+                    InstalledEndpointAliases.PREFIX,
+                    InstalledEndpointAliases.DIGEST_CHARACTERS,
+                ),
+            bootstrap = listOf(MANAGEMENT_PAYLOAD, "--internal-entrypoint=service", "semantic-ensure"),
             handshakeMilliseconds = BrokerOperationalLimits.workerControlHandshake.value,
             outputSetting = PublicFrontendOutputSetting(PUBLIC_OUTPUT_SETTING, admittedOutputSettings()),
+            publicNamespaces = publicQueryNamespaceNames(),
+            control =
+                PublicFrontendControl(
+                    KastControlMain::class.java.name,
+                    classPath.onEach { check(it.startsWith("lib/") && it.endsWith(".jar")) },
+                    controlJavaHomes(),
+                ),
             exits = PublicShellExit.entries.associate { it.name to it.code },
             help = helpCandidates().mapNotNull(::helpEntry),
         )
@@ -43,11 +66,15 @@ internal data class PublicFrontendCatalogDocument(
     val invocationProtocol: Int,
     /** The coordinator socket, relative to the coordinator root. */
     val socket: String,
+    val socketAlias: PublicFrontendSocketAlias,
     /** Starts or joins the coordinator; the first element is relative to the coordinator root. */
     val bootstrap: List<String>,
     /** Bounds the connection handshake. Expiry precedes the request, so the coordinator counts as unreachable. */
     val handshakeMilliseconds: Long,
     val outputSetting: PublicFrontendOutputSetting,
+    /** Namespaces the coordinator serves; every other invocation runs the JVM entry. */
+    val publicNamespaces: List<String>,
+    val control: PublicFrontendControl,
     /** The published shell statuses, including those the frontend emits before any coordinator reply. */
     val exits: Map<String, Int>,
     val help: List<PublicFrontendHelp>,
@@ -58,6 +85,29 @@ internal data class PublicFrontendCatalogDocument(
  * passes; any other value is forwarded, so the coordinator presents the rejection.
  */
 @Serializable internal data class PublicFrontendOutputSetting(val variable: String, val admittedValues: List<String>)
+
+/**
+ * The single JVM entry behind the Control executable. [classPath] is relative to the installation and ordered;
+ * [javaHomes] maps each platform to the Host Java home relative to the runtime root.
+ */
+@Serializable
+internal data class PublicFrontendControl(
+    val mainClass: String,
+    val classPath: List<String>,
+    val javaHomes: Map<String, String>,
+)
+
+/**
+ * A socket path longer than [maximumPathBytes] is reached through the coordinator's alias: a link named [prefix] plus
+ * the first [digestCharacters] hexadecimal SHA-256 characters of the socket directory, inside [directory].
+ */
+@Serializable
+internal data class PublicFrontendSocketAlias(
+    val maximumPathBytes: Int,
+    val directory: String,
+    val prefix: String,
+    val digestCharacters: Int,
+)
 
 /** An exact argument vector and the document the public shell presents for it, once the output setting is admitted. */
 @Serializable internal data class PublicFrontendHelp(val arguments: List<String>, val text: String)

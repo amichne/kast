@@ -90,6 +90,9 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
                 }
             if (isNativeControlProcessExecutable(command) && command.startsWith(root))
                 return nativeSelected(snapshot, root)
+            controlEntry(command, snapshot.arguments, root)?.let {
+                return entrySelected(it, snapshot, root)
+            }
             val direct = directSelected(command, root) || shellSelected(command, snapshot.arguments, root)
             val java = jvmSelected(command, snapshot.arguments, root)
             val codex = ResetCodexListener.selects(command, snapshot.arguments, root)
@@ -99,17 +102,36 @@ internal class ResetScopedProcess private constructor(val snapshot: LifecyclePro
             }
         }
 
-        private fun jvmSelected(command: Path, arguments: List<String>, root: Path): Boolean {
-            val index = arguments.indexOfFirst { it == "-cp" || it == "-classpath" }
-            return command.fileName.toString() == "java" &&
-                index >= 0 &&
-                index + 2 < arguments.size &&
-                arguments[index + 2] in mains &&
-                classpathSelected(arguments[index + 1], root)
+        private fun jvmSelected(command: Path, arguments: List<String>, root: Path): Boolean =
+            mainIndex(command, arguments, root)?.let { arguments[it] in mains } ?: false
+
+        /** The entry arguments of a JVM running the single Control entry from this installation's class path. */
+        private fun controlEntry(command: Path, arguments: List<String>, root: Path): List<String>? =
+            mainIndex(command, arguments, root)
+                ?.takeIf { arguments[it] == "io.github.amichne.kast.cli.KastControlMain" }
+                ?.let { arguments.drop(it + 1) }
+
+        /** The main class position of a `java` process whose class path lies beneath [root]. */
+        private fun mainIndex(command: Path, arguments: List<String>, root: Path): Int? {
+            val classpath = arguments.indexOfFirst { it == "-cp" || it == "-classpath" }
+            val main = classpath + 2
+            val selected =
+                command.fileName.toString() == "java" &&
+                    classpath >= 0 &&
+                    main < arguments.size &&
+                    classpathSelected(arguments[classpath + 1], root)
+            return main.takeIf { selected }
         }
 
         private fun nativeSelected(snapshot: LifecycleProcessSnapshot, root: Path): ResetProcessSelection =
-            when (val admitted = admitNativeControlProcessInvocation(snapshot.arguments)) {
+            entrySelected(snapshot.arguments, snapshot, root)
+
+        private fun entrySelected(
+            arguments: List<String>,
+            snapshot: LifecycleProcessSnapshot,
+            root: Path,
+        ): ResetProcessSelection =
+            when (val admitted = admitNativeControlProcessInvocation(arguments)) {
                 is Refinement.Rejected -> ResetProcessSelection.Rejected
                 is Refinement.Refined ->
                     when (admitted.value.entry) {

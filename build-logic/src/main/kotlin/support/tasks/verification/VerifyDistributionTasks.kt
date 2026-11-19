@@ -86,7 +86,7 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         val archive = controlArchive.get().asFile
         val executable = root.resolve("share/kast/libexec/kast-management")
         check(Files.mismatch(executable, qualifiedControlExecutable.get().asFile.toPath()) == -1L) {
-            "control payload differs from its native producer"
+            "control payload differs from its Go producer"
         }
         val header = Files.newInputStream(executable).use { it.readNBytes(20) }
         check(nativeQueryHeaderMatches(header, targetPlatform.get())) {
@@ -101,9 +101,10 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
         check(payloadEntries.size <= maximumEntries.get()) {
             "control product contains ${payloadEntries.size} entries; limit is ${maximumEntries.get()}"
         }
-        check(entries.none { entry ->
-            entry == "lib" || entry.startsWith("lib/") || entry.endsWith(".jar") || entry.endsWith(".class")
-        }) { "control product contains JVM libraries or bytecode" }
+        // The Control executable runs one JVM entry from lib; no bytecode lives anywhere else.
+        check(entries.none { entry -> entry.endsWith(".class") || (entry.endsWith(".jar") && !entry.startsWith("lib/")) }) {
+            "control product contains JVM bytecode outside lib"
+        }
         val retiredPayloadRoots = setOf("share/kast/container", "share/kast/task-vm", "share/kast/knowledge")
         check(entries.none { entry -> retiredPayloadRoots.any { entry == it || entry.startsWith("$it/") } }) {
             "control product contains a retired payload"
@@ -167,8 +168,9 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/libexec/kast-daemon",
             "share/kast/libexec/kast-service",
             "share/kast/libexec/kast-management",
+            "share/kast/frontend.json",
             "share/kast/install.sh",
-            "share/kast/native-control-v1",
+            "share/kast/jvm-control-v1",
             "share/kast/operation-registry.json",
             "share/kast/provider-catalog.json",
             "share/kast/configuration-schema.json",
@@ -176,9 +178,12 @@ abstract class VerifyControlDistributionTask : DefaultTask() {
             "share/kast/ide-host.json",
             "share/kast/licenses/LICENSE",
         )
-        check((required + guidanceDistributionEntries()).all(entries::contains)) { "control product is missing required entries" }
-        check(Files.readString(root.resolve("share/kast/native-control-v1")) == "1\n") {
-            "control native layout marker is unsupported"
+        val libraries = entries.any { entry -> entry.startsWith("lib/") && entry.endsWith(".jar") }
+        check(libraries && (required + guidanceDistributionEntries()).all(entries::contains)) {
+            "control product is missing required entries"
+        }
+        check(Files.readString(root.resolve("share/kast/jvm-control-v1")) == "1\n") {
+            "control JVM layout marker is unsupported"
         }
         val defaultPlugin = "share/kast/agent-tools/plugins/kast/"
         val defaultEffects = listOf(".mcp.json", "mcp.json", "skills/kast/scripts")

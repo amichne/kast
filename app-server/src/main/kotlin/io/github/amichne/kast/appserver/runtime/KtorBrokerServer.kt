@@ -8,6 +8,7 @@ import io.github.amichne.kast.appserver.core.BrokerInvocationActivitySink
 import io.github.amichne.kast.appserver.protocol.ThreadCatalogStore
 import io.github.amichne.kast.appserver.protocol.codex.CodexProtocolContracts
 import io.github.amichne.kast.appserver.protocol.codex.ProtocolRouting
+import io.github.amichne.kast.distribution.managed.endpoint.MAXIMUM_UNIX_SOCKET_PATH_BYTES
 import io.github.amichne.kast.kernel.Validation
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
@@ -88,7 +89,7 @@ private constructor(
             when {
                 !candidate.isAbsolute -> Validation.rejected(BrokerSocketPathFailure.NOT_ABSOLUTE)
                 candidate.normalize() != candidate -> Validation.rejected(BrokerSocketPathFailure.NOT_NORMALIZED)
-                candidate.toString().toByteArray(StandardCharsets.UTF_8).size >= UNIX_PATH_BYTES ->
+                candidate.toString().toByteArray(StandardCharsets.UTF_8).size > MAXIMUM_UNIX_SOCKET_PATH_BYTES ->
                     Validation.rejected(BrokerSocketPathFailure.TOO_LONG)
                 else -> Validation.validated(BrokerSocketPath(candidate, candidate, BrokerSocketRoute.Canonical))
             }
@@ -156,8 +157,6 @@ private constructor(
                     )
             }
         }
-
-        private const val UNIX_PATH_BYTES = 104
     }
 }
 
