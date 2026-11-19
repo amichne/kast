@@ -13,8 +13,8 @@ Choose the route that matches your change:
 ## Prepare the toolchain
 
 Use Java 25 or newer and the Python version in [`.python-version`](../.python-version).
-The project [mise configuration](../mise.toml) pins GraalVM 25.0.2 and sets
-`JAVA_HOME` and `GRAALVM_HOME` to that installation. With mise shell activation,
+The project [mise configuration](../mise.toml) pins Temurin 25.0.4 and Go 1.27.4 and sets
+`JAVA_HOME` to that JDK. With mise shell activation,
 entering this checkout selects the JVM automatically. For scripts and shells
 without activation, run commands through mise:
 
@@ -24,15 +24,10 @@ mise exec -- ./gradlew :app-server:check
 mise exec -- git push
 ```
 
-Native assembly requires a Java 25 toolchain with GraalVM Native Image. Gradle
-selects that toolchain independently of the shell's Java and provisions it through
-the configured Foojay resolver when no matching local installation is detected.
-Toolchain provisioning requires network access on its first use. For an existing
-local GraalVM that Gradle does not detect, pass its JDK home with
-`-Porg.gradle.java.installations.paths=/absolute/path/to/graalvm`.
-`GRAALVM_HOME` is also registered as a toolchain discovery input. If an older
-local GraalVM rejects the reachability metadata schema, update that installation
-to a current Java 25 patch or supply the newer JDK's path through these inputs.
+The Control executable is a Go binary. `frontend/go.mod` selects its Go release, and
+`:buildControlExecutable` cross-compiles it for the `-PkastControlPlatform` target, so
+any host assembles any target's Control archive. The installed product runs its JVM
+entry on the Host's JetBrains Runtime, not on this build JDK.
 
 Read [AGENTS.md](../AGENTS.md) before making changes. The
 [OpenWiki guide](../openwiki/quickstart.md) maps architecture to source and tests.
@@ -368,7 +363,7 @@ Main CI builds a fresh candidate for every product run; it does not reuse pull-r
 Successful main CI from a push triggers the developer publication workflow automatically.
 A `DOCS_VALIDATED` result leaves the developer product pointer unchanged and publishes no candidate.
 Product publication needs the exact run's `PRODUCT_VALIDATED` record.
-It downloads the retained candidate and runs no Gradle or native-image build.
+It downloads the retained candidate and runs no Gradle build.
 A separate promotion record binds the build commit to the merged commit and successful main run.
 The immutable developer release contains both records.
 If main advances before publication, the publisher retains the existing latest pointer.
@@ -402,15 +397,12 @@ Developer promotion never renames or edits a tested payload.
 
 ### Build evidence and dependency trust
 
-CI pins GraalVM 25.0.2 and retains Gradle task outputs plus the native reachability-metadata repository.
+CI pins Temurin 25.0.4 and retains Gradle task outputs.
 The repository secret `GRADLE_ENCRYPTION_KEY` enables encrypted configuration-cache storage.
 Fork workflows do not receive the key.
-Native-image builds retain structured analysis and resource metrics in `build/reports/native/build-output.json`.
-The process adapter records success, process failure, execution refusal, or missing metrics in `build/reports/ci/build-execution.json`.
-Failed builds cannot claim successful native metrics.
+The process adapter records success, process failure, or execution refusal in `build/reports/ci/build-execution.json`.
 Gradle profiles remain in `build/reports/profile`.
 These reports support comparisons on matched source, toolchain, options, and runner capacity.
-The native-image optimization level remains unchanged.
 
 ```shell
 ./gradlew build

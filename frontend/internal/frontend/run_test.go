@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -86,17 +85,6 @@ func (f *fixture) serve(t *testing.T, script func(context.Context, *websocket.Co
 	})}
 	go server.Serve(listener)
 	t.Cleanup(func() { server.Close() })
-}
-
-// bootstrap installs a start command that records each run and exits with status.
-func (f *fixture) bootstrap(t *testing.T, status int, stderr string) string {
-	t.Helper()
-	marker := filepath.Join(f.root, "bootstrap-runs")
-	script := "#!/bin/sh\necho run >> '" + marker + "'\nprintf '%s' '" + stderr + "' >&2\nexit " + strconv.Itoa(status) + "\n"
-	if err := os.WriteFile(filepath.Join(f.root, "libexec", "kast-coordinator"), []byte(script), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return marker
 }
 
 func send(t *testing.T, ctx context.Context, conn *websocket.Conn, value any) {
@@ -301,14 +289,18 @@ func TestASignalBeforeCompletionOwnsTheStatusAndCancelsTheRequest(t *testing.T) 
 	}
 }
 
-func TestAnUnreachableCoordinatorIsStartedOnceAndItsFailureRelayed(t *testing.T) {
+func TestAnUnreachableCoordinatorLeavesTheInvocationToTheSameJvmEntry(t *testing.T) {
 	f := newFixture(t)
 	touchFrontend(t, f)
-	marker := f.bootstrap(t, 9, "startup-rejected")
-	got := f.run(t, "", nil, "query")
-	runs, _ := os.ReadFile(marker)
-	if got.status != 9 || strings.Count(string(runs), "run") != 1 || !strings.Contains(got.stderr, "startup-rejected") {
-		t.Fatalf("unexpected outcome %+v runs=%q", got, runs)
+	f.receipt(t, "/runtimes/abc")
+	f.run(t, "", nil, "-Duser.home=/home/caller", "query", "--name", "Fixture")
+	if len(f.executed) != 1 || f.connections.Load() != 0 {
+		t.Fatalf("executed=%v connections=%d", f.executed, f.connections.Load())
+	}
+	tail := f.executed[0][len(f.executed[0])-4:]
+	if strings.Join(tail, " ") != "--internal-entrypoint=management query --name Fixture" ||
+		!slices.Contains(f.executed[0], "-Duser.home=/home/caller") {
+		t.Fatalf("the JVM entry did not receive the unchanged invocation: %v", f.executed[0])
 	}
 }
 
@@ -321,11 +313,10 @@ func TestASocketInADirectoryOpenToOthersIsNeverDialed(t *testing.T) {
 	if err := os.Chmod(filepath.Join(f.root, "state", "run"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	marker := f.bootstrap(t, 9, "")
-	got := f.run(t, "", nil, "query")
-	runs, _ := os.ReadFile(marker)
-	if got.status != 9 || f.connections.Load() != 0 || strings.Count(string(runs), "run") != 1 {
-		t.Fatalf("an unprotected socket was trusted: %+v connections=%d", got, f.connections.Load())
+	f.receipt(t, "/runtimes/abc")
+	f.run(t, "", nil, "query")
+	if f.connections.Load() != 0 || len(f.executed) != 1 {
+		t.Fatalf("an unprotected socket was trusted: connections=%d executed=%v", f.connections.Load(), f.executed)
 	}
 }
 
@@ -403,14 +394,13 @@ func TestAnUnansweredHandshakeIsUnreachableWithinTheCatalogBound(t *testing.T) {
 			t.Cleanup(func() { conn.Close() })
 		}
 	}()
-	marker := f.bootstrap(t, 0, "")
+	f.receipt(t, "/runtimes/abc")
 	var stdout, stderr bytes.Buffer
-	status := statusWithin(t, 5*time.Second, func() int {
+	statusWithin(t, 5*time.Second, func() int {
 		return f.runProcess(strings.NewReader(""), &stdout, &stderr, nil, nil, "query")
 	})
-	runs, _ := os.ReadFile(marker)
-	if status != 9 || strings.Count(string(runs), "run") != 1 || stdout.Len() != 0 {
-		t.Fatalf("unexpected outcome %d %q runs=%q", status, stderr.String(), runs)
+	if len(f.executed) != 1 || stdout.Len() != 0 {
+		t.Fatalf("an unanswered handshake did not reach the JVM entry: %q executed=%v", stderr.String(), f.executed)
 	}
 }
 
@@ -442,6 +432,7 @@ func TestEveryEntryOtherThanPublicQueriesReplacesTheProcessWithTheJvmEntry(t *te
 	f.receipt(t, "/runtimes/abc")
 	for _, arguments := range [][]string{
 		{"-Duser.home=/home/caller", "--internal-entrypoint=mcp", "--catalog", "common"},
+		{"-Xmx512m", "-XX:+UseSerialGC", "--internal-entrypoint=jq", "FILTER"},
 		{"install", "--channel", "stable"},
 		{"workspace", "session-start"},
 		{"--internal-entrypoint=query", "hook", "pre-tool"},
@@ -452,11 +443,11 @@ func TestEveryEntryOtherThanPublicQueriesReplacesTheProcessWithTheJvmEntry(t *te
 		}
 	}
 	want := []string{"/runtimes/abc/host/jbr/bin/java", "-Dkast.command=" + filepath.Join(f.root, payloadPath),
-		"-Duser.home=/home/caller", "-cp",
+		"-Duser.home=/home/caller", "-Xmx256m", "-cp",
 		filepath.Join(f.root, "lib/kast-cli.jar") + ":" + filepath.Join(f.root, "lib/kotlin-stdlib.jar"),
 		"io.github.amichne.kast.cli.KastControlMain", "--internal-entrypoint=mcp", "--catalog", "common"}
 	f.executed = nil
-	f.run(t, "", nil, "-Duser.home=/home/caller", "--internal-entrypoint=mcp", "--catalog", "common")
+	f.run(t, "", nil, "-Duser.home=/home/caller", "-Xmx256m", "--internal-entrypoint=mcp", "--catalog", "common")
 	if !slices.Equal(f.executed[0], want) {
 		t.Fatalf("JVM command %v, want %v", f.executed[0], want)
 	}
@@ -525,19 +516,15 @@ func TestALongSocketIsDialedThroughTheCoordinatorsAliasOnly(t *testing.T) {
 	run := filepath.Join(f.root, "state", "run")
 	digest := sha256.Sum256([]byte(run))
 	link := filepath.Join(aliasDirectory, "kast-uds-"+hex.EncodeToString(digest[:])[:32])
-	marker := f.bootstrap(t, 0, "")
-	if got := f.run(t, "", nil, "query"); got.status != 9 || f.connections.Load() != 0 {
-		t.Fatalf("a missing alias was not unreachable: %+v", got)
-	}
-	runs, _ := os.ReadFile(marker)
-	if strings.Count(string(runs), "run") != 1 {
-		t.Fatalf("bootstrap runs %q", runs)
+	f.receipt(t, "/runtimes/abc")
+	if f.run(t, "", nil, "query"); f.connections.Load() != 0 || len(f.executed) != 1 {
+		t.Fatalf("a missing alias was not unreachable: executed=%v", f.executed)
 	}
 	if err := os.Symlink(t.TempDir(), link); err != nil {
 		t.Fatal(err)
 	}
-	if got := f.run(t, "", nil, "query"); got.status != 9 || f.connections.Load() != 0 {
-		t.Fatalf("an alias to another directory was dialed: %+v", got)
+	if f.run(t, "", nil, "query"); f.connections.Load() != 0 || len(f.executed) != 2 {
+		t.Fatalf("an alias to another directory was dialed: executed=%v", f.executed)
 	}
 	if err := os.Remove(link); err != nil {
 		t.Fatal(err)

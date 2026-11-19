@@ -30,7 +30,6 @@ func validCatalog() map[string]any {
 		"socketAlias": map[string]any{
 			"maximumPathBytes": 102, "directory": "/tmp", "prefix": "kast-uds-", "digestCharacters": 32,
 		},
-		"bootstrap":             []string{"libexec/kast-coordinator", "ensure"},
 		"handshakeMilliseconds": 10000,
 		"outputSetting":         map[string]any{"variable": "KAST_OUTPUT_TOON", "admittedValues": []string{"", "0", "1"}},
 		"publicNamespaces":      []string{"query", "describe"},
@@ -73,14 +72,10 @@ func TestVersionsAreAdmittedBeforeAnyOtherField(t *testing.T) {
 }
 
 func TestPathsMustStayBeneathTheRoot(t *testing.T) {
-	for _, field := range []string{"socket", "bootstrap"} {
+	for _, field := range []string{"socket"} {
 		root := t.TempDir()
 		document := validCatalog()
-		if field == "socket" {
-			document["socket"] = "../outside/c.sock"
-		} else {
-			document["bootstrap"] = []string{"/bin/sh", "-c", "true"}
-		}
+		document[field] = "../outside/c.sock"
 		writeCatalog(t, root, document)
 		if _, err := LoadCatalog(root); catalogFailure(t, err) != CatalogMalformed {
 			t.Fatalf("%s escaping the root was admitted", field)

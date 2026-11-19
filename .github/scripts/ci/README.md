@@ -359,35 +359,30 @@ The graph rejects native compilation, installed-product composition, release run
 Candidate qualification keeps those tasks, actual release versions, acceptance, sealing, and exact identity admission.
 Source feedback waits for the selected source, documentation, and portable jobs.
 Linux owns the source result through `source-work`.
-The stable `Source validation` check needs that job, independently of native compilation.
+The stable `Source validation` check needs that job, independently of product assembly.
 Source-only changes use affected selection with fixed validation versions.
-Product changes run the complete source gate before the native input archive is prepared.
+Product changes run the complete source gate beside release assembly; every product consumer requires both.
 Failed, cancelled, missing, and skipped source results reject the source aggregate.
 The final required gate also needs the qualified candidate.
 
-The routine candidate path uses four stages:
+The routine candidate path uses three stages:
 
-1. Linux runs source checks and compiles JVM inputs.
-2. macOS compiles those inputs with Native Image and examines the executable version and deployment target.
-3. Linux admits the native artifact, assembles release archives, examines layout and runtime admission, and generates the SBOM.
-4. macOS runs the public launcher tests against the assembled Mac Control executable.
+1. Linux runs source checks.
+2. Linux cross-compiles the Go Control executable, assembles release archives, examines layout and runtime admission, and generates the SBOM.
+3. macOS runs `publicLauncherTest` against the exact assembled Mac Control product.
 
 Each transfer carries the source revision, source tree, version, artifact kind, and SHA-256 digest.
-The native artifact also carries the compiler toolchain digest through assembly.
-Final qualification rejects a different toolchain.
-A mismatched identity or digest rejects the next stage before compilation or assembly.
+A mismatched identity or digest rejects the next stage before qualification.
 Archive extraction rejects links and paths outside the destination.
-The native stage compiles transferred JVM inputs directly with Native Image.
-Mac adapter and launcher cases use Gradle.
-The native tests still need macOS because Linux cannot execute the Mac binary.
+The Mac stage needs macOS because the assembled Control executable targets it.
 
-Main CI qualifies packaging, installation, native inputs, toolchains, and release policy after merge.
-Pull-request source success does not prove native behavior.
+Main CI qualifies packaging, installation, toolchains, and release policy after merge.
+Pull-request source success does not prove installed product behavior.
 Unknown ownership and unavailable history select the full plan.
 Repository branch-protection settings remain unchanged.
 
 Local `productBuildGate` and standalone release builds keep the complete gate.
-Routine CI distributes its source and native obligations across the target platforms.
+Routine CI distributes its source and product obligations across the target platforms.
 No matched hosted timing comparison establishes a speedup for this split.
 
 ## Affected obligations and rollout

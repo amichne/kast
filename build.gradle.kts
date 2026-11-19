@@ -58,8 +58,7 @@ val catalogueFiles = consumeProjectOutput("configurationCatalogueFiles", ":cli",
 val generatedConfigurationCatalogue = layout.file(catalogueFiles.flatMap { it.elements }.map { it.single().asFile })
 val providerFiles = consumeProjectOutput("providerCatalogueFiles", ":cli", "providerCatalogueElements")
 val generatedProviderCatalogue = layout.file(providerFiles.flatMap { it.elements }.map { it.single().asFile })
-val cliInstallation = consumeProjectOutput("cliInstallation", ":cli", "nativeControlLayoutElements")
-val managementExecutable = consumeProjectOutput("managementExecutable", ":cli", "nativeExecutableElements")
+val cliInstallation = consumeProjectOutput("cliInstallation", ":cli", "controlLayoutElements")
 val controlLibraryFiles = consumeProjectOutput("controlLibraryFiles", ":cli", "controlLibraryElements")
 val frontendCatalogFiles = consumeProjectOutput("frontendCatalogFiles", ":cli", "frontendCatalogElements")
 
@@ -67,18 +66,21 @@ val publicLauncherTestClasses = consumeProjectOutput("publicLauncherTestClasses"
 val publicLauncherTestRuntime = consumeProjectOutput("publicLauncherTestRuntime", ":cli", "publicLauncherTestRuntimeElements")
 
 abstract class PublicLauncherArguments : CommandLineArgumentProvider {
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.NONE)
-    abstract val executable: org.gradle.api.file.RegularFileProperty
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val product: org.gradle.api.file.DirectoryProperty
 
     override fun asArguments(): Iterable<String> =
         listOf(
-            "-Dkast.publicLauncher=${executable.get().asFile.absolutePath}",
+            "-Dkast.controlProduct=${product.get().asFile.absolutePath}",
         )
 }
 
+// CI qualifies the exact assembled Control product; locally the staged product is exercised.
+val importedControlProduct = providers.gradleProperty("kastControlProduct")
 val publicLauncherTest = tasks.register<Test>("publicLauncherTest") {
-    description = "Exercises the public native launcher and query payload with a local Unix socket peer."
+    description = "Exercises the Control executable, its JVM entry, and a local Unix socket peer."
+    if (!importedControlProduct.isPresent) dependsOn("stageKastControlProduct")
     group = "verification"
     testClassesDirs = files(publicLauncherTestClasses)
     classpath = files(publicLauncherTestRuntime)
@@ -87,7 +89,13 @@ val publicLauncherTest = tasks.register<Test>("publicLauncherTest") {
     reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/publicLauncherTest"))
     reports.html.outputLocation.set(layout.buildDirectory.dir("reports/tests/publicLauncherTest"))
     jvmArgumentProviders.add(objects.newInstance<PublicLauncherArguments>().apply {
-        executable.set(layout.file(managementExecutable.flatMap { it.elements }.map { it.single().asFile }))
+        product.set(
+            layout.dir(
+                importedControlProduct
+                    .map { File(it).also { path -> require(path.isAbsolute) { "kastControlProduct must be absolute" } } }
+                    .orElse(tasks.named<Sync>("stageKastControlProduct").map { it.destinationDir })
+            )
+        )
     })
 }
 
@@ -118,11 +126,11 @@ val generateKastControlMetadata = tasks.register<GenerateControlMetadataTask>("g
 }
 
 val controlProductDirectory = layout.buildDirectory.dir("control-product")
-val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").zip(providers.gradleProperty("kastNativeExecutable").orElse("")) { platform, executable ->
+// The Control executable cross-compiles, so any host assembles any target's archive.
+val controlArchivePlatform = providers.gradleProperty("kastControlPlatform").map { platform ->
     require(platform in setOf("macos-aarch64", "macos-x86_64", "linux-aarch64", "linux-x86_64")) {
-        "Imported native archives require a supported native platform"
+        "The Control archive needs a supported target platform"
     }
-    require(executable.isNotBlank()) { "An imported platform needs a native executable" }
     platform
 }.orElse(providers.systemProperty("os.name").zip(providers.systemProperty("os.arch")) { os, arch ->
     when {

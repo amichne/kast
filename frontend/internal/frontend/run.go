@@ -1,21 +1,16 @@
 package frontend
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"syscall"
 )
-
-// maximumBootstrapOutputBytes bounds what a failed start relays to stderr.
-const maximumBootstrapOutputBytes = 16 << 10
 
 // Process is the caller's process state, passed explicitly so tests control every effect.
 type Process struct {
@@ -62,7 +57,7 @@ func Run(process Process) int {
 	// The invocation runs beside the signal wait. A signal owns the status at once, even while the invocation is
 	// blocked on stdin or stdout; cancellation then closes the connection, which cancels the coordinator's request.
 	finished := make(chan int, 1)
-	go func() { finished <- complete(ctx, catalog, process, environment, owner) }()
+	go func() { finished <- complete(ctx, catalog, installation, parsed, process, environment, owner) }()
 	select {
 	case status := <-finished:
 		return status
@@ -89,15 +84,29 @@ func execute(catalog *Catalog, installation string, parsed invocation, process P
 	return catalog.status("BOOTSTRAP")
 }
 
-// complete runs one invocation through delivery and records its status unless a signal already owns the result.
-func complete(ctx context.Context, catalog *Catalog, process Process, environment map[string]string, owner *owner) int {
+// complete runs one invocation through delivery and records its status unless a signal already owns the result. A
+// coordinator that is not reachable leaves the invocation to the JVM entry, which starts or joins one only when the
+// command needs semantic evidence.
+func complete(ctx context.Context, catalog *Catalog, installation string, parsed invocation, process Process,
+	environment map[string]string, owner *owner) int {
 	request := invocationRequest{
 		Version:     supportedInvocationProtocol,
 		Directory:   process.Directory,
 		Arguments:   process.Arguments,
 		Environment: environment,
 	}
-	completed, bootstrapped, err := invoke(ctx, catalog, request, process)
+	conn, err := dial(ctx, catalog.socket, catalog.socketAlias, catalog.handshake)
+	if isUnreachable(err) {
+		if status, settled := owner.terminal(); settled {
+			return status
+		}
+		return owner.finish(execute(catalog, installation, parsed, process))
+	}
+	if err != nil {
+		return owner.finish(failureStatus(catalog, err, process.Stderr))
+	}
+	completed, err := exchange(ctx, conn, request, process.Stdin)
+	conn.CloseNow()
 	if status, settled := owner.terminal(); settled {
 		return status
 	}
@@ -105,7 +114,7 @@ func complete(ctx context.Context, catalog *Catalog, process Process, environmen
 		return owner.finish(failureStatus(catalog, err, process.Stderr))
 	}
 	if environment["KAST_FRONTEND_TRACE"] == "1" {
-		traceInvocation(process.Stderr, completed.Coordinator, bootstrapped)
+		traceInvocation(process.Stderr, completed.Coordinator)
 	}
 	for _, line := range completed.Diagnostics {
 		fmt.Fprintln(process.Stderr, line)
@@ -113,52 +122,7 @@ func complete(ctx context.Context, catalog *Catalog, process Process, environmen
 	return owner.finish(deliver(process.Stdout, completed.Output, completed.ExitCode, catalog))
 }
 
-// invoke connects to the published coordinator, starting or joining it once when no coordinator is reachable.
-func invoke(ctx context.Context, catalog *Catalog, request invocationRequest, process Process) (*Completed, bool, error) {
-	conn, err := dial(ctx, catalog.socket, catalog.socketAlias, catalog.handshake)
-	bootstrapped := false
-	if isUnreachable(err) {
-		if startErr := startCoordinator(ctx, catalog, process); startErr != nil {
-			return nil, true, startErr
-		}
-		bootstrapped = true
-		conn, err = dial(ctx, catalog.socket, catalog.socketAlias, catalog.handshake)
-	}
-	if err != nil {
-		if bootstrapped {
-			return nil, true, errBootstrap
-		}
-		return nil, false, err
-	}
-	defer conn.CloseNow()
-	completed, err := exchange(ctx, conn, request, process.Stdin)
-	return completed, bootstrapped, err
-}
-
-var errBootstrap = errors.New("bootstrap failed")
-
-// startCoordinator runs the catalog's start-or-join command. The coordinator's start lock admits one owner.
-func startCoordinator(ctx context.Context, catalog *Catalog, process Process) error {
-	command := exec.CommandContext(ctx, catalog.bootstrap[0], catalog.bootstrap[1:]...)
-	command.Env = process.Environment
-	command.Dir = catalog.root
-	var stderr bytes.Buffer
-	command.Stdout = io.Discard
-	command.Stderr = &limitedBuffer{buffer: &stderr, remaining: maximumBootstrapOutputBytes}
-	if err := command.Run(); err != nil {
-		if relayed := strings.TrimSpace(stderr.String()); relayed != "" {
-			fmt.Fprintln(process.Stderr, relayed)
-		}
-		return errBootstrap
-	}
-	return nil
-}
-
 func failureStatus(catalog *Catalog, err error, stderr io.Writer) int {
-	if errors.Is(err, errBootstrap) {
-		diagnose(stderr, "the coordinator could not be started or joined.")
-		return catalog.status("BOOTSTRAP")
-	}
 	var transport *TransportError
 	if !errors.As(err, &transport) {
 		diagnose(stderr, "the frontend failed.")
@@ -206,13 +170,12 @@ func environmentMap(environment []string) map[string]string {
 func diagnose(stderr io.Writer, message string) { fmt.Fprintln(stderr, "kast: "+message) }
 
 // traceInvocation records which coordinator served this invocation, so warm reuse can be proven per call.
-func traceInvocation(stderr io.Writer, served coordinator, bootstrapped bool) {
+func traceInvocation(stderr io.Writer, served coordinator) {
 	encoded, _ := json.Marshal(struct {
 		Type              string `json:"type"`
 		ServiceGeneration string `json:"serviceGeneration"`
 		ProcessID         int64  `json:"processId"`
-		Bootstrapped      bool   `json:"bootstrapped"`
-	}{"frontend_trace", served.ServiceGeneration, served.ProcessID, bootstrapped})
+	}{"frontend_trace", served.ServiceGeneration, served.ProcessID})
 	fmt.Fprintln(stderr, string(encoded))
 }
 
@@ -247,18 +210,4 @@ func (o *owner) finish(status int) int {
 	o.settle(status)
 	owned, _ := o.terminal()
 	return owned
-}
-
-type limitedBuffer struct {
-	buffer    *bytes.Buffer
-	remaining int
-}
-
-func (b *limitedBuffer) Write(p []byte) (int, error) {
-	if b.remaining > 0 {
-		kept := p[:min(len(p), b.remaining)]
-		b.buffer.Write(kept)
-		b.remaining -= len(kept)
-	}
-	return len(p), nil
 }

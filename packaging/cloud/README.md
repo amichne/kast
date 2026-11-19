@@ -5,7 +5,7 @@ It does not install personal shell configuration or change credentials.
 Runtime directories and evaluation receipts belong outside the repository.
 
 ```sh
-python3 packaging/cloud/bootstrap.py --root /workspace/pi-eval --with-idea --with-native-fixture --with-native-control
+python3 packaging/cloud/bootstrap.py --root /workspace/pi-eval --with-idea --with-native-fixture --with-control
 source /workspace/pi-eval/activate.sh
 node packaging/cloud/smoke.mjs --refresh-catalog --kast-adapter "$PWD/pi/mcp-extension.ts"
 bash packaging/cloud/checks.sh
@@ -69,18 +69,8 @@ well as the main Gradle process.
 
 Bootstrap also checks the IDE build, bundled Kotlin plugin version, and JBR 25+.
 The Host distribution and native test distribution have separate exact pins.
-BellSoft Liberica Native Image Kit (NIK) 25.0.2+1 supplies Native Image for Control
-builds, using Java 25.0.2+13. This matches `mise.toml` and the `liberica-nik`
-distribution in CI. The build retains JSON metrics and embedded-resource reports.
-It does not request the Oracle-only HTML build report. The ordinary JDK supplies
-Gradle in this cloud profile.
-
-BellSoft describes NIK as open-source software under the applicable
-[OpenJDK, GraalVM, and third-party licenses](https://bell-sw.com/liberica_nik_eula/).
-The Classpath Exception permits linking independent application modules under
-their own terms. Keep applicable license notices and source obligations when
-distributing runtime components. Changing the compiler does not change the
-licenses of existing Oracle-built binaries; rebuild those for the new toolchain.
+The optional `--with-control` flag adds Go 1.27.4, the release `frontend/go.mod` selects, for Control executable builds.
+Activation sets `GOTOOLCHAIN=local`, so Go never downloads another toolchain. The ordinary JDK supplies Gradle and the Control JVM bytecode.
 Kast remains `GPL-3.0-only`; changing its build toolchain does not relicense the project.
 The wrapper owns the Gradle distribution checksum. The generated activation file
 configures only the owned Gradle directory through the current approved proxy.
@@ -113,7 +103,7 @@ startup, language-server paths, credentials, models, and package settings.
 | --- | --- |
 | Node, Pi, Python, uv | Node and uv archives are pinned; Pi 1.3.0 uses the package lock. Host Python needs 3.12 or 3.13 for the source checks. |
 | IntelliJ and Kotlin | Verify exact product, plugin and JBR identities from the pinned archives. A free distribution alone grants no Kast readiness. |
-| Gradle and Control | Use the checked wrapper and optional GraalVM. Linux native compilation also needs a C/C++ toolchain and `zlib` headers. |
+| Gradle and Control | Use the checked wrapper and the pinned JDK. The Control executable also needs the optional pinned Go; it needs no C toolchain. |
 | Slopsentral | The released adapter and source revision are pinned separately. Source checks and native Pi loader tests prove different boundaries. |
 | Portable resources | Only the named public Pi files enter the owned agent directory. The full shell gate has separate OS dependencies. |
 | Kast Host/Control installation | Linux supports a fresh local pair at the canonical per-user installation. Actual product installation and imported-model readiness require separate qualification. |

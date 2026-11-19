@@ -74,7 +74,7 @@ This guide owns repository rules and routes source investigation.
 - Affected source gate: add `--affected --base <full-sha>` to that command. Unknown ownership keeps full source validation.
 - Consumer graph: run `./gradlew generateVerificationGraph` after dependency changes. Copy its report to `config/ci/verification-graph.json` and examine the diff.
 - The opt-in CI rollout compares frozen changes before affected selection becomes the default. Read `.github/scripts/ci/README.md` for its evidence limits.
-- Cross-platform CI handoff: `.github/scripts/ci/native_handoff.py` binds the transferred Control executable to source identity and digest. Mac jobs compile and exercise that image.
+- Cross-platform CI handoff: `.github/scripts/ci/release_handoff.py` binds the assembled release to source identity and digest. Linux assembles it; the Mac product job exercises that exact Control product.
 - Interface decision replay: read `experiments/host-observation/interface-replay/README.md` for the no-inference plan and restricted-shell adapter.
 - Replay performance targets: use `run_pi_evaluation.mjs --assess-target` with the contract in `experiments/host-observation/interface-replay/hill-climb.md`.
 - Candidate qualification: `mise exec -- python3 distribution/release/run_product_gate.py`. Source success grants no publication authority.
@@ -84,7 +84,7 @@ This guide owns repository rules and routes source investigation.
 - Control executable: `frontend/cmd/kast/main.go`; its single JVM entry is `cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt`.
 - Management commands: `distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt`.
 - Public semantic entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt`.
-- Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task uses a real native query child and local peer.
+- Control composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task runs the staged Control product against a local peer.
 - Private installer version entry: `cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt`.
 - Semantic host: `runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedEndpointService.kt`.
 - Codex/App Server main: `app-server/src/main/kotlin/io/github/amichne/kast/appserver/KastCodexMain.kt`.

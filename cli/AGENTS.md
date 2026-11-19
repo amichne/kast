@@ -22,7 +22,6 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqEngine.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqProcess.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicJqRecovery.kt
-  - path: cli/src/main/resources/META-INF/native-image/io.github.amichne.kast/query/reachability-metadata.json
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/NativeJqCompositionTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicInvocationOwner.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicShellExit.kt
@@ -110,18 +109,14 @@ Owns the public semantic CLI, private process modes, direct tool sessions, insta
 - Replay adapter: `mise exec -- ./gradlew :cli:prepareReplayAdapter` emits a digest-pinned JVM command for the interface experiment.
 - The test-only adapter owns rendering and public admission. It composes no Host, MCP connection, or semantic executor.
 - The production renderer owns TOON bytes. The test-only `Ktoon` decoder supplies an independent equality oracle.
-- Native launcher composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task owns the native launcher, native query child, and local-peer composition.
-- `KastControlMain` composes the existing command owners into one native Control executable.
+- Control composition: `mise exec -- ./gradlew :publicLauncherTest`. The root task runs the staged Control product: the Go executable, its `lib`, and its catalog, against a local peer.
+- `KastControlMain` is the single JVM entry behind the Go Control executable. It composes the existing command owners.
 - `distribution/cli` owns management commands. `NativeControlInvocation` owns private mode admission.
-- `assembleNativeControlLayout` supplies the launchers and the `jvm-control-v1` layout marker.
-- The Control archive contains no `lib/` directory, JARs, or JVM bytecode.
-- Native query compilation: `mise exec -- ./gradlew :cli:nativeCompile`. The executable accepts `--help`.
+- `assembleControlLayout` supplies the launchers and the `jvm-control-v1` layout marker.
+- `assembleControlLibraries` supplies `lib`. JVM bytecode exists only there, in the catalog's class path order.
 - `PublicHook.kt` owns `kast --internal-entrypoint=query hook session-start`. It admits host events for passive context without trust, workspace writes, or Host startup.
 - Hook replies use JSON regardless of `KAST_OUTPUT_TOON`. Non-project directories return without IDE effects.
-- CI query inputs: `mise exec -- ./gradlew :cli:assembleNativeImageInputs`.
-- `collectReachabilityMetadata` supplies resolved Native Image metadata for that archive. Keep module directories and the `logback-classic` exclusion.
-- Handoff qualification runs `--internal-entrypoint=query query plan --name OrderService` with `-XX:MissingRegistrationReportingMode=Exit`.
-- CI imports supply `kastNativeExecutable`. The `nativeExecutableElements` artifact uses that admitted image.
+- CI qualification supplies `kastControlProduct`, so `publicLauncherTest` exercises the exact assembled product.
 - The private installer entry in `KastCliMain.kt` admits only `--version`.
 - The installation places private service control at `share/kast/libexec/kast-service`.
 - [KastToolRpcQuerySessionTest.kt](src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionTest.kt) - query framing and retained delivery.

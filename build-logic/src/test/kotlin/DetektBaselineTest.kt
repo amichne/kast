@@ -76,7 +76,7 @@ class DetektBaselineTest {
     }
 
     @Test
-    fun `scoped check includes module quality and tests without native assembly`() {
+    fun `scoped check includes module quality and tests without product assembly`() {
         temporaryDirectory.resolve("settings.gradle").writeText("rootProject.name = 'scoped-check-fixture'\n")
         temporaryDirectory.resolve("build.gradle").writeText(
             """
@@ -84,7 +84,7 @@ class DetektBaselineTest {
                 id 'org.jetbrains.kotlin.jvm'
                 id 'kast.kotlin-quality'
             }
-            tasks.register('nativeCompile') { throw new GradleException('native assembly entered the edit loop') }
+            tasks.register('assembleRelease') { throw new GradleException('product assembly entered the edit loop') }
             """.trimIndent(),
         )
         val result = GradleRunner.create()
@@ -95,6 +95,6 @@ class DetektBaselineTest {
         val scheduled = result.output.lineSequence().filter { it.endsWith(" SKIPPED") }.toSet()
         listOf("spotlessCheck", "checkMainKotlinFileLength", "checkTestKotlinFileLength", "detekt", "test")
             .forEach { task -> assertTrue(":$task SKIPPED" in scheduled, result.output) }
-        assertTrue(":nativeCompile SKIPPED" !in scheduled, result.output)
+        assertTrue(":assembleRelease SKIPPED" !in scheduled, result.output)
     }
 }

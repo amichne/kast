@@ -16,9 +16,9 @@ def main_job():
 
 
 class SelfHostedGuardTest(unittest.TestCase):
-    def test_main_native_and_release_jobs_are_admitted(self):
+    def test_main_product_and_release_jobs_are_admitted(self):
         for workflow, job, events in (
-            ("ci.yml", "native", ("push", "workflow_dispatch")),
+            ("ci.yml", "kotlin", ("push", "workflow_dispatch")),
             ("release.yml", "release", ("workflow_dispatch",)),
             ("release-component.yml", "release", ("workflow_dispatch",)),
         ):
@@ -33,8 +33,10 @@ class SelfHostedGuardTest(unittest.TestCase):
         for workflow, job, event in (
             ("release.yml", "release", "push"),
             ("release-component.yml", "release", "push"),
-            ("release.yml", "native", "workflow_dispatch"),
+            ("release.yml", "kotlin", "workflow_dispatch"),
             ("ci.yml", "release", "workflow_dispatch"),
+            # The native compile job no longer exists, so it may not use the local runner.
+            ("ci.yml", "native", "push"),
         ):
             with self.subTest(workflow=workflow, job=job, event=event):
                 self.assertNotEqual(Admission.ALLOWED, admit({

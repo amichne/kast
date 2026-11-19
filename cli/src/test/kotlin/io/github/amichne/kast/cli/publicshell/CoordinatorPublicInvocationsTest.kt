@@ -102,7 +102,7 @@ class CoordinatorPublicInvocationsTest {
         assertEquals(PublicShellExit.entries.associate { it.name to it.code }, catalog.exits)
         assertEquals(9, catalog.exits.getValue("BOOTSTRAP"))
         assertEquals(6, catalog.exits.getValue("PROTOCOL"))
-        assertTrue(!Path.of(catalog.socket).isAbsolute && !Path.of(catalog.bootstrap.first()).isAbsolute)
+        assertTrue(!Path.of(catalog.socket).isAbsolute)
         assertTrue(catalog.help.isNotEmpty())
         for (entry in catalog.help) {
             val parsed =

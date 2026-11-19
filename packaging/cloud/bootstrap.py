@@ -68,7 +68,7 @@ def provision(root: Path, with_idea: bool, with_fixture: bool, with_control: boo
             continue
         if name == "fixture_idea" and not with_fixture:
             continue
-        if name == "graalvm" and not with_control:
+        if name == "go" and not with_control:
             continue
         archive = downloads / spec["url"].rsplit("/", 1)[1]
         if cache is not None and (cache / archive.name).is_file():
@@ -141,7 +141,9 @@ def provision(root: Path, with_idea: bool, with_fixture: bool, with_control: boo
         'source "$PI_EVAL_ROOT/gradle-runtime.sh"\n'
     )
     if with_control:
-        activation += f"export GRAALVM_HOME={quote(str(root / pins['artifacts']['graalvm']['directory']))}\n"
+        # The pinned release equals frontend/go.mod's toolchain line, so Go never downloads another.
+        go = root / pins["artifacts"]["go"]["directory"]
+        activation += f"export PATH={quote(str(go / 'bin'))}:\"$PATH\"\nexport GOTOOLCHAIN=local\n"
     (root / "activate.sh").write_text(activation)
     run(str(node_bin / "node"), "--version")
     run(str(root / pins["artifacts"]["uv"]["directory"] / "uv"), "--version")
@@ -154,7 +156,7 @@ if __name__ == "__main__":
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--with-idea", action="store_true", help="Unpack vendor archive; accept no license")
     parser.add_argument("--with-native-fixture", action="store_true", help="Also unpack the separately pinned native test IDE")
-    parser.add_argument("--with-native-control", action="store_true", help="Also unpack GraalVM for Control native-image builds")
+    parser.add_argument("--with-control", action="store_true", help="Also unpack Go for Control executable builds")
     parser.add_argument("--download-cache", type=Path, help="Optional read-only public archive cache; all digests are still verified")
     args = parser.parse_args()
-    provision(args.root.resolve(), args.with_idea, args.with_native_fixture, args.with_native_control, args.download_cache)
+    provision(args.root.resolve(), args.with_idea, args.with_native_fixture, args.with_control, args.download_cache)
