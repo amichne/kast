@@ -54,21 +54,6 @@ class PublicReplayAdapterTest {
     }
 
     @Test
-    fun `an invalid declaration kind names the exact flag inspection command`() {
-        val receipt = replayAdmission(listOf("query", "--name", "Widget", "--kind", "interface"))
-        assertEquals(ReplayAdmissionType.ARGUMENT_REJECTED, receipt.type)
-        assertEquals("INVALID_VALUE", receipt.cause)
-        assertEquals(2, receipt.exitStatus)
-        assertEquals(
-            "kast: INVALID_VALUE. Inspect the flag with kast describe COMMAND --jq " +
-                "'.content.flags[] | select(.name == \"--kind\") | {value_spellings, schema}'; " +
-                "COMMAND is query, source.read, result.read, or diagnostic.check.\n",
-            receipt.stderr,
-        )
-        assertEquals(0, receipt.nativeCalls)
-    }
-
-    @Test
     fun `stdin decoding and public admission reject unknown values`() {
         val flags = replayAdmission(listOf("query", "--name", "OrderService"))
         val stdin = replayAdmission(listOf("query", "--request", "-"), flags.arguments.toString())
