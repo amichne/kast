@@ -27,7 +27,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   KAST_SEMANTIC_FIXTURES: ${{ vars.KAST_SEMANTIC_FIXTURES || 'false' }}
   KAST_MACOS_CHECKS: ${{ vars.KAST_MACOS_CHECKS || 'false' }}
-  KAST_NATIVE_COMPILATION: ${{ vars.KAST_MACOS_CHECKS == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}
+  KAST_NATIVE_COMPILATION: ${{ vars.KAST_MACOS_CHECKS == 'true' && (vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}
 
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}${{ inputs.rollout_case && inputs.rollout_case != 'all' && format('-{0}', inputs.rollout_case) || '' }}
@@ -107,7 +107,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ needs.scope.outputs.product == 'run' && github.sha || github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Java 25
         id: jdk25
@@ -183,7 +183,7 @@ jobs:
   assembly:
     name: Assemble release on Linux
     needs: scope
-    if: github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run'
+    if: vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run'
     outputs:
       artifact_id: ${{ steps.handoff.outputs.artifact-id }}
     runs-on: ubuntu-latest
@@ -192,7 +192,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Check workspace and scratch free space
         run: python3 .github/scripts/ci/build_storage.py check --minimum-bytes 8589934592 "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
@@ -242,13 +242,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      labels: ${{ steps.select.outputs.labels }}
+      labels: ${{ steps.select.outputs.labels || '"macos-15"' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - id: select
+        if: github.ref == 'refs/heads/main'
         env:
           KAST_PREFER_LOCAL_MAC: ${{ vars.KAST_PREFER_LOCAL_MAC }}
           KAST_RUNNER_STATUS_TOKEN: ${{ secrets.KAST_RUNNER_STATUS_TOKEN }}
@@ -257,14 +258,14 @@ jobs:
   kotlin:
     name: Kotlin product
     needs: [scope, source-work, assembly, kotlin-runner]
-    if: always() && github.event_name != 'pull_request' && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && needs.assembly.result == 'success' && needs.kotlin-runner.result == 'success' && (inputs.rollout == '' || inputs.rollout == 'none')
+    if: always() && vars.KAST_MACOS_CHECKS == 'true' && needs.scope.outputs.product == 'run' && needs.source-work.result == 'success' && needs.assembly.result == 'success' && needs.kotlin-runner.result == 'success' && (inputs.rollout == '' || inputs.rollout == 'none')
     runs-on: ${{ fromJSON(needs.kotlin-runner.outputs.labels) }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
@@ -307,20 +308,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  composed-products:
-    name: Linux complete-product qualification
-    needs: scope
-    if: >-
-      needs.scope.outputs.product == 'run' && vars.KAST_MACOS_CHECKS == 'true' &&
-      vars.KAST_NATIVE_COMPILATION != 'false' && github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (inputs.rollout == '' || inputs.rollout == 'none')
-    uses: ./.github/workflows/composed-linux.yml
-    with:
-      version: 0.0.${{ github.run_number }}
-      complete_product: true
-      release_target: linux-x86_64
-
   composed-macos:
     name: macOS complete-product qualification
     needs: [scope, source-work, assembly]
@@ -328,8 +315,7 @@ jobs:
       !cancelled() && needs.source-work.result == 'success' &&
       needs.assembly.result == 'success' &&
       needs.scope.outputs.product == 'run' && vars.KAST_MACOS_CHECKS == 'true' &&
-      vars.KAST_NATIVE_COMPILATION != 'false' && github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      vars.KAST_NATIVE_COMPILATION != 'false' &&
       (inputs.rollout == '' || inputs.rollout == 'none')
     uses: ./.github/workflows/composed-linux.yml
     with:
@@ -339,8 +325,8 @@ jobs:
       assembled_artifact_id: ${{ needs.assembly.outputs.artifact_id }}
 
   sealed-product:
-    name: Seal both product targets without rebuilding
-    needs: [scope, source-work, composed-products, composed-macos]
+    name: Seal the qualified Mac product
+    needs: [scope, source-work, composed-macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -350,17 +336,11 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: kast-qualified-product-linux-x86_64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/product-inputs/linux-x86_64
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
           name: kast-qualified-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/product-inputs/macos-aarch64
-      # Producer attempts are exact. A partial retry lacking either retained input
-      # rejects; it never borrows another attempt or rebuilds inside this join.
       - name: Seal the complete immutable build record
         run: >-
-          python3 .github/scripts/release/product_producer.py seal
+          python3 .github/scripts/release/product_producer.py seal --macos-only
           --directory build/product-inputs --output build/product-candidate
       - uses: actions/upload-artifact@v7.0.2
         with:
@@ -379,8 +359,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: linux-x86_64
-            runner: ubuntu-24.04
           - target: macos-aarch64
             runner: macos-15
     steps:
@@ -455,11 +433,6 @@ jobs:
                   raise SystemExit(result.value)
           PrivateInterpreter.admit(Path('build/private-python.tar.gz'), Path('build/defusedxml.whl'), pin.target)
           PY
-      - name: Start the Linux user service manager
-        if: runner.os == 'Linux'
-        run: |
-          sudo loginctl enable-linger "$(id -un)"
-          XDG_RUNTIME_DIR="/run/user/$(id -u)" systemctl --user start default.target
       - name: Exercise installed CLI MCP RPC and lifecycle against retained bytes
         env:
           TARGET: ${{ matrix.target }}
@@ -497,10 +470,6 @@ jobs:
         with:
           name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}
           path: build/product-sealed
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: kast-installed-product-linux-x86_64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/product-acceptance
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: kast-installed-product-macos-aarch64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -566,7 +535,7 @@ jobs:
           CI_NEEDS: ${{ toJSON(needs) }}
         run: python3 .github/scripts/ci/required_checks.py
 
-      - name: Require both product targets for a selected product gate
+      - name: Require Mac installed acceptance for the selected product gate
         if: needs.scope.outputs.product == 'run'
         env:
           COMPLETE_PRODUCT_RESULT: ${{ needs.complete-product.result }}

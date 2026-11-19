@@ -129,14 +129,19 @@ internal data class ProductBuildEntry(
 
 private const val SPLIT_PRODUCT_RECORD_SCHEMA_VERSION = 3
 private const val LOCAL_PRODUCT_RECORD_SCHEMA_VERSION = 4
+private const val MACOS_PRODUCT_RECORD_SCHEMA_VERSION = 5
 
 internal fun validProductRecord(record: ProductBuildRecord): Boolean =
-    record.schemaVersion in setOf(2, SPLIT_PRODUCT_RECORD_SCHEMA_VERSION) &&
+    record.schemaVersion in setOf(2, SPLIT_PRODUCT_RECORD_SCHEMA_VERSION, MACOS_PRODUCT_RECORD_SCHEMA_VERSION) &&
         validProductIdentity(record) &&
         validProducer(record.producer, ".github/workflows/ci.yml") &&
-        record.targets.map { it.target } == listOf("linux-x86_64", "macos-aarch64") &&
+        record.targets.map { it.target } ==
+            (if (record.schemaVersion == MACOS_PRODUCT_RECORD_SCHEMA_VERSION) listOf("macos-aarch64")
+            else listOf("linux-x86_64", "macos-aarch64")) &&
         record.targets.all {
-            (it.runtimeBase != null) == (record.schemaVersion == SPLIT_PRODUCT_RECORD_SCHEMA_VERSION) &&
+            (it.runtimeBase != null) ==
+                (record.schemaVersion in
+                    setOf(SPLIT_PRODUCT_RECORD_SCHEMA_VERSION, MACOS_PRODUCT_RECORD_SCHEMA_VERSION)) &&
                 validProducer(it.qualification.producer, ".github/workflows/composed-linux.yml") &&
                 validProductTarget(it, record.version)
         }

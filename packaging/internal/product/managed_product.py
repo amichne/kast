@@ -16,7 +16,7 @@ from typing import Literal
 import composed_bundle as bundle
 import managed_release as release
 import runtime_base
-from composition_platform import HostPlatform, UnsupportedHost, host_platform
+from composition_platform import HostPlatform, host_platform
 from runtime_archive import RuntimeFile, RuntimeLink, RuntimeManifest
 
 MAXIMUM_RUNTIME_BYTES = 8_589_934_592
@@ -341,14 +341,15 @@ def stage_product(
     phase = release.Stage.STAGING
     observe(phase, "STARTED")
     target = host_platform(platform.system(), platform.machine())
-    if isinstance(target, UnsupportedHost) or target.value not in release.PRODUCT_TARGETS:
+    if not isinstance(target, HostPlatform) or (
+        facts := next((item for item in selected.record.targets if item.target == target.value), None)
+    ) is None:
         return release.Rejected(
             release.Failure.PLATFORM_UNAVAILABLE, release.Stage.SELECTION, selected.version
         )
     try:
         if directory.resolve() != directory or not directory.is_dir() or any(directory.iterdir()):
             raise ValueError("owned empty staging required")
-        facts = next(item for item in selected.record.targets if item.target == target.value)
         phase = release.Stage.DOWNLOAD
         observe(phase, "STARTED")
         for asset in facts.assets():

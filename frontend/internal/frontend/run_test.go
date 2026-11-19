@@ -218,7 +218,7 @@ func TestFrontendTraceIdentifiesCallerAndServingCoordinator(t *testing.T) {
 		send(t, ctx, conn, completed(0, "result"))
 	})
 	var output, diagnostics bytes.Buffer
-	status := f.runProcess(strings.NewReader(""), &output, &diagnostics, nil, []string{"KAST_FRONTEND_TRACE=1"}, "query", "--name", "Fixture")
+	status := f.runProcess(strings.NewReader(""), &output, &diagnostics, nil, []string{"KAST_DEBUG=1"}, "query", "--name", "Fixture")
 	var event struct {
 		Type              string
 		CallerProcessID   int

@@ -153,7 +153,7 @@ def latency(arguments: argparse.Namespace) -> int:
 def first_callers(arguments: argparse.Namespace) -> int:
     workspace = Path(arguments.workspace)
     argv = ["query", "--name", "StringFeed", "--json"]
-    environment = {"KAST_FRONTEND_TRACE": "1"}
+    environment = {"KAST_DEBUG": "1"}
     with concurrent.futures.ThreadPoolExecutor(arguments.callers) as pool:
         results = list(pool.map(lambda _: run(arguments.kast, argv, None, environment, workspace), range(arguments.callers)))
     served = []
@@ -170,7 +170,7 @@ def first_callers(arguments: argparse.Namespace) -> int:
 def cancellation(arguments: argparse.Namespace) -> int:
     """Interrupt one in-flight caller while another runs; the other completes on the same coordinator."""
     workspace = Path(arguments.workspace)
-    environment = {**os.environ, "KAST_FRONTEND_TRACE": "1"}
+    environment = {**os.environ, "KAST_DEBUG": "1"}
     argv = [arguments.kast, "query", "--name", "StringFeed", "--json"]
     victim = subprocess.Popen(argv, cwd=workspace, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     survivor = subprocess.Popen(argv, cwd=workspace, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -178,7 +178,7 @@ def cancellation(arguments: argparse.Namespace) -> int:
     victim.send_signal(signal.SIGINT)
     victim_out, victim_err = victim.communicate(timeout=120)
     survivor_out, survivor_err = survivor.communicate(timeout=120)
-    after = run(arguments.kast, argv[1:], None, {"KAST_FRONTEND_TRACE": "1"}, workspace)
+    after = run(arguments.kast, argv[1:], None, {"KAST_DEBUG": "1"}, workspace)
     report = {
         "victim": {"exit": victim.returncode, "stdoutBytes": len(victim_out), "stderr": victim_err.decode()},
         "survivor": {"exit": survivor.returncode, "stderr": survivor_err.decode()},

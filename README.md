@@ -10,7 +10,7 @@ Each answer says whether the search finished, so the agent can tell "none found"
 
 You need:
 
-- An Apple silicon Mac or Linux x86-64 machine and a Kotlin Gradle project.
+- An Apple silicon Mac and a Kotlin Gradle project.
 - The Codex, Copilot, or Pi CLI.
 
 Kast supplies its runtime. You do not need desktop IDEA, Python, or uv.

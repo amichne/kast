@@ -50,7 +50,7 @@ def read(directory: Path, *, accepted: bool = False) -> product.ProductRecord | 
             return candidate.Failure.INVALID_RECORD
         names = {path.name for path in payload.iterdir()}
         expected = {asset.name for asset in record.assets()}
-        detached = {acceptance.filename(target) for target in product.PRODUCT_TARGETS}
+        detached = {acceptance.filename(item.target) for item in record.targets}
         if names != expected and names != expected | detached:
             return candidate.Failure.PAYLOAD_MISMATCH
         if accepted or names == expected | detached:
@@ -242,7 +242,15 @@ def admit_baseline(
         item
         for item in jobs
         if product.mapping(item)
-        and item.get("name") == "Seal both native targets without rebuilding"
+        and item.get("name")
+        in (
+            ("Seal the qualified Mac product",)
+            if record.schemaVersion == product.MACOS_PRODUCT_SCHEMA
+            else (
+                "Seal both native targets without rebuilding",
+                "Seal both product targets without rebuilding",
+            )
+        )
     ]
     if (
         len(sealed) != 1
@@ -454,8 +462,8 @@ def fetch_release(
         )
         if isinstance(result, product.TransferFailure):
             return candidate.Failure.DOWNLOAD_FAILED
-    for target in product.PRODUCT_TARGETS:
-        name = acceptance.filename(target)
+    for item in record.targets:
+        name = acceptance.filename(item.target)
         raw = source.read(f"{base}/{name}", acceptance.MAXIMUM_RECEIPT_BYTES)
         if isinstance(raw, product.TransferFailure):
             return candidate.Failure.DOWNLOAD_FAILED

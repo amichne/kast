@@ -397,10 +397,10 @@ class ExactDiffTest(unittest.TestCase):
         head = self.commit("second page edit")
         self.assertEqual(DOCS, select("push", self.base, head, self.root).checks)
 
-    def test_source_pr_defers_candidate_but_main_push_keeps_qualification(self):
+    def test_source_pr_and_main_both_need_product_qualification(self):
         self.write("query/service/src/main/kotlin/QueryService.kt", "class QueryService\n")
         head = self.commit("source change")
-        self.assertEqual(SOURCE_ONLY, select("pull_request", self.base, head, self.root).checks)
+        self.assertEqual(PRODUCT, select("pull_request", self.base, head, self.root).checks)
         self.assertEqual(PRODUCT, select("push", self.base, head, self.root).checks)
 
     def test_push_includes_product_changes_before_the_final_docs_commit(self):
@@ -508,11 +508,12 @@ class SourceInventoryTest(unittest.TestCase):
                 body = workflow.split(f"\n  {job}:\n", 1)[1]
                 body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
                 self.assertIn(f"    runs-on: ${{{{ fromJSON(needs.{selector}.outputs.labels) }}}}\n", body)
-                self.assertIn("if: github.event_name != 'pull_request'", body.replace("always() && ", ""))
                 self.assertIn("uses: ./.github/actions/local-python", body)
                 self.assertIn("cache-disabled: ${{ runner.environment == 'self-hosted' }}", body)
                 selection = workflow.split(f"\n  {selector}:\n", 1)[1]
                 selection = re.split(r"\n  (?=\S)", selection, maxsplit=1)[0]
+                self.assertIn("if: github.ref == 'refs/heads/main'", selection)
+                self.assertIn('steps.select.outputs.labels || \'"macos-15"\'', selection)
                 self.assertIn("run: python3 .github/scripts/ci/mac_runner.py", selection)
         self.assertEqual(1, workflow.count("fromJSON(needs."))
         for path in workflows.glob("*.yml"):
@@ -531,23 +532,19 @@ class SourceInventoryTest(unittest.TestCase):
             body = re.split(r"\n  (?=\S)", workflow.split(f"\n  {job}:\n", 1)[1], maxsplit=1)[0]
             self.assertIn("needs.source-work.result == 'success'", body)
         sealed = re.split(r"\n  (?=\S)", workflow.split("\n  sealed-product:\n", 1)[1], maxsplit=1)[0]
-        self.assertIn("    needs: [scope, source-work, composed-products, composed-macos]\n", sealed)
+        self.assertIn("    needs: [scope, source-work, composed-macos]\n", sealed)
 
-    def test_product_assembly_is_main_only_before_scope_selection(self):
+    def test_product_pr_and_main_use_the_same_mac_gate(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
-        self.assertIn(
-            "KAST_NATIVE_COMPILATION: ${{ vars.KAST_MACOS_CHECKS == 'true' && "
-            "github.ref == 'refs/heads/main' && "
-            "(github.event_name == 'push' || github.event_name == 'workflow_dispatch') && "
-            "(vars.KAST_NATIVE_COMPILATION || 'true') || 'false' }}",
-            workflow,
-        )
-        for job in ("assembly", "kotlin"):
-            with self.subTest(job=job):
-                body = workflow.split(f"\n  {job}:\n", 1)[1]
-                body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
-                condition = next(line.strip() for line in body.splitlines() if "if:" in line)
-                self.assertIn("github.event_name != 'pull_request' &&", condition)
+        native = next(line for line in workflow.splitlines() if line.startswith("  KAST_NATIVE_COMPILATION:"))
+        self.assertNotIn("github.event_name", native)
+        self.assertNotIn("github.ref", native)
+        for job in ("assembly", "kotlin", "composed-macos"):
+            body = workflow.split(f"\n  {job}:\n", 1)[1]
+            body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
+            self.assertIn("needs.scope.outputs.product == 'run'", body)
+            self.assertNotIn("github.event_name != 'pull_request'", body)
+            self.assertNotIn("github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&\n", body)
 
     def test_ci_preserves_running_main_runs_and_cancels_superseded_pr_runs(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
@@ -576,7 +573,7 @@ class SourceInventoryTest(unittest.TestCase):
             guarded,
         )
         ci = (workflows / "ci.yml").read_text()
-        complete = ci.split("\n  composed-products:\n", 1)[1]
+        complete = ci.split("\n  composed-macos:\n", 1)[1]
         complete = re.split(r"\n  (?=\S)", complete, maxsplit=1)[0]
         self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", complete)
         self.assertIn("uses: ./.github/workflows/composed-linux.yml", complete)
@@ -631,20 +628,14 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn(":runtime:hosted:headlessBootstrapPlugin", bootstrap)
         self.assertNotIn("assembleRelease", bootstrap)
 
-    def test_complete_two_target_qualification_precedes_preview_publication(self):
+    def test_complete_mac_qualification_precedes_preview_publication(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
         ci = (workflows / "ci.yml").read_text()
         jobs = dict(
             re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", ci.split("\njobs:\n", 1)[1])
         )
-        native, joined, required = (
-            jobs[name] for name in ("composed-products", "sealed-product", "required")
-        )
-        self.assertIn("needs: scope", native)
-        self.assertIn("uses: ./.github/workflows/composed-linux.yml", native)
-        self.assertIn("complete_product: true", native)
-        self.assertIn("version: 0.0.${{ github.run_number }}", native)
-        self.assertIn("release_target: linux-x86_64", native)
+        self.assertNotIn("composed-products", jobs)
+        joined, required = jobs["sealed-product"], jobs["required"]
         mac = jobs["composed-macos"]
         self.assertIn("needs: [scope, source-work, assembly]", mac)
         self.assertIn("!cancelled()", mac)
@@ -654,31 +645,28 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertIn("uses: ./.github/workflows/composed-linux.yml", mac)
         self.assertIn("complete_product: true", mac)
         self.assertIn("release_target: macos-aarch64", mac)
-        self.assertIn("needs: [scope, source-work, composed-products, composed-macos]", joined)
+        self.assertIn("needs: [scope, source-work, composed-macos]", joined)
         self.assertNotIn("always()", joined)
         self.assertNotIn("run-id:", joined)
-        for target in ("linux-x86_64", "macos-aarch64"):
-            with self.subTest(target=target):
-                self.assertIn(
-                    f"name: kast-qualified-product-{target}-"
-                    "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
-                    joined,
-                )
-                self.assertIn(f"path: build/product-inputs/{target}", joined)
+        self.assertIn(
+            "name: kast-qualified-product-macos-aarch64-"
+            "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
+            joined,
+        )
+        self.assertIn("path: build/product-inputs/macos-aarch64", joined)
         self.assertIn("product_producer.py seal", joined)
         self.assertNotIn("name: ci-product-candidate-", joined)
         accepted = jobs["complete-product"]
         self.assertIn("needs: [sealed-product, installed-product]", accepted)
         self.assertNotIn("always()", accepted)
         self.assertIn("product_producer.py accept", accepted)
-        for target in ("linux-x86_64", "macos-aarch64"):
-            self.assertIn(
-                f"name: kast-installed-product-{target}-"
-                "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}", accepted
-            )
+        self.assertIn(
+            "name: kast-installed-product-macos-aarch64-"
+            "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}", accepted
+        )
         installed = jobs["installed-product"]
         self.assertIn("needs: sealed-product", installed)
-        self.assertIn("runner: ubuntu-24.04", installed)
+        self.assertNotIn("linux-x86_64", installed + joined + accepted)
         self.assertIn("runner: macos-15", installed)
         self.assertIn("product_lifecycle_probe.py", installed)
         self.assertIn("KAST_ACCEPTANCE_BASELINE_RECORD_SHA256", installed)
@@ -767,7 +755,7 @@ class SourceInventoryTest(unittest.TestCase):
             preview.index("build_candidate.py promote-product"),
             preview.index("publish_developer.py product"),
         )
-        for producer in (native, joined, candidate, required, preview):
+        for producer in (mac, joined, candidate, required, preview):
             self.assertNotIn("continue-on-error:", producer)
         for consumer in (joined, preview):
             for build_command in ("./gradlew", "assembleRelease", "composed_release.py assemble"):
@@ -839,14 +827,12 @@ class SourceInventoryTest(unittest.TestCase):
             self.assertIn(
                 "vars.KAST_NATIVE_COMPILATION != 'false'", (workflows / filename).read_text()
             )
-        native = workflow.split("\n  composed-products:\n", 1)[1]
+        native = workflow.split("\n  composed-macos:\n", 1)[1]
         native = re.split(r"\n  (?=\S)", native, maxsplit=1)[0]
         for prerequisite in (
             "needs.scope.outputs.product == 'run'",
             "vars.KAST_MACOS_CHECKS == 'true'",
             "vars.KAST_NATIVE_COMPILATION != 'false'",
-            "github.ref == 'refs/heads/main'",
-            "github.event_name == 'push' || github.event_name == 'workflow_dispatch'",
         ):
             self.assertIn(prerequisite, native)
         # Already qualified immutable bytes remain promotable without enabling new builds.

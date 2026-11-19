@@ -376,6 +376,10 @@ class PublishedProductBuildSelectionTest {
                         ),
                 )
             }
+        val mac = entry.record.copy(schemaVersion = 5, targets = listOf(targets.last()))
+        assertTrue(validProductRecord(mac))
+        assertFalse(validProductRecord(mac.copy(schemaVersion = 3)))
+        assertFalse(validProductRecord(mac.copy(targets = listOf(targets.first()))))
         val record = entry.record.copy(schemaVersion = 3, targets = targets)
         assertTrue(validProductRecord(record))
         val catalog = managementJson.encodeToString(ProductBuildCatalog(2, listOf(entry.copy(record = record))))

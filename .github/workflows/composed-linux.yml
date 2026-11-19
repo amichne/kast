@@ -19,7 +19,7 @@ on:
   workflow_call:
     inputs:
       release_target:
-        description: Qualify one native target, or both when omitted
+        description: Qualify one native target. The default is macOS ARM64.
         type: string
         required: false
         default: ''
@@ -56,10 +56,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(format('[{0}{1}{2}]',
-          inputs.release_target != 'macos-aarch64' && '{"target":"linux-x86_64","runner":"ubuntu-24.04","donor":"idea-2026.2.2.tar.gz"}' || '',
-          inputs.release_target == '' && !inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true' && ',' || '',
-          (inputs.release_target == 'macos-aarch64' || (inputs.release_target == '' && !inputs.linux_only)) && vars.KAST_MACOS_CHECKS == 'true' && '{"target":"macos-aarch64","runner":"macos-15","donor":"idea-2026.2.2-aarch64.dmg"}' || '')) }}
+        include: ${{ fromJSON(format('[{0}{1}]',
+          (inputs.release_target == 'linux-x86_64' || inputs.linux_only) && '{"target":"linux-x86_64","runner":"ubuntu-24.04","donor":"idea-2026.2.2.tar.gz"}' || '',
+          inputs.release_target != 'linux-x86_64' && !inputs.linux_only && vars.KAST_MACOS_CHECKS == 'true' && '{"target":"macos-aarch64","runner":"macos-15","donor":"idea-2026.2.2-aarch64.dmg"}' || '')) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -100,7 +99,6 @@ jobs:
           cache-read-only: true
 
       - name: Check shared composition Python source
-        if: matrix.target == 'linux-x86_64'
         run: |
           mise exec -- uv run --locked --project packaging ruff check packaging/internal/composition/composed_release.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py
           mise exec -- uv run --locked --project packaging ruff format --check packaging/internal/composition/composed_release.py packaging/internal/verification/composed_host_probe.py packaging/tests/test_composition_release.py

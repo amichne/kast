@@ -59,7 +59,7 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Admit complete candidate and both native target qualifications
+      - name: Admit the candidate and its native qualification
         id: candidate
         env:
           SOURCE_SHA: ${{ github.event.workflow_run.head_sha || inputs.source_revision }}

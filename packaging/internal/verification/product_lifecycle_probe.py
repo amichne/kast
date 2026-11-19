@@ -340,11 +340,7 @@ class Probe:
         )
         executable = launcher if launcher is not None else self.home / ".local/bin/kast"
         command = [*prefix, str(executable), *arguments]
-        environment = (
-            self.environment | {"KAST_DEBUG": "1", "KAST_FRONTEND_TRACE": "1"}
-            if trace
-            else self.environment
-        )
+        environment = self.environment | {"KAST_DEBUG": "1"} if trace else self.environment
         output = self.evidence / f"{case}.stdout"
         error = self.evidence / f"{case}.stderr"
         if disposable_caller:

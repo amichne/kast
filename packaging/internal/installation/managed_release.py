@@ -489,6 +489,7 @@ def bounded_text(value: object) -> TypeGuard[str]:
 
 
 PRODUCT_TARGETS = ("linux-x86_64", "macos-aarch64")
+MACOS_PRODUCT_SCHEMA = 5
 
 
 @dataclass(frozen=True, slots=True)
@@ -736,7 +737,7 @@ def parse_installed_product_record(value: object) -> ProductRecord | LocalProduc
     )
     if (
         type(value["schemaVersion"]) is not int
-        or value["schemaVersion"] not in (2, 3, 4)
+        or value["schemaVersion"] not in (2, 3, 4, MACOS_PRODUCT_SCHEMA)
         or value["repository"] != REPOSITORY
         or not revision(build)
         or not revision(tree)
@@ -745,7 +746,7 @@ def parse_installed_product_record(value: object) -> ProductRecord | LocalProduc
         or not re.fullmatch(r"0\.0\.[1-9][0-9]*", version)
         or isinstance(producer, Failure)
         or not sequence(targets)
-        or len(targets) != (1 if isinstance(producer, LocalProductProducer) else 2)
+        or len(targets) != (1 if value["schemaVersion"] in (4, MACOS_PRODUCT_SCHEMA) else 2)
     ):
         return Failure.ARTIFACT_INVALID
     facts: list[ProductTarget] = []
@@ -762,9 +763,15 @@ def parse_installed_product_record(value: object) -> ProductRecord | LocalProduc
         not isinstance(item.qualification.producer, ProductProducer) for item in facts
     ):
         return Failure.ARTIFACT_INVALID
-    if tuple(item.target for item in facts) != PRODUCT_TARGETS:
+    required = (
+        ("macos-aarch64",) if value["schemaVersion"] == MACOS_PRODUCT_SCHEMA else PRODUCT_TARGETS
+    )
+    if tuple(item.target for item in facts) != required:
         return Failure.ARTIFACT_INVALID
-    if any((item.runtimeBase is not None) != (value["schemaVersion"] == 3) for item in facts):
+    if any(
+        (item.runtimeBase is not None) != (value["schemaVersion"] in (3, MACOS_PRODUCT_SCHEMA))
+        for item in facts
+    ):
         return Failure.ARTIFACT_INVALID
     return ProductRecord(
         value["schemaVersion"], REPOSITORY, build, tree, version, producer, tuple(facts)
@@ -1671,7 +1678,11 @@ def inspect_control(
             if jvm_layout.read_bytes() != b"1\n":
                 return Failure.INSTALLER_CONTRACT_UNSUPPORTED
             libraries = control / "lib"
-            if query_header != b"#!/bin/s" or not libraries.is_dir() or not any(libraries.glob("*.jar")):
+            if (
+                query_header != b"#!/bin/s"
+                or not libraries.is_dir()
+                or not any(libraries.glob("*.jar"))
+            ):
                 return Failure.ARTIFACT_INVALID
             if any(
                 path.suffix == ".class" or (path.suffix == ".jar" and path.parent != libraries)
