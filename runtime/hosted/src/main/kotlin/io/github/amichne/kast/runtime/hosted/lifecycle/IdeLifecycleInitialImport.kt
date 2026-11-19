@@ -69,6 +69,14 @@ internal suspend fun awaitInitialWorkspaceImport(
     scopes: List<InitialImportScope>,
     await: suspend (WorkspaceRefreshResult, () -> Unit) -> IdeLifecycleResult,
 ): IdeLifecycleResult {
+    // A delayed IntelliJ restore can replace a Gradle model that was imported before the restore finished.
+    if (
+        !awaitLifecycleCondition(operation.deadline, operation.nanoTime) {
+            project.isDisposed || scopes.all(InitialImportScope::canImportModel)
+        }
+    )
+        return IdeLifecycleResult.Blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+    if (project.isDisposed) return IdeLifecycleResult.Blocked(IdeLifecycleFailure.DISPOSED)
     val initial = requestInitialWorkspaceImport(project, endpoint, root, operation)
     val resume = { scopes.forEach(InitialImportScope::resumeScanning) }
     return try {
