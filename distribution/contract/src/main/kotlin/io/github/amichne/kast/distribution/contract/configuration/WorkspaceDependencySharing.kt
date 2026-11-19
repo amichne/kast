@@ -10,6 +10,8 @@ enum class WorkspaceDependencySharing {
     SHARED;
 
     companion object {
+        val DEFAULT = SHARED
+
         fun parseSetting(raw: String): Refinement<WorkspaceDependencySharing, ConfigurationFailure> =
             when (raw) {
                 "PRIVATE" -> Refinement.Refined(PRIVATE)

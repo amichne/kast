@@ -152,7 +152,7 @@ class ContainerStoreTest {
     @TempDir lateinit var temporary: Path
 
     @Test
-    fun `create owns one workspace trust and private Gradle state over a shared immutable runtime`() {
+    fun `new workspaces share Gradle state and keep separate trust`() {
         val root = temporary.toRealPath().resolve("manager")
         val platform = (ContainerPlatform.current() as Refinement.Refined).value
         val store = ContainerStore(root, platform)
@@ -163,7 +163,7 @@ class ContainerStoreTest {
         assertTrue(first is Refinement.Refined, first.toString())
         val created = (first as Refinement.Refined).value
         assertEquals(workspace, created.workspace)
-        assertEquals(created.home.resolve(".gradle"), created.gradleHome)
+        assertEquals(store.sharedGradleHome, created.gradleHome)
         assertEquals(runtime.root, created.runtime.root)
         assertEquals(
             created.id,
@@ -179,6 +179,7 @@ class ContainerStoreTest {
         val second =
             store.create(ContainerCommand.Create("frontend", null, null, false), other, runtime) as Refinement.Refined
         assertEquals(runtime.root, second.value.runtime.root)
+        assertEquals(created.gradleHome, second.value.gradleHome)
         assertNotEquals(created.home, second.value.home)
         val trust =
             Files.walk(created.home).use {

@@ -32,7 +32,7 @@ class WorkspaceConfigCommandTest {
             store.admitCreation(
                 ContainerCommand.Create(null, null, null, false),
                 workspace,
-                WorkspaceDependencySharing.SHARED,
+                WorkspaceDependencySharing.PRIVATE,
             )
         val recorded = store.create((creation as Refinement.Refined).value, product.runtime) as Refinement.Refined
         val generated = recorded.value.configuration
@@ -46,14 +46,14 @@ class WorkspaceConfigCommandTest {
             }
         val omitted = invoke("explain", key)
         val setting = omitted.getValue("settings").jsonArray.single().jsonObject
-        assertEquals("PRIVATE", setting.getValue("value").jsonPrimitive.content)
+        assertEquals("SHARED", setting.getValue("value").jsonPrimitive.content)
         assertEquals("DEFAULT", setting.getValue("source").jsonPrimitive.content)
         val reuse = omitted.getValue("workspaceAccess").jsonObject
         assertEquals("REUSE_RECORDED", reuse.getValue("type").jsonPrimitive.content)
-        assertEquals("SHARED", reuse.getValue("policy").jsonPrimitive.content)
-        val conflict = invoke("set", key, "PRIVATE").getValue("workspaceAccess").jsonObject
+        assertEquals("PRIVATE", reuse.getValue("policy").jsonPrimitive.content)
+        val conflict = invoke("set", key, "SHARED").getValue("workspaceAccess").jsonObject
         assertEquals("CONFIGURATION_CONFLICT", conflict.getValue("type").jsonPrimitive.content)
-        assertEquals("SHARED", conflict.getValue("conflict").jsonObject.getValue("recorded").jsonPrimitive.content)
+        assertEquals("PRIVATE", conflict.getValue("conflict").jsonObject.getValue("recorded").jsonPrimitive.content)
         val restored = invoke("unset", key).getValue("workspaceAccess").jsonObject
         assertEquals(reuse, restored)
         assertEquals(before, Files.readString(generated))
@@ -87,7 +87,7 @@ class WorkspaceConfigCommandTest {
             assertEquals(source, setting.getValue("source").jsonPrimitive.content)
             assertEquals(value, setting.getValue("value").jsonPrimitive.content)
         }
-        inspect(listOf("show"), "DEFAULT", "PRIVATE")
+        inspect(listOf("show"), "DEFAULT", "SHARED")
         assertTrue(Files.notExists(overlay.parent))
         Files.createDirectories(overlay.parent)
         val other = "# keep this comment\nKAST_HOST_MAX_HEAP_MIB=2048\n"
@@ -97,7 +97,7 @@ class WorkspaceConfigCommandTest {
         inspect(listOf("explain", key), "SAVED_WORKSPACE", "SHARED")
         assertTrue(managementChild(temporary, listOf("config", "set", key, "typo") + args).first != 0)
         assertEquals(other + "$key=SHARED\n", Files.readString(overlay))
-        inspect(listOf("unset", key), "DEFAULT", "PRIVATE")
+        inspect(listOf("unset", key), "DEFAULT", "SHARED")
         assertEquals(other, Files.readString(overlay))
         val installationFile = Files.writeString(installation.resolve("config/environment"), "$key=SHARED\n")
         inspect(listOf("set", key, "PRIVATE"), "SAVED_WORKSPACE", "PRIVATE")

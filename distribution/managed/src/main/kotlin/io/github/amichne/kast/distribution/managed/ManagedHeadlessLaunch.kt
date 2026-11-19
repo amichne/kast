@@ -33,7 +33,8 @@ private constructor(
             val runtime = installation
             val state = runtime.state
             val java = runtime.launch.bundledJavaHome
-            return gradleEnvironment.processVariables() +
+            return runtime.dependencyCacheEnvironment +
+                gradleEnvironment.processVariables() +
                 mapOf(
                     "PATH" to executablePath.value,
                     "HOME" to runtime.userHome.toString(),

@@ -335,7 +335,7 @@ enum class ConfigurationParameter(
         ConfigurationSyntax.OWNER_INPUT,
         ConfigurationScope.WORKSPACE,
         ":distribution:cli",
-        defaultValue = "PRIVATE",
+        defaultValue = WorkspaceDependencySharing.DEFAULT.name,
     ),
     HOST_IDLE_SHUTDOWN(
         "KAST_HOST_IDLE_SHUTDOWN",

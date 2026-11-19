@@ -14,25 +14,34 @@ internal suspend fun awaitLifecycleRefresh(
     initial: WorkspaceRefreshResult,
     status: (String) -> WorkspaceRefreshResult,
     progress: (IdeLifecycleStage) -> Unit,
+    effectSettled: () -> Unit = {},
 ): IdeLifecycleResult {
     var result = initial
+    if (initial.admissionPending()) effectSettled()
     val finished =
         awaitLifecycleCondition(operation.deadline, operation.nanoTime) {
-            val pending = result as? WorkspaceRefreshResult.Pending
-            if (pending != null) {
-                result = status(pending.requestId)
-                val current = result as? WorkspaceRefreshResult.Pending
-                if (current != null) {
-                    val stage =
-                        if (current.stage == WorkspaceRefreshStage.ADMISSION) IdeLifecycleStage.ADMISSION
-                        else IdeLifecycleStage.IMPORTING
-                    progress(operation.enter(stage))
-                }
+            val pending = result as? WorkspaceRefreshResult.Pending ?: return@awaitLifecycleCondition true
+            result = status(pending.requestId)
+            if (pending.stage != WorkspaceRefreshStage.ADMISSION && result.admissionPending()) effectSettled()
+            if (result is WorkspaceRefreshResult.Pending) {
+                val stage = if (result.admissionPending()) IdeLifecycleStage.ADMISSION else IdeLifecycleStage.IMPORTING
+                progress(operation.enter(stage))
             }
             result !is WorkspaceRefreshResult.Pending
         }
     if (!finished) return IdeLifecycleResult.Blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
-    return when (val terminal = result) {
+    return refreshResult(result, operation, target)
+}
+
+private fun WorkspaceRefreshResult.admissionPending() =
+    this is WorkspaceRefreshResult.Pending && stage == WorkspaceRefreshStage.ADMISSION
+
+private fun refreshResult(
+    terminal: WorkspaceRefreshResult,
+    operation: NativeWorkspacePreparation,
+    target: IdeProjectTarget,
+): IdeLifecycleResult =
+    when (terminal) {
         is WorkspaceRefreshResult.Complete -> {
             operation.enter(IdeLifecycleStage.ADMISSION)
             IdeLifecycleResult.Synced(target)
@@ -42,4 +51,3 @@ internal suspend fun awaitLifecycleRefresh(
         is WorkspaceRefreshResult.Rejected -> IdeLifecycleResult.Blocked(terminal.reason.lifecycleFailure())
         else -> IdeLifecycleResult.Blocked(IdeLifecycleFailure.IMPORT_FAILED)
     }
-}

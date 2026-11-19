@@ -119,7 +119,12 @@ private constructor(
             delegated: GradleImportEnvironment?,
         ): Refinement<ManagedWorkspaceQuery, WorkspaceAdmissionFailure> {
             val store =
-                ContainerStore(product.runtime.root.parent.parent, product.runtime.manifest.platform, seedHostProbe)
+                ContainerStore(
+                    product.runtime.root.parent.parent,
+                    product.runtime.manifest.platform,
+                    seedHostProbe,
+                    dependencyCacheSeed = inherited["HOME"]?.let { Path.of(it).resolve(".gradle/caches/modules-2") },
+                )
             if ("KAST_MANAGED_HEADLESS_STATE" in inherited) return Refinement.Rejected(ContainerFailure.FOREIGN_STATE)
             when (val current = product.admitCurrent()) {
                 is Refinement.Rejected -> return current

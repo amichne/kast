@@ -5,8 +5,10 @@ import io.github.amichne.kast.distribution.contract.HostExitReason
 import io.github.amichne.kast.distribution.contract.HostExitRecord
 import io.github.amichne.kast.distribution.contract.configuration.WorkspaceDependencySharing
 import io.github.amichne.kast.kernel.Refinement
+import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption.WRITE
 import java.nio.file.attribute.FileTime
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonObject
@@ -18,6 +20,51 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
 class WorkspaceSeedingTest {
+    @Test
+    fun `first workspace skips busy seeds and copies released artifacts after an empty cache`(
+        @TempDir temporary: Path
+    ) {
+        val root = temporary.toRealPath()
+        val home = Files.createDirectory(root.resolve("shared"))
+        val empty = Files.createDirectories(home.resolve("caches/modules-2"))
+        Files.createDirectory(empty.resolve("files-2.1"))
+        Files.createFile(empty.resolve("modules-2.lock"))
+        val donor = Files.createDirectory(root.resolve("donor"))
+        val lock = Files.createFile(donor.resolve("modules-2.lock"))
+        Files.writeString(Files.createDirectory(donor.resolve("files-2.1")).resolve("sample.jar"), "sample")
+        val staging = Files.createDirectory(root.resolve("staging"))
+        FileChannel.open(lock, WRITE).use { channel ->
+            channel.lock().use { prepareSharedDependencyCache(home, staging, donor) }
+        }
+        val snapshot = home.resolve("kast-read-only")
+        assertFalse(Files.exists(snapshot))
+        prepareSharedDependencyCache(home, staging, donor)
+        assertEquals("sample", Files.readString(snapshot.resolve("modules-2/files-2.1/sample.jar")))
+    }
+
+    @Test
+    fun `a populated shared cache produces one separate read only copy`(@TempDir temporary: Path) {
+        val store = ContainerStore(temporary.toRealPath().resolve("store"), platform())
+        val runtime = containerRuntimeFixture(store)
+        val first = creation(store, temporary, "first", null, WorkspaceDependencySharing.SHARED)
+        (store.create(first, runtime) as Refinement.Refined)
+        val modules = Files.createDirectories(first.gradleHome.resolve("caches/modules-2"))
+        val artifact = Files.createDirectories(modules.resolve("files-2.1/sample")).resolve("library.jar")
+        Files.writeString(artifact, "published")
+        Files.writeString(modules.resolve("modules-2.lock"), "")
+        Files.writeString(modules.resolve("gc.properties"), "")
+        val second = creation(store, temporary, "second", null, WorkspaceDependencySharing.SHARED)
+        (store.create(second, runtime) as Refinement.Refined)
+        val snapshot = first.gradleHome.resolve("kast-read-only/modules-2")
+        assertEquals("published", Files.readString(snapshot.resolve("files-2.1/sample/library.jar")))
+        assertFalse(Files.exists(snapshot.resolve("modules-2.lock")))
+        assertFalse(Files.exists(snapshot.resolve("gc.properties")))
+        Files.writeString(artifact, "changed")
+        (store.create(creation(store, temporary, "third", null, WorkspaceDependencySharing.SHARED), runtime)
+            as Refinement.Refined)
+        assertEquals("published", Files.readString(snapshot.resolve("files-2.1/sample/library.jar")))
+    }
+
     @Test
     fun `shared creation selects the owned Gradle home but leaves private creation unchanged`(
         @TempDir temporary: Path

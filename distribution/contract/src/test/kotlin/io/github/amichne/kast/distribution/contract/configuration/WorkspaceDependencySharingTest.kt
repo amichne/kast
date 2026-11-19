@@ -6,10 +6,10 @@ import org.junit.jupiter.api.Test
 
 class WorkspaceDependencySharingTest {
     @Test
-    fun `sharing is opt in and only the closed settings are admitted`() {
+    fun `sharing is the default and only the closed settings are admitted`() {
         val key = "KAST_WORKSPACE_DEPENDENCY_SHARING"
         val defaults = ResolvedKastConfiguration.resolve(ConfigurationSources()) as Refinement.Refined
-        assertEquals(WorkspaceDependencySharing.PRIVATE, defaults.value.workspaceDependencySharing)
+        assertEquals(WorkspaceDependencySharing.SHARED, defaults.value.workspaceDependencySharing)
         for ((value, expected) in
             listOf("PRIVATE" to WorkspaceDependencySharing.PRIVATE, "SHARED" to WorkspaceDependencySharing.SHARED)) {
             val resolved =

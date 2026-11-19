@@ -19,6 +19,7 @@ internal class ContainerStore(
         WorkspaceSeedEndpoint.UNPROVEN
     },
     private val seedClone: (Path, Path) -> WorkspaceSeedClone = ::cloneWorkspaceSystem,
+    private val dependencyCacheSeed: Path? = null,
 ) {
     val containers: Path = root.resolve("containers")
     val runtimes: Path = root.resolve("runtimes")
@@ -28,7 +29,7 @@ internal class ContainerStore(
     fun admitCreation(
         request: ContainerCommand.Create,
         directory: Path,
-        dependencySharing: WorkspaceDependencySharing = WorkspaceDependencySharing.PRIVATE,
+        dependencySharing: WorkspaceDependencySharing = WorkspaceDependencySharing.DEFAULT,
     ): Refinement<AdmittedContainerCreation, ContainerFailure> = containerFiles {
         parseCreation(request, directory, dependencySharing)
     }
@@ -116,6 +117,7 @@ internal class ContainerStore(
                     is Refinement.Refined -> Unit
                 }
             }
+            prepareSharedDependencyCache(sharedGradleHome, staging, dependencyCacheSeed)
         }
         for (child in listOf("state/home/.gradle", "state/system", "state/log", "state/tmp", "config")) Files
             .createDirectories(staging.resolve(child), PosixFilePermissions.asFileAttribute(containerDirectoryMode))
@@ -276,7 +278,10 @@ internal class ContainerStore(
         Files.writeString(trust, grant, StandardOpenOption.CREATE_NEW)
         writeContainerRecord(
             staging.resolve("state/gradle-home.json"),
-            io.github.amichne.kast.distribution.managed.ManagedHeadlessGradleHome(container.gradleHome.toString()),
+            io.github.amichne.kast.distribution.managed.ManagedHeadlessGradleHome(
+                container.gradleHome.toString(),
+                sharedDependencies = container.gradleHome == sharedGradleHome,
+            ),
         )
         Files.writeString(
             staging.resolve("config/environment"),

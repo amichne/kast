@@ -14,6 +14,32 @@ import org.junit.jupiter.api.Test
 
 class LifecycleRefreshIdentityTest {
     @Test
+    fun `release scanning once after model application and before readiness`() = runTest {
+        val operation =
+            (NativeWorkspacePreparation.admit("open", 1000, { testScheduler.currentTime * NANOS_PER_MILLI })
+                    as Refinement.Refined)
+                .value
+        val polls = mutableListOf<String>()
+        val target = IdeProjectTarget("host", "project", "/workspace")
+        var calls = 0
+        val result =
+            awaitLifecycleRefresh(
+                target,
+                operation,
+                WorkspaceRefreshResult.Pending("import", WorkspaceRefreshStage.EFFECT),
+                {
+                    polls += "poll"
+                    if (++calls < 3) WorkspaceRefreshResult.Pending(it, WorkspaceRefreshStage.ADMISSION)
+                    else WorkspaceRefreshResult.Complete(it)
+                },
+                {},
+                { polls += "settled" },
+            )
+        assertEquals(listOf("poll", "settled", "poll", "poll"), polls)
+        assertEquals(IdeLifecycleResult.Synced(target), result)
+    }
+
+    @Test
     fun `child refresh is polled by issued identity while parent stage and deadline stay monotonic`() = runTest {
         val operation =
             (NativeWorkspacePreparation.admit("parent", 1000, { testScheduler.currentTime * NANOS_PER_MILLI })

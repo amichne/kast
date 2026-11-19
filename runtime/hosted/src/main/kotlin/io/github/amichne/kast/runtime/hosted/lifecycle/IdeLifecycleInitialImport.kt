@@ -3,6 +3,9 @@ package io.github.amichne.kast.runtime.hosted.lifecycle
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
+import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
+import io.github.amichne.kast.protocol.contract.IdeProjectTarget
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshCommand
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshEffect
 import io.github.amichne.kast.protocol.contract.WorkspaceRefreshFailure
@@ -21,7 +24,7 @@ private enum class InitialImportSelection {
 }
 
 /** Native link selection runs on EDT; model observation and owner submission run on the background boundary. */
-internal suspend fun requestInitialWorkspaceImport(
+private suspend fun requestInitialWorkspaceImport(
     project: Project,
     endpoint: HostedEndpointService,
     root: CanonicalWorkspaceRoot,
@@ -57,3 +60,40 @@ internal suspend fun requestInitialWorkspaceImport(
         }
     }
 }
+
+internal suspend fun awaitInitialWorkspaceImport(
+    project: Project,
+    endpoint: HostedEndpointService,
+    root: CanonicalWorkspaceRoot,
+    operation: NativeWorkspacePreparation,
+    scopes: List<InitialImportScope>,
+    await: suspend (WorkspaceRefreshResult, () -> Unit) -> IdeLifecycleResult,
+): IdeLifecycleResult {
+    // A delayed IntelliJ restore can replace a Gradle model that was imported before the restore finished.
+    if (
+        !awaitLifecycleCondition(operation.deadline, operation.nanoTime) {
+            project.isDisposed || scopes.all(InitialImportScope::canImportModel)
+        }
+    )
+        return IdeLifecycleResult.Blocked(IdeLifecycleFailure.DEADLINE_EXCEEDED)
+    if (project.isDisposed) return IdeLifecycleResult.Blocked(IdeLifecycleFailure.DISPOSED)
+    val initial = requestInitialWorkspaceImport(project, endpoint, root, operation)
+    val resume = { scopes.forEach(InitialImportScope::resumeScanning) }
+    return try {
+        await(initial, resume)
+    } finally {
+        resume()
+    }
+}
+
+internal suspend fun openedAfterImport(
+    imported: IdeLifecycleResult,
+    target: IdeProjectTarget,
+    awaitReady: suspend () -> IdeLifecycleResult,
+): IdeLifecycleResult =
+    when (imported) {
+        is IdeLifecycleResult.Synced -> IdeLifecycleResult.Opened(target)
+        is IdeLifecycleResult.Blocked ->
+            if (imported.reason == IdeLifecycleFailure.MODEL_RELOAD_REQUIRED) awaitReady() else imported
+        else -> imported
+    }
