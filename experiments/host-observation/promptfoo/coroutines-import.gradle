@@ -1,0 +1,10 @@
+gradle.settingsEvaluated { settings ->
+    if (settings.rootProject.name == 'kotlinx.coroutines') {
+        def repositories = settings.pluginManagement.repositories
+        repositories.removeAll(repositories.findAll { repository ->
+            repository instanceof org.gradle.api.artifacts.repositories.MavenArtifactRepository &&
+                repository.url.host == 'maven.pkg.jetbrains.space' &&
+                repository.url.path == '/kotlin/p/dokka/dev/'
+        })
+    }
+}
