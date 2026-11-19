@@ -442,7 +442,8 @@ func TestEveryEntryOtherThanPublicQueriesReplacesTheProcessWithTheJvmEntry(t *te
 			t.Fatalf("%v: unexpected outcome %+v executed=%v", arguments, got, f.executed)
 		}
 	}
-	want := []string{"/runtimes/abc/host/jbr/bin/java", "-Dkast.command=" + filepath.Join(f.root, payloadPath),
+	want := []string{"/runtimes/abc/host/jbr/bin/java", "-Xlog:disable", "-Xlog:all=warning:stderr",
+		"-Dkast.command=" + filepath.Join(f.root, payloadPath),
 		"-Duser.home=/home/caller", "-Xmx256m", "-cp",
 		filepath.Join(f.root, "lib/kast-cli.jar") + ":" + filepath.Join(f.root, "lib/kotlin-stdlib.jar"),
 		"io.github.amichne.kast.cli.KastControlMain", "--internal-entrypoint=mcp", "--catalog", "common"}
