@@ -125,17 +125,17 @@ def decode(raw: bytes, record: product.ProductRecord, digest: str, target: str) 
 
 
 def assets(directory: Path, record: product.ProductRecord) -> tuple[product.ProductAsset, ...]:
-    """Require both receipts; original bytes are retained, never reserialized."""
+    """Read the original receipt bytes for every target in the admitted record."""
     digest = product.file_digest(directory / "build-record.json")
     result: list[product.ProductAsset] = []
     baselines: set[tuple[str, str]] = set()
-    for target in product.PRODUCT_TARGETS:
+    for facts in record.targets:
+        target = facts.target
         path = directory / "payload" / filename(target)
         if path.is_symlink() or not path.is_file() or path.stat().st_size > MAXIMUM_RECEIPT_BYTES:
             raise ValueError("missing installed acceptance")
         receipt = decode(path.read_bytes(), record, digest, target)
         if receipt.schemaVersion == 1:
-            facts = next(item for item in record.targets if item.target == target)
             proof = directory / "payload" / facts.qualification.receipt.name
             if proof.is_symlink() or not proof.is_file() or proof.stat().st_size > 1_048_576:
                 raise ValueError("missing legacy native qualification")

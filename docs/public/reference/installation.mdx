@@ -6,7 +6,7 @@ icon: "download"
 ---
 
 Use the remote installer for initial setup, then `kast upgrade` for updates.
-Kast manages its own Host on macOS ARM64 and Linux x86-64. Desktop IDEA is not a prerequisite.
+New previews provide a managed Host for macOS ARM64. Desktop IDEA is not a prerequisite.
 
 <Warning>
   This page describes the managed-runtime contract under implementation. Native acceptance and publication are not yet complete. The remote main installer is not evidence that this branch is available.
@@ -28,6 +28,8 @@ Your project still supplies its build configuration, dependencies, and any requi
 ```shell
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- --channel preview
 ```
+
+On a Mac with an older two-platform preview, run the remote installer once to move to the Mac-only preview. Then use `kast upgrade` for later updates.
 
 The installer selects one complete product: an immutable vendor base and exact Control, Host, and agent components.
 It verifies the selected records and bytes before activation. A missing component is a failure, not permission to mix builds.

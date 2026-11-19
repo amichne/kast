@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -248,13 +249,16 @@ def seal(
     tree: str,
     version: str,
     producer: product.ProductProducer,
+    *,
+    macos_only: bool = False,
 ) -> product.ProductRecord:
     if output.exists() or output.is_symlink() or inputs.is_symlink():
         raise Rejected(Failure.DESTINATION_NOT_EMPTY)
-    if {path.name for path in inputs.iterdir()} != set(product.PRODUCT_TARGETS):
+    required_targets = ("macos-aarch64",) if macos_only else product.PRODUCT_TARGETS
+    if {path.name for path in inputs.iterdir()} != set(required_targets):
         raise Rejected(Failure.GATE_NOT_COMPLETE)
     targets: list[product.ProductTarget] = []
-    for target in product.PRODUCT_TARGETS:
+    for target in required_targets:
         source = inputs / target
         if source.is_symlink() or not source.is_dir():
             raise Rejected(Failure.INVALID_RECORD)
@@ -286,7 +290,9 @@ def seal(
     ):
         raise Rejected(Failure.SOURCE_TREE_MISMATCH)
     complete = product.ProductRecord(
-        3 if any(item.runtimeBase for item in targets) else 2,
+        product.MACOS_PRODUCT_SCHEMA
+        if macos_only
+        else (3 if any(item.runtimeBase for item in targets) else 2),
         product.REPOSITORY,
         revision,
         tree,
@@ -320,11 +326,12 @@ def accept(directory: Path, receipts: Path, output: Path) -> product.ProductReco
         raise Rejected(record)
     if output.exists() or output.is_symlink() or receipts.is_symlink():
         raise Rejected(Failure.DESTINATION_NOT_EMPTY)
-    names = {candidate.acceptance.filename(target) for target in product.PRODUCT_TARGETS}
+    names = {candidate.acceptance.filename(item.target) for item in record.targets}
     if {path.name for path in receipts.iterdir()} != names:
         raise Rejected(Failure.GATE_NOT_COMPLETE)
     digest = product.file_digest(directory / "build-record.json")
-    for target in product.PRODUCT_TARGETS:
+    for item in record.targets:
+        target = item.target
         path = regular(receipts / candidate.acceptance.filename(target))
         if path.stat().st_size > candidate.acceptance.MAXIMUM_RECEIPT_BYTES:
             raise Rejected(Failure.INVALID_RECORD)
@@ -353,6 +360,7 @@ def main() -> int:
     _ = parser.add_argument("--java-release", type=Path)
     _ = parser.add_argument("--control", type=Path)
     _ = parser.add_argument("--target")
+    _ = parser.add_argument("--macos-only", action="store_true")
     args = parser.parse_args()
     try:
         revision = os.environ["GITHUB_SHA"]
@@ -360,10 +368,14 @@ def main() -> int:
             int(os.environ[key])
             for key in ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_RUN_NUMBER")
         )
+        event, ref = os.environ["GITHUB_EVENT_NAME"], os.environ["GITHUB_REF"]
+        main = ref == "refs/heads/main" and event in ("push", "workflow_dispatch")
+        review = (
+            event == "pull_request" and re.fullmatch(r"refs/pull/[1-9][0-9]*/merge", ref)
+        ) or (event == "merge_group" and ref.startswith("refs/heads/gh-readonly-queue/main/"))
         if (
             os.environ["GITHUB_REPOSITORY"] != product.REPOSITORY
-            or os.environ["GITHUB_REF"] != "refs/heads/main"
-            or os.environ["GITHUB_EVENT_NAME"] not in ("push", "workflow_dispatch")
+            or not (main or review)
             or min(run, attempt, number) <= 0
         ):
             raise Rejected(Failure.WRONG_PRODUCER)
@@ -416,6 +428,7 @@ def main() -> int:
                 tree,
                 version,
                 product.ProductProducer(run, attempt, CI_WORKFLOW),
+                macos_only=args.macos_only,
             )
         return 0
     except Rejected as rejection:

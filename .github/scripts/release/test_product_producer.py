@@ -242,6 +242,33 @@ class ProductProducerTest(unittest.TestCase):
                     self.assertFalse(output.exists())
                 self.assertEqual(original, (directory / "build-record.json").read_bytes())
 
+    def test_macos_only_candidate_needs_the_mac_receipt_and_retains_legacy_target_rules(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            inputs, _ = captured(root, split=True)
+            (inputs / "linux-x86_64").rename(root / "excluded-linux")
+            output = root / "sealed"
+            owner = product.ProductProducer(123, 1, producer.CI_WORKFLOW)
+            with self.assertRaises(producer.Rejected):
+                producer.seal(inputs, output, "a" * 40, "b" * 40, "0.0.123", owner)
+            record = producer.seal(
+                inputs, output, "a" * 40, "b" * 40, "0.0.123", owner, macos_only=True
+            )
+            self.assertEqual(5, record.schemaVersion)
+            self.assertEqual(["macos-aarch64"], [item.target for item in record.targets])
+            self.assertEqual(record, candidate.read(output))
+            receipts = root / "receipts"
+            receipts.mkdir()
+            with self.assertRaises(producer.Rejected):
+                producer.accept(output, receipts, root / "accepted")
+            accepted_fixture(output, record)
+            name = candidate.acceptance.filename("macos-aarch64")
+            (output / "payload" / name).rename(receipts / name)
+            self.assertEqual(record, producer.accept(output, receipts, root / "accepted"))
+            self.assertEqual(record, candidate.read(root / "accepted", accepted=True))
+
     def test_split_targets_seal_without_assembling_or_substituting_base_qualification(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -513,7 +540,7 @@ class ProductProducerTest(unittest.TestCase):
                     "GITHUB_REPOSITORY": "amichne/kast",
                     "GITHUB_SHA": "a" * 40,
                     "GITHUB_REF": "refs/pull/123/merge",
-                    "GITHUB_EVENT_NAME": "pull_request",
+                    "GITHUB_EVENT_NAME": "pull_request_target",
                     "GITHUB_RUN_ID": "123",
                     "GITHUB_RUN_ATTEMPT": "1",
                     "GITHUB_RUN_NUMBER": "123",
@@ -527,7 +554,7 @@ class ProductProducerTest(unittest.TestCase):
             self.assertEqual("product-producer: WRONG_PRODUCER\n", result.stderr)
             self.assertEqual([], list(root.iterdir()))
 
-    def test_ci_joins_both_native_targets_before_validation_and_keeps_promotion_build_free(
+    def test_ci_joins_mac_acceptance_before_validation_and_keeps_promotion_build_free(
         self,
     ) -> None:
         workflows = Path(__file__).resolve().parents[2] / "workflows"
@@ -535,25 +562,18 @@ class ProductProducerTest(unittest.TestCase):
         jobs = dict(
             re.findall(r"(?ms)^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", ci.split("\njobs:\n", 1)[1])
         )
-        native = jobs["composed-products"]
-        self.assertIn("needs: scope", native)
-        self.assertIn("uses: ./.github/workflows/composed-linux.yml", native)
-        self.assertIn("complete_product: true", native)
-        self.assertIn("release_target: linux-x86_64", native)
-        self.assertIn("github.ref == 'refs/heads/main'", native)
-        self.assertIn("vars.KAST_MACOS_CHECKS == 'true'", native)
+        self.assertNotIn("composed-products", jobs)
         mac = jobs["composed-macos"]
         self.assertIn("needs: [scope, source-work, assembly]", mac)
         self.assertIn("complete_product: true", mac)
         self.assertIn("release_target: macos-aarch64", mac)
         join = jobs["sealed-product"]
-        self.assertIn("needs: [scope, source-work, composed-products, composed-macos]", join)
-        for target in ("linux-x86_64", "macos-aarch64"):
-            self.assertIn(
-                f"name: kast-qualified-product-{target}-"
-                "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
-                join,
-            )
+        self.assertIn("needs: [scope, source-work, composed-macos]", join)
+        self.assertIn(
+            "name: kast-qualified-product-macos-aarch64-"
+            "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}",
+            join,
+        )
         self.assertIn("name: ci-product-sealed-${{ github.sha }}-${{ github.run_attempt }}", join)
         accepted = jobs["complete-product"]
         self.assertIn("needs: [sealed-product, installed-product]", accepted)

@@ -327,8 +327,8 @@ def select(event: str, base: str, head: str, root: Path = ROOT, *, affected: boo
     if not diff.stdout:
         return Selection(ALL_CHECKS, Reason.NO_CHANGES)
     checks = classify_diff(diff.stdout)
-    # Main retains qualified candidates for developer promotion after source-only PR feedback.
-    if event == "push" and checks == SOURCE_CHECKS:
+    # Every source change must pass the installed product gate before merge.
+    if checks == SOURCE_CHECKS:
         checks = PRODUCT_CHECKS
     if affected and checks != DOCUMENTATION_CHECKS:
         paths = diff_paths(diff.stdout)
@@ -344,10 +344,7 @@ def select(event: str, base: str, head: str, root: Path = ROOT, *, affected: boo
         if isinstance(plan, verification_plan.Failure):
             return Selection(ALL_CHECKS, plan)
         # A collected source root admits fixture/source-set paths that the legacy inventory cannot classify.
-        # Native inputs and non-Kotlin resources keep candidate qualification.
-        qualification = any(owner[1:].replace(":", "/") in QUALIFICATION_MODULES for owner in plan.owners)
-        qualification = qualification or any(not path.endswith(".kt") for path in paths)
-        checks = PRODUCT_CHECKS if qualification or event == "push" else SOURCE_CHECKS
+        checks = PRODUCT_CHECKS
         return Selection(checks, Reason.CHANGED_INPUTS, plan)
     return Selection(checks, Reason.CHANGED_INPUTS)
 

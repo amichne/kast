@@ -36,8 +36,7 @@ Missing history, invalid revisions and unknown events also keep every check.
 The source plan accepts main/test Kotlin sources outside the native executable and installation owners.
 The product plan covers those release-sensitive owners.
 `NATIVE_INPUT_MODULES` lists the native executable owners by hand; no CI step compares it with the native compilation graph.
-While pull requests skip product validation and main pushes always select it, that inventory changes no job selection.
-Main pushes with source changes select product validation before automatic developer promotion when Mac checks are enabled.
+With Mac checks enabled, both pull requests and main pushes qualify the Mac product for source changes.
 A source-inventory test checks that each listed root remains included in `settings.gradle.kts`.
 New modules, fixtures and unknown roots keep full validation until their scope is reviewed.
 
@@ -116,8 +115,8 @@ Cancel an obsolete run and start a new run after changing the setting.
 Workflow changes take effect after the updated workflow is merged.
 These switches control GitHub Actions job selection. They do not disable local Gradle checks.
 
-When Mac checks are enabled, CI enables native compilation for main pushes and manual main runs by default.
-Pull requests and merge groups keep source, documentation, and portable-packaging checks without native compilation or product qualification.
+Mac product checks run on pull requests, merge groups, main pushes, and manual main runs.
+Pull requests and merge groups use hosted Mac runners.
 The existing `KAST_NATIVE_COMPILATION` variable remains a second switch.
 Set it to `false` to omit native compilation and its dependent product jobs:
 
@@ -198,20 +197,12 @@ The runner `.path` must include uv.
 
 ## Compile once and join qualification late
 
-Complete-product Linux composition starts after scope selection, alongside source validation.
-For a fresh main build, Mac composition waits for the existing native and release assembly jobs.
-It restores their exact release instead of compiling Control again on the smaller hosted Mac.
-The restore checks the source revision, source tree, version, archive digest, target platform, and compiler toolchain.
-Artifact selection stays within the same workflow run and attempt.
-A missing or rejected archive fails the job; it never triggers a replacement build.
-
-Each target verifies component archives and passive shipped-Control discovery without a separate native test binary.
-The two workflow calls execute one target each, so splitting their dependencies adds no target executions.
-Sealing waits for source validation and both qualified targets.
-Installed acceptance owns the compiler and Host lifecycle probes through the shipped Control.
-The required-check aggregate keeps its publication limits.
-Linux work can continue when source validation later fails, but that failure still blocks sealing.
-This trades some failed-run work for shorter turnaround.
+Ubuntu assembles the shared release and runs source validation.
+The hosted Mac restores the exact assembled release and qualifies the macOS ARM64 runtime.
+The sealed record identifies the Mac archives and their digests.
+Installed acceptance exercises the shipped Control, coordinator, and Host against those bytes.
+A missing or failed Mac receipt blocks the required check and preview publication.
+Linux product qualification is paused. Earlier two-platform records still need both receipts.
 
 Run `43453960426` took 2 hours 20 minutes before these changes.
 Its hosted Mac spent almost 44 minutes generating Control a second time.

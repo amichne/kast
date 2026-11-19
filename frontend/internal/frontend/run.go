@@ -113,7 +113,7 @@ func complete(ctx context.Context, catalog *Catalog, installation string, parsed
 	if err != nil {
 		return owner.finish(failureStatus(catalog, err, process.Stderr))
 	}
-	if environment["KAST_FRONTEND_TRACE"] == "1" {
+	if environment["KAST_DEBUG"] == "1" {
 		traceInvocation(process.Stderr, completed.Coordinator)
 	}
 	for _, line := range completed.Diagnostics {
