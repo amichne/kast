@@ -200,7 +200,34 @@ internal class NativePublicFixture(val evidence: Path) : AutoCloseable {
 
     override fun close() {
         children.forEach(::stopNativeProcess)
+        withdrawOwnedLaunchdJobs()
         Files.walk(home).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+    }
+
+    /**
+     * A public query with no running coordinator starts one through launchd. The job outlives this fixture's HOME
+     * unless withdrawn, so remove exactly the semantic jobs whose definition lies beneath it.
+     */
+    private fun withdrawOwnedLaunchdJobs() {
+        if (!System.getProperty("os.name").startsWith("Mac")) return
+        val domain = "gui/" + ProcessBuilder("/usr/bin/id", "-u").start().inputReader().readText().trim()
+        val labels =
+            launchctl("list").lineSequence().mapNotNull { line ->
+                line.split('\t').lastOrNull()?.takeIf { it.startsWith("io.github.amichne.kast.semantic.") }
+            }
+        for (label in labels.toList()) {
+            val definition = launchctl("print", "$domain/$label")
+            val path = definition.lineSequence().firstOrNull { it.trim().startsWith("path = ") }?.trim()
+            if (path != null && Path.of(path.removePrefix("path = ")).startsWith(home.toRealPath()))
+                launchctl("bootout", "$domain/$label")
+        }
+    }
+
+    private fun launchctl(vararg arguments: String): String {
+        val process = ProcessBuilder(listOf("/bin/launchctl") + arguments).redirectErrorStream(true).start()
+        val output = process.inputReader().readText()
+        assertTrue(process.waitFor(10, TimeUnit.SECONDS), "launchctl did not settle")
+        return output
     }
 }
 
