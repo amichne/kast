@@ -14,7 +14,7 @@ The fixture owner read the selection file to establish the expected path. An ind
 | Same snapshot and a Kast query tool | 4/4 | Each trace contained a complete query with the expected path |
 | Same snapshot and the selection file | 4/4 | All four answers used the supplied model selection |
 
-Each adapter had two fresh sessions per condition. The Kast condition explicitly directed Pi to a tool for the imported declaration. These trials establish the value of imported model information for this question. Automatic skill discovery remains unassessed.
+Each adapter had two fresh sessions per condition. The Kast condition explicitly directed Pi to a tool for the imported declaration. These trials establish the value of imported model information for this question. Automatic skill discovery needs a separate host trial.
 
 ## How much discovery does a command draft need?
 
@@ -32,14 +32,16 @@ One prior `retained` session ended with `Pi did not finish normally`. Its two co
 A separate matched repetition passed with both skills. It used 10,223 tokens with the prior skill and 1,503 with the revision.
 Every completed draft passed. The incoming caller case already needed one call and used 71 more median tokens with the revision.
 
-The two relation cases change the direction. The two page cases change the output kind. Offline controls used the actual Promptfoo assertions for the four drafts and both adapter worlds.
+The two relation cases change the direction. The two page cases change the output kind. Offline controls exercised the live assertions for the four drafts and both adapter worlds.
 Each assertion accepted its expected answer and rejected the wrong, omitted, and extra answers. These controls measure the grader.
-The live comparisons used Pi 1.5.2, Promptfoo 0.125.1, and `openai-codex/gpt-6.1-sol` with low reasoning effort and the Promptfoo cache off.
+The live comparisons used Pi 1.5.2, `promptfoo@0.125.1`, and `openai-codex/gpt-6.1-sol` with low reasoning effort and the evaluation cache off.
+
+The [trial records](agent-session-results.tsv) give each run ID, case, answer, tool count, and token count.
 
 ## Reproduce the comparison
 
 Use the [pinned evaluation suite](https://github.com/amichne/kast/tree/08c2e46b7a699a0cbb77dd16b30c3d45691a02ef/experiments/host-observation/promptfoo) in a disposable checkout.
-Set `KAST_EVAL_HARNESS` to its absolute directory. Install the packages from its lockfile with `npm ci`.
+Set `KAST_EVAL_HARNESS` to its absolute directory. Install the packages from `package-lock.json` with `npm ci`.
 Set `KAST_EVAL_KAST` to an absolute Kast executable. The recorded macOS arm64 installation used source `bc00d8df5257312070f9b75a38ea1c3aba48f5c1` and version `0.0.464034`.
 
 For the model comparison, use the suite's [fixture procedure](https://github.com/amichne/kast/blob/08c2e46b7a699a0cbb77dd16b30c3d45691a02ef/experiments/host-observation/promptfoo/imported-model.md) with `--repeat 2`.
