@@ -9,6 +9,7 @@
   "scripts": {
     "eval": "promptfoo eval --no-cache --no-share",
     "compare": "node compare.mjs",
+    "review": "node review-packet.mjs",
     "test": "node --test *.test.mjs"
   },
   "devDependencies": {

@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, realpath } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadKastGuidance } from './kast-guidance.mjs';
+import { createParticipantDirectory } from './participant-surface.mjs';
 import { binary, child, prepareWorkspace, runIsolatedPi } from './skill-provider.mjs';
+import { projectPiTrial } from './pi-accounting.mjs';
 import { invocationFile } from './skill-cases.mjs';
 import { gradeName, participantPrompt, worlds } from './retained-state.mjs';
 
@@ -15,7 +16,7 @@ const digest = (text) => createHash('sha256').update(text).digest('hex');
 
 async function callApi(_label, { vars: { caseId, arm } }) {
   if (!worlds.includes(caseId) || !arms.includes(arm)) return { error: 'Unknown retained-state case' };
-  const directory = await realpath(await mkdtemp(join(tmpdir(), 'kast-retained-')));
+  const directory = await createParticipantDirectory();
   try {
     const kast = await binary(process.env.KAST_EVAL_KAST, 'kast');
     const workspace = await prepareWorkspace({ workspace: 'fixture' }, directory);
@@ -58,12 +59,13 @@ async function callApi(_label, { vars: { caseId, arm } }) {
       directory,
       prompt,
       model,
-      effort: 'low',
+      effort: 'low', toolUsagePolicy: 'no-model-helpers',
       ...(arm === 'kast' && {
         guidance: loadKastGuidance(),
         system: 'Use read_previous_result for the Kast retained result read in this session.',
         extension: tool,
         toolNames: ['read_previous_result'],
+        visiblePaths: [workspace.root],
         extensionEnvironment: {
           KAST_EVAL_RESULT_REF: doc.retention.reference,
           KAST_EVAL_TRIAL_BIN: kast,
@@ -75,15 +77,12 @@ async function callApi(_label, { vars: { caseId, arm } }) {
       (call) => call.tool === 'read_previous_result' && call.complete !== true,
     );
     const error = trial.error || (readFailed ? 'Kast could not deliver the retained result' : undefined);
+    const observation = projectPiTrial(trial);
     return {
+      ...observation,
       ...(error ? { error } : { output: trial.reply }),
-      tokenUsage: {
-        total: trial.usage.total,
-        prompt: trial.usage.input + trial.usage.cacheRead + trial.usage.cacheWrite,
-        completion: trial.usage.output,
-        cached: trial.usage.cacheRead,
-      },
       metadata: {
+        ...observation.metadata,
         model,
         effort: 'low',
         ...trial.guidance,
@@ -102,6 +101,8 @@ async function callApi(_label, { vars: { caseId, arm } }) {
               : 'INCORRECT',
       },
     };
+  } catch (error) {
+    return { ...projectPiTrial(error?.trial), error: 'RETAINED_STATE_TRIAL_UNAVAILABLE' };
   } finally {
     await rm(directory, { force: true, recursive: true });
   }

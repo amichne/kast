@@ -7,6 +7,9 @@ import { expandReplayPlan, prepareReplayRun } from '../pi_evaluation_replay.mjs'
 import { assessReplayTarget, normalizeReplayUsage, ReplayOutcome } from '../pi_evaluation_replay_accounting.mjs';
 import { gradeReplayDecision, replayOracleControls } from '../pi_evaluation_replay_grading.mjs';
 import { expectedPolicyOutcomes, validatePlan } from '../run_pi_evaluation.mjs';
+import { comprehensionCases } from './comprehension-cases.mjs';
+import { comprehensionControls, gradeComprehension } from './comprehension-grading.mjs';
+import { comprehensionArms, createComprehensionRunner } from './comprehension-provider.mjs';
 
 const result = (pass, reason) => ({ pass, score: Number(pass), reason });
 const count = value => Number.isSafeInteger(value) && value >= 0;
@@ -20,7 +23,7 @@ function suite({ id, rows, call, metric, maxConcurrency = 1 }) {
       description,
       vars: { rowId, caseId, arm, repeat },
       options: { disableVarExpansion: true },
-      assert: [{ type: 'javascript', metric: rowMetric, value: (_output, context) => grade(context.providerResponse?.output) }],
+      assert: [{ type: 'javascript', metric: rowMetric, value: (_output, context) => grade(context.providerResponse?.output, context.providerResponse) }],
     });
     caseTests.set(caseId, tests);
   }
@@ -63,6 +66,38 @@ export function createPiOracleConfig() {
     id: 'kast:pi-replay-oracle', rows, metric: 'oracle',
     call: ({ caseId, sample }) => ({ output: gradeReplayDecision(caseId, sample.decision, sample.admission) }),
   });
+}
+
+export function createPiComprehensionConfig({ mode = 'controls', caseIds, model, effort, runPi } = {}) {
+  if (!['controls', 'live'].includes(mode)) throw Error('COMPREHENSION_MODE_REJECTED');
+  const cases = comprehensionCases(caseIds);
+  if (mode === 'live') {
+    const rows = cases.flatMap(item => comprehensionArms.map(arm => ({
+      rowId: `${item.id}-${arm}`, caseId: item.id, arm, item,
+      description: `Panel B / ${item.id} / ${arm}`,
+      grade: (output, response) => {
+        if (response?.error || response?.metadata?.diagnosticQualified !== true) {
+          return result(false, response?.error ?? 'COMPREHENSION_BOUNDARY_REJECTED');
+        }
+        const graded = gradeComprehension(item.id, output);
+        return result(graded.correct, graded.reason);
+      },
+    })));
+    return suite({ id: 'kast:pi-comprehension-live', rows, metric: 'correctness',
+      call: createComprehensionRunner({ model, effort, runPi }) });
+  }
+  const rows = cases.flatMap(item => comprehensionControls(item.id).map(sample => ({
+    rowId: `${item.id}-${sample.name}`, caseId: item.id, arm: sample.correct ? 'accept' : 'reject',
+    description: `Panel B / ${item.id} / ${sample.name}`, sample, item,
+    grade: output => {
+      const graded = gradeComprehension(item.id, output);
+      return result(graded.correct === sample.correct, graded.reason);
+    },
+  })));
+  return suite({ id: 'kast:pi-comprehension-controls', rows, metric: 'oracle',
+    call: row => ({ output: row.sample.output, metadata: { panel: 'B', measurement: 'DETERMINISTIC_CONTROL',
+      inputSha256: row.item.inputSha256, participantSha256: row.item.participantSha256, evidenceKind: row.item.evidenceKind, sourceRevision: row.item.sourceRevision,
+      controlProvenance: row.sample.provenance ?? 'SYNTHETIC_CONTROL', ...(row.sample.evalId && { archivedEvalId: row.sample.evalId }) } }) });
 }
 
 export function createPiTargetConfig(targetFile) {
@@ -214,7 +249,9 @@ export function createPiConfig(planFile) {
 
 const planFile = process.env.KAST_PI_EVAL_PLAN;
 const targetFile = process.env.KAST_PI_EVAL_TARGET;
-if (planFile !== undefined && targetFile !== undefined) throw Error('PI_EVALUATION_INPUTS_MUTUALLY_EXCLUSIVE');
+const comprehension = process.env.KAST_PI_COMPREHENSION;
+if ([planFile, targetFile, comprehension].filter(value => value !== undefined).length > 1) throw Error('PI_EVALUATION_INPUTS_MUTUALLY_EXCLUSIVE');
 
-export default planFile !== undefined ? createPiConfig(planFile)
+export default comprehension !== undefined ? createPiComprehensionConfig({ mode: comprehension })
+  : planFile !== undefined ? createPiConfig(planFile)
   : targetFile !== undefined ? createPiTargetConfig(targetFile) : createPiOracleConfig();

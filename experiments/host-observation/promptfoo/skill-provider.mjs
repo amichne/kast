@@ -3,13 +3,15 @@ import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { access, cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { delimiter, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { decodeReplayCredential } from '../pi_evaluation_replay_auth.mjs';
 import { loadKastGuidance, stageKastGuidance } from './kast-guidance.mjs';
 import { armCapabilities, completionFile, invocationFile, originalCases, skillCases } from './skill-cases.mjs';
 import { runtimeEnvironment } from './skill-sandbox.mjs';
+import { observePiTrial, projectPiTrial, snapshotPiCatalog } from './pi-accounting.mjs';
+import { admitParticipantSurface, createParticipantDirectory } from './participant-surface.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const fixture = fileURLToPath(new URL('../static-callback-fixture/', import.meta.url));
@@ -18,10 +20,12 @@ const guidanceTool = fileURLToPath(new URL('./kast-guidance-tool.ts', import.met
 const kastTools = new Set(['kast', 'read_previous_result', 'query_imported_main']);
 const snapshots = new URL('./history/pi-skill-cli-snapshots.json', import.meta.url);
 const neutral = 'You are a coding assistant. Use the tools available in this session when needed to answer the task.';
+export { neutral as neutralSystem };
 const maximumBytes = 16 * 1024 * 1024;
 const totalHash = input => createHash('sha256').update(input).digest('hex');
 const fixtureQuery = ['query', '--name', 'invokeCallback', '--in', 'invocation', '--kind', 'function', '--source-set', 'main'];
 const defaultModel = 'openai-codex/gpt-6.1-sol';
+const eventPrefix = Symbol('parsed Pi event prefix');
 
 export async function binary(override, name) {
   const candidates = override ? [override] : (process.env.PATH ?? '').split(delimiter)
@@ -111,7 +115,7 @@ export function child(command, args, options) {
   });
 }
 
-async function credentials(agentDirectory) {
+async function credentials(agentDirectory, expectedModel) {
   const defaultAgent = join(homedir(), '.pi', 'agent');
   const piAuth = process.env.KAST_EVAL_PI_AUTH ?? join(defaultAgent, 'auth.json');
   const type = process.env.KAST_EVAL_CODEX_AUTH ? 'CODEX_CHATGPT' : 'PI_OAUTH';
@@ -130,27 +134,33 @@ async function credentials(agentDirectory) {
     throw Error('Pi model catalog unavailable');
   });
   const models = JSON.parse(catalog)['openai-codex'];
+  const copiedCatalog = models ? JSON.stringify({ 'openai-codex': models }) : undefined;
   if (models) {
-    await writeFile(join(agentDirectory, 'models-store.json'), JSON.stringify({ 'openai-codex': models }), { mode: 0o600 });
+    await writeFile(join(agentDirectory, 'models-store.json'), copiedCatalog, { mode: 0o600 });
   }
   await writeFile(join(agentDirectory, 'settings.json'), JSON.stringify({
     transport: 'sse', cacheWarming: 'off', compaction: { enabled: false },
     retry: { enabled: false, maxRetries: 0, provider: { maxRetries: 0 } },
     enableInstallTelemetry: false,
   }), { mode: 0o600 });
+  return snapshotPiCatalog(copiedCatalog, expectedModel);
 }
 
-export function decodePiTrial(stdout, expectedModel, toolNames, requireNormalStop = true) {
-  return decodePiEvents(parsePiEvents(stdout), expectedModel, toolNames, requireNormalStop);
+export function decodePiTrial(stdout, expectedModel, toolNames, requireNormalStop = true, receipt = {}) {
+  return decodePiEvents(parsePiEvents(stdout), expectedModel, toolNames, requireNormalStop, false, receipt);
 }
 
 function parsePiEvents(stdout) {
+  const events = [];
   try {
-    const events = stdout.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
-    if (events.some(event => typeof event?.type !== 'string')) throw Error('Missing Pi event type');
+    for (const line of stdout.split('\n').filter(line => line.trim())) {
+      const event = JSON.parse(line);
+      if (typeof event?.type !== 'string') throw Error('Missing Pi event type');
+      events.push(event);
+    }
     return events;
   } catch {
-    throw Object.assign(Error('Pi event stream could not be decoded'), { code: 'PI_EVENT_PARSE_FAILED' });
+    throw Object.assign(Error('Pi event stream could not be decoded'), { code: 'PI_EVENT_PARSE_FAILED', [eventPrefix]: events });
   }
 }
 
@@ -170,29 +180,16 @@ function terminalCause(terminal, status) {
   return status === 0 ? 'PI_EVENT_EVIDENCE_REJECTED' : 'PI_NONZERO_EXIT';
 }
 
-function decodePiEvents(events, expectedModel, toolNames, requireNormalStop, permitMissingUsage = false) {
+function decodePiEvents(events, expectedModel, toolNames, requireNormalStop, permitMissingUsage = false, receipt = {}) {
   const assistants = events.filter(event => event.type === 'message_end' && event.message?.role === 'assistant')
     .map(event => event.message);
   const terminal = assistants.at(-1);
   if (requireNormalStop && terminal?.stopReason !== 'stop') throw Error('Pi did not finish normally');
-  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
-  let completeUsage = true;
   for (const message of assistants) {
     if (`${message.provider}/${message.model}` !== expectedModel) throw Error('Pi used a different model');
-    const counters = message.usage;
-    const fields = ['input', 'output', 'cacheRead', 'cacheWrite'];
-    if (!fields.every(field => Number.isSafeInteger(counters?.[field]) && counters[field] >= 0)) {
-      if (permitMissingUsage) { completeUsage = false; continue; }
-      throw Error('Pi did not report complete token usage');
-    }
-    const total = fields.reduce((sum, field) => sum + counters[field], 0);
-    if (counters.totalTokens !== total) {
-      if (permitMissingUsage) { completeUsage = false; continue; }
-      throw Error('Pi reported inconsistent token usage');
-    }
-    for (const field of fields) usage[field] += counters[field];
-    usage.total += total;
   }
+  const { usage, completeUsage, invalidUsage, assistantMessages, ...observation } = observePiTrial(events, receipt);
+  if (invalidUsage && !permitMissingUsage) throw Error('Pi did not report complete consistent token usage');
   if (requireNormalStop && usage.total <= 0) throw Error('Pi did not report model usage');
   const starts = events.filter(event => event.type === 'tool_execution_start');
   const ends = events.filter(event => event.type === 'tool_execution_end');
@@ -212,12 +209,12 @@ function decodePiEvents(events, expectedModel, toolNames, requireNormalStop, per
     tool: event.toolName, argv: event.args?.argv, input: event.args?.stdin, ...results.get(event.toolCallId),
   }));
   const reply = terminal?.content?.filter(part => part.type === 'text').map(part => part.text).join('').trim();
-  const toolProposals = assistants.reduce((total, message) => total + (message.content?.filter(part => part.type === 'toolCall').length ?? 0), 0);
-  return { reply, calls, usage, toolCalls: starts.length, toolProposals, providerResponses: assistants.length,
+  const toolProposals = assistantMessages.reduce((total, message) => total + (message.content?.filter(part => part.type === 'toolCall').length ?? 0), 0);
+  return { reply, calls, usage, toolCalls: starts.length, toolProposals, ...observation,
     ...(permitMissingUsage && { completeUsage }) };
 }
 
-function partialTrial(result, expectedModel, toolNames) {
+function partialTrial(result, expectedModel, toolNames, receipt) {
   if (result.termination && !['PARTICIPANT_DEADLINE', 'PARTICIPANT_OUTPUT_LIMIT'].includes(result.termination)) return null;
   const prefix = result.termination ? result.stdout.slice(0, result.stdout.lastIndexOf('\n') + 1) : result.stdout;
   const events = parsePiEvents(prefix);
@@ -254,7 +251,8 @@ function partialTrial(result, expectedModel, toolNames) {
     const pending = [...openText.entries()].sort(([left], [right]) => left - right).map(([, text]) => text).join('').trim();
     if (pending) assistant.push(pending);
   }
-  const { usage, completeUsage, ...trial } = decodePiEvents(events, expectedModel, toolNames, false, true);
+  const { usage, completeUsage, ...trial } = decodePiEvents(events, expectedModel, toolNames, false, true,
+    { ...receipt, unsettled: termination !== 'MODEL_OUTPUT_LIMIT' });
   const finalizedUsage = usage.total > 0 ? usage : null;
   const observableCalls = trial.toolProposals + (active ? openToolCalls : 0);
   const transcript = assistant.slice(-8).map(text => text.slice(0, 16_384));
@@ -265,12 +263,26 @@ function partialTrial(result, expectedModel, toolNames) {
       truncated: assistant.length > transcript.length || assistant.slice(-8).some(text => text.length > 16_384) || tools.length < trial.calls.length } };
 }
 
-export function settlePiTrial(result, model, toolNames, captureLimits = false) {
+export function settlePiTrial(result, model, toolNames, captureLimits = false, receipt = {}) {
+  try { return settlePiResult(result, model, toolNames, captureLimits, receipt); }
+  catch (error) {
+    let events;
+    try { events = parsePiEvents(result.stdout); }
+    catch (parseError) { events = parseError[eventPrefix] ?? []; }
+    const { usage, completeUsage, invalidUsage, assistantMessages, ...observation } =
+      observePiTrial(events, { ...receipt, unsettled: true });
+    error.trial = { ...observation, usage: null, ...(usage.total > 0 && { finalizedUsage: usage }),
+      error: error.message, terminalCause: error.code ?? 'PI_EVENT_EVIDENCE_REJECTED' };
+    throw error;
+  }
+}
+
+function settlePiResult(result, model, toolNames, captureLimits, receipt) {
   if (captureLimits) {
     if (result.termination === 'OWNER_INTERRUPTED') {
       throw Object.assign(Error('Pi trial interrupted by the owner'), { code: 'PI_OWNER_INTERRUPTED' });
     }
-    const bounded = partialTrial(result, model, toolNames);
+    const bounded = partialTrial(result, model, toolNames, receipt);
     if (bounded) return bounded;
     if (result.termination) {
       throw Object.assign(Error('Pi did not supply admissible participant evidence before the cutoff'), {
@@ -281,15 +293,16 @@ export function settlePiTrial(result, model, toolNames, captureLimits = false) {
   const events = parsePiEvents(result.stdout);
   const terminal = terminalAssistant(events);
   try {
-    const trial = decodePiEvents(events, model, toolNames, true);
+    const trial = decodePiEvents(events, model, toolNames, true, false, receipt);
     return { ...trial, ...(result.status !== 0 && {
       error: `Pi exited with status ${result.status}`, terminalCause: terminalCause(terminal, result.status),
     }) };
   } catch (error) {
     try {
       const providerStopped = ['error', 'aborted'].includes(terminal?.stopReason);
-      const { completeUsage, ...incomplete } = decodePiEvents(events, model, toolNames, false, providerStopped);
-      return { ...incomplete, ...(completeUsage === false && { usage: null }),
+      const { completeUsage, ...incomplete } = decodePiEvents(events, model, toolNames, false, providerStopped, receipt);
+      return { ...incomplete, ...(completeUsage === false && { usage: null,
+        finalizedUsage: incomplete.usage.total > 0 ? incomplete.usage : null }),
         error: result.status === 0 ? error.message : `Pi exited with status ${result.status}`,
         terminalCause: terminalCause(terminal, result.status) };
     } catch {
@@ -300,14 +313,29 @@ export function settlePiTrial(result, model, toolNames, captureLimits = false) {
 
 export async function runIsolatedPi({
   directory, prompt, system = neutral, model = defaultModel, effort = 'low', extension, extensionEnvironment = {}, toolNames = [], timeout = 150_000,
-  captureLimits = false, guidance, inlineSkill,
+  captureLimits = false, guidance, inlineSkill, toolUsagePolicy = 'unknown', role = 'participant', visiblePaths = [],
 }) {
+  if (!['unknown', 'no-model-helpers'].includes(toolUsagePolicy)) throw Error('Unknown Pi tool usage policy');
   if (inlineSkill !== undefined && (guidance || typeof inlineSkill !== 'string' || !inlineSkill.trim())) throw Error('Invalid inline skill');
   if (!guidance && !inlineSkill && toolNames.some(name => kastTools.has(name))) throw Error('Kast access needs participant guidance');
+  // Blinding precedes every effect: no binary lookup, credential copy or model
+  // process happens for a participant who could observe the measurement. Pi
+  // renders the working directory into its system prompt, and Kast replies carry
+  // workspace roots, so both are part of the observed surface.
+  const participantSurface = admitParticipantSurface({ role, system, prompt, directory, visiblePaths, toolNames });
+  if (participantSurface.state === 'REJECTED') {
+    // The partial trial holds no model evidence; it preserves the typed findings
+    // through every provider's existing rejected-attempt projection.
+    throw Object.assign(Error('PARTICIPANT_SURFACE_REJECTED'), {
+      code: 'PARTICIPANT_SURFACE_REJECTED', participantSurface, trial: { participantSurface },
+    });
+  }
   const pi = await binary(process.env.KAST_EVAL_PI, 'pi');
   const agent = join(directory, 'pi');
   await mkdir(agent, { mode: 0o700 });
-  await credentials(agent);
+  const catalog = await credentials(agent, model);
+  const runtime = { executable: { sha256: await hashBinary(pi), version: 'unknown' }, catalog,
+    requested: { model, effort }, sourceRevision: 'unknown' };
   if (guidance) await stageKastGuidance(directory, guidance);
   const instructions = guidance ? `${system}\n\n${guidance.text} Use read_kast_guidance to open it.` : [system, inlineSkill].filter(Boolean).join('\n\n');
   const systemFile = join(directory, 'system-prompt.txt');
@@ -325,8 +353,15 @@ export async function runIsolatedPi({
     env: { ...runtimeEnvironment(), ...extensionEnvironment, PI_CODING_AGENT_DIR: agent, PI_OFFLINE: '1' },
   });
   const admittedTools = guidance ? [...toolNames, 'read_kast_guidance'] : toolNames;
+  let trial;
+  try { trial = settlePiTrial(result, model, admittedTools, captureLimits, { runtime, toolUsagePolicy }); }
+  catch (error) {
+    if (error.trial) Object.assign(error.trial, { elapsedMillis: performance.now() - started, participantSurface });
+    throw error;
+  }
   return {
-    ...settlePiTrial(result, model, admittedTools, captureLimits),
+    ...trial,
+    participantSurface,
     elapsedMillis: performance.now() - started,
     systemSha256: totalHash(instructions),
     ...(guidance && { guidance: { skillSha256: guidance.skillSha256, guideSha256: guidance.guideSha256 } }),
@@ -383,9 +418,9 @@ async function workspaceDirectoryExists(path) {
 export async function prepareFixtureWorkspace(directory) {
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const parent = await realpath(directory);
-  const workspace = join(parent, 'static-callback-fixture');
+  const workspace = join(parent, 'callback-service');
   if (!(await workspaceDirectoryExists(workspace))) {
-    const staging = await mkdtemp(join(parent, '.static-callback-fixture-'));
+    const staging = await mkdtemp(join(parent, '.callback-service-'));
     try {
       await cp(fixture, staging, { recursive: true });
       await cp(join(root, 'gradle/wrapper'), join(staging, 'gradle/wrapper'), { recursive: true });
@@ -414,7 +449,7 @@ export async function prepareWorkspace(scenario, directory) {
     return { root: workspace };
   }
   const configured = process.env.KAST_EVAL_WORKSPACE;
-  if (!configured) return { root: await prepareFixtureWorkspace(join(root, 'build/promptfoo')) };
+  if (!configured) return { root: await prepareFixtureWorkspace(join(root, 'build/projects')) };
   const workspace = await realpath(configured);
   await validateFixtureKotlin(workspace);
   return { root: workspace };
@@ -457,7 +492,7 @@ export default class SkillProvider {
         (comparison === 'skill-version' && !originalCases.includes(caseId)) || prompt !== scenario.prompt) {
       return { error: 'Invalid skill evaluation case or arm' };
     }
-    const directory = await realpath(await mkdtemp(join(tmpdir(), 'kast-skill-eval-')));
+    const directory = await createParticipantDirectory();
     try {
       const draftBinary = arm === 'reference' ? process.env.KAST_EVAL_REFERENCE_KAST :
         arm === 'delivered' ? process.env.KAST_EVAL_DELIVERED_DRAFT_KAST : undefined;
@@ -467,7 +502,8 @@ export default class SkillProvider {
       const guidance = await guidanceFor(capabilities);
       const model = process.env.KAST_EVAL_PI_MODEL ?? defaultModel;
       const trial = await runIsolatedPi({
-        directory, prompt, guidance, model, extension: tool,
+        directory, prompt, guidance, model, extension: tool, visiblePaths: [workspace.root],
+        toolUsagePolicy: 'no-model-helpers',
         extensionEnvironment: {
           KAST_EVAL_TRIAL_SCOPE: scenario.workspace ?? 'draft',
           KAST_EVAL_TRIAL_WORKSPACE: workspace.root,
@@ -485,10 +521,12 @@ export default class SkillProvider {
         planned = await planSkillDraft(caseId, trial.reply, (args, input) =>
           child(kast, ['query', 'plan', ...args], { cwd: workspace.root, timeout: 10_000, input }));
       }
+      const projected = projectPiTrial(trial);
       return {
+        ...projected,
         ...(trial.error ? { error: trial.error } : { output: trial.reply }),
-        tokenUsage: { total: trial.usage.total, prompt: trial.usage.input, completion: trial.usage.output, cached: trial.usage.cacheRead },
         metadata: {
+          ...projected.metadata,
           model, effort: 'low', workspace: workspace.root, calls: trial.calls, planned,
           toolCalls: trial.toolCalls, providerResponses: trial.providerResponses,
           elapsedMillis: trial.elapsedMillis, usage: trial.usage, kastSha256: await hashBinary(kast),
@@ -497,7 +535,7 @@ export default class SkillProvider {
         },
       };
     } catch (error) {
-      return { error: error.message };
+      return { ...projectPiTrial(error.trial), error: error.message };
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

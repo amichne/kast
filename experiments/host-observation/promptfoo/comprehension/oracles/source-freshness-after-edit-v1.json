@@ -1,0 +1,17 @@
+{
+  "caseId": "source-freshness-after-edit-v1",
+  "expected": {
+    "target": "fixture.orders.submit(Long)",
+    "scope": {
+      "directory": "services/orders",
+      "sourceSets": [
+        "main"
+      ]
+    },
+    "canUsePriorLocation": false,
+    "currentLineFromText": 6,
+    "compilerStatus": "unproven",
+    "nextAction": "reacquire-current-source"
+  },
+  "integrationStatus": "SPECIFIED; source and packaged-schema checked; serializer parity and retained assertion NOT RUN"
+}

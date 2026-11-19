@@ -1,0 +1,23 @@
+{
+  "caseId": "C5",
+  "expected": {
+    "kind": "finish",
+    "conclusion": "insufficient-evidence",
+    "scope": {
+      "directory": "services/orders",
+      "sourceSets": [
+        "main"
+      ]
+    },
+    "exhaustive": false,
+    "limitations": [
+      "byte-limit-reached"
+    ]
+  },
+  "grader": {
+    "owner": "experiments/host-observation/pi_evaluation_replay_grading.mjs",
+    "export": "gradeReplayDecision",
+    "caseId": "C5"
+  },
+  "evidenceKind": "EXISTING_INDEPENDENT_REPLAY_ORACLE"
+}

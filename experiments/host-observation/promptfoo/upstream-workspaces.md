@@ -3,6 +3,9 @@
 Each case asks a maintenance question about a pinned upstream commit. The source and Kast arms receive the same question and tracked files.
 Both arms can search with a regular expression and read numbered lines. The Kast arm also receives the installed skill body and read-only Kast commands.
 The oracle stays outside the workspace. Promptfoo grades the exact set of answers after the participant exits.
+These source tools remain a restricted baseline. They do not provide ordinary compiler, test, or IDE inspection.
+`KAST_EVAL_PORTFOLIO=curated` selects the Spring primitive-status task and blocks Panel A admission before credentials, setup, or model calls.
+The default retains the historical catalog under `RESTRICTED`; its results cannot establish uplift over competent ordinary tooling.
 
 | Workspace | Maintenance question | Plausible error |
 |---|---|---|
@@ -28,6 +31,7 @@ The JVM, JS, Linux x64, Wasm/JS, and Wasm/WASI source archives also matched all 
 
 Use the Node and uv versions from the repository. Run these commands from `experiments/host-observation/promptfoo`.
 Choose an absolute experiment directory outside the repository. Each coordinator needs a new output directory for its workspace.
+Participants can see the workspace paths in Kast replies. Keep words such as `experiment`, `eval` and `trial` out of every directory name below the corpus root's parent. Otherwise the launcher rejects each participant before it starts Pi.
 
 ```sh
 npm ci
@@ -93,8 +97,8 @@ Compare arms within the same model, case, revision, and repetition. Count every 
 Count a correct answer after a failed Host call as a correct answer. Credit compiler evidence only when the returned facts support that answer.
 A declaration lookup alone cannot prove the callers of an overload.
 
-Report correctness, the semantic evidence each participant received, and tool use. Compare token use only within pairs with two correct answers.
-The suite supports a claim of differentiated value when a matched comparison shows a benefit on two distinct maintenance tasks with supporting compiler evidence.
+Report correctness, the semantic evidence each participant received, and tool use. After matched correct outcomes, compare complete dollars before context, model responses, and full task time.
+Missing billing evidence blocks an efficiency preference; token totals remain descriptive. A benefit over this restricted baseline is not evidence of an ordinary-tooling benefit.
 One trial per arm gives a case result. A claim about reliability needs independent repetitions.
 
 ## Results on November 19, 2026

@@ -1,0 +1,143 @@
+{
+  "version": 2,
+  "sourceRevision": "9adbd800ee4a2d131a87b3d62e613d3a451c3bdd",
+  "guidanceSha256": "04034d540b357fb341898f5ab1e95b9cb03ad880f0847d6850230c7448cfa8ed",
+  "cases": [
+    {
+      "id": "ktfmt-constant-indent-negation-evidence-v1",
+      "panel": "B",
+      "kind": "exact-locations",
+      "inputSha256": "206cf10fc6c048643dd76d3e731e496a4d7290aa5943fdde1df8d739c20ad9b0",
+      "oracleSha256": "27e6bbc981560b58a92602e86405bd44cc51bfd8b60fabdaca4f76adf4b13c48",
+      "evidenceKind": "CURATED_RECONSTRUCTION",
+      "sourceRevision": "adee029cb742e37a30889fb4e32516da6bd658c6",
+      "contamination": "Public previously evaluated case; curated source and summary supplied; no new compiler verification or end-to-end uplift.",
+      "participantFields": [
+        {
+          "key": "task",
+          "from": "task"
+        },
+        {
+          "key": "executionConstraint",
+          "from": "executionConstraint"
+        },
+        {
+          "key": "evidenceScope",
+          "from": "evidenceScope"
+        },
+        {
+          "key": "sourceWindows",
+          "from": "sourceWindows"
+        },
+        {
+          "key": "priorQueryReceipt",
+          "from": "archivedReceiptSummary",
+          "omit": [
+            "provenance"
+          ]
+        }
+      ],
+      "participantSha256": "0c269aa34f24d3d0bca8b76e10954e2299350230d0802dde7d088581cc34176c",
+      "controlsSha256": "ea8c4f24118880fa865502ffa93aac1a7c7958d70a62324287f6d4bfdd1c5d8e"
+    },
+    {
+      "id": "C5",
+      "panel": "B",
+      "kind": "scope-coverage",
+      "inputSha256": "38c17c746c5b331b41e0324f57080a61f5ef14704341ed2b1e8ace3b73367323",
+      "oracleSha256": "d38922fbde635982577526ebc07c4ff118d92f061b943fa8e060d2916586ce56",
+      "evidenceKind": "SYNTHETIC_PUBLIC_CONTRACT_FIXTURE",
+      "sourceRevision": "9adbd800ee4a2d131a87b3d62e613d3a451c3bdd",
+      "contamination": "Previously authored synthetic replay case; supplied evidence only, not live retrieval or end-to-end uplift.",
+      "participantFields": [
+        {
+          "key": "task",
+          "from": "task"
+        },
+        {
+          "key": "executionConstraint",
+          "from": "executionConstraint"
+        },
+        {
+          "key": "responseContract",
+          "from": "responseContract"
+        },
+        {
+          "key": "result",
+          "from": "canonicalResponse"
+        }
+      ],
+      "participantSha256": "07d48b4af11922f24b99186609d7b7cab32758df48a88471c77f9c8a8f7465f2"
+    },
+    {
+      "id": "source-freshness-after-edit-v1",
+      "panel": "B",
+      "kind": "freshness",
+      "inputSha256": "5e57b7fa455706c65da49998ad4cef386a8146f36e73a05866a4577a50c7fb14",
+      "oracleSha256": "cf4ba5d1100097b4c58c817581d95933d0ed98d57a4aa0c09f0e61980a9c22e0",
+      "evidenceKind": "SYNTHETIC_COMPREHENSION_PACKET",
+      "sourceRevision": "9adbd800ee4a2d131a87b3d62e613d3a451c3bdd",
+      "contamination": "Synthetic supplied-evidence diagnostic. Current schema compatibility does not establish live Host behavior or end-to-end uplift.",
+      "participantFields": [
+        {
+          "key": "scope",
+          "from": "scope"
+        },
+        {
+          "key": "priorTarget",
+          "from": "priorTarget"
+        },
+        {
+          "key": "sourceBeforeSha256",
+          "from": "sourceBeforeSha256"
+        },
+        {
+          "key": "sourceBefore",
+          "from": "sourceBefore"
+        },
+        {
+          "key": "sourceAfterSha256",
+          "from": "sourceAfterSha256"
+        },
+        {
+          "key": "sourceAfter",
+          "from": "sourceAfter"
+        },
+        {
+          "key": "finalReadRejection",
+          "from": "finalReadRejection"
+        },
+        {
+          "key": "task",
+          "from": "task"
+        }
+      ],
+      "participantSha256": "5c8a46813560b6cacd50a708e3ec02ee59fc35b0af643d1d5304628e7d8c6426"
+    },
+    {
+      "id": "readiness-failure-no-absence-v1",
+      "panel": "B",
+      "kind": "readiness",
+      "inputSha256": "682046c19ce9772aca229973ce6876b7dffe03646440ad75af64821ad3b0b2d7",
+      "oracleSha256": "542ebdbe88a7c4506cb364522c7b446b7e9bcbc6b0260ada37399083103002af",
+      "evidenceKind": "SYNTHETIC_COMPREHENSION_PACKET",
+      "sourceRevision": "9adbd800ee4a2d131a87b3d62e613d3a451c3bdd",
+      "contamination": "Synthetic supplied-evidence diagnostic. Current schema compatibility does not establish live Host behavior or end-to-end uplift.",
+      "participantFields": [
+        {
+          "key": "scope",
+          "from": "scope"
+        },
+        {
+          "key": "finalQueryRejection",
+          "from": "finalQueryRejection"
+        },
+        {
+          "key": "task",
+          "from": "task"
+        }
+      ],
+      "participantSha256": "fc8a89d705c52e778b1495a58ff2e5e016682d0dcdd06a4f268c5753c38040df"
+    }
+  ]
+}

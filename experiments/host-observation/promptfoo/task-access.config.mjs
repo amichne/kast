@@ -1,9 +1,10 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runIsolatedPi } from './skill-provider.mjs';
+import { projectPiTrial } from './pi-accounting.mjs';
 import { loadKastGuidance } from './kast-guidance.mjs';
+import { createParticipantDirectory } from './participant-surface.mjs';
 import { gradeAccess, historicalFile, questions, revision, schemaText } from './task-access.mjs';
 
 const system =
@@ -27,7 +28,8 @@ const catalog = {
 };
 
 async function callApi(prompt, context) {
-  const directory = await mkdtemp(join(tmpdir(), 'kast-access-'));
+  const directory = await createParticipantDirectory();
+  let observation = projectPiTrial(undefined);
   try {
     const withCli = context.vars.arm === 'task-cli';
     if (withCli) {
@@ -46,16 +48,14 @@ async function callApi(prompt, context) {
       extension: withCli ? extension : undefined,
       extensionEnvironment: { KAST_TASK_ACCESS_DIR: directory },
       toolNames: withCli ? ['preview'] : [],
+      toolUsagePolicy: 'no-model-helpers',
     });
+    observation = projectPiTrial(trial);
     return {
+      ...observation,
       ...(trial.error ? { error: trial.error } : { output: trial.reply }),
-      tokenUsage: {
-        total: trial.usage.total,
-        prompt: trial.usage.input + trial.usage.cacheRead + trial.usage.cacheWrite,
-        completion: trial.usage.output,
-        cached: trial.usage.cacheRead,
-      },
       metadata: {
+        ...observation.metadata,
         model,
         effort: 'high',
         revision,
@@ -66,6 +66,9 @@ async function callApi(prompt, context) {
         previewCalls: trial.calls.filter(call => call.tool === 'preview'),
       },
     };
+  } catch (error) {
+    const preserved = error?.trial ? projectPiTrial(error.trial) : observation;
+    return { ...preserved, error: 'TASK_ACCESS_TRIAL_UNAVAILABLE' };
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

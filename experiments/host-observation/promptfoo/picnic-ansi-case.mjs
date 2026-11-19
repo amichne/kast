@@ -8,6 +8,12 @@ const sources = [
 export const picnicAnsiCase = {
   id: 'picnic-ansi',
   kind: 'edit',
+  source: {
+    repository: 'https://github.com/JakeWharton/picnic',
+    revision: 'cd569782e2503ddd4f95fb47017d12f9e9484210',
+    paths: sources.map(path => path.replace('src/main/kotlin/', 'picnic/src/main/java/')),
+    adaptation: 'Relocated seven production files; removed standalone @JvmDefault annotations; current fixture build.',
+  },
   fixture: fileURLToPath(new URL('./developer-tasks/picnic-ansi', import.meta.url)),
   warmup: { name: 'renderText', kind: 'function' },
   prompt: [

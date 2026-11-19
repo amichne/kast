@@ -1,0 +1,15 @@
+{
+  "evidenceKind": "SYNTHETIC_COMPREHENSION_PACKET",
+  "kastRevision": "9adbd800ee4a2d131a87b3d62e613d3a451c3bdd",
+  "scope": {
+    "directory": "services/orders",
+    "sourceSets": [
+      "main"
+    ]
+  },
+  "finalQueryRejection": {
+    "type": "HOST_REJECTED",
+    "failure": "MODEL_REFRESH_REQUIRED"
+  },
+  "task": "You must determine whether MissingOrder exists under services/orders in the main source set. Registration and schema discovery succeeded, but the useful query returned the supplied final rejection after the coordinator finished its own recovery. No source search or successful semantic result is available. Return JSON with scope, cause, compilerStatus, absenceEstablished, nextAction, and automaticRetry. scope has directory and sourceSets; cause is the supplied failure code; compilerStatus is available or unavailable; absenceEstablished and automaticRetry are Boolean; nextAction is report-absence, report-readiness-blocker, or repeat-identical-request. Answer from this evidence without another command. Do not infer successful recovery or absence."
+}

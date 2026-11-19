@@ -55,7 +55,7 @@ test('concurrent trials and a later process admit one shared fixture for this wo
     const [first, second] = await Promise.all([invoke(), invoke()]);
     assert.deepEqual(first, second);
     assert.deepEqual(await invoke(), first);
-    assert.equal(first.root, await realpath(fileURLToPath(new URL('../../../build/promptfoo/static-callback-fixture', import.meta.url))));
+    assert.equal(first.root, await realpath(fileURLToPath(new URL('../../../build/projects/callback-service', import.meta.url))));
     const external = fileURLToPath(new URL('../static-callback-fixture', import.meta.url));
     assert.deepEqual(await invoke({ ...env, KAST_EVAL_WORKSPACE: external }), { root: await realpath(external) });
     await assert.rejects(invoke({ ...env, KAST_EVAL_WORKSPACE: scratch }), /Kotlin sources differ from the fixture/);
@@ -69,7 +69,7 @@ test('a managed fixture rejects changed build and wrapper inputs without replaci
   try {
     const [workspace, concurrent] = await Promise.all([prepareFixtureWorkspace(directory), prepareFixtureWorkspace(directory)]);
     assert.equal(workspace, concurrent);
-    assert.deepEqual(await readdir(directory), ['static-callback-fixture']);
+    assert.deepEqual(await readdir(directory), ['callback-service']);
     for (const [file, error] of [
       ['settings.gradle.kts', /Gradle scripts differ/],
       ['invocation/build.gradle.kts', /Gradle scripts differ/],
@@ -122,7 +122,10 @@ test('the Pi launcher stages exact Kast files and supplies only a short pointer 
   await writeFile(auth, JSON.stringify({ 'openai-codex': {
     type: 'oauth', access: `test.${identity}.test`, refresh: 'test', expires: Date.now() + 3_600_000,
   } }));
-  await writeFile(catalog, '{}');
+  const modelStore = { 'openai-codex': { checkedAt: 1000, models: [{ provider: 'openai-codex', id: 'test',
+    headers: { Authorization: 'catalog-secret' }, cost: { input: 1, output: 1, cacheRead: 1, cacheWrite: 1 } }] },
+    unrelated: { secret: 'unrelated-secret' } };
+  await writeFile(catalog, JSON.stringify(modelStore));
   await writeFile(fakePi, `#!${process.execPath}
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 const args = process.argv.slice(2);
@@ -153,10 +156,11 @@ console.log(JSON.stringify({ type: 'message_end', message: { role: 'assistant', 
     if (guided) Object.assign(options, { extension: 'participant-extension.ts', guidance: loadKastGuidance(), toolNames: ['kast'] });
     console.log(JSON.stringify(await runIsolatedPi(options)));`;
   async function invoke(guided) {
-    const trialDirectory = await mkdtemp(join(directory, 'trial-'));
+    const trialDirectory = await mkdtemp(join(directory, 'project-'));
     const args = ['--input-type=module', '-e', setup, trialDirectory, ...(guided ? ['guided'] : [])];
     const { stdout } = await promisify(execFile)(process.execPath, args, { env });
-    return { trial: JSON.parse(stdout), observed: JSON.parse(await readFile(join(trialDirectory, 'observed.json'), 'utf8')) };
+    return { trial: JSON.parse(stdout), observed: JSON.parse(await readFile(join(trialDirectory, 'observed.json'), 'utf8')),
+      copiedCatalog: await readFile(join(trialDirectory, 'pi', 'models-store.json')) };
   }
   const [kast, source] = await Promise.all([invoke(true), invoke(false)]);
   const { skillText, guideText, skillSha256, guideSha256 } = loadKastGuidance();
@@ -170,6 +174,12 @@ console.log(JSON.stringify({ type: 'message_end', message: { role: 'assistant', 
   assert.equal(kast.trial.calls[0].tool, 'read_kast_guidance');
   assert.deepEqual(source.observed, { extensions: [], system: 'Shared instructions.', files: {} });
   assert.equal(source.trial.guidance, undefined);
+  const runtime = source.trial.accounting.runtime;
+  assert.equal(runtime.catalog.sha256, createHash('sha256').update(source.copiedCatalog).digest('hex'));
+  assert.deepEqual(runtime.catalog.selected.cost, modelStore['openai-codex'].models[0].cost);
+  assert.equal(runtime.executable.sha256, createHash('sha256').update(await readFile(fakePi)).digest('hex'));
+  assert.equal(runtime.sourceRevision, 'unknown');
+  assert.doesNotMatch(JSON.stringify(runtime), /catalog-secret|unrelated-secret|Authorization|refresh/);
   await assert.rejects(runIsolatedPi({ directory, prompt: 'Rejected.', toolNames: ['kast'] }), /Kast access needs participant guidance/);
 });
 
@@ -246,7 +256,7 @@ test('draft oracles preserve exact scope, one hop, limits, placeholders and dist
 });
 
 test('absence needs the complete final result and presence needs the queried path', () => {
-  const empty = completion(selected('kastBenchmarkNoSuchFunction', 'invocation', 'function'), []);
+  const empty = completion(selected('scheduleCallbackRetry', 'invocation', 'function'), []);
   assert.equal(gradeSkill('absent', 'ABSENT', { workspace, calls: [call(empty)] }).pass, true);
   empty.document.coverage.exhaustive = false;
   assert.equal(gradeSkill('absent', 'ABSENT', { workspace, calls: [call(empty)] }).pass, false);

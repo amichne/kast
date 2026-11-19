@@ -1,9 +1,9 @@
-import { mkdtemp, realpath, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { loadKastGuidance } from './kast-guidance.mjs';
+import { createParticipantDirectory } from './participant-surface.mjs';
 import { binary, runIsolatedPi } from './skill-provider.mjs';
+import { projectPiTrial } from './pi-accounting.mjs';
 import {
   declarationPath, digest, examineWorlds, gradeImportedAnswer, participantPrompt,
   qualifyWorlds, worlds,
@@ -27,31 +27,31 @@ let preparation;
 async function callApi(_label, { vars: { caseId, arm } }) {
   if (!worlds.includes(caseId) || !arms.includes(arm)) return { error: 'Unknown imported-model case or arm' };
   let directory;
+  let observation = projectPiTrial(undefined);
   try {
     preparation ??= prepareComparison();
     const { cases, kast, sourceSha256 } = await preparation;
     const { snapshot, selection, workspace } = cases[caseId];
     const prompt = participantPrompt(snapshot, arm === 'materialized' ? selection : undefined);
-    directory = await realpath(await mkdtemp(join(tmpdir(), 'kast-imported-model-pi-')));
+    directory = await createParticipantDirectory();
     const trial = await runIsolatedPi({
-      directory, prompt, model, effort: 'low',
+      directory, prompt, model, effort: 'low', toolUsagePolicy: 'no-model-helpers',
       ...(arm === 'kast' && {
         guidance: loadKastGuidance(),
         system: 'Use query_imported_main for the Kast declaration query in this session.',
-        extension, toolNames: [tool],
+        extension, toolNames: [tool], visiblePaths: [workspace],
         extensionEnvironment: {
           KAST_EVAL_TRIAL_BIN: kast, KAST_EVAL_TRIAL_WORKSPACE: workspace,
         },
       }),
     });
+    observation = projectPiTrial(trial);
     const queryPath = trial.calls.find(call => call.tool === tool && call.type === 'COMPLETE')?.path ?? null;
     return {
+      ...observation,
       ...(trial.error ? { error: trial.error } : { output: trial.reply }),
-      tokenUsage: {
-        total: trial.usage.total, prompt: trial.usage.input + trial.usage.cacheRead + trial.usage.cacheWrite,
-        completion: trial.usage.output, cached: trial.usage.cacheRead,
-      },
       metadata: {
+        ...observation.metadata,
         model, effort: 'low', ...trial.guidance, usage: trial.usage, toolCalls: trial.toolCalls, providerResponses: trial.providerResponses,
         elapsedMillis: trial.elapsedMillis, promptSha256: digest(prompt), sourceSha256, queryPath,
         qualifiedPath: declarationPath(caseId),
@@ -60,7 +60,8 @@ async function callApi(_label, { vars: { caseId, arm } }) {
   } catch (error) {
     const reason = error instanceof Error && /^IMPORTED_MODEL_[A-Z_]+$/.test(error.message)
       ? error.message : 'IMPORTED_MODEL_TRIAL_UNAVAILABLE';
-    return { error: reason };
+    const preserved = error?.trial ? projectPiTrial(error.trial) : observation;
+    return { ...preserved, error: reason };
   } finally {
     if (directory) await rm(directory, { force: true, recursive: true });
   }
