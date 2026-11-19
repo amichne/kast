@@ -610,6 +610,12 @@ def activate(
                 _ = output.write(install.encoded(reference))
             active = root / "installation"
             materialize_client_entries(stage, active)
+            stage_control_archive(
+                stage,
+                Path(reference.runtimeRoot),
+                admitted.target.target,
+                runner if runner is not None else install.run_child,
+            )
             files = tuple(
                 PayloadFile(
                     path.relative_to(stage).as_posix(),
@@ -695,6 +701,99 @@ def activate(
         KeyboardInterrupt,
     ) as problem:
         return failed(root, problem)
+
+
+@dataclass(frozen=True)
+class ControlEntry:
+    main_class: str
+    class_path: tuple[str, ...]
+    java_home: str
+    archive: str
+    training: tuple[str, ...]
+
+
+def control_entry(raw: bytes, target: str) -> ControlEntry:
+    """The catalog's JVM entry for this target; every path stays beneath its root."""
+    document = release.document(raw)
+    control = document.get("control") if release.mapping(document) else None
+    if not release.mapping(control):
+        raise ValueError("Control catalog")
+    main_class, class_path = control.get("mainClass"), control.get("classPath")
+    homes, archive, training = (
+        control.get("javaHomes"),
+        control.get("sharedArchive"),
+        control.get("archiveTraining"),
+    )
+    java_home = homes.get(target) if release.mapping(homes) else None
+    if (
+        not isinstance(main_class, str)
+        or not isinstance(java_home, str)
+        or not isinstance(archive, str)
+        or not archive.endswith(".jsa")
+        or not release.sequence(class_path)
+        or not release.sequence(training)
+    ):
+        raise ValueError("Control catalog")
+    paths = [item for item in class_path if isinstance(item, str)]
+    arguments = [item for item in training if isinstance(item, str)]
+    if len(paths) != len(class_path) or not paths or len(arguments) != len(training):
+        raise ValueError("Control catalog")
+    for relative in (archive, java_home, *paths):
+        if Path(relative).is_absolute() or ".." in Path(relative).parts:
+            raise ValueError("Control catalog path")
+    return ControlEntry(main_class, tuple(paths), java_home, archive, tuple(arguments))
+
+
+CONTROL_ARCHIVE_TIMEOUT_SECONDS = 120.0
+MAXIMUM_CATALOG_BYTES = 4 << 20
+
+
+def stage_control_archive(
+    stage: Path, runtime_root: Path, target: str, runner: install.ChildRunner
+) -> None:
+    """Create the JVM entry's class-data archive with the installed runtime, inside staging.
+
+    The installation manifest then digests the archive with every other payload file. The
+    archive only shortens JVM startup, so a failed training run is reported and leaves no
+    archive; the Control executable starts without one. A Control payload without the catalog
+    predates the JVM entry and needs no archive.
+    """
+    catalog_path = stage / "share/kast/frontend.json"
+    if not catalog_path.is_file():
+        return
+    entry = control_entry(install.read_record(catalog_path, MAXIMUM_CATALOG_BYTES), target)
+    if os.path.lexists(stage / entry.archive):
+        raise ValueError("Control archive path")
+    archive = stage / entry.archive
+    command = [
+        str(runtime_root / entry.java_home / "bin/java"),
+        f"-XX:ArchiveClassesAtExit={archive}",
+        "-cp",
+        ":".join(str(stage / path) for path in entry.class_path),
+        entry.main_class,
+        *entry.training,
+    ]
+    install.emit(contract.Stage.CONTROL_ARCHIVE, "STARTED")
+    reason: contract.Failure | None = None
+    with tempfile.TemporaryDirectory(prefix="kast-control-archive-") as home:
+        # Training reads no installation state; an empty HOME keeps it from reaching any.
+        environment = {"HOME": home, "PATH": "/usr/bin:/bin", "LC_ALL": "C"}
+        try:
+            if runner(command, environment, CONTROL_ARCHIVE_TIMEOUT_SECONDS).returncode != 0:
+                reason = contract.Failure.CHILD_REJECTED
+        except subprocess.TimeoutExpired:
+            reason = contract.Failure.CHILD_TIMEOUT
+        except OSError:
+            reason = contract.Failure.CHILD_REJECTED
+    if reason is None and (archive.is_symlink() or not archive.is_file()):
+        reason = contract.Failure.CHILD_REJECTED
+    if reason is not None:
+        if os.path.lexists(archive):
+            archive.unlink()
+        install.emit(contract.Stage.CONTROL_ARCHIVE, "REJECTED", reason)
+        return
+    archive.chmod(0o644)
+    install.emit(contract.Stage.CONTROL_ARCHIVE, "COMPLETED")
 
 
 def clean_control_stage(root: Path, stage: Path, witness: journal.Identity) -> None:

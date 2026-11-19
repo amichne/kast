@@ -442,7 +442,8 @@ func TestEveryEntryOtherThanPublicQueriesReplacesTheProcessWithTheJvmEntry(t *te
 			t.Fatalf("%v: unexpected outcome %+v executed=%v", arguments, got, f.executed)
 		}
 	}
-	want := []string{"/runtimes/abc/host/jbr/bin/java", "-Dkast.command=" + filepath.Join(f.root, payloadPath),
+	want := []string{"/runtimes/abc/host/jbr/bin/java", "-Xlog:disable", "-Xlog:all=warning:stderr",
+		"-Dkast.command=" + filepath.Join(f.root, payloadPath),
 		"-Duser.home=/home/caller", "-Xmx256m", "-cp",
 		filepath.Join(f.root, "lib/kast-cli.jar") + ":" + filepath.Join(f.root, "lib/kotlin-stdlib.jar"),
 		"io.github.amichne.kast.cli.KastControlMain", "--internal-entrypoint=mcp", "--catalog", "common"}
@@ -534,5 +535,39 @@ func TestALongSocketIsDialedThroughTheCoordinatorsAliasOnly(t *testing.T) {
 	}
 	if got := f.run(t, "", nil, "query"); got.status != 0 || got.stdout != "served\n" {
 		t.Fatalf("the exact alias was not dialed: %+v", got)
+	}
+}
+
+func TestTheInstalledClassDataArchiveIsUsedOnlyWhenItExists(t *testing.T) {
+	f := newFixture(t)
+	touchFrontend(t, f)
+	f.receipt(t, "/runtimes/abc")
+	archive := filepath.Join(f.root, "lib", "control.jsa")
+	option := "-XX:SharedArchiveFile=" + archive
+	f.run(t, "", nil, "--version")
+	if slices.Contains(f.executed[0], option) {
+		t.Fatalf("an absent archive was passed: %v", f.executed[0])
+	}
+	if err := os.MkdirAll(filepath.Dir(archive), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/elsewhere/control.jsa", archive); err != nil {
+		t.Fatal(err)
+	}
+	f.run(t, "", nil, "--version")
+	if slices.Contains(f.executed[1], option) {
+		t.Fatalf("a linked archive was passed: %v", f.executed[1])
+	}
+	if err := os.Remove(archive); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(archive, []byte("archive"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f.run(t, "", nil, "--version")
+	cp := slices.Index(f.executed[2], "-cp")
+	at := slices.Index(f.executed[2], option)
+	if at < 0 || at > cp {
+		t.Fatalf("the archive must precede the class path: %v", f.executed[2])
 	}
 }
