@@ -58,7 +58,8 @@ Public tool contract: `{{CONTRACT_VERSION}}`. The installed schema governs.
 
 Use `find` with a simple `name`, known `kind`, and declaration `directory` or `package`.
 Use `source_sets` for exact imported Gradle source sets. The default is `main` and `test`.
-The `interface` kind searches the CLASS family. Examine source before an interface claim.
+Use `kind` `class` for interfaces. Examine source before an interface claim.
+A missing `directory` returns a complete, empty result. Confirm it before an absence claim.
 Select the exact owner, signature, receiver, and location. Reuse the issued `ref` unchanged.
 Use a relation for direct callers or references. `trace` selects fixed affected-use topology.
 Use `walk` with `relation` and `depth` for every established hop through that depth.

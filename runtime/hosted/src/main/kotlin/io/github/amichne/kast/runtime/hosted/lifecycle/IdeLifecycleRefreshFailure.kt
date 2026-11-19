@@ -18,4 +18,6 @@ internal fun WorkspaceRefreshFailure.lifecycleFailure(): IdeLifecycleFailure =
         WorkspaceRefreshFailure.ADMISSION_REJECTED,
         WorkspaceRefreshFailure.NEWER_CHANGE -> IdeLifecycleFailure.PROJECT_BUSY
         WorkspaceRefreshFailure.EFFECT_FAILED -> IdeLifecycleFailure.IMPORT_FAILED
+        WorkspaceRefreshFailure.GRADLE_DISTRIBUTION_UNAVAILABLE -> IdeLifecycleFailure.GRADLE_DISTRIBUTION_UNAVAILABLE
+        WorkspaceRefreshFailure.GRADLE_JVM_UNAVAILABLE -> IdeLifecycleFailure.GRADLE_JVM_UNAVAILABLE
     }

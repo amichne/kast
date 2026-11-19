@@ -1,4 +1,4 @@
-import { armCapabilities, originalCases, skillCases } from './skill-cases.mjs';
+import { armCapabilities, guidedCases, originalCases, skillCases } from './skill-cases.mjs';
 import { gradeSkill } from './skill-grading.mjs';
 
 export default {
@@ -7,7 +7,7 @@ export default {
   providers: ['file://./skill-provider.mjs'],
   evaluateOptions: { maxConcurrency: 1, cache: false },
   scenarios: Object.entries(skillCases).flatMap(([caseId, scenario]) => {
-    const comparisons = caseId === 'source-lookup' ? ['guided-kast-access'] : ['canonical-skill'];
+    const comparisons = guidedCases.has(caseId) ? ['guided-kast-access'] : ['canonical-skill'];
     if (originalCases.includes(caseId)) comparisons.push('skill-version');
     return comparisons.map(comparison => ({
       description: `${caseId} / ${comparison}`,

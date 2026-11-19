@@ -81,6 +81,10 @@ enum class WorkspaceRefreshFailure {
     UNKNOWN_REQUEST,
     REQUEST_CONFLICT,
     EFFECT_FAILED,
+    /** No Gradle version could be derived from the workspace wrapper before the initial link. */
+    GRADLE_DISTRIBUTION_UNAVAILABLE,
+    /** No admissible JVM could be selected or registered for the workspace Gradle version. */
+    GRADLE_JVM_UNAVAILABLE,
     CANCELLED,
     DEADLINE_EXCEEDED,
     ADMISSION_REJECTED,

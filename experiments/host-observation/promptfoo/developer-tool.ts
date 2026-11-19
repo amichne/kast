@@ -69,7 +69,7 @@ export default function (pi: ExtensionAPI) {
   if (!kast) return;
   pi.registerTool({
     name: 'kast', label: 'Kast semantic query',
-    description: 'Run read-only Kast CLI commands with argv after kast. Start with argv ["query","--help"]. Use --json for structured output. Use stdin with an admitted query request document.',
+    description: 'Run read-only Kast CLI commands with argv after kast. Use --json for structured output. Use stdin with an admitted query request document.',
     parameters: Type.Object({ argv: Type.Array(Type.String({ maxLength: 4096 }), { minItems: 1, maxItems: 32 }),
       stdin: Type.Optional(Type.String({ maxLength: 8192 })) }, { additionalProperties: false }),
     async execute(_id, { argv, stdin }) {

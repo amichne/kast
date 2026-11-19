@@ -10,7 +10,10 @@ internal fun publicCliArgumentDiagnostic(failure: PublicCliArgumentFailure): Str
             PublicCliArgumentFailure.MISSING_VALUE ->
                 "Supply each necessary flag value. Use kast --help for command syntax."
             PublicCliArgumentFailure.DUPLICATE_OPTION -> "Supply each nonrepeatable flag once."
-            PublicCliArgumentFailure.INVALID_VALUE -> "Use kast describe query for accepted flag values."
+            PublicCliArgumentFailure.INVALID_VALUE ->
+                "Inspect the flag with kast describe COMMAND --jq " +
+                    "'.content.flags[] | select(.name == \"--kind\") | {value_spellings, schema}'; " +
+                    "COMMAND is query, source.read, result.read, or diagnostic.check."
             PublicCliArgumentFailure.INVALID_JQ_OPTIONS ->
                 "Supply --jq FILTER (1..32768 UTF-8 bytes) without --help. " +
                     "Kast bundles jq support; --jq-executable is no longer supported; " +

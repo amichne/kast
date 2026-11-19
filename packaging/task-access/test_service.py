@@ -66,6 +66,7 @@ def test_catalog_has_only_task_tools_and_one_explicit_write_route() -> None:
         ("find", {"name": "Thing", "page_size": True}),
         ("find", {"name": "Thing", "source_sets": []}),
         ("find", {"name": "Thing", "directory": "cli", "package": "io.example"}),
+        ("find", {"name": "Thing", "kind": "interface"}),
         ("source", {"ref": EXACT, "region": "NONEXISTENT"}),
         ("walk", {"ref": EXACT, "relation": "CALLERS"}),
         ("diagnostics", {"path": "../outside"}),

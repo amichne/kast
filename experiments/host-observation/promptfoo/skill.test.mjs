@@ -12,7 +12,7 @@ import config from './skill.config.mjs';
 import { kastInstruction, loadKastGuidance } from './kast-guidance.mjs';
 import { armCapabilities, completionFile, invocationFile, originalCases, skillCases } from './skill-cases.mjs';
 import { gradeSkill, planSkillDraft } from './skill-grading.mjs';
-import SkillProvider, { decodePiTrial, prepareFixtureWorkspace, runIsolatedPi } from './skill-provider.mjs';
+import SkillProvider, { decodePiTrial, prepareFixtureWorkspace, prepareUnwrappedWorkspace, runIsolatedPi } from './skill-provider.mjs';
 import { permittedKast, runtimeEnvironment } from './skill-sandbox.mjs';
 
 const workspace = '/fixture';
@@ -203,6 +203,11 @@ test('tool permissions allow discovery in drafts and keep outside authority inac
   assert.equal(permittedKast(['query', '--name', 'Widget', '--in', '../outside'], 'repository'), false);
   assert.equal(permittedKast(['query', '--name', 'Widget', '--request', '/outside/document'], 'repository'), false);
   assert.equal(permittedKast(['describe', 'query', '--jq', '$ENV.PATH'], 'draft'), false);
+  // The canonical skill projects every query verdict with --jq and traces with --terminal.
+  assert.equal(permittedKast(['query', '--name', 'Widget', '--jq', '{type, status: .document.status}'], 'fixture'), true);
+  assert.equal(permittedKast(['query', '--ref', 'exact:v5:AAAAAAAAAAAAAAAAAAAAAA', '--terminal', 'trace'], 'fixture'), true);
+  assert.equal(permittedKast(['query', '--name', 'Widget', '--jq', '$ENV.PATH'], 'fixture'), false);
+  assert.equal(permittedKast(['query', '--name', 'Widget', '--jq', 'input'], 'unwrapped'), false);
   assert.equal(permittedKast(['query', '--request', '-'], 'repository', '{"request":{"type":"RESUME"}}'), false);
   assert.equal(permittedKast(['query', '--request', '-'], 'repository', '{"request":{"type":"READ_SOURCE","candidateRef":"issued"}}'), true);
   assert.equal(runtimeEnvironment({ HOME: '/home', OPENAI_API_KEY: 'sentinel' }).OPENAI_API_KEY, undefined);
@@ -267,6 +272,48 @@ test('absence needs the complete final result and presence needs the queried pat
   const plain = { tool: 'search_kotlin_source', matches: [{ file: invocationFile, line: 'fun invokeCallback(block: () -> String)' }] };
   assert.equal(gradeSkill('source-lookup', invocationFile, { workspace, calls: [plain] }).pass, true);
   assert.equal(gradeSkill('source-lookup', invocationFile, { workspace, calls: [] }).pass, false);
+});
+
+test('an unwrapped workspace keeps fixture sources and owns no Gradle wrapper', async () => {
+  const { root, owned } = await prepareUnwrappedWorkspace();
+  try {
+    assert.equal(root, join(owned, 'callback-service'));
+    assert.match(await readFile(join(root, invocationFile), 'utf8'), /fun escapeSink\(\): String = "escape"/);
+    await assert.rejects(readdir(join(root, 'gradle')), { code: 'ENOENT' });
+    await assert.rejects(readFile(join(root, 'gradlew')), { code: 'ENOENT' });
+  } finally {
+    await rm(owned, { recursive: true, force: true });
+  }
+  await assert.rejects(readdir(owned), { code: 'ENOENT' });
+});
+
+test('a literal answered from source passes only without a Kast call', () => {
+  const search = { tool: 'search_kotlin_source', matches: [{ file: invocationFile, line: 'fun escapeSink(): String = "escape"' }] };
+  assert.equal(gradeSkill('literal-read', 'escape', { workspace, calls: [search] }).pass, true);
+  assert.equal(gradeSkill('literal-read', 'escape', { workspace, calls: [search, call(completion(selected('escapeSink', 'invocation', 'function'), []))] }).pass, false);
+  assert.equal(gradeSkill('literal-read', '"escape"', { workspace, calls: [search] }).pass, false);
+  assert.equal(gradeSkill('literal-read', 'escape', { workspace, calls: [] }).pass, false);
+});
+
+test('an unprepared workspace needs its typed preparation cause and no identical retry', () => {
+  // Shape recorded from an installed Kast preparation rejection; only the lifecycle reason differs.
+  const rejected = reason => ({
+    type: 'rejected_document',
+    document: {
+      failure: { type: 'workspace', id: 'WorkspacePreparationId(value=fixture)', cause: { type: 'lifecycle', reason } },
+      status: 'rejected', boundary: 'managed_preparation',
+    },
+  });
+  const argv = ['query', '--name', 'invokeCallback', '--in', 'invocation', '--kind', 'function'];
+  const answer = 'UNKNOWN GRADLE_DISTRIBUTION_UNAVAILABLE';
+  const typed = call(rejected('GRADLE_DISTRIBUTION_UNAVAILABLE'), argv);
+  assert.equal(gradeSkill('unprepared', answer, { workspace, calls: [typed] }).pass, true);
+  assert.equal(gradeSkill('unprepared', answer, { workspace, calls: [typed, typed] }).pass, false);
+  assert.equal(gradeSkill('unprepared', answer, { workspace, calls: [call(rejected('IMPORT_FAILED'), argv)] }).pass, false);
+  assert.equal(gradeSkill('unprepared', 'UNKNOWN', { workspace, calls: [typed] }).pass, false);
+  assert.equal(gradeSkill('unprepared', answer, { workspace, calls: [] }).pass, false);
+  const changed = call(rejected('UNLINKED_BUILD'), [...argv, '--source-set', 'main']);
+  assert.equal(gradeSkill('unprepared', answer, { workspace, calls: [typed, changed] }).pass, true);
 });
 
 test('callback answer needs a preceding issued reference and obligations from the same rejection', () => {

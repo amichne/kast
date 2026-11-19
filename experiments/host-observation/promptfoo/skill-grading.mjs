@@ -101,6 +101,23 @@ function callback(output, metadata) {
   return false;
 }
 
+function unprepared(output, metadata) {
+  if (output !== 'UNKNOWN GRADLE_DISTRIBUTION_UNAVAILABLE') return false;
+  const attempts = metadata.calls.filter(call => call?.tool === 'kast' && call.argv?.[0] === 'query')
+    .map(call => JSON.stringify([call.argv, call.input ?? null]));
+  if (new Set(attempts).size !== attempts.length) return false;
+  return recordedQueries(metadata.calls).some(({ type, document }) => type === 'rejected_document' &&
+    document?.status === 'rejected' && document.boundary === 'managed_preparation' &&
+    document.failure?.cause?.type === 'lifecycle' && document.failure.cause.reason === 'GRADLE_DISTRIBUTION_UNAVAILABLE');
+}
+
+function literalRead(output, metadata) {
+  return output === 'escape' && !metadata.calls.some(call => call?.tool === 'kast') && metadata.calls.some(
+    call => call?.tool === 'search_kotlin_source' && Array.isArray(call.matches) &&
+      call.matches.some(row => row?.file === invocationFile && /\bfun\s+escapeSink\s*\(\)[^=]*=\s*"escape"/.test(row.line)),
+  );
+}
+
 function queryCompletion(output, metadata) {
   if (!equal(parse(output), { path: completionFile, declarationKind: 'data class', implementations: [] })) return false;
   const calls = metadata.calls.filter(call => call?.tool === 'kast' && Array.isArray(call.argv));
@@ -208,6 +225,14 @@ export function gradeSkill(caseId, answer, metadata) {
           call => call?.tool === 'search_kotlin_source' && Array.isArray(call.matches) &&
             call.matches.some(row => row?.file === invocationFile && /\bfun\s+invokeCallback\s*\(/.test(row.line)),
         ));
+        exactFormat = pass;
+        break;
+      case 'literal-read':
+        pass = literalRead(answer, metadata);
+        exactFormat = pass;
+        break;
+      case 'unprepared':
+        pass = unprepared(answer, metadata);
         exactFormat = pass;
         break;
       case 'query-completion-document':

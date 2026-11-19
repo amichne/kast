@@ -7,7 +7,7 @@ const describeOperations = new Set(['query', 'diagnostic.check', 'result.read', 
 const discoveryFlags = new Set(['--section', '--pointer', '--jq', '--jq-timeout-ms', '--jq-max-bytes', '--max-entries', '--max-returned-bytes', '--catalog']);
 const queryFlags = new Set([
   '--name', '--name-match', '--in', '--kind', '--source-set', '--fields', '--output',
-  '--ref', '--relation', '--max-results', '--max-returned-bytes',
+  '--ref', '--relation', '--terminal', '--max-results', '--max-returned-bytes', '--jq',
 ]);
 const sourceFlags = new Set(['--ref', '--region', '--text', '--max-returned-bytes']);
 const runtimeKeys = [
@@ -58,6 +58,10 @@ function permittedRequest(input) {
     (!step.expansionScope?.directory || scopedDirectory(step.expansionScope.directory));
 }
 
+function inertJq(flags) {
+  return (flags.get('--jq') ?? []).every(value => !/\b(?:env|input|inputs|include|import|module)\b|\$ENV/i.test(value));
+}
+
 export function permittedKast(argv, scope, input) {
   if (argv.some(value => typeof value !== 'string' || value.length > 4096 || value.includes('\0'))) return false;
   if (input !== undefined) {
@@ -68,9 +72,7 @@ export function permittedKast(argv, scope, input) {
   const [command, operation, ...rest] = argv;
   if (command === 'describe' && (operation === undefined || describeOperations.has(operation))) {
     const flags = parseFlags(rest, discoveryFlags);
-    return flags !== null && (flags.get('--jq') ?? []).every(
-      value => !/\b(?:env|input|inputs|include|import|module)\b|\$ENV/i.test(value),
-    );
+    return flags !== null && inertJq(flags);
   }
   if (scope === 'draft') return false;
   if (command === 'source' && operation === 'read' && scope === 'repository') {
@@ -80,5 +82,5 @@ export function permittedKast(argv, scope, input) {
   if (command !== 'query') return false;
   const flags = parseFlags(argv.slice(1), queryFlags);
   return flags !== null && (flags.has('--name') || flags.has('--ref')) &&
-    (flags.get('--in') ?? []).every(scopedDirectory);
+    (flags.get('--in') ?? []).every(scopedDirectory) && inertJq(flags);
 }

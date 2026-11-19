@@ -81,6 +81,13 @@ tasks.named<Test>("test") {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(File(repositoryRoot.asFile, "pi/mcp-extension.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(File(repositoryRoot.asFile, "agent-tools/hooks/pi.ts")).withPathSensitivity(PathSensitivity.RELATIVE)
+    // PublicSkillCommandDriftTest parses every command that the bundled guidance teaches.
+    inputs
+        .files(
+            File(repositoryRoot.asFile, "agent-tools/skills/kast/SKILL.md"),
+            File(repositoryRoot.asFile, "agent-tools/skills/kast/public-cli.md"),
+        )
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir("src/test/js").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs
         .dir(repositoryRoot.dir("experiments/host-observation/interface-replay/fixtures"))

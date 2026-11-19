@@ -8,9 +8,9 @@ def payload(*args: str) -> dict[str, object]:
     return json.loads(prepare(list(args)).arguments.model_dump_json(exclude_none=True))
 
 
-def test_interface_search_is_recursive_and_does_not_expand_overloads() -> None:
+def test_class_family_search_is_recursive_and_does_not_expand_overloads() -> None:
     actual = payload(
-        "find", "run", "--kind", "interface", "--directory", "app-server", "--source-set", "main"
+        "find", "run", "--kind", "class", "--directory", "app-server", "--source-set", "main"
     )
     assert actual == {
         "request": {
@@ -88,6 +88,7 @@ def test_walk_keeps_each_hop_and_does_not_chain_three_expansions() -> None:
     "args",
     [
         ["find", "Thing", "--bytes", "1000"],
+        ["find", "Thing", "--kind", "interface"],
         ["find", "Thing", "--directory", "../other"],
         ["find", "Thing", "--directory", "/absolute"],
         ["find", "Thing", "--directory", "*.kt"],
