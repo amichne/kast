@@ -1,5 +1,6 @@
 package io.github.amichne.kast.cli.publicshell
 
+import io.github.amichne.kast.appserver.runtime.isMovedHostedRead
 import io.github.amichne.kast.cli.rpc.ToolRpcFailure
 import io.github.amichne.kast.cli.rpc.ToolRpcReply
 import io.github.amichne.kast.protocol.contract.QuerySemanticHeaderDocumentCoverageType
@@ -61,7 +62,9 @@ internal fun classifyPublicReply(
             }
         is ToolRpcReply.Complete -> classifyDocument(reply.document, grant)
         is ToolRpcReply.Qualified -> classifyDocument(reply.document, grant)
-        is ToolRpcReply.RejectedDocument -> classifyDocument(reply.document, grant)
+        is ToolRpcReply.RejectedDocument ->
+            if (isMovedHostedRead(reply.document.toString())) PublicShellExit.SEMANTIC
+            else classifyDocument(reply.document, grant)
     }
 
 private fun classifyDocument(document: JsonObject, grant: PublicElapsedGrant): PublicShellExit =

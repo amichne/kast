@@ -37,6 +37,15 @@ import org.junit.jupiter.api.Test
 
 class PublicShellExitTest {
     @Test
+    fun `a moved hosted read returns the semantic exit`() {
+        val captured = checkNotNull(javaClass.getResource("/rpc/hosted-read-moved.json")).readText()
+        val reply = Json.decodeFromString<ToolRpcReply>(captured)
+        assertEquals(PublicShellExit.SEMANTIC, preparePublicReply(reply).exit)
+        val invalid = captured.replace("CONTENT_REVALIDATION", "UNKNOWN_STAGE")
+        assertEquals(PublicShellExit.PROTOCOL, preparePublicReply(Json.decodeFromString<ToolRpcReply>(invalid)).exit)
+    }
+
+    @Test
     fun `empty ordinary result succeeds only when original proof is complete`() {
         val rows = (BoundedProtocolList.create<QueryResultItemDocument>(emptyList()) as Refinement.Refined).value
         val failures = (BoundedProtocolList.create<QueryItemFailureDocument>(emptyList()) as Refinement.Refined).value
