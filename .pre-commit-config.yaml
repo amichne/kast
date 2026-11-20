@@ -1,0 +1,34 @@
+# Install once per clone:
+#   uvx pre-commit@4.7.0 install --hook-type pre-commit --hook-type pre-push
+# Commit hooks stay cheap. Push hooks run the CI source obligations for the pushed
+# change against the local Gradle caches, so a red CI run is a surprise, not a routine.
+minimum_pre_commit_version: "4.0.0"
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+repos:
+  - repo: local
+    hooks:
+      - id: ci-decisions
+        name: CI decision, candidate, and release preflight rules
+        language: system
+        entry: mise exec -- uv run --locked --script .github/scripts/ci/fast_checks.py decisions
+        files: ^(\.github/|distribution/release/|config/ci/)
+        pass_filenames: false
+
+      - id: documentation-contracts
+        name: Documentation parser, glossary, and knowledge contracts
+        language: system
+        entry: mise exec -- python3 .github/scripts/ci/verify_documentation.py
+        files: ^(docs/|openwiki/|config/vale/|README\.md$|.*AGENTS\.md$|\.github/scripts/ci/verify_documentation\.py$)
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: affected-source-obligations
+        name: Affected source obligations (requires a clean committed tree)
+        language: system
+        entry: >-
+          bash -c 'exec mise exec -- python3 .github/scripts/ci/source_validation.py
+          --affected --event pull_request --base "$(git rev-parse origin/main)"'
+        always_run: true
+        pass_filenames: false
+        stages: [pre-push]

@@ -472,7 +472,7 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertEqual(f"temurin-{version}+{build}.0.LTS", mise["tools"]["java"])
         self.assertNotIn("GRAALVM_HOME", mise.get("env", {}))
         producers = []
-        for path in (root / ".github/workflows").glob("*.yml"):
+        for path in (*(root / ".github/workflows").glob("*.yml"), *(root / ".github/actions").glob("*/action.yml")):
             for distribution, java in re.findall(
                 r"(?m)^\s+distribution: (\S+)\n\s+java-version: ([^\n]+)", path.read_text()
             ):
@@ -487,7 +487,9 @@ class SourceInventoryTest(unittest.TestCase):
         product = workflow.split("\n  kotlin:\n", 1)[1]
         product = re.split(r"\n  (?=\S)", product, maxsplit=1)[0]
         self.assertIn("    runs-on: ${{ fromJSON(needs.kotlin-runner.outputs.labels) }}\n", product)
-        self.assertIn("needs.source-work.result == 'success' && needs.assembly.result == 'success'", product)
+        self.assertIn("    needs: [scope, assembly, kotlin-runner]\n", product)
+        self.assertNotIn("needs.source-work", product)
+        self.assertIn("needs.assembly.result == 'success' && needs.kotlin-runner.result == 'success'", product)
         self.assertIn("- name: Exercise the exact assembled Mac Control product\n", product)
         self.assertNotIn("REUSED", workflow)
         self.assertNotIn("ci-build-candidate-", workflow)
@@ -520,17 +522,21 @@ class SourceInventoryTest(unittest.TestCase):
             with self.subTest(workflow=path.name):
                 self.assertNotIn("[self-hosted", path.read_text())
 
-    def test_assembly_needs_no_native_input_and_product_consumers_keep_source_proof(self):
+    def test_assembly_needs_no_native_input_and_sealing_keeps_source_proof(self):
         workflow = (Path(__file__).resolve().parents[2] / "workflows/ci.yml").read_text()
         for retired in ("native-inputs", "native-runner", "native"):
             self.assertNotIn(f"\n  {retired}:\n", workflow)
         assembly = re.split(r"\n  (?=\S)", workflow.split("\n  assembly:\n", 1)[1], maxsplit=1)[0]
         self.assertIn("    needs: scope\n", assembly)
         self.assertIn("release_handoff.py assemble --version", assembly)
-        # Product consumers keep the complete source proof as a precondition.
+        # Mac qualification runs beside source validation. The sealed product and the
+        # required aggregate keep the complete source proof as a precondition.
         for job in ("kotlin", "composed-macos"):
             body = re.split(r"\n  (?=\S)", workflow.split(f"\n  {job}:\n", 1)[1], maxsplit=1)[0]
-            self.assertIn("needs.source-work.result == 'success'", body)
+            self.assertNotIn("needs.source-work", body)
+            self.assertNotRegex(body, r"(?m)^    needs: \[[^\]]*source-work")
+        required = re.split(r"\n  (?=\S)", workflow.split("\n  required:\n", 1)[1], maxsplit=1)[0]
+        self.assertIn("    needs: [scope, source, documentation, portable, kotlin, complete-product]\n", required)
         sealed = re.split(r"\n  (?=\S)", workflow.split("\n  sealed-product:\n", 1)[1], maxsplit=1)[0]
         self.assertIn("    needs: [scope, source-work, composed-macos]\n", sealed)
 
@@ -637,9 +643,9 @@ class SourceInventoryTest(unittest.TestCase):
         self.assertNotIn("composed-products", jobs)
         joined, required = jobs["sealed-product"], jobs["required"]
         mac = jobs["composed-macos"]
-        self.assertIn("needs: [scope, source-work, assembly]", mac)
+        self.assertIn("needs: [scope, assembly]", mac)
         self.assertIn("!cancelled()", mac)
-        self.assertIn("needs.source-work.result == 'success'", mac)
+        self.assertNotIn("needs.source-work", mac)
         self.assertIn("needs.assembly.result == 'success' &&", mac)
         self.assertNotIn("reuse_ci_release", mac)
         self.assertIn("uses: ./.github/workflows/composed-linux.yml", mac)
@@ -794,15 +800,34 @@ class SourceInventoryTest(unittest.TestCase):
             " ".join(commands[0].split()),
         )
 
-    def test_validation_jobs_own_shared_cache_population(self):
+    def test_trusted_runs_write_caches_and_a_dispatched_seed_shares_the_source_key(self):
         workflows = Path(__file__).resolve().parents[2] / "workflows"
-        self.assertFalse((workflows / "gradle-cache.yml").exists())
+        trusted = (
+            "cache-read-only: ${{ github.event_name == 'pull_request' && "
+            "github.event.pull_request.head.repo.full_name != github.repository }}"
+        )
+        key = (
+            "GRADLE_BUILD_ACTION_CACHE_KEY_JOB: source-work\n"
+            "          GRADLE_BUILD_ACTION_CACHE_KEY_JOB_INSTANCE: linux-source\n"
+        )
+        seed = (workflows / "gradle-cache.yml").read_text()
+        self.assertIn("  workflow_dispatch:\n", seed)
+        self.assertNotIn("pull_request", seed)
+        self.assertIn(key, seed)
+        self.assertIn("cache-read-only: false", seed)
+        self.assertIn("run: python3 .github/scripts/ci/source_validation.py\n", seed)
+        docs = (workflows / "docs.yml").read_text()
+        self.assertIn("uses: gradle/actions/setup-gradle@", docs)
+        self.assertIn(trusted, docs)
         workflow = (workflows / "ci.yml").read_text()
-        for job in ("source-work", "kotlin"):
+        self.assertNotIn("refs/heads/main' && (github.event_name", workflow)
+        for job in ("source-work", "assembly", "kotlin"):
             body = workflow.split(f"\n  {job}:\n", 1)[1]
             body = re.split(r"\n  (?=\S)", body, maxsplit=1)[0]
             self.assertIn("uses: gradle/actions/setup-gradle@", body)
-            self.assertIn("cache-read-only: ${{ !(github.ref == 'refs/heads/main'", body)
+            self.assertIn(trusted, body)
+            if job == "source-work":
+                self.assertIn(key, body)
         self.assertIn("uv run --locked --script .github/scripts/ci/macos_reset_checks.py", body)
         command = macos_reset_checks.COMMAND
         self.assertIn("--max-workers=1", command)

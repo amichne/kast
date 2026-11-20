@@ -62,14 +62,26 @@ That duplication adds unmeasured work to full runs.
 ## Cache ownership
 
 Gradle cache transport remains owned by the pinned `setup-gradle` action.
-Only trusted main runs can write entries.
-Pull requests, forks, merge groups and other refs remain read-only.
-This prevents PR-scoped writes from consuming space that shared main entries need.
+Every run from this repository writes entries; only pull requests from forks stay read-only.
+Main entries serve every ref. A pull request entry serves later pushes to that pull request.
+More writers spend more of the repository cache quota, and GitHub evicts the least recently used entries.
 Cleanup runs after successful builds, and existing encrypted configuration-cache handling stays in place.
 
-The CI jobs that run Gradle populate their shared caches on main.
 The Linux source job stores source task outputs.
 The macOS native job stores outputs from the reset-adapter suites.
+The documentation job stores the plugins and dependencies its knowledge tasks resolve.
+
+### Seed the cache on demand
+
+Agents and maintainers can refresh the shared source cache without a full CI run:
+
+```shell
+gh workflow run gradle-cache.yml --ref main
+```
+
+The `Seed Gradle cache` workflow runs complete source validation and writes its Gradle home under the `source-work` key family.
+Both it and the CI `source-work` job set `GRADLE_BUILD_ACTION_CACHE_KEY_JOB` and `GRADLE_BUILD_ACTION_CACHE_KEY_JOB_INSTANCE`, so the next source run restores the newest seed.
+A seed dispatched on a branch writes a branch-scoped entry that pull request runs cannot read.
 
 Keep setup restore/save reports, build task outcomes, native metrics and job timestamps from necessary runs.
 A transport hit does not prove task-output reuse or a speedup.
@@ -178,8 +190,9 @@ A Mac that goes offline after selection still leaves that job queued until it re
 Other macOS jobs, including complete-product qualification and installed acceptance, stay on hosted runners because they install products and start Hosts.
 The manual component release uses `macos-15`. Stable promotion uses retained bytes.
 
-The Mac native compile waits only for the `native-inputs` job, not for complete source validation.
-The `kotlin`, `composed-macos`, and sealing jobs still require `source-work` success.
+The `kotlin` and `composed-macos` jobs start after release assembly and run beside complete source validation.
+Sealing and the `CI required checks` aggregate still require `source-work` success, so a source failure still blocks the product.
+A failed source run can therefore leave completed Mac jobs without a sealed product.
 On the hosted 3-core, 7 GB Mac, the native compile took 26 minutes and spent 31% of it in GC.
 The same image compiled in about 3 minutes on the 16 GB Linux runner and in under 2 minutes on the local Mac.
 
@@ -352,7 +365,7 @@ Source feedback waits for the selected source, documentation, and portable jobs.
 Linux owns the source result through `source-work`.
 The stable `Source validation` check needs that job, independently of product assembly.
 Source-only changes use affected selection with fixed validation versions.
-Product changes run the complete source gate beside release assembly; every product consumer requires both.
+Product changes run the complete source gate beside release assembly and Mac qualification; sealing and the required aggregate require both.
 Failed, cancelled, missing, and skipped source results reject the source aggregate.
 The final required gate also needs the qualified candidate.
 

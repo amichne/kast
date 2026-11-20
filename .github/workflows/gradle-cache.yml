@@ -1,0 +1,46 @@
+name: Seed Gradle cache
+
+# Dispatch: gh workflow run gradle-cache.yml --ref main
+# A main seed serves every branch and pull request. A branch seed serves that branch only.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: gradle-cache-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  seed:
+    name: Seed source-work Gradle cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/source-toolchain
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        env:
+          # The same key family as ci.yml source-work, so its next restore takes this entry.
+          GRADLE_BUILD_ACTION_CACHE_KEY_JOB: source-work
+          GRADLE_BUILD_ACTION_CACHE_KEY_JOB_INSTANCE: linux-source
+        with:
+          validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: false
+          cache-cleanup: on-success
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: Run complete source validation to populate task outputs
+        run: python3 .github/scripts/ci/source_validation.py
