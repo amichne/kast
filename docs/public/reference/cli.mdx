@@ -173,7 +173,7 @@ kast query --all --in legacy --source-set main \
   --relation references --relation-in app --relation-source-set main
 ```
 
-This command lists the declarations in `legacy` that `main` code in `app` references.
+This command lists the declarations in `app` whose `main` code references a declaration from `legacy`.
 A complete, empty result proves that `app` has no such reference.
 Omit `--kind` for a boundary check. A function-only seed misses constructions of `legacy` classes.
 `--relation-in`, `--relation-source-set`, `--relation-production-only`, and `--relation-exclude-generated` apply to every `--relation` hop and to `--terminal trace`.
