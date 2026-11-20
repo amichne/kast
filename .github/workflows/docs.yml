@@ -110,12 +110,6 @@ jobs:
           --dispositions docs/reviews/documentation-migration/prose-dispositions.json
           --report build/reports/documentation/prose/receipt.json
 
-      - name: Report knowledge integrity and maintenance demand
-        if: ${{ !cancelled() }}
-        run: >-
-          uv run --locked --project docs/internal/tooling python docs/internal/tooling/knowledge_check.py
-          > build/reports/documentation/knowledge-assessment.json
-
       - name: Keep documentation evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

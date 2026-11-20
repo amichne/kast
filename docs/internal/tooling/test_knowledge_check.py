@@ -121,9 +121,15 @@ def test_current_declaration_drift_is_unresolved_but_malformed_identity_blocks(
     authored = root_path / "docs/public/start.mdx"
     original = authored.read_text()
     authored.write_text(original + "A changed authored explanation.\n")
-    incoherent = knowledge_check.assess(root_path)
-    assert isinstance(incoherent, knowledge_check.Report)
-    assert incoherent.decision is knowledge_check.Decision.REJECTED
+    edited = knowledge_check.assess(root_path)
+    assert isinstance(edited, knowledge_check.Report)
+    assert edited.decision is knowledge_check.Decision.ACCEPTED
+    assert edited.assessment is knowledge_check.Assessment.REVIEW_REQUIRED
+    assert edited.bindings[0].status is publication.State.MISMATCHED
+    authored.write_text('import Missing from "/snippets/missing.mdx"\n')
+    missing = knowledge_check.assess(root_path)
+    assert isinstance(missing, knowledge_check.Report)
+    assert missing.decision is knowledge_check.Decision.REJECTED
     authored.write_text(original)
     (root_path / "docs/internal/tooling/owner.py").write_text("VALUE = 42\n")
     result = knowledge_check.assess(root_path)

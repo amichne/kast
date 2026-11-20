@@ -338,7 +338,7 @@
         },
         {
             "path": "build.gradle.kts",
-            "sha256": "3768c1cd691f0742a42055d10dc34ef360389b60a25be7c6a088e9eecd0f0a88"
+            "sha256": "47fc721c84997b45b22368164531fdcffdbdf608785f29cdb3d7697b69fc1d69"
         },
         {
             "path": "change/apply/build.gradle.kts",
