@@ -27718,6 +27718,29 @@
                 "properties": {
                   "type": {
                     "enum": [
+                      "RECEIVER_NON_NULL"
+                    ],
+                    "type": "string"
+                  },
+                  "origin": {
+                    "$ref": "#/$defs/impactValueConditionOrigin"
+                  },
+                  "useRange": {
+                    "$ref": "#/$defs/impactSourceRange"
+                  }
+                },
+                "required": [
+                  "type",
+                  "origin",
+                  "useRange"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "enum": [
                       "REVIEWED_CALLBACK_NORMAL_RETURN"
                     ],
                     "type": "string"
@@ -61198,7 +61221,8 @@
                     "CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT",
                     "CONDITIONAL_RECEIVER_TO_CALL_RESULT",
                     "CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER",
-                    "CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER"
+                    "CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER",
+                    "CONDITIONAL_RECEIVER_TO_CALLBACK_PARAMETER"
                   ]
                 }
               },
