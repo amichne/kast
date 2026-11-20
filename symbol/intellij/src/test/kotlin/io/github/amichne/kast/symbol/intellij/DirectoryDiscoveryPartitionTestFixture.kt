@@ -38,6 +38,7 @@ internal object DirectoryDiscoveryPartitionTestFixture {
             traversal: SymbolDiscoveryContainment,
             pattern: String,
             match: SymbolDiscoveryMatch = SymbolDiscoveryMatch.EXACT_NAME,
+            directory: String = DirectoryDiscoveryTree.SELECTED,
         ): SymbolDiscoveryRequest {
             val base = fixture.request(20, 10_000, 100_000, null)
             return SymbolDiscoveryRequest(
@@ -61,7 +62,7 @@ internal object DirectoryDiscoveryPartitionTestFixture {
                     base.constraints.copy(
                         directory =
                             SymbolDiscoveryDirectoryConstraint(
-                                SymbolDiscoveryDirectory.parse(DirectoryDiscoveryTree.SELECTED).refined(),
+                                SymbolDiscoveryDirectory.parse(directory).refined(),
                                 traversal,
                             )
                     ),

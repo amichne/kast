@@ -36,6 +36,10 @@ internal class IntellijDeclarationSourceAdmission(
         return owner == null || owner in selectedRoots || selectedRoots.any { it.startsWith(path) }
     }
 
+    fun namesRequestedFile(path: Path): Boolean =
+        requestedDirectory == path &&
+            request.constraints.directory?.containment == SymbolDiscoveryContainment.DESCENDANTS
+
     private fun excludedDescendantDirectory(path: Path): Boolean {
         val requested = requestedDirectory ?: return false
         if (request.constraints.directory!!.containment != SymbolDiscoveryContainment.DIRECT) return false

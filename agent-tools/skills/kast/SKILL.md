@@ -35,6 +35,9 @@ Use Kast when the claim depends on resolution or on completeness:
 - "none", "never", "only", "all", or "unused" in the claim
 - compound questions over two or more relationships
 - the affected surface of an edit, and its compiler diagnostics afterward
+- any answer that depends on input outside the tracked files, such as a binary dependency's declarations or the projects that the build imports
+
+Source text alone cannot decide that last kind of question. Query Kast before you report that the evidence is insufficient.
 
 Skip Kast for file content, a literal, or an edit in a known file. A Kast call costs more tokens than a read.
 
@@ -246,7 +249,7 @@ If Kast cannot answer, use ordinary source reads and state the limitation.
 ## Pitfalls
 
 - A missing `--in` directory returns a complete, empty result. Confirm the directory before an absence claim.
-- `--in` limits discovery, not relation destinations.
+- `--in` takes a directory or one file. It limits discovery, not relation destinations.
 - `--kind class` includes interfaces, objects, and enums. Read source before you state the declaration form.
 - Each query can issue a new ref for the same declaration. Copy refs unchanged. Compare file and signature instead.
 - Java primitives appear as Kotlin types. Java `relay(int)` has the single parameter `kotlin/Int`.

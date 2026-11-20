@@ -177,12 +177,17 @@ private constructor(
             )
         return when (partition) {
             is SemanticFilePartition.Directory ->
-                if (native.isDirectory) directory(native)
-                else
-                    rejected(
-                        SymbolDiscoveryBlockCause.PARTITION_UNAVAILABLE,
-                        IntellijReadTermination.DISCOVERY_PARTITION_KIND_MISMATCH,
-                    )
+                when {
+                    native.isDirectory -> directory(native)
+                    // A descendants scope contains its own path, so a scope that names one
+                    // file is planned as a root partition holding exactly that file.
+                    admission.namesRequestedFile(Path.of(native.path)) -> file(native)
+                    else ->
+                        rejected(
+                            SymbolDiscoveryBlockCause.PARTITION_UNAVAILABLE,
+                            IntellijReadTermination.DISCOVERY_PARTITION_KIND_MISMATCH,
+                        )
+                }
             is SemanticFilePartition.File -> file(native)
         }
     }

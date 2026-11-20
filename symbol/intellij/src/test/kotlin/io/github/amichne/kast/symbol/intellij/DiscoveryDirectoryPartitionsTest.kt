@@ -78,6 +78,40 @@ class DiscoveryDirectoryPartitionsTest {
     }
 
     @Test
+    fun `a descendants scope that names one source file reads only that file`(@TempDir home: Path) =
+        withParser(home) { project ->
+            val case = Case(project, home.resolve("repo"))
+            val file = "${DirectoryDiscoveryTree.SELECTED}/Helpers.kt"
+            for ((name, expected) in listOf("helper" to listOf("helper"), "Target" to emptyList())) {
+                val observation = RecordingDiscoveryObservation { 0L }
+                val request = case.request(SymbolDiscoveryContainment.DESCENDANTS, name, directory = file)
+                val supply = StrictPartitions(case, listOf("find:$file"))
+                val outcome =
+                    case
+                        .query(observation)
+                        .discoverPartitions(project, case.scope(request, observation), request, partitions = supply)
+                        .outcome()
+                supply.assertConsumed()
+                assertTrue(outcome is SymbolDiscoveryOutcome.Complete, outcome.toString())
+                assertEquals(expected, outcome.batch().candidates.map { it.name.value })
+                assertEquals(1, observation.calls[IntellijReadCall.PSI_FIND_FILE])
+            }
+        }
+
+    @Test
+    fun `a direct scope that names a file still rejects the partition kind`(@TempDir home: Path) =
+        withParser(home) { project ->
+            val case = Case(project, home.resolve("repo"))
+            val file = "${DirectoryDiscoveryTree.SELECTED}/Helpers.kt"
+            val observation = RecordingDiscoveryObservation { 0L }
+            val request = case.request(SymbolDiscoveryContainment.DIRECT, "helper", directory = file)
+            val outcome =
+                case.query(observation).discoverPartitions(project, case.scope(request, observation), request).outcome()
+            assertTrue(outcome !is SymbolDiscoveryOutcome.Complete, outcome.toString())
+            assertTrue(outcome.batch().candidates.isEmpty())
+        }
+
+    @Test
     fun `overlapping roots walk once and excluded owners keep separately admitted descendants`(@TempDir home: Path) =
         withParser(home) { project ->
             val case = Case(project, home.resolve("repo"))
