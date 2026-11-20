@@ -805,6 +805,7 @@ class SourceInventoryTest(unittest.TestCase):
             self.assertIn("cache-read-only: ${{ !(github.ref == 'refs/heads/main'", body)
         self.assertIn("uv run --locked --script .github/scripts/ci/macos_reset_checks.py", body)
         command = macos_reset_checks.COMMAND
+        self.assertIn("--max-workers=1", command)
         self.assertIn(":distribution:cli:test", command)
         self.assertIn("--info", command)
         self.assertIn("--no-daemon", command)
