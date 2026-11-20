@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
-import { arms, gradeAnswer, outcomes, separationReport } from './separation.mjs';
+import { arms, gradeAnswer, outcomes, progressReport, separationReport } from './separation.mjs';
 
 const blindArms = ['source', 'kast'];
 
@@ -88,9 +88,21 @@ export function reportExport(document) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [path] = process.argv.slice(2);
-  if (!path) throw Error('Usage: node separation-report.mjs /absolute/results.json');
-  const report = reportExport(JSON.parse(readFileSync(path, 'utf8')));
+  const [path, ...rest] = process.argv.slice(2);
+  if (!path) throw Error('Usage: node separation-report.mjs /absolute/results.json [--before /absolute/before.json]');
+  const read = file => reportExport(JSON.parse(readFileSync(file, 'utf8')));
+  const report = read(path);
+  if (rest.length) {
+    // Each --before export reports its own cases; a case may appear in only one of them.
+    if (rest.length % 2 !== 0 || rest.some((value, index) => index % 2 === 0 && value !== '--before')) {
+      throw Error('Usage: node separation-report.mjs AFTER --before BEFORE [--before BEFORE]');
+    }
+    const earlier = rest.filter((_, index) => index % 2 === 1).map(read);
+    const ids = earlier.flatMap(item => item.cases?.map(entry => entry.id) ?? []);
+    const verdict = earlier.every(item => ['SEPARATED', 'NOT_SEPARATED'].includes(item.verdict)) && new Set(ids).size === ids.length
+      ? 'NOT_SEPARATED' : 'BLOCKED';
+    report.progress = progressReport({ verdict, cases: earlier.flatMap(item => item.cases ?? []) }, report);
+  }
   console.log(JSON.stringify(report, null, 2));
   if (!['SEPARATED', 'NOT_SEPARATED'].includes(report.verdict)) process.exitCode = 2;
 }

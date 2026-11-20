@@ -180,3 +180,46 @@ function verdictFor(counts, ceiling) {
   if (!counts.balanced) return 'INCOMPLETE';
   return counts.lowerBound > ceiling ? 'SEPARATED' : 'NOT_SEPARATED';
 }
+
+function logChoose(n, k) {
+  let total = 0;
+  for (let index = 1; index <= k; index++) total += Math.log(n - k + index) - Math.log(index);
+  return total;
+}
+
+// One-sided Fisher exact test that `after` has a higher success rate than `before`.
+export function fisherGreater(after, before) {
+  for (const { successes, trials } of [after, before]) {
+    if (!Number.isSafeInteger(trials) || trials < 1 || !Number.isSafeInteger(successes) || successes < 0 || successes > trials) {
+      throw Error('SEPARATION_COUNTS_INVALID');
+    }
+  }
+  const total = after.trials + before.trials;
+  const successes = after.successes + before.successes;
+  const denominator = logChoose(total, successes);
+  let p = 0;
+  for (let k = after.successes; k <= Math.min(successes, after.trials); k++) {
+    if (successes - k > before.trials) continue;
+    p += Math.exp(logChoose(after.trials, k) + logChoose(before.trials, successes - k) - denominator);
+  }
+  return Math.min(1, p);
+}
+
+// Compare the Kast configuration across two reports of the same admitted cases.
+// Cases whose admitted prompts differ between the reports are not comparable.
+export function progressReport(before, after) {
+  if (!['SEPARATED', 'NOT_SEPARATED'].includes(before.verdict) || !['SEPARATED', 'NOT_SEPARATED'].includes(after.verdict)) {
+    return { state: 'BLOCKED', failure: 'SEPARATION_PROGRESS_UNREPORTED' };
+  }
+  const cases = before.cases.filter(item => after.cases.some(other => other.id === item.id)).map(item => {
+    const next = after.cases.find(other => other.id === item.id);
+    const counts = report => ({ successes: report.arms.kast.CORRECT, trials: report.arms.kast.trials });
+    return { id: item.id, before: { ...counts(item), verdict: item.verdict }, after: { ...counts(next), verdict: next.verdict },
+      pGreater: fisherGreater(counts(next), counts(item)) };
+  });
+  if (cases.length === 0) return { state: 'BLOCKED', failure: 'SEPARATION_PROGRESS_NO_SHARED_CASE' };
+  const pooled = side => cases.reduce((sum, item) => ({ successes: sum.successes + item[side].successes,
+    trials: sum.trials + item[side].trials }), { successes: 0, trials: 0 });
+  return { state: 'COMPARED', cases, pooled: { before: pooled('before'), after: pooled('after'),
+    pGreater: fisherGreater(pooled('after'), pooled('before')) } };
+}

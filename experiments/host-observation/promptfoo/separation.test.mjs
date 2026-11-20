@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { admitTwin, gradeAnswer, lowerConfidenceBound, readAnswer, renderPrompt, separationReport } from './separation.mjs';
+import { admitTwin, fisherGreater, gradeAnswer, lowerConfidenceBound, progressReport, readAnswer, renderPrompt, separationReport } from './separation.mjs';
 import { reportExport } from './separation-report.mjs';
 import { extensionCallers, fixture, kastCallers, library, materializedFact, request } from './ledger-shadow.mjs';
 import { admitParticipantSurface } from './participant-surface.mjs';
@@ -196,4 +196,16 @@ test('the held-out subtype twin is blind and its qualification needs no file sco
   // The pre-registered shadowed-extension prompt keeps its recorded build script.
   assert.equal(ledgerSpec.fixture['build.gradle.kts'], 'plugins { kotlin("jvm") version "2.4.10" }\n\n' +
     'repositories { mavenCentral() }\n\ndependencies { implementation(files("../ledger.jar")) }\n');
+});
+
+test('progress uses the exact one-sided Fisher test on matched cases', () => {
+  // Independent reference values from scipy.stats.fisher_exact(alternative='greater').
+  assert.ok(Math.abs(fisherGreater({ successes: 12, trials: 12 }, { successes: 4, trials: 12 }) - 0.000673038) < 1e-8);
+  assert.ok(Math.abs(fisherGreater({ successes: 5, trials: 6 }, { successes: 2, trials: 6 }) - 0.121212121) < 1e-8);
+  assert.ok(Math.abs(fisherGreater({ successes: 3, trials: 6 }, { successes: 3, trials: 6 }) - 0.716450216) < 1e-8);
+  const report = (verdict, correct) => ({ verdict, cases: [{ id: 'a', verdict, arms: { kast: { CORRECT: correct, trials: 6 } } }] });
+  const compared = progressReport(report('NOT_SEPARATED', 2), report('SEPARATED', 6));
+  assert.equal(compared.state, 'COMPARED');
+  assert.deepEqual(compared.pooled.after, { successes: 6, trials: 6 });
+  assert.equal(progressReport({ verdict: 'INCOMPLETE' }, report('SEPARATED', 6)).failure, 'SEPARATION_PROGRESS_UNREPORTED');
 });
