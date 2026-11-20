@@ -40,6 +40,16 @@ jobs:
         with:
           install_args: java node vale@3.24.0 vale@3.25.1
 
+      # The knowledge tasks below run Gradle. Restored plugins and dependencies
+      # keep a registry outage from failing an unchanged documentation contract.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          validate-wrappers: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          cache-read-only: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          cache-cleanup: on-success
+
       - name: Verify parser and glossary contracts
         run: mise exec -- python3 .github/scripts/ci/verify_documentation.py
 

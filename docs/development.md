@@ -174,7 +174,7 @@ Source, policy, tool, environment, and report changes rerun their consumers.
 Failed commands preserve their diagnostics and remain failures on later invocations.
 
 The scoped loop supplies local evidence for selected owners.
-Before a push, the existing hook still runs the full product gate on the committed source.
+Before a push, the optional pre-commit hooks run affected source obligations on the committed source.
 Live installation and release-catalog reads keep their existing freshness rules.
 
 Run all offline packaging suites in an isolated Linux container with:
@@ -254,8 +254,19 @@ Gradle provisions the pinned Python dependencies for its schema tests in
 `build/python-tests/env`. The build does not depend on the active shell's Python
 packages or the interpreter search path retained by an existing Gradle daemon.
 
-Kast retires its automatic push gate. An installed Kast dispatcher exits without
-local qualification. Other Git hooks keep their own behavior.
+The retired Kast push dispatcher still exits without local qualification.
+The repository instead declares opt-in [pre-commit](https://pre-commit.com) hooks in
+`.pre-commit-config.yaml`:
+
+```shell
+uvx pre-commit@4.7.0 install --hook-type pre-commit --hook-type pre-push
+```
+
+A commit that touches CI or release files runs the CI decision suites.
+A push runs affected source obligations against `origin/main` with the local Gradle caches.
+When the push changes documentation, it also runs the documentation contract checks from the CI documentation job.
+The source hook needs a clean committed tree, like the source gate.
+Use `git push --no-verify` to skip the hooks for one push.
 
 Run complete local qualification explicitly.
 
