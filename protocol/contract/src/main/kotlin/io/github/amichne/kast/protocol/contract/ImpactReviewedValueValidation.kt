@@ -62,7 +62,34 @@ private fun ImpactReviewedValueTransferDocument.admitsCallback(
                 source.valuePath.values.drop(1) == target.valuePath.values
         ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER ->
             admitsInput(proof) && source.valuePath.values.isEmpty() && target.valuePath.values.isEmpty()
+        ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALLBACK_PARAMETER ->
+            admitsScopeParameter(proof) && source.valuePath == target.valuePath
     }
+}
+
+/** The exact `let` receiver, owned by the binding's own parent execution, enters formal zero of its callback. */
+private fun ImpactReviewedValueTransferDocument.admitsScopeParameter(
+    proof: ImpactReviewedValueBindingDocument
+): Boolean {
+    val receiver = source.role as? ImpactValueRoleDocument.Receiver ?: return false
+    return receiver.kind == ImpactReceiverKindDocument.EXTENSION &&
+        source.executionOwner == proof.parentExecutionOwner &&
+        receiver.invocation.range == proof.supplierRange &&
+        receiver.invocation.callable == proof.selected.declaration &&
+        proof.supplierRange.containsExecutionRange(source.range) &&
+        source.range.end.value <= proof.body.range.start.value &&
+        source.conditions.hasSameConditions(target.conditions) &&
+        admitsScopeFormal(proof)
+}
+
+private fun ImpactReviewedValueTransferDocument.admitsScopeFormal(proof: ImpactReviewedValueBindingDocument): Boolean {
+    val formal = target.role as? ImpactValueRoleDocument.Formal ?: return false
+    val parameter = (formal.position as? ImpactFormalPositionDocument.Parameter)?.parameter ?: return false
+    return parameter.index.value == 0 &&
+        parameter.callable == proof.enclosing &&
+        parameter.range == target.range &&
+        parameter.executionOwner == target.executionOwner &&
+        target.executionOwner == ImpactExecutionOwnerDocument.ReviewedCallback(proof)
 }
 
 private fun ImpactReviewedValueTransferDocument.admitsMapResult(proof: ImpactReviewedValueBindingDocument): Boolean =

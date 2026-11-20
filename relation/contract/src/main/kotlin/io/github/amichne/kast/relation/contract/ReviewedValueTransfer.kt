@@ -9,6 +9,8 @@ enum class ReviewedValueSemantics {
     CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
     CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
     CONDITIONAL_RECEIVER_TO_CALL_RESULT,
+    /** The whole receiver becomes the callback's sole value parameter when the reviewed scope invokes it. */
+    CONDITIONAL_RECEIVER_TO_CALLBACK_PARAMETER,
 }
 
 /** Reviewed correspondence is never a compiler transfer or a callback invocation fact. */

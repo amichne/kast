@@ -67,6 +67,7 @@ internal class NativeValueCallFlow(
                 as? io.github.amichne.kast.symbol.contract.ExactDeclarationQualifiedIdentity.Available ?: return false
         when (selected.value) {
             "kotlin.also",
+            "kotlin.let",
             "kotlin.run",
             "kotlin.apply",
             "kotlin.collections.map",

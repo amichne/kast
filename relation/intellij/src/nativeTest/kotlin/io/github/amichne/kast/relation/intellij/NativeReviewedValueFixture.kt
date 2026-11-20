@@ -23,9 +23,14 @@ import junit.framework.TestCase.fail
 import kotlinx.coroutines.runBlocking
 
 abstract class NativeReviewedValueFixture : NativePacketValueFixtureTest() {
-    protected fun fixture(consumer: Boolean = true, paths: List<String> = listOf(CONTROLS)): NativePacketValueFixture =
+    protected fun fixture(
+        consumer: Boolean = true,
+        paths: List<String> = listOf(CONTROLS),
+        readSource: ((String) -> ByteArray)? = null,
+    ): NativePacketValueFixture =
         packetFixture(
             paths,
+            readSource = readSource ?: ::frozenPacketSource,
             configureCompiler = {
                 ModuleRootModificationUtil.updateModel(module) { model ->
                     for (library in model.moduleLibraryTable.libraries) model.moduleLibraryTable.removeLibrary(library)

@@ -116,12 +116,13 @@ class NativeCallbackReturnFlowTest : NativeReferenceFixtureTest() {
             )
     }
 
+    // The declared calls-in-place contract admits the capture; the refusal moves to the opaque println frontier.
     fun testCapturedWithRefusalNamesTheReadRatherThanTheBinding() = runBlocking {
         fixture("fun target() { val x = decode(); with(Unit) { println(x) } }")
             .checkExpressionRefusal(
                 project = project,
-                cause = ValueFlowUnsupportedCause.NESTED_EXECUTION,
-                kind = "KtNameReferenceExpression",
+                cause = ValueFlowUnsupportedCause.EXTERNAL_CALL,
+                kind = "KtValueArgument",
                 expression = "x",
             )
     }

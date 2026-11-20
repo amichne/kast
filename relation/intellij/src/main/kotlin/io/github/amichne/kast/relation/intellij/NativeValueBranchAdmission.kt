@@ -23,7 +23,6 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
-import org.jetbrains.kotlin.analysis.api.types.KaStarTypeProjection
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtExpression
@@ -52,6 +51,7 @@ internal fun nativeValueBranchAdmission(
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
     workAllowance: WorkAllowance,
+    typeTest: NativeBranchTypeTest = NativeBranchTypeTest.STAR_PROJECTED_ONLY,
 ): NativeValueBranchAdmission =
     projection.observation.observedAnalyze(expression) {
         val expected =
@@ -63,7 +63,7 @@ internal fun nativeValueBranchAdmission(
                 is KtNamedDeclaration -> binding.symbol
                 else -> null
             }
-        val branch = branchAdmission(source, expression, expected, scope, projection, workAllowance)
+        val branch = branchAdmission(source, expression, expected, scope, projection, workAllowance, typeTest)
         when (branch) {
             NativeValueBranchAdmission.ADMITTED,
             NativeValueBranchAdmission.NOT_APPLICABLE ->
@@ -87,6 +87,7 @@ internal fun KaSession.branchAdmission(
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
     workAllowance: WorkAllowance,
+    typeTest: NativeBranchTypeTest = NativeBranchTypeTest.STAR_PROJECTED_ONLY,
 ): NativeValueBranchAdmission {
     var entry =
         PsiTreeUtil.getParentOfType(expression, KtWhenEntry::class.java, false)
@@ -106,7 +107,16 @@ internal fun KaSession.branchAdmission(
             NativeBranchIdentity.EXACT -> {
                 when (
                     val admitted =
-                        admitExactBranch(source, expression, whenExpression, entry, scope, projection, workAllowance)
+                        admitExactBranch(
+                            source,
+                            expression,
+                            whenExpression,
+                            entry,
+                            scope,
+                            projection,
+                            workAllowance,
+                            typeTest,
+                        )
                 ) {
                     NativeValueBranchAdmission.ADMITTED -> admission = admitted
                     NativeValueBranchAdmission.NOT_APPLICABLE,
@@ -131,6 +141,7 @@ private fun KaSession.admitExactBranch(
     scope: CompiledRelationScope,
     projection: IntellijK2RelationProjection,
     workAllowance: WorkAllowance,
+    typeTest: NativeBranchTypeTest,
 ): NativeValueBranchAdmission {
     if (PsiTreeUtil.getParentOfType(expression, KtIfExpression::class.java, false) != null)
         return NativeValueBranchAdmission.UNPROVEN
@@ -140,7 +151,7 @@ private fun KaSession.admitExactBranch(
             ?: return NativeValueBranchAdmission.UNPROVEN
     return when (nativeCompilerTypeProof(listOf(exactType), workAllowance)) {
         NativeCompilerTypeProof.ADMITTED ->
-            when (val branch = matchingArm(exactType, whenExpression, entry, workAllowance)) {
+            when (val branch = matchingArm(exactType, whenExpression, entry, workAllowance, typeTest)) {
                 NativeValueBranchAdmission.ADMITTED ->
                     admitVersionSmartcast(source, expression, exactType, workAllowance)
                 NativeValueBranchAdmission.NOT_APPLICABLE,
@@ -265,11 +276,12 @@ private fun KaSession.matchingArm(
     expression: KtWhenExpression,
     selected: KtWhenEntry,
     workAllowance: WorkAllowance,
+    typeTest: NativeBranchTypeTest,
 ): NativeValueBranchAdmission {
     for ((index, entry) in expression.entries.withIndex()) {
         if (!workAllowance.permits(index.toLong() + 1L)) return NativeValueBranchAdmission.WORK_LIMIT_REACHED
         val matches =
-            when (val result = branchConditionMatches(exactType, entry, workAllowance)) {
+            when (val result = branchConditionMatches(exactType, entry, workAllowance, typeTest)) {
                 is Refinement.Refined -> result.value
                 is Refinement.Rejected -> return result.failure
             }
@@ -283,15 +295,18 @@ private fun KaSession.branchConditionMatches(
     exactType: KaType,
     entry: KtWhenEntry,
     workAllowance: WorkAllowance,
+    typeTest: NativeBranchTypeTest,
 ): Refinement<Boolean, NativeValueBranchAdmission> {
     if (entry.guard != null) return Refinement.Rejected(NativeValueBranchAdmission.UNPROVEN)
     if (entry.isElse) return Refinement.Refined(true)
     val condition =
         entry.conditions.singleOrNull() as? KtWhenConditionIsPattern
             ?: return Refinement.Rejected(NativeValueBranchAdmission.UNPROVEN)
-    val tested =
+    val written =
         condition.typeReference?.type as? KaClassType ?: return Refinement.Rejected(NativeValueBranchAdmission.UNPROVEN)
-    if (!tested.hasOnlyStarArguments()) return Refinement.Rejected(NativeValueBranchAdmission.UNPROVEN)
+    val tested =
+        testedType(written, typeTest, condition.typeReference?.typeElement)
+            ?: return Refinement.Rejected(NativeValueBranchAdmission.UNPROVEN)
     return when (nativeCompilerTypeProof(listOf(tested), workAllowance)) {
         NativeCompilerTypeProof.ADMITTED -> {
             val subtype = exactType.isSubtypeOf(tested)
@@ -302,10 +317,6 @@ private fun KaSession.branchConditionMatches(
         NativeCompilerTypeProof.UNSUPPORTED_TYPE -> Refinement.Rejected(NativeValueBranchAdmission.UNPROVEN)
     }
 }
-
-private fun KaClassType.hasOnlyStarArguments(): Boolean =
-    typeArguments.all { it is KaStarTypeProjection } &&
-        qualifiers.all { qualifier -> qualifier.typeArguments.all { it is KaStarTypeProjection } }
 
 /** The caller has resolved this reference to the versioned binding; K2 supplies the scoped, stable type fact. */
 internal fun nativeLocalReadConditions(

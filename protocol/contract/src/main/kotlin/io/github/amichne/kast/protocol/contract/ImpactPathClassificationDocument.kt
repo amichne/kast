@@ -88,7 +88,8 @@ internal fun ImpactReviewedValueRelationDocument.relationship(): ImpactRelations
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER,
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT,
-                ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT ->
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALLBACK_PARAMETER ->
                     ImpactRelationshipDocument.EXACT
             }
         is ImpactReviewedValueRelationDocument.ReorderedElements ->

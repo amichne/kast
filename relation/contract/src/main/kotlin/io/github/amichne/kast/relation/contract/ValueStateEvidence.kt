@@ -59,14 +59,12 @@ internal fun StringBuilder.valueState(site: ValueSite) {
                 field(condition.originalType.value)
                 field(condition.refinedType.value)
             }
-            is ValueCondition.StableReceiver -> {
-                field("STABLE_RECEIVER")
+            is ValueCondition.ReceiverNonNull -> {
+                field("RECEIVER_NON_NULL")
                 conditionOrigin(condition.origin)
                 range(condition.useRange)
-                field(condition.kind.name)
-                field(condition.originalType.value)
-                field(condition.refinedType.value)
             }
+            is ValueCondition.StableReceiver -> stableReceiver(condition)
             is ValueCondition.StringContentNonNull -> {
                 field("STRING_CONTENT_NON_NULL")
                 conditionOrigin(condition.origin)
@@ -287,4 +285,13 @@ internal fun StringBuilder.declaredCallbackBinding(binding: DeclaredCallbackValu
     field(binding.contract.provenance.name)
     field(binding.contract.invocationKind.name)
     field(binding.resultEffect.name)
+}
+
+private fun StringBuilder.stableReceiver(condition: ValueCondition.StableReceiver) {
+    field("STABLE_RECEIVER")
+    conditionOrigin(condition.origin)
+    range(condition.useRange)
+    field(condition.kind.name)
+    field(condition.originalType.value)
+    field(condition.refinedType.value)
 }

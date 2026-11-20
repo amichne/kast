@@ -33585,6 +33585,44 @@
                 "properties": {
                   "type": {
                     "enum": [
+                      "RECEIVER_NON_NULL"
+                    ],
+                    "type": "string"
+                  },
+                  "origin": {
+                    "$ref": "#/$defs/impactValueConditionOrigin"
+                  },
+                  "useRange": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "start": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "end": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "start",
+                      "end"
+                    ]
+                  }
+                },
+                "required": [
+                  "type",
+                  "origin",
+                  "useRange"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "enum": [
                       "REVIEWED_CALLBACK_NORMAL_RETURN"
                     ],
                     "type": "string"

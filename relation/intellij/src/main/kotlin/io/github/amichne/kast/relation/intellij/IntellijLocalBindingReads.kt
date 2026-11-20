@@ -13,7 +13,6 @@ import io.github.amichne.kast.relation.contract.LocalReferenceKind
 import io.github.amichne.kast.relation.contract.LocalReferenceResolution
 import io.github.amichne.kast.relation.contract.RelationWorkCount
 import io.github.amichne.kast.relation.contract.ValueConditions
-import io.github.amichne.kast.relation.contract.ValueExecutionContext
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowRead
@@ -230,6 +229,10 @@ internal class IntellijLocalBindingReads(
                     scope = scope,
                     projection = projection,
                     workAllowance = request.budget.resources.workAllowance,
+                    typeTest =
+                        if (request.source.localVersion == ValueLocalVersion.Unversioned)
+                            NativeBranchTypeTest.RUNTIME_CLASS
+                        else NativeBranchTypeTest.STAR_PROJECTED_ONLY,
                 )
         ) {
             NativeValueBranchAdmission.ADMITTED,
@@ -267,7 +270,9 @@ internal class IntellijLocalBindingReads(
                 is Refinement.Rejected -> LocalReferenceResolution.Unsupported(conditions.failure)
             }
         } else if (admission == NativeValueBranchAdmission.UNPROVEN)
-            LocalReferenceResolution.Unsupported(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+            LocalReferenceResolution.Unresolved(
+                nativeValueObligation(request.source, ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
+            )
         else localReadTarget(expression)
 
     private fun localReadTarget(element: PsiElement): LocalReferenceResolution {
@@ -287,17 +292,7 @@ internal class IntellijLocalBindingReads(
                                 expiry = ::captureExpiry,
                             )
                     ) {
-                        is Refinement.Refined -> {
-                            if (captured.value.owner.context !is ValueExecutionContext.Callback)
-                                return LocalReferenceResolution.Unresolved(
-                                    nativeValueObligation(
-                                        request.source,
-                                        ValueFlowUnsupportedCause.NESTED_EXECUTION,
-                                        element,
-                                    )
-                                )
-                            captured.value.owner
-                        }
+                        is Refinement.Refined -> captured.value.owner
                         is Refinement.Rejected ->
                             return LocalReferenceResolution.Unresolved(
                                 nativeValueObligation(request.source, captured.failure, element)

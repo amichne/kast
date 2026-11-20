@@ -142,6 +142,35 @@ internal fun admitReviewedInput(
     return Refinement.Refined(Unit)
 }
 
+/**
+ * The receiver of the exact reviewed `let` occurrence enters formal zero of that occurrence's callback. Its execution
+ * owner must be the binding's own parent, which is either the declaration or a declared callback enclosing it.
+ */
+internal fun admitReviewedScopeParameter(
+    source: ValueSite,
+    binding: ReviewedCallbackValueBinding,
+    formal: ValueFormalParameter,
+): Refinement<Unit, ValueFlowUnsupportedCause> {
+    val receiver =
+        source.role as? ValueRole.Receiver
+            ?: return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    if (
+        binding.selected.operation != ReviewedLibraryOperation.LET ||
+            !receiver.matchesReviewedCall(binding) ||
+            source.range.endExclusive > binding.body.range.startInclusive
+    )
+        return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    if (source.basis != binding.basis || source.enclosing.valueIdentity != binding.enclosing.valueIdentity)
+        return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+    if (
+        source.executionOwner != binding.parentExecutionOwner ||
+            formal.executionOwner != ValueExecutionOwner.reviewedCallback(binding)
+    )
+        return Refinement.Rejected(ValueFlowUnsupportedCause.NESTED_EXECUTION)
+    if (formal.position.value != 0) return Refinement.Rejected(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION)
+    return Refinement.Refined(Unit)
+}
+
 internal fun ReviewedCallbackValueBinding.admitsSortedReceiver(source: ValueSite): Boolean =
     selected.operation == ReviewedLibraryOperation.ITERABLE_SORTED_BY && admitsSelectedReceiver(source)
 

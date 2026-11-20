@@ -46,6 +46,8 @@ internal fun ReviewedValueSemantics.impactDocument(): ImpactReviewedValueSemanti
             ImpactReviewedValueSemanticsDocument.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER
         ReviewedValueSemantics.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER ->
             ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_CONTENT_TO_CALLBACK_PARAMETER
+        ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALLBACK_PARAMETER ->
+            ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALLBACK_PARAMETER
     }
 
 internal fun ReviewedCallbackValueBinding.impactDocument(): ImpactProjected<ImpactReviewedValueBindingDocument> =

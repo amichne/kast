@@ -149,6 +149,13 @@ sealed interface ImpactValueConditionDocument {
     ) : ImpactValueConditionDocument
 
     @Serializable
+    @SerialName("RECEIVER_NON_NULL")
+    data class ReceiverNonNull(
+        override val origin: ImpactValueConditionOriginDocument,
+        override val useRange: ImpactSourceRangeDocument,
+    ) : ImpactValueConditionDocument
+
+    @Serializable
     @SerialName("STABLE_RECEIVER")
     data class StableReceiver(
         override val origin: ImpactValueConditionOriginDocument,

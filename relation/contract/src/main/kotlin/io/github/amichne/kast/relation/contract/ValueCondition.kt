@@ -4,15 +4,31 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.symbol.contract.CanonicalCompilerType
 import io.github.amichne.kast.symbol.contract.ExactDeclarationTextRange
 
-enum class ValueCastKind {
-    UNSAFE,
-    SAFE,
-}
-
 /** A use-site fact is conditional on execution reaching that use; it is not a runtime reachability proof. */
 sealed interface ValueCondition {
     val origin: ValueConditionOrigin
     val useRange: ExactDeclarationTextRange
+
+    @ConsistentCopyVisibility
+    data class ReceiverNonNull
+    private constructor(
+        override val origin: ValueConditionOrigin,
+        override val useRange: ExactDeclarationTextRange,
+    ) : ValueCondition {
+        companion object {
+            fun atUse(
+                source: ValueSite,
+                useRange: ExactDeclarationTextRange,
+            ): Refinement<ValueConditions, ValueSiteFailure> =
+                if (
+                    source.role in setOf(ValueRole.ExpressionResult, ValueRole.LocalRead) &&
+                        source.executionOwner.range.containsValueRange(useRange) &&
+                        useRange.containsValueRange(source.range)
+                )
+                    source.conditions.requiring(ReceiverNonNull(ValueConditionOrigin.fromSite(source), useRange))
+                else Refinement.Rejected(ValueSiteFailure.ANCHOR_OUTSIDE_EXECUTION_OWNER)
+        }
+    }
 
     @ConsistentCopyVisibility
     data class StringContentNonNull

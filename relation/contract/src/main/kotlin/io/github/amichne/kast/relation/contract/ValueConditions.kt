@@ -40,6 +40,8 @@ class ValueConditions private constructor(val facts: List<ValueCondition>) {
                     source.executionOwner == ValueExecutionOwner.declaredCallback(added.binding)
             is ValueCondition.StableLocal ->
                 kind == ValueTransferKind.LOCAL_READ && added.version == source.localVersion
+            is ValueCondition.ReceiverNonNull ->
+                kind == ValueTransferKind.FIELD_READ || kind == ValueTransferKind.RECEIVER
             is ValueCondition.StableReceiver -> kind == ValueTransferKind.FIELD_READ
             is ValueCondition.CastSuccess -> kind == ValueTransferKind.CAST_RESULT
             is ValueCondition.StringContentNonNull -> kind == ValueTransferKind.STRING_CONTENT
@@ -53,4 +55,9 @@ class ValueConditions private constructor(val facts: List<ValueCondition>) {
     companion object {
         val Unconditional = ValueConditions(emptyList())
     }
+}
+
+enum class ValueCastKind {
+    UNSAFE,
+    SAFE,
 }

@@ -88,6 +88,7 @@ private fun ReviewedValueRelation.relationship(): QueryImpactRelationship =
                 ReviewedValueSemantics.CONDITIONAL_INPUT_ELEMENT_TO_CALLBACK_PARAMETER,
                 ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_OUTPUT_ELEMENT,
                 ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALL_RESULT,
+                ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALLBACK_PARAMETER,
                 ReviewedValueSemantics.CONDITIONAL_CALLBACK_RESULT_TO_CALL_RESULT -> QueryImpactRelationship.EXACT
             }
         is ReviewedValueRelation.ReorderedElements ->
