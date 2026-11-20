@@ -153,14 +153,27 @@ kast query --ref "$B" --relation callers --intersect "$callersA" --jq "$verdict"
 Seed every declaration kind in `legacy/`. Do not add `--kind`.
 `callers` on a class finds its constructions, so a function-only seed misses `LegacyClient()`.
 
+Read occurrences, not symbols. A symbol row needs a declaration owner, so an import-only use has no symbol row.
+Project each use site with this filter:
+
 ```sh
-kast query --all --in legacy --source-set main \
-  --relation references --relation-in app --relation-source-set main --jq "$verdict"
+uses='{type, status: .document.status, exhaustive: .document.coverage.exhaustive,
+  failures: .document.original_evidence_summary.failure_count,
+  omissions: .document.original_evidence_summary.omission_count,
+  rows: .document.row_window.type, next_cursor: .document.next_cursor,
+  items: [.document.items[]? | {target: .occurrence.target.qualifiedIdentity,
+    file: .occurrence.occurrence.file, context: .occurrence.context}]}'
 ```
 
+```sh
+kast query --all --in legacy --source-set main --relation references \
+  --relation-in app --relation-source-set main --output occurrences --jq "$uses"
+```
+
+Each row names the `legacy/` target, the `app/` file, and the context: `CODE`, `TYPE`, or `IMPORT`.
 A complete, empty result proves that no `main` code in `app/` references a declaration from `legacy/`.
-References include calls, constructions, imports, property reads, and type uses.
-For calls and constructions only, use `--relation callers`.
+That claim covers calls, constructions, imports, property reads, and type uses.
+For calls and constructions only, use `--relation callers`. Its symbol rows name the calling declarations.
 The seed covers classes, functions, properties, and type aliases. Constructors count through their class.
 Reflection, dependency injection, and other uses outside static resolution stay outside the claim.
 

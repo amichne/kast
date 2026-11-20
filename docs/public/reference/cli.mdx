@@ -169,12 +169,14 @@ Retained results expire. A source change can invalidate their basis.
 Restrict where relation hops search with `--relation-in`:
 
 ```shell
-kast query --all --in legacy --source-set main \
-  --relation references --relation-in app --relation-source-set main
+kast query --all --in legacy --source-set main --relation references \
+  --relation-in app --relation-source-set main --output occurrences
 ```
 
-This command lists the declarations in `app` whose `main` code references a declaration from `legacy`.
+This command lists each place where `main` code in `app` references a declaration from `legacy`.
+Each occurrence names its target, its file, and its context, including imports.
 A complete, empty result proves that `app` has no such reference.
+Use occurrence output for this check. Symbol output lists only declarations that own a reference, so it omits import-only uses.
 Omit `--kind` for a boundary check. A function-only seed misses constructions of `legacy` classes.
 `--relation-in`, `--relation-source-set`, `--relation-production-only`, and `--relation-exclude-generated` apply to every `--relation` hop and to `--terminal trace`.
 Without `--relation-source-set`, destinations include `main` and `test`.
