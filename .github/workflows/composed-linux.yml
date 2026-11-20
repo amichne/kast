@@ -128,7 +128,7 @@ jobs:
           mise exec -- uv run --locked --script .github/scripts/ci/release_handoff.py restore --version "$BUNDLE_VERSION"
 
       - name: Assemble bootstrap for the retained macOS release
-        if: inputs.release_target == 'macos-aarch64'
+        if: inputs.release_target == 'macos-aarch64' && !inputs.complete_product
         run: >-
           mise exec -- ./gradlew --no-daemon --no-parallel --max-workers=2
           -Dorg.gradle.jvmargs=-Xmx3g -Pversion="$BUNDLE_VERSION" -PkastSourceRevision="$GITHUB_SHA"

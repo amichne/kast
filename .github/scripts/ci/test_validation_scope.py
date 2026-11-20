@@ -624,7 +624,7 @@ class SourceInventoryTest(unittest.TestCase):
         )
         bootstrap = workflow.split("- name: Assemble bootstrap for the retained macOS release\n", 1)[1]
         bootstrap = bootstrap.split("\n      - name:", 1)[0]
-        self.assertIn("if: inputs.release_target == 'macos-aarch64'\n", bootstrap)
+        self.assertIn("if: inputs.release_target == 'macos-aarch64' && !inputs.complete_product\n", bootstrap)
         self.assertIn(":runtime:hosted:headlessBootstrapPlugin", bootstrap)
         self.assertNotIn("assembleRelease", bootstrap)
 
