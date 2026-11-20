@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -134,6 +135,27 @@ class RejectedDocument:
 
 
 @dataclass(frozen=True)
+class ReadRecovery:
+    kind: str = "restart_read"
+
+
+@dataclass(frozen=True)
+class MovedRead:
+    detail: str = "MOVED"
+    stage: str = "CONTENT_REVALIDATION"
+    recovery: ReadRecovery = ReadRecovery()
+    schemaVersion: int = 1
+    outcome: str = "rejected"
+    failure: str = "FRESHNESS_REJECTED"
+
+
+@dataclass(frozen=True)
+class MovedReply:
+    document: MovedRead = MovedRead()
+    type: str = "rejected_document"
+
+
+@dataclass(frozen=True)
 class ComponentBindings:
     runtimeSha256: str
     controlSha256: str
@@ -227,6 +249,52 @@ class FrontendTrace:
 
 
 class AcceptanceTest(unittest.TestCase):
+    def test_restart_reads_issue_only_one_fresh_command_and_keep_both_responses(self) -> None:
+        moved = json.dumps(asdict(MovedReply())).encode()
+        complete = json.dumps(asdict(Reply(Semantic(())))).encode()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runner = probe.Probe(root, root, root, root, root, {})
+            for read in probe.RestartRead:
+                for status, raw in ((0, complete), (10, moved)):
+                    with self.subTest(read=read, status=status):
+                        replies = (
+                            subprocess.CompletedProcess[bytes]([], 10, moved, b"first"),
+                            subprocess.CompletedProcess[bytes]([], status, raw, b"second"),
+                        )
+                        with patch.object(probe.subprocess, "run", side_effect=replies) as invoke:
+                            if status == 0:
+                                self.assertEqual(raw, runner.read_after_restart(read, root))
+                            else:
+                                with self.assertRaisesRegex(ValueError, "fresh-read"):
+                                    _ = runner.read_after_restart(read, root)
+                        self.assertEqual(2, invoke.call_count)
+                        self.assertEqual(invoke.call_args_list[0], invoke.call_args_list[1])
+                        self.assertEqual(moved, (root / f"{read.value}.stdout").read_bytes())
+                        self.assertEqual(
+                            raw, (root / f"{read.value}-fresh-read.stdout").read_bytes()
+                        )
+                        self.assertEqual(b"first", (root / f"{read.value}.stderr").read_bytes())
+                        self.assertEqual(
+                            b"second", (root / f"{read.value}-fresh-read.stderr").read_bytes()
+                        )
+
+    def test_restart_read_rejects_other_exits_stages_and_recovery(self) -> None:
+        moved = MovedRead()
+        for status, document in (
+            (6, moved),
+            (124, moved),
+            (10, replace(moved, failure="CANCELLED")),
+            (10, replace(moved, detail="UNAVAILABLE")),
+            (10, replace(moved, stage="SEMANTIC_READ")),
+            (10, replace(moved, recovery=ReadRecovery("save_source"))),
+            (10, replace(moved, schemaVersion=2)),
+        ):
+            response = json.dumps(asdict(MovedReply(document))).encode()
+            self.assertFalse(probe.NativeCaseResult(status, response).requests_fresh_read())
+        capture = json.dumps(asdict(MovedReply(replace(moved, stage="MODEL_CAPTURE")))).encode()
+        self.assertTrue(probe.NativeCaseResult(10, capture).requests_fresh_read())
+
     def test_go_and_jvm_callers_must_identify_the_same_serving_process(self) -> None:
         generation = "19785c96-1977-4cb6-8388-592dc0c36bf5"
         jvm = trace(

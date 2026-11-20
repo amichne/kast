@@ -251,23 +251,34 @@ private fun ExistingIdeExchange.HostRejected.canRetryReadiness(operation: Existi
     when (operation) {
         is ExistingIdeOperation.Read,
         is ExistingIdeOperation.Classes,
-        is ExistingIdeOperation.Supertype -> recovery == HostedPresemanticRecovery.ModelReload || isMovedRead()
+        is ExistingIdeOperation.Supertype ->
+            recovery == HostedPresemanticRecovery.ModelReload || isMovedHostedRead(document.value)
         is ExistingIdeOperation.Plan -> recovery == HostedPresemanticRecovery.ModelReload
         is ExistingIdeOperation.Mutation,
         ExistingIdeOperation.Status -> false
     }
 
 /** Refine only the exact schema-admitted read rejection, not text or generic semantic failures. */
-private fun ExistingIdeExchange.HostRejected.isMovedRead(): Boolean =
+fun isMovedHostedRead(document: String): Boolean =
     try {
-        readinessJson.decodeFromString<MovedRead>(document.value)
-        true
+        readinessJson.decodeFromString<MovedRead>(document).schemaVersion == 1
     } catch (_: SerializationException) {
         false
     }
 
 @Serializable
-private data class MovedRead(val failure: MovedReadFailure, val detail: MovedReadDetail, val stage: MovedReadStage)
+private data class MovedRead(
+    val schemaVersion: Int,
+    val outcome: MovedReadOutcome,
+    val failure: MovedReadFailure,
+    val detail: MovedReadDetail,
+    val stage: MovedReadStage,
+)
+
+@Serializable
+private enum class MovedReadOutcome {
+    @SerialName("rejected") REJECTED
+}
 
 @Serializable
 private enum class MovedReadFailure {
