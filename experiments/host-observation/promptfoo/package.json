@@ -8,6 +8,7 @@
   },
   "scripts": {
     "eval": "promptfoo eval --no-cache --no-share",
+    "eval:codex-imported-model": "promptfoo eval --no-cache --no-share -c codex-imported-model.config.mjs --repeat 3",
     "eval:codex-history": "promptfoo eval --no-cache --no-share -c codex-history.config.mjs",
     "eval:codex-history-controls": "KAST_CODEX_HISTORY_MODE=controls promptfoo eval --no-cache --no-share -c codex-history.config.mjs",
     "compare": "node compare.mjs",

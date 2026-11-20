@@ -1,0 +1,322 @@
+{
+  "evalId": "eval-IgV-2026-11-20T13:59:49",
+  "exportSha256": "61a7d85758edb36e8419146fa8109adf737d4f5475ae7e545dce2225da3aaa6c",
+  "environment": {
+    "promptfooVersion": "0.125.1",
+    "nodeVersion": "v24.21.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "exportedAt": "2026-11-20T14:01:16.682Z",
+    "evaluationCreatedAt": "2026-11-20T13:59:49.487Z"
+  },
+  "model": "gpt-6.1-sol",
+  "reasoningEffort": "low",
+  "codexVersion": "0.169.1",
+  "kastVersion": "0.0.4551",
+  "task": "Resolve the declaration in the imported Gradle main source set",
+  "independentConfigurations": 2,
+  "repeatsPerConfiguration": 3,
+  "kastAccess": "Harness supplied a fresh, qualified Kast query result before each model decision.",
+  "preflight": {
+    "adapter-a": {
+      "location": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+      "coverage": {
+        "exhaustive": true
+      },
+      "evidence": {
+        "failure_count": 0,
+        "omission_count": 0,
+        "evidence_count": 1
+      }
+    },
+    "adapter-b": {
+      "location": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+      "coverage": {
+        "exhaustive": true
+      },
+      "evidence": {
+        "failure_count": 0,
+        "omission_count": 0,
+        "evidence_count": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "world": "adapter-a",
+      "arm": "source",
+      "promptSha256": "9ed4c894922a85623ebcda5b201810e161873095a728f7e534cc3c6b1e99e422",
+      "sourceSha256": "[REDACTED]",
+      "answer": "UNKNOWN",
+      "resolved": false,
+      "reason": "ABSTAINED",
+      "latencyMs": 7794,
+      "totalTokens": 21222,
+      "items": {
+        "userMessage": 1,
+        "reasoning": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-a",
+      "arm": "source",
+      "promptSha256": "9ed4c894922a85623ebcda5b201810e161873095a728f7e534cc3c6b1e99e422",
+      "sourceSha256": "[REDACTED]",
+      "answer": "UNKNOWN",
+      "resolved": false,
+      "reason": "ABSTAINED",
+      "latencyMs": 4466,
+      "totalTokens": 22784,
+      "items": {
+        "userMessage": 1,
+        "reasoning": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-a",
+      "arm": "source",
+      "promptSha256": "9ed4c894922a85623ebcda5b201810e161873095a728f7e534cc3c6b1e99e422",
+      "sourceSha256": "[REDACTED]",
+      "answer": "UNKNOWN",
+      "resolved": false,
+      "reason": "ABSTAINED",
+      "latencyMs": 4267,
+      "totalTokens": 22782,
+      "items": {
+        "userMessage": 1,
+        "reasoning": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-a",
+      "arm": "kast",
+      "promptSha256": "f9d06ba7ca9d6057abcdf1b65f9c9431cba9ae724541e1d044088ed5c11bfc7e",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 4028,
+      "totalTokens": 22815,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-a",
+      "arm": "kast",
+      "promptSha256": "f9d06ba7ca9d6057abcdf1b65f9c9431cba9ae724541e1d044088ed5c11bfc7e",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 4264,
+      "totalTokens": 22815,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-a",
+      "arm": "kast",
+      "promptSha256": "f9d06ba7ca9d6057abcdf1b65f9c9431cba9ae724541e1d044088ed5c11bfc7e",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 4199,
+      "totalTokens": 22815,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-a",
+      "arm": "materialized",
+      "promptSha256": "3c37e4f3dbecf8deb2627a972db89568925eada52a42f7ae1861a3c4eb0a7d91",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 5501,
+      "totalTokens": 22795,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-a",
+      "arm": "materialized",
+      "promptSha256": "3c37e4f3dbecf8deb2627a972db89568925eada52a42f7ae1861a3c4eb0a7d91",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 3868,
+      "totalTokens": 22795,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-a",
+      "arm": "materialized",
+      "promptSha256": "3c37e4f3dbecf8deb2627a972db89568925eada52a42f7ae1861a3c4eb0a7d91",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 3910,
+      "totalTokens": 22795,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-b",
+      "arm": "kast",
+      "promptSha256": "bc837702a5365b49af86377497f9383cdf75c81f7980ea0616c452ee9f26f0a5",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 5145,
+      "totalTokens": 22815,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-b",
+      "arm": "kast",
+      "promptSha256": "bc837702a5365b49af86377497f9383cdf75c81f7980ea0616c452ee9f26f0a5",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 8148,
+      "totalTokens": 22815,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-b",
+      "arm": "kast",
+      "promptSha256": "bc837702a5365b49af86377497f9383cdf75c81f7980ea0616c452ee9f26f0a5",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 5205,
+      "totalTokens": 22815,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-b",
+      "arm": "materialized",
+      "promptSha256": "3e46b5d3b26cacee245d6d10203d9efca76c609555f44840001bac78bbe91251",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 4117,
+      "totalTokens": 22795,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-b",
+      "arm": "materialized",
+      "promptSha256": "3e46b5d3b26cacee245d6d10203d9efca76c609555f44840001bac78bbe91251",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 3783,
+      "totalTokens": 22795,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-b",
+      "arm": "materialized",
+      "promptSha256": "3e46b5d3b26cacee245d6d10203d9efca76c609555f44840001bac78bbe91251",
+      "sourceSha256": "[REDACTED]",
+      "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+      "resolved": true,
+      "reason": "All assertions passed",
+      "latencyMs": 4370,
+      "totalTokens": 22795,
+      "items": {
+        "userMessage": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-b",
+      "arm": "source",
+      "promptSha256": "9ed4c894922a85623ebcda5b201810e161873095a728f7e534cc3c6b1e99e422",
+      "sourceSha256": "[REDACTED]",
+      "answer": "UNKNOWN",
+      "resolved": false,
+      "reason": "ABSTAINED",
+      "latencyMs": 5141,
+      "totalTokens": 22790,
+      "items": {
+        "userMessage": 1,
+        "reasoning": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-b",
+      "arm": "source",
+      "promptSha256": "9ed4c894922a85623ebcda5b201810e161873095a728f7e534cc3c6b1e99e422",
+      "sourceSha256": "[REDACTED]",
+      "answer": "UNKNOWN",
+      "resolved": false,
+      "reason": "ABSTAINED",
+      "latencyMs": 4527,
+      "totalTokens": 22783,
+      "items": {
+        "userMessage": 1,
+        "reasoning": 1,
+        "agentMessage": 1
+      }
+    },
+    {
+      "world": "adapter-b",
+      "arm": "source",
+      "promptSha256": "9ed4c894922a85623ebcda5b201810e161873095a728f7e534cc3c6b1e99e422",
+      "sourceSha256": "[REDACTED]",
+      "answer": "UNKNOWN",
+      "resolved": false,
+      "reason": "ABSTAINED",
+      "latencyMs": 4334,
+      "totalTokens": 22783,
+      "items": {
+        "userMessage": 1,
+        "reasoning": 1,
+        "agentMessage": 1
+      }
+    }
+  ]
+}
