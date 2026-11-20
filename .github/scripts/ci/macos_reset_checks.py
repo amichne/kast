@@ -19,7 +19,8 @@ ROOT = Path(__file__).resolve().parents[3]
 COMMAND = (
     "./gradlew",
     "--no-parallel",
-    "--max-workers=2",
+    # One worker selects sequential project configuration in Gradle 9.8.2.
+    "--max-workers=1",
     "-Dorg.gradle.jvmargs=-Xmx4g",
     ":distribution:cli:test",
     "--tests",

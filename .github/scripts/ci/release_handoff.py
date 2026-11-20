@@ -27,6 +27,15 @@ ROOT = Path(__file__).resolve().parents[3]
 
 class Kind(str, Enum):
     RELEASE = "release"
+    BOOTSTRAP = "bootstrap"
+
+    @property
+    def filename(self) -> str:
+        match self:
+            case Kind.RELEASE:
+                return "payload.tar.gz"
+            case Kind.BOOTSTRAP:
+                return "payload.zip"
 
 
 class Extraction(str, Enum):
@@ -108,7 +117,7 @@ def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 
 def admit(directory: Path, expected: Identity, kind: Kind) -> Admitted | Failure:
-    record_path, archive = directory / "record.json", directory / "payload.tar.gz"
+    record_path, archive = directory / "record.json", directory / kind.filename
     if (
         record_path.is_symlink()
         or archive.is_symlink()
@@ -162,8 +171,8 @@ def extract(archive_path: Path, destination: Path) -> Failure | Extraction:
 
 def record(archive: Path, destination: Path, identity: Identity, kind: Kind) -> None:
     destination.mkdir(parents=True, exist_ok=False)
-    _ = shutil.copyfile(archive, destination / "payload.tar.gz")
-    value = Record(kind, identity, digest(destination / "payload.tar.gz"))
+    _ = shutil.copyfile(archive, destination / kind.filename)
+    value = Record(kind, identity, digest(destination / kind.filename))
     _ = (destination / "record.json").write_text(json.dumps(asdict(value), indent=2) + "\n")
 
 
@@ -222,7 +231,13 @@ def gradle(identity: Identity, *tasks: str) -> None:
 
 def assemble(identity: Identity, destination: Path) -> None:
     """The Control executable cross-compiles, so Linux assembles the macOS release without a Mac."""
-    gradle(identity, "-PkastControlPlatform=macos-aarch64", "assembleRelease", "generateKastModuleKnowledge")
+    gradle(
+        identity,
+        "-PkastControlPlatform=macos-aarch64",
+        "assembleRelease",
+        ":runtime:hosted:headlessBootstrapPlugin",
+        "generateKastModuleKnowledge",
+    )
     run(
         [
             "uv",
@@ -237,6 +252,21 @@ def assemble(identity: Identity, destination: Path) -> None:
         ]
     )
     pack(ROOT / f"build/release/v{identity.version}", destination, identity, Kind.RELEASE)
+    record(bootstrap_path(identity), destination / "bootstrap", identity, Kind.BOOTSTRAP)
+
+
+def bootstrap_path(identity: Identity) -> Path:
+    return ROOT / "runtime/hosted/build/distributions" / f"kast-managed-headless-v{identity.version}-idea-262.zip"
+
+
+def restore_bootstrap(directory: Path, identity: Identity) -> None:
+    payload = admit(directory / "bootstrap", identity, Kind.BOOTSTRAP)
+    if isinstance(payload, Failure):
+        raise SystemExit(payload.value)
+    target = bootstrap_path(identity)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("xb") as output, payload.archive.open("rb") as source:
+        shutil.copyfileobj(source, output)
 
 
 def restore_release(payload: Admitted) -> Path:
@@ -282,6 +312,7 @@ def main() -> None:
             raise SystemExit(payload.value)
         if args.stage == "restore":
             _ = restore_release(payload)
+            restore_bootstrap(args.input, identity)
         else:
             qualify(payload)
     if current_identity(args.version) != identity:

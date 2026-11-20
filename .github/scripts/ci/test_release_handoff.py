@@ -101,11 +101,20 @@ class ReleaseHandoffTest(unittest.TestCase):
             def gradle(identity, *tasks):
                 self.assertEqual(IDENTITY, identity)
                 self.assertEqual(
-                    ("-PkastControlPlatform=macos-aarch64", "assembleRelease", "generateKastModuleKnowledge"), tasks
+                    (
+                        "-PkastControlPlatform=macos-aarch64",
+                        "assembleRelease",
+                        ":runtime:hosted:headlessBootstrapPlugin",
+                        "generateKastModuleKnowledge",
+                    ),
+                    tasks,
                 )
                 release = root / f"build/release/v{IDENTITY.version}"
                 release.mkdir(parents=True)
                 (release / "asset").write_bytes(b"assembled")
+                bootstrap = root / "runtime/hosted/build/distributions/kast-managed-headless-v0.0.7-idea-262.zip"
+                bootstrap.parent.mkdir(parents=True)
+                bootstrap.write_bytes(b"exact bootstrap")
                 effects.append("gradle")
 
             def finalize(command):
@@ -124,6 +133,16 @@ class ReleaseHandoffTest(unittest.TestCase):
             assert isinstance(accepted, Admitted)
             self.assertEqual(Extraction.COMPLETE, unpack(accepted, root / "extracted"))
             self.assertEqual(b"assembled", (root / "extracted/asset").read_bytes())
+            bootstrap = root / "runtime/hosted/build/distributions/kast-managed-headless-v0.0.7-idea-262.zip"
+            bootstrap.unlink()
+            with patch.object(release_handoff, "ROOT", root):
+                release_handoff.restore_bootstrap(root / "output", IDENTITY)
+                self.assertEqual(b"exact bootstrap", bootstrap.read_bytes())
+                bootstrap.unlink()
+                (root / "output/bootstrap/payload.zip").write_bytes(b"changed")
+                with self.assertRaisesRegex(SystemExit, "PAYLOAD_MISMATCH"):
+                    release_handoff.restore_bootstrap(root / "output", IDENTITY)
+                self.assertFalse(bootstrap.exists())
 
     def test_identity_kind_and_bytes_survive_transfer(self):
         with tempfile.TemporaryDirectory() as temporary:

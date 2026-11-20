@@ -624,7 +624,7 @@ class SourceInventoryTest(unittest.TestCase):
         )
         bootstrap = workflow.split("- name: Assemble bootstrap for the retained macOS release\n", 1)[1]
         bootstrap = bootstrap.split("\n      - name:", 1)[0]
-        self.assertIn("if: inputs.release_target == 'macos-aarch64'\n", bootstrap)
+        self.assertIn("if: inputs.release_target == 'macos-aarch64' && !inputs.complete_product\n", bootstrap)
         self.assertIn(":runtime:hosted:headlessBootstrapPlugin", bootstrap)
         self.assertNotIn("assembleRelease", bootstrap)
 
@@ -805,6 +805,7 @@ class SourceInventoryTest(unittest.TestCase):
             self.assertIn("cache-read-only: ${{ !(github.ref == 'refs/heads/main'", body)
         self.assertIn("uv run --locked --script .github/scripts/ci/macos_reset_checks.py", body)
         command = macos_reset_checks.COMMAND
+        self.assertIn("--max-workers=1", command)
         self.assertIn(":distribution:cli:test", command)
         self.assertIn("--info", command)
         self.assertIn("--no-daemon", command)

@@ -23,6 +23,7 @@ import tempfile
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
+from enum import Enum
 from pathlib import Path
 from threading import Barrier
 from typing import override
@@ -73,6 +74,53 @@ CALLERS_QUERY = (
     "name,signature,location",
     "--json",
 )
+
+
+def declaration_query(name: str) -> tuple[str, ...]:
+    return "query", "--name", name, "--kind", "function", "--json"
+
+
+class RestartRead(Enum):
+    DECLARATION = "restart"
+    CALLERS = "callers-after-restart"
+
+    @property
+    def arguments(self) -> tuple[str, ...]:
+        match self:
+            case RestartRead.DECLARATION:
+                return declaration_query("invokeCallback")
+            case RestartRead.CALLERS:
+                return CALLERS_QUERY
+
+
+@dataclass(frozen=True)
+class NativeCaseResult:
+    code: int
+    response: bytes
+
+    def expect(self, case: str, *, rejected: bool = False) -> bytes:
+        if (self.code == 0) == rejected:
+            raise ValueError(f"native case failed: {case} (exit {self.code})")
+        return self.response
+
+    def requests_fresh_read(self) -> bool:
+        if self.code != 10:
+            return False
+        match product.document(self.response):
+            case {
+                "type": "rejected_document",
+                "document": {
+                    "schemaVersion": int() as version,
+                    "outcome": "rejected",
+                    "failure": "FRESHNESS_REJECTED",
+                    "detail": "MOVED",
+                    "stage": "CONTENT_REVALIDATION" | "MODEL_CAPTURE",
+                    "recovery": {"kind": "restart_read"},
+                },
+            }:
+                return type(version) is int and version == 1
+            case _:
+                return False
 
 
 @dataclass(frozen=True)
@@ -335,6 +383,34 @@ class Probe:
         trace: bool = False,
         disposable_caller: bool = False,
     ) -> bytes:
+        result = self._invoke(
+            case,
+            workspace,
+            arguments,
+            raw,
+            launcher=launcher,
+            trace=trace,
+            disposable_caller=disposable_caller,
+        )
+        return result.expect(case, rejected=rejected)
+
+    def read_after_restart(self, read: RestartRead, workspace: Path) -> bytes:
+        result = self._invoke(read.value, workspace, read.arguments)
+        if result.requests_fresh_read():
+            return self.run(f"{read.value}-fresh-read", workspace, read.arguments)
+        return result.expect(read.value)
+
+    def _invoke(
+        self,
+        case: str,
+        workspace: Path,
+        arguments: tuple[str, ...],
+        raw: bytes | None = None,
+        *,
+        launcher: Path | None = None,
+        trace: bool = False,
+        disposable_caller: bool = False,
+    ) -> NativeCaseResult:
         prefix = (
             ["/usr/bin/sandbox-exec", "-f", str(self.sandbox)] if self.sandbox is not None else []
         )
@@ -362,9 +438,7 @@ class Probe:
             response = result.stdout
             _ = output.write_bytes(result.stdout)
             _ = error.write_bytes(result.stderr)
-        if (code == 0) == rejected:
-            raise ValueError(f"native case failed: {case}")
-        return response
+        return NativeCaseResult(code, response)
 
     def observe_host(
         self, case: str, workspace: Path, lifetime: str, runtime_digest: str
@@ -432,7 +506,14 @@ class Probe:
     def callers(
         self, case: str, workspace: Path, expected: frozenset[str], lifetime: str
     ) -> tuple[str, ...]:
-        document = self.compiler_document(self.run(case, workspace, CALLERS_QUERY), lifetime)
+        return self.require_callers(
+            self.run(case, workspace, CALLERS_QUERY), workspace, expected, lifetime
+        )
+
+    def require_callers(
+        self, raw: bytes, workspace: Path, expected: frozenset[str], lifetime: str
+    ) -> tuple[str, ...]:
+        document = self.compiler_document(raw, lifetime)
         names = caller_names(document, workspace)
         if names != tuple(sorted(expected)):
             raise ValueError("callers differ from independent expected edges")
@@ -575,14 +656,7 @@ class Probe:
             self.run(
                 case,
                 workspace,
-                (
-                    "query",
-                    "--name",
-                    name,
-                    "--kind",
-                    "function",
-                    "--json",
-                ),
+                declaration_query(name),
                 trace=trace,
                 disposable_caller=disposable_caller,
             ),
@@ -903,7 +977,11 @@ def execute(
             _ = probe.run("stop", roots[0], ("stop", "--all", "--json"))
             probe.stopped_endpoints(observed_host)
             probe.completed.add(acceptance.Case.CLEANUP)
-            restarted = probe.query("restart", roots[0])
+            restarted = complete(
+                probe.read_after_restart(RestartRead.DECLARATION, roots[0]),
+                "invokeCallback",
+                roots[0] / INVOCATION_FILE,
+            )
             if restarted == current_host:
                 raise ValueError("stop did not replace the compiler workspace lifetime")
             restarted_host = probe.observe_host(
@@ -914,8 +992,11 @@ def execute(
                 or restarted_host.started <= observed_host.started
             ):
                 raise ValueError("stop did not replace the native Host process incarnation")
-            _ = probe.callers(
-                "callers-after-restart", roots[0], CALLERS | {"freshExternalCaller"}, restarted
+            _ = probe.require_callers(
+                probe.read_after_restart(RestartRead.CALLERS, roots[0]),
+                roots[0],
+                CALLERS | {"freshExternalCaller"},
+                restarted,
             )
             probe.completed.add(acceptance.Case.RESTART)
             with ThreadPoolExecutor(max_workers=2) as executor:
