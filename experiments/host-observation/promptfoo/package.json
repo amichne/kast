@@ -8,9 +8,10 @@
   },
   "scripts": {
     "eval": "promptfoo eval --no-cache --no-share",
-    "eval:codex-imported-model": "promptfoo eval --no-cache --no-share -c codex-imported-model.config.mjs --repeat 3",
-    "eval:codex-history": "promptfoo eval --no-cache --no-share -c codex-history.config.mjs",
-    "eval:codex-history-controls": "KAST_CODEX_HISTORY_MODE=controls promptfoo eval --no-cache --no-share -c codex-history.config.mjs",
+    "separation:prepare": "node separation-cases.mjs --prepare",
+    "separation:qualify": "node separation-cases.mjs --qualify",
+    "eval:separation": "promptfoo eval --no-cache --no-share -c separation.config.mjs --repeat 3",
+    "report:separation": "node separation-report.mjs",
     "compare": "node compare.mjs",
     "review": "node review-packet.mjs",
     "test": "node --test *.test.mjs"

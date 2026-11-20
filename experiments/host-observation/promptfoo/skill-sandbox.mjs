@@ -7,7 +7,7 @@ const describeOperations = new Set(['query', 'diagnostic.check', 'result.read', 
 const discoveryFlags = new Set(['--section', '--pointer', '--jq', '--jq-timeout-ms', '--jq-max-bytes', '--max-entries', '--max-returned-bytes', '--catalog']);
 const queryFlags = new Set([
   '--name', '--name-match', '--in', '--kind', '--source-set', '--fields', '--output',
-  '--ref', '--relation', '--terminal', '--max-results', '--max-returned-bytes', '--jq',
+  '--ref', '--relation', '--relation-in', '--relation-source-set', '--terminal', '--max-results', '--max-returned-bytes', '--jq',
 ]);
 export const sourceFlags = new Set(['--ref', '--region', '--text', '--max-returned-bytes', '--jq']);
 const requestFlags = new Set(['--request', '--jq']);
@@ -86,7 +86,7 @@ export function permittedKast(argv, scope, input) {
   if (command !== 'query') return false;
   const flags = parseFlags(argv.slice(1), queryFlags);
   return flags !== null && (flags.has('--name') || flags.has('--ref')) &&
-    (flags.get('--in') ?? []).every(scopedDirectory) && inertJq(flags);
+    [...(flags.get('--in') ?? []), ...(flags.get('--relation-in') ?? [])].every(scopedDirectory) && inertJq(flags);
 }
 
 function toolResult(argv, result, presentation = result.stdout, evidence = result.stdout) {

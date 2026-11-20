@@ -89,6 +89,13 @@ test('query projection presents the participant output and grades the original s
   assert.equal(semanticCalls, 2);
 });
 
+test('relation destination scope flags stay inside the workspace', () => {
+  const callers = ['query', '--name', 'post', '--in', 'src/main/kotlin/billing', '--kind', 'function', '--relation', 'callers'];
+  assert.equal(permittedKast([...callers, '--relation-source-set', 'main', '--relation-in', 'src/main'], 'fixture'), true);
+  assert.equal(permittedKast([...callers, '--relation-in', '../elsewhere'], 'fixture'), false);
+  assert.equal(permittedKast([...callers, '--relation-in', '/absolute'], 'fixture'), false);
+});
+
 test('a projected source read keeps source evidence for the grader', () => {
   const filter = '{type, status: .document.status, text: .document.text.text}';
   const argv = ['source', 'read', '--ref', 'issued', '--jq', filter];

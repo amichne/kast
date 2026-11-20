@@ -5,6 +5,17 @@ Kast-enabled agents receive the ordinary skill and access to Kast for compiler-b
 Their sessions include the skill and its linked CLI guide. Source-only controls receive neither.
 A correct solution never needs to call Kast.
 
+## Lead with separation
+
+[The separation suite](separation.md) carries the headline claim. Each case has two workspaces with byte-identical tracked text and different compiled answers.
+A participant that sees only that text has an expected accuracy of at most one half, whatever its model or tools.
+The suite reports `SEPARATED` only when the Kast configuration's 95% lower confidence bound exceeds that ceiling. Every planned trial counts.
+
+The first run on November 20, 2026 reports `NOT_SEPARATED`: Kast 4/12, text 0/12, ceiling 6/12. No Kast answer was wrong.
+Each failure traces to a skipped Kast call or to an opaque rejection of a file passed to `--in`. Rerun the unchanged suite after each product or skill change.
+
+The suites below measure other questions. On tasks that the source text decides, their results are mixed and do not support a general uplift claim.
+
 ## Start with deterministic checks
 
 Use the repository Node version from `mise.toml`. Run these commands from the repository root.
@@ -100,6 +111,7 @@ Promptfoo uses a fresh model response for each live trial. Provider caches can s
 
 | Configuration | Cases and arms | Inputs |
 |---|---|---|
+| `separation.config.mjs` | Two twin cases, a shadowed extension and an imported project, each with three configurations. | Prepare with `npm run separation:prepare`. [Separation guide](separation.md) |
 | `corpus.config.mjs` | Full `ktfmt`, kotlinx.coroutines, and Spring Framework checkouts with three low-reasoning delegates. | [Upstream workspace guide](upstream-workspaces.md) |
 | `developer.config.mjs` | Implement features, migrate an API, trace dispatch, and fix a scheduler defect with or without Kast. | Use Pi, Kast, Kotlin/JVM, and macOS. [Developer task guide](developer-tasks.md) |
 | `pi.config.mjs` | Six replay graders, paired interface formats, fresh Pi tasks, received results, or a recorded target | Use `KAST_PI_EVAL_PLAN` for a live plan. Use `KAST_PI_EVAL_TARGET` for a recorded target. [Pi guide](../PI_EVALUATION.md) |
