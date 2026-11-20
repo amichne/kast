@@ -194,6 +194,99 @@ class PublicCliArgumentsTest {
     }
 
     @Test
+    fun `relation destination flags restrict every hop and trace before enumeration`() {
+        val lowered =
+            arguments(
+                query(
+                    "query",
+                    "--all",
+                    "--in",
+                    "legacy",
+                    "--relation",
+                    "references",
+                    "--relation-in",
+                    "app",
+                    "--relation-source-set",
+                    "main",
+                    "--relation",
+                    "callers",
+                )
+            )
+        val domain = OracleSourceDomain(sourceSets = listOf("main"), directory = "app")
+        val steps = lowered.getValue("request").jsonObject.getValue("steps")
+        assertEquals(
+            oracleJson.encodeToJsonElement(
+                listOf(
+                    OracleRelationStep(relation = "REFERENCES", expansionScope = domain),
+                    OracleRelationStep(relation = "CALLERS", expansionScope = domain),
+                )
+            ),
+            steps,
+        )
+        assertTrue(admission(lowered) is Refinement.Refined, "domain must admit: ${admission(lowered)}")
+
+        val defaults =
+            arguments(query("query", "--ref", "exact:v5:AAAAAAAAAAAAAAAAAAAAAA", "--terminal", "trace", "--relation-in", "app"))
+        assertEquals(
+            oracleJson.encodeToJsonElement(OracleSourceDomain(sourceSets = listOf("main", "test"), directory = "app")),
+            defaults.getValue("request").jsonObject.getValue("terminalStep").jsonObject.getValue("expansionScope"),
+        )
+        assertTrue(admission(defaults) is Refinement.Refined)
+
+        val narrowed =
+            arguments(
+                query(
+                    "query",
+                    "--ref",
+                    "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+                    "--relation",
+                    "callers",
+                    "--relation-production-only",
+                    "--relation-exclude-generated",
+                )
+            )
+        assertEquals(
+            oracleJson.encodeToJsonElement(
+                OracleSourceDomain(
+                    sourceSets = listOf("main", "test"),
+                    directory = null,
+                    sourcePolicy = "PRODUCTION_ONLY",
+                    generatedSources = "EXCLUDE",
+                )
+            ),
+            narrowed
+                .getValue("request")
+                .jsonObject
+                .getValue("steps")
+                .jsonArray
+                .single()
+                .jsonObject
+                .getValue("expansionScope"),
+        )
+        assertTrue(admission(narrowed) is Refinement.Refined)
+
+        val unscoped = arguments(query("query", "--ref", "exact:v5:AAAAAAAAAAAAAAAAAAAAAA", "--relation", "callers"))
+        assertFalse(
+            "expansionScope" in
+                unscoped.getValue("request").jsonObject.getValue("steps").jsonArray.single().jsonObject
+        )
+    }
+
+    @Test
+    fun `relation destination flags reject without a relation or trace`() {
+        listOf(
+                listOf("query", "--name", "A", "--relation-in", "app"),
+                listOf("query", "--all", "--relation-source-set", "main"),
+                listOf("query", "--name", "A", "--relation-production-only"),
+                listOf("query", "--name", "A", "--relation", "callers", "--relation-in", "a", "--relation-in", "b"),
+                listOf("source", "read", "--ref", "R", "--relation-in", "app"),
+            )
+            .forEach { argv ->
+                assertTrue(parsePublicCliArguments(argv) is Refinement.Rejected, "must reject: $argv")
+            }
+    }
+
+    @Test
     fun `location source preserves the file and offset`() {
         val location = arguments(query("query", "--file", "src/Main.kt", "--offset", "12"))
         assertEquals(
@@ -520,3 +613,19 @@ private data class OracleStep(
 @Serializable private data class OracleMode(val type: String)
 
 @Serializable private data class OracleRight(val result: String, val type: String = "RESULT")
+
+@Serializable
+private data class OracleRelationStep(
+    val relation: String,
+    val expansionScope: OracleSourceDomain,
+    val type: String = "EXPAND_RELATION",
+)
+
+@Serializable
+private data class OracleSourceDomain(
+    val sourceSets: List<String>,
+    val directory: String?,
+    val sourcePolicy: String = "PRODUCTION_AND_TEST",
+    val generatedSources: String = "INCLUDE",
+    val type: String = "SOURCE_DOMAIN",
+)

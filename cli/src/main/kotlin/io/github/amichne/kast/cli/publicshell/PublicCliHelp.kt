@@ -45,6 +45,9 @@ internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
                     "Pipeline stages apply in argv order: --relation, --visibility LIST, and set stages " +
                     "--intersect, --union, --minus, --with (semi join), --without (anti join), each naming a " +
                     "retained RESULT from --retain. --minus and --without prove absence only from complete right coverage.\n" +
+                    "--relation-in DIR, --relation-source-set NAME, --relation-production-only, and " +
+                    "--relation-exclude-generated restrict destinations of every --relation hop and trace before " +
+                    "enumeration; source sets default to main and test, with test and generated sources included.\n" +
                     "Use kast describe query --section examples --json for request documents."
             commands.any { it == PublicCliCommandId.RESULT_READ || it == PublicCliCommandId.RESULT_RESUME } ->
                 "Use issued result references, both cursors, or an issued output continuation.\n" +

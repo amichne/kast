@@ -65,6 +65,11 @@ private fun queryFlagSchema(flag: PublicCliFlag, input: JsonObject, catalog: Pub
         PublicCliFlag.MINUS -> definitions["Difference"] as? JsonObject
         PublicCliFlag.WITH -> definitions["SemiJoinMode"] as? JsonObject
         PublicCliFlag.WITHOUT -> definitions["AntiJoinMode"] as? JsonObject
+        PublicCliFlag.RELATION_IN -> property("ImpactSourceDomain", "ImpactSourceDomain", "directory")
+        PublicCliFlag.RELATION_SOURCE_SET -> property("ImpactSourceDomain", "ImpactSourceDomain", "sourceSets")
+        PublicCliFlag.RELATION_PRODUCTION_ONLY -> property("ImpactSourceDomain", "ImpactSourceDomain", "sourcePolicy")
+        PublicCliFlag.RELATION_EXCLUDE_GENERATED ->
+            property("ImpactSourceDomain", "ImpactSourceDomain", "generatedSources")
         PublicCliFlag.WORKSPACE,
         PublicCliFlag.CATALOG,
         PublicCliFlag.JSON,

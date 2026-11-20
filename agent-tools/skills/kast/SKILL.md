@@ -125,6 +125,13 @@ Pipeline flags apply in the order that you write them:
 Confirm that each right side is complete before you use it.
 A retention can fail with a capacity rejection. Narrow the scope, then run the query again.
 
+Each `--relation` hop searches the whole workspace by default.
+Restrict its destinations with `--relation-in DIR` and `--relation-source-set NAME`.
+Add `--relation-production-only` or `--relation-exclude-generated` to narrow them further.
+These flags apply to every `--relation` hop and to `--terminal trace`.
+Kast applies them before enumeration, so a restricted hop also costs less.
+Without `--relation-source-set`, destinations include `main` and `test`.
+
 Retained results and refs belong to the current Host and its read basis.
 They expire after 10 minutes by default.
 After a source edit or a Host transition, expect a basis or authority rejection. Select again on the new basis.
@@ -136,31 +143,39 @@ Each recipe states its claim. Report the claim only when every result in the rec
 **Callers of both `A` and `B`:**
 
 ```sh
-kast query --ref "$A" --relation callers --retain --jq "$handle"       # -> $callersA
+# Save .result as callersA.
+kast query --ref "$A" --relation callers --retain --jq "$handle"
 kast query --ref "$B" --relation callers --intersect "$callersA" --jq "$verdict"
 ```
 
-**A module boundary: no declaration in `app/` calls into `legacy/`:**
+**A module boundary: nothing in `app/` uses `legacy/`:**
+
+Seed every declaration kind in `legacy/`. Do not add `--kind`.
+`callers` on a class finds its constructions, so a function-only seed misses `LegacyClient()`.
 
 ```sh
-kast query --all --in app --source-set main --retain --jq "$handle"                       # -> $app
-kast query --all --kind function --in legacy --source-set main \
-  --relation callers --with "$app" --jq "$verdict"
+kast query --all --in legacy --source-set main \
+  --relation references --relation-in app --relation-source-set main --jq "$verdict"
 ```
 
-A complete, empty second result proves the boundary for direct calls.
-Use `--relation references` for every use, including imports and property reads.
+A complete, empty result proves that no `main` code in `app/` references a declaration from `legacy/`.
+References include calls, constructions, imports, property reads, and type uses.
+For calls and constructions only, use `--relation callers`.
+The seed covers classes, functions, properties, and type aliases. Constructors count through their class.
+Reflection, dependency injection, and other uses outside static resolution stay outside the claim.
 
 **Public functions that no test calls directly:**
 
 ```sh
+# Save .result as tested.
 kast query --all --kind function --in services/orders --source-set test \
-  --relation callees --retain --jq "$handle"                                                # -> $tested
+  --relation callees --retain --jq "$handle"
 kast query --all --kind function --in services/orders --source-set main --visibility public \
   --without "$tested" --jq "$verdict"
 ```
 
-This proves direct test calls only. Indirect calls, reflection, and framework entry points stay outside the claim.
+This proves direct test calls to functions only. Constructors and properties stay outside the claim.
+Indirect calls, reflection, and framework entry points also stay outside it.
 
 **Blast radius before an edit, then compiler verification after it:**
 
@@ -169,7 +184,7 @@ kast query --ref "$ref" --terminal trace --jq "$verdict"
 ```
 
 `TRACE` collects references, implementations or overrides, direct callers, and one more caller layer.
-Record the affected files before the edit. Refs from this result do not survive the edit.
+Record the affected files before the edit. An edit can invalidate refs from this result.
 After the edit, check each affected file or its smallest shared directory:
 
 ```sh

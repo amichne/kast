@@ -166,6 +166,19 @@ The set flags compare declarations by compiler identity.
 A complete, empty result proves absence only within its scope and the static compiler model.
 Retained results expire. A source change can invalidate their basis.
 
+Restrict where relation hops search with `--relation-in`:
+
+```shell
+kast query --all --in legacy --source-set main \
+  --relation references --relation-in app --relation-source-set main
+```
+
+This command lists the declarations in `legacy` that `main` code in `app` references.
+A complete, empty result proves that `app` has no such reference.
+Omit `--kind` for a boundary check. A function-only seed misses constructions of `legacy` classes.
+`--relation-in`, `--relation-source-set`, `--relation-production-only`, and `--relation-exclude-generated` apply to every `--relation` hop and to `--terminal trace`.
+Without `--relation-source-set`, destinations include `main` and `test`.
+
 ## Submit a full request
 
 Save a public argument document from the installed examples as `query.json`:

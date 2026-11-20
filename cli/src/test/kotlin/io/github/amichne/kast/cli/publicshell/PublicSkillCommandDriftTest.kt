@@ -28,6 +28,11 @@ class PublicSkillCommandDriftTest {
             "result" to "result:v1:11111111-1111-1111-1111-111111111111",
             "next_cursor" to "1",
             "verdict" to ".",
+            "handle" to ".",
+            "A" to "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+            "B" to "exact:v5:AAAAAAAAAAAAAAAAAAAAAQ",
+            "callersA" to "result:v1:22222222-2222-2222-2222-222222222222",
+            "tested" to "result:v1:33333333-3333-3333-3333-333333333333",
         )
 
     @Test

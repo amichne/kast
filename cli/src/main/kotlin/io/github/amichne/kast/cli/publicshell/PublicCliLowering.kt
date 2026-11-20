@@ -101,16 +101,19 @@ private fun lowerRun(
             is Refinement.Rejected -> return parsed
             is Refinement.Refined -> parsed.value
         }
+    val domain = relationDomain(arguments)
     val steps =
-        when (val parsed = parseSteps(arguments)) {
+        when (val parsed = parseSteps(arguments, domain)) {
             is Refinement.Rejected -> return parsed
             is Refinement.Refined -> parsed.value
         }
     val terminal =
-        when (val parsed = parseTerminal(arguments, output)) {
+        when (val parsed = parseTerminal(arguments, output, domain)) {
             is Refinement.Rejected -> return parsed
             is Refinement.Refined -> parsed.value
         }
+    if (domain != null && steps.none { it is CliExpandRelation } && terminal !is CliTerminal.Trace)
+        return Refinement.Rejected(PublicCliArgumentFailure.IRRELEVANT_OPTION)
     return Refinement.Refined(
         CliAction.Run(
             source,
@@ -123,13 +126,34 @@ private fun lowerRun(
 }
 
 /** Pipeline flags lower in argv order, so `--relation callers --minus R` differs from `--minus R --relation callers`. */
-private fun parseSteps(arguments: LexicalArguments): Refinement<List<CliStep>, PublicCliArgumentFailure> {
+/**
+ * Any destination flag selects SOURCE_DOMAIN for every relation hop and TRACE, matching the MCP destination
+ * defaults: source sets main and test, production and test sources, generated sources included.
+ */
+private fun relationDomain(arguments: LexicalArguments): CliSourceDomain? {
+    val sets = arguments.values(PublicCliFlag.RELATION_SOURCE_SET)
+    val directory = arguments[PublicCliFlag.RELATION_IN]
+    val productionOnly = arguments.has(PublicCliFlag.RELATION_PRODUCTION_ONLY)
+    val excludeGenerated = arguments.has(PublicCliFlag.RELATION_EXCLUDE_GENERATED)
+    if (directory == null && sets.isEmpty() && !productionOnly && !excludeGenerated) return null
+    return CliSourceDomain(
+        sourceSets = sets.ifEmpty { listOf("main", "test") },
+        directory = directory,
+        sourcePolicy = if (productionOnly) CliSourcePolicy.PRODUCTION_ONLY else CliSourcePolicy.PRODUCTION_AND_TEST,
+        generatedSources = if (excludeGenerated) CliGeneratedSources.EXCLUDE else CliGeneratedSources.INCLUDE,
+    )
+}
+
+private fun parseSteps(
+    arguments: LexicalArguments,
+    domain: CliSourceDomain?,
+): Refinement<List<CliStep>, PublicCliArgumentFailure> {
     val steps = mutableListOf<CliStep>()
     for ((flag, raw) in arguments.sequence) {
         val step =
             when (flag) {
                 PublicCliFlag.RELATION ->
-                    CliRelation.entries.singleOrNull { it.spelling == raw }?.let(::CliExpandRelation)
+                    CliRelation.entries.singleOrNull { it.spelling == raw }?.let { CliExpandRelation(it, domain) }
                 PublicCliFlag.VISIBILITY -> parseVisibility(raw)?.let { CliWhere(CliVisibilityPredicate(it)) }
                 PublicCliFlag.INTERSECT -> CliIntersect(CliRetainedInput(raw))
                 PublicCliFlag.UNION -> CliUnion(CliRetainedInput(raw))
@@ -153,6 +177,7 @@ private fun parseVisibility(raw: String): List<CliVisibility>? {
 private fun parseTerminal(
     arguments: LexicalArguments,
     output: CliOutput?,
+    domain: CliSourceDomain?,
 ): Refinement<CliTerminal, PublicCliArgumentFailure> =
     when (arguments[PublicCliFlag.TERMINAL]) {
         null,
@@ -160,7 +185,7 @@ private fun parseTerminal(
         "trace" ->
             when (output) {
                 is CliOutput.Symbols,
-                null -> Refinement.Refined(CliTerminal.Trace(output))
+                null -> Refinement.Refined(CliTerminal.Trace(output, domain))
                 is CliOutput.Witness,
                 CliOutput.Occurrences -> Refinement.Rejected(PublicCliArgumentFailure.IRRELEVANT_OPTION)
             }

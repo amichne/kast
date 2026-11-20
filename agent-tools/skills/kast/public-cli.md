@@ -57,6 +57,11 @@ kast query --all --kind function --in services/orders --source-set main --visibi
 `--minus` and `--without` reject a right side without complete coverage.
 Inner joins and binding rows still need a request document.
 
+`--relation-in DIR`, `--relation-source-set NAME`, `--relation-production-only`, and `--relation-exclude-generated` lower to one `SOURCE_DOMAIN` expansion scope.
+That scope applies to every `EXPAND_RELATION` stage and to a `TRACE` terminal. It restricts destinations before native enumeration.
+Omitted source sets select `main` and `test`. Without the two policy flags, the scope includes test and generated sources.
+These flags reject when the query has no relation stage and no trace.
+
 ## Request documents
 
 For `WALK`, `IMPACT`, retention, or composition, adapt one installed example.

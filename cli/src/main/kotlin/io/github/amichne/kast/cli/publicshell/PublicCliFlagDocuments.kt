@@ -113,7 +113,30 @@ internal sealed interface CliStep
 
 @Serializable
 @SerialName("EXPAND_RELATION")
-internal data class CliExpandRelation(val relation: CliRelation) : CliStep
+internal data class CliExpandRelation(val relation: CliRelation, val expansionScope: CliSourceDomain? = null) :
+    CliStep
+
+/** A relation destination domain. Omission keeps WORKSPACE; admission owns path and source-set validity. */
+@Serializable
+internal data class CliSourceDomain(
+    val sourceSets: List<String>,
+    val directory: String?,
+    val sourcePolicy: CliSourcePolicy,
+    val generatedSources: CliGeneratedSources,
+    @Required val type: String = "SOURCE_DOMAIN",
+)
+
+@Serializable
+internal enum class CliSourcePolicy {
+    PRODUCTION_ONLY,
+    PRODUCTION_AND_TEST,
+}
+
+@Serializable
+internal enum class CliGeneratedSources {
+    INCLUDE,
+    EXCLUDE,
+}
 
 @Serializable
 @SerialName("WHERE")
@@ -158,7 +181,9 @@ internal enum class CliVisibility(val spelling: String) {
 internal sealed interface CliTerminal {
     @Serializable @SerialName("EMIT") data class Emit(val output: CliOutput?) : CliTerminal
 
-    @Serializable @SerialName("TRACE") data class Trace(val output: CliOutput?) : CliTerminal
+    @Serializable
+    @SerialName("TRACE")
+    data class Trace(val output: CliOutput?, val expansionScope: CliSourceDomain? = null) : CliTerminal
 }
 
 @Serializable
