@@ -108,13 +108,11 @@ internal data class CliBudget(
 )
 
 /** Ordered pipeline stages. Set and join stages name one retained right operand; admission owns coverage proof. */
-@Serializable
-internal sealed interface CliStep
+@Serializable internal sealed interface CliStep
 
 @Serializable
 @SerialName("EXPAND_RELATION")
-internal data class CliExpandRelation(val relation: CliRelation, val expansionScope: CliSourceDomain? = null) :
-    CliStep
+internal data class CliExpandRelation(val relation: CliRelation, val expansionScope: CliSourceDomain? = null) : CliStep
 
 /** A relation destination domain. Omission keeps WORKSPACE; admission owns path and source-set validity. */
 @Serializable
@@ -138,9 +136,7 @@ internal enum class CliGeneratedSources {
     EXCLUDE,
 }
 
-@Serializable
-@SerialName("WHERE")
-internal data class CliWhere(val predicate: CliVisibilityPredicate) : CliStep
+@Serializable @SerialName("WHERE") internal data class CliWhere(val predicate: CliVisibilityPredicate) : CliStep
 
 @Serializable
 internal data class CliVisibilityPredicate(
@@ -148,8 +144,7 @@ internal data class CliVisibilityPredicate(
     @Required val type: String = "VISIBILITY",
 )
 
-@Serializable
-internal data class CliRetainedInput(val result: String, @Required val type: String = "RESULT")
+@Serializable internal data class CliRetainedInput(val result: String, @Required val type: String = "RESULT")
 
 @Serializable @SerialName("INTERSECT") internal data class CliIntersect(val right: CliRetainedInput) : CliStep
 

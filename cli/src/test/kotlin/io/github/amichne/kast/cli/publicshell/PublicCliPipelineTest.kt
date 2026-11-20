@@ -41,35 +41,40 @@ class PublicCliPipelineTest {
                 RESULT_REFERENCE,
             )
         val lowered = arguments(query(*argv.toTypedArray()))
-        val expected =
-            oracleJson.encodeToJsonElement(
-                OraclePipelineEnvelope(
-                    OraclePipelineRun(
-                        source =
-                            OracleAllSource(
-                                declarationKinds = listOf("FUNCTION"),
-                                scope = OracleDirectory("services/orders", listOf("main")),
+        assertEquals(expectedPipeline(other), lowered)
+        assertTrue(admission(lowered) is Refinement.Refined, "pipeline must admit: ${admission(lowered)}")
+    }
+
+    private fun expectedPipeline(other: String) =
+        oracleJson.encodeToJsonElement(
+            OraclePipelineEnvelope(
+                OraclePipelineRun(
+                    source =
+                        OracleAllSource(
+                            declarationKinds = listOf("FUNCTION"),
+                            scope = OracleDirectory("services/orders", listOf("main")),
+                        ),
+                    steps =
+                        listOf(
+                            OracleStep(
+                                "WHERE",
+                                predicate = OracleVisibility(values = listOf("PUBLIC", "INTERNAL")),
                             ),
-                        steps =
-                            listOf(
-                                OracleStep(
-                                    "WHERE",
-                                    predicate = OracleVisibility(values = listOf("PUBLIC", "INTERNAL")),
-                                ),
-                                OracleStep("EXPAND_RELATION", relation = "CALLERS"),
-                                OracleStep("JOIN", mode = OracleMode("ANTI"), right = OracleRight(RESULT_REFERENCE)),
-                                OracleStep("INTERSECT", right = OracleRight(other)),
-                                OracleStep("DIFFERENCE", right = OracleRight(RESULT_REFERENCE)),
-                                OracleStep("UNION", right = OracleRight(other)),
-                                OracleStep("JOIN", mode = OracleMode("SEMI"), right = OracleRight(RESULT_REFERENCE)),
-                            ),
-                    )
+                            OracleStep("EXPAND_RELATION", relation = "CALLERS"),
+                            OracleStep("JOIN", mode = OracleMode("ANTI"), right = OracleRight(RESULT_REFERENCE)),
+                            OracleStep("INTERSECT", right = OracleRight(other)),
+                            OracleStep("DIFFERENCE", right = OracleRight(RESULT_REFERENCE)),
+                            OracleStep("UNION", right = OracleRight(other)),
+                            OracleStep("JOIN", mode = OracleMode("SEMI"), right = OracleRight(RESULT_REFERENCE)),
+                        ),
                 )
             )
-        assertEquals(expected, lowered)
-        assertTrue(admission(lowered) is Refinement.Refined, "pipeline must admit: ${admission(lowered)}")
-        val swapped =
-            arguments(query("query", "--from", RESULT_REFERENCE, "--minus", other, "--relation", "callers"))
+        )
+
+    @Test
+    fun `difference before relation preserves stage order and retained source`() {
+        val other = "result:v1:00000000-0000-0000-0000-000000000001"
+        val swapped = arguments(query("query", "--from", RESULT_REFERENCE, "--minus", other, "--relation", "callers"))
         val swappedSteps = swapped.getValue("request").jsonObject.getValue("steps").jsonArray
         assertEquals(
             listOf("DIFFERENCE", "EXPAND_RELATION"),
@@ -101,7 +106,7 @@ class PublicCliPipelineTest {
     }
 
     @Test
-    fun `relation destination flags restrict every hop and trace before enumeration`() {
+    fun `relation destination flags restrict every hop`() {
         val lowered =
             arguments(
                 query(
@@ -131,15 +136,31 @@ class PublicCliPipelineTest {
             steps,
         )
         assertTrue(admission(lowered) is Refinement.Refined, "domain must admit: ${admission(lowered)}")
+    }
 
+    @Test
+    fun `trace includes main and test sources by default`() {
         val defaults =
-            arguments(query("query", "--ref", "exact:v5:AAAAAAAAAAAAAAAAAAAAAA", "--terminal", "trace", "--relation-in", "app"))
+            arguments(
+                query(
+                    "query",
+                    "--ref",
+                    "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
+                    "--terminal",
+                    "trace",
+                    "--relation-in",
+                    "app",
+                )
+            )
         assertEquals(
             oracleJson.encodeToJsonElement(OracleSourceDomain(sourceSets = listOf("main", "test"), directory = "app")),
             defaults.getValue("request").jsonObject.getValue("terminalStep").jsonObject.getValue("expansionScope"),
         )
         assertTrue(admission(defaults) is Refinement.Refined)
+    }
 
+    @Test
+    fun `relation excludes test and generated sources on request`() {
         val narrowed =
             arguments(
                 query(
@@ -171,11 +192,13 @@ class PublicCliPipelineTest {
                 .getValue("expansionScope"),
         )
         assertTrue(admission(narrowed) is Refinement.Refined)
+    }
 
+    @Test
+    fun `relation omits the expansion scope without destination flags`() {
         val unscoped = arguments(query("query", "--ref", "exact:v5:AAAAAAAAAAAAAAAAAAAAAA", "--relation", "callers"))
         assertFalse(
-            "expansionScope" in
-                unscoped.getValue("request").jsonObject.getValue("steps").jsonArray.single().jsonObject
+            "expansionScope" in unscoped.getValue("request").jsonObject.getValue("steps").jsonArray.single().jsonObject
         )
     }
 

@@ -125,17 +125,13 @@ private fun lowerRun(
     )
 }
 
-/** Pipeline flags lower in argv order, so `--relation callers --minus R` differs from `--minus R --relation callers`. */
-/**
- * Any destination flag selects SOURCE_DOMAIN for every relation hop and TRACE, matching the MCP destination
- * defaults: source sets main and test, production and test sources, generated sources included.
- */
 private fun relationDomain(arguments: LexicalArguments): CliSourceDomain? {
     val sets = arguments.values(PublicCliFlag.RELATION_SOURCE_SET)
     val directory = arguments[PublicCliFlag.RELATION_IN]
     val productionOnly = arguments.has(PublicCliFlag.RELATION_PRODUCTION_ONLY)
     val excludeGenerated = arguments.has(PublicCliFlag.RELATION_EXCLUDE_GENERATED)
-    if (directory == null && sets.isEmpty() && !productionOnly && !excludeGenerated) return null
+    val restrictSourcePolicy = productionOnly || excludeGenerated
+    if (directory == null && sets.isEmpty() && !restrictSourcePolicy) return null
     return CliSourceDomain(
         sourceSets = sets.ifEmpty { listOf("main", "test") },
         directory = directory,
@@ -249,8 +245,7 @@ private fun parseSource(arguments: LexicalArguments): Refinement<CliSource, Publ
     val all = arguments.has(PublicCliFlag.ALL)
     val retained = arguments[PublicCliFlag.FROM]
     if (
-        listOf(name != null, refs.isNotEmpty(), file != null || offset != null, all, retained != null).count { it } !=
-            1
+        listOf(name != null, refs.isNotEmpty(), file != null || offset != null, all, retained != null).count { it } != 1
     )
         return Refinement.Rejected(PublicCliArgumentFailure.INVALID_SOURCE)
     if (name != null) return parseSearchSource(arguments, name)
@@ -278,7 +273,9 @@ private fun parseSearchSource(
             else -> return Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)
         }
     val kinds = parseKinds(arguments) ?: return Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)
-    return Refinement.Refined(CliSource.Search(name, match, kinds.takeIf { it.isNotEmpty() }, directoryScope(arguments)))
+    return Refinement.Refined(
+        CliSource.Search(name, match, kinds.takeIf { it.isNotEmpty() }, directoryScope(arguments))
+    )
 }
 
 private fun parseAllSource(arguments: LexicalArguments): Refinement<CliSource, PublicCliArgumentFailure> {
