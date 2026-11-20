@@ -311,11 +311,11 @@ class PublicCliArgumentsTest {
     }
 }
 
-private val oracleJson = Json {
+internal val oracleJson = Json {
     encodeDefaults = true
     explicitNulls = false
 }
-private const val RESULT_REFERENCE = "result:v1:00000000-0000-0000-0000-000000000000"
+internal const val RESULT_REFERENCE = "result:v1:00000000-0000-0000-0000-000000000000"
 private const val OUTPUT_CONTINUATION = "query-output:v1:00000000-0000-0000-0000-000000000000"
 
 private fun relationQuery(vararg relations: String) =
@@ -327,12 +327,12 @@ private fun relationQuery(vararg relations: String) =
         )
     )
 
-private fun query(vararg argv: String): PublicCliCommand.Query =
+internal fun query(vararg argv: String): PublicCliCommand.Query =
     (parsePublicCliArguments(argv.toList()) as Refinement.Refined).value as PublicCliCommand.Query
 
-private fun arguments(query: PublicCliCommand.Query) = (query.input as PublicCliInput.Lowered).arguments
+internal fun arguments(query: PublicCliCommand.Query) = (query.input as PublicCliInput.Lowered).arguments
 
-private fun admission(
+internal fun admission(
     input: kotlinx.serialization.json.JsonElement,
     catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
 ) = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input, catalog)
@@ -390,6 +390,6 @@ private data class OracleRun(
 @Serializable
 private data class OracleSource(val type: String = "SEARCH_DECLARATIONS", val declarationName: String = "OrderService")
 
-@Serializable private data class OracleTerminal(val type: String = "EMIT")
+@Serializable internal data class OracleTerminal(val type: String = "EMIT")
 
 @Serializable private data class OracleBudget(val maxElapsedMs: Long? = null, val maxReturnedBytes: Long? = null)

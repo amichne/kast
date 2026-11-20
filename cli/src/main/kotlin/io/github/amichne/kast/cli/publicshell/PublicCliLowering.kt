@@ -101,22 +101,23 @@ private fun lowerRun(
             is Refinement.Rejected -> return parsed
             is Refinement.Refined -> parsed.value
         }
-    val relations = mutableListOf<CliRelation>()
-    for (raw in arguments.values(PublicCliFlag.RELATION)) {
-        val relation =
-            CliRelation.entries.singleOrNull { it.spelling == raw }
-                ?: return Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)
-        relations.add(relation)
-    }
-    val terminal =
-        when (val parsed = parseTerminal(arguments, output)) {
+    val domain = relationDomain(arguments)
+    val steps =
+        when (val parsed = parseSteps(arguments, domain)) {
             is Refinement.Rejected -> return parsed
             is Refinement.Refined -> parsed.value
         }
+    val terminal =
+        when (val parsed = parseTerminal(arguments, output, domain)) {
+            is Refinement.Rejected -> return parsed
+            is Refinement.Refined -> parsed.value
+        }
+    if (domain != null && steps.none { it is CliExpandRelation } && terminal !is CliTerminal.Trace)
+        return Refinement.Rejected(PublicCliArgumentFailure.IRRELEVANT_OPTION)
     return Refinement.Refined(
         CliAction.Run(
             source,
-            relations.map(::CliExpandRelation).takeIf { it.isNotEmpty() },
+            steps.takeIf { it.isNotEmpty() },
             terminal,
             if (arguments.has(PublicCliFlag.RETAIN)) CliRetention.RETAIN else null,
             budget,
@@ -124,9 +125,55 @@ private fun lowerRun(
     )
 }
 
+private fun relationDomain(arguments: LexicalArguments): CliSourceDomain? {
+    val sets = arguments.values(PublicCliFlag.RELATION_SOURCE_SET)
+    val directory = arguments[PublicCliFlag.RELATION_IN]
+    val productionOnly = arguments.has(PublicCliFlag.RELATION_PRODUCTION_ONLY)
+    val excludeGenerated = arguments.has(PublicCliFlag.RELATION_EXCLUDE_GENERATED)
+    val restrictSourcePolicy = productionOnly || excludeGenerated
+    if (directory == null && sets.isEmpty() && !restrictSourcePolicy) return null
+    return CliSourceDomain(
+        sourceSets = sets.ifEmpty { listOf("main", "test") },
+        directory = directory,
+        sourcePolicy = if (productionOnly) CliSourcePolicy.PRODUCTION_ONLY else CliSourcePolicy.PRODUCTION_AND_TEST,
+        generatedSources = if (excludeGenerated) CliGeneratedSources.EXCLUDE else CliGeneratedSources.INCLUDE,
+    )
+}
+
+private fun parseSteps(
+    arguments: LexicalArguments,
+    domain: CliSourceDomain?,
+): Refinement<List<CliStep>, PublicCliArgumentFailure> {
+    val steps = mutableListOf<CliStep>()
+    for ((flag, raw) in arguments.sequence) {
+        val step =
+            when (flag) {
+                PublicCliFlag.RELATION ->
+                    CliRelation.entries.singleOrNull { it.spelling == raw }?.let { CliExpandRelation(it, domain) }
+                PublicCliFlag.VISIBILITY -> parseVisibility(raw)?.let { CliWhere(CliVisibilityPredicate(it)) }
+                PublicCliFlag.INTERSECT -> CliIntersect(CliRetainedInput(raw))
+                PublicCliFlag.UNION -> CliUnion(CliRetainedInput(raw))
+                PublicCliFlag.MINUS -> CliDifference(CliRetainedInput(raw))
+                PublicCliFlag.WITH -> CliJoin(CliJoinMode.Semi, CliRetainedInput(raw))
+                PublicCliFlag.WITHOUT -> CliJoin(CliJoinMode.Anti, CliRetainedInput(raw))
+                else -> continue
+            } ?: return Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)
+        steps.add(step)
+    }
+    return Refinement.Refined(steps)
+}
+
+/** One comma-separated list lowers to one WHERE stage; duplicate and unknown spellings reject here. */
+private fun parseVisibility(raw: String): List<CliVisibility>? {
+    val names = raw.split(',')
+    if (names.distinct().size != names.size) return null
+    return names.map { name -> CliVisibility.entries.singleOrNull { it.spelling == name } ?: return null }
+}
+
 private fun parseTerminal(
     arguments: LexicalArguments,
     output: CliOutput?,
+    domain: CliSourceDomain?,
 ): Refinement<CliTerminal, PublicCliArgumentFailure> =
     when (arguments[PublicCliFlag.TERMINAL]) {
         null,
@@ -134,7 +181,7 @@ private fun parseTerminal(
         "trace" ->
             when (output) {
                 is CliOutput.Symbols,
-                null -> Refinement.Refined(CliTerminal.Trace(output))
+                null -> Refinement.Refined(CliTerminal.Trace(output, domain))
                 is CliOutput.Witness,
                 CliOutput.Occurrences -> Refinement.Rejected(PublicCliArgumentFailure.IRRELEVANT_OPTION)
             }
@@ -195,15 +242,21 @@ private fun parseSource(arguments: LexicalArguments): Refinement<CliSource, Publ
     val refs = arguments.values(PublicCliFlag.REF)
     val file = arguments[PublicCliFlag.FILE]
     val offset = arguments[PublicCliFlag.OFFSET]
-    if (listOf(name != null, refs.isNotEmpty(), file != null || offset != null).count { it } != 1)
+    val all = arguments.has(PublicCliFlag.ALL)
+    val retained = arguments[PublicCliFlag.FROM]
+    if (
+        listOf(name != null, refs.isNotEmpty(), file != null || offset != null, all, retained != null).count { it } != 1
+    )
         return Refinement.Rejected(PublicCliArgumentFailure.INVALID_SOURCE)
     if (name != null) return parseSearchSource(arguments, name)
+    if (all) return parseAllSource(arguments)
     if (
         setOf(PublicCliFlag.DIRECTORY, PublicCliFlag.SOURCE_SET, PublicCliFlag.KIND, PublicCliFlag.NAME_MATCH)
             .any(arguments::has)
     )
         return Refinement.Rejected(PublicCliArgumentFailure.IRRELEVANT_OPTION)
-    return if (refs.isNotEmpty()) Refinement.Refined(CliSource.References(refs))
+    return if (retained != null) Refinement.Refined(CliSource.Result(retained))
+    else if (refs.isNotEmpty()) Refinement.Refined(CliSource.References(refs))
     else if (file != null && offset != null) Refinement.Refined(CliSource.Location(file, offset.toLong()))
     else Refinement.Rejected(PublicCliArgumentFailure.INVALID_SOURCE)
 }
@@ -219,18 +272,28 @@ private fun parseSearchSource(
             "fuzzy" -> CliNameMatch.FUZZY
             else -> return Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)
         }
-    val kinds = mutableListOf<CliKind>()
-    for (raw in arguments.values(PublicCliFlag.KIND)) {
-        val kind = CliKind.entries.singleOrNull { it.spelling == raw }
-        if (kind == null) return Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)
-        kinds.add(kind)
+    val kinds = parseKinds(arguments) ?: return Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)
+    return Refinement.Refined(
+        CliSource.Search(name, match, kinds.takeIf { it.isNotEmpty() }, directoryScope(arguments))
+    )
+}
+
+private fun parseAllSource(arguments: LexicalArguments): Refinement<CliSource, PublicCliArgumentFailure> {
+    if (arguments.has(PublicCliFlag.NAME_MATCH)) return Refinement.Rejected(PublicCliArgumentFailure.IRRELEVANT_OPTION)
+    val kinds = parseKinds(arguments) ?: return Refinement.Rejected(PublicCliArgumentFailure.INVALID_VALUE)
+    return Refinement.Refined(CliSource.All(kinds.takeIf { it.isNotEmpty() }, directoryScope(arguments)))
+}
+
+private fun parseKinds(arguments: LexicalArguments): List<CliKind>? =
+    arguments.values(PublicCliFlag.KIND).map { raw ->
+        CliKind.entries.singleOrNull { it.spelling == raw } ?: return null
     }
+
+private fun directoryScope(arguments: LexicalArguments): CliDirectory? {
     val sets = arguments.values(PublicCliFlag.SOURCE_SET)
     val directory = arguments[PublicCliFlag.DIRECTORY]
-    val scope =
-        if (directory != null || sets.isNotEmpty()) CliDirectory(directory ?: ".", sets.takeIf { it.isNotEmpty() })
-        else null
-    return Refinement.Refined(CliSource.Search(name, match, kinds.takeIf { it.isNotEmpty() }, scope))
+    return if (directory != null || sets.isNotEmpty()) CliDirectory(directory ?: ".", sets.takeIf { it.isNotEmpty() })
+    else null
 }
 
 private fun parseOutput(arguments: LexicalArguments): Refinement<CliOutput?, PublicCliArgumentFailure> {

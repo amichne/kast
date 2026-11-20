@@ -23,7 +23,7 @@ internal sealed interface CliAction {
     @SerialName("RUN")
     data class Run(
         val source: CliSource,
-        val steps: List<CliExpandRelation>?,
+        val steps: List<CliStep>?,
         val terminalStep: CliTerminal,
         val retention: CliRetention?,
         val executionBudget: CliBudget?,
@@ -81,6 +81,13 @@ internal sealed interface CliSource {
 
     @Serializable @SerialName("SYMBOL_REFS") data class References(val symbolRefs: List<String>) : CliSource
 
+    @Serializable
+    @SerialName("ALL_DECLARATIONS")
+    data class All(val declarationKinds: List<CliKind>?, val scope: CliDirectory?) : CliSource
+
+    /** An issued retained-result reference, copied unchanged; restoration checks its basis and coverage. */
+    @Serializable @SerialName("RESULT") data class Result(val result: String) : CliSource
+
     @Serializable @SerialName("AT_LOCATION") data class Location(val file: String, val offset: Long) : CliSource
 }
 
@@ -100,14 +107,78 @@ internal data class CliBudget(
     val maxReturnedBytes: Long? = null,
 )
 
+/** Ordered pipeline stages. Set and join stages name one retained right operand; admission owns coverage proof. */
+@Serializable internal sealed interface CliStep
+
 @Serializable
-internal data class CliExpandRelation(val relation: CliRelation, @Required val type: String = "EXPAND_RELATION")
+@SerialName("EXPAND_RELATION")
+internal data class CliExpandRelation(val relation: CliRelation, val expansionScope: CliSourceDomain? = null) : CliStep
+
+/** A relation destination domain. Omission keeps WORKSPACE; admission owns path and source-set validity. */
+@Serializable
+internal data class CliSourceDomain(
+    val sourceSets: List<String>,
+    val directory: String?,
+    val sourcePolicy: CliSourcePolicy,
+    val generatedSources: CliGeneratedSources,
+    @Required val type: String = "SOURCE_DOMAIN",
+)
+
+@Serializable
+internal enum class CliSourcePolicy {
+    PRODUCTION_ONLY,
+    PRODUCTION_AND_TEST,
+}
+
+@Serializable
+internal enum class CliGeneratedSources {
+    INCLUDE,
+    EXCLUDE,
+}
+
+@Serializable @SerialName("WHERE") internal data class CliWhere(val predicate: CliVisibilityPredicate) : CliStep
+
+@Serializable
+internal data class CliVisibilityPredicate(
+    val values: List<CliVisibility>,
+    @Required val type: String = "VISIBILITY",
+)
+
+@Serializable internal data class CliRetainedInput(val result: String, @Required val type: String = "RESULT")
+
+@Serializable @SerialName("INTERSECT") internal data class CliIntersect(val right: CliRetainedInput) : CliStep
+
+@Serializable @SerialName("UNION") internal data class CliUnion(val right: CliRetainedInput) : CliStep
+
+@Serializable @SerialName("DIFFERENCE") internal data class CliDifference(val right: CliRetainedInput) : CliStep
+
+@Serializable
+@SerialName("JOIN")
+internal data class CliJoin(val mode: CliJoinMode, val right: CliRetainedInput) : CliStep
+
+@Serializable
+internal sealed interface CliJoinMode {
+    @Serializable @SerialName("SEMI") data object Semi : CliJoinMode
+
+    @Serializable @SerialName("ANTI") data object Anti : CliJoinMode
+}
+
+@Serializable
+internal enum class CliVisibility(val spelling: String) {
+    PUBLIC("public"),
+    PROTECTED("protected"),
+    INTERNAL("internal"),
+    PRIVATE("private"),
+    LOCAL("local"),
+}
 
 @Serializable
 internal sealed interface CliTerminal {
     @Serializable @SerialName("EMIT") data class Emit(val output: CliOutput?) : CliTerminal
 
-    @Serializable @SerialName("TRACE") data class Trace(val output: CliOutput?) : CliTerminal
+    @Serializable
+    @SerialName("TRACE")
+    data class Trace(val output: CliOutput?, val expansionScope: CliSourceDomain? = null) : CliTerminal
 }
 
 @Serializable
