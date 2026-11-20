@@ -23,7 +23,7 @@ internal sealed interface CliAction {
     @SerialName("RUN")
     data class Run(
         val source: CliSource,
-        val steps: List<CliExpandRelation>?,
+        val steps: List<CliStep>?,
         val terminalStep: CliTerminal,
         val retention: CliRetention?,
         val executionBudget: CliBudget?,
@@ -81,6 +81,13 @@ internal sealed interface CliSource {
 
     @Serializable @SerialName("SYMBOL_REFS") data class References(val symbolRefs: List<String>) : CliSource
 
+    @Serializable
+    @SerialName("ALL_DECLARATIONS")
+    data class All(val declarationKinds: List<CliKind>?, val scope: CliDirectory?) : CliSource
+
+    /** An issued retained-result reference, copied unchanged; restoration checks its basis and coverage. */
+    @Serializable @SerialName("RESULT") data class Result(val result: String) : CliSource
+
     @Serializable @SerialName("AT_LOCATION") data class Location(val file: String, val offset: Long) : CliSource
 }
 
@@ -100,8 +107,52 @@ internal data class CliBudget(
     val maxReturnedBytes: Long? = null,
 )
 
+/** Ordered pipeline stages. Set and join stages name one retained right operand; admission owns coverage proof. */
 @Serializable
-internal data class CliExpandRelation(val relation: CliRelation, @Required val type: String = "EXPAND_RELATION")
+internal sealed interface CliStep
+
+@Serializable
+@SerialName("EXPAND_RELATION")
+internal data class CliExpandRelation(val relation: CliRelation) : CliStep
+
+@Serializable
+@SerialName("WHERE")
+internal data class CliWhere(val predicate: CliVisibilityPredicate) : CliStep
+
+@Serializable
+internal data class CliVisibilityPredicate(
+    val values: List<CliVisibility>,
+    @Required val type: String = "VISIBILITY",
+)
+
+@Serializable
+internal data class CliRetainedInput(val result: String, @Required val type: String = "RESULT")
+
+@Serializable @SerialName("INTERSECT") internal data class CliIntersect(val right: CliRetainedInput) : CliStep
+
+@Serializable @SerialName("UNION") internal data class CliUnion(val right: CliRetainedInput) : CliStep
+
+@Serializable @SerialName("DIFFERENCE") internal data class CliDifference(val right: CliRetainedInput) : CliStep
+
+@Serializable
+@SerialName("JOIN")
+internal data class CliJoin(val mode: CliJoinMode, val right: CliRetainedInput) : CliStep
+
+@Serializable
+internal sealed interface CliJoinMode {
+    @Serializable @SerialName("SEMI") data object Semi : CliJoinMode
+
+    @Serializable @SerialName("ANTI") data object Anti : CliJoinMode
+}
+
+@Serializable
+internal enum class CliVisibility(val spelling: String) {
+    PUBLIC("public"),
+    PROTECTED("protected"),
+    INTERNAL("internal"),
+    PRIVATE("private"),
+    LOCAL("local"),
+}
 
 @Serializable
 internal sealed interface CliTerminal {

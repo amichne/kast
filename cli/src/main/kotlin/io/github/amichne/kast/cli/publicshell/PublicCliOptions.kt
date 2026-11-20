@@ -27,6 +27,14 @@ internal enum class PublicCliFlag(val spelling: String, val takesValue: Boolean 
     OUTPUT("--output"),
     FIELDS("--fields"),
     RETAIN("--retain", false),
+    ALL("--all", false),
+    FROM("--from"),
+    VISIBILITY("--visibility", repeated = true),
+    INTERSECT("--intersect", repeated = true),
+    UNION("--union", repeated = true),
+    MINUS("--minus", repeated = true),
+    WITH("--with", repeated = true),
+    WITHOUT("--without", repeated = true),
     MAX_RESULTS("--max-results"),
     MAX_BYTES("--max-returned-bytes"),
     MAX_ELAPSED("--max-elapsed-ms"),
@@ -58,6 +66,14 @@ private val queryFlags =
         PublicCliFlag.NAME_MATCH,
         PublicCliFlag.RELATION,
         PublicCliFlag.TERMINAL,
+        PublicCliFlag.ALL,
+        PublicCliFlag.FROM,
+        PublicCliFlag.VISIBILITY,
+        PublicCliFlag.INTERSECT,
+        PublicCliFlag.UNION,
+        PublicCliFlag.MINUS,
+        PublicCliFlag.WITH,
+        PublicCliFlag.WITHOUT,
         PublicCliFlag.OUTPUT,
         PublicCliFlag.FIELDS,
         PublicCliFlag.RETAIN,
@@ -127,7 +143,12 @@ internal fun flagsFor(command: PublicCliCommandId): Set<PublicCliFlag> =
                 )
     }
 
-internal data class LexicalArguments(val words: List<String>, val options: Map<PublicCliFlag, List<String>>) {
+/** [sequence] keeps argv order across distinct flags; pipeline stages lower in exactly that order. */
+internal data class LexicalArguments(
+    val words: List<String>,
+    val options: Map<PublicCliFlag, List<String>>,
+    val sequence: List<Pair<PublicCliFlag, String>> = emptyList(),
+) {
     operator fun get(flag: PublicCliFlag): String? = options[flag]?.singleOrNull()
 
     fun has(flag: PublicCliFlag): Boolean = flag in options
@@ -139,6 +160,7 @@ internal data class LexicalArguments(val words: List<String>, val options: Map<P
 internal fun lexPublicCliArguments(argv: List<String>): Refinement<LexicalArguments, PublicCliArgumentFailure> {
     val words = mutableListOf<String>()
     val options = mutableMapOf<PublicCliFlag, MutableList<String>>()
+    val sequence = mutableListOf<Pair<PublicCliFlag, String>>()
     var index = 0
     while (index < argv.size) {
         val token = argv[index]
@@ -153,9 +175,10 @@ internal fun lexPublicCliArguments(argv: List<String>): Refinement<LexicalArgume
                 is Refinement.Refined -> parsed.value
             }
         options.getOrPut(option.flag) { mutableListOf() }.add(option.value)
+        sequence.add(option.flag to option.value)
         index += option.width
     }
-    return Refinement.Refined(LexicalArguments(words, options))
+    return Refinement.Refined(LexicalArguments(words, options, sequence))
 }
 
 private data class LexicalOption(val flag: PublicCliFlag, val value: String, val width: Int)

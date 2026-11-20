@@ -57,6 +57,14 @@ private fun queryFlagSchema(flag: PublicCliFlag, input: JsonObject, catalog: Pub
         PublicCliFlag.OFFSET -> property("LocationSource", "LocationSource", "offset")
         PublicCliFlag.CONTINUATION -> property("ResumeAction", "Resume", "continuation")
         PublicCliFlag.VERBOSE -> input.getValue("properties").jsonObject["verbose"] as? JsonObject
+        PublicCliFlag.ALL -> definitions["AllSource"] as? JsonObject
+        PublicCliFlag.FROM -> property("ResultSource", "ResultSource", "result")
+        PublicCliFlag.VISIBILITY -> property("VisibilityPredicate", "VisibilityPredicate", "values")
+        PublicCliFlag.INTERSECT -> definitions["Intersect"] as? JsonObject
+        PublicCliFlag.UNION -> definitions["Union"] as? JsonObject
+        PublicCliFlag.MINUS -> definitions["Difference"] as? JsonObject
+        PublicCliFlag.WITH -> definitions["SemiJoinMode"] as? JsonObject
+        PublicCliFlag.WITHOUT -> definitions["AntiJoinMode"] as? JsonObject
         PublicCliFlag.WORKSPACE,
         PublicCliFlag.CATALOG,
         PublicCliFlag.JSON,

@@ -17,6 +17,8 @@ Semantic results, errors, plans, and descriptors use JSON by default. Keep reque
 | What declarations are affected through the standard use recipe? | `TRACE` terminal | Exact declarations; references, implementations or overrides, direct callers, and one further caller layer | Grouped symbols with proven connections and occurrences |
 | Where does this produced value flow? | `IMPACT` source | Exact enclosing and callable refs plus the whole producer invocation range; forward Kotlin value flow | `VALUE_PATHS` or six `IMPACT_WITNESS` views, retaining model provenance and unresolved boundaries |
 
+| Which declarations satisfy a compound condition? | Set stages over retained results | `--intersect`, `--union`, `--minus`, `--with`, `--without` with a retained right side | Symbols by canonical identity; absence stages need complete right coverage |
+
 `TRACE` has a fixed topology. `WALK` has an explicit relation and depth.
 `IMPACT` investigates values and their qualified transfers.
 None establishes runtime behavior or unrestricted transitive reachability.
@@ -39,6 +41,21 @@ The actual caller is the code that later invokes the interface method.
 `TRACE` includes these calls as source relationships.
 An explicit `CALLERS` query can reject with `CALLBACK_GRAPH_UNPROVEN` when Kast cannot prove who invokes the stored lambda.
 Do not report the enclosing function as a caller from that evidence.
+
+## Compose retained results
+
+`--retain` publishes the complete investigation as an immutable result on the current read basis.
+`--from RESULT` starts a new pipeline from it. `--all` enumerates declarations in the `--in` and `--source-set` scope.
+Pipeline flags lower to `steps` in the order that they appear:
+
+```sh
+kast query --all --kind function --in services/orders --source-set main --visibility public \
+  --without "$tested" --fields name,signature,location
+```
+
+`--minus` lowers to `DIFFERENCE`. `--with` and `--without` lower to semi and anti `JOIN` stages.
+`--minus` and `--without` reject a right side without complete coverage.
+Inner joins and binding rows still need a request document.
 
 ## Request documents
 

@@ -146,6 +146,26 @@ The CLI returns one page. It does not drain later pages or repeat the semantic q
 
 An expired or foreign reference rejects. Find the declaration again only when the reported recovery calls for discovery.
 
+## Compose retained results
+
+Add `--retain` to keep a complete result on the current read basis.
+Start a later pipeline from it with `--from`, or enumerate a scope with `--all`:
+
+```shell
+kast query --all --kind function --in checkout --source-set test --relation callees --retain
+kast query --all --kind function --in checkout --source-set main --visibility public \
+  --without "$TESTED_REF" --fields name,signature,location
+```
+
+The first command retains the functions that `checkout` tests call directly.
+The second command lists the public functions that no test in `checkout` calls directly.
+Pipeline flags apply in the order that you write them:
+`--relation`, `--visibility`, `--intersect`, `--union`, `--minus`, `--with`, and `--without`.
+The set flags compare declarations by compiler identity.
+`--minus` and `--without` need a complete right side. A qualified right side rejects the stage.
+A complete, empty result proves absence only within its scope and the static compiler model.
+Retained results expire. A source change can invalidate their basis.
+
 ## Submit a full request
 
 Save a public argument document from the installed examples as `query.json`:

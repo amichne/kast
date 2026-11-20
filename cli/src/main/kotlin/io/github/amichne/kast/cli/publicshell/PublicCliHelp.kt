@@ -40,6 +40,11 @@ internal fun publicCliHelp(commands: List<PublicCliCommandId>): String =
                     "--fields accepts unique values: ${CliField.entries.joinToString(",") { it.spelling }}; " +
                     "use with --output symbols.\n" +
                     "Bound presentation with --max-results and --max-returned-bytes; preserve qualifications.\n" +
+                    "Sources: --name, --ref, --file/--offset, --all (with --kind, --in, --source-set), " +
+                    "or --from RESULT for a retained result.\n" +
+                    "Pipeline stages apply in argv order: --relation, --visibility LIST, and set stages " +
+                    "--intersect, --union, --minus, --with (semi join), --without (anti join), each naming a " +
+                    "retained RESULT from --retain. --minus and --without prove absence only from complete right coverage.\n" +
                     "Use kast describe query --section examples --json for request documents."
             commands.any { it == PublicCliCommandId.RESULT_READ || it == PublicCliCommandId.RESULT_RESUME } ->
                 "Use issued result references, both cursors, or an issued output continuation.\n" +
