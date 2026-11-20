@@ -1,0 +1,2119 @@
+{
+ "environment": {
+  "promptfooVersion": "0.125.1",
+  "piVersion": "1.5.2",
+  "kotlinc": "2.4.21",
+  "platform": "darwin-arm64"
+ },
+ "model": "openai-codex/gpt-6.1-sol",
+ "effort": "low",
+ "repetitions": 3,
+ "baseline": "history/separation.json records the first run of imported-project and shadowed-extension.",
+ "runs": {
+  "holdoutBefore": {
+   "evalId": "eval-5wq-2026-11-20T17:22:21",
+   "exportSha256": "f4b30763046e77fa4d3ade8d2c43c906f550a2ca4a445b12817d3755a6967ab6",
+   "sourceRevision": "af9a6a6325",
+   "kast": {
+    "version": "0.0.4551",
+    "source": "installed release"
+   },
+   "skill": "SKILL.md at af9a6a6325 (before the routing line)",
+   "note": "Overlapped a local product build. No trial recorded an error.",
+   "admissions": [
+    {
+     "id": "subtype-extension",
+     "ceiling": 0.5,
+     "visibleSha256": "22ef5b3287561d2e8a917ae6f4427344d0ebe86cafbae65d79144297d0c67b03",
+     "worlds": [
+      {
+       "world": "north",
+       "oracle": [
+        "checkout",
+        "refund"
+       ],
+       "factSha256": "8538e261d29296b0a73236ef00a8dc2eb16b6b6c12ae9ed8161de0b230b9e16d",
+       "promptSha256": {
+        "source": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+        "kast": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+        "materialized": "160987f8e8f6302ecd9f8121b86608ea95ecc7f789b6fac784d3aa85f370de34"
+       }
+      },
+      {
+       "world": "south",
+       "oracle": [
+        "refund"
+       ],
+       "factSha256": "9ce3a147620eba883fd952a27ce641c684e94793421e08c96da9f6e186f3ef0b",
+       "promptSha256": {
+        "source": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+        "kast": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+        "materialized": "1b36fa0cdb622f666e16e1319d3241e401034076e026f716d221935ef345be9d"
+       }
+      }
+     ]
+    }
+   ],
+   "report": {
+    "confidence": {
+     "level": 0.95,
+     "method": "CLOPPER_PEARSON_ONE_SIDED"
+    },
+    "repetitions": 3,
+    "ceiling": 0.5,
+    "verdict": "NOT_SEPARATED",
+    "pooled": {
+     "source": {
+      "trials": 6,
+      "CORRECT": 0,
+      "ABSTAINED": 6,
+      "WRONG": 0,
+      "ERROR": 0,
+      "accuracy": 0,
+      "lowerBound": 0
+     },
+     "kast": {
+      "trials": 6,
+      "CORRECT": 0,
+      "ABSTAINED": 6,
+      "WRONG": 0,
+      "ERROR": 0,
+      "accuracy": 0,
+      "lowerBound": 0
+     },
+     "materialized": {
+      "trials": 6,
+      "CORRECT": 6,
+      "ABSTAINED": 0,
+      "WRONG": 0,
+      "ERROR": 0,
+      "accuracy": 1,
+      "lowerBound": 0.6069622310029174
+     }
+    },
+    "cases": [
+     {
+      "id": "subtype-extension",
+      "worlds": 2,
+      "ceiling": 0.5,
+      "arms": {
+       "source": {
+        "trials": 6,
+        "CORRECT": 0,
+        "ABSTAINED": 6,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 0,
+        "lowerBound": 0,
+        "totalTokens": 2065,
+        "toolCalls": 0,
+        "successfulKastCalls": 0,
+        "answers": {
+         "north: UNKNOWN": 3,
+         "south: UNKNOWN": 3
+        }
+       },
+       "kast": {
+        "trials": 6,
+        "CORRECT": 0,
+        "ABSTAINED": 6,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 0,
+        "lowerBound": 0,
+        "totalTokens": 49885,
+        "toolCalls": 12,
+        "successfulKastCalls": 0,
+        "answers": {
+         "north: UNKNOWN": 3,
+         "south: UNKNOWN": 3
+        },
+        "byConsultation": {
+         "consulted": {
+          "CORRECT": 0,
+          "ABSTAINED": 0,
+          "WRONG": 0,
+          "ERROR": 0
+         },
+         "unconsulted": {
+          "CORRECT": 0,
+          "ABSTAINED": 6,
+          "WRONG": 0,
+          "ERROR": 0
+         }
+        }
+       },
+       "materialized": {
+        "trials": 6,
+        "CORRECT": 6,
+        "ABSTAINED": 0,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 1,
+        "lowerBound": 0.6069622310029174,
+        "totalTokens": 2653,
+        "toolCalls": 0,
+        "successfulKastCalls": 0,
+        "answers": {
+         "north: checkout\nrefund": 3,
+         "south: refund": 3
+        }
+       }
+      },
+      "verdict": "NOT_SEPARATED"
+     }
+    ]
+   },
+   "trials": [
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 345,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 10367,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 341,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 9903,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 352,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 10576,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "kast",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 8262,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 7665,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main"
+       ],
+       "exitStatus": 10,
+       "reply": {
+        "type": "rejected_document",
+        "status": "rejected",
+        "rejection": "COMPLETION_UNPROVEN",
+        "items": []
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "kast",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 8380,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 12808,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 10,
+       "reply": {
+        "type": "rejected_document",
+        "status": "rejected",
+        "rejection": "COMPLETION_UNPROVEN",
+        "items": []
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "kast",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 8328,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 15988,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function"
+       ],
+       "exitStatus": 10,
+       "reply": {
+        "type": "rejected_document",
+        "status": "rejected",
+        "rejection": "COMPLETION_UNPROVEN",
+        "items": []
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "materialized",
+     "answer": "checkout\nrefund",
+     "outcome": "CORRECT",
+     "promptSha256": "160987f8e8f6302ecd9f8121b86608ea95ecc7f789b6fac784d3aa85f370de34",
+     "totalTokens": 376,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 1969,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "materialized",
+     "answer": "checkout\nrefund",
+     "outcome": "CORRECT",
+     "promptSha256": "160987f8e8f6302ecd9f8121b86608ea95ecc7f789b6fac784d3aa85f370de34",
+     "totalTokens": 420,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 9016,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "materialized",
+     "answer": "checkout\nrefund",
+     "outcome": "CORRECT",
+     "promptSha256": "160987f8e8f6302ecd9f8121b86608ea95ecc7f789b6fac784d3aa85f370de34",
+     "totalTokens": 418,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 6436,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "kast",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 8255,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 7227,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main"
+       ],
+       "exitStatus": 10,
+       "reply": {
+        "type": "rejected_document",
+        "status": "rejected",
+        "rejection": "COMPLETION_UNPROVEN",
+        "items": []
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "kast",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 8335,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 6910,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 10,
+       "reply": {
+        "type": "rejected_document",
+        "status": "rejected",
+        "rejection": "COMPLETION_UNPROVEN",
+        "items": []
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "kast",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 8325,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 7031,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 10,
+       "reply": {
+        "type": "rejected_document",
+        "status": "rejected",
+        "rejection": "COMPLETION_UNPROVEN",
+        "items": []
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "materialized",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "1b36fa0cdb622f666e16e1319d3241e401034076e026f716d221935ef345be9d",
+     "totalTokens": 423,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8199,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "materialized",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "1b36fa0cdb622f666e16e1319d3241e401034076e026f716d221935ef345be9d",
+     "totalTokens": 592,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 13325,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "materialized",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "1b36fa0cdb622f666e16e1319d3241e401034076e026f716d221935ef345be9d",
+     "totalTokens": 424,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8104,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 341,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 9687,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 347,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 7045,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 339,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 7505,
+     "kastCalls": []
+    }
+   ]
+  },
+  "after": {
+   "evalId": "eval-1Z3-2026-11-20T17:31:56",
+   "exportSha256": "7d3ab31e9a6dfb58e305780703d7f68a791e915a8958f82a461e0cb26eba807a",
+   "sourceRevision": "9f0b45cd60",
+   "kast": {
+    "version": "0.0.466166",
+    "source": "local product from ae60bfe882, releaseQualification NOT_ESTABLISHED",
+    "bundleSha256": "45cf68951d506c2f6c219a0e730b9d7fd3d1c879ebabf2d9b7bbe53e3e1abd90"
+   },
+   "skill": "SKILL.md at ae60bfe882",
+   "admissions": [
+    {
+     "id": "imported-project",
+     "ceiling": 0.5,
+     "visibleSha256": "82ef7dc825e19a7a031e26601aa08863f5d84b658afeef8325bd1392a30827db",
+     "worlds": [
+      {
+       "world": "adapter-a",
+       "oracle": [
+        "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt"
+       ],
+       "factSha256": "36fd77a430f1b809467e591691950da55609d69b3f7d312c1737276a7195448e",
+       "promptSha256": {
+        "source": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+        "kast": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+        "materialized": "36b99e6878036b797c54632c72bd78ab7399849dcc6772b922acb158b71d6310"
+       }
+      },
+      {
+       "world": "adapter-b",
+       "oracle": [
+        "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt"
+       ],
+       "factSha256": "e18fb3181b87b4e09d35c3edb526e65510c1b3eeda940301131c0cf8582a0b96",
+       "promptSha256": {
+        "source": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+        "kast": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+        "materialized": "7e9719ddca7cc0270d88c2a14a5d932a3dd743d588ec50e9d8f878dd4e19c02f"
+       }
+      }
+     ]
+    },
+    {
+     "id": "shadowed-extension",
+     "ceiling": 0.5,
+     "visibleSha256": "9f97ba99fa180faefb5509f07bd0db34f414e374caaec8e480442f2cfe8a08d3",
+     "worlds": [
+      {
+       "world": "west",
+       "oracle": [],
+       "factSha256": "28d1764af6b121136ef15beef577d019f9ae7adc7d0a35afd41ea3875da4197d",
+       "promptSha256": {
+        "source": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+        "kast": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+        "materialized": "8b3d8ff2526c94d3ea52be46c738b32ea3fa546c3cc8803ed048593a310acec6"
+       }
+      },
+      {
+       "world": "east",
+       "oracle": [
+        "refund"
+       ],
+       "factSha256": "0f66d1c4596eae9e06bb7c87f980738f799c4abaeaee9bef242c219297f32206",
+       "promptSha256": {
+        "source": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+        "kast": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+        "materialized": "ec938314c54d2cb8a7f1a31aa632af3813ff4b4d6075a088b7a5f4b97cfb2f76"
+       }
+      }
+     ]
+    },
+    {
+     "id": "subtype-extension",
+     "ceiling": 0.5,
+     "visibleSha256": "22ef5b3287561d2e8a917ae6f4427344d0ebe86cafbae65d79144297d0c67b03",
+     "worlds": [
+      {
+       "world": "north",
+       "oracle": [
+        "checkout",
+        "refund"
+       ],
+       "factSha256": "8538e261d29296b0a73236ef00a8dc2eb16b6b6c12ae9ed8161de0b230b9e16d",
+       "promptSha256": {
+        "source": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+        "kast": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+        "materialized": "160987f8e8f6302ecd9f8121b86608ea95ecc7f789b6fac784d3aa85f370de34"
+       }
+      },
+      {
+       "world": "south",
+       "oracle": [
+        "refund"
+       ],
+       "factSha256": "9ce3a147620eba883fd952a27ce641c684e94793421e08c96da9f6e186f3ef0b",
+       "promptSha256": {
+        "source": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+        "kast": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+        "materialized": "1b36fa0cdb622f666e16e1319d3241e401034076e026f716d221935ef345be9d"
+       }
+      }
+     ]
+    }
+   ],
+   "report": {
+    "confidence": {
+     "level": 0.95,
+     "method": "CLOPPER_PEARSON_ONE_SIDED"
+    },
+    "repetitions": 3,
+    "ceiling": 0.5,
+    "verdict": "SEPARATED",
+    "pooled": {
+     "source": {
+      "trials": 18,
+      "CORRECT": 0,
+      "ABSTAINED": 18,
+      "WRONG": 0,
+      "ERROR": 0,
+      "accuracy": 0,
+      "lowerBound": 0
+     },
+     "kast": {
+      "trials": 18,
+      "CORRECT": 15,
+      "ABSTAINED": 3,
+      "WRONG": 0,
+      "ERROR": 0,
+      "accuracy": 0.8333333333333334,
+      "lowerBound": 0.6233208490401575
+     },
+     "materialized": {
+      "trials": 18,
+      "CORRECT": 15,
+      "ABSTAINED": 2,
+      "WRONG": 1,
+      "ERROR": 0,
+      "accuracy": 0.8333333333333334,
+      "lowerBound": 0.6233208490401575
+     }
+    },
+    "cases": [
+     {
+      "id": "imported-project",
+      "worlds": 2,
+      "ceiling": 0.5,
+      "arms": {
+       "source": {
+        "trials": 6,
+        "CORRECT": 0,
+        "ABSTAINED": 6,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 0,
+        "lowerBound": 0,
+        "totalTokens": 1744,
+        "toolCalls": 0,
+        "successfulKastCalls": 0,
+        "answers": {
+         "adapter-a: UNKNOWN": 3,
+         "adapter-b: UNKNOWN": 3
+        }
+       },
+       "kast": {
+        "trials": 6,
+        "CORRECT": 3,
+        "ABSTAINED": 3,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 0.5,
+        "lowerBound": 0.1531611179752232,
+        "totalTokens": 27510,
+        "toolCalls": 6,
+        "successfulKastCalls": 3,
+        "answers": {
+         "adapter-a: UNKNOWN": 1,
+         "adapter-a: adapter-a/src/main/kotlin/invoices/InvoiceReference.kt": 2,
+         "adapter-b: UNKNOWN": 2,
+         "adapter-b: adapter-b/src/main/kotlin/invoices/InvoiceReference.kt": 1
+        },
+        "byConsultation": {
+         "consulted": {
+          "CORRECT": 3,
+          "ABSTAINED": 0,
+          "WRONG": 0,
+          "ERROR": 0
+         },
+         "unconsulted": {
+          "CORRECT": 0,
+          "ABSTAINED": 3,
+          "WRONG": 0,
+          "ERROR": 0
+         }
+        }
+       },
+       "materialized": {
+        "trials": 6,
+        "CORRECT": 6,
+        "ABSTAINED": 0,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 1,
+        "lowerBound": 0.6069622310029174,
+        "totalTokens": 1866,
+        "toolCalls": 0,
+        "successfulKastCalls": 0,
+        "answers": {
+         "adapter-a: adapter-a/src/main/kotlin/invoices/InvoiceReference.kt": 3,
+         "adapter-b: adapter-b/src/main/kotlin/invoices/InvoiceReference.kt": 3
+        }
+       }
+      },
+      "verdict": "NOT_SEPARATED"
+     },
+     {
+      "id": "shadowed-extension",
+      "worlds": 2,
+      "ceiling": 0.5,
+      "arms": {
+       "source": {
+        "trials": 6,
+        "CORRECT": 0,
+        "ABSTAINED": 6,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 0,
+        "lowerBound": 0,
+        "totalTokens": 1981,
+        "toolCalls": 0,
+        "successfulKastCalls": 0,
+        "answers": {
+         "west: UNKNOWN": 3,
+         "east: UNKNOWN": 3
+        }
+       },
+       "kast": {
+        "trials": 6,
+        "CORRECT": 6,
+        "ABSTAINED": 0,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 1,
+        "lowerBound": 0.6069622310029174,
+        "totalTokens": 73971,
+        "toolCalls": 16,
+        "successfulKastCalls": 10,
+        "answers": {
+         "west: NONE": 3,
+         "east: refund": 3
+        },
+        "byConsultation": {
+         "consulted": {
+          "CORRECT": 6,
+          "ABSTAINED": 0,
+          "WRONG": 0,
+          "ERROR": 0
+         },
+         "unconsulted": {
+          "CORRECT": 0,
+          "ABSTAINED": 0,
+          "WRONG": 0,
+          "ERROR": 0
+         }
+        }
+       },
+       "materialized": {
+        "trials": 6,
+        "CORRECT": 4,
+        "ABSTAINED": 1,
+        "WRONG": 1,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 0.6666666666666666,
+        "lowerBound": 0.2713383725197525,
+        "totalTokens": 2397,
+        "toolCalls": 0,
+        "successfulKastCalls": 0,
+        "answers": {
+         "west: NONE": 2,
+         "west: UNKNOWN": 1,
+         "east: settle\nrefund": 1,
+         "east: refund": 2
+        }
+       }
+      },
+      "verdict": "SEPARATED"
+     },
+     {
+      "id": "subtype-extension",
+      "worlds": 2,
+      "ceiling": 0.5,
+      "arms": {
+       "source": {
+        "trials": 6,
+        "CORRECT": 0,
+        "ABSTAINED": 6,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 0,
+        "lowerBound": 0,
+        "totalTokens": 2056,
+        "toolCalls": 0,
+        "successfulKastCalls": 0,
+        "answers": {
+         "north: UNKNOWN": 3,
+         "south: UNKNOWN": 3
+        }
+       },
+       "kast": {
+        "trials": 6,
+        "CORRECT": 6,
+        "ABSTAINED": 0,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 1,
+        "lowerBound": 0.6069622310029174,
+        "totalTokens": 57097,
+        "toolCalls": 12,
+        "successfulKastCalls": 6,
+        "answers": {
+         "north: checkout\nrefund": 3,
+         "south: refund": 3
+        },
+        "byConsultation": {
+         "consulted": {
+          "CORRECT": 6,
+          "ABSTAINED": 0,
+          "WRONG": 0,
+          "ERROR": 0
+         },
+         "unconsulted": {
+          "CORRECT": 0,
+          "ABSTAINED": 0,
+          "WRONG": 0,
+          "ERROR": 0
+         }
+        }
+       },
+       "materialized": {
+        "trials": 6,
+        "CORRECT": 5,
+        "ABSTAINED": 1,
+        "WRONG": 0,
+        "ERROR": 0,
+        "balanced": true,
+        "accuracy": 0.8333333333333334,
+        "lowerBound": 0.4181965907479741,
+        "totalTokens": 3140,
+        "toolCalls": 0,
+        "successfulKastCalls": 0,
+        "answers": {
+         "north: checkout\nrefund": 3,
+         "south: refund": 2,
+         "south: UNKNOWN": 1
+        }
+       }
+      },
+      "verdict": "SEPARATED"
+     }
+    ]
+   },
+   "trials": [
+    {
+     "case": "imported-project",
+     "world": "adapter-a",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 292,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 7275,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-a",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 291,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 5755,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-a",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 290,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 7386,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-a",
+     "arm": "kast",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 566,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8213,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-a",
+     "arm": "kast",
+     "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+     "outcome": "CORRECT",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 8637,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 15777,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "formatInvoiceReference",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--fields",
+        "name,signature,location"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "formatInvoiceReference"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-a",
+     "arm": "kast",
+     "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+     "outcome": "CORRECT",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 8577,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 16193,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "formatInvoiceReference",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--fields",
+        "name,signature,location"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "formatInvoiceReference"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-a",
+     "arm": "materialized",
+     "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+     "outcome": "CORRECT",
+     "promptSha256": "36b99e6878036b797c54632c72bd78ab7399849dcc6772b922acb158b71d6310",
+     "totalTokens": 355,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8710,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-a",
+     "arm": "materialized",
+     "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+     "outcome": "CORRECT",
+     "promptSha256": "36b99e6878036b797c54632c72bd78ab7399849dcc6772b922acb158b71d6310",
+     "totalTokens": 296,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 2258,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-a",
+     "arm": "materialized",
+     "answer": "adapter-a/src/main/kotlin/invoices/InvoiceReference.kt",
+     "outcome": "CORRECT",
+     "promptSha256": "36b99e6878036b797c54632c72bd78ab7399849dcc6772b922acb158b71d6310",
+     "totalTokens": 297,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 1874,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-b",
+     "arm": "kast",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 560,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 9278,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-b",
+     "arm": "kast",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 559,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 9130,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-b",
+     "arm": "kast",
+     "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+     "outcome": "CORRECT",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 8611,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 12620,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "formatInvoiceReference",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--fields",
+        "name,signature,location"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "formatInvoiceReference"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-b",
+     "arm": "materialized",
+     "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+     "outcome": "CORRECT",
+     "promptSha256": "7e9719ddca7cc0270d88c2a14a5d932a3dd743d588ec50e9d8f878dd4e19c02f",
+     "totalTokens": 308,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 6115,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-b",
+     "arm": "materialized",
+     "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+     "outcome": "CORRECT",
+     "promptSha256": "7e9719ddca7cc0270d88c2a14a5d932a3dd743d588ec50e9d8f878dd4e19c02f",
+     "totalTokens": 298,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 2292,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-b",
+     "arm": "materialized",
+     "answer": "adapter-b/src/main/kotlin/invoices/InvoiceReference.kt",
+     "outcome": "CORRECT",
+     "promptSha256": "7e9719ddca7cc0270d88c2a14a5d932a3dd743d588ec50e9d8f878dd4e19c02f",
+     "totalTokens": 312,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 7294,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-b",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 287,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 6597,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-b",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 291,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 7369,
+     "kastCalls": []
+    },
+    {
+     "case": "imported-project",
+     "world": "adapter-b",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "c377acd417f0c19a7a7cc477d338f838e2402b8f2654f3d1caacf6ca7c0107c1",
+     "totalTokens": 293,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 4668,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "west",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 325,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8390,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "west",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 325,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 9350,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "west",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 324,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 6101,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "west",
+     "arm": "kast",
+     "answer": "NONE",
+     "outcome": "CORRECT",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 8746,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 7950,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "post",
+        "--in",
+        "src/main/kotlin/billing/LedgerExtensions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": []
+       }
+      }
+     ]
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "west",
+     "arm": "kast",
+     "answer": "NONE",
+     "outcome": "CORRECT",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 13702,
+     "toolCalls": 3,
+     "openedSkill": true,
+     "elapsedMillis": 12951,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "post",
+        "--in",
+        "src/main/kotlin/billing/LedgerExtensions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "post"
+        ]
+       }
+      },
+      {
+       "argv": [
+        "query",
+        "--ref",
+        "exact:v5:KgACGyuUz_swa_t7OrmnXg",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": []
+       }
+      }
+     ]
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "west",
+     "arm": "kast",
+     "answer": "NONE",
+     "outcome": "CORRECT",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 8716,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 6420,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "post",
+        "--in",
+        "src/main/kotlin/billing/LedgerExtensions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": []
+       }
+      }
+     ]
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "west",
+     "arm": "materialized",
+     "answer": "NONE",
+     "outcome": "CORRECT",
+     "promptSha256": "8b3d8ff2526c94d3ea52be46c738b32ea3fa546c3cc8803ed048593a310acec6",
+     "totalTokens": 372,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 5760,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "west",
+     "arm": "materialized",
+     "answer": "NONE",
+     "outcome": "CORRECT",
+     "promptSha256": "8b3d8ff2526c94d3ea52be46c738b32ea3fa546c3cc8803ed048593a310acec6",
+     "totalTokens": 382,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 4009,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "west",
+     "arm": "materialized",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8b3d8ff2526c94d3ea52be46c738b32ea3fa546c3cc8803ed048593a310acec6",
+     "totalTokens": 452,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 11002,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "east",
+     "arm": "kast",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 14270,
+     "toolCalls": 3,
+     "openedSkill": true,
+     "elapsedMillis": 11079,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "post",
+        "--in",
+        "src/main/kotlin/billing/LedgerExtensions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "post"
+        ]
+       }
+      },
+      {
+       "argv": [
+        "query",
+        "--ref",
+        "exact:v5:P1JRc8X2yDxAKV9ZXnQDIg",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "refund"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "east",
+     "arm": "kast",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 14270,
+     "toolCalls": 3,
+     "openedSkill": true,
+     "elapsedMillis": 9785,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "post",
+        "--in",
+        "src/main/kotlin/billing/LedgerExtensions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "post"
+        ]
+       }
+      },
+      {
+       "argv": [
+        "query",
+        "--ref",
+        "exact:v5:P1JRc8X2yDxAKV9ZXnQDIg",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "refund"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "east",
+     "arm": "kast",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 14267,
+     "toolCalls": 3,
+     "openedSkill": true,
+     "elapsedMillis": 9701,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "post",
+        "--in",
+        "src/main/kotlin/billing/LedgerExtensions.kt",
+        "--source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "post"
+        ]
+       }
+      },
+      {
+       "argv": [
+        "query",
+        "--ref",
+        "exact:v5:Wlw80HHs2MNRgpqyl337JA",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "refund"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "east",
+     "arm": "materialized",
+     "answer": "settle\nrefund",
+     "outcome": "WRONG",
+     "promptSha256": "ec938314c54d2cb8a7f1a31aa632af3813ff4b4d6075a088b7a5f4b97cfb2f76",
+     "totalTokens": 393,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8379,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "east",
+     "arm": "materialized",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "ec938314c54d2cb8a7f1a31aa632af3813ff4b4d6075a088b7a5f4b97cfb2f76",
+     "totalTokens": 395,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 9403,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "east",
+     "arm": "materialized",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "ec938314c54d2cb8a7f1a31aa632af3813ff4b4d6075a088b7a5f4b97cfb2f76",
+     "totalTokens": 403,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 10164,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "east",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 344,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8239,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "east",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 329,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 10932,
+     "kastCalls": []
+    },
+    {
+     "case": "shadowed-extension",
+     "world": "east",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "811a946970f45d7ab9f885112c9eca3735cc8b85a94a735b2cf1c68673d83e02",
+     "totalTokens": 334,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 3093,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 334,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8792,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 350,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 9901,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 338,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 6950,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "kast",
+     "answer": "checkout\nrefund",
+     "outcome": "CORRECT",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 9799,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 7290,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "refund",
+         "checkout"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "kast",
+     "answer": "checkout\nrefund",
+     "outcome": "CORRECT",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 9796,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 7652,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "refund",
+         "checkout"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "kast",
+     "answer": "checkout\nrefund",
+     "outcome": "CORRECT",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 9756,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 7419,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "refund",
+         "checkout"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "materialized",
+     "answer": "checkout\nrefund",
+     "outcome": "CORRECT",
+     "promptSha256": "160987f8e8f6302ecd9f8121b86608ea95ecc7f789b6fac784d3aa85f370de34",
+     "totalTokens": 476,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8555,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "materialized",
+     "answer": "checkout\nrefund",
+     "outcome": "CORRECT",
+     "promptSha256": "160987f8e8f6302ecd9f8121b86608ea95ecc7f789b6fac784d3aa85f370de34",
+     "totalTokens": 494,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 10900,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "north",
+     "arm": "materialized",
+     "answer": "checkout\nrefund",
+     "outcome": "CORRECT",
+     "promptSha256": "160987f8e8f6302ecd9f8121b86608ea95ecc7f789b6fac784d3aa85f370de34",
+     "totalTokens": 410,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 6788,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "kast",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 9267,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 8672,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "refund"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "kast",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 9240,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 7200,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main",
+        "--kind",
+        "function",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "refund"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "kast",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 9239,
+     "toolCalls": 2,
+     "openedSkill": true,
+     "elapsedMillis": 7177,
+     "kastCalls": [
+      {
+       "argv": [
+        "query",
+        "--name",
+        "describe",
+        "--in",
+        "src/main/kotlin/billing/Descriptions.kt",
+        "--source-set",
+        "main",
+        "--relation",
+        "callers",
+        "--relation-source-set",
+        "main"
+       ],
+       "exitStatus": 0,
+       "reply": {
+        "type": "complete",
+        "status": "complete",
+        "rejection": null,
+        "items": [
+         "refund"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "materialized",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "1b36fa0cdb622f666e16e1319d3241e401034076e026f716d221935ef345be9d",
+     "totalTokens": 693,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 17062,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "materialized",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "1b36fa0cdb622f666e16e1319d3241e401034076e026f716d221935ef345be9d",
+     "totalTokens": 643,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 17101,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "materialized",
+     "answer": "refund",
+     "outcome": "CORRECT",
+     "promptSha256": "1b36fa0cdb622f666e16e1319d3241e401034076e026f716d221935ef345be9d",
+     "totalTokens": 424,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8475,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 352,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 8192,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 336,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 3136,
+     "kastCalls": []
+    },
+    {
+     "case": "subtype-extension",
+     "world": "south",
+     "arm": "source",
+     "answer": "UNKNOWN",
+     "outcome": "ABSTAINED",
+     "promptSha256": "8673e260ff7b910cb9dc6aa08f21627b4880a97b384d7b338183ce8d9ff7e22e",
+     "totalTokens": 346,
+     "toolCalls": 0,
+     "openedSkill": false,
+     "elapsedMillis": 10391,
+     "kastCalls": []
+    }
+   ]
+  }
+ },
+ "progress": {
+  "state": "COMPARED",
+  "cases": [
+   {
+    "id": "imported-project",
+    "before": {
+     "successes": 4,
+     "trials": 6,
+     "verdict": "NOT_SEPARATED"
+    },
+    "after": {
+     "successes": 3,
+     "trials": 6,
+     "verdict": "NOT_SEPARATED"
+    },
+    "pGreater": 0.878787878787877
+   },
+   {
+    "id": "shadowed-extension",
+    "before": {
+     "successes": 0,
+     "trials": 6,
+     "verdict": "NOT_SEPARATED"
+    },
+    "after": {
+     "successes": 6,
+     "trials": 6,
+     "verdict": "SEPARATED"
+    },
+    "pGreater": 0.0010822510822510825
+   },
+   {
+    "id": "subtype-extension",
+    "before": {
+     "successes": 0,
+     "trials": 6,
+     "verdict": "NOT_SEPARATED"
+    },
+    "after": {
+     "successes": 6,
+     "trials": 6,
+     "verdict": "SEPARATED"
+    },
+    "pGreater": 0.0010822510822510825
+   }
+  ],
+  "pooled": {
+   "before": {
+    "successes": 4,
+    "trials": 18
+   },
+   "after": {
+    "successes": 15,
+    "trials": 18
+   },
+   "pGreater": 0.0003052725836495241
+  }
+ }
+}

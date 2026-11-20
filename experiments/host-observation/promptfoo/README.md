@@ -11,8 +11,10 @@ A correct solution never needs to call Kast.
 A participant that sees only that text has an expected accuracy of at most one half, whatever its model or tools.
 The suite reports `SEPARATED` only when the Kast configuration's 95% lower confidence bound exceeds that ceiling. Every planned trial counts.
 
-The first run on November 20, 2026 reports `NOT_SEPARATED`: Kast 4/12, text 0/12, ceiling 6/12. No Kast answer was wrong.
-Each failure traces to a skipped Kast call or to an opaque rejection of a file passed to `--in`. Rerun the unchanged suite after each product or skill change.
+The first run on November 20, 2026 reported `NOT_SEPARATED`: Kast 4/12 against a ceiling of 6/12.
+Its failures traced to an opaque rejection of a file passed to `--in`, and to participants that never ran Kast.
+After a product fix in `ae60bfe882`, the unchanged suite plus a held-out case reports `SEPARATED`: Kast 15/18, lower bound 0.623, text 0/18.
+Both binary-dependency cases moved from 0/6 to 6/6, with a one-sided Fisher p of 0.0011 each. `imported-project` did not improve. No Kast answer was wrong in any run.
 
 The suites below measure other questions. On tasks that the source text decides, their results are mixed and do not support a general uplift claim.
 
@@ -111,7 +113,7 @@ Promptfoo uses a fresh model response for each live trial. Provider caches can s
 
 | Configuration | Cases and arms | Inputs |
 |---|---|---|
-| `separation.config.mjs` | Two twin cases, a shadowed extension and an imported project, each with three configurations. | Prepare with `npm run separation:prepare`. [Separation guide](separation.md) |
+| `separation.config.mjs` | Three twin cases with three configurations: two binary-dependency cases and an imported project. | Prepare with `npm run separation:prepare`. [Separation guide](separation.md) |
 | `corpus.config.mjs` | Full `ktfmt`, kotlinx.coroutines, and Spring Framework checkouts with three low-reasoning delegates. | [Upstream workspace guide](upstream-workspaces.md) |
 | `developer.config.mjs` | Implement features, migrate an API, trace dispatch, and fix a scheduler defect with or without Kast. | Use Pi, Kast, Kotlin/JVM, and macOS. [Developer task guide](developer-tasks.md) |
 | `pi.config.mjs` | Six replay graders, paired interface formats, fresh Pi tasks, received results, or a recorded target | Use `KAST_PI_EVAL_PLAN` for a live plan. Use `KAST_PI_EVAL_TARGET` for a recorded target. [Pi guide](../PI_EVALUATION.md) |
