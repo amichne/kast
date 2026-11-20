@@ -32,6 +32,7 @@ private fun ImpactValueConditionDocument.hasSameRefinement(other: ImpactValueCon
         is ImpactValueConditionDocument.ReviewedCollectionNormalResult,
         is ImpactValueConditionDocument.ReviewedEntryKeyUnique -> hasSameProofRefinement(other)
         is ImpactValueConditionDocument.StringContentNonNull,
+        is ImpactValueConditionDocument.ReceiverNonNull,
         is ImpactValueConditionDocument.StableLocal,
         is ImpactValueConditionDocument.StableReceiver,
         is ImpactValueConditionDocument.CastSuccess -> hasSameCompilerRefinement(other)
@@ -93,6 +94,7 @@ private fun ImpactValueConditionDocument.hasSameCompilerRefinement(other: Impact
     when (this) {
         is ImpactValueConditionDocument.StringContentNonNull ->
             other is ImpactValueConditionDocument.StringContentNonNull && entryRange == other.entryRange
+        is ImpactValueConditionDocument.ReceiverNonNull -> other is ImpactValueConditionDocument.ReceiverNonNull
         is ImpactValueConditionDocument.StableLocal ->
             other is ImpactValueConditionDocument.StableLocal && sameLocalRefinement(other)
         is ImpactValueConditionDocument.StableReceiver ->
@@ -143,6 +145,7 @@ private fun ImpactValueConditionDocument.admitsRefinement(): Boolean =
         is ImpactValueConditionDocument.ReviewedCallbackNormalReturn -> admitsNormalReturn()
         is ImpactValueConditionDocument.ReviewedCollectionNormalResult -> admitsCollectionResult()
         is ImpactValueConditionDocument.ReviewedEntryKeyUnique -> admitsEntryKeyUnique()
+        is ImpactValueConditionDocument.ReceiverNonNull -> admitsReceiverUse()
         is ImpactValueConditionDocument.StableLocal ->
             sourceSite().admitsLocalVersion() &&
                 version.admitsLocalRead(useRange) &&
@@ -217,6 +220,8 @@ private fun ImpactValueConditionDocument.matchesTransferKind(kind: ImpactTransfe
         is ImpactValueConditionDocument.ReviewedCollectionNormalResult,
         is ImpactValueConditionDocument.ReviewedEntryKeyUnique -> false
         is ImpactValueConditionDocument.StableLocal -> kind == ImpactTransferKindDocument.LOCAL_READ
+        is ImpactValueConditionDocument.ReceiverNonNull ->
+            kind == ImpactTransferKindDocument.FIELD_READ || kind == ImpactTransferKindDocument.RECEIVER
         is ImpactValueConditionDocument.StableReceiver -> kind == ImpactTransferKindDocument.FIELD_READ
         is ImpactValueConditionDocument.CastSuccess -> kind == ImpactTransferKindDocument.CAST_RESULT
     }
@@ -245,6 +250,7 @@ internal fun ImpactValueConditionDocument.sourceSite(): ImpactValueSiteReference
                 is ImpactValueConditionDocument.ReviewedEntryComponentStable,
                 is ImpactValueConditionDocument.ReviewedMappedKeySurvives,
                 is ImpactValueConditionDocument.ReviewedEntryKeyUnique,
+                is ImpactValueConditionDocument.ReceiverNonNull,
                 is ImpactValueConditionDocument.StableReceiver,
                 is ImpactValueConditionDocument.CastSuccess -> ImpactLocalVersionDocument.Unversioned
             },
@@ -253,3 +259,7 @@ internal fun ImpactValueConditionDocument.sourceSite(): ImpactValueSiteReference
 private fun ImpactValueConditionDocument.StableLocal.sameLocalRefinement(
     other: ImpactValueConditionDocument.StableLocal
 ): Boolean = originalType == other.originalType && version == other.version && refinedType == other.refinedType
+
+private fun ImpactValueConditionDocument.ReceiverNonNull.admitsReceiverUse(): Boolean =
+    (origin.role == ImpactValueRoleDocument.ExpressionResult || origin.role == ImpactValueRoleDocument.LocalRead) &&
+        useRange.containsExecutionRange(origin.range)

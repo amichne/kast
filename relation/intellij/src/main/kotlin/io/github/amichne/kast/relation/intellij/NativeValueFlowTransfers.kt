@@ -3,6 +3,7 @@ package io.github.amichne.kast.relation.intellij
 import com.intellij.psi.PsiElement
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.relation.contract.ReviewedValueTransfer
+import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueFlowExpressionKind
 import io.github.amichne.kast.relation.contract.ValueFlowObligation
 import io.github.amichne.kast.relation.contract.ValueFlowRejection
@@ -82,9 +83,10 @@ internal class NativeValueFlowTransfers(
         role: ValueRole,
         kind: ValueTransferKind,
         evidence: ValueTransferEvidence = ValueTransferEvidence.Direct,
+        conditions: ValueConditions = request.source.conditions,
         localVersion: ValueLocalVersion = ValueLocalVersion.Unversioned,
     ) {
-        when (val result = target(element, role, localVersion)) {
+        when (val result = target(element, role, localVersion, conditions)) {
             is Refinement.Refined -> emitTarget(result.value, kind, evidence)
             is Refinement.Rejected -> unresolvedAt(result.failure, element)
         }
@@ -94,6 +96,7 @@ internal class NativeValueFlowTransfers(
         element: PsiElement,
         role: ValueRole,
         localVersion: ValueLocalVersion,
+        conditions: ValueConditions,
     ): Refinement<ValueSite, ValueFlowUnsupportedCause> {
         when (valueNativeOwnership(element, owner)) {
             NativeValueOwnership.ADMITTED -> Unit
@@ -117,7 +120,7 @@ internal class NativeValueFlowTransfers(
                     executionOwner = request.source.executionOwner,
                     valuePath = request.source.valuePath,
                     callStack = request.source.callStack,
-                    conditions = request.source.conditions,
+                    conditions = conditions,
                     localVersion = localVersion,
                 )
         ) {

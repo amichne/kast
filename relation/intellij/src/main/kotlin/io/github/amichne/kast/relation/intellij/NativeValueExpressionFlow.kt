@@ -195,10 +195,23 @@ internal class NativeValueExpressionFlow(
                                 { emit(expression, ValueRole.Return, ValueTransferKind.RETURN) },
                                 ::unresolved,
                             )
+                } else if (block.isBranchBody()) {
+                    // A braced branch yields its final statement; earlier statement values are discarded.
+                    if (block.statements.lastOrNull() === expression) transferExpression(block)
                 } else if (block.parent !is KtNamedFunction)
                     retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
         }
     }
+
+    private fun KtBlockExpression.isBranchBody(): Boolean =
+        when (val container = parent) {
+            is KtContainerNodeForControlStructureBody -> {
+                val branch = container.parent as? KtIfExpression
+                branch != null && (branch.then === this || branch.`else` === this)
+            }
+            is KtWhenEntry -> container.expression === this
+            else -> false
+        }
 
     private fun componentBinding(entry: KtDestructuringDeclarationEntry) {
         if ((entry.parent as? KtDestructuringDeclaration)?.isVar == true) localVersionDestination(entry)
@@ -216,6 +229,7 @@ internal class NativeValueExpressionFlow(
     }
 
     private fun binaryDestination(expression: KtExpression, binary: KtBinaryExpression) {
+        if (binary.isLiteralNullPredicateOperand(expression)) return
         if (!arithmetic.read(expression, binary)) assignmentDestination(expression, binary)
     }
 

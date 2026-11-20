@@ -90,7 +90,19 @@ private fun admitsDirectOwner(source: ValueSite, target: ValueSite, kind: ValueT
             target.role == ValueRole.LocalRead &&
             source.identity.owner == target.identity.owner &&
             source.executionOwner.context == ValueExecutionContext.Declaration &&
-            target.executionOwner.context is ValueExecutionContext.Callback)
+            target.executionOwner.capturesFrom(source.executionOwner))
+
+/** A captured read enters only a callback whose proved execution is rooted in the reading declaration. */
+private fun ValueExecutionOwner.capturesFrom(declaration: ValueExecutionOwner): Boolean =
+    when (val execution = context) {
+        ValueExecutionContext.Declaration -> false
+        is ValueExecutionContext.Callback -> true
+        // Both bindings are admitted only beneath the enclosing named declaration's exact occurrence.
+        is ValueExecutionContext.DeclaredCallback ->
+            execution.binding.enclosing.valueIdentity == declaration.enclosing.valueIdentity
+        is ValueExecutionContext.ReviewedCallback ->
+            execution.binding.enclosing.valueIdentity == declaration.enclosing.valueIdentity
+    }
 
 private fun ValueTransferEvidence.NormalBranchResult.admitsNormal(
     source: ValueSite,

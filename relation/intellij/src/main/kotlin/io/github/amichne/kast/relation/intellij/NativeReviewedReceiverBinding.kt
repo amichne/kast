@@ -43,10 +43,10 @@ internal fun nativeReviewedReceiverBinding(
                 ReviewedLibraryOperation.ITERABLE_MAP_NOT_NULL,
                 ReviewedLibraryOperation.ITERABLE_SORTED_BY,
                 ReviewedLibraryOperation.ITERABLE_ASSOCIATE,
-                ReviewedLibraryOperation.MAP_VALUES -> read
+                ReviewedLibraryOperation.MAP_VALUES,
+                ReviewedLibraryOperation.LET -> read
                 ReviewedLibraryOperation.RUN_TOP_LEVEL,
                 ReviewedLibraryOperation.WITH,
-                ReviewedLibraryOperation.LET,
                 ReviewedLibraryOperation.INT_MIN,
                 ReviewedLibraryOperation.INT_MAX,
                 ReviewedLibraryOperation.TO,
@@ -77,6 +77,7 @@ private fun reviewedReceiverKind(
                 symbol.callableId?.asSingleFqName()?.asString() !in
                     setOf(
                         "kotlin.also",
+                        "kotlin.let",
                         "kotlin.run",
                         "kotlin.apply",
                         "kotlin.collections.map",

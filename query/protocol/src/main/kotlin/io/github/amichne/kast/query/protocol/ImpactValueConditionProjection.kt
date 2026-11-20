@@ -44,22 +44,12 @@ internal fun ValueConditions.impactDocument(): ImpactProjected<BoundedProtocolLi
             is ValueCondition.ReviewedEntryPrefixNormal -> condition.impactDocument()
             is ValueCondition.ReviewedEntryKeyUnique -> condition.impactDocument()
             is ValueCondition.StableLocal -> condition.impactDocument()
-            is ValueCondition.StableReceiver ->
-                condition.origin
-                    .impactDocument()
-                    .impactZip(condition.useRange.impactDocument())
-                    .impactZip(condition.originalType.value.impactText())
-                    .impactZip(condition.refinedType.value.impactText())
-                    .impactMap { (original, refinedType) ->
-                        val (occurrence, originalType) = original
-                        ImpactValueConditionDocument.StableReceiver(
-                            occurrence.first,
-                            occurrence.second,
-                            condition.kind.impactDocument(),
-                            originalType,
-                            refinedType,
-                        )
-                    }
+            is ValueCondition.ReceiverNonNull ->
+                condition.origin.impactDocument().impactZip(condition.useRange.impactDocument()).impactMap {
+                    (origin, range) ->
+                    ImpactValueConditionDocument.ReceiverNonNull(origin, range)
+                }
+            is ValueCondition.StableReceiver -> condition.impactDocument()
             is ValueCondition.CastSuccess -> condition.impactDocument()
         }
     }
@@ -202,3 +192,21 @@ private fun ReviewedCallbackResultNonNull.impactDocument():
         (origin, binding) ->
         ImpactValueConditionDocument.ReviewedCallbackResultNonNull(origin.first, origin.second, binding)
     }
+
+private fun ValueCondition.StableReceiver.impactDocument():
+    ImpactProjected<ImpactValueConditionDocument.StableReceiver> =
+    origin
+        .impactDocument()
+        .impactZip(useRange.impactDocument())
+        .impactZip(originalType.value.impactText())
+        .impactZip(refinedType.value.impactText())
+        .impactMap { (original, refinedType) ->
+            val (occurrence, originalType) = original
+            ImpactValueConditionDocument.StableReceiver(
+                occurrence.first,
+                occurrence.second,
+                kind.impactDocument(),
+                originalType,
+                refinedType,
+            )
+        }

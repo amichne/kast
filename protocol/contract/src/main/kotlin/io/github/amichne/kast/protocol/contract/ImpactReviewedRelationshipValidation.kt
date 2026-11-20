@@ -39,6 +39,8 @@ private fun ImpactReviewedValueRelationshipDocument.admitsCallbackRelation(
                     proof.rule.isReviewedDeclaredReturn()
                 ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALL_RESULT ->
                     proof.rule.isReviewedReceiverResult()
+                ImpactReviewedValueSemanticsDocument.CONDITIONAL_RECEIVER_TO_CALLBACK_PARAMETER ->
+                    proof.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_LET_V1
             }
         is ImpactReviewedValueRelationDocument.ReorderedElements ->
             proof.rule == ImpactReviewedValueRuleDocument.KOTLIN_2_3_0_ITERABLE_SORTED_BY_V1

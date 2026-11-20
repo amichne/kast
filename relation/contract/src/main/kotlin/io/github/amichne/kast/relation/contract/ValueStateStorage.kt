@@ -39,6 +39,7 @@ private fun valueConditionStorageBytes(condition: ValueCondition): Long {
                         )
                         .addBytes(condition.originalType.value.length.toLong().multiplyBytes(2))
                         .addBytes(condition.refinedType.value.length.toLong().multiplyBytes(2))
+                is ValueCondition.ReceiverNonNull -> 0L
                 is ValueCondition.StableReceiver ->
                     condition.originalType.value.length
                         .toLong()

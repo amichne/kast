@@ -176,9 +176,10 @@ private fun reviewedReceiverTransfers(
         }
         ReviewedLibraryOperation.ALSO ->
             retained.adoptReviewed(nativeReviewedIdentityResult(request, binding, literal, context))
+        // The receiver enters the callback formal; the call result is the callback result, never the receiver.
+        ReviewedLibraryOperation.LET -> retained.adoptReviewed(nativeReviewedInput(request, binding, literal, context))
         ReviewedLibraryOperation.RUN_TOP_LEVEL,
         ReviewedLibraryOperation.WITH,
-        ReviewedLibraryOperation.LET,
         ReviewedLibraryOperation.INT_MIN,
         ReviewedLibraryOperation.INT_MAX,
         ReviewedLibraryOperation.TO,

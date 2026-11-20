@@ -339,6 +339,8 @@ registerRelationNativeFixtures(
         "*NativeDestructuringRevalidationTest",
         "*NativeReceiverImplementationDispatchTest",
         "*NativeCoreValueCompositionTest",
+        "*NativeImpactTransferGapTest",
+        "*NativeImpactCaptureGapTest",
         "*NativeReceiverBranchParityTest",
         "*NativeInheritedReceiverTest",
         "*NativeTypeOperationFlowTest",

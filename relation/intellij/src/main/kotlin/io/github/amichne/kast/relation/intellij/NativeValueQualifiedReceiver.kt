@@ -1,12 +1,15 @@
 package io.github.amichne.kast.relation.intellij
 
 import io.github.amichne.kast.kernel.Refinement
+import io.github.amichne.kast.relation.contract.ValueCondition
 import io.github.amichne.kast.relation.contract.ValueFlowUnsupportedCause
+import io.github.amichne.kast.relation.contract.ValueRole
 import io.github.amichne.kast.relation.contract.ValueSite
 import io.github.amichne.kast.relation.contract.ValueTransferKind
 import org.jetbrains.kotlin.psi.KtCallElement
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
+import org.jetbrains.kotlin.psi.KtSafeQualifiedExpression
 
 /** Qualified reads retain ordinary receiver flow unless the compiler proves a stored-field accessor. */
 internal class NativeValueQualifiedReceiver(
@@ -104,16 +107,39 @@ internal class NativeValueQualifiedReceiver(
                     executionOwner = source.executionOwner,
                 )
         ) {
-            is Refinement.Refined -> retained.emit(expression, role.value, ValueTransferKind.RECEIVER)
+            is Refinement.Refined -> emitReceiver(expression, qualified, role.value)
             is Refinement.Rejected ->
                 if (role.failure == ValueFlowUnsupportedCause.EXTERNAL_CALL) reviewedReceiver(expression, qualified)
                 else retained.unresolvedAt(role.failure, qualified)
         }
     }
 
+    private fun emitReceiver(
+        expression: KtExpression,
+        qualified: KtQualifiedExpression,
+        role: ValueRole.Receiver,
+    ) {
+        if (qualified !is KtSafeQualifiedExpression) {
+            retained.emit(expression, role, ValueTransferKind.RECEIVER)
+            return
+        }
+        when (
+            val conditions =
+                ValueCondition.ReceiverNonNull.atUse(
+                    source,
+                    sourceValueRange(expression),
+                )
+        ) {
+            is Refinement.Refined ->
+                retained.emit(expression, role, ValueTransferKind.RECEIVER, conditions = conditions.value)
+            is Refinement.Rejected ->
+                retained.unresolvedAt(ValueFlowUnsupportedCause.UNSUPPORTED_EXPRESSION, expression)
+        }
+    }
+
     private fun reviewedReceiver(expression: KtExpression, qualified: KtQualifiedExpression) {
         when (val reviewed = nativeReviewedReceiverRole(request, qualified, scope, projection, allowance)) {
-            is Refinement.Refined -> retained.emit(expression, reviewed.value, ValueTransferKind.RECEIVER)
+            is Refinement.Refined -> emitReceiver(expression, qualified, reviewed.value)
             is Refinement.Rejected ->
                 if (
                     (qualified.selectorExpression as? org.jetbrains.kotlin.psi.KtCallExpression)

@@ -11,6 +11,7 @@ import io.github.amichne.kast.relation.contract.ValueArgumentPosition
 import io.github.amichne.kast.relation.contract.ValueCallBindingFailure
 import io.github.amichne.kast.relation.contract.ValueCallFrame
 import io.github.amichne.kast.relation.contract.ValueCallStack
+import io.github.amichne.kast.relation.contract.ValueCondition
 import io.github.amichne.kast.relation.contract.ValueConditions
 import io.github.amichne.kast.relation.contract.ValueExecutionOwner
 import io.github.amichne.kast.relation.contract.ValueField
@@ -42,6 +43,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
+import org.jetbrains.kotlin.psi.KtSafeQualifiedExpression
 
 internal fun nativeValueSourceArgument(
     request: ValueFlowRequest,
@@ -205,7 +207,27 @@ internal fun nativeValueFieldRead(
             is Refinement.Refined -> value.value
             is Refinement.Rejected -> return value
         }
-    return sourceFieldTarget(source, expression, field)
+    val receiver = expression.receiverExpression
+    val conditional =
+        expression is KtSafeQualifiedExpression ||
+            projection.observation.observedAnalyze(receiver) {
+                val cast = receiver.smartCastInfo
+                cast != null &&
+                    cast.isStable &&
+                    cast.originalType.isMarkedNullable &&
+                    !cast.smartCastType.isMarkedNullable
+            }
+    if (!conditional) return sourceFieldTarget(source, expression, field)
+    return when (
+        val conditions =
+            ValueCondition.ReceiverNonNull.atUse(
+                source,
+                sourceValueRange(expression),
+            )
+    ) {
+        is Refinement.Refined -> sourceFieldTarget(source, expression, field, conditions.value)
+        is Refinement.Rejected -> sourceRejected()
+    }
 }
 
 internal fun sourceFieldTarget(

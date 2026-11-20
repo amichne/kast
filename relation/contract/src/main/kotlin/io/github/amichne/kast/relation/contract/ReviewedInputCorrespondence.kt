@@ -32,6 +32,8 @@ private constructor(
         ): Refinement<ReviewedInputCorrespondence, ValueFlowUnsupportedCause> {
             if (binding.selected.operation == ReviewedLibraryOperation.MAP_VALUES)
                 return mapEntry(source, binding, formal)
+            if (binding.selected.operation == ReviewedLibraryOperation.LET)
+                return scopeParameter(source, binding, formal)
             when (val admitted = admitReviewedInput(source, binding, formal)) {
                 is Refinement.Refined -> Unit
                 is Refinement.Rejected -> return admitted
@@ -50,6 +52,25 @@ private constructor(
                 ReviewedInputCorrespondence(path, ReviewedValueRelation.CallbackCorrespondence(semantics))
             )
         }
+
+        /** `let` passes its receiver unchanged; the path and conditions keep the receiver's established identity. */
+        private fun scopeParameter(
+            source: ValueSite,
+            binding: ReviewedCallbackValueBinding,
+            formal: ValueFormalParameter,
+        ): Refinement<ReviewedInputCorrespondence, ValueFlowUnsupportedCause> =
+            when (val admitted = admitReviewedScopeParameter(source, binding, formal)) {
+                is Refinement.Refined ->
+                    Refinement.Refined(
+                        ReviewedInputCorrespondence(
+                            source.valuePath,
+                            ReviewedValueRelation.CallbackCorrespondence(
+                                ReviewedValueSemantics.CONDITIONAL_RECEIVER_TO_CALLBACK_PARAMETER
+                            ),
+                        )
+                    )
+                is Refinement.Rejected -> admitted
+            }
 
         private fun mapEntry(
             source: ValueSite,

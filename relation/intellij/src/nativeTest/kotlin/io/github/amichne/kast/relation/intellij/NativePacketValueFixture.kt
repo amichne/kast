@@ -423,7 +423,7 @@ internal constructor(
     }
 }
 
-private fun frozenPacketSource(path: String): ByteArray {
+internal fun frozenPacketSource(path: String): ByteArray {
     val root = Path.of("testData/request-response")
     val expected =
         Files.readAllLines(root.resolve("frozen-sources.sha256")).single { it.endsWith("  $path") }.substringBefore(' ')
