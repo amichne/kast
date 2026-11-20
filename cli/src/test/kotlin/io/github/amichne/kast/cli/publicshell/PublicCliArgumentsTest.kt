@@ -106,187 +106,6 @@ class PublicCliArgumentsTest {
     }
 
     @Test
-    fun `pipeline flags lower to admitted stages in argv order`() {
-        val other = "result:v1:00000000-0000-0000-0000-000000000001"
-        val argv =
-            listOf(
-                "query",
-                "--all",
-                "--kind",
-                "function",
-                "--in",
-                "services/orders",
-                "--source-set",
-                "main",
-                "--visibility",
-                "public,internal",
-                "--relation",
-                "callers",
-                "--without",
-                RESULT_REFERENCE,
-                "--intersect",
-                other,
-                "--minus",
-                RESULT_REFERENCE,
-                "--union",
-                other,
-                "--with",
-                RESULT_REFERENCE,
-            )
-        val lowered = arguments(query(*argv.toTypedArray()))
-        val expected =
-            oracleJson.encodeToJsonElement(
-                OraclePipelineEnvelope(
-                    OraclePipelineRun(
-                        source =
-                            OracleAllSource(
-                                declarationKinds = listOf("FUNCTION"),
-                                scope = OracleDirectory("services/orders", listOf("main")),
-                            ),
-                        steps =
-                            listOf(
-                                OracleStep(
-                                    "WHERE",
-                                    predicate = OracleVisibility(values = listOf("PUBLIC", "INTERNAL")),
-                                ),
-                                OracleStep("EXPAND_RELATION", relation = "CALLERS"),
-                                OracleStep("JOIN", mode = OracleMode("ANTI"), right = OracleRight(RESULT_REFERENCE)),
-                                OracleStep("INTERSECT", right = OracleRight(other)),
-                                OracleStep("DIFFERENCE", right = OracleRight(RESULT_REFERENCE)),
-                                OracleStep("UNION", right = OracleRight(other)),
-                                OracleStep("JOIN", mode = OracleMode("SEMI"), right = OracleRight(RESULT_REFERENCE)),
-                            ),
-                    )
-                )
-            )
-        assertEquals(expected, lowered)
-        assertTrue(admission(lowered) is Refinement.Refined, "pipeline must admit: ${admission(lowered)}")
-        val swapped =
-            arguments(query("query", "--from", RESULT_REFERENCE, "--minus", other, "--relation", "callers"))
-        val swappedSteps = swapped.getValue("request").jsonObject.getValue("steps").jsonArray
-        assertEquals(
-            listOf("DIFFERENCE", "EXPAND_RELATION"),
-            swappedSteps.map { it.jsonObject.getValue("type").jsonPrimitive.content },
-        )
-        val source = swapped.getValue("request").jsonObject.getValue("source").jsonObject
-        assertEquals("RESULT", source.getValue("type").jsonPrimitive.content)
-        assertEquals(RESULT_REFERENCE, source.getValue("result").jsonPrimitive.content)
-        assertTrue(admission(swapped) is Refinement.Refined)
-    }
-
-    @Test
-    fun `pipeline flags reject ambiguous sources and invalid values`() {
-        listOf(
-                listOf("query", "--all", "--name", "A"),
-                listOf("query", "--from", RESULT_REFERENCE, "--ref", "R"),
-                listOf("query", "--from", RESULT_REFERENCE, "--in", "."),
-                listOf("query", "--all", "--name-match", "fuzzy"),
-                listOf("query", "--all", "--kind", "enum"),
-                listOf("query", "--all", "--visibility", "public,public"),
-                listOf("query", "--all", "--visibility", "Public"),
-                listOf("query", "--all", "--visibility", "public,"),
-                listOf("query", "--from", RESULT_REFERENCE, "--from", RESULT_REFERENCE),
-                listOf("result", "read", "--ref", RESULT_REFERENCE, "--minus", RESULT_REFERENCE),
-            )
-            .forEach { argv ->
-                assertTrue(parsePublicCliArguments(argv) is Refinement.Rejected, "must reject: $argv")
-            }
-    }
-
-    @Test
-    fun `relation destination flags restrict every hop and trace before enumeration`() {
-        val lowered =
-            arguments(
-                query(
-                    "query",
-                    "--all",
-                    "--in",
-                    "legacy",
-                    "--relation",
-                    "references",
-                    "--relation-in",
-                    "app",
-                    "--relation-source-set",
-                    "main",
-                    "--relation",
-                    "callers",
-                )
-            )
-        val domain = OracleSourceDomain(sourceSets = listOf("main"), directory = "app")
-        val steps = lowered.getValue("request").jsonObject.getValue("steps")
-        assertEquals(
-            oracleJson.encodeToJsonElement(
-                listOf(
-                    OracleRelationStep(relation = "REFERENCES", expansionScope = domain),
-                    OracleRelationStep(relation = "CALLERS", expansionScope = domain),
-                )
-            ),
-            steps,
-        )
-        assertTrue(admission(lowered) is Refinement.Refined, "domain must admit: ${admission(lowered)}")
-
-        val defaults =
-            arguments(query("query", "--ref", "exact:v5:AAAAAAAAAAAAAAAAAAAAAA", "--terminal", "trace", "--relation-in", "app"))
-        assertEquals(
-            oracleJson.encodeToJsonElement(OracleSourceDomain(sourceSets = listOf("main", "test"), directory = "app")),
-            defaults.getValue("request").jsonObject.getValue("terminalStep").jsonObject.getValue("expansionScope"),
-        )
-        assertTrue(admission(defaults) is Refinement.Refined)
-
-        val narrowed =
-            arguments(
-                query(
-                    "query",
-                    "--ref",
-                    "exact:v5:AAAAAAAAAAAAAAAAAAAAAA",
-                    "--relation",
-                    "callers",
-                    "--relation-production-only",
-                    "--relation-exclude-generated",
-                )
-            )
-        assertEquals(
-            oracleJson.encodeToJsonElement(
-                OracleSourceDomain(
-                    sourceSets = listOf("main", "test"),
-                    directory = null,
-                    sourcePolicy = "PRODUCTION_ONLY",
-                    generatedSources = "EXCLUDE",
-                )
-            ),
-            narrowed
-                .getValue("request")
-                .jsonObject
-                .getValue("steps")
-                .jsonArray
-                .single()
-                .jsonObject
-                .getValue("expansionScope"),
-        )
-        assertTrue(admission(narrowed) is Refinement.Refined)
-
-        val unscoped = arguments(query("query", "--ref", "exact:v5:AAAAAAAAAAAAAAAAAAAAAA", "--relation", "callers"))
-        assertFalse(
-            "expansionScope" in
-                unscoped.getValue("request").jsonObject.getValue("steps").jsonArray.single().jsonObject
-        )
-    }
-
-    @Test
-    fun `relation destination flags reject without a relation or trace`() {
-        listOf(
-                listOf("query", "--name", "A", "--relation-in", "app"),
-                listOf("query", "--all", "--relation-source-set", "main"),
-                listOf("query", "--name", "A", "--relation-production-only"),
-                listOf("query", "--name", "A", "--relation", "callers", "--relation-in", "a", "--relation-in", "b"),
-                listOf("source", "read", "--ref", "R", "--relation-in", "app"),
-            )
-            .forEach { argv ->
-                assertTrue(parsePublicCliArguments(argv) is Refinement.Rejected, "must reject: $argv")
-            }
-    }
-
-    @Test
     fun `location source preserves the file and offset`() {
         val location = arguments(query("query", "--file", "src/Main.kt", "--offset", "12"))
         assertEquals(
@@ -492,11 +311,11 @@ class PublicCliArgumentsTest {
     }
 }
 
-private val oracleJson = Json {
+internal val oracleJson = Json {
     encodeDefaults = true
     explicitNulls = false
 }
-private const val RESULT_REFERENCE = "result:v1:00000000-0000-0000-0000-000000000000"
+internal const val RESULT_REFERENCE = "result:v1:00000000-0000-0000-0000-000000000000"
 private const val OUTPUT_CONTINUATION = "query-output:v1:00000000-0000-0000-0000-000000000000"
 
 private fun relationQuery(vararg relations: String) =
@@ -508,12 +327,12 @@ private fun relationQuery(vararg relations: String) =
         )
     )
 
-private fun query(vararg argv: String): PublicCliCommand.Query =
+internal fun query(vararg argv: String): PublicCliCommand.Query =
     (parsePublicCliArguments(argv.toList()) as Refinement.Refined).value as PublicCliCommand.Query
 
-private fun arguments(query: PublicCliCommand.Query) = (query.input as PublicCliInput.Lowered).arguments
+internal fun arguments(query: PublicCliCommand.Query) = (query.input as PublicCliInput.Lowered).arguments
 
-private fun admission(
+internal fun admission(
     input: kotlinx.serialization.json.JsonElement,
     catalog: PublicToolCatalog = PublicToolCatalog.COMPLETE,
 ) = PublicToolContract.admit(PublicToolIdentity.QUERY_SYMBOLS, input, catalog)
@@ -571,61 +390,6 @@ private data class OracleRun(
 @Serializable
 private data class OracleSource(val type: String = "SEARCH_DECLARATIONS", val declarationName: String = "OrderService")
 
-@Serializable private data class OracleTerminal(val type: String = "EMIT")
+@Serializable internal data class OracleTerminal(val type: String = "EMIT")
 
 @Serializable private data class OracleBudget(val maxElapsedMs: Long? = null, val maxReturnedBytes: Long? = null)
-
-@Serializable private data class OraclePipelineEnvelope(val request: OraclePipelineRun)
-
-@Serializable
-private data class OraclePipelineRun(
-    val source: OracleAllSource,
-    val steps: List<OracleStep>,
-    val type: String = "RUN",
-    val terminalStep: OracleTerminal = OracleTerminal(),
-)
-
-@Serializable
-private data class OracleAllSource(
-    val declarationKinds: List<String>,
-    val scope: OracleDirectory,
-    val type: String = "ALL_DECLARATIONS",
-)
-
-@Serializable
-private data class OracleDirectory(
-    val relativeDirectoryPath: String,
-    val sourceSetNames: List<String>,
-    val type: String = "DIRECTORY",
-)
-
-@Serializable
-private data class OracleStep(
-    val type: String,
-    val relation: String? = null,
-    val predicate: OracleVisibility? = null,
-    val mode: OracleMode? = null,
-    val right: OracleRight? = null,
-)
-
-@Serializable private data class OracleVisibility(val values: List<String>, val type: String = "VISIBILITY")
-
-@Serializable private data class OracleMode(val type: String)
-
-@Serializable private data class OracleRight(val result: String, val type: String = "RESULT")
-
-@Serializable
-private data class OracleRelationStep(
-    val relation: String,
-    val expansionScope: OracleSourceDomain,
-    val type: String = "EXPAND_RELATION",
-)
-
-@Serializable
-private data class OracleSourceDomain(
-    val sourceSets: List<String>,
-    val directory: String?,
-    val sourcePolicy: String = "PRODUCTION_AND_TEST",
-    val generatedSources: String = "INCLUDE",
-    val type: String = "SOURCE_DOMAIN",
-)

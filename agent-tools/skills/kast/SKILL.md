@@ -71,7 +71,7 @@ Match the strength of each claim to the verdict:
 | Qualified or rejected | "At least these." Report the omissions and failures. Never claim absence. |
 
 `rows` set to `MORE` means that more rows exist. The query still reports `complete`.
-Read the next page with `kast result read --ref "$result" --cursor "$next_cursor" --output symbols`.
+Read the next page with `kast result read`. Use the original output kind for every page.
 Never repeat a query to recover output.
 
 ## Select exactly
@@ -161,13 +161,20 @@ uses='{type, status: .document.status, exhaustive: .document.coverage.exhaustive
   failures: .document.original_evidence_summary.failure_count,
   omissions: .document.original_evidence_summary.omission_count,
   rows: .document.row_window.type, next_cursor: .document.next_cursor,
+  result: .document.retention.reference,
   items: [.document.items[]? | {target: .occurrence.target.qualifiedIdentity,
     file: .occurrence.occurrence.file, context: .occurrence.context}]}'
 ```
 
 ```sh
 kast query --all --in legacy --source-set main --relation references \
-  --relation-in app --relation-source-set main --output occurrences --jq "$uses"
+  --relation-in app --relation-source-set main --output occurrences --retain --jq "$uses"
+```
+
+If `rows` is `MORE`, use the returned `result` and `next_cursor` to read the next page.
+
+```sh
+kast result read --ref "$result" --cursor "$next_cursor" --output occurrences --jq "$uses"
 ```
 
 Each row names the `legacy/` target, the `app/` file, and the context: `CODE`, `TYPE`, or `IMPORT`.
