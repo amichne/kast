@@ -794,7 +794,10 @@ val prepareKnowledgeParser = tasks.register("prepareKnowledgeParser") {
 verifyKnowledgeClaims.configure {
     dependsOn(prepareKnowledgeParser, documentationPythonDependencies)
     executableFile.set(validationExecutable("uv"))
-    arguments.set(listOf("run", "--locked", "--project", "docs/internal/tooling", "python", "docs/internal/tooling/knowledge_check.py"))
+    val assessment = layout.buildDirectory.file("reports/documentation/knowledge-assessment.json")
+    outputs.file(assessment)
+    arguments.set(listOf("run", "--locked", "--project", "docs/internal/tooling", "python", "docs/internal/tooling/knowledge_check.py",
+        "--report", assessment.get().asFile.absolutePath))
     environmentVariables.put("KAST_KNOWLEDGE_PARSER_CLASSPATH", knowledgeParserClasspath.asPath)
     runtimeFiles.from(documentationPython, documentationEnvironment, validationExecutable("java"))
     environmentVariables.put("UV_PROJECT_ENVIRONMENT", documentationEnvironment.get().asFile.absolutePath)

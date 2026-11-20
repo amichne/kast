@@ -343,7 +343,7 @@ def test_imported_content_must_join_the_review_binding(root: Path) -> None:
     obligations = assess_associations(
         root, wire(ManifestFixture((binding(root),))), wire(NativeFixture())
     )
-    assert [item.status for item in obligations] == [State.MISMATCHED]
+    assert [item.status for item in obligations] == [State.FAILED]
 
 
 def test_projected_view_needs_its_authored_introduction_binding(root: Path) -> None:

@@ -398,8 +398,13 @@ def assess_authored_content(root: Path, association: Association) -> Obligation:
     route = "/" if association.route == "index" else "/" + association.route
     closure = reader_contracts.content_inputs(root, route)
     if isinstance(closure, reader_contracts.Failure):
-        return Obligation(name, State.MISMATCHED, closure.detail)
+        return Obligation(name, State.FAILED, closure.detail)
     accepted_content = {item.path: item.sha256 for item in association.content}
+    path_changes = accepted_content.keys() ^ {item.path for item in closure}
+    if path_changes:
+        return Obligation(
+            name, State.FAILED, "Content inventory changed: " + ", ".join(sorted(path_changes))
+        )
     changed_content = tuple(
         item.path for item in closure if accepted_content.get(item.path) != item.sha256
     )
@@ -407,7 +412,7 @@ def assess_authored_content(root: Path, association: Association) -> Obligation:
         return Obligation(
             name,
             State.MISMATCHED,
-            "Changed or absent imported content: " + ", ".join(changed_content),
+            "Changed reviewed content: " + ", ".join(changed_content),
         )
     return Obligation(name, State.PASSED, "Authored content matches its recorded input binding")
 

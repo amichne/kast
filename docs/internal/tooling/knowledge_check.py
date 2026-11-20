@@ -12,6 +12,16 @@ from typing import Literal, TypeGuard
 import claim_evidence
 import publication
 
+INTEGRITY_FAILURES = frozenset(
+    {
+        claim_evidence.Reason.INVALID_INPUT,
+        claim_evidence.Reason.MISSING_CLAIM,
+        claim_evidence.Reason.DUPLICATE_CLAIM,
+        claim_evidence.Reason.INVALID_RESOURCE,
+        claim_evidence.Reason.PARSER_UNAVAILABLE,
+    }
+)
+
 
 class NativeIssue(StrEnum):
     FAILED = "failed"
@@ -150,22 +160,15 @@ def assess(root: Path) -> Report | publication.Failure:
     after = publication.snapshot(root)
     if after != snapshot:
         return publication.Failure("snapshot", "Documentation inputs changed during qualification")
-    broken_evidence = any(
-        item.reason
-        in {
-            claim_evidence.Reason.INVALID_INPUT,
-            claim_evidence.Reason.MISSING_CLAIM,
-            claim_evidence.Reason.DUPLICATE_CLAIM,
-            claim_evidence.Reason.INVALID_RESOURCE,
-            claim_evidence.Reason.PARSER_UNAVAILABLE,
-        }
-        for item in evidence.failures
-    )
+    broken_evidence = any(item.reason in INTEGRITY_FAILURES for item in evidence.failures)
     broken_reviews = any(item.status is not publication.State.REVIEW_REQUIRED for item in reviews)
     broken_bindings = any(
         item.status in {publication.State.FAILED, publication.State.NOT_ASSESSED}
         for item in bindings
-    ) or any(item.status is not publication.State.PASSED for item in authored)
+    ) or any(
+        item.status not in {publication.State.PASSED, publication.State.MISMATCHED}
+        for item in authored
+    )
     return Report(
         snapshot.sourceRevision,
         issues,
@@ -191,9 +194,34 @@ def main() -> int:
         action="store_true",
         help="Reject maintenance demand as well as integrity defects; this does not authorize publication.",
     )
+    parser.add_argument("--report", type=Path, help="Write the full JSON report to this path.")
     args = parser.parse_args()
     result = assess(args.root.resolve())
-    print(json.dumps(asdict(result), indent=2))
+    payload = json.dumps(asdict(result), indent=2)
+    if args.report is None:
+        print(payload)
+    else:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(payload + "\n", encoding="utf-8")
+        if isinstance(result, publication.Failure):
+            print(f"{result.stage}: {result.detail}")
+        else:
+            print(f"integrity={result.decision} assessment={result.assessment}")
+            for issue in result.nativeIssues:
+                print(f"native: {issue}")
+            for failure in result.evidence.failures:
+                if failure.reason in INTEGRITY_FAILURES:
+                    print(f"{failure.page} {failure.claim_id}: {failure.reason}")
+            for review in result.reviews:
+                if review.status is not publication.State.REVIEW_REQUIRED:
+                    print(f"{review.name}: {review.status}: {review.detail}")
+            for item in result.bindings:
+                if item.status in {publication.State.FAILED, publication.State.NOT_ASSESSED}:
+                    print(f"{item.name}: {item.status}: {item.detail}")
+            for item in result.authoredInputs:
+                if item.status is publication.State.MISMATCHED:
+                    print(f"{item.name}: {item.status}: {item.detail}")
+        print(f"Full knowledge assessment: {args.report}")
     return (
         0
         if (
