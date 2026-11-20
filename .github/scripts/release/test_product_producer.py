@@ -564,7 +564,9 @@ class ProductProducerTest(unittest.TestCase):
         )
         self.assertNotIn("composed-products", jobs)
         mac = jobs["composed-macos"]
-        self.assertIn("needs: [scope, source-work, assembly]", mac)
+        # Qualification runs beside source validation; sealing keeps the source proof.
+        self.assertIn("needs: [scope, assembly]", mac)
+        self.assertNotIn("needs.source-work", mac)
         self.assertIn("complete_product: true", mac)
         self.assertIn("release_target: macos-aarch64", mac)
         join = jobs["sealed-product"]
