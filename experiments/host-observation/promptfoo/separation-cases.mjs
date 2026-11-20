@@ -7,22 +7,26 @@ import { fileURLToPath } from 'node:url';
 import { binary } from './skill-provider.mjs';
 import { admitTwin } from './separation.mjs';
 import * as imported from './imported-model.mjs';
+import * as twin from './binary-twin.mjs';
 import * as ledger from './ledger-shadow.mjs';
+import * as payment from './payment-subtype.mjs';
 
-export const caseIds = Object.freeze(['imported-project', 'shadowed-extension']);
+export const caseIds = Object.freeze(['imported-project', 'shadowed-extension', 'subtype-extension']);
+const binaryCases = { 'shadowed-extension': [ledger.spec, 'ledger'], 'subtype-extension': [payment.spec, 'payments'] };
 
 export async function prepareSeparation(root) {
   if (!isAbsolute(root)) throw Error('SEPARATION_ROOT_MUST_BE_ABSOLUTE');
   await mkdir(root, { mode: 0o700 });
   await imported.prepareWorlds(join(root, 'imported'));
-  await ledger.prepareLedgerWorlds(join(root, 'ledger'), await binary(process.env.KAST_EVAL_KOTLINC, 'kotlinc'));
+  const kotlinc = await binary(process.env.KAST_EVAL_KOTLINC, 'kotlinc');
+  for (const [spec, directory] of Object.values(binaryCases)) await twin.prepareBinaryTwin(spec, join(root, directory), kotlinc);
 }
 
 async function importedProject(root, kast) {
   const base = join(root, 'imported');
   const { cases } = await imported.examineWorlds(base);
   const receipts = await imported.qualifyWorlds(base, kast);
-  const twin = {
+  const importedCase = {
     id: 'imported-project',
     request: 'List the workspace-relative path of each file that supplies formatInvoiceReference(Long) ' +
       'to this checkout’s imported Gradle main source set.',
@@ -36,33 +40,38 @@ async function importedProject(root, kast) {
     })),
   };
   for (const world of imported.worlds) {
-    if (imported.completeDeclarationPath(receipts[world], cases[world].workspace) !== twin.worlds.find(item => item.world === world).oracle[0]) {
+    if (imported.completeDeclarationPath(receipts[world], cases[world].workspace) !== importedCase.worlds.find(item => item.world === world).oracle[0]) {
       throw Error(`IMPORTED_MODEL_QUERY_UNAVAILABLE:${world}`);
     }
   }
-  return { twin, workspaces: Object.fromEntries(imported.worlds.map(world => [world, cases[world].workspace])) };
+  return { twin: importedCase, workspaces: Object.fromEntries(imported.worlds.map(world => [world, cases[world].workspace])) };
 }
 
-async function shadowedExtension(root, kast) {
-  const base = join(root, 'ledger');
-  const { cases, snapshot } = await ledger.examineLedgerWorlds(base);
-  const oracle = await ledger.bytecodeOracle(base, {
+async function binaryDependency(id, root, kast) {
+  const [spec, directory] = binaryCases[id];
+  const base = join(root, directory);
+  const { cases, snapshot } = await twin.examineBinaryTwin(spec, base);
+  const oracle = await twin.binaryOracle(spec, base, {
     kotlinc: await binary(process.env.KAST_EVAL_KOTLINC, 'kotlinc'),
     javap: await binary(process.env.KAST_EVAL_JAVAP, 'javap'),
   });
-  await ledger.qualifyLedger(base, kast, oracle);
-  const twin = {
-    id: 'shadowed-extension',
-    request: ledger.request,
+  await twin.qualifyBinaryTwin(spec, base, kast, oracle);
+  const twinCase = {
+    id,
+    request: spec.request,
     visible: `Workspace snapshot:\n${snapshot}`,
-    worlds: ledger.worlds.map(world => ({
+    worlds: spec.worlds.map(world => ({
       world, oracle: oracle[world].callers, visible: `Workspace snapshot:\n${cases[world].snapshot}`, fact: oracle[world].fact,
     })),
   };
-  return { twin, workspaces: Object.fromEntries(ledger.worlds.map(world => [world, cases[world].workspace])) };
+  return { twin: twinCase, workspaces: Object.fromEntries(spec.worlds.map(world => [world, cases[world].workspace])) };
 }
 
-const loaders = { 'imported-project': importedProject, 'shadowed-extension': shadowedExtension };
+const loaders = {
+  'imported-project': importedProject,
+  'shadowed-extension': (root, kast) => binaryDependency('shadowed-extension', root, kast),
+  'subtype-extension': (root, kast) => binaryDependency('subtype-extension', root, kast),
+};
 
 export async function loadSeparation(root, kast, selected = caseIds) {
   if (!isAbsolute(root)) throw Error('SEPARATION_ROOT_MUST_BE_ABSOLUTE');

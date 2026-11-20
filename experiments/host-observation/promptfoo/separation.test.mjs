@@ -153,7 +153,7 @@ test('bytecode attribution finds direct calls to the tracked extension only', ()
   assert.deepEqual(extensionCallers(disassembly), ['refund']);
   assert.deepEqual(extensionCallers(disassembly.replace('invokestatic  #30', 'invokevirtual #21')), []);
   assert.throws(() => extensionCallers('       8: invokestatic  #30                 // Method billing/LedgerExtensionsKt.post:(Lledger/Ledger;I)Ljava/lang/String;'),
-    /LEDGER_BYTECODE_UNATTRIBUTED/);
+    /TWIN_BYTECODE_UNATTRIBUTED/);
 });
 
 test('only a complete exhaustive Kast reply qualifies a world', () => {
@@ -170,7 +170,7 @@ test('only a complete exhaustive Kast reply qualifies a world', () => {
 });
 
 test('the ledger twin differs only outside the checkout and its delivered text is blind', () => {
-  assert.notEqual(library.west, library.east);
+  assert.notEqual(library.west['ledger/Ledger.kt'], library.east['ledger/Ledger.kt']);
   assert.ok(fixture['build.gradle.kts'].includes('files("../ledger.jar")'));
   const visible = Object.entries(fixture).map(([path, text]) => `--- ${path} ---\n${text}`).join('\n');
   const prompt = renderPrompt(request, `Workspace snapshot:\n${visible}`);
@@ -178,4 +178,22 @@ test('the ledger twin differs only outside the checkout and its delivered text i
     directory: '/tmp/project-abcdef', visiblePaths: ['/tmp/root/ledger/west/workspace'], toolNames: ['kast'] });
   assert.equal(surface.state, 'ADMITTED');
   assert.ok(materializedFact('public final java.lang.String post(long);\n').endsWith('post(long);'));
+});
+
+test('the held-out subtype twin is blind and its qualification needs no file scope', async () => {
+  const { spec } = await import('./payment-subtype.mjs');
+  const { spec: ledgerSpec } = await import('./ledger-shadow.mjs');
+  assert.notEqual(spec.library.north['payments/Card.kt'], spec.library.south['payments/Card.kt']);
+  assert.ok(!spec.queryArgs.includes('--in'));
+  const descriptions = spec.fixture['src/main/kotlin/billing/Descriptions.kt'];
+  const offset = Number(spec.queryArgs[spec.queryArgs.indexOf('--offset') + 1]);
+  assert.equal(descriptions.slice(offset, offset + 'describe'.length), 'describe');
+  const visible = Object.entries(spec.fixture).map(([path, text]) => `--- ${path} ---\n${text}`).join('\n');
+  const surface = admitParticipantSurface({ role: 'participant', system: 'You are a coding assistant.',
+    prompt: renderPrompt(spec.request, `Workspace snapshot:\n${visible}`), directory: '/tmp/project-abcdef',
+    visiblePaths: ['/tmp/root/payments/north/workspace'], toolNames: ['kast'] });
+  assert.equal(surface.state, 'ADMITTED');
+  // The pre-registered shadowed-extension prompt keeps its recorded build script.
+  assert.equal(ledgerSpec.fixture['build.gradle.kts'], 'plugins { kotlin("jvm") version "2.4.10" }\n\n' +
+    'repositories { mavenCentral() }\n\ndependencies { implementation(files("../ledger.jar")) }\n');
 });
