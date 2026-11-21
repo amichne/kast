@@ -52,7 +52,15 @@ class InstallerEntrypointTest(unittest.TestCase):
             fixture.mark_passed()
 
     def test_obsolete_component_options_reject_before_effects(self) -> None:
-        for option in ("--idea-home", "--control-only", "--host-only", "--stage-only", "uninstall"):
+        for option in (
+            "--idea-home",
+            "--control-only",
+            "--host-only",
+            "--stage-only",
+            "uninstall",
+            "--purge-legacy",
+            "--skip-codex-plugin",
+        ):
             with self.subTest(option=option), InstallerFixture(admitted_tools()) as fixture:
                 sentinel = fixture.root / "home/foreign"
                 _ = sentinel.write_bytes(b"protected")
