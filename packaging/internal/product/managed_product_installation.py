@@ -324,7 +324,7 @@ def admit_prior(root: Path) -> journal.NoPrevious | journal.PhysicalPrevious:
         "installation.json",
     }:
         raise ValueError("legacy or live installation state requires retirement")
-    verify_replacement_state(active)
+    verify_replacement_state(active, live_coordinator=True)
     slot = root / "recovery/replacement"
     return journal.PhysicalPrevious(
         "PHYSICAL",
@@ -371,12 +371,53 @@ def verify_client_configuration(control: Path, *, partial: bool = False) -> set[
     return directories
 
 
-def verify_replacement_state(control: Path) -> None:
+# Until the prior Control settles retirement, its semantic coordinator may still own state.
+PRE_RETIREMENT_PHASES = frozenset({journal.ManagedPhase.PREPARED, journal.ManagedPhase.FENCED})
+SEMANTIC_PROFILE = re.compile(r"[0-9a-f]{16}")
+SEMANTIC_PROFILE_FILES = frozenset(
+    {
+        "semantic-service.log",
+        "semantic-service.plist",
+        "service-start.lock",
+        "service-readiness.json",
+    }
+)
+
+
+def admit_live_semantic_broker(broker: Path) -> None:
+    """Admit only the files a semantic coordinator publishes; its retirement removes them."""
+    immutable_store.physical(broker)
+    profiles = list(broker.iterdir())
+    if len(profiles) > 16:
+        raise ValueError("unrecognized semantic coordinator state")
+    for profile in profiles:
+        if not SEMANTIC_PROFILE.fullmatch(profile.name):
+            raise ValueError("unrecognized semantic coordinator state")
+        immutable_store.physical(profile)
+        for entry in profile.iterdir():
+            observed = entry.lstat()
+            if (
+                entry.name not in SEMANTIC_PROFILE_FILES
+                or not stat.S_ISREG(observed.st_mode)
+                or observed.st_uid != os.getuid()
+            ):
+                raise ValueError("unrecognized semantic coordinator state")
+
+
+def verify_replacement_state(control: Path, *, live_coordinator: bool = False) -> None:
+    """Before retirement a running coordinator may own state; afterwards none may remain."""
     _ = verify_client_configuration(control)
-    _ = product_mcp_removal.empty_invocation_directories(control)
+    _ = product_mcp_removal.empty_invocation_directories(
+        control, live_coordinator=live_coordinator
+    )
     state = control / "state"
-    if os.path.lexists(state) and {child.name for child in state.iterdir()} - {"run"}:
+    if not os.path.lexists(state):
+        return
+    admitted = {"run", "broker"} if live_coordinator else {"run"}
+    if {child.name for child in state.iterdir()} - admitted:
         raise ValueError("unrecognized replacement state")
+    if live_coordinator and os.path.lexists(state / "broker"):
+        admit_live_semantic_broker(state / "broker")
 
 
 def materialize_client_entries(stage: Path, active: Path) -> None:
@@ -926,7 +967,11 @@ def resume_locked(
         prior = install.RECOVERY.managed_previous(active, slot, previous)
         if prior is None:
             raise ValueError("previous payload")
-        verify_previous(prior[0], selected.previousManifestSha256)
+        verify_previous(
+            prior[0],
+            selected.previousManifestSha256,
+            live_coordinator=selected.phase in PRE_RETIREMENT_PHASES,
+        )
         preimage = selected.management
         if not isinstance(preimage, journal.ManagedFilePresent) or preimage.preimage != str(
             slot / "management-preimage"
@@ -1056,7 +1101,7 @@ def retire_prior(
         # leases and Host settlement; a shutdown request alone is never retirement proof.
         _ = install.LIFECYCLE.Installation.admit(str(active))
         _ = reference_at(active, root)
-        verify_previous(active, selected.previousManifestSha256)
+        verify_previous(active, selected.previousManifestSha256, live_coordinator=True)
         try:
             result = (runner if runner is not None else install.run_child)(
                 [
@@ -1096,7 +1141,9 @@ def retire_prior(
     return record
 
 
-def verify_previous(path: Path, manifest_sha256: str | None) -> None:
+def verify_previous(
+    path: Path, manifest_sha256: str | None, *, live_coordinator: bool = False
+) -> None:
     if (
         manifest_sha256 is None
         or release.file_digest(path / "installation.json") != manifest_sha256
@@ -1104,7 +1151,7 @@ def verify_previous(path: Path, manifest_sha256: str | None) -> None:
         - {"bin", "lib", "share", "config", "state", "installation.json"}
     ):
         raise ValueError("previous payload changed")
-    verify_replacement_state(path)
+    verify_replacement_state(path, live_coordinator=live_coordinator)
     install.LIFECYCLE.verify_payload(
         path, release.document(install.read_record(path / "installation.json", 67_108_864))
     )
