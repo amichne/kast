@@ -78,24 +78,6 @@ class InstallationRequestTest {
     }
 
     @Test
-    fun `force command reaches verified payload admission while unknown options reject`() {
-        val forced =
-            InstallationCliInspection.inspect(listOf("installation", "install", "--force"), validEnvironment())
-                as InstallationHandling.Handled
-        assertEquals(
-            io.github.amichne.kast.cli.CliBoundaryExitStatus.BOOTSTRAP,
-            (forced.exit as io.github.amichne.kast.cli.CliExit.BoundaryRejected).status,
-        )
-        val unknown =
-            InstallationCliInspection.inspect(listOf("installation", "install", "--unknown"), validEnvironment())
-                as InstallationHandling.Handled
-        assertEquals(
-            io.github.amichne.kast.cli.CliBoundaryExitStatus.USAGE,
-            (unknown.exit as io.github.amichne.kast.cli.CliExit.BoundaryRejected).status,
-        )
-    }
-
-    @Test
     fun `force defaults off and rejects unknown values`() {
         assertEquals(
             InstallationSwitch.DISABLED,

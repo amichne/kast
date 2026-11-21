@@ -9,8 +9,6 @@ import io.github.amichne.kast.appserver.InstalledAppServerManager
 import io.github.amichne.kast.appserver.PersistentBrokerServiceFailure
 import io.github.amichne.kast.appserver.SemanticCoordinatorRetirement
 import io.github.amichne.kast.appserver.retireFencedSemanticCoordinator
-import io.github.amichne.kast.cli.installation.InstallationCliInspection
-import io.github.amichne.kast.cli.installation.InstallationHandling
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.distribution.managed.InstalledSavedConfigurationIngress
 import io.github.amichne.kast.distribution.managed.SavedConfigurationIngress
@@ -46,19 +44,6 @@ object KastServiceMain {
                     exitProcess(SERVICE_CONTROL_REJECTED_EXIT_CODE)
                 }
             }
-        }
-        if (arguments.firstOrNull() in setOf("install", "recover-control")) {
-            val installation = InstallationCliInspection.inspect(listOf("installation") + arguments, System.getenv())
-            val exit = (installation as InstallationHandling.Handled).exit
-            when (exit) {
-                is CliExit.Complete -> println(exit.document.value)
-                is CliExit.Qualified -> println(exit.document.value)
-                is CliExit.OperationRejected -> println(exit.document.value)
-                is CliExit.PublicInputRejected,
-                is CliExit.BoundaryRejected -> System.err.println(exit.document.value)
-                is CliExit.Delegated -> Unit
-            }
-            exitProcess(exit.code)
         }
         if (tryManagedHeadlessShutdown(arguments.toList())) return
         if (arguments.toList() == listOf("retire-semantic")) {

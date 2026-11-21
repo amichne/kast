@@ -395,7 +395,6 @@ internal object KastCleanSlateModules {
             effects = setOf(ForbiddenEffect.PROCESS_CONTROL),
             scopedEffects = mapOf(
                 ForbiddenEffect.FILESYSTEM_WRITE to setOf(
-                    JvmClassName("io/github/amichne/kast/cli/ide/RetiredApprovalArtifacts"),
                     JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord"),
                     JvmClassName("io/github/amichne/kast/cli/rpc/OneShotInvocationRecord\$Companion"),
                     JvmClassName("io/github/amichne/kast/cli/installation/ManagedControlAdapter"),

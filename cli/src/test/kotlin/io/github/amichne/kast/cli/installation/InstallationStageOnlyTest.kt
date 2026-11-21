@@ -1,7 +1,5 @@
 package io.github.amichne.kast.cli.installation
 
-import io.github.amichne.kast.cli.CliBoundaryExitStatus
-import io.github.amichne.kast.cli.CliExit
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -59,58 +57,6 @@ class InstallationStageOnlyTest {
         assertEquals(InstallationReportStatus.INSTALLED, complete.report.status)
         assertTrue(
             Files.notExists(request.installRoot.value.resolve("installation/share/kast/libexec/kast-service.called"))
-        )
-    }
-
-    @Test
-    fun `stage option reaches payload admission without treating cold stage as usage error`() {
-        for (options in listOf(listOf("--stage-only"), listOf("--force", "--stage-only"))) {
-            val handled =
-                assertInstanceOf(
-                    InstallationHandling.Handled::class.java,
-                    InstallationCliInspection.inspect(
-                        listOf("installation", "install") + options,
-                        requestEnvironment(),
-                    ),
-                )
-            assertEquals(
-                CliBoundaryExitStatus.BOOTSTRAP,
-                assertInstanceOf(CliExit.BoundaryRejected::class.java, handled.exit).status,
-            )
-        }
-    }
-
-    @Test
-    fun `duplicate and unknown stage options reject before payload admission`() {
-        for (options in listOf(listOf("--stage-only", "--stage-only"), listOf("--stage-only", "--unknown"))) {
-            val handled =
-                assertInstanceOf(
-                    InstallationHandling.Handled::class.java,
-                    InstallationCliInspection.inspect(
-                        listOf("installation", "install") + options,
-                        requestEnvironment(),
-                    ),
-                )
-            assertEquals(
-                CliBoundaryExitStatus.USAGE,
-                assertInstanceOf(CliExit.BoundaryRejected::class.java, handled.exit).status,
-            )
-        }
-    }
-
-    @Test
-    fun `control-only stage option rejects before payload admission`() {
-        val handled =
-            assertInstanceOf(
-                InstallationHandling.Handled::class.java,
-                InstallationCliInspection.inspect(
-                    listOf("installation", "install", "--stage-only"),
-                    requestEnvironment() + (InstallationEnvironment.CONTROL_ONLY.key to "1"),
-                ),
-            )
-        assertEquals(
-            CliBoundaryExitStatus.USAGE,
-            assertInstanceOf(CliExit.BoundaryRejected::class.java, handled.exit).status,
         )
     }
 
