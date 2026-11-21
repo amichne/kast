@@ -64,16 +64,6 @@ class PhysicalPrevious:
 
 
 @dataclass(frozen=True)
-class LegacyPrevious:
-    type: str
-    installation: str
-    identity: Identity
-    selector: str
-    target: str
-    recovery: str
-
-
-@dataclass(frozen=True)
 class ManagedReservation:
     transaction: str
     staged: str
@@ -350,7 +340,7 @@ class Replacement:
     stage: ReplacementStage
     installation: str
     installationIdentity: Identity
-    previous: Union[NoPrevious, PhysicalPrevious, LegacyPrevious]
+    previous: Union[NoPrevious, PhysicalPrevious]
     reservation: Optional[ManagedReservation] = None
     composition: Optional[ManagedComposition] = None
     product: Optional[ProductReplacement] = None
@@ -376,7 +366,7 @@ class ManagedShutdownFence:
 ManagedFilePreimage = Union[ManagedFileAbsent, ManagedFilePresent]
 ManagedProfileDirectory = Union[ManagedProfileMissing, ManagedProfileCreated]
 ManagedHostPrevious = Union[ManagedHostAbsent, ManagedHostPresent]
-PreviousPayload = Union[NoPrevious, PhysicalPrevious, LegacyPrevious]
+PreviousPayload = Union[NoPrevious, PhysicalPrevious]
 
 
 def admit_replacement(value: object) -> Replacement:

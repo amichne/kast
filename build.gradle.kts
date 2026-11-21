@@ -370,7 +370,7 @@ tasks.named("check") { dependsOn(frontendTest) }
 val offlineInstallerChecks = setOf(
     "testCheckoutInstaller", "installerEntrypointTest", "installerFixtureTest", "installerRemovalTest",
     "installationSystemPythonTest", "installationRecoveryTest", "installationLifecycleTest",
-    "priorInstallationCleanupTest", "localInstallationTest",
+    "localInstallationTest",
 )
 
 val packagingTestModulePath = listOf(
@@ -492,15 +492,6 @@ val installationLifecycleTest = tasks.register<VerificationReportTask>("installa
     inputs.files("packaging/internal/installation/installation-lifecycle.py", "packaging/tests/test-installation-lifecycle.py")
     executableFile.set(validationExecutable("python3"))
     arguments.set(listOf(layout.projectDirectory.file("packaging/tests/test-installation-lifecycle.py").asFile.absolutePath))
-}
-
-val priorInstallationCleanupTest = tasks.register<VerificationReportTask>("priorInstallationCleanupTest") {
-    group = "verification"
-    description = "Proves exact user review and selected-installation protection for historical cleanup."
-    inputs.files("packaging/internal/installation/prune-prior-installations.py", "packaging/internal/installation/installation-lifecycle.py",
-        "packaging/internal/installation/installation-recovery.py", "packaging/internal/installation/managed_update_journal.py", "packaging/tests/test-prune-prior-installations.py")
-    executableFile.set(validationExecutable("python3"))
-    arguments.set(listOf(layout.projectDirectory.file("packaging/tests/test-prune-prior-installations.py").asFile.absolutePath))
 }
 
 val localInstallationTest = tasks.register<VerificationReportTask>("localInstallationTest") {
@@ -666,7 +657,6 @@ val productBuildGate = tasks.register("productBuildGate") {
         productGateVersionTest,
         installerFixtureTest,
         installationLifecycleTest,
-        priorInstallationCleanupTest,
         installationRecoveryTest,
         installationSystemPythonTest,
         localInstallationTest,
@@ -694,7 +684,6 @@ val sourceValidationGate = tasks.register("sourceValidationGate") {
         productGateVersionTest,
         installerFixtureTest,
         installationLifecycleTest,
-        priorInstallationCleanupTest,
         installationRecoveryTest,
         installationSystemPythonTest,
         localInstallationTest,

@@ -65,10 +65,10 @@ steps. Do not erase specific failures into a generic success or retry result.
   currently resolves configuration before destructive repair. Its repair path
   resets managed state and bootstraps the coordinator; it does not implement the
   full recovery sequence above.
-- [Offline recovery](../packaging/internal/installation/installation-recovery.py) and its
-  [runbook](installation-recovery.md) provide independent ownership receipts,
-  detachment, quarantine, and unresolved-state reporting. Retain these guarantees
-  when adding restoration.
+- [Product replacement recovery](../packaging/internal/product/managed_product_installation.py)
+  resumes the one recorded replacement journal; its exact tree, move and fence proofs
+  live in [installation-recovery.py](../packaging/internal/installation/installation-recovery.py).
+  Retain these guarantees when adding restoration.
 - [IDE lifecycle protocol](../protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/IdeLifecycleDocuments.kt)
   has exact host and project identities. Application exit needs a distinct typed
   contract; project close must not be repurposed as whole-application shutdown.
