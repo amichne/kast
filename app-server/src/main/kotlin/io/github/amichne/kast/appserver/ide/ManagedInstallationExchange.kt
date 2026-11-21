@@ -1,49 +1,12 @@
 package io.github.amichne.kast.appserver.ide
 
-import io.github.amichne.kast.protocol.contract.IdeHostMode
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import java.nio.file.Path
 
-/** Exact prior endpoint cleanup only. No workspace, semantic, launch or reload authority. */
-@Deprecated(
-    "Desktop IDEA Host cleanup is compatibility-only; new workspaces use managed headless Hosts.",
-    level = DeprecationLevel.WARNING,
-)
-@Suppress("DEPRECATION") // Reading the prior desktop identity is required for exact cleanup.
-class LegacyHostCleanupClient(userHome: Path, private val selectedHome: Path) {
-    private val transport = LifecycleSocketExchange(userHome)
-
-    fun execute(command: IdeLifecycleCommand): IdeLifecycleResult =
-        when (command) {
-            IdeLifecycleCommand.Inspect,
-            is IdeLifecycleCommand.SettleHost,
-            is IdeLifecycleCommand.ResumeHost,
-            is IdeLifecycleCommand.StopHost -> manageInspectedInstallation(inspect(), command, transport::exchange)
-            else -> IdeLifecycleResult.Blocked(IdeLifecycleFailure.INVALID_REQUEST)
-        }
-
-    private fun inspect(): IdeLifecycleResult {
-        val home =
-            try {
-                selectedHome.toRealPath()
-            } catch (_: java.io.IOException) {
-                return IdeLifecycleResult.Blocked(IdeLifecycleFailure.SELECTED_IDE_UNAVAILABLE)
-            }
-        val result = transport.exchange(home, IdeLifecycleCommand.Inspect)
-        if (result is IdeLifecycleResult.Inspected) {
-            val identity = result.runtimeIdentity
-            if (result.home != home.toString() || result.protocol != 1)
-                return IdeLifecycleResult.Blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
-            if (identity != null && identity.mode != IdeHostMode.DESKTOP)
-                return IdeLifecycleResult.Blocked(IdeLifecycleFailure.HOST_IDENTITY_MISMATCH)
-        }
-        return result
-    }
-}
-
+/** Management commands reach a Host only through its inspected identity and advertised capability. */
 internal fun manageInspectedInstallation(
     inspected: IdeLifecycleResult,
     command: IdeLifecycleCommand,

@@ -116,7 +116,6 @@ class LifecycleProjectionTest {
                 "hostLifetime",
                 "buildIdentity",
                 "autoReload",
-                "mode",
             ),
             runtime.keys,
         )
@@ -126,7 +125,6 @@ class LifecycleProjectionTest {
         assertEquals("100", runtime.getValue("processStartEpochMillis").jsonPrimitive.content)
         assertEquals("host", runtime.getValue("hostLifetime").jsonPrimitive.content)
         assertEquals("ENABLED", runtime.getValue("autoReload").jsonPrimitive.content)
-        assertEquals("DESKTOP", runtime.getValue("mode").jsonPrimitive.content)
         val build = runtime.getValue("buildIdentity").jsonObject
         assertEquals(setOf("version", "sourceRevision", "sourceTree"), build.keys)
         assertEquals("0.49.0", build.getValue("version").jsonPrimitive.content)

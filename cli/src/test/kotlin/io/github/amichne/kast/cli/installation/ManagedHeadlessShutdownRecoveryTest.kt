@@ -4,7 +4,6 @@ import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.HostedContractDocument
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
-import io.github.amichne.kast.protocol.contract.IdeHostMode
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -192,7 +191,6 @@ class ManagedHeadlessShutdownRecoveryTest {
                 100,
                 "host",
                 IdeHostBuildIdentity("1.2.3", "a".repeat(40), "b".repeat(40)),
-                mode = IdeHostMode.MANAGED_HEADLESS,
             )
         val inspected =
             IdeLifecycleResult.Inspected(

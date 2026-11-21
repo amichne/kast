@@ -294,19 +294,7 @@ data class IdeHostRuntimeIdentity(
     val hostLifetime: String,
     val buildIdentity: IdeHostBuildIdentity,
     val autoReload: HostAutoReload = HostAutoReload.DISABLED,
-    // Absent mode in 0.51.x advertisements must continue to mean DESKTOP.
-    @Suppress("DEPRECATION") @kotlinx.serialization.EncodeDefault val mode: IdeHostMode = IdeHostMode.DESKTOP,
 )
-
-@Serializable
-enum class IdeHostMode {
-    @Deprecated(
-        "Desktop IntelliJ IDEA Hosts are targeted for removal; use managed headless Hosts.",
-        level = DeprecationLevel.WARNING,
-    )
-    DESKTOP,
-    MANAGED_HEADLESS,
-}
 
 @Serializable
 enum class HostAutoReload {

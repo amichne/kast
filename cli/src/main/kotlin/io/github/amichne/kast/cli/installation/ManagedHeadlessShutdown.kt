@@ -5,7 +5,6 @@ import io.github.amichne.kast.appserver.ide.IdeLifecycleDeployment
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.IdeHostMode
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -129,7 +128,7 @@ internal fun stopManagedHeadlessHost(
             inspected.result as? IdeLifecycleResult.Inspected
                 ?: return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.HOST_REJECTED)
         val identity = host.runtimeIdentity
-        if (identity?.mode != IdeHostMode.MANAGED_HEADLESS)
+        if (identity == null)
             return ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.ADMISSION_REJECTED)
         val transaction = managedShutdownTransaction(identity)
         val settled =

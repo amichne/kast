@@ -1,26 +1,12 @@
 package io.github.amichne.kast.runtime.hosted.lifecycle
 
-import com.intellij.ide.AppLifecycleListener
 import com.intellij.ide.plugins.CannotUnloadPluginException
 import com.intellij.ide.plugins.DynamicPluginListener
 import com.intellij.ide.plugins.IdeaPluginDescriptor
 import com.intellij.openapi.application.ApplicationManager
 
-/** Desktop startup is deprecated; shared unload settlement still protects both Host modes. */
-class IdeLifecycleStartup : AppLifecycleListener, DynamicPluginListener {
-    @Deprecated(
-        "User-space desktop IDEA startup is targeted for removal; use managed headless Hosts.",
-        level = DeprecationLevel.WARNING,
-    )
-    override fun appStarted() {
-        val application = ApplicationManager.getApplication()
-        if (!application.isHeadlessEnvironment) application.getService(IdeLifecycleApplication::class.java)
-    }
-
-    override fun pluginLoaded(pluginDescriptor: IdeaPluginDescriptor) {
-        if (pluginDescriptor.pluginId.idString == PLUGIN_ID) appStarted()
-    }
-
+/** Plugin unload waits for Host settlement; managed headless startup belongs to the native opener. */
+class IdeLifecycleStartup : DynamicPluginListener {
     override fun checkUnloadPlugin(pluginDescriptor: IdeaPluginDescriptor) {
         if (pluginDescriptor.pluginId.idString != PLUGIN_ID) return
         if (!ApplicationManager.getApplication().getService(IdeLifecycleApplication::class.java).canUnloadHost()) {
