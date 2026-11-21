@@ -46,7 +46,6 @@
     <ID>LongMethod:InstalledWorkerClientOwnerTest.kt:InstalledWorkerClientOwnerTest$@Test fun `self consistent forged epoch and live status cannot replace physical installation authority`: Unit</ID>
     <ID>LongMethod:InstalledWorkspaceRoutingAcceptanceMain.kt:InstalledWorkspaceRoutingAcceptanceMain$@JvmStatic fun main: Unit</ID>
     <ID>LongMethod:JdkBrokerSocketProbeTest.kt:JdkBrokerSocketProbeTest$@Test fun `real JDK path observation distinguishes absent socket and rejected paths`</ID>
-    <ID>LongMethod:KastObserverSnapshotMain.kt:KastObserverSnapshotMain$@JvmStatic fun main</ID>
     <ID>LongMethod:KastProviderTest.kt:KastProviderTest$@Test fun `default bootstrap removes direct symbol routes and retains selected change routes`</ID>
     <ID>LongMethod:KastProviderTest.kt:KastProviderTest$@Test fun `supported Kast operations produce selector-free observer Markdown`</ID>
     <ID>LongMethod:KastProviderTest.kt:KastProviderTest$private fun capabilitySchema: String</ID>

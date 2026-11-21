@@ -13,7 +13,6 @@ updates:
       include: "scope"
     # Fixtures describe exact admitted environments; update them with their owning tests.
     exclude-paths:
-      - "fixtures/**"
       - "experiments/host-observation/semantic-fixture/**"
     # The IDE distribution and platform artifacts are one qualified host build.
     # A standalone artifact bump cannot establish that qualification.

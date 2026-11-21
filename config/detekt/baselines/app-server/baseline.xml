@@ -234,7 +234,6 @@
     <ID>LongMethod:KastCodexMain.kt:suspend fun runInstalledCodex: CodexIntegrationRun</ID>
     <ID>LongMethod:KastObserverProjector.kt:KastObserverProjector$private fun projectTraversal: String?</ID>
     <ID>LongMethod:KastObserverProjector.kt:KastObserverProjector.ObserverEvidence.Companion$fun admit: ObserverEvidence?</ID>
-    <ID>LongMethod:KastObserverSnapshotMain.kt:KastObserverSnapshotMain$@JvmStatic fun main</ID>
     <ID>LongMethod:KastProvider.kt:KastProviderQualifier$private fun QualifiedKastTool.asBrokerTool: BrokerTool&lt; KastRuntime, KastInvocationInput, KastInvocationOutput, KastToolInputFailure, ></ID>
     <ID>LongMethod:KastProvider.kt:KastProviderQualifier$private fun admitTool: QualifiedKastTool?</ID>
     <ID>LongMethod:KastProvider.kt:KastProviderQualifier$private suspend fun qualifyContract: KastContractQualification</ID>
