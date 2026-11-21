@@ -1155,6 +1155,75 @@ class ProductActivationTest(unittest.TestCase):
         self.assertEqual(0, self.remove_product(path))
         self.assertFalse(environment.exists())
 
+    def live_coordinator(self) -> tuple[Path, Path]:
+        """Create the exact state a running semantic coordinator publishes in its installation."""
+        state = self.root / "installation/state"
+        profile = state / "broker/295bda7d89b4d1db"
+        profile.mkdir(parents=True, mode=0o700)
+        for name in ("semantic-service.log", "semantic-service.plist", "service-start.lock"):
+            _ = (profile / name).write_bytes(b"")
+            (profile / name).chmod(0o600)
+        run = state / "run"
+        (run / "one-shot").mkdir(parents=True, mode=0o700, exist_ok=True)
+        _ = (run / "c.sock.lock").write_bytes(b"")
+        (run / "c.sock.lock").chmod(0o600)
+        return profile, run
+
+    def test_live_semantic_coordinator_state_is_retired_before_replacement(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        profile, run = self.live_coordinator()
+
+        def retire_coordinator(
+            arguments: list[str], environment: dict[str, str], timeout: float
+        ) -> subprocess.CompletedProcess[bytes]:
+            completed = self.retire(arguments, environment, timeout)
+            # The prior Control's managed-retire removes the coordinator profile and socket state.
+            shutil.rmtree(profile.parent)
+            (run / "c.sock.lock").unlink()
+            return completed
+
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted, runner=retire_coordinator),
+            activation.ProductInstalled,
+        )
+        self.assertFalse((self.root / "installation/state/broker").exists())
+
+    def test_coordinator_state_left_after_retirement_rejects_replacement(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        profile, _ = self.live_coordinator()
+        # Retirement reported success but left coordinator state; the transaction fails closed.
+        result = activation.activate(self.root, self.home, admitted, runner=self.retire)
+        self.assertIsInstance(result, contract.RecoveryRequired)
+        assert isinstance(result, contract.RecoveryRequired)
+        self.assertEqual(contract.Failure.OWNERSHIP_UNPROVEN, result.failure.reason)
+        self.assertTrue((profile / "semantic-service.plist").exists())
+
+    def test_unknown_coordinator_state_rejects_before_retirement(self) -> None:
+        admitted = self.admitted()
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted), activation.ProductInstalled
+        )
+        profile, _ = self.live_coordinator()
+        _ = (profile / "foreign.json").write_bytes(b"{}")
+        (profile / "foreign.json").chmod(0o600)
+
+        def unexpected(
+            arguments: list[str], environment: dict[str, str], timeout: float
+        ) -> subprocess.CompletedProcess[bytes]:
+            raise AssertionError("retirement must not run for unknown coordinator state")
+
+        self.assertIsInstance(
+            activation.activate(self.root, self.home, admitted, runner=unexpected),
+            contract.Rejected,
+        )
+        self.assertTrue((profile / "foreign.json").exists())
+
     def test_completed_native_invocations_allow_repair_and_removal_but_survivors_do_not(
         self,
     ) -> None:

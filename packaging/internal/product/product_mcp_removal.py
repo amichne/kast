@@ -1,6 +1,7 @@
 """Admit optional MCP state before capture; erase only journal-bound survivors."""
 
 import os
+import stat
 import sys
 from dataclasses import dataclass
 from enum import StrEnum
@@ -41,8 +42,39 @@ def reject_invocation_state(reason: InvocationStateFailure) -> None:
     raise ValueError(reason.value)
 
 
-def empty_invocation_directories(payload: Path) -> tuple[tuple[Path, journal.Identity], ...]:
-    """Only the exact empty native bookkeeping directories are removable, never records."""
+INVOCATION_DIRECTORIES = frozenset({"one-shot", "tool-sessions"})
+COORDINATOR_SOCKET = "c.sock"
+COORDINATOR_SOCKET_LOCK = "c.sock.lock"
+COORDINATOR_ENTRIES = frozenset({COORDINATOR_SOCKET, COORDINATOR_SOCKET_LOCK})
+
+
+def admit_coordinator_socket_state(run: Path) -> None:
+    """A live coordinator owns exactly its socket and lock; its retirement removes both."""
+    socket = run / COORDINATOR_SOCKET
+    if os.path.lexists(socket):
+        observed = socket.lstat()
+        if not stat.S_ISSOCK(observed.st_mode) or observed.st_uid != os.getuid():
+            reject_invocation_state(InvocationStateFailure.UNKNOWN_DIRECTORY)
+    lock = run / COORDINATOR_SOCKET_LOCK
+    if os.path.lexists(lock):
+        observed = lock.lstat()
+        if (
+            not stat.S_ISREG(observed.st_mode)
+            or observed.st_uid != os.getuid()
+            or stat.S_IMODE(observed.st_mode) != 0o600
+            or observed.st_size != 0
+        ):
+            reject_invocation_state(InvocationStateFailure.UNKNOWN_DIRECTORY)
+
+
+def empty_invocation_directories(
+    payload: Path, *, live_coordinator: bool = False
+) -> tuple[tuple[Path, journal.Identity], ...]:
+    """Only the exact empty native bookkeeping directories are removable, never records.
+
+    Before the prior Control retires its semantic coordinator, that coordinator's socket
+    state is admitted by exact shape. Afterwards any remaining socket state still rejects.
+    """
     state = payload / "state"
     if not os.path.lexists(state):
         return ()
@@ -51,10 +83,14 @@ def empty_invocation_directories(payload: Path) -> tuple[tuple[Path, journal.Ide
     if not os.path.lexists(run):
         return ()
     store.physical(run)
-    if {child.name for child in run.iterdir()} - {"one-shot", "tool-sessions"}:
+    coordinator: frozenset[str] = COORDINATOR_ENTRIES if live_coordinator else frozenset()
+    admitted = INVOCATION_DIRECTORIES | coordinator
+    if {child.name for child in run.iterdir()} - admitted:
         reject_invocation_state(InvocationStateFailure.UNKNOWN_DIRECTORY)
+    if live_coordinator:
+        admit_coordinator_socket_state(run)
     directories: list[tuple[Path, journal.Identity]] = []
-    for child in run.iterdir():
+    for child in sorted(path for path in run.iterdir() if path.name in INVOCATION_DIRECTORIES):
         store.physical(child)
         identity = journal.Identity.observe(child)
         if any(child.iterdir()):
