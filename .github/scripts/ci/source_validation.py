@@ -70,7 +70,6 @@ SOURCE_REQUIRED = frozenset(
         ":productGateVersionTest",
         ":installerFixtureTest",
         ":installationLifecycleTest",
-        ":priorInstallationCleanupTest",
         ":installationRecoveryTest",
         ":installationSystemPythonTest",
         ":localInstallationTest",

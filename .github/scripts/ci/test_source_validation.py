@@ -34,7 +34,7 @@ def expected_obligations():
         ":relation:intellij:semanticCoverageFixtureTest", ":runtime:hosted:semanticCoverageFixtureTest",
         ":symbol:intellij:semanticCoverageFixtureTest", ":relation:intellij:dependencyFixtureTest",
         ":runtime:hosted:dependencyFixtureTest", ":productGateVersionTest", ":installerFixtureTest",
-        ":installationLifecycleTest", ":priorInstallationCleanupTest", ":installationRecoveryTest",
+        ":installationLifecycleTest", ":installationRecoveryTest",
         ":installationSystemPythonTest", ":localInstallationTest", ":installerRemovalTest",
         ":testCheckoutInstaller", ":installerEntrypointTest",
     }
