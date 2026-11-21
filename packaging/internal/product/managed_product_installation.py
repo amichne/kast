@@ -984,12 +984,10 @@ def resume_locked(
         prior_receipt = read_management(
             raw, root, Path(selected.publicExecutable.destination), prior[0]
         )
-    elif (
-        not isinstance(previous, journal.NoPrevious)
-        or selected.previousManifestSha256 is not None
-        or not isinstance(selected.management, journal.ManagedFileAbsent)
+    elif selected.previousManifestSha256 is not None or not isinstance(
+        selected.management, journal.ManagedFileAbsent
     ):
-        raise ValueError("legacy migration unavailable")
+        raise ValueError("first installation carries prior management")
     if selected.phase in (journal.ManagedPhase.PREPARED, journal.ManagedPhase.FENCED):
         if current != staged or (
             isinstance(previous, journal.PhysicalPrevious) and not active.is_dir()
