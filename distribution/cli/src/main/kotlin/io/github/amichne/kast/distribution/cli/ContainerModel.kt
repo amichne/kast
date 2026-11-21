@@ -12,7 +12,7 @@ typealias ContainerFailure = io.github.amichne.kast.distribution.contract.Contai
 internal value class ContainerId private constructor(val text: String) {
     companion object {
         fun parse(raw: String): Refinement<ContainerId, ContainerFailure> =
-            if (Regex("[a-f0-9]{32}|[a-f0-9]{64}").matches(raw)) Refinement.Refined(ContainerId(raw))
+            if (Regex("[a-f0-9]{64}").matches(raw)) Refinement.Refined(ContainerId(raw))
             else Refinement.Rejected(ContainerFailure.INVALID_ID)
 
         /** The store validates the canonical root and compares the stored root on every lookup. */
@@ -47,17 +47,6 @@ internal data class ContainerRecord(
     val dependencySharing: WorkspaceDependencySharing = WorkspaceDependencySharing.PRIVATE,
 )
 
-/** Version 1 ingress remains bounded; runtime selection is not a durable workspace fact. */
-@Serializable
-internal data class LegacyContainerRecord(
-    val id: String,
-    val name: String,
-    val workspace: String,
-    val runtime: String,
-    val gradleHome: String,
-    @Required val schemaVersion: Int = 1,
-)
-
 @Serializable
 internal data class ContainerGenerationRecord(
     val runtime: String,
@@ -72,12 +61,6 @@ internal data class ContainerGenerationRetirement(
     val generationRecordSha256: String,
     @Required val schemaVersion: Int = 1,
 )
-
-internal sealed interface ContainerGenerationSource {
-    data object Current : ContainerGenerationSource
-
-    data class Legacy(val runtime: String) : ContainerGenerationSource
-}
 
 internal class AdmittedContainerCreation
 internal constructor(
@@ -104,7 +87,6 @@ internal constructor(
     val workspace: Path,
     val directory: Path,
     val gradleHome: Path,
-    val generation: ContainerGenerationSource,
     val dependencySharing: WorkspaceDependencySharing = WorkspaceDependencySharing.PRIVATE,
 ) {
     fun record(): ContainerRecord =

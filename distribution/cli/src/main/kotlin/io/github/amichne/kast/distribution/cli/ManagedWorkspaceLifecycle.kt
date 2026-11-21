@@ -67,9 +67,9 @@ internal fun stopManagedWorkspaces(
             is Refinement.Refined -> selected.value
         }
     val current =
-        when (val migrated = migrateWorkspaceEntries(store, entries)) {
-            is Refinement.Rejected -> return@containerFiles migrated
-            is Refinement.Refined -> migrated.value
+        when (val admitted = requireAdmittedWorkspaceEntries(entries)) {
+            is Refinement.Rejected -> return@containerFiles admitted
+            is Refinement.Refined -> admitted.value
         }
     val containers =
         when (val admitted = admitWorkspaceGenerations(store, current)) {

@@ -102,9 +102,6 @@ private constructor(
             val leases = mutableListOf<ContainerQueryLease>()
             try {
                 for (container in containers) {
-                    // Legacy retirement still needs its migration owner and original registry lock.
-                    if (container.owned.generation is ContainerGenerationSource.Legacy)
-                        return Refinement.Rejected(ContainerFailure.INVALID_RECORD)
                     when (val lease = acquireGeneration(container, false)) {
                         is Refinement.Rejected -> return lease
                         is Refinement.Refined -> leases += lease.value
@@ -148,15 +145,6 @@ private constructor(
             }
         }
 
-        private fun <T> withLegacyRegistryLock(
-            workspace: AdmittedWorkspace,
-            action: () -> Refinement<T, ContainerFailure>,
-        ): Refinement<T, ContainerFailure> =
-            when (workspace.generation) {
-                ContainerGenerationSource.Current -> action()
-                is ContainerGenerationSource.Legacy -> withContainerLock(workspace.directory.parent.parent, action)
-            }
-
         private fun acquireGeneration(
             container: AdmittedContainer,
             shared: Boolean,
@@ -179,23 +167,20 @@ private constructor(
             workspace: AdmittedWorkspace,
             platform: ContainerPlatform,
             shared: Boolean,
-        ): Refinement<ContainerQueryLease, ContainerFailure> =
-            withLegacyRegistryLock(workspace) {
-                containerFiles {
-                    val path =
-                        when (val admitted = containerQueryLockPath(workspace)) {
-                            is Refinement.Rejected -> return@containerFiles admitted
-                            is Refinement.Refined -> admitted.value
-                        }
-                    when (val native = acquireNative(path, shared)) {
-                        is Refinement.Rejected -> native
-                        is Refinement.Refined -> {
-                            val lease = ContainerQueryLease(workspace, platform, native.value)
-                            retain(lease) { bindWorkspace(workspace, platform) }
-                        }
-                    }
+        ): Refinement<ContainerQueryLease, ContainerFailure> = containerFiles {
+            val path =
+                when (val admitted = containerQueryLockPath(workspace)) {
+                    is Refinement.Rejected -> return@containerFiles admitted
+                    is Refinement.Refined -> admitted.value
+                }
+            when (val native = acquireNative(path, shared)) {
+                is Refinement.Rejected -> native
+                is Refinement.Refined -> {
+                    val lease = ContainerQueryLease(workspace, platform, native.value)
+                    retain(lease) { bindWorkspace(workspace, platform) }
                 }
             }
+        }
 
         @Synchronized
         private fun acquireNative(path: Path, shared: Boolean): Refinement<NativeLock, ContainerFailure> {
@@ -255,8 +240,7 @@ private constructor(
             return when (val read = store.readWorkspace(workspace.directory)) {
                 is Refinement.Rejected -> read
                 is Refinement.Refined ->
-                    if (read.value.record() == workspace.record() && read.value.generation == workspace.generation)
-                        Refinement.Refined(Unit)
+                    if (read.value.record() == workspace.record()) Refinement.Refined(Unit)
                     else Refinement.Rejected(ContainerFailure.INVALID_RECORD)
             }
         }

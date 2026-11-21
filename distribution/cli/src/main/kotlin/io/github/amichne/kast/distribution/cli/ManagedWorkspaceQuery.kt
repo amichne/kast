@@ -240,10 +240,7 @@ private fun admitWorkspace(
         is Refinement.Rejected -> return sharing
         is Refinement.Refined -> Unit
     }
-    return when (access) {
-        WorkspaceAccess.PREPARE -> migrateLegacyWorkspace(store, workspace)
-        WorkspaceAccess.RETAINED -> selected
-    }
+    return selected
 }
 
 private fun createWorkspace(

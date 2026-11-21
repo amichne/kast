@@ -34,11 +34,7 @@ internal fun reclaimVanishedWorkspaces(store: ContainerStore) {
 
 private fun reclaimEntries(store: ContainerStore, entries: List<ContainerStoreEntry>) {
     for (entry in entries) {
-        if (
-            entry is ContainerStoreEntry.Admitted &&
-                Files.notExists(entry.workspace.workspace, NOFOLLOW_LINKS) &&
-                entry.workspace.generation == ContainerGenerationSource.Current
-        ) {
+        if (entry is ContainerStoreEntry.Admitted && Files.notExists(entry.workspace.workspace, NOFOLLOW_LINKS)) {
             reportReclamation(reclaimWorkspace(store, entry.workspace))
         }
     }

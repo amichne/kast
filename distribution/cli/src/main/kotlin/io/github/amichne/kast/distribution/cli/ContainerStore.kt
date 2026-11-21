@@ -129,7 +129,6 @@ internal class ContainerStore(
                     creation.workspace,
                     creation.directory,
                     creation.gradleHome,
-                    ContainerGenerationSource.Current,
                     creation.dependencySharing,
                 ),
                 runtime,
@@ -225,8 +224,6 @@ internal class ContainerStore(
     }
 
     fun recordRetirement(container: AdmittedContainer): Refinement<Unit, ContainerFailure> = containerFiles {
-        if (container.owned.generation != ContainerGenerationSource.Current)
-            return@containerFiles Refinement.Rejected(ContainerFailure.INVALID_RECORD)
         val destination = container.directory.resolve("generation-retirement.json")
         if (!Files.notExists(destination, NOFOLLOW_LINKS)) {
             when (val existing = readContainerRetirement(destination)) {

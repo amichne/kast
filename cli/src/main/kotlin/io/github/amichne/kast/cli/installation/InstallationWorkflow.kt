@@ -435,10 +435,7 @@ internal object InstallationWorkflow {
                 plan.request.controlOnly == InstallationSwitch.ENABLED &&
                 plan.request.publicEndpoint == InstallationPublicEndpointSelection.Unspecified
         ) {
-            if (
-                configuration.preservesEndpoint() &&
-                    configuration.migration == InstallationConfigurationMigration.Unchanged
-            ) {
+            if (configuration.preservesEndpoint()) {
                 Files.copy(configuration.root.resolve("config/environment"), stagedConfiguration)
                 return
             }
