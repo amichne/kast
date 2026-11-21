@@ -7,6 +7,7 @@ from enum import Enum
 import argparse
 import ast
 import json
+import os
 from pathlib import Path
 import re
 
@@ -91,10 +92,22 @@ def violations(path, source, declared, owners):
     return findings
 
 
+_GRADLE_PROJECT_MARKERS = ('build.gradle.kts', 'settings.gradle.kts', 'build.gradle', 'settings.gradle')
+_SKIPPED_DIRECTORIES = frozenset({'.git', '.gradle', '.idea', '__pycache__', 'node_modules'})
+
+
+def _candidate_files(root):
+    for directory, children, files in os.walk(root):
+        project = any(marker in files for marker in _GRADLE_PROJECT_MARKERS)
+        # A source module may be named `build`; only a Gradle project's own `build` child is output.
+        children[:] = [child for child in children if child not in _SKIPPED_DIRECTORIES and not (project and child == 'build')]
+        yield from (Path(directory) / name for name in files)
+
+
 def source_files(root):
-    for path in sorted(root.rglob('*')):
+    for path in sorted(_candidate_files(root)):
         relative = path.relative_to(root)
-        if not path.is_file() or any(part in {'build', '.git', '.gradle', '.idea', '__pycache__'} for part in relative.parts):
+        if not path.is_file():
             continue
         name = relative.as_posix()
         if '/src/test/' in name or name.startswith('packaging/tests/') or (relative.parent == Path('packaging') and path.name.startswith(('test-', 'test_'))):

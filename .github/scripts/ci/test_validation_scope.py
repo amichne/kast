@@ -95,7 +95,6 @@ class ValidationScopeTest(unittest.TestCase):
             "docs/internal/tooling",
             "gradle/plugins",
             "config",
-            "build-policy",
             "distribution/release",
             "experiments",
             "fixtures",

@@ -17,7 +17,7 @@ from query_delivery_contract import MODULE as DELIVERY_MODULE, SCHEMA as DELIVER
 ROOT = Path(__file__).resolve().parents[3]
 RESOURCES = ROOT / 'app-server/src/main/resources/io/github/amichne/kast/appserver/query'
 KOTLIN = ROOT / 'app-server/src/main/kotlin/io/github/amichne/kast/appserver/query'
-HEADER = '''// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.
+HEADER = '''// Generated from tools.schema.json by packaging/internal/query/generate-public-query.py. Do not edit.
 @file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 
 package io.github.amichne.kast.appserver.query
@@ -516,27 +516,27 @@ def render_tools(authority: dict) -> dict[Path, str]:
         KOTLIN / 'PublicToolDocuments.kt': document_source,
         KOTLIN / 'PublicToolTrace.kt': HEADER + ''.join(trace_body).rstrip() + '\n',
         KOTLIN / 'PublicToolSourceDocuments.kt':
-            '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n'
+            '// Generated from tools.schema.json by packaging/internal/query/generate-public-query.py. Do not edit.\n'
             'package io.github.amichne.kast.appserver.query\n\n'
             'import io.github.amichne.kast.protocol.contract.ProtocolText\n'
             'import kotlinx.serialization.SerialName\n'
             'import kotlinx.serialization.Serializable\n\n' + ''.join(source_body).rstrip() + '\n',
         KOTLIN / 'PublicToolDiscoveryDocuments.kt':
-            '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n'
+            '// Generated from tools.schema.json by packaging/internal/query/generate-public-query.py. Do not edit.\n'
             'package io.github.amichne.kast.appserver.query\n\n'
             'import io.github.amichne.kast.protocol.contract.BoundedProtocolList\n'
             'import io.github.amichne.kast.protocol.contract.ProtocolText\n'
             'import kotlinx.serialization.SerialName\n'
             'import kotlinx.serialization.Serializable\n\n' + ''.join(discovery_body).rstrip() + '\n',
         KOTLIN / 'PublicToolImpactDocuments.kt':
-            '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n'
+            '// Generated from tools.schema.json by packaging/internal/query/generate-public-query.py. Do not edit.\n'
             'package io.github.amichne.kast.appserver.query\n\n'
             'import io.github.amichne.kast.protocol.contract.BoundedProtocolList\n'
             'import io.github.amichne.kast.protocol.contract.ProtocolText\n'
             'import kotlinx.serialization.SerialName\n'
             'import kotlinx.serialization.Serializable\n\n' + ''.join(impact_body).rstrip() + '\n',
     }
-    identity_lines = ['// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
+    identity_lines = ['// Generated from tools.schema.json by packaging/internal/query/generate-public-query.py. Do not edit.\n',
                       'package io.github.amichne.kast.protocol.registry\n\n',
                       'import io.github.amichne.kast.protocol.contract.CanonicalOperation\n\n',
                       f'const val PUBLIC_TOOL_CONTRACT_VERSION = {authority["contractVersion"]}\n',
@@ -568,7 +568,7 @@ def render_tools(authority: dict) -> dict[Path, str]:
 ''')
     outputs[ROOT / 'protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt'] = ''.join(identity_lines)
     support_lines = [
-        '// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.\n',
+        '// Generated from tools.schema.json by packaging/internal/query/generate-public-query.py. Do not edit.\n',
         'package io.github.amichne.kast.protocol.registry\n\n',
         'enum class SupportToolHost {\n    APP_SERVER,\n    MCP,\n    RPC,\n}\n\n',
         'enum class SupportToolIdentity(\n'
@@ -638,13 +638,13 @@ def render_tools(authority: dict) -> dict[Path, str]:
             )
             if count != 1:
                 raise ValueError(f'{relative}: missing unique generated loading policy')
-        failure_block = ('// Generated from ToolRpcFailure; owned by packaging/generate-public-query.py.\n'
+        failure_block = ('// Generated from ToolRpcFailure; owned by packaging/internal/query/generate-public-query.py.\n'
                          'const TOOL_RPC_FAILURES = [\n' +
                          ''.join('  ' + json.dumps(failure) + ',\n' for failure in failures) +
                          ('] as const;\n' if relative.startswith('pi/') else '];\n') +
                          '// End generated ToolRpcFailure.')
         source, count = re.subn(
-            r'// Generated from ToolRpcFailure; owned by packaging/generate-public-query.py\.\n.*?// End generated ToolRpcFailure\.',
+            r'// Generated from ToolRpcFailure; owned by packaging/internal/query/generate-public-query.py\.\n.*?// End generated ToolRpcFailure\.',
             lambda _: failure_block, source, flags=re.DOTALL,
         )
         if count != 1:
@@ -865,7 +865,7 @@ def render_query_topics(authority: dict, minimum_bytes: int) -> dict[Path, str]:
 
 def render_row_compatibility(authority: dict) -> str:
     rows = [
-        '<!-- Generated by packaging/generate-public-query.py; edit tools.schema.json. -->',
+        '<!-- Generated by packaging/internal/query/generate-public-query.py; edit tools.schema.json. -->',
         '# Query row compatibility',
         '',
         '| Operation | Accepted input | Result |',

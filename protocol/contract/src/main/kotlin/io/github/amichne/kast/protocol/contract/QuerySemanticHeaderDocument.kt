@@ -1,4 +1,4 @@
-// Generated from query-delivery.schema.json by packaging/generate-public-query.py. Do not edit.
+// Generated from query-delivery.schema.json by packaging/internal/query/generate-public-query.py. Do not edit.
 package io.github.amichne.kast.protocol.contract
 
 import kotlinx.serialization.SerialName

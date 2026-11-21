@@ -746,7 +746,7 @@ val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngres
     description = "Rejects undeclared Kast input references and ambient reads outside named ingress owners."
     dependsOn(":cli:generateConfigurationCatalogue", configurationIngressTest)
     inputs.file(generatedConfigurationCatalogue)
-    inputs.files("build-policy/configuration-ingress.json", "packaging/internal/configuration/configuration_ingress.py", "packaging/configuration-schema.json")
+    inputs.files("config/configuration-ingress.json", "packaging/internal/configuration/configuration_ingress.py", "packaging/configuration-schema.json")
     inputs.files(fileTree(layout.projectDirectory) {
         include("**/src/main/**/*.kt", "**/src/main/**/*.kts", "**/src/gradleTooling/**/*.kt",
             "**/src/main/scripts/**", "*.kts", "install.sh", "packaging/internal/*/*.sh", "packaging/internal/*/*.py",
@@ -759,7 +759,7 @@ val verifyConfigurationIngress = tasks.register<Exec>("verifyConfigurationIngres
     argumentProviders.add(CommandLineArgumentProvider {
         listOf(root.file("packaging/internal/configuration/configuration_ingress.py").asFile.absolutePath,
             "--root", root.asFile.absolutePath, "--schema", catalogue.get().asFile.absolutePath,
-            "--policy", root.file("build-policy/configuration-ingress.json").asFile.absolutePath,
+            "--policy", root.file("config/configuration-ingress.json").asFile.absolutePath,
             "--snapshot", root.file("packaging/configuration-schema.json").asFile.absolutePath)
     })
 }

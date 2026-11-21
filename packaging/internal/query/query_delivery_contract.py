@@ -83,7 +83,7 @@ def render_semantic_kotlin(schema: dict) -> str:
         return scalar + ('?' if nullable else '')
 
     carrier(schema['$defs']['SemanticHeader'], 'QuerySemanticHeaderDocument')
-    return ('// Generated from query-delivery.schema.json by packaging/generate-public-query.py. Do not edit.\n'
+    return ('// Generated from query-delivery.schema.json by packaging/internal/query/generate-public-query.py. Do not edit.\n'
             'package io.github.amichne.kast.protocol.contract\n\n'
             'import kotlinx.serialization.SerialName\nimport kotlinx.serialization.Serializable\n\n' + '\n'.join(declarations))
 

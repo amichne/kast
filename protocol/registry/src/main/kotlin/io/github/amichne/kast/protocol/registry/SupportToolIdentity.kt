@@ -1,4 +1,4 @@
-// Generated from tools.schema.json by packaging/generate-public-query.py. Do not edit.
+// Generated from tools.schema.json by packaging/internal/query/generate-public-query.py. Do not edit.
 package io.github.amichne.kast.protocol.registry
 
 enum class SupportToolHost {

@@ -16,7 +16,7 @@ code_sources:
   - path: agent-tools/onboarding.template.md
   - path: agent-tools/README.md
   - path: agent-tools/hooks/session_start.py
-  - path: packaging/internal/generate-public-query.py
+  - path: packaging/internal/query/generate-public-query.py
   - path: build-logic/src/main/kotlin/support/tasks/control/GenerateAgentToolsTask.kt
   - path: pi/mcp-extension.ts
   - path: cli/src/test/js/native-onboarding.test.mjs
@@ -25,7 +25,7 @@ code_sources:
 # Agent integration
 
 `onboarding.template.md` owns the shared prose.
-`packaging/internal/generate-public-query.py` owns `references/onboarding.md`, `references/query-schema.json`, and `references/query-examples.json`.
+`packaging/internal/query/generate-public-query.py` owns `references/onboarding.md`, `references/query-schema.json`, and `references/query-examples.json`.
 The same generator owns `references/query-topics.md` and its named topic files.
 It also owns `references/query-common-schema.json` from `catalogs.COMMON` in the canonical schema.
 Change the template or the authored public schema before regeneration.
