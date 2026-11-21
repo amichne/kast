@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
-from configuration_ingress import Failure, violations
+from configuration_ingress import Failure, source_files, violations
 
 @dataclass(frozen=True)
 class EmptyCatalogue:
@@ -87,6 +87,24 @@ class ConfigurationIngressTest(unittest.TestCase):
             findings = json.loads(production.stdout)['findings']
             self.assertEqual({'UNDECLARED_KEY', 'UNOWNED_INGRESS'}, {item['condition'] for item in findings})
             self.assertEqual({'packaging/internal/installation/fixture.py'}, {item['file'] for item in findings})
+
+    def test_source_module_named_build_is_scanned_but_gradle_outputs_are_not(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            files = {
+                'build.gradle.kts': '',
+                'build/src/main/kotlin/RootOutput.kt': '',
+                'topology/build/build.gradle.kts': '',
+                'topology/build/src/main/kotlin/kast/topology/build/Read.kt': '',
+                'topology/build/build/src/main/kotlin/ModuleOutput.kt': '',
+                'node_modules/example/build/src/main/kotlin/Dependency.kt': 'System.getenv("KAST_VENDOR")',
+                'node_modules/example/src/main/kotlin/Vendor.kt': 'System.getenv("KAST_VENDOR")',
+            }
+            for name, text in files.items():
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_text(text)
+            self.assertEqual(['build.gradle.kts', 'topology/build/src/main/kotlin/kast/topology/build/Read.kt'],
+                             [name for name, _ in source_files(root)])
 
     def test_declared_input_cannot_add_an_ambient_reader_outside_named_ingress(self):
         result = violations('core/Pure.kt', 'System.getenv("KAST_INDEXER_MAX_HEAP")', {'KAST_INDEXER_MAX_HEAP'}, {'cli/Ingress.kt'})

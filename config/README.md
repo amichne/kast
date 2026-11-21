@@ -1,7 +1,11 @@
-# Kotlin quality baselines
+# Build verification inputs
 
-Module `check` runs Spotless, one aggregate Detekt analysis, and Kotlin file-length
-checks. Detekt 2.0.0-alpha.6 resolves types across every Kotlin source set in that
+Each child directory holds checked-in inputs that build and CI checks read: baselines, inventories, rules, and policies.
+
+## Kotlin quality baselines
+
+Module `check` runs Spotless, one aggregate `Detekt` analysis, and Kotlin file-length
+checks. `Detekt` 2.0.0-alpha.6 resolves types across every Kotlin source set in that
 aggregate task, so the source-set-specific tasks remain available for focused
 diagnosis and baseline maintenance but are not duplicate `check` dependencies.
 Existing structural findings are recorded so the gates can reject new debt
@@ -11,7 +15,7 @@ immediately. Formatting has no baseline.
 aggregate `detekt` task used by `check`. The `baseline-main.xml` and
 `baseline-test.xml` siblings record source-set findings and take precedence when
 their corresponding focused tasks are invoked explicitly. New finding identities
-fail the gate; Detekt does not measure growth inside an already recorded finding.
+fail the gate; `Detekt` does not measure growth inside an already recorded finding.
 Remove entries as their findings are resolved. Generating baselines with
 `detektBaseline`, `detektBaselineMain`, or `detektBaselineTest` is an explicit
 debt-policy change, never a routine formatting or CI step.
@@ -36,3 +40,10 @@ JSON expressions, extra copies, and stale allowances. See
 [JSON contract policy](json-contracts/README.md) for exact fingerprint rules,
 justified fixture exceptions, the typed report, and coverage limits. It never
 rewrites `config/json-contracts/baseline.json`.
+
+## Configuration ingress
+
+Root `verifyConfigurationIngress` reads `configuration-ingress.json`.
+The policy lists the exact source files permitted to read raw configuration input.
+`packaging/internal/configuration/configuration_ingress.py` rejects undeclared reads outside those owners.
+Add an owner only with explicit owner review.
