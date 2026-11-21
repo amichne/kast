@@ -204,7 +204,9 @@ def live_host(
     )
     assert isinstance(pid, int) and pid > 0 and isinstance(started, int) and started > 0
     assert isinstance(lifetime, str) and lifetime and isinstance(profile, str)
-    assert identity.get("mode") == "MANAGED_HEADLESS" and identity.get("ideaHome") == str(home)
+    # Hosts no longer advertise a mode; a prior managed Host still names MANAGED_HEADLESS.
+    assert identity.get("mode", "MANAGED_HEADLESS") == "MANAGED_HEADLESS", "Host mode"
+    assert identity.get("ideaHome") == str(home), "Host IDEA home"
     assert Path(profile).is_relative_to(root / "state/home")
     assert application.get("host") == lifetime
     assert all(document.get("hostPid") == pid for document in documents)

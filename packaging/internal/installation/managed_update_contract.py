@@ -99,7 +99,6 @@ class RuntimeIdentity:
     hostLifetime: str
     buildIdentity: RuntimeBuild
     autoReload: Literal["ENABLED", "DISABLED"]
-    mode: Literal["DESKTOP", "MANAGED_HEADLESS"] = "DESKTOP"
 
 
 @dataclass(frozen=True, slots=True)
@@ -339,8 +338,9 @@ def parse_process(value: object) -> ProcessIdentity | Failure:
 def parse_runtime(value: object) -> RuntimeIdentity | Failure:
     if not release.mapping(value):
         return Failure.HOST_RESPONSE_INVALID
-    mode = value.get("mode", "DESKTOP")
-    if mode not in ("DESKTOP", "MANAGED_HEADLESS"):
+    # Hosts have no mode. A prior managed Host still names MANAGED_HEADLESS while it is inspected
+    # before retirement; a desktop or unknown mode rejects.
+    if "mode" in value and value["mode"] != "MANAGED_HEADLESS":
         return Failure.HOST_RESPONSE_INVALID
     home, profile, pid, started, lifetime, raw_build, auto = (
         value.get(key)
@@ -367,7 +367,7 @@ def parse_runtime(value: object) -> RuntimeIdentity | Failure:
         or not release.mapping(raw_build)
     ):
         return Failure.HOST_RESPONSE_INVALID
-    if mode == "MANAGED_HEADLESS" and auto == "ENABLED":
+    if value.get("mode") == "MANAGED_HEADLESS" and auto == "ENABLED":
         return Failure.HOST_RESPONSE_INVALID
     version, revision, tree = (
         raw_build.get(key) for key in ("version", "sourceRevision", "sourceTree")
@@ -387,7 +387,6 @@ def parse_runtime(value: object) -> RuntimeIdentity | Failure:
         lifetime,
         RuntimeBuild(version, revision, tree),
         "ENABLED" if auto == "ENABLED" else "DISABLED",
-        "MANAGED_HEADLESS" if mode == "MANAGED_HEADLESS" else "DESKTOP",
     )
 
 

@@ -4,7 +4,6 @@ import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.HostedContractDocument
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
-import io.github.amichne.kast.protocol.contract.IdeHostMode
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -94,25 +93,6 @@ class ManagedHeadlessShutdownTest {
     }
 
     @Test
-    fun `desktop identity is rejected before settlement or stop`() {
-        val fixture = fixture()
-        val result =
-            stopManagedHeadlessHost(
-                "/idea",
-                "/private/profile",
-                { request ->
-                    assertEquals(ManagedHostRequest.Inspect("/idea", "/private/profile"), request)
-                    ManagedHostResponse.Inspected(
-                        listOf(fixture.process),
-                        fixture.inspected.copy(runtimeIdentity = fixture.identity.copy(mode = IdeHostMode.DESKTOP)),
-                    )
-                },
-                { error("Desktop process must remain untouched") },
-            )
-        assertEquals(ManagedHeadlessShutdownOutcome.Rejected(ManagedHeadlessShutdownFailure.ADMISSION_REJECTED), result)
-    }
-
-    @Test
     fun `settlement refusal prevents stop and exit waiting`() {
         val fixture = fixture()
         val effects = mutableListOf<String>()
@@ -156,7 +136,6 @@ class ManagedHeadlessShutdownTest {
                 "host",
                 IdeHostBuildIdentity("1.2.3", "a".repeat(40), "b".repeat(40)),
                 HostAutoReload.DISABLED,
-                IdeHostMode.MANAGED_HEADLESS,
             )
         val inspected =
             IdeLifecycleResult.Inspected(

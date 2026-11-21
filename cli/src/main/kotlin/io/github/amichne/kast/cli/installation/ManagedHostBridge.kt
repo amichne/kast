@@ -2,12 +2,12 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.appserver.ide.IdeLifecycleClient
 import io.github.amichne.kast.appserver.ide.IdeLifecycleDeployment
-import io.github.amichne.kast.appserver.ide.LegacyHostCleanupClient
 import io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection
 import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
+import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
 import java.nio.file.Path
 
@@ -296,8 +296,9 @@ private fun exchangeSelectedHost(
     command: IdeLifecycleCommand,
 ): IdeLifecycleResult =
     when (selection) {
+        // Only a selected managed Host is managed; a default desktop IDEA is never a Kast Host.
         io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.OwnerDefault ->
-            LegacyHostCleanupClient(home, idea).execute(command)
+            IdeLifecycleResult.Blocked(IdeLifecycleFailure.SELECTED_IDE_UNAVAILABLE)
         is io.github.amichne.kast.distribution.contract.configuration.ConfigurationPathSelection.Selected ->
             // Management exchanges inspect, settle and stop; they never launch a Host.
             IdeLifecycleClient(
