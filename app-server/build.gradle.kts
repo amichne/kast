@@ -1,13 +1,4 @@
-import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.testing.Test
-import org.gradle.process.CommandLineArgumentProvider
-
-abstract class KastObserverSnapshotArguments : CommandLineArgumentProvider {
-    @get:OutputFile abstract val manifestFile: RegularFileProperty
-
-    override fun asArguments(): Iterable<String> = listOf(manifestFile.get().asFile.absolutePath)
-}
 
 plugins {
     `java-test-fixtures`
@@ -45,51 +36,6 @@ tasks.named<Test>("test") {
     val installedSchemas = providers.environmentVariable("KAST_CODEX_SCHEMA_DIRECTORY")
     inputs.property("installedCodexSchemaDirectory", installedSchemas.orElse(""))
     inputs.dir(installedSchemas).optional().withPropertyName("installedCodexSchemas")
-}
-
-val kastObserverSnapshotManifest = layout.buildDirectory.file("observer-snapshots/kast-observer-presentations.json")
-
-val generateKastObserverSnapshotManifest =
-    tasks.register<JavaExec>("generateKastObserverSnapshotManifest") {
-        description = "Projects deterministic Kast observer fixtures without starting Codex."
-        group = "documentation"
-        classpath = sourceSets.test.get().runtimeClasspath
-        mainClass = "io.github.amichne.kast.appserver.provider.KastObserverSnapshotMain"
-        workingDir = repositoryRoot.asFile
-        dependsOn(tasks.named("testClasses"))
-        argumentProviders.add(
-            objects.newInstance<KastObserverSnapshotArguments>().apply {
-                manifestFile.set(kastObserverSnapshotManifest)
-            }
-        )
-    }
-
-val kastObserverSnapshotScript = repositoryRoot.file("docs/render_kast_observer_snapshots.py")
-val kastObserverSnapshotStyles = repositoryRoot.file("docs/kast-observer-snapshots.css")
-val kastObserverSnapshotOutput = repositoryRoot.dir("docs/public/images")
-
-tasks.register<Exec>("renderKastObserverScreenshots") {
-    description = "Renders offline Kast observer PNGs from deterministic projected fixtures."
-    group = "documentation"
-    dependsOn(generateKastObserverSnapshotManifest)
-    inputs.file(kastObserverSnapshotManifest)
-    inputs.file(kastObserverSnapshotScript)
-    inputs.file(kastObserverSnapshotStyles)
-    outputs.files(
-        kastObserverSnapshotOutput.file("kast-observer-symbol-source.png"),
-        kastObserverSnapshotOutput.file("kast-observer-semantic-impact.png"),
-        kastObserverSnapshotOutput.file("kast-observer-change-lifecycle.png"),
-    )
-    commandLine(
-        "python3",
-        kastObserverSnapshotScript.asFile.absolutePath,
-        "--manifest",
-        kastObserverSnapshotManifest.get().asFile.absolutePath,
-        "--styles",
-        kastObserverSnapshotStyles.asFile.absolutePath,
-        "--output-directory",
-        kastObserverSnapshotOutput.asFile.absolutePath,
-    )
 }
 
 val installedWorkspaceHarnessClasspath = layout.buildDirectory.file("acceptance/installed-workspace-harness.classpath")

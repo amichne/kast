@@ -2,7 +2,7 @@
     "inputs": [
         {
             "path": "app-server/build.gradle.kts",
-            "sha256": "6f7103aa5eed0ed06094ab69604c4f697752f544acc177b7fd0dc6b0ccec75f2"
+            "sha256": "8e53abb5f6040f12fb98153c9e0980a9f007285e3d750fe2d82961e564200606"
         },
         {
             "path": "build-logic/build.gradle.kts",
