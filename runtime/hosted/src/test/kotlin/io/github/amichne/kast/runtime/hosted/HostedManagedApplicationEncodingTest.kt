@@ -7,7 +7,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
-import io.github.amichne.kast.protocol.contract.IdeHostMode
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.wire.CanonicalHostedContract
 import io.github.amichne.kast.workspace.contract.CanonicalWorkspaceRoot
@@ -29,16 +28,11 @@ class HostedManagedApplicationEncodingTest {
         assertTrue(schema.validate(encoded, InputFormat.JSON).isEmpty(), encoded)
         val obsoleteSchema = json.encodeToString(document.copy(querySchema = "kast.query.run.v9"))
         assertTrue(schema.validate(obsoleteSchema, InputFormat.JSON).isNotEmpty())
-        val application = checkNotNull(document.application)
-        val desktop =
-            json.encodeToString(
-                document.copy(
-                    application =
-                        application.copy(runtimeIdentity = application.runtimeIdentity.copy(mode = IdeHostMode.DESKTOP))
-                )
-            )
-        assertTrue(schema.validate(desktop, InputFormat.JSON).isNotEmpty())
-        assertTrue(schema.validate(encoded.replace("MANAGED_HEADLESS", "UNPROVEN"), InputFormat.JSON).isNotEmpty())
+        // A Host identity has no mode: a retired desktop or unknown mode member is rejected.
+        val withMode =
+            encoded.replace("\"autoReload\":\"DISABLED\"", "\"autoReload\":\"DISABLED\",\"mode\":\"DESKTOP\"")
+        assertTrue(withMode != encoded)
+        assertTrue(schema.validate(withMode, InputFormat.JSON).isNotEmpty())
     }
 
     @Test
@@ -59,7 +53,6 @@ class HostedManagedApplicationEncodingTest {
                 100,
                 "00000000-0000-0000-0000-000000000002",
                 IdeHostBuildIdentity("0.0.0", "a".repeat(40), "b".repeat(40)),
-                mode = IdeHostMode.MANAGED_HEADLESS,
             )
         val application =
             IdeHostApplicationAdvertisement(

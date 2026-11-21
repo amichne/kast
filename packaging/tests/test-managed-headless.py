@@ -298,7 +298,7 @@ class ManagedHeadlessTest(unittest.TestCase):
             }
             assert record["schemaVersion"] == 1
 
-    def test_runtime_mode_survives_the_installer_projection(self) -> None:
+    def test_runtime_identity_admits_only_a_managed_or_absent_mode(self) -> None:
         wire = RuntimeModeFixture(
             "/owned/idea",
             "/owned/state/home/profile",
@@ -311,11 +311,14 @@ class ManagedHeadlessTest(unittest.TestCase):
         )
         parsed = contract.parse_runtime(asdict(wire))
         assert not isinstance(parsed, contract.Failure)
-        assert getattr(parsed, "mode", None) == "MANAGED_HEADLESS"
-        assert (
-            contract.parse_runtime(asdict(replace(wire, mode="UNPROVEN")))
-            == contract.Failure.HOST_RESPONSE_INVALID
-        )
+        assert not hasattr(parsed, "mode")
+        absent = {key: value for key, value in asdict(wire).items() if key != "mode"}
+        assert not isinstance(contract.parse_runtime(absent), contract.Failure)
+        for mode in ("DESKTOP", "UNPROVEN"):
+            assert (
+                contract.parse_runtime(asdict(replace(wire, mode=mode)))
+                == contract.Failure.HOST_RESPONSE_INVALID
+            )
 
     def test_headless_auto_reload_never_grants_an_installer_strategy(self) -> None:
         wire = RuntimeModeFixture(

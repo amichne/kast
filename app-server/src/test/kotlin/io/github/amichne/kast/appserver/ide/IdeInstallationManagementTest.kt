@@ -8,116 +8,37 @@ import io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.net.StandardProtocolFamily
-import java.net.UnixDomainSocketAddress
-import java.nio.channels.Channels
-import java.nio.channels.ServerSocketChannel
-import java.nio.file.Files
 import java.nio.file.Path
-import java.security.MessageDigest
 import java.util.UUID
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class IdeInstallationManagementTest {
     @Test
     fun `installer can resume an exact prior Host with a different semantic contract`() {
-        fixture { home, idea, inspected, serve ->
-            val command = IdeLifecycleCommand.ResumeHost(inspected.host, "update")
-            val expected = IdeLifecycleResult.HostResumed(inspected.host, "update")
-            val finished = serve(listOf(IdeLifecycleCommand.Inspect to inspected, command to expected))
-            assertEquals(
-                expected,
-                LegacyHostCleanupClient(home, idea).execute(command),
-            )
-            finished()
-        }
+        val inspected = inspected(Path.of("/owned/idea"))
+        val command = IdeLifecycleCommand.ResumeHost(inspected.host, "update")
+        val expected = IdeLifecycleResult.HostResumed(inspected.host, "update")
+        val exchanges = mutableListOf<Pair<Path, IdeLifecycleCommand>>()
+        assertEquals(
+            expected,
+            manageInspectedInstallation(inspected, command) { home, sent ->
+                exchanges += home to sent
+                expected
+            },
+        )
+        assertEquals(listOf(Path.of(inspected.home) to command), exchanges)
     }
 
     @Test
     fun `installer rejects a foreign Host without a second exchange`() {
-        fixture { home, idea, inspected, serve ->
-            val finished = serve(listOf(IdeLifecycleCommand.Inspect to inspected))
-            assertEquals(
-                IdeLifecycleResult.Blocked(IdeLifecycleFailure.WRONG_HOST),
-                LegacyHostCleanupClient(home, idea).execute(IdeLifecycleCommand.ResumeHost("foreign", "update")),
-            )
-            finished()
-        }
-    }
-
-    @Test
-    fun `legacy cleanup cannot prepare a workspace or reload a desktop host`() {
-        val client = LegacyHostCleanupClient(Path.of("/unused/home"), Path.of("/unused/idea"))
-        for (command in
-            listOf(
-                IdeLifecycleCommand.Open("host", "request", "test", "/workspace"),
-                IdeLifecycleCommand.SettleHostForReload("host", "update"),
-                IdeLifecycleCommand.RefreshHostBundle("host", "update"),
-            )) {
-            assertEquals(IdeLifecycleResult.Blocked(IdeLifecycleFailure.INVALID_REQUEST), client.execute(command))
-        }
-    }
-
-    private fun fixture(
-        action:
-            (
-                Path,
-                Path,
-                IdeLifecycleResult.Inspected,
-                (List<Pair<IdeLifecycleCommand, IdeLifecycleResult>>) -> () -> Unit,
-            ) -> Unit
-    ) {
-        val root = Files.createTempDirectory(Path.of("/tmp"), "k").toRealPath()
-        val executor = Executors.newSingleThreadExecutor()
-        val listener = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
-        try {
-            val idea = Files.createDirectory(root.resolve("idea"))
-            val hash =
-                MessageDigest.getInstance("SHA-256").digest(idea.toString().toByteArray()).take(16).joinToString("") {
-                    "%02x".format(it)
-                }
-            val directory =
-                Files.createDirectories(
-                    io.github.amichne.kast.distribution.contract.HostedEndpointPaths.family(
-                            root,
-                            io.github.amichne.kast.distribution.contract.HostedEndpointPaths.Family.LIFECYCLE,
-                        )
-                        .resolve(hash)
-                )
-            listener.bind(UnixDomainSocketAddress.of(directory.resolve("host.sock")))
-            val inspected = inspected(idea)
-            val json = Json { encodeDefaults = true }
-            action(root, idea, inspected) { steps ->
-                val serving = executor.submit {
-                    for ((command, result) in steps) listener.accept().use { channel ->
-                        val input = DataInputStream(Channels.newInputStream(channel))
-                        val size = input.readInt()
-                        val raw = input.readNBytes(size).decodeToString()
-                        assertEquals(command, json.decodeFromString<IdeLifecycleCommand>(raw))
-                        val encoded = json.encodeToString(IdeLifecycleResult.serializer(), result).toByteArray()
-                        DataOutputStream(Channels.newOutputStream(channel)).apply {
-                            writeInt(encoded.size)
-                            write(encoded)
-                            flush()
-                        }
-                    }
-                }
-                ({
-                    serving.get(5, TimeUnit.SECONDS)
-                })
-            }
-        } finally {
-            listener.close()
-            executor.shutdownNow()
-            cleanupHostedEndpointFixture(root)
-            Files.walk(root).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
-        }
+        val inspected = inspected(Path.of("/owned/idea"))
+        assertEquals(
+            IdeLifecycleResult.Blocked(IdeLifecycleFailure.WRONG_HOST),
+            manageInspectedInstallation(inspected, IdeLifecycleCommand.ResumeHost("foreign", "update")) { _, _ ->
+                error("A foreign Host must not receive a second exchange")
+            },
+        )
     }
 
     private fun inspected(idea: Path): IdeLifecycleResult.Inspected {

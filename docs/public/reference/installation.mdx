@@ -69,12 +69,11 @@ The bootstrap still downloads its pinned private interpreter and dependency; thi
 Do not combine `--local-artifact` with `--channel`, `--version`, or `--commit`.
 `kast upgrade --repair` rejects a local product with `LOCAL_ARTIFACT_REQUIRED` before effects, because its bytes exist only in the local directory.
 
-<Warning>
-  Desktop IntelliJ IDEA Hosts and user-space plugin installation are deprecated and targeted for removal.
-  The desktop component installer and checkout shell adapters are retired. Use `install.sh` for managed product setup.
-  Existing 0.51.x desktop Hosts and their wire values remain supported for compatibility.
-  Use managed headless Hosts with private workspace state and automatic workspace creation instead.
-</Warning>
+<Note>
+  Kast runs its Host only in the managed headless IDE that the product installs.
+  A desktop IntelliJ IDEA is never a Kast Host, and the Host plugin does not start there.
+  Use `install.sh` for managed product setup.
+</Note>
 
 Explicit MCP setup uses target-specific dependencies packaged with the selected Control build.
 It verifies the private interpreter and exact dependency inventory before preparation. It does not invoke pip, uv, or a dependency solver.

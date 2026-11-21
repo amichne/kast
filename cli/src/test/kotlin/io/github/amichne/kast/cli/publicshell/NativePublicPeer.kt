@@ -5,7 +5,6 @@ import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.IdeHostApplicationAdvertisement
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
-import io.github.amichne.kast.protocol.contract.IdeHostMode
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleResult
@@ -87,7 +86,6 @@ internal class NativePublicPeer(private val fixture: NativePublicFixture, privat
             exactHostStart(hostProcess),
             target.host,
             IdeHostBuildIdentity("0.0.0", "a".repeat(40), "b".repeat(40)),
-            mode = IdeHostMode.MANAGED_HEADLESS,
         )
     private val application = IdeHostApplicationAdvertisement(identity, compatibility, defaultGradleIdentity())
     private val endpointRoot =

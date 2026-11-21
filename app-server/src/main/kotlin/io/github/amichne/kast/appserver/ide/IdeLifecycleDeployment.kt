@@ -10,7 +10,6 @@ import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
 import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
 import io.github.amichne.kast.protocol.contract.IdeHostCompatibilityAdmission
-import io.github.amichne.kast.protocol.contract.IdeHostMode
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCapabilityName
 import io.github.amichne.kast.protocol.contract.IdeLifecycleCommand
 import io.github.amichne.kast.protocol.contract.IdeLifecycleFailure
@@ -173,8 +172,7 @@ internal fun managedIdentityMatches(
     installation: ManagedHeadlessInstallation,
     identity: io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity,
 ): Boolean =
-    identity.mode == IdeHostMode.MANAGED_HEADLESS &&
-        identity.autoReload == io.github.amichne.kast.protocol.contract.HostAutoReload.DISABLED &&
+    identity.autoReload == io.github.amichne.kast.protocol.contract.HostAutoReload.DISABLED &&
         identity.ideaHome == installation.launch.home &&
         identity.profile == installation.config.toString() &&
         identity.pid > 0 &&

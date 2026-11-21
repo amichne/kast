@@ -55,24 +55,6 @@ internal class IdeLifecycleNative(
 
     fun settlement(): HostNativeSettlement = inspectHostNativeSettlement(::hasActivePreparation)
 
-    @Deprecated(
-        "Borrowed desktop IDEA projects are targeted for removal; use managed workspace registration.",
-        level = DeprecationLevel.WARNING,
-    )
-    fun observeProjects() {
-        ProjectManager.getInstance()
-            .openProjects
-            .filterNot { it.isDisposed }
-            .forEach { project ->
-                val root =
-                    when (val admitted = canonicalLifecycleRoot(project.basePath ?: return@forEach)) {
-                        is Refinement.Refined -> admitted.value
-                        is Refinement.Rejected -> return@forEach
-                    }
-                observe(project, root, IdeProjectOwnership.BORROWED)
-            }
-    }
-
     /** Registration selects an observation only; the associated project adapter supplies all readiness evidence. */
     fun inspectProjects(): List<IdeProjectDescription> =
         state.inspectionSelections().map { selection ->
