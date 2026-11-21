@@ -26,12 +26,7 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
                 throw ManagementRejected("installer-protocol", resolved.failure.reason)
         }
     when (arguments[1]) {
-        "preflight" -> {
-            println(preflightPublicExecutable(root, environment).path)
-            return InternalInstallExit.COMPLETED
-        }
         "managed-retire" -> return retireManagedInstallation(root, environment)
-        "managed-publish" -> return publishManagedInstallation(root, environment)
         "refresh-guidance",
         "refresh-guidance-with-codex" ->
             return when (
@@ -48,8 +43,6 @@ private fun internalInstall(arguments: List<String>, environment: Map<String, St
                 LifecycleEffect.Completed -> InternalInstallExit.COMPLETED
                 is LifecycleEffect.Rejected -> throw ManagementRejected("reset-connections", restored.failure.name)
             }
-        "commit" -> return completeInternalInstall(root, environment, InstallationCompletion.STAGED)
-        "commit-active" -> return completeInternalInstall(root, environment, InstallationCompletion.ACTIVATE)
         else -> throw ManagementRejected("installer-protocol", "invalid request")
     }
 }
@@ -74,28 +67,6 @@ private fun internalPublicReset(root: Path, environment: Map<String, String>, ac
     }
 }
 
-private fun completeInternalInstall(
-    root: Path,
-    environment: Map<String, String>,
-    completion: InstallationCompletion,
-): InternalInstallExit {
-    val channel =
-        when (environment["KAST_MANAGEMENT_CHANNEL"]) {
-            "stable" -> ReleaseChannel.STABLE
-            "developer" -> ReleaseChannel.DEVELOPER
-            else -> throw ManagementRejected("installer-protocol", "release channel unavailable")
-        }
-    val result = completePublicInstallation(root, environment, channel, completion)
-    val destination = result.destination
-    println(destination.path)
-    if (!destination.onPath)
-        System.err.println("kast: installed ${destination.path}; add ${destination.path.parent} to PATH")
-    return when (result) {
-        is InstallationCompletionResult.Published -> InternalInstallExit.COMPLETED
-        is InstallationCompletionResult.ActivationRejected -> InternalInstallExit.ACTIVATION_REJECTED
-    }
-}
-
 private enum class InternalInstallExit(val code: Int) {
     COMPLETED(0),
     ACTIVATION_REJECTED(1),
@@ -116,18 +87,6 @@ private fun retireManagedInstallation(root: Path, environment: Map<String, Strin
         is io.github.amichne.kast.kernel.Refinement.Rejected ->
             throw ManagementRejected("managed-retirement", result.failure.name)
     }
-}
-
-private fun publishManagedInstallation(root: Path, environment: Map<String, String>): InternalInstallExit {
-    val selected =
-        environment["KAST_MANAGEMENT_SELECTION"]
-            ?: throw ManagementRejected("managed-publication", "selection unavailable")
-    val publication = ManagementPublication.Selected.admit(root, Path.of(selected))
-    val channel =
-        if (publication.binding.identity.mainRevision == null) ReleaseChannel.STABLE else ReleaseChannel.DEVELOPER
-    val destination = commitPublicExecutable(root, environment, channel, publication)
-    println(destination.path)
-    return InternalInstallExit.COMPLETED
 }
 
 private fun managedRetirementHome(environment: Map<String, String>): Path =

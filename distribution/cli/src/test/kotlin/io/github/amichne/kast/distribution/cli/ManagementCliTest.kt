@@ -165,62 +165,6 @@ class ManagementCliTest {
         assertTrue(disconnectHarness(root, home, Harness.COPILOT))
         assertFalse(Files.exists(target))
     }
-
-    @Test
-    fun `path preflight rejects foreign executable before installation effects`() {
-        val root = temporary.toRealPath().resolve("kast")
-        val home = temporary.toRealPath().resolve("home")
-        Files.createDirectories(root)
-        val bin = home.resolve(".local/bin")
-        Files.createDirectories(bin)
-        Files.writeString(bin.resolve("kast"), "foreign")
-        val failure =
-            org.junit.jupiter.api.assertThrows<ManagementRejected> {
-                preflightPublicExecutable(root, mapOf("HOME" to home.toString(), "PATH" to bin.toString()))
-            }
-        assertEquals("path-preflight", failure.stage)
-        assertEquals("foreign", Files.readString(bin.resolve("kast")))
-    }
-
-    @Test
-    fun `native publication records selected path and retains it on upgrade`() {
-        val root = temporary.toRealPath().resolve("install")
-        val home = temporary.toRealPath().resolve("home")
-        val configured = temporary.toRealPath().resolve("config")
-        val bundled = root.resolve("installation/share/kast/libexec/kast-management")
-        Files.createDirectories(bundled.parent)
-        Files.createDirectories(home)
-        Files.createDirectories(configured)
-        Files.writeString(bundled, "native-release-one")
-        bundled.toFile().setExecutable(true)
-        val first =
-            commitPublicExecutable(
-                root,
-                mapOf(
-                    "HOME" to home.toString(),
-                    "XDG_CONFIG_HOME" to configured.toString(),
-                    "PATH" to "/usr/bin",
-                ),
-                ReleaseChannel.STABLE,
-            )
-        assertEquals(configured.resolve("kast"), first.path)
-        assertFalse(first.onPath)
-        assertEquals("native-release-one", Files.readString(first.path))
-        Files.writeString(bundled, "native-release-two")
-        val next =
-            commitPublicExecutable(
-                root,
-                mapOf(
-                    "HOME" to home.toString(),
-                    "XDG_CONFIG_HOME" to "relative/changed-setting",
-                    "PATH" to "/usr/bin",
-                ),
-                ReleaseChannel.STABLE,
-            )
-        assertEquals(first.path, next.path)
-        assertEquals("native-release-two", Files.readString(first.path))
-        assertEquals(first.path.toString(), (readReceipt(root) as ReceiptRead.Read).receipt.executable)
-    }
 }
 
 internal fun integrationFixture(

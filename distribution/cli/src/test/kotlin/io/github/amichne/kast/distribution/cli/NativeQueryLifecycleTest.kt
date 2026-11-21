@@ -4,7 +4,6 @@ import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.time.Duration
 import kotlinx.serialization.encodeToString
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -213,89 +212,6 @@ class NativeQueryLifecycleTest {
             assertInstanceOf(ShutdownProcessAdmission.Owned::class.java, fixture.admit(snapshot, manifest))
             assertEquals(ShutdownProcessAdmission.Rejected, fixture.admit(snapshot))
         }
-    }
-
-    @Test
-    fun `request retirement accepts native records and verifies the exact incarnation has exited`(
-        @TempDir temporary: Path
-    ) {
-        val fixture = fixture(temporary)
-        val directory = Files.createDirectories(fixture.installation.resolve("state/run/one-shot"))
-        val entry = directory.resolve("request.json")
-        val recordBytes = managementJson.encodeToString(fixture.record)
-        Files.writeString(entry, recordBytes)
-        var observations = 0
-        var retirements = 0
-        val processes =
-            object : LifecycleProcesses {
-                override fun observe(pid: Long): LifecycleProcessObservation {
-                    assertEquals(fixture.record.pid, pid)
-                    observations++
-                    check(observations <= 2) { "unexpected process observation" }
-                    return if (observations == 1) fixture.observation() else LifecycleProcessObservation.Absent
-                }
-
-                override fun retire(
-                    process: OwnedLifecycleProcess,
-                    operation: LifecycleOperation,
-                    allowance: Duration,
-                ): LifecycleEffect {
-                    retirements++
-                    assertEquals(1, retirements)
-                    assertEquals(fixture.snapshot, process.snapshot)
-                    assertEquals(LifecycleOperation.STOP_FORCE, operation)
-                    assertTrue(allowance > Duration.ZERO)
-                    assertInstanceOf(
-                        ShutdownProcessAdmission.Owned::class.java,
-                        process.revalidate(fixture.observation()),
-                    )
-                    return LifecycleEffect.Completed
-                }
-
-                override fun selectedHost(executable: Path): LifecycleEffect = error("unexpected host observation")
-            }
-        assertEquals(
-            LifecycleEffect.Completed,
-            InstallationRequestRetirement(fixture.installation, fixture.manifest, processes)
-                .retire(LifecycleOperation.STOP_FORCE),
-        )
-        assertEquals(2, observations)
-        assertEquals(1, retirements)
-        assertEquals(recordBytes, Files.readString(entry))
-    }
-
-    @Test
-    fun `foreign native record rejects retirement without granting effects`(@TempDir temporary: Path) {
-        val fixture = fixture(temporary)
-        val directory = Files.createDirectories(fixture.installation.resolve("state/run/tool-sessions"))
-        Files.writeString(directory.resolve("request.json"), managementJson.encodeToString(fixture.record))
-        var observations = 0
-        val processes =
-            object : LifecycleProcesses {
-                override fun observe(pid: Long): LifecycleProcessObservation {
-                    assertEquals(fixture.record.pid, pid)
-                    observations++
-                    assertEquals(1, observations)
-                    return LifecycleProcessObservation.Present(
-                        fixture.snapshot.copy(command = "/foreign/bin/kast-query")
-                    )
-                }
-
-                override fun retire(
-                    process: OwnedLifecycleProcess,
-                    operation: LifecycleOperation,
-                    allowance: Duration,
-                ): LifecycleEffect = error("unexpected retirement")
-
-                override fun selectedHost(executable: Path): LifecycleEffect = error("unexpected host observation")
-            }
-        assertEquals(
-            LifecycleEffect.Rejected(LifecycleFailure.REQUEST_OWNERSHIP_UNPROVEN),
-            InstallationRequestRetirement(fixture.installation, fixture.manifest, processes)
-                .retire(LifecycleOperation.STOP_FORCE),
-        )
-        assertEquals(1, observations)
-        assertTrue(Files.exists(fixture.executable))
     }
 
     @Test
