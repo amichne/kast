@@ -56,7 +56,6 @@ def module(name: str, path: Path) -> ModuleType:
     return owner
 
 
-HOST = module("kast_managed_host", Path(__file__).with_name("host-installation.py"))
 RECOVERY = module("kast_managed_recovery", Path(__file__).with_name("installation-recovery.py"))
 LIFECYCLE = module("kast_managed_lifecycle", Path(__file__).with_name("installation-lifecycle.py"))
 
@@ -707,7 +706,6 @@ def main(
         StageRejected,
         OSError,
         ValueError,
-        HOST.Rejected,
         RECOVERY.Rejected,
         LIFECYCLE.Rejected,
         KeyboardInterrupt,

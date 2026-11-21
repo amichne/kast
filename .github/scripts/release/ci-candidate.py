@@ -147,7 +147,6 @@ def validate(directory: Path, version: str, revision: str) -> None:
     base_names = archives + (
         f"kast-control-release-v{version}.json",
         *host_records,
-        "host-installation.py",
         f"kast-hosted-catalog-v{version}.json",
         f"kast-module-knowledge-v{version}.json",
         f"kast-sbom-v{version}.cdx.json",

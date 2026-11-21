@@ -84,7 +84,7 @@ def admit(directory: Path, component: Component, version: str, revision: str) ->
     if component is Component.CONTROL:
         companion_names = {f"kast-{name}-v{version}.zip" for name in ("plugin", "marketplace")}
     else:
-        companion_names = {"host-installation.py"}
+        companion_names: set[str] = set()
         if len(records) == 2 and (
             records[0][1]["supportedIntellijReleaseLine"] != "262"
             or records[0][1]["providedHostedContract"] != records[1][1]["providedHostedContract"]

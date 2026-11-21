@@ -84,7 +84,6 @@ class SelectedHostInventoryTest(unittest.TestCase):
         names = archives + (
             f"kast-control-release-v{VERSION}.json",
             *records,
-            "host-installation.py",
             f"kast-hosted-catalog-v{VERSION}.json",
             f"kast-module-knowledge-v{VERSION}.json",
             sbom_name,
@@ -195,8 +194,7 @@ class CiCandidateTest(unittest.TestCase):
                 f"kast-marketplace-v{VERSION}.zip",
                 f"kast-control-release-v{VERSION}.json",
                 f"kast-host-release-v{VERSION}.json",
-                "host-installation.py",
-                f"kast-hosted-catalog-v{VERSION}.json",
+                    f"kast-hosted-catalog-v{VERSION}.json",
                 f"kast-module-knowledge-v{VERSION}.json",
                 f"kast-sbom-v{VERSION}.cdx.json",
             )
@@ -366,7 +364,7 @@ class PendingCandidateTest(unittest.TestCase):
                                   "-n", artifact["name"], "-D", str(directory)], command)
                 archives = (f"kast-control-v{VERSION}-macos-aarch64.tar.gz", f"kast-ide-hosted-v{VERSION}-idea-262.zip",
                             f"kast-plugin-v{VERSION}.zip", f"kast-marketplace-v{VERSION}.zip")
-                for name in (*archives, f"kast-control-release-v{VERSION}.json", f"kast-host-release-v{VERSION}.json", "host-installation.py", f"kast-hosted-catalog-v{VERSION}.json", f"kast-module-knowledge-v{VERSION}.json"):
+                for name in (*archives, f"kast-control-release-v{VERSION}.json", f"kast-host-release-v{VERSION}.json", f"kast-hosted-catalog-v{VERSION}.json", f"kast-module-knowledge-v{VERSION}.json"):
                     (directory / name).write_bytes(name.encode())
                 sbom = {"bomFormat": "CycloneDX", "metadata": {"properties": [
                     {"name": "kast:source-revision", "value": REVISION},

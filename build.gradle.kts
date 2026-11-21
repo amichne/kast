@@ -272,7 +272,6 @@ tasks.register<GenerateComponentReleaseTask>("generateControlReleaseRecord") {
 tasks.register<GenerateComponentReleaseTask>("generateHostReleaseRecord") {
     dependsOn(":runtime:hosted:hostedPlugin", ":protocol:wire:generateHostedContract")
     component.set(ReleaseComponent.HOST)
-    companionArtifacts.from(layout.projectDirectory.file("packaging/internal/installation/host-installation.py"))
     releaseVersion.set(hostedPluginVersion)
     sourceRevision.set(releaseSourceRevision)
     archive.set(hostedPluginArchive)
