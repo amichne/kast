@@ -17,9 +17,6 @@
       "device": 1,
       "inode": 3,
       "owner": 501
-    },
-    "homeConfiguration": {
-      "type": "ABSENT_CONFIGURATION"
     }
   },
   {
@@ -40,9 +37,6 @@
       "device": 1,
       "inode": 3,
       "owner": 501
-    },
-    "homeConfiguration": {
-      "type": "ABSENT_CONFIGURATION"
     }
   },
   {
@@ -63,9 +57,6 @@
       "device": 1,
       "inode": 3,
       "owner": 501
-    },
-    "homeConfiguration": {
-      "type": "ABSENT_CONFIGURATION"
     }
   }
 ]

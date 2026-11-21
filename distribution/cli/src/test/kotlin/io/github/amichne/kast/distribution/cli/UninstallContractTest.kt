@@ -26,7 +26,6 @@ class UninstallContractTest {
                 ),
                 UninstallCleanupObservation.UserStateRejected(UserStateCleanupFailure.UNSETTLED_MUTATION),
                 UninstallCleanupObservation.RecoveryRejected(RecoveryRemovalFailure.FOREIGN_CONTENT),
-                UninstallCleanupObservation.HomeConfigurationRejected(HomeConfigurationCleanupFailure.CONTENT_CHANGED),
                 UninstallCleanupObservation.ControlChildRejected(9),
                 UninstallCleanupObservation.ControlPayloadRetained(),
             )
@@ -62,7 +61,6 @@ class UninstallContractTest {
                     InstallationFilesystemIdentity(1, 2, 501),
                     ManagedRecoveryRemovalProof.Absent,
                     InstallationFilesystemIdentity(1, 3, 501),
-                    HomeConfigurationRemovalProof.Absent,
                 )
             val actual = managementJson.encodeToString(record)
             assertEquals(expected[index], Json.parseToJsonElement(actual))

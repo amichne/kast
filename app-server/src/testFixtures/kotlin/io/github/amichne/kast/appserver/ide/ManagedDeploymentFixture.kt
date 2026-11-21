@@ -4,7 +4,6 @@ import io.github.amichne.kast.distribution.contract.configuration.ConfigurationS
 import io.github.amichne.kast.distribution.contract.configuration.ResolvedKastConfiguration
 import io.github.amichne.kast.distribution.managed.ManagedHeadlessAssemblyRecord
 import io.github.amichne.kast.kernel.Refinement
-import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import java.nio.file.Files
@@ -81,7 +80,6 @@ class ManagedDeploymentFixture(root: Path) {
             hostLifetime = host,
             buildIdentity =
                 IdeHostBuildIdentity("1.2.3", "a".repeat(GIT_REVISION_HEX_LENGTH), "b".repeat(GIT_REVISION_HEX_LENGTH)),
-            autoReload = HostAutoReload.DISABLED,
         )
 
     @Serializable

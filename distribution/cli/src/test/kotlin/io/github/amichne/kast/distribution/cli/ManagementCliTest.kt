@@ -52,17 +52,13 @@ class ManagementCliTest {
     }
 }
 
-/** A product installation whose manifest also owns one bundled integration source. */
-internal fun integrationFixture(temporary: Path, connection: HarnessConnection): Pair<Path, Path> {
+/** A product installation whose manifest also owns its bundled MCP launcher. */
+internal fun integrationFixture(temporary: Path): Pair<Path, Path> {
     val product = productFixture(temporary)
     val installation = product.installation
     val root = installation.parent
     val home = Files.createDirectories(temporary.resolve("home"))
-    val relative =
-        when (connection) {
-            HarnessConnection.CODEX_MCP -> "bin/kast-mcp-complete"
-            HarnessConnection.CODEX_APP_SERVER -> "bin/kast-codex-complete"
-        }
+    val relative = "bin/kast-mcp-complete"
     val source = installation.resolve(relative)
     Files.createDirectories(source.parent)
     Files.writeString(source, "release adapter")

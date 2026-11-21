@@ -173,7 +173,15 @@ def run_checks(
         (Phase.PREPARATION, (uv, "sync", "--locked", "--group", "dev", "--project", str(root))),
         (
             Phase.PYTEST,
-            (str(root / ".venv/bin/python"), "-m", "pytest", "-q", str(root / "efficiency-tests")),
+            (
+                str(root / ".venv/bin/python"),
+                "-m",
+                "pytest",
+                "-q",
+                str(root / "efficiency-tests"),
+                str(root / "log-tests"),
+                str(root / "campaign-tests"),
+            ),
         ),
         (
             Phase.NODE,
@@ -183,6 +191,7 @@ def run_checks(
                 str(root / "agent_efficiency_session.test.mjs"),
                 str(root / "agent_efficiency_limits.test.mjs"),
                 str(root / "agent_efficiency_audit.test.mjs"),
+                str(root / "owned_worker.test.mjs"),
             ),
         ),
     )

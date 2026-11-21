@@ -23,11 +23,6 @@
     "artifact": "RECOVERY_BUNDLE"
   },
   {
-    "type": "HOME_CONFIGURATION_REJECTED",
-    "failure": "CONTENT_CHANGED",
-    "artifact": "HOME_CONFIGURATION"
-  },
-  {
     "type": "CONTROL_CHILD_REJECTED",
     "exitCode": 9,
     "artifact": "CONTROL_PAYLOAD"

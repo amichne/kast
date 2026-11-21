@@ -55,7 +55,6 @@ internal object KastCleanSlateModules {
                 JvmClassName("io/github/amichne/kast/distribution/cli/ManagementUninstallKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/UninstallRetirementJournalKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/UninstallManagedRootKt"),
-                JvmClassName("io/github/amichne/kast/distribution/cli/UninstallHomeConfigurationKt"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/UserStateInventory"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/InstallationLifecycle"),
                 JvmClassName("io/github/amichne/kast/distribution/cli/ForceResetRoot"),

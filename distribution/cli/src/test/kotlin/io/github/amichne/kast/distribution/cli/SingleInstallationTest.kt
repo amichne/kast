@@ -15,7 +15,7 @@ class SingleInstallationTest {
 
     @Test
     fun `management admits one ordinary installation and all integration paths use that location`() {
-        val (root, _) = integrationFixture(temporary, HarnessConnection.CODEX_MCP)
+        val (root, _) = integrationFixture(temporary)
         val installation = root.resolve("installation").toRealPath()
         assertEquals(installation, selectedInstallation(root))
         assertFalse(Files.isSymbolicLink(installation))
@@ -27,7 +27,7 @@ class SingleInstallationTest {
 
     @Test
     fun `symbolic installation rejects while preserving the target and management receipt`() {
-        val (root, _) = integrationFixture(temporary, HarnessConnection.CODEX_MCP)
+        val (root, _) = integrationFixture(temporary)
         val installation = root.resolve("installation")
         val retained = temporary.resolve("foreign-installation")
         val receipt = Files.readAllBytes(receiptPath(root)).toList()
@@ -42,7 +42,7 @@ class SingleInstallationTest {
 
     @Test
     fun `legacy installation manifests are migration input and cannot qualify native effects`() {
-        val (root, _) = integrationFixture(temporary, HarnessConnection.CODEX_MCP)
+        val (root, _) = integrationFixture(temporary)
         val installation = root.resolve("installation")
         val manifest = (readBundledManifest(installation) as BundledManifestRead.Read).manifest
         listOf(1, 2).forEach { schemaVersion ->

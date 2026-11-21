@@ -73,9 +73,12 @@ class HostInstallationLifecycleContractTest {
             val encoded = json.parseToJsonElement(json.encodeToString<IdeLifecycleResult>(result)).jsonObject
             assertEquals(type, encoded.getValue("type").jsonPrimitive.content)
             val runtime = encoded.getValue("runtimeIdentity").jsonObject
+            assertEquals(
+                setOf("ideaHome", "profile", "pid", "processStartEpochMillis", "hostLifetime", "buildIdentity"),
+                runtime.keys,
+            )
             assertEquals("42", runtime.getValue("pid").jsonPrimitive.content)
             assertEquals("100", runtime.getValue("processStartEpochMillis").jsonPrimitive.content)
-            assertEquals("DISABLED", runtime.getValue("autoReload").jsonPrimitive.content)
             assertEquals(
                 "a".repeat(40),
                 runtime.getValue("buildIdentity").jsonObject.getValue("sourceRevision").jsonPrimitive.content,
@@ -84,14 +87,23 @@ class HostInstallationLifecycleContractTest {
     }
 
     @Test
-    fun `unknown installer operations and auto-reload values reject at decoding`() {
+    fun `unknown installer operations reject at decoding`() {
         val unsupported =
             json
                 .encodeToString<IdeLifecycleCommand>(IdeLifecycleCommand.StopHost("host", "update"))
                 .replace("stop_host", "force_stop_host")
         assertThrows(SerializationException::class.java) { json.decodeFromString<IdeLifecycleCommand>(unsupported) }
-        val invalid = json.encodeToString(identity).replace("DISABLED", "UNPROVEN")
-        assertThrows(SerializationException::class.java) { json.decodeFromString<IdeHostRuntimeIdentity>(invalid) }
+    }
+
+    @Test
+    fun `removed automatic plugin reload member rejects at decoding`() {
+        val encoded = json.encodeToString(identity)
+        assertEquals(identity, json.decodeFromString<IdeHostRuntimeIdentity>(encoded))
+        // The desktop reload switch is gone; neither its retired nor its former default value decodes.
+        for (value in listOf("ENABLED", "DISABLED")) {
+            val retired = encoded.replaceFirst("{", "{\"autoReload\":\"$value\",")
+            assertThrows(SerializationException::class.java) { json.decodeFromString<IdeHostRuntimeIdentity>(retired) }
+        }
     }
 }
 

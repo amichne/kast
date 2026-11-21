@@ -179,7 +179,7 @@ Unexpected native exceptions retain only the exception class and bounded Kast ad
 
 `CONFIGURATION_REJECTED` precedes semantic execution. `TIME_LIMIT`, `WORK_LIMIT`, `RESULT_LIMIT` and `BYTE_LIMIT` identify different exhausted resources in bounded execution. `LIBRARY_POLICY_EXCLUSION` records an intentionally excluded library target; unresolved project targets still qualify coverage.
 
-The [reproduction guide](../experiments/host-observation/SEMANTIC_REPRODUCTION.md) separates native setup, artifact pinning and replay. Its settings evidence reads the loaded service's admitted policy rather than assuming static defaults. The [review](reviews/hosted-semantic-reproduction.md) retains baseline findings and subsequent fixes separately.
+The [semantic reproduction review](reviews/hosted-semantic-reproduction.md) retains baseline findings and subsequent fixes separately.
 
 ## Deadline admission and search ordering
 

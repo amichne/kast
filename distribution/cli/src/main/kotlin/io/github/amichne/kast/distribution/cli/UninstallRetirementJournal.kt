@@ -31,7 +31,6 @@ internal data class UninstallRetirementJournal(
     val managedRootIdentity: InstallationFilesystemIdentity,
     val recoveryProof: ManagedRecoveryRemovalProof,
     val controlIdentity: InstallationFilesystemIdentity,
-    val homeConfiguration: HomeConfigurationRemovalProof,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val product: InstalledProductReference? = null,
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
@@ -59,7 +58,6 @@ internal fun requireUninstallRetirement(root: Path, receipt: ManagementReceipt) 
                 journal.managedRootIdentity,
                 journal.recoveryProof,
                 journal.controlIdentity,
-                journal.homeConfiguration,
                 journal.workspaceRemovals,
                 journal.productRemoval,
             )
@@ -169,7 +167,6 @@ internal fun persistUninstallRetirement(
     type: UninstallRetirementType = UninstallRetirementType.CONTROL_RETIRED,
     managedRootIdentity: InstallationFilesystemIdentity = captureUninstallManagedRoot(root),
     recoveryProof: ManagedRecoveryRemovalProof = ManagedRecoveryRemovalProof.Absent,
-    homeConfiguration: HomeConfigurationRemovalProof = HomeConfigurationRemovalProof.Absent,
     controlIdentity: InstallationFilesystemIdentity =
         if (Files.exists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS))
             readUninstallRetirement(root).controlIdentity
@@ -192,7 +189,6 @@ internal fun persistUninstallRetirement(
                     managedRootIdentity,
                     recoveryProof,
                     controlIdentity,
-                    homeConfiguration,
                     workspaceRemovals,
                 )
             else -> prior.copy(type = type)
@@ -218,7 +214,6 @@ private fun retirementJournal(
     managedRootIdentity: InstallationFilesystemIdentity,
     recoveryProof: ManagedRecoveryRemovalProof,
     controlIdentity: InstallationFilesystemIdentity,
-    homeConfiguration: HomeConfigurationRemovalProof,
     workspaceRemovals: List<ManagedWorkspaceRemoval>,
     productRemoval: ProductRemovalProof? = null,
 ) =
@@ -231,7 +226,6 @@ private fun retirementJournal(
         managedRootIdentity,
         recoveryProof,
         controlIdentity,
-        homeConfiguration,
         receipt.product,
         workspaceRemovals,
         productRemoval,

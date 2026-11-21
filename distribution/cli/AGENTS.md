@@ -10,7 +10,6 @@ code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerStore.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/WorkspaceDependencySharing.kt
   - path: distribution/cli/build.gradle.kts
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceDaemonRuntime.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/NativeForceDaemonRuntime.kt
@@ -22,10 +21,7 @@ code_sources:
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/BuildCatalog.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementBuilds.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PassiveApplicationHost.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/GuidanceInstallation.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/SkillExport.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginBundle.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicInstallationReset.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicQueryDispatch.kt
 ---
@@ -44,8 +40,8 @@ Compatibility launchers select private modes of the same native executable. Cont
 
 Keep receipt facts separate from passive runtime state.
 Status must not start Java, prepare workspaces, or contact release servers.
-Admit release manifests and external registration documents before effects.
-Preserve foreign files and registrations. Use the existing installer and shutdown owner for replacement and removal.
+Admit release manifests before effects.
+Preserve foreign files. Use the existing installer and shutdown owner for replacement and removal.
 
 Explicit `uninstall --force` bypasses old payload and receipt ownership admission.
 It still needs a canonical deletion scope, an exterior reset fence, and a stable lock.
@@ -65,26 +61,14 @@ A single-use lease rejects repeated destructive effects. Keep `reinstall` retire
 Report kept storage when retirement or cleanup rejects. OS refusal is a finite failure.
 The exterior lock stays stable across directory deletion and later reset tries.
 
-`kast install codex|copilot|pi` selects canonical CLI guidance from the admitted installed bundle.
-The default composition is `CliOnly`. `--mcp` explicitly selects `CliWithMcp`.
-Codex and Copilot own their plugin resources. Pi uses native skill discovery and a session extension.
-All three harnesses call `kast --internal-entrypoint=query hook session-start` for passive context, without trust or Host effects.
-Preserve foreign provider resources and reject unresolved conflicts before effects.
-Provisioning success describes installed resources. It does not describe an existing agent session.
-
-`kast install skill [--output <directory>]` exports the canonical skill without provider registration.
+Kast writes no agent harness configuration. Agents receive the skill and the MCP server through dotagents.
+`kast install skill [--output <directory>]` exports the canonical skill. It is the only `install` target.
 Identical content returns without writes. Changed, extra, or linked entries reject without overwriting bytes.
-`connect` and `plugin` setup syntax rejects before effects and names `kast install` as its replacement.
-Keep legacy ownership readers only for migration and exact cleanup.
 
 Public reset removes the fixed historical paths in `PublicResetScope` and known launcher backups after process retirement.
 Keep unrelated extensions and stable locks. Reject ancestor aliases before destructive effects.
 
 The managed root contains one ordinary `installation` directory. Its stable `bin`, `share`, `config`, and `state` paths survive replacement. Ordinary installation locks and the management receipt remain in the managed root; the destructive reset fence and stable lock live beside it. Do not introduce version directories, selection links, or native legacy-layout fallback; the installer owns admitted migration and transaction recovery.
-
-Legacy connection migration needs the recorded MCP command and a proven `PAYLOAD_COMMITTED` replacement transaction.
-Preserve the replacement receipt, old launcher digest, filesystem identities, selector target, and actual Codex command.
-If migration fails, restore the provider configuration and management receipt. The installer owns terminal cleanup.
 
 ## Managed product and workspace admission
 
@@ -95,7 +79,7 @@ Exact versions and commits create pins. An unqualified upgrade of a pin rejects 
 `BuildSelection` owns selector admission. `BuildCatalog` preserves distinct main revision, build revision, and source tree facts.
 `ManagementBuilds` resolves one selection and invokes the manifest-owned candidate installer.
 
-`ManagedWorkspaceQuery` owns installed-only admission for CLI, MCP, and tool RPC. Semantic requests never contact release servers.
+`ManagedWorkspaceQuery` owns installed-only admission for the CLI and MCP. Semantic requests never contact release servers.
 The first explicit semantic request trusts one exact `CanonicalRoot`. Discovery and hooks do not create trust or workspace state.
 Keep the immutable vendor base separate from exact product components. Keep HOME and the IDE profile private to each workspace.
 New workspaces default to `SHARED` and use the Kast-owned shared Gradle home. The `PRIVATE` policy selects a private Gradle home.
@@ -127,7 +111,4 @@ The Control archive holds the Go executable at `share/kast/libexec/kast-manageme
 - [ManagementCommand.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt)
 - [ManagementStatus.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementStatus.kt)
 - [ForceInstallationReset.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/ForceInstallationReset.kt)
-- [PluginInstallation.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/PluginInstallation.kt)
-- [ConnectionConfiguration.kt](src/main/kotlin/io/github/amichne/kast/distribution/cli/ConnectionConfiguration.kt)
 
-For connection selection, read `ManagementCommand` and `ConnectionDirectory`.

@@ -5,7 +5,6 @@ import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SpecificationVersion
 import io.github.amichne.kast.cli.command.CliCommandGraphConstruction
 import io.github.amichne.kast.cli.command.CliCommandGraphFactory
-import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
 import io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity
 import io.github.amichne.kast.protocol.contract.IdeLifecycleExchangeCause
@@ -115,7 +114,6 @@ class LifecycleProjectionTest {
                 "processStartEpochMillis",
                 "hostLifetime",
                 "buildIdentity",
-                "autoReload",
             ),
             runtime.keys,
         )
@@ -124,7 +122,6 @@ class LifecycleProjectionTest {
         assertEquals("42", runtime.getValue("pid").jsonPrimitive.content)
         assertEquals("100", runtime.getValue("processStartEpochMillis").jsonPrimitive.content)
         assertEquals("host", runtime.getValue("hostLifetime").jsonPrimitive.content)
-        assertEquals("ENABLED", runtime.getValue("autoReload").jsonPrimitive.content)
         val build = runtime.getValue("buildIdentity").jsonObject
         assertEquals(setOf("version", "sourceRevision", "sourceTree"), build.keys)
         assertEquals("0.49.0", build.getValue("version").jsonPrimitive.content)
@@ -198,7 +195,6 @@ class LifecycleProjectionTest {
             processStartEpochMillis = 100,
             hostLifetime = "host",
             buildIdentity = IdeHostBuildIdentity("0.49.0", "a".repeat(40), "b".repeat(40)),
-            autoReload = HostAutoReload.ENABLED,
         )
 
     @Test

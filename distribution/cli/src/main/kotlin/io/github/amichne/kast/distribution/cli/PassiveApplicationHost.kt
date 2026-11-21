@@ -31,18 +31,7 @@ internal data class ApplicationRuntimeIdentity(
     val processStartEpochMillis: Long,
     val hostLifetime: String,
     val buildIdentity: ApplicationHostBuild,
-    val autoReload: ApplicationAutoReload,
 )
-
-@Serializable
-internal enum class ApplicationAutoReload {
-    @Deprecated(
-        "Desktop IDEA automatic plugin reload is targeted for removal; use managed product updates.",
-        level = DeprecationLevel.WARNING,
-    )
-    ENABLED,
-    DISABLED,
-}
 
 @Serializable
 internal data class ApplicationHostBuild(val version: String, val sourceRevision: String, val sourceTree: String)
@@ -304,7 +293,6 @@ private fun validApplicationIdentity(
     val identity = document.application.runtimeIdentity
     if (document.hostPid != identity.pid || document.host != identity.hostLifetime) return false
     if (identity.ideaHome != selection.launch.home || identity.profile != selection.profile.toString()) return false
-    if (identity.autoReload != ApplicationAutoReload.DISABLED) return false
     if (identity.pid <= 0 || identity.processStartEpochMillis <= 0) return false
     return UUID.fromString(identity.hostLifetime).toString() == identity.hostLifetime
 }

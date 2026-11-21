@@ -270,18 +270,7 @@ data class IdeHostRuntimeIdentity(
     val processStartEpochMillis: Long,
     val hostLifetime: String,
     val buildIdentity: IdeHostBuildIdentity,
-    val autoReload: HostAutoReload = HostAutoReload.DISABLED,
 )
-
-@Serializable
-enum class HostAutoReload {
-    @Deprecated(
-        "Desktop IDEA automatic plugin reload is targeted for removal; use managed product updates.",
-        level = DeprecationLevel.WARNING,
-    )
-    ENABLED,
-    DISABLED,
-}
 
 @Serializable
 data class IdeHostApplicationAdvertisement(

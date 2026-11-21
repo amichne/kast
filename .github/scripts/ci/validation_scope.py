@@ -71,8 +71,6 @@ DOCUMENTATION_CONSUMER_PATHS = frozenset({
     "docs/public/search.mdx", "docs/public/explanation/value-journey-evidence.mdx",
     "experiments/host-observation/README.md",
     "experiments/host-observation/EVALUATION_CHECKLIST.md",
-    "experiments/host-observation/HOSTED_ENDPOINT.md",
-    "experiments/host-observation/SEMANTIC_REPRODUCTION.md",
     "experiments/representation-impact/README.md",
     "config/vale/styles/config/vocabularies/Kast/accept.txt",
     "config/vale/styles/config/vocabularies/KastNames/accept.txt",

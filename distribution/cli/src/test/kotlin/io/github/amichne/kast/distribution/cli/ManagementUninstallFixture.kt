@@ -27,7 +27,6 @@ internal fun retiredUninstallFixture(temporary: Path): RetiredFixture {
                 captureUninstallManagedRoot(root),
                 ManagedRecoveryRemovalProof.Absent,
                 captureUninstallManagedRoot(root),
-                HomeConfigurationRemovalProof.Absent,
                 product = product,
             )
         ),
@@ -54,7 +53,6 @@ internal data class FixtureRetirementRecord(
     val managedRootIdentity: InstallationFilesystemIdentity,
     val recoveryProof: ManagedRecoveryRemovalProof,
     val controlIdentity: InstallationFilesystemIdentity,
-    val homeConfiguration: HomeConfigurationRemovalProof,
     val channel: String = "STABLE",
     val product: InstalledProductReference? = null,
 )

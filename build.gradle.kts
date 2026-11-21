@@ -832,7 +832,7 @@ tasks.register<Exec>("knowledgeImpact") {
 val hostObservationTest = tasks.register<Exec>("hostObservationTest") {
     dependsOn(preparePythonTestEnvironment)
     group = "verification"
-    description = "Checks the launch-free experimental host-observation controller."
+    description = "Checks the semantic campaign, agent efficiency, and log visibility experiment code."
     inputs.dir(layout.projectDirectory.dir("experiments/host-observation"))
     commandLine(pythonTestExecutable.get(), "-m", "unittest", "discover", "-s", "experiments/host-observation", "-p", "test_*.py")
 }

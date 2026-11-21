@@ -290,7 +290,6 @@ and Host with `packaging/internal/composition/composed_release.py assemble --ful
 Keep the other required assembly arguments. This option retains a full runtime
 archive instead of splitting a shared base; the default release path is unchanged.
 Run `packaging/internal/composition/composed_release.py qualify` with those exact archives.
-Supply `--sandbox` when a desktop IDEA process is running.
 Qualification verifies archive identity and passive Control discovery; it does not start a compiler Host.
 Installed acceptance exercises compiler queries through the shipped Control, without a separate native test binary.
 
@@ -310,7 +309,7 @@ concurrently, and checks a shared compiler lifetime with a warm query.
 Uninstall separates the trials. The final trial damages an owned runtime file
 while its Host is live. Repair uses the packaged coordinator and real retirement
 child, then checks restored bytes and a fresh Host. The probe checks protected
-files and desktop process identities before final removal.
+files before final removal.
 
 Local acquisition uses a schema fixture with no Linux payload or real CI producer.
 Its report explicitly records `releaseQualification=NOT_ESTABLISHED`. It does not
@@ -460,19 +459,6 @@ A control release requires the canonical hosted contract and no host archive.
 A host release packages its own runtime dependencies. `assembleRelease` remains
 one fresh-install convenience for a selected pair. Changing a control version
 does not change the host version or hosted contract.
-
-For a loaded baseline host that provides the complete contract, use
-`kast upgrade --control-only`. It admits the live host before retiring control,
-activates the candidate and repeats admission. Plugin files and IntelliJ remain
-unchanged. Control sessions start fresh. `kast status` separates installed and
-running control from each observed host's identity, version and compatibility.
-
-For deprecated desktop compatibility checks, install a Host with the legacy component installer's `--host-only --version`
-input, then restart IntelliJ through its ordinary lifecycle. The
-[mixed-version native check](../runtime/hosted/native/README.md) uses the existing
-user installation and normal IntelliJ profile, preserving configuration and
-recording exact control, host and process identities. Routine tests alone do
-not prove IntelliJ reuse.
 
 Persistent installation stops the previous installed App Server and enables
 the new login service. This requires the App Server’s

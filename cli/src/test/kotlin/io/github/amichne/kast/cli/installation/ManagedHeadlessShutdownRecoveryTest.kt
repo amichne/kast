@@ -1,6 +1,5 @@
 package io.github.amichne.kast.cli.installation
 
-import io.github.amichne.kast.protocol.contract.HostAutoReload
 import io.github.amichne.kast.protocol.contract.HostedCompatibilityDocument
 import io.github.amichne.kast.protocol.contract.HostedContractDocument
 import io.github.amichne.kast.protocol.contract.IdeHostBuildIdentity
@@ -172,12 +171,7 @@ class ManagedHeadlessShutdownRecoveryTest {
             .forEach { assertNotEquals(transaction, managedShutdownTransaction(it)) }
         assertEquals(
             transaction,
-            managedShutdownTransaction(
-                identity.copy(
-                    buildIdentity = identity.buildIdentity.copy(version = "other"),
-                    autoReload = HostAutoReload.ENABLED,
-                )
-            ),
+            managedShutdownTransaction(identity.copy(buildIdentity = identity.buildIdentity.copy(version = "other"))),
         )
     }
 

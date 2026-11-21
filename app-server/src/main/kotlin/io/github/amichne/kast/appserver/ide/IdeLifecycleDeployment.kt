@@ -172,8 +172,7 @@ internal fun managedIdentityMatches(
     installation: ManagedHeadlessInstallation,
     identity: io.github.amichne.kast.protocol.contract.IdeHostRuntimeIdentity,
 ): Boolean =
-    identity.autoReload == io.github.amichne.kast.protocol.contract.HostAutoReload.DISABLED &&
-        identity.ideaHome == installation.launch.home &&
+    identity.ideaHome == installation.launch.home &&
         identity.profile == installation.config.toString() &&
         identity.pid > 0 &&
         identity.processStartEpochMillis > 0

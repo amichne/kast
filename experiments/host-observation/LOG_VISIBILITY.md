@@ -14,7 +14,7 @@ The following owners define the selected paths and records.
 | IntelliJ `idea.log` | [Hosted read configuration](../../docs/hosted-read-configuration.md) | Hosted diagnostics, transport events, and project epochs |
 | `kast_transport_read`, `kast_transport`, `kast_smart_mode_wait`, `kast_hosted` | [LoggingHostedEndpointObserver.kt](../../runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/LoggingHostedEndpointObserver.kt) | Read IDs, connections, stages, waits, and finite failures |
 | `<installation>/state/broker/<profile>/service.log` | [BrokerInstallationLayout.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerInstallationLayout.kt), [PersistentBrokerService.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/PersistentBrokerService.kt) | Control service output, when that service exists |
-| Per-call observation joins | [hosted_timing.py](hosted_timing.py), [SEMANTIC_REPRODUCTION.md](SEMANTIC_REPRODUCTION.md) | Existing bounded collector and explicit transport joins |
+| Per-call observation joins | [hosted_timing.py](hosted_timing.py), [mcp_replay.py](mcp_replay.py) | Existing bounded collector and explicit transport joins |
 
 The profile uses the first 16 hexadecimal characters of SHA-256 over the selected Codex home path.
 The installation root is the parent of the directory that contains the physical Kast executable.

@@ -8,7 +8,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 internal enum class UninstallArtifact {
     CONTROL_PAYLOAD,
-    HOME_CONFIGURATION,
     USER_STATE,
     RECOVERY_BUNDLE,
     ACTIVATION_LOCK,
@@ -53,12 +52,6 @@ internal sealed interface UninstallCleanupObservation {
     @SerialName("CONTROL_PAYLOAD_RETAINED")
     class ControlPayloadRetained : UninstallCleanupObservation {
         @Required override val artifact: UninstallArtifact = UninstallArtifact.CONTROL_PAYLOAD
-    }
-
-    @Serializable
-    @SerialName("HOME_CONFIGURATION_REJECTED")
-    data class HomeConfigurationRejected(val failure: HomeConfigurationCleanupFailure) : UninstallCleanupObservation {
-        @Required override val artifact: UninstallArtifact = UninstallArtifact.HOME_CONFIGURATION
     }
 
     @Serializable

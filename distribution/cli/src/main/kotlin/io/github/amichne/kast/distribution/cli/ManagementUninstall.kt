@@ -48,7 +48,6 @@ private fun removeInstallation(
     journal.productRemoval?.let { cleanupProductRemoval(root, it) }
     removeUninstallRecovery(root, journal, observe)
     cleanupUninstallActivationLock(root, observe)
-    cleanupUninstallHomeConfiguration(home, journal.homeConfiguration, observe)
     finishUninstall(root, receipt, journal, observe)
     present("Removed Kast installation")
 }
@@ -120,7 +119,7 @@ private fun prepareUninstallPayload(
         val journal = readUninstallRetirement(root)
         val proof = journal.productRemoval
         if (proof != null) {
-            resumeUninstallInventory(root, home, journal, observe)
+            resumeUninstallInventory(root, journal, observe)
             return when (proof.phase) {
                 ProductRemovalPhase.PREPARING -> ownedUninstallInstaller(root)
                 ProductRemovalPhase.PREPARED -> retainedProductInstaller(root, proof)
@@ -140,8 +139,7 @@ private fun prepareUninstallPayload(
                 )
             }
         }
-    val configuration = captureUninstallHomeConfiguration(home, observe)
-    requireRetainedUninstallInventory(root, recoveryProof, configuration, observe)
+    requireRetainedUninstallInventory(root, recoveryProof, observe)
     val persist: (List<ManagedWorkspaceRemoval>) -> Unit = { workspaces ->
         persistUninstallRetirement(
             root,
@@ -149,7 +147,6 @@ private fun prepareUninstallPayload(
             UninstallRetirementType.REMOVAL_REQUESTED,
             rootIdentity,
             recoveryProof,
-            homeConfiguration = configuration,
             controlIdentity = uninstallFilesystemIdentity(payload),
             workspaceRemovals = workspaces,
         )
@@ -161,34 +158,20 @@ private fun prepareUninstallPayload(
 
 private fun resumeUninstallInventory(
     root: Path,
-    home: Path,
     journal: UninstallRetirementJournal,
     observe: (UninstallCleanupObservation) -> Unit,
 ) {
-    requireRetainedUninstallInventory(
-        root,
-        journal.recoveryProof,
-        captureUninstallHomeConfiguration(home, observe),
-        observe,
-    )
+    requireRetainedUninstallInventory(root, journal.recoveryProof, observe)
     removeWorkspaceProfiles(uninstallWorkspaceStore(root), journal.workspaceRemovals)
 }
 
 private fun requireRetainedUninstallInventory(
     root: Path,
     recovery: io.github.amichne.kast.distribution.managed.ManagedRecoveryRemovalProof,
-    configuration: HomeConfigurationRemovalProof,
     observe: (UninstallCleanupObservation) -> Unit,
 ) {
     if (Files.notExists(uninstallJournalPath(root), LinkOption.NOFOLLOW_LINKS)) return
     val prior = readUninstallRetirement(root)
-    if (prior.homeConfiguration != configuration) {
-        observe(UninstallCleanupObservation.HomeConfigurationRejected(HomeConfigurationCleanupFailure.CONTENT_CHANGED))
-        throw ManagementRejected(
-            "uninstall-home-configuration",
-            "configuration changed after removal request; retained installation",
-        )
-    }
     if (prior.recoveryProof != recovery) {
         observe(
             UninstallCleanupObservation.RecoveryRejected(

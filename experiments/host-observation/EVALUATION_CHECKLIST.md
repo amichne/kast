@@ -402,7 +402,7 @@ The examined checkout was clean at `b668498eb44248c45f818301e46df3ec25079989`. T
 The installed catalog has schema version 17 and SHA-256 `2243fa9c1303b49d517a3da135079e7d64bb283b53cedf3bc6cdd9a479f37c2e`.
 
 The earlier source inspection found documentation drift: the `RELATION_WORK_REDUCTION` procedure stated contract 14 while its runner admitted 17.
-The DEBUG campaign corrected the [procedure](SEMANTIC_REPRODUCTION.md) to contract 17.
+The DEBUG campaign corrected the [procedure](https://github.com/amichne/kast/blob/b668498eb44248c45f818301e46df3ec25079989/experiments/host-observation/SEMANTIC_REPRODUCTION.md) to contract 17.
 
 Use the source gate and actual catalog for admission. The other qualification slices keep their own versions and owners.
 
