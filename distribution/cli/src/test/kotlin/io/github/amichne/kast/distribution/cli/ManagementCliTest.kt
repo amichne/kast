@@ -2,7 +2,6 @@ package io.github.amichne.kast.distribution.cli
 
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -19,26 +18,6 @@ private data class TestManifest(
     val schemaVersion: Int,
     val installationRoot: String,
     val payloadFiles: List<TestPayload>,
-    val semanticVersion: String,
-)
-
-@Serializable
-private enum class TestInstallStatus {
-    @SerialName("installed-activation-pending") PENDING
-}
-
-@Serializable
-private enum class TestActivationType {
-    @SerialName("pending") PENDING
-}
-
-@Serializable private data class TestActivation(val type: TestActivationType, val reason: String)
-
-@Serializable
-private data class TestInstallReport(
-    val operation: String,
-    val status: TestInstallStatus,
-    val activation: TestActivation,
     val semanticVersion: String,
 )
 
@@ -185,44 +164,6 @@ class ManagementCliTest {
         assertEquals("release adapter", Files.readString(target))
         assertTrue(disconnectHarness(root, home, Harness.COPILOT))
         assertFalse(Files.exists(target))
-    }
-
-    @Test
-    fun `upgrade accepts the installed report without broker activation`() {
-        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
-        val report =
-            managementJson.encodeToString(
-                FixtureInstallerReport(status = "installed", activation = FixtureActivation("not-requested"))
-            )
-        val installer = root.resolve("installation/share/kast/install.sh")
-        Files.createDirectories(installer.parent)
-        Files.writeString(installer, "#!/bin/bash\nprintf '%s' '$report' > \"\$KAST_MANAGEMENT_REPORT_PATH\"\n")
-
-        upgradeInstallation(root, home)
-
-        assertTrue(Files.isRegularFile(Path.of((readReceipt(root) as ReceiptRead.Read).receipt.executable)))
-        assertTrue(Files.notExists(root.resolve("installation/state/broker/service-readiness.json")))
-    }
-
-    @Test
-    fun `upgrade rejects a report that claims pending broker activation`() {
-        val (root, home) = integrationFixture(temporary, HarnessConnection.PI)
-        val report =
-            Json.encodeToString(
-                TestInstallReport(
-                    "installation.install",
-                    TestInstallStatus.PENDING,
-                    TestActivation(TestActivationType.PENDING, "service restart required"),
-                    "1.2.3",
-                )
-            )
-        val installer = root.resolve("installation/share/kast/install.sh")
-        Files.createDirectories(installer.parent)
-        Files.writeString(installer, "#!/bin/bash\nprintf '%s' '$report' > \"\$KAST_MANAGEMENT_REPORT_PATH\"\n")
-        val failure = org.junit.jupiter.api.assertThrows<ManagementRejected> { upgradeInstallation(root, home) }
-        assertEquals("upgrade-report", failure.stage)
-        assertTrue(failure.reason.contains("installed state is unverified"))
-        assertTrue(Files.exists(Path.of((readReceipt(root) as ReceiptRead.Read).receipt.executable)))
     }
 
     @Test

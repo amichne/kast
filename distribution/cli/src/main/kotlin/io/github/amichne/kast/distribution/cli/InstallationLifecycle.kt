@@ -4,10 +4,6 @@ import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_CAPABILITY
 import io.github.amichne.kast.distribution.contract.INSTALLATION_SHUTDOWN_FENCE
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
-import io.github.amichne.kast.distribution.contract.configuration.ConfigurationParameter
-import io.github.amichne.kast.distribution.managed.ManagedHeadlessInstallation
-import io.github.amichne.kast.distribution.managed.SelectedIdeInstallation
-import io.github.amichne.kast.distribution.managed.SelectedIdeLaunch
 import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -34,24 +30,6 @@ private constructor(
     private val execution: LifecycleExecution,
 ) {
     private var fenceIdentity: FenceAttributes = FenceAttributes.Rejected
-
-    fun shutdown(operation: LifecycleOperation): LifecycleOutcome {
-        when (val retired = retireClients(operation)) {
-            is ClientRetirement.Rejected -> return LifecycleOutcome.Rejected(operation, retired.stage, retired.failure)
-            ClientRetirement.Completed -> Unit
-        }
-        return when (val effect = step(operation, LifecycleStage.HOST, ::retireHost)) {
-            LifecycleEffect.Completed -> LifecycleOutcome.Stopped(operation, installation.toString())
-            is LifecycleEffect.Rejected -> LifecycleOutcome.Rejected(operation, LifecycleStage.HOST, effect.failure)
-        }
-    }
-
-    /** Replacement reuses exact request retirement and chooses its Host strategy separately. */
-    fun fenceAndRetire(operation: LifecycleOperation): LifecycleEffect =
-        when (val retired = retireClients(operation)) {
-            ClientRetirement.Completed -> LifecycleEffect.Completed
-            is ClientRetirement.Rejected -> LifecycleEffect.Rejected(retired.failure)
-        }
 
     /** Workspace leases, rather than process termination, exclude active managed requests. */
     fun fenceManagedProduct(): Refinement<Unit, ContainerFailure> =
@@ -104,21 +82,6 @@ private constructor(
         }
     }
 
-    private fun retireClients(operation: LifecycleOperation): ClientRetirement {
-        for ((stage, action) in
-            listOf<Pair<LifecycleStage, () -> LifecycleEffect>>(
-                LifecycleStage.FENCE to ::fence,
-                LifecycleStage.COORDINATOR to { service(LifecycleServiceAction.DISABLE) },
-                LifecycleStage.REQUESTS to { retireRequests(operation) },
-            )) {
-            when (val effect = step(operation, stage, action)) {
-                LifecycleEffect.Completed -> Unit
-                is LifecycleEffect.Rejected -> return ClientRetirement.Rejected(stage, effect.failure)
-            }
-        }
-        return ClientRetirement.Completed
-    }
-
     fun resume(): LifecycleEffect {
         val next = readBundledManifest(installation)
         if (next !is BundledManifestRead.Read || !supportsShutdown(installation, next.manifest))
@@ -142,18 +105,6 @@ private constructor(
             LifecycleEffect.Completed
         } catch (_: Exception) {
             LifecycleEffect.Rejected(LifecycleFailure.FILESYSTEM_REJECTED)
-        }
-    }
-
-    fun resumePrivateHost(): LifecycleEffect {
-        val launch = readSelectedLaunch() as? SelectedIdeLaunch.Resolved
-        if (launch == null || privateRuntime(launch) == null)
-            return LifecycleEffect.Rejected(LifecycleFailure.OWNERSHIP_UNPROVEN)
-        if (!Files.exists(root.resolve(SHUTDOWN_FENCE), NOFOLLOW_LINKS)) return LifecycleEffect.Completed
-        return when (val stopped = shutdown(LifecycleOperation.STOP)) {
-            is LifecycleOutcome.Stopped -> resume()
-            is LifecycleOutcome.Rejected -> LifecycleEffect.Rejected(stopped.failure)
-            else -> LifecycleEffect.Rejected(LifecycleFailure.FENCE_REJECTED)
         }
     }
 
@@ -235,50 +186,6 @@ private constructor(
             LifecycleChildObservation.DeadlineExceeded ->
                 LifecycleEffect.Rejected(LifecycleFailure.CHILD_DEADLINE_EXCEEDED)
             LifecycleChildObservation.Unavailable -> LifecycleEffect.Rejected(LifecycleFailure.CHILD_REJECTED)
-        }
-    }
-
-    private fun retireRequests(operation: LifecycleOperation): LifecycleEffect =
-        InstallationRequestRetirement(installation, manifest, execution.processes).retire(operation)
-
-    private fun retireHost(): LifecycleEffect {
-        return when (val selected = readSelectedLaunch()) {
-            null,
-            is SelectedIdeLaunch.Unavailable -> LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
-            is SelectedIdeLaunch.Resolved -> {
-                if (!SelectedIdeInstallation.matchesCurrentLaunch(selected))
-                    LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
-                else if (ConfigurationParameter.MANAGED_HEADLESS_STATE.key in environment) {
-                    val runtime = privateRuntime(selected)
-                    if (runtime != null && Files.notExists(runtime.config.resolve(".lock"), NOFOLLOW_LINKS))
-                        LifecycleEffect.Completed
-                    else LifecycleEffect.Rejected(LifecycleFailure.HOST_OBSERVATION_REJECTED)
-                } else execution.processes.selectedHost(Path.of(selected.executable))
-            }
-        }
-    }
-
-    private fun privateRuntime(launch: SelectedIdeLaunch.Resolved): ManagedHeadlessInstallation? {
-        val state = home.parent ?: return null
-        val privateRoot = state.parent ?: return null
-        if (
-            home != privateRoot.resolve("state/home") ||
-                environment[ConfigurationParameter.MANAGED_HEADLESS_STATE.key] != state.toString() ||
-                !Path.of(launch.home).startsWith(privateRoot.resolve("runtime"))
-        )
-            return null
-        return when (val admitted = ManagedHeadlessInstallation.resolve(launch, state, home)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> null
-        }
-    }
-
-    private fun readSelectedLaunch(): SelectedIdeLaunch? {
-        val raw = readBoundedFile(installation.resolve("config/selected-ide.json"), RECORD_BYTES) ?: return null
-        return try {
-            lifecycleIngressJson.decodeFromString<SelectedIdeLaunch>(raw)
-        } catch (_: SerializationException) {
-            null
         }
     }
 

@@ -1,6 +1,5 @@
 package io.github.amichne.kast.distribution.cli
 
-import io.github.amichne.kast.distribution.contract.InstalledToolInvocation
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.Executors
@@ -39,62 +38,6 @@ class NativeLifecycleProcessesTest {
         } finally {
             parent.outputStream.close()
             assertEquals(0, parent.waitFor())
-        }
-    }
-
-    @Test
-    fun `native stop force retires only the recorded disposable installed JVM and verifies OS exit`() {
-        val fixture = createLifecycleFixture(temporary)
-        val jar = createChildJar(fixture.installation)
-        qualifyChildJar(fixture, jar)
-        val child =
-            ProcessBuilder(
-                    Path.of(System.getProperty("java.home"), "bin/java").toString(),
-                    "-cp",
-                    jar.toString(),
-                    "io.github.amichne.kast.cli.rpc.KastToolRpcMain",
-                )
-                .redirectError(temporary.resolve("child-error.log").toFile())
-                .start()
-        val reader = Executors.newSingleThreadExecutor()
-        try {
-            assertEquals("ready", reader.submit<String> { child.inputReader().readLine() }.get(5, TimeUnit.SECONDS))
-            val start = child.toHandle().info().startInstant().orElseThrow().toEpochMilli()
-            val directory = Files.createDirectories(fixture.installation.resolve("state/run/one-shot"))
-            Files.writeString(
-                directory.resolve("child.json"),
-                managementJson.encodeToString(InstalledToolInvocation(1, child.pid(), start)),
-            )
-            val result =
-                executeInstallationLifecycle(
-                    fixture.root,
-                    fixture.home,
-                    emptyMap(),
-                    LifecycleOperation.STOP_FORCE,
-                    LifecycleExecution(
-                        child = LifecycleChildExecutor { _, _, _ -> LifecycleChildObservation.Exited(0) },
-                        processes =
-                            object : LifecycleProcesses by NativeLifecycleProcesses {
-                                override fun selectedHost(executable: Path): LifecycleEffect {
-                                    assertEquals(
-                                        temporary.toRealPath().resolve("IDE.app/Contents/MacOS/idea"),
-                                        executable,
-                                    )
-                                    return LifecycleEffect.Completed
-                                }
-                            },
-                        observe = {},
-                    ),
-                )
-            assertEquals(
-                LifecycleOutcome.Stopped(LifecycleOperation.STOP_FORCE, fixture.installation.toString()),
-                result,
-            )
-            assertFalse(child.isAlive)
-            assertEquals(LifecycleProcessObservation.Absent, NativeLifecycleProcesses.observe(child.pid()))
-        } finally {
-            child.destroyForcibly()
-            reader.shutdownNow()
         }
     }
 
