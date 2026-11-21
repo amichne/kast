@@ -84,11 +84,13 @@ class ArchitectureProjectionTest {
         val filesystem = cli.allowedScopedEffects.single()
 
         assertEquals("FILESYSTEM_WRITE", filesystem.effect)
-        assertEquals(7, filesystem.callerClasses.size)
-        assertTrue("io/github/amichne/kast/cli/PosixRuntimeEndpointArtifacts" !in filesystem.callerClasses)
-        assertTrue("io/github/amichne/kast/cli/ide/RetiredApprovalArtifacts" !in filesystem.callerClasses)
-        assertTrue("io/github/amichne/kast/cli/installation/ManagedControlAdapter" in filesystem.callerClasses)
-        assertTrue("io/github/amichne/kast/cli/installation/ManagedControlAdmissionKt" !in filesystem.callerClasses)
+        assertEquals(
+            setOf(
+                "io/github/amichne/kast/cli/rpc/OneShotInvocationRecord",
+                "io/github/amichne/kast/cli/rpc/OneShotInvocationRecord\$Companion",
+            ),
+            filesystem.callerClasses.toSet(),
+        )
         assertTrue(filesystem.callerClasses.all { it.startsWith("io/github/amichne/kast/cli/") })
     }
 

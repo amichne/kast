@@ -173,7 +173,7 @@ class LifecycleProjectionTest {
                 IdeLifecycleFailure.HOST_UNAVAILABLE,
                 exchange =
                     IdeLifecycleExchangeFailure(
-                        IdeLifecycleExchangeCommand.SETTLE_HOST_FOR_RELOAD,
+                        IdeLifecycleExchangeCommand.SETTLE_HOST,
                         IdeLifecycleExchangeStage.READ_BODY,
                         IdeLifecycleExchangeCause.TRUNCATED_RESPONSE,
                         elapsedMillis = 10,
@@ -182,7 +182,7 @@ class LifecycleProjectionTest {
             )
         for (encoded in listOf(json.encodeToString(Completed(blocked)), json.encodeToString(Rejected(blocked)))) {
             assertTrue(validator.validate(encoded, InputFormat.JSON).isEmpty(), encoded)
-            for (field in listOf("SETTLE_HOST_FOR_RELOAD", "READ_BODY", "TRUNCATED_RESPONSE")) {
+            for (field in listOf("SETTLE_HOST", "READ_BODY", "TRUNCATED_RESPONSE")) {
                 val invalid = encoded.replace(field, "UNKNOWN_VALUE")
                 assertNotEquals(encoded, invalid)
                 assertTrue(validator.validate(invalid, InputFormat.JSON).isNotEmpty(), invalid)

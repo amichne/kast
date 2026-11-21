@@ -2,6 +2,7 @@ package io.github.amichne.kast.cli.installation
 
 import io.github.amichne.kast.distribution.contract.INSTALLATION_MANIFEST_SCHEMA_VERSION
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 @Serializable
 internal data class InstallationManifest(
@@ -42,3 +43,9 @@ internal data class Retention(
     val state: String = "after-exact-process-retirement",
     val externalAnchors: String = "after-live-identity-match",
 )
+
+internal val installationManifestJson = Json {
+    encodeDefaults = true
+    explicitNulls = false
+    ignoreUnknownKeys = false
+}

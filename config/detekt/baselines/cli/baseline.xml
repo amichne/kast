@@ -9,10 +9,6 @@
     <ID>CognitiveComplexMethod:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$override fun query: ExistingIdeExchange</ID>
     <ID>CognitiveComplexMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
     <ID>CognitiveComplexMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$private fun seedIntoStaging: IndexSeedExecution</ID>
-    <ID>CognitiveComplexMethod:InstallationRequest.kt:InstallationRequest.Companion$fun parse: Refinement&lt;InstallationRequest, InstallationRequestFailure></ID>
-    <ID>CognitiveComplexMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
-    <ID>CognitiveComplexMethod:InstallationWorkflow.kt:private fun payloadFiles: List&lt;PayloadFile></ID>
-    <ID>CognitiveComplexMethod:InstallationWorkflow.kt:private fun verifyControlLayout: Boolean</ID>
     <ID>CognitiveComplexMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$override fun create: KastCliCompositionConstruction</ID>
     <ID>CognitiveComplexMethod:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$override suspend fun start: InstalledWorkerStart</ID>
     <ID>CognitiveComplexMethod:InstalledServerProjectionDocuments.kt:private fun JsonObject.withLocalOutputDefinitions: JsonObject</ID>
@@ -30,11 +26,6 @@
     <ID>ComplexCondition:ExistingIdeQuery.kt:ExistingIdeClassName.Companion$raw.toByteArray(Charsets.UTF_8).size in 1..512 &amp;&amp; (raw.first().isLetter() || raw.first() == '_') &amp;&amp; raw.all { it.isLetterOrDigit() || it == '_' }</ID>
     <ID>ComplexCondition:ExistingIdeSocketClient.kt:ExistingIdeDocuments$operation == ExistingIdeOperation.Status &amp;&amp; node.path("type").asString() == "KAST_IDE_HOST" &amp;&amp; node.path("root").asString() == root.path.toString() &amp;&amp; node.path("hostPid").asLong() == descriptor.hostPid &amp;&amp; node.path("host").asString() == descriptor.host.toString()</ID>
     <ID>ComplexCondition:IndexSeedFilesystemService.kt:Intellij262IndexSeedLayout$!source.startsWith(sourceSystem) || Files.isSymbolicLink(source) || (!Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS) &amp;&amp; !Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS))</ID>
-    <ID>ComplexCondition:InstallationRequest.kt:SemanticVersion.Companion$parts.size != 3 || parts.any { it.isEmpty() || (it.length > 1 &amp;&amp; it.startsWith('0')) }</ID>
-    <ID>ComplexCondition:InstallationWorkflow.kt:!regularExecutable(root.resolve("bin/kast")) || !regularFile(root.resolve("share/kast/semantic-runtime.json")) || !regularFile(root.resolve("share/kast/operation-registry.json")) || !regularFile(root.resolve("share/kast/wire-schema.json")) || !regularFile(root.resolve("share/kast/installation-lifecycle.py"))</ID>
-    <ID>ComplexCondition:InstallationWorkflow.kt:InstallationWorkflow$!physicalDirectory(idea) || !physicalDirectory(java) || !regularExecutable(java.resolve("bin/java")) || !regularFile(idea.resolve("Resources/build.txt")) || !physicalDirectory(idea.resolve("plugins/Kotlin")) || idea.resolve("jbr/Contents/Home").normalize() != java</ID>
-    <ID>ComplexCondition:InstallationWorkflow.kt:InstallationWorkflow$manifest.productVersion.value != request.version.toString() || manifest.archive.digest.value != "sha256:${request.runtimeDigest.value}" || manifest.archive.size.bytes != fileSize(request.runtimeArchive.value) || manifest.archive.fileName.value != request.runtimeArchive.value.fileName.toString()</ID>
-    <ID>ComplexCondition:InstallationWorkflow.kt:name.isBlank() || name.startsWith('/') || path.isAbsolute || path.toString() != name.trimEnd('/') || name.split('/').any { it == ".." } || name == "idea-home" || name.startsWith("idea-home/") || name.endsWith("/product-info.json") || name.contains("/plugins/Kotlin/") || name.contains("/plugins/gradle/")</ID>
     <ID>ComplexCondition:InstalledSidecarRuntimeDemand.kt:values.getProperty("format") == INDEX_SEED_RECEIPT_FORMAT &amp;&amp; values.getProperty("cache.key") == identity.key &amp;&amp; values.getProperty("project.root") == identity.canonicalProjectRoot.toString() &amp;&amp; values.getProperty("idea.build") == identity.runtimeIdentity.supportedPair.ideaBuild &amp;&amp; values.getProperty("kotlin.plugin.build") == identity.runtimeIdentity.supportedPair.kotlinPluginBuild &amp;&amp; values.getProperty("jbr.identity") == identity.runtimeIdentity.jbrIdentity &amp;&amp; values.getProperty("kast.payload.digest") == identity.runtimeIdentity.kastPayloadDigest &amp;&amp; validSeedCategoryProof(values)</ID>
     <ID>ComplexCondition:LifecycleCommands.kt:ideaHome is CliOptionValue.Absent &amp;&amp; cacheMode == StartCacheMode.REUSE &amp;&amp; sourceIdeaSystem is CliOptionValue.Absent &amp;&amp; !acceptGlobalIndexCopy</ID>
     <ID>ComplexCondition:MacOsRuntimeProcessEnvironment.kt:!javaExecutable.isAbsolute || javaExecutable.normalize() != javaExecutable || Files.isSymbolicLink(javaExecutable) || !Files.isRegularFile(javaExecutable, LinkOption.NOFOLLOW_LINKS) || !Files.isExecutable(javaExecutable) || javaExecutable.fileName.toString() != "java" || javaExecutable.parent?.fileName?.toString() != "bin"</ID>
@@ -47,11 +38,6 @@
     <ID>CyclomaticComplexMethod:ExistingIdeSocketClient.kt:ExistingIdeSocketClient$override fun query: ExistingIdeExchange</ID>
     <ID>CyclomaticComplexMethod:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
     <ID>CyclomaticComplexMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$private fun seedIntoStaging: IndexSeedExecution</ID>
-    <ID>CyclomaticComplexMethod:InstallationRequest.kt:InstallationRequest.Companion$fun parse: Refinement&lt;InstallationRequest, InstallationRequestFailure></ID>
-    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
-    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun verify: PlanVerification</ID>
-    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:private fun verifyControlLayout: Boolean</ID>
-    <ID>CyclomaticComplexMethod:InstallationWorkflow.kt:private fun verifyRuntimeArchive: Boolean</ID>
     <ID>CyclomaticComplexMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$override fun create: KastCliCompositionConstruction</ID>
     <ID>CyclomaticComplexMethod:InstalledRuntimeWorkerEffects.kt:InstalledRuntimeWorkerEffects$override suspend fun start: InstalledWorkerStart</ID>
     <ID>CyclomaticComplexMethod:InstalledSidecarRuntimeDemand.kt:FilesystemSidecarCachePreparer$private fun prepareExistingOrFresh: SidecarCachePreparation</ID>
@@ -125,7 +111,6 @@
     <ID>LargeClass:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest</ID>
     <ID>LargeClass:GeneratedCliProjectionTest.kt:GeneratedCliProjectionTest</ID>
     <ID>LargeClass:IndexSeedFilesystemServiceTest.kt:IndexSeedFilesystemServiceTest</ID>
-    <ID>LargeClass:InstallationWorkflow.kt:InstallationWorkflow</ID>
     <ID>LargeClass:InstalledKastCliComposition.kt:InstalledKastCliComposition : KastCliComposition</ID>
     <ID>LargeClass:InstalledServerProjectionTest.kt:InstalledServerProjectionTest</ID>
     <ID>LargeClass:InstalledSidecarRuntimeDemanderTest.kt:InstalledSidecarRuntimeDemanderTest</ID>
@@ -152,12 +137,6 @@
     <ID>LongMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$fun seed: IndexSeedExecution</ID>
     <ID>LongMethod:IndexSeedFilesystemService.kt:IndexSeedFilesystemService$private fun seedIntoStaging: IndexSeedExecution</ID>
     <ID>LongMethod:IndexSeedFilesystemService.kt:private fun writeReceipt: Boolean</ID>
-    <ID>LongMethod:InstallationRequest.kt:InstallationRequest.Companion$fun parse: Refinement&lt;InstallationRequest, InstallationRequestFailure></ID>
-    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
-    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun verify: PlanVerification</ID>
-    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun writeLauncher</ID>
-    <ID>LongMethod:InstallationWorkflow.kt:InstallationWorkflow$private fun writeManifest</ID>
-    <ID>LongMethod:InstallationWorkflowTest.kt:InstallationWorkflowTest$private fun releaseRequest: InstallationRequest</ID>
     <ID>LongMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$fun retireUnreserved: io.github.amichne.kast.appserver.InstalledWorkerRetirement</ID>
     <ID>LongMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$fun sidecarDemander: RootRuntimeDemander</ID>
     <ID>LongMethod:InstalledKastCliComposition.kt:InstalledKastCliComposition$override fun create: KastCliCompositionConstruction</ID>
@@ -192,18 +171,6 @@
     <ID>MagicNumber:ExistingIdeQuery.kt:ExistingIdeClassName.Companion$512</ID>
     <ID>MagicNumber:ExistingIdeQuery.kt:ExistingIdeQualifiedClassName.Companion$4096</ID>
     <ID>MagicNumber:IndexSeedFilesystemService.kt:Intellij262IndexSeedLayout$4096L</ID>
-    <ID>MagicNumber:InstallationRequest.kt:SemanticVersion.Companion$3</ID>
-    <ID>MagicNumber:InstallationRequest.kt:Sha256.Companion$64</ID>
-    <ID>MagicNumber:InstallationWorkflow.kt:0b000_000_100</ID>
-    <ID>MagicNumber:InstallationWorkflow.kt:0b000_001_000</ID>
-    <ID>MagicNumber:InstallationWorkflow.kt:0b000_010_000</ID>
-    <ID>MagicNumber:InstallationWorkflow.kt:0b000_100_000</ID>
-    <ID>MagicNumber:InstallationWorkflow.kt:0b001_000_000</ID>
-    <ID>MagicNumber:InstallationWorkflow.kt:0b010_000_000</ID>
-    <ID>MagicNumber:InstallationWorkflow.kt:0b100_000_000</ID>
-    <ID>MagicNumber:InstallationWorkflow.kt:0b110_000_000</ID>
-    <ID>MagicNumber:InstallationWorkflow.kt:420</ID>
-    <ID>MagicNumber:InstallationWorkflow.kt:493</ID>
     <ID>MagicNumber:InstalledServerProjectionDocuments.kt:4096</ID>
     <ID>MagicNumber:InstalledServerProjectionDocuments.kt:7</ID>
     <ID>MagicNumber:InstalledServerProjectionDocuments.kt:99</ID>
@@ -234,7 +201,6 @@
     <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","limit":10}"""</ID>
     <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"exactSelector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","relation":"references","maximumDepth":1,"maximumResults":10}"""</ID>
     <ID>MaxLineLength:ExistingIdeSemanticReadTest.kt:ExistingIdeSemanticReadTest$"""{"target":{"type":"exact","selector":"exact:v2:e30:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"}}"""</ID>
-    <ID>MaxLineLength:InstallationWorkflowTest.kt:InstallationWorkflowTest$"""{"schemaVersion":1,"runtimeId":"sha256:$runtimeIdentity","productVersion":"$version","platform":"macos","architecture":"aarch64","ideaBuild":"261.1","kotlinPluginBuild":"2.4.10","kastPluginSha256":"$pluginDigest","wireSchemaId":"kast-wire-v1","archive":{"fileName":"${runtime.fileName}","url":"https://example.invalid/${runtime.fileName}","sha256":"$archiveDigest","bytes":${Files.size(runtime)}},"layout":{"executable":"kast-indexer","requiredEntries":["kast-indexer"],"executableEntries":["kast-indexer"]}}"""</ID>
     <ID>MaxLineLength:InstalledConfigurationSchema.kt:InstalledConfigurationSchema$"CoordinatorStatusProtocol.maximumMessageBytes; generated maximum scalar widths and admitted worker count"</ID>
     <ID>MaxLineLength:InstalledServerProjectionDocuments.kt:"Opaque exact-symbol token. Copy verbatim into query_symbols source.symbol_refs; identical to ref.token."</ID>
     <ID>MaxLineLength:InstalledServerProjectionTest.kt:InstalledServerProjectionTest$"""{"source":{"type":"all_declarations","declaration_kinds":null,"scope":null},"steps":[{"type":"check_diagnostics"}],"return_fields":null}"""</ID>
@@ -265,11 +231,6 @@
     <ID>NestedBlockDepth:ExistingIdeSocketTest.kt:ExistingIdeSocketTest$@Test fun `native framed client accepts the exact host and rejects oversized and invalid UTF8 responses`</ID>
     <ID>NestedBlockDepth:IndexSeedFilesystemService.kt:private fun deleteUnpublishedStaging</ID>
     <ID>NestedBlockDepth:IndexSeedFilesystemServiceTest.kt:CopyingTestCloner$override fun clone: IndexSeedCopyResult</ID>
-    <ID>NestedBlockDepth:InstallationWorkflow.kt:InstallationWorkflow$private fun apply: InstallationOutcome</ID>
-    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun digest: Sha256?</ID>
-    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun payloadFiles: List&lt;PayloadFile></ID>
-    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun verifyControlLayout: Boolean</ID>
-    <ID>NestedBlockDepth:InstallationWorkflow.kt:private fun verifyRuntimeArchive: Boolean</ID>
     <ID>NestedBlockDepth:KastCli.kt:KastCli$private fun executeRequest: CliExit</ID>
     <ID>NestedBlockDepth:MacOsRuntimeProcessAuthority.kt:JdkRuntimeBootstrapProcessSearch$override fun find: RuntimeBootstrapProcessSearchResult</ID>
     <ID>NestedBlockDepth:MacOsRuntimeProcessAuthority.kt:JdkRuntimeProcessSearch$override fun find: RuntimeProcessSearchResult</ID>
@@ -278,7 +239,6 @@
     <ID>NestedBlockDepth:WireDeadlineTest.kt:WireDeadlineTest$@Test fun `successful frame preserves its reusable connection and reports completion`</ID>
     <ID>NestedBlockDepth:WireDeadlineTest.kt:WireDeadlineTest$private fun stalledPeer</ID>
     <ID>NestedBlockDepth:WireQualificationTest.kt:WireQualificationTest$private fun fixture</ID>
-    <ID>ThrowsCount:InstallationWorkflow.kt:private fun payloadFiles: List&lt;PayloadFile></ID>
     <ID>VariableNaming:CanonicalQueryCliDocuments.kt:QueryResultItemCliDocument.ExactSymbol$// Migration alias is derived from the retained exact reference, never an independent input. val symbol_ref: String = ref.token</ID>
     <ID>WildcardImport:AppServerCommands.kt:import io.github.amichne.kast.appserver.*</ID>
     <ID>WildcardImport:AppServerCommands.kt:import io.github.amichne.kast.cli.command.*</ID>

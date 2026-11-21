@@ -24,50 +24,21 @@ import org.junit.jupiter.api.Test
 
 class InstallationLifecycleCapabilityTest {
     @Test
-    fun `prior stop capability remains enough after the installer learns refresh`() {
-        exchangeFixture(IdeLifecycleCommand.StopHost("host", "update"), refresh = false, effectExpected = true)
+    fun `normal stop uses the advertised stop capability`() {
+        exchangeFixture(IdeLifecycleCommand.StopHost("host", "update"), MANAGEMENT, effectExpected = true)
     }
 
     @Test
-    fun `refresh refuses a prior Host with no actual operation capability`() {
+    fun `settlement uses the advertised settlement capability`() {
+        exchangeFixture(IdeLifecycleCommand.SettleHost("host", "update"), MANAGEMENT, effectExpected = true)
+    }
+
+    @Test
+    fun `a Host without the stop capability rejects stop before the effect`() {
         exchangeFixture(
-            IdeLifecycleCommand.RefreshHostBundle("host", "update"),
-            refresh = false,
+            IdeLifecycleCommand.StopHost("host", "update"),
+            MANAGEMENT - IdeLifecycleCapabilityName.HOST_NORMAL_STOP,
             effectExpected = false,
-        )
-    }
-
-    @Test
-    fun `refresh uses the advertised operation and preserves the acknowledgment identity`() {
-        exchangeFixture(IdeLifecycleCommand.RefreshHostBundle("host", "update"), refresh = true, effectExpected = true)
-    }
-
-    @Test
-    fun `legacy refresh capability never grants the prepared marker operation`() {
-        exchangeFixture(
-            IdeLifecycleCommand.RefreshHostBundle("host", "update"),
-            refresh = true,
-            effectExpected = false,
-            prepared = false,
-        )
-    }
-
-    @Test
-    fun `normal settlement remains available without prepared refresh capability`() {
-        exchangeFixture(IdeLifecycleCommand.SettleHost("host", "update"), refresh = false, effectExpected = true)
-    }
-
-    @Test
-    fun `reload settlement requires the prepared capability`() {
-        exchangeFixture(
-            IdeLifecycleCommand.SettleHostForReload("host", "update"),
-            refresh = false,
-            effectExpected = false,
-        )
-        exchangeFixture(
-            IdeLifecycleCommand.SettleHostForReload("host", "update"),
-            refresh = true,
-            effectExpected = true,
         )
     }
 
@@ -88,7 +59,7 @@ class InstallationLifecycleCapabilityTest {
         try {
             val fixture = ManagedDeploymentFixture(root)
             val inspected =
-                inspected(fixture.idea, fixture.identity(), false, false)
+                inspected(fixture.idea, fixture.identity(), MANAGEMENT)
                     .copy(
                         compatibility =
                             HostedCompatibilityDocument(
@@ -134,9 +105,8 @@ class InstallationLifecycleCapabilityTest {
 
     private fun exchangeFixture(
         command: IdeLifecycleCommand,
-        refresh: Boolean,
+        capabilities: Set<IdeLifecycleCapabilityName>,
         effectExpected: Boolean,
-        prepared: Boolean = refresh,
     ) {
         val root = Files.createTempDirectory(Path.of("/tmp"), "k").toRealPath()
         val server = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
@@ -145,14 +115,12 @@ class InstallationLifecycleCapabilityTest {
             val fixture = ManagedDeploymentFixture(root)
             val home = fixture.idea
             val identity = fixture.identity()
-            val inspected = inspected(home, identity, refresh, prepared)
+            val inspected = inspected(home, identity, capabilities)
             val response =
                 when (command) {
                     is IdeLifecycleCommand.StopHost -> IdeLifecycleResult.HostStopRequested("host", "update", identity)
-                    is IdeLifecycleCommand.SettleHost,
-                    is IdeLifecycleCommand.SettleHostForReload ->
-                        IdeLifecycleResult.HostSettled("host", "update", identity)
-                    else -> IdeLifecycleResult.HostRefreshRequested("host", "update", identity)
+                    is IdeLifecycleCommand.SettleHost -> IdeLifecycleResult.HostSettled("host", "update", identity)
+                    else -> error("unexpected management command: $command")
                 }
             val socket =
                 io.github.amichne.kast.distribution.contract.HostedEndpointPaths.directory(
@@ -186,8 +154,7 @@ class InstallationLifecycleCapabilityTest {
     private fun inspected(
         home: Path,
         identity: IdeHostRuntimeIdentity,
-        refresh: Boolean,
-        prepared: Boolean,
+        capabilities: Set<IdeLifecycleCapabilityName>,
     ): IdeLifecycleResult.Inspected {
         val compatibility =
             HostedCompatibilityDocument(
@@ -201,14 +168,6 @@ class InstallationLifecycleCapabilityTest {
                     capabilities = listOf("prior-capability"),
                 ),
             )
-        val capabilities =
-            setOf(
-                IdeLifecycleCapabilityName.INSPECT,
-                IdeLifecycleCapabilityName.HOST_NORMAL_STOP,
-                IdeLifecycleCapabilityName.HOST_SETTLEMENT,
-            ) +
-                (if (refresh) setOf(IdeLifecycleCapabilityName.HOST_RELOAD_REFRESH) else emptySet()) +
-                (if (prepared) setOf(IdeLifecycleCapabilityName.HOST_PREPARED_RELOAD_REFRESH) else emptySet())
         return IdeLifecycleResult.Inspected(
             "host",
             home.toString(),
@@ -244,5 +203,14 @@ class InstallationLifecycleCapabilityTest {
                 }
             }
         }
+    }
+
+    private companion object {
+        val MANAGEMENT =
+            setOf(
+                IdeLifecycleCapabilityName.INSPECT,
+                IdeLifecycleCapabilityName.HOST_NORMAL_STOP,
+                IdeLifecycleCapabilityName.HOST_SETTLEMENT,
+            )
     }
 }
