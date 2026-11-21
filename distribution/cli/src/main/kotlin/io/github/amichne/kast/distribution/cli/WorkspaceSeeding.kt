@@ -115,9 +115,7 @@ private fun selectWorkspaceSeed(
         entries
             .filterIsInstance<ContainerStoreEntry.Admitted>()
             .map { it.workspace }
-            .filter {
-                it.generation == ContainerGenerationSource.Current && it.gradleHome == staged.creation.gradleHome
-            }
+            .filter { it.gradleHome == staged.creation.gradleHome }
     val candidates = seedCandidates(store, compatible, staged.container.runtime)
     var busy = false
     for (candidate in candidates) {

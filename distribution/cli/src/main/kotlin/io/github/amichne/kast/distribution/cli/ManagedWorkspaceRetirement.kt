@@ -55,8 +55,8 @@ internal fun retireSelectedWorkspaces(
             is Refinement.Rejected -> return selected
             is Refinement.Refined -> selected.value
         }
-    when (val migrated = migrateWorkspaceEntries(store, entries)) {
-        is Refinement.Rejected -> return migrated
+    when (val admitted = requireAdmittedWorkspaceEntries(entries)) {
+        is Refinement.Rejected -> return admitted
         is Refinement.Refined -> Unit
     }
     return withContainerLock(store.root) {
@@ -79,20 +79,13 @@ internal fun retireSelectedWorkspaces(
     }
 }
 
-internal fun migrateWorkspaceEntries(
-    store: ContainerStore,
-    entries: List<ContainerStoreEntry>,
+/** Every scoped entry must be admitted; one rejected record rejects the whole scope. */
+internal fun requireAdmittedWorkspaceEntries(
+    entries: List<ContainerStoreEntry>
 ): Refinement<List<ContainerStoreEntry>, ContainerFailure> {
-    val current = mutableListOf<ContainerStoreEntry>()
-    for (entry in entries) when (entry) {
-        is ContainerStoreEntry.Rejected -> return rejectWorkspaceEntry(entry.directory, entry.failure)
-        is ContainerStoreEntry.Admitted ->
-            when (val migrated = migrateLegacyWorkspace(store, entry.workspace)) {
-                is Refinement.Rejected -> return migrated
-                is Refinement.Refined -> current += ContainerStoreEntry.Admitted(migrated.value)
-            }
-    }
-    return Refinement.Refined(current)
+    for (entry in entries) if (entry is ContainerStoreEntry.Rejected)
+        return rejectWorkspaceEntry(entry.directory, entry.failure)
+    return Refinement.Refined(entries)
 }
 
 internal fun retireGenerations(

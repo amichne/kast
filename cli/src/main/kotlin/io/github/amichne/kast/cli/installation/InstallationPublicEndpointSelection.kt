@@ -45,7 +45,6 @@ internal sealed interface InstallationConfigurationSelection {
         val root: Path,
         val admission: AdmittedAppServerConfiguration,
         private val selection: InstallationPublicEndpointSelection,
-        val migration: InstallationConfigurationMigration = InstallationConfigurationMigration.Unchanged,
     ) : InstallationConfigurationSelection {
         fun preservesEndpoint(): Boolean = endpoint == admission.publicEndpointMode
 
@@ -95,12 +94,6 @@ internal fun observeInstallationConfigurationSelection(
     val selected = selectInstallationConfiguration(plan.request.publicEndpoint, retainedSettings)
     when (selected) {
         is Refinement.Refined -> {
-            val configuration = selected.value
-            if (configuration is InstallationConfigurationSelection.Prior) {
-                val migration = configuration.migration
-                if (migration is InstallationConfigurationMigration.StableModuleCount)
-                    System.err.println(InstallationConfigurationMigrationObservation(migration.count.value).toJson())
-            }
             System.err.println(
                 InstallationPublicEndpointObservation(
                         endpoint = selected.value.endpoint,
@@ -129,12 +122,9 @@ internal fun selectInstallationConfiguration(
                 Refinement.Refined(InstallationConfigurationSelection.FreshDefault)
         }
     }
-    val configuration =
-        when (val admitted = readPriorInstallationConfiguration(prior)) {
-            is Refinement.Refined -> admitted.value
-            is Refinement.Rejected -> return admitted
-        }
-    return Refinement.Refined(
-        InstallationConfigurationSelection.Prior(prior, configuration.admission, selection, configuration.migration)
-    )
+    return when (val admitted = readInstallationConfiguration(prior.resolve("config/environment"))) {
+        is Refinement.Refined ->
+            Refinement.Refined(InstallationConfigurationSelection.Prior(prior, admitted.value, selection))
+        is Refinement.Rejected -> admitted
+    }
 }
