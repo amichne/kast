@@ -28,16 +28,6 @@ sealed interface PreviousInstallationPayload {
         val payload: String,
         val recovery: String,
     ) : PreviousInstallationPayload
-
-    @Serializable
-    @SerialName("LEGACY")
-    data class Legacy(
-        val installation: String,
-        val identity: InstallationFilesystemIdentity,
-        val selector: String,
-        val target: String,
-        val recovery: String,
-    ) : PreviousInstallationPayload
 }
 
 @Serializable
@@ -48,5 +38,4 @@ data class InstallationReplacementReceipt(
     val installationIdentity: InstallationFilesystemIdentity,
     val previous: PreviousInstallationPayload,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val reservation: ManagedControlReservation? = null,
-    @EncodeDefault(EncodeDefault.Mode.NEVER) val composition: ManagedCompositionRecord? = null,
 )
