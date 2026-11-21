@@ -1,6 +1,7 @@
 package io.github.amichne.kast.distribution.cli
 
 import io.github.amichne.kast.distribution.contract.InstallationShutdownRequest
+import io.github.amichne.kast.kernel.Refinement
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.serialization.encodeToString
@@ -15,7 +16,7 @@ class CompletedInstallationResumeTest {
     @Test
     fun `replacement of an admitted fence prevents deletion and bootstrap`(@TempDir temporary: Path) {
         val fixture = createLifecycleFixture(temporary)
-        val remaining = ArrayDeque(listOf("disable"))
+        val remaining = ArrayDeque<String>()
         val execution =
             LifecycleExecution(
                 child =
@@ -31,7 +32,7 @@ class CompletedInstallationResumeTest {
                 LifecycleAdmission.Admitted::class.java,
                 InstallationLifecycle.admit(fixture.root, fixture.home, emptyMap(), execution),
             )
-        assertInstanceOf(LifecycleOutcome.Stopped::class.java, admitted.lifecycle.shutdown(LifecycleOperation.STOP))
+        assertEquals(Refinement.Refined(Unit), admitted.lifecycle.fenceManagedProduct())
         val fence = fixture.root.resolve(SHUTDOWN_FENCE)
         val bytes = Files.readString(fence)
         Files.move(fence, fixture.root.resolve("previous-fence"))
