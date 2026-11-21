@@ -353,12 +353,7 @@ internal object InstallationWorkflow {
             }
         }
         val report = plan.report(activation)
-        return when (val cleanup = retireInstallationApprovalArtifacts(plan.request.home.value)) {
-            io.github.amichne.kast.cli.ide.RetiredApprovalOutcome.Absent,
-            io.github.amichne.kast.cli.ide.RetiredApprovalOutcome.Removed -> InstallationOutcome.Complete(report)
-            is io.github.amichne.kast.cli.ide.RetiredApprovalOutcome.Retained ->
-                InstallationOutcome.LegacyApprovalRetained(report, cleanup.failure)
-        }
+        return InstallationOutcome.Complete(report)
     }
 
     internal fun stage(
