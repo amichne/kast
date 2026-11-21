@@ -964,13 +964,14 @@ def resume_locked(
     previous = record.previous
     prior_receipt: ProductManagement | None = None
     if isinstance(previous, journal.PhysicalPrevious):
-        prior = install.RECOVERY.managed_previous(active, slot, previous)
+        live_coordinator = selected.phase in PRE_RETIREMENT_PHASES
+        prior = install.RECOVERY.managed_previous(
+            active, slot, previous, live_coordinator=live_coordinator
+        )
         if prior is None:
             raise ValueError("previous payload")
         verify_previous(
-            prior[0],
-            selected.previousManifestSha256,
-            live_coordinator=selected.phase in PRE_RETIREMENT_PHASES,
+            prior[0], selected.previousManifestSha256, live_coordinator=live_coordinator
         )
         preimage = selected.management
         if not isinstance(preimage, journal.ManagedFilePresent) or preimage.preimage != str(

@@ -817,8 +817,15 @@ def detach_legacy_links(receipt, unresolved):
             unresolved.append(Failure.OWNERSHIP)
 
 
-def managed_tree(path):
-    """Capture the complete owned tree before a Control move or terminal cleanup."""
+LIVE_COORDINATOR_SOCKET = 'state/run/c.sock'
+
+
+def managed_tree(path, live_coordinator=False):
+    """Capture the complete owned tree before a Control move or terminal cleanup.
+
+    Before the prior Control retires its semantic coordinator, that coordinator's exact
+    socket is admitted. A socket anywhere else, or after retirement, rejects ownership.
+    """
     physical(path)
     digest = hashlib.sha256()
     pending, entries = [path], []
@@ -827,10 +834,12 @@ def managed_tree(path):
         if len(entries) >= 100000:
             raise Rejected(Failure.OWNERSHIP)
         attributes = current.lstat()
-        if attributes.st_uid != os.getuid() or not (stat.S_ISDIR(attributes.st_mode) or stat.S_ISREG(attributes.st_mode)):
+        relative = current.relative_to(path).as_posix()
+        coordinator = live_coordinator and relative == LIVE_COORDINATOR_SOCKET and stat.S_ISSOCK(attributes.st_mode)
+        if attributes.st_uid != os.getuid() or not (stat.S_ISDIR(attributes.st_mode) or stat.S_ISREG(attributes.st_mode) or coordinator):
             raise Rejected(Failure.OWNERSHIP)
         identity = Identity(attributes.st_dev, attributes.st_ino, attributes.st_uid)
-        content = ''
+        content = 'socket' if coordinator else ''
         if stat.S_ISREG(attributes.st_mode):
             descriptor = os.open(current, os.O_RDONLY | os.O_NOFOLLOW)
             with os.fdopen(descriptor, 'rb') as stream:
@@ -839,13 +848,13 @@ def managed_tree(path):
                 content = stream_digest(stream)
             if Identity.observe(current) != identity:
                 raise Rejected(Failure.OWNERSHIP)
-        else:
+        elif stat.S_ISDIR(attributes.st_mode):
             with os.scandir(current) as children:
                 for child in children:
                     if len(entries) + len(pending) + 1 >= 100000:
                         raise Rejected(Failure.OWNERSHIP)
                     pending.append(Path(child.path))
-        entries.append((current.relative_to(path).as_posix(), identity, stat.S_IMODE(attributes.st_mode), content))
+        entries.append((relative, identity, stat.S_IMODE(attributes.st_mode), content))
     for relative, identity, mode, content in sorted(entries):
         digest.update(relative.encode())
         digest.update(b'\0')
@@ -913,7 +922,7 @@ def re_full_digest(value):
     return isinstance(value, str) and len(value) == 64 and all(character in '0123456789abcdef' for character in value)
 
 
-def managed_payload(path, expected_root, identity, reservation=None):
+def managed_payload(path, expected_root, identity, reservation=None, live_coordinator=False):
     if Identity.observe(physical(path)) != identity:
         raise Rejected(Failure.OWNERSHIP)
     manifest_path = path / 'installation.json'
@@ -950,7 +959,7 @@ def managed_payload(path, expected_root, identity, reservation=None):
             raise Rejected(Failure.CONTROL_LIMIT) from None
         raise Rejected(Failure.OWNERSHIP) from None
     lifecycle.observe_admission(lifecycle.AdmissionAccepted(lifecycle.AdmissionType.PAYLOAD_ADMITTED))
-    return managed_tree(path)
+    return managed_tree(path, live_coordinator)
 
 
 def managed_recovery(path, expected_root, identity):
@@ -960,14 +969,14 @@ def managed_recovery(path, expected_root, identity):
     return managed_tree(path)
 
 
-def managed_previous(root, transaction, previous):
+def managed_previous(root, transaction, previous, live_coordinator=False):
     if isinstance(previous, PhysicalPrevious):
         if previous.installation != str(root) or previous.payload != str(transaction / 'payload') or previous.recovery != str(transaction / 'recovery'):
             raise Rejected(Failure.RECEIPT)
         options = [path for path in (root, transaction / 'payload') if os.path.lexists(path) and not path.is_symlink() and Identity.observe(path) == previous.identity]
         if len(options) != 1:
             raise Rejected(Failure.OWNERSHIP)
-        return options[0], root, root.parent / 'recovery/installation', managed_payload(options[0], root, previous.identity)
+        return options[0], root, root.parent / 'recovery/installation', managed_payload(options[0], root, previous.identity, live_coordinator=live_coordinator)
     if isinstance(previous, LegacyPrevious):
         prior, selector = Path(previous.installation), Path(previous.selector)
         if prior.parent != root.parent / 'versions' or selector != root.parent / 'current' or previous.target != 'versions/' + prior.name or previous.recovery != str(transaction / 'recovery') or not selector.is_symlink() or os.readlink(selector) != previous.target:
