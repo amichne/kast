@@ -14,7 +14,6 @@ code_sources:
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
   - path: protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt
-  - path: packaging/generate-public-query.py
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicQueryPackageName.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/schema/CanonicalJson.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolContractTest.kt
@@ -22,6 +21,7 @@ code_sources:
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/query/PublicToolCompletionPolicyTest.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ReferenceAuthorityMismatch.kt
+  - path: packaging/internal/query/generate-public-query.py
 sources:
   - id: openwiki-source-468da36f81e497d3a91bd73f
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolContract.kt
@@ -33,10 +33,10 @@ sources:
     resource: repo://app-server/src/main/resources/io/github/amichne/kast/appserver/query/tools.schema.json
   - id: openwiki-source-01b72c0031ed69c6870649b2
     resource: repo://protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt
-generated: { by: "codex", at: "2026-10-15T01:04:37.434Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T06:30:47.924Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Public query admission and capabilities
@@ -96,7 +96,7 @@ Compiler identity and current workspace permission remain downstream semantic pr
 - [PublicToolExpansionScopeMapping.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolExpansionScopeMapping.kt)
 - [QueryCompletionDocument.kt](../../protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/QueryCompletionDocument.kt)
 - [PublicToolIdentity.kt](../../protocol/registry/src/main/kotlin/io/github/amichne/kast/protocol/registry/PublicToolIdentity.kt)
-- [generate-public-query.py](../../packaging/generate-public-query.py)
+- [generate-public-query.py](../../packaging/internal/query/generate-public-query.py)
 - [PublicQueryPackageName.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicQueryPackageName.kt)
 - [CanonicalJson.kt](../../app-server/src/main/kotlin/io/github/amichne/kast/appserver/schema/CanonicalJson.kt)
 
@@ -108,7 +108,7 @@ Compiler identity and current workspace permission remain downstream semantic pr
 
 ## Request advice and qualified rejection details
 
-Tool RPC `plan-query` uses the same public RUN admission before host composition.
+The public `kast query plan` command uses the same public RUN admission before host composition.
 Its `REQUEST_SHAPE_ONLY` basis and `NOT_MEASURED` estimate keep advice separate from semantic evidence.
 Equal epoch values cannot form an epoch-mismatch detail.
 The typed mismatch carries expected and observed epochs only after workspace, host, and reference-version admission.

@@ -1,68 +1,70 @@
 ---
 type: System Explanation
-title: Direct MCP and tool RPC
-description: Explains shared tool registration, protocol-era admission, one-shot RPC,
-  invocation-scoped query sessions, and canonical result preservation.
+title: Direct MCP
+description: Explains the native Kotlin MCP entrypoint, shared tool registration, protocol-era admission, per-request workspace leases, and canonical result preservation.
 tags:
   - kast
   - transport
 code_sources:
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt
-  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalLiveOperationSupport.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/CliOptions.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/appserver/AppServerCommands.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/change/ChangeCommands.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/codex/CodexCommands.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/product/ProductCommands.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/source/SourceCommands.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/workspace/IndexCommands.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectCatalogArguments.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolDocument.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
-  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServerTest.kt
-  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcBridgeTest.kt
-  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionProcessTest.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalLiveOperationSupport.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt
+  - path: cli/src/main/control-launchers/bin/kast-mcp
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetail.kt
+  - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
+  - path: cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServerTest.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlanTest.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetailTest.kt
 sources:
   - id: openwiki-source-eee64eb8ca3aa3550601ed99
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/WorkspaceOperationAdmission.kt
+  - id: openwiki-source-ae1ffead9bda416bfbaf2250
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectCatalogArguments.kt
   - id: openwiki-source-7685e27063adfdefffa21252
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
   - id: openwiki-source-e2eb0f864f441066834169f4
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt
+  - id: openwiki-source-7904a856aedff77e554352c6
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt
+  - id: openwiki-source-32409ff9180fb1de21a3dea3
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - id: openwiki-source-59b559d53d91096a82b485a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
+  - id: openwiki-source-a566d74d2962e0f1901a1d38
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
   - id: openwiki-source-80668d86bee80c4df5797fa0
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookPreparation.kt
-  - id: openwiki-source-1d161f3eb7933044519fd33a
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
-  - id: openwiki-source-021e60454b473f51dc29603a
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt
   - id: openwiki-source-210e5a1fdf9d35bc022594a2
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt
   - id: openwiki-source-ed6011399144254764b19542
     resource: repo://cli/src/test/kotlin/io/github/amichne/kast/cli/publicshell/PublicHookManagedPreparationTest.kt
   - id: openwiki-source-ecb21af09f4a49f9e40342dd
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
-generated: { by: "amp", at: "2026-11-13T00:20:29.143Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T23:43:30.219Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
-# Direct MCP and tool RPC
+# Direct MCP
+
+## One MCP entry
+
+An agent runs the MCP server as `kast --internal-entrypoint=mcp`, usually through the `agents.toml` entry that dotagents applies.
+The Go Control executable passes that entry to `KastControlMain`, which dispatches it to `KastMcpMain`.
+The installed `kast-mcp` launcher selects the same entry.
+`KastMcpMain` accepts an optional `--catalog=COMMON` or `--catalog=COMPLETE` selector; `COMMON` is the default and any other catalog argument rejects.
+The MCP client owns the stdio process. The transport starts no App Server or broker.
+Tool RPC and its query session are removed; MCP and the public CLI are the only direct tool transports.
 
 ## Share native tool composition
 
@@ -73,8 +75,8 @@ Installation lifecycle admission precedes startup and invocation.
 A stopped or unproved installation returns a typed rejection.
 
 The session routes public changes to the shared change owner.
-Read operations use the existing-IDE client and admitted public request.
-CLI, MCP, and RPC invocation select preparation through typed operation admission.
+Read operations use the project socket client and the admitted public request.
+CLI and MCP invocation select preparation through typed operation admission.
 Fresh discovery and diagnostics prepare the workspace.
 Issued source and retained-reference reads use existing authority without an eager session preparation step.
 `ManagedToolInvocation` opens the shared `ManagedWorkspaceQuery` lease for each request, not for the lifetime of the transport session.
@@ -82,8 +84,8 @@ It rechecks Control admission after acquiring the lease, binds the private HOME 
 The first explicit preparation request can create the exact-root trust record; retained reads require that record already to exist.
 Explicit internal `workspace wait` uses this same preparation admission and lease, including inherited-state rejection.
 Its typed preparation failures remain distinct from semantic CLI output, and session-start hooks remain passive.
-Installed product and runtime selection is local. Missing runtime bytes reject rather than downloading a release or using desktop IDEA.
-MCP and harness-neutral RPC choose different client protocols around that same session.
+Installed product and runtime selection is local. Missing runtime bytes reject rather than downloading a release.
+The public CLI and MCP choose different client protocols around that same session.
 Neither transport creates another semantic implementation.
 
 ## MCP admits one protocol era
@@ -100,68 +102,40 @@ Tool annotations describe the preparation effect as well as the tool's nominal r
 Preparation can save editor buffers and refresh the project.
 A read query therefore does not imply an entirely effect-free client invocation.
 `McpStructuredResults` preserves canonical structured results through the output contract.
-
-## RPC owns bounded invocation scope
-
-`KastToolRpcMain` exposes `catalog`, `plan-query`, `call`, and `query-session` to agent adapters.
-It bounds input bytes before JSON and public contract admission.
-Unknown tools, malformed arguments, unavailable observation, stopped installation, and invalid results remain finite failures.
-The bridge does not rewrite a canonical rejection as success.
-
-`KastToolRpcQuerySession` owns one caller-owned child and at most 64 request records.
-After its first query, the session accepts only detail reads or output continuation issued by the preceding result.
-A second RUN, foreign result handle, or foreign continuation rejects the transition.
-The child ends when the state closes or the fixed request allowance ends.
-
-This session saves repeated process composition during one logical invocation.
-It does not permit semantic replay, arbitrary handle adoption, or continued execution through an expired authority.
-Focused bridge and process tests cover these transport contracts.
-Installed compiler authority remains a separate host obligation.
-
-## Focused tests
-
-- [KastMcpServerTest.kt](../../cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServerTest.kt)
-- [KastToolRpcBridgeTest.kt](../../cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcBridgeTest.kt)
-- [KastToolRpcQuerySessionProcessTest.kt](../../cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySessionProcessTest.kt)
-
-## Source owners
-
-- [KastDirectToolSession.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt)
-- [KastMcpServer.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt)
-- [KastToolRpcMain.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt)
-- [KastToolRpcQuerySession.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt)
-- [McpStructuredResults.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt)
-- [DirectToolRegistration.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt)
-- [CanonicalLiveOperationSupport.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/CanonicalLiveOperationSupport.kt)
-- [CliOptions.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/CliOptions.kt)
-- [AppServerCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/appserver/AppServerCommands.kt)
-- [ChangeCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/change/ChangeCommands.kt)
-- [CodexCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/codex/CodexCommands.kt)
-- [IdeCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/ide/IdeCommands.kt)
-- [ProductCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/product/ProductCommands.kt)
-- [SourceCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/source/SourceCommands.kt)
-- [PublicToolCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/tool/PublicToolCommands.kt)
-- [IndexCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/workspace/IndexCommands.kt)
-- [DirectToolDocument.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolDocument.kt)
-- [ExistingIdeCli.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt)
-- [KastMcpMain.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt)
-
-## Read next
-
-- [Public request admission](../queries/public-admission.md)
-- [Agent adapters](harness-delivery.md)
+`INVOCATION_IN_PROGRESS` rejects an overlapping tool call on the same connection without reporting the active query as failed.
 
 ## Request-only query advice
 
-`plan-query` reads public RUN JSON before installation access or host preparation.
+The public `kast query plan` command reads public RUN JSON before installation access or host preparation.
 `QueryCostPlan` reuses public admission and preserves the canonical request, scopes, expansion domains, and requested budget.
 Its basis is `REQUEST_SHAPE_ONLY`, and its estimate is `NOT_MEASURED`.
 Advice identifies broad discovery, fuzzy names, late filters, unrestricted expansion, and unbounded walk depth.
 It does not measure cost, admit an execution budget, or change the request.
 READ_SOURCE, READ_RESULT, and RESUME reject with RUN_REQUIRED.
 
-The query session also admits one initial READ_SOURCE and ends after its reply.
-After query output, a source read or another RUN needs a new session.
-`QuerySessionRejectionDetail` distinguishes that case from a foreign result, foreign continuation, or malformed source anchor.
+`QuerySessionRejectionDetail` keeps typed output-allowance, detail-selector, and authority details beside a tool rejection.
 The rejection keeps expected and requested authority and the next permitted local action.
 The canonical owner still decides semantic freshness.
+
+## Focused tests
+
+- [KastMcpServerTest.kt](../../cli/src/test/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServerTest.kt)
+- [QueryCostPlanTest.kt](../../cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlanTest.kt)
+- [QuerySessionRejectionDetailTest.kt](../../cli/src/test/kotlin/io/github/amichne/kast/cli/rpc/QuerySessionRejectionDetailTest.kt)
+
+## Source owners
+
+- [KastMcpMain.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt)
+- [KastMcpServer.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt)
+- [McpStructuredResults.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt)
+- [KastDirectToolSession.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt)
+- [ManagedToolInvocation.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/direct/ManagedToolInvocation.kt)
+- [DirectToolRegistration.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolRegistration.kt)
+- [DirectCatalogArguments.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectCatalogArguments.kt)
+- [KastControlMain.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt)
+- [QueryCostPlan.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/QueryCostPlan.kt)
+
+## Read next
+
+- [Public request admission](../queries/public-admission.md)
+- [Agent context and skill delivery](harness-delivery.md)

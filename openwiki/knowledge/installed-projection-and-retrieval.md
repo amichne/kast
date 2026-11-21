@@ -34,12 +34,12 @@ sources:
     resource: repo://build-logic/src/test/kotlin/KotlinDocumentationScannerTest.kt
   - id: openwiki-source-ed6022ca58911768febfbe7e
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/KastCliMain.kt
-  - id: openwiki-source-d3ccbe593611586a04efc776
-    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementCommand.kt
+  - id: openwiki-source-2141db5e92ccbb5de75a1544
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
 generated: { by: "amp", at: "2026-11-15T20:21:03.545Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:21:03.545Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Repository knowledge after installed bundle retirement

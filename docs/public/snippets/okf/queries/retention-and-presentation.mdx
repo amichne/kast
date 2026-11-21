@@ -48,8 +48,8 @@ The full envelope must fit, including necessary qualification and failure eviden
 A response-byte budget is not permission to discard evidence until a success document fits.
 Required retention failure remains a finite rejection with the original coverage.
 
-Tool RPC and the shared JavaScript delivery client consume this admitted output protocol.
-Presentation keeps received evidence and follows returned cursors without a hidden semantic retry.
+The public CLI and native MCP consume this admitted output protocol.
+A caller follows returned continuations and cursors explicitly; neither surface performs a hidden semantic retry.
 Expired, foreign, unavailable, or capacity-rejected state does not become an empty successful page.
 Output reads preserve the owning lifetime and do not renew it through a new semantic grant.
 
@@ -74,22 +74,12 @@ They do not establish the latency or completeness of an unmeasured native query.
 - [RetainedQueryPresentation.kt](https://github.com/amichne/kast/blob/main/query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt)
 - [QueryRetainedResult.kt](https://github.com/amichne/kast/blob/main/query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryRetainedResult.kt)
 - [HostedQueryPublicationSession.kt](https://github.com/amichne/kast/blob/main/runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedQueryPublicationSession.kt)
-- [KastToolRpcQuerySession.kt](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcQuerySession.kt)
-- [query-delivery.mjs](https://github.com/amichne/kast/blob/main/cli/src/main/js/query-delivery.mjs)
+- [KastMcpServer.kt](https://github.com/amichne/kast/blob/main/cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt)
 
 <a id="okf-queries-retention-and-presentation-read-next" />
 
 ## Read next
 
 - [Completion](https://github.com/amichne/kast/blob/main/openwiki/queries/trace-and-completion.md)
-- [Shared delivery](https://github.com/amichne/kast/blob/main/openwiki/transport/harness-delivery.md)
+- [Direct MCP](https://github.com/amichne/kast/blob/main/openwiki/transport/direct-mcp-and-tool-rpc.md)
 - [Impact witnesses](https://github.com/amichne/kast/blob/main/openwiki/queries/impact-and-peer-proof.md)
-
-<a id="okf-queries-retention-and-presentation-received-evidence-summaries" />
-
-## Received-evidence summaries
-
-The shared presentation starts with received row, relation, and file counts, original coverage, and blockers.
-Received counts do not describe an unread suffix or the invocation's entire accumulated output.
-Refinement failures keep exact locations and finite reasons without an issued source selector.
-Recovery advice does not grant authority or start another RUN.

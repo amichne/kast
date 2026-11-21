@@ -67,10 +67,10 @@ sources:
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:10:47.711Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Verified module architecture
@@ -87,19 +87,20 @@ Every module role requires its matching Gradle convention. Validated module poli
 - Service modules own orchestration without platform authority.
 - `query:protocol` has the service role and owns shared semantic-read request admission, reference encoding and decoding adapters, and canonical projection using contract dependencies.
 - IntelliJ and filesystem/SQLite modules own explicit effects.
-- The existing-IDE host connects proven contracts to adapters with external effects.
+- The managed Host connects proven contracts to adapters with external effects.
 - App Server and CLI expose broker, installation and transport boundaries.
 - `distribution:cli` owns the management implementation and depends on `distribution:contract`, `distribution:managed`, `distribution:output`, and `evidence:sqlite`.
   The SQLite owner supplies read-only inspection of settled mutation state.
   Architecture policy names the exact distribution-to-SQLite edge and rejects general CLI-to-SQLite dependencies.
   The module keeps no IntelliJ, semantic, MCP implementation, or App Server implementation dependency.
-  The `cli` module composes this management implementation through one named policy edge and produces the shared native Control executable.
+  The `cli` module composes this management implementation through one named policy edge into the JVM Control entry.
+  The root build compiles the Go frontend into the single native Control executable, `share/kast/libexec/kast-management`.
   Installation and container fence writes stay within their exact lifecycle effect owners.
 - The MCP launcher retains the hosted catalog and uses Kotlin MCP SDK tool annotations at its adapter boundary. Its one-call change tool submits the exact canonical plan identity to current native mutation admission.
 
 The App Server's direct login-agent publisher and the installation service lock are explicit scoped filesystem-write owners. The publisher writes or removes only the qualified per-user launchd entry; the lock serializes launchd start, retirement, and direct login resumption.
 
-The IntelliJ read adapter also depends on symbol contracts for the existing-IDE
+The IntelliJ read adapter also depends on symbol contracts for the managed Host
 [hosted query](../flows/hosted-query.md). This permits detached compiler evidence
 without introducing an isolated workspace opener or importing implementation
 dependencies from semantic service modules.

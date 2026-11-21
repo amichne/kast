@@ -20,8 +20,9 @@ code_sources:
   - path: protocol/contract/src/main/kotlin/io/github/amichne/kast/protocol/contract/ExecutionBudgetPresence.kt
   - path: query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedgerModelConservation.kt
   - path: README.md
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpStructuredResults.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/ToolRpcReply.kt
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
 sources:
   - id: openwiki-source-c58b3f38ca46d44dd30a8771
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/direct/InstalledToolAdmission.kt
@@ -29,8 +30,10 @@ sources:
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpServer.kt
   - id: openwiki-source-a417b163db0bdf18fd3922c0
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpTransportRejection.kt
-  - id: openwiki-source-1d161f3eb7933044519fd33a
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
+  - id: openwiki-source-a566d74d2962e0f1901a1d38
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
+  - id: openwiki-source-b0e74b1955de1126bad483e6
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/ToolRpcReply.kt
   - id: openwiki-source-d69d2f9483e3ef07d3d7af62
     resource: repo://kernel/src/main/kotlin/io/github/amichne/kast/kernel/EvidenceEnvelope.kt
   - id: openwiki-source-1368a6d1e2827cd0501cec50
@@ -71,10 +74,10 @@ sources:
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringContent.kt
   - id: openwiki-source-6b9226c3dcd93a43cae28064
     resource: repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeStringConversion.kt
-generated: { by: "codex", at: "2026-11-12T06:36:59.233Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T22:37:40.805Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Operation outcomes
@@ -163,7 +166,7 @@ Table joins do not advance row or evidence cursors.
 `knownMinimum` counts proved logical output, including sent rows, rather than candidates or remaining pages.
 
 Direct MCP returns the operation document in `result.structuredContent` and text.
-Tool RPC and completed hosted calls carry `document`.
+Public CLI replies and completed hosted calls carry `document`.
 A distinct MCP rejection sets `result.isError: true` and reports `type: MCP_REJECTED`, `status: rejected`, and `error`.
 `INVOCATION_IN_PROGRESS` rejects overlapping tool calls on that connection.
 It does not report a semantic rejection or establish that the active query failed.
@@ -211,7 +214,7 @@ uses the MCP error flag separately and does not invent a semantic result.
 
 Transport success does not imply semantic completeness. A host must preserve the distinction when projecting output, and it must not attach a successful payload to rejection. The public [result guide](../../docs/public/reference/responses.mdx) gives the user-facing interpretation.
 
-The one-shot tool RPC returns a closed `complete`, `qualified`, `rejected_document`, or boundary `rejected` variant. It preserves the canonical result document under `document` for semantic outcomes, so Copilot and Pi adapters cannot turn qualified evidence into a complete result. The catalog marks `add_declaration` as `WRITE` and all direct reads as `READ`. A shutdown fence or remaining replacement journal returns `INSTALLATION_STOPPED` before workspace discovery, preparation, or semantic dispatch. An empty journal or dangling journal link also blocks admission.
+The public CLI reply is a closed `complete`, `qualified`, `rejected_document`, or boundary `rejected` variant. It preserves the canonical result document under `document` for semantic outcomes, so a caller cannot turn qualified evidence into a complete result. The catalog marks `add_declaration` as `WRITE` and all direct reads as `READ`. Unavailable installation admission returns `INSTALLATION_STOPPED` before workspace discovery, preparation, or semantic dispatch.
 
 ## Recovery directions
 

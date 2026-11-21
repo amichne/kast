@@ -916,7 +916,10 @@ class SourceInventoryTest(unittest.TestCase):
                 # Audit the current literal source-path and inline-link convention.
                 # Unsupported reference forms require review, rather than silently
                 # expanding the docs-only closure through a permissive parser.
-                declaration = re.fullmatch(r"\s*- path: (docs/public/[A-Za-z0-9_./-]+)\s*", line)
+                # Literal paths: `- path:` code sources and `resource: repo://` page sources.
+                declaration = re.fullmatch(
+                    r"\s*(?:- path: |resource: repo://)(docs/public/[A-Za-z0-9_./-]+)\s*", line
+                )
                 if declaration:
                     targets = [(root / declaration.group(1)).resolve()]
                     remainder = ""

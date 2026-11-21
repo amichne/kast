@@ -210,10 +210,10 @@ sources:
     resource: repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisition.kt
   - id: openwiki-source-614907c76c5e46269ec7d42b
     resource: repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/ScopedExactReacquisitionBudgetTest.kt
-generated: { by: "codex", at: "2026-11-03T06:25:30.717Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T06:30:47.924Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Query protocol
@@ -236,7 +236,7 @@ and budgets. `CanonicalQueryProtocol` restores input references, admits the type
 query plan, and executes the supplied `QueryOperations`. `QueryOutcomeProjection`
 projects complete, qualified, or rejected results and retained presentations.
 The other read protocols use the same reference
-and evidence vocabulary around their domain operations. The existing-IDE host uses this boundary; historical published-evidence tests exercise the same contracts without granting a production publication owner.
+and evidence vocabulary around their domain operations. The managed Host uses this boundary; historical published-evidence tests exercise the same contracts without granting a production publication owner.
 
 `CanonicalQueryProtocol.execute` is the sole public query executor. Every RUN requires complete-only compiler-static proof and has no completion selector. The raw evaluator page entry is internal. Incomplete execution, missing evidence and unproven graph obligations return typed rejection; retained reads carry the original verdict, question and qualifications as evidence-only data. Required storage failure preserves completed enumeration with the finite `RETENTION_UNAVAILABLE` cause. Public semantic checkpoint tokens reject without provider work.
 

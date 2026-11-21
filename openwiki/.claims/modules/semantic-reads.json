@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:47f936b797d91023fa394b3f1c88e54a251b7ac17df3cd0505731d0866696e6d",
+  "pageVersion": "sha256:43b7e3dc31d55432290bf3a0750c3b844d4447f849de2884e4e8d27eaacb8d39",
   "claims": [
     {
       "id": "claim_009e763fdd49491b8ddc72813e392412",
@@ -46,7 +46,7 @@
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt",
-          "version": "repo-file-v1:sha256:7a96a4de51177554321c1d3434803ac309603fca2eff2fc1dbc87871b6a48b77"
+          "version": "repo-file-v1:sha256:bb6b76d5c75ec3fcd6a073dc8a24399089e236e1b52d832c07a6e631a20db712"
         }
       ]
     },
@@ -56,7 +56,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowCompilerAdapter.kt",
-          "version": "repo-file-v1:sha256:bc79516a4aaf02c9c00fca3676f08615aa50a27353a5423d72691a53e2957359"
+          "version": "repo-file-v1:sha256:b3d38919cdbe8b2d02591df6f13009884988780eec1e11a4ee2b098412ef61bd"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueSiteRevalidationNative.kt",
@@ -64,7 +64,7 @@
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt",
-          "version": "repo-file-v1:sha256:e30247217b55acbada2cb1d859c477787b66c04efe6a713f2932fcb6c9ff86ca"
+          "version": "repo-file-v1:sha256:9671d73425521359761cf6feafc940bdb2ce95a6c64e228bc92bfe0ce0b66199"
         },
         {
           "resource": "repo://relation/intellij/src/test/kotlin/io/github/amichne/kast/relation/intellij/ValueSiteRestorationTest.kt",
@@ -78,7 +78,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueProducerSeedNative.kt",
-          "version": "repo-file-v1:sha256:777a7635cdb400bf5e8058187b6153dcbda31dfdcf39c9e256920c82251f82d9"
+          "version": "repo-file-v1:sha256:c844f94726e540489389d12436c4312794877237d22953e4b7a0c4d0053fd1ef"
         }
       ]
     },
@@ -88,7 +88,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeValueSiteRestorationFailure.kt",
-          "version": "repo-file-v1:sha256:e30247217b55acbada2cb1d859c477787b66c04efe6a713f2932fcb6c9ff86ca"
+          "version": "repo-file-v1:sha256:9671d73425521359761cf6feafc940bdb2ce95a6c64e228bc92bfe0ce0b66199"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/HostedReadDiagnosticEncoding.kt",
@@ -146,7 +146,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijValueFlowNative.kt",
-          "version": "repo-file-v1:sha256:7a96a4de51177554321c1d3434803ac309603fca2eff2fc1dbc87871b6a48b77"
+          "version": "repo-file-v1:sha256:bb6b76d5c75ec3fcd6a073dc8a24399089e236e1b52d832c07a6e631a20db712"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/NativeTryBranchResult.kt",
@@ -194,7 +194,7 @@
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijScopedDeclarationEnumeration.kt",
-          "version": "repo-file-v1:sha256:993d3657f58ca657420e6a8132944a38f0e15e5970bd2ccbd440b3aefa919cea"
+          "version": "repo-file-v1:sha256:043fcc76e0d85527ef71360954ceda751a022e15eec5e9eed4a0fca30713128a"
         },
         {
           "resource": "repo://symbol/intellij/src/test/kotlin/io/github/amichne/kast/symbol/intellij/LocalSupplementFileAdmissionTest.kt",
@@ -264,7 +264,7 @@
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7"
+          "version": "repo-file-v1:sha256:1482841ff44989b173053027ad9a1b751604cb1a527a80051ac86d99db3a102b"
         }
       ]
     },
@@ -274,7 +274,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7"
+          "version": "repo-file-v1:sha256:1482841ff44989b173053027ad9a1b751604cb1a527a80051ac86d99db3a102b"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt",
@@ -306,7 +306,7 @@
       "evidence": [
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijDeclarationSourceAdapter.kt",
-          "version": "repo-file-v1:sha256:88285fc66239cf2a57c6b1435181fc9720a2959227eb136bbf92144f5d15b171"
+          "version": "repo-file-v1:sha256:29bf1165ab070d5cc5b74f064c69a35d7efa8f318b9d82725b0e5a940583d7ff"
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/IntellijExactNameCandidateFiles.kt",
@@ -318,13 +318,13 @@
         },
         {
           "resource": "repo://symbol/intellij/src/main/kotlin/io/github/amichne/kast/symbol/intellij/discovery/IntellijExactNameIndexes.kt",
-          "version": "repo-file-v1:sha256:6d20c8ff9217c1dedf5ff5faa14b7e72a99dd5a21ebcf7de202163182452d067"
+          "version": "repo-file-v1:sha256:7c9599cc55008b9c477af3d4e2f826c047f3702196bec59d62347f7184a109e0"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T06:35:59.298Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

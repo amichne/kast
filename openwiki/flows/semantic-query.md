@@ -157,10 +157,10 @@ sources:
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt
   - id: openwiki-source-22c063698f200893b9da9c83
     resource: repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryJoins.kt
-generated: { by: "codex", at: "2026-11-12T06:30:47.924Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T06:35:59.298Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Semantic query
@@ -257,11 +257,11 @@ remain outside that deferred projection so excluded containers can still contain
 eligible descendants. Unavailable visibility for a selected declaration still
 qualifies the read; visited PSI units still consume the native execution grant.
 
-`CanonicalQueryProtocol` is shared by installed and existing-IDE composition.
+`CanonicalQueryProtocol` is shared by installed and managed Host composition.
 It preserves per-item failures and qualifications and projects the matching
 published or live evidence basis. `HostedCanonicalQuery` constructs the pure
 evaluator with project-bound symbol, source, relation, and traversal ports inside an admitted
-host read. `selectCliRuntimePath` chooses this existing-IDE path before installed
+host read. `selectCliRuntimePath` chooses this managed Host path before installed
 bootstrap for the five public semantic reads. The
 [native acceptance review](../../docs/reviews/live-semantic-read-acceptance.md)
 records the final CLI and production provider observations, including their
@@ -274,7 +274,7 @@ The [opt-in synthetic reproduction](../../docs/reviews/hosted-semantic-reproduct
 
 The incremental scoped `ALL` path walks admitted source partitions without whole-workspace name or file-type inventory construction. Generated primary-constructor properties keep K2 property identity. Java reference endpoints keep compiler identity, and workspace expansion preserves original subject restrictions separately from destination admission. [Read-limit settings](../../docs/hosted-read-configuration.md) tune operational bounds while default logs preserve stages, outcomes and their effective values.
 
-The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Eager `query_symbols` owns declaration discovery and pipelines through `query.run`; `check_diagnostics` owns `diagnostic.check`. Hosted admission retains each tool's schema identity and typed syntax. The connected provider selects an enrolled workspace, then uses shared existing-IDE preparation and read dispatch. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
+The current [public tool contracts](../contracts/public-tools.md) distinguish presentation identity from canonical operation identity. Eager `query_symbols` owns declaration discovery and pipelines through `query.run`; `check_diagnostics` owns `diagnostic.check`. Hosted admission retains each tool's schema identity and typed syntax. The connected provider selects an enrolled workspace, then uses shared managed Host preparation and read dispatch. Operation effects, budgets, reference authority and exhaustive outcomes remain with their existing owners.
 
 Cheap scope and declaration-family constraints precede native collection. Mixed-family syntax issues one symbol discovery request with all requested kinds retained. Project-only fuzzy declarations use scoped Kotlin files, and exact searches select only requested short-name index families. Package PSI runs outside native index callbacks before candidate collection. Qualified partial results keep their limitations through exact refinement.
 

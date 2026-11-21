@@ -29,7 +29,6 @@ DOCUMENTATION_PATHS = frozenset(
         "docs/public/reference/callbacks.mdx",
         "docs/public/reference/composition.mdx",
         "docs/public/reference/evidence-boundaries.mdx",
-        "docs/public/reference/integrations.mdx",
         "docs/public/reference/internals/architecture.mdx",
         "docs/public/reference/internals/background-startup.mdx",
         "docs/public/reference/management.mdx",

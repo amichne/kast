@@ -9,74 +9,64 @@ sources:
     resource: repo://.github/scripts/release/product_producer.py
   - id: openwiki-source-a387d9d545afff426d34a10a
     resource: repo://build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt
-  - id: openwiki-source-80ac513286a95222cf8ee427
-    resource: repo://build-logic/src/test/kotlin/VerifyControlDistributionTaskTest.kt
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
-  - id: openwiki-source-19c1ebaf58581a8fc0c5c10a
-    resource: repo://cli/build.gradle.kts
   - id: openwiki-source-a3af3d4f4fd16f9ce429f3c5
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationManifest.kt
-  - id: openwiki-source-5f9ee1677dd5352d4bd1273d
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationPublicEndpointSelection.kt
-  - id: openwiki-source-8f4d86f42434fcc1ce269879
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
-  - id: openwiki-source-f2c689f11ca37c5559bce314
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
   - id: openwiki-source-c4c5adde2b0966463aa6381b
     resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/OneShotInvocationRecord.kt
+  - id: openwiki-source-dddd3dbe5fd2074f6edb696f
+    resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InternalManagementInstall.kt
   - id: openwiki-source-689991f3a476668d88b8c28b
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/PublicQueryDispatch.kt
   - id: openwiki-source-d1f8b0a2ac011ef2d36005a5
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/ControlDistributionLimits.kt
   - id: openwiki-source-f3718a29d9c6d868d0d9d73e
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt
-  - id: openwiki-source-74a7088da9d18da2237d9186
-    resource: repo://packaging/bootstrap.sh.in
-  - id: openwiki-source-f499e8784ffe1f993e94d42d
-    resource: repo://packaging/generate_bootstrap.py
-  - id: openwiki-source-069607880d661efb9c5fbc84
-    resource: repo://packaging/host_directory_exchange.py
-  - id: openwiki-source-6fea3b3b86300de08664c4ee
-    resource: repo://packaging/host-installation.py
-  - id: openwiki-source-ab52e7c01cf17ee137f833e7
-    resource: repo://packaging/immutable_store.py
-  - id: openwiki-source-fd4b4980f80cb901046d8f0e
-    resource: repo://packaging/installation-lifecycle.py
-  - id: openwiki-source-b58c179514e38986fca17024
-    resource: repo://packaging/local_product_install.py
-  - id: openwiki-source-1380068036b00bec817a6579
-    resource: repo://packaging/managed_installation.py
-  - id: openwiki-source-7f5792fd36f508c6577b3562
-    resource: repo://packaging/managed_product_installation.py
-  - id: openwiki-source-0bc40485351c24e0087737b7
-    resource: repo://packaging/managed_product_removal.py
-  - id: openwiki-source-a4a155ae2c50f22d2a80ceaa
-    resource: repo://packaging/managed_release.py
-  - id: openwiki-source-b1af9cf4e2649975cc7bdf86
-    resource: repo://packaging/managed_update_journal.py
-  - id: openwiki-source-608c1b34f50deb259c322e04
-    resource: repo://packaging/product_mcp_removal.py
-  - id: openwiki-source-a0c37a49715759f5ea160f59
-    resource: repo://packaging/product_removal_recovery.py
-  - id: openwiki-source-2a77c42fb15d42188a60711b
-    resource: repo://packaging/test-host-installation.py
-  - id: openwiki-source-25977fc13c4ddf2c0840d6fd
-    resource: repo://packaging/test-install-checkout.py
-  - id: openwiki-source-a219ab80b9383d47a0037637
-    resource: repo://packaging/test-installation-lifecycle.py
-  - id: openwiki-source-2cd23a68d0d65408a59d5b1a
-    resource: repo://packaging/test-managed-bootstrap.py
-  - id: openwiki-source-b3ca2d66028c874ac7b10e77
-    resource: repo://packaging/test-managed-build-record.py
-  - id: openwiki-source-988817829b83f3eaab1d41af
-    resource: repo://packaging/test-managed-installation.py
-  - id: openwiki-source-0bad4698830200151d28e110
-    resource: repo://packaging/test-managed-release.py
-generated: { by: "amp", at: "2026-11-15T23:15:42.491Z" }
+  - id: openwiki-source-a27b421c9c1d82b40bd5da73
+    resource: repo://packaging/internal/bootstrap/bootstrap.sh.in
+  - id: openwiki-source-9685c35bc7adaf6e5678720b
+    resource: repo://packaging/internal/bootstrap/generate_bootstrap.py
+  - id: openwiki-source-44a574497eca3c945455c98f
+    resource: repo://packaging/internal/installation/host_directory_exchange.py
+  - id: openwiki-source-d49c64c0efdff5cd60ab7fde
+    resource: repo://packaging/internal/installation/host-installation.py
+  - id: openwiki-source-f819c9a16e09783f5c943c2d
+    resource: repo://packaging/internal/installation/immutable_store.py
+  - id: openwiki-source-e2f98663750a2e6ad150484d
+    resource: repo://packaging/internal/installation/installation-lifecycle.py
+  - id: openwiki-source-9f2a730e7185b57c14ac08e8
+    resource: repo://packaging/internal/installation/managed_installation.py
+  - id: openwiki-source-496462e31bbb3fc9156abfe9
+    resource: repo://packaging/internal/installation/managed_release.py
+  - id: openwiki-source-7278ad36ad11610ea5b05753
+    resource: repo://packaging/internal/installation/managed_update_journal.py
+  - id: openwiki-source-68861fd33e9641882305aee3
+    resource: repo://packaging/internal/product/local_product_install.py
+  - id: openwiki-source-07f32471b5605b546192361f
+    resource: repo://packaging/internal/product/managed_product_installation.py
+  - id: openwiki-source-55a974a8699e80e32954af33
+    resource: repo://packaging/internal/product/managed_product_removal.py
+  - id: openwiki-source-558cf2932a7142fbf6311f57
+    resource: repo://packaging/internal/product/product_removal_recovery.py
+  - id: openwiki-source-678716bd23af50e8bbe1978b
+    resource: repo://packaging/internal/product/product_state_removal.py
+  - id: openwiki-source-340b62f8bf82efc1df499202
+    resource: repo://packaging/tests/test-host-installation.py
+  - id: openwiki-source-12d7829bb8c1e9c898163e3a
+    resource: repo://packaging/tests/test-install-checkout.py
+  - id: openwiki-source-d660a64cf3c39a2f406a497b
+    resource: repo://packaging/tests/test-installation-lifecycle.py
+  - id: openwiki-source-d4b63d273ed6048ab72eda6d
+    resource: repo://packaging/tests/test-managed-bootstrap.py
+  - id: openwiki-source-abab1b24f64b3271633d720d
+    resource: repo://packaging/tests/test-managed-build-record.py
+  - id: openwiki-source-db7ba27a263287dfa200741e
+    resource: repo://packaging/tests/test-managed-installation.py
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T23:15:42.491Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 
@@ -104,7 +94,7 @@ Local records require `PinnedBuild`, no public version, and the matching develop
 The bootstrap still downloads pinned private Python and `defusedxml`; local product selection does not make setup offline.
 The local selector cannot combine with channel, version, or commit selectors.
 
-`python3 packaging/local_product_install.py build --source CLEAN_CHECKOUT --output DIRECTORY` builds an export without installing globally.
+`python3 packaging/internal/product/local_product_install.py build --source CLEAN_CHECKOUT --output DIRECTORY` builds an export without installing globally.
 The current builder supports macOS ARM64 and requires a clean committed source checkout.
 It shares actual assembly and native component qualification with contributor installation, then calls `product_producer.seal_target` to bind the resulting artifacts and evidence.
 The export contains `build-record.json`, recorded files under `payload/`, and qualification evidence and logs under `evidence/`.
@@ -126,32 +116,22 @@ Version equality alone does not establish that compatibility.
 
 ## Control replacement
 
-`ControlInstallationInput` admits the selected HOME and installation locations.
-`InstallationWorkflow` examines the request and payload inventory before replacement.
-Plan mode reports the admitted plan without activation effects.
+The Python installation coordinator, `managed_installation.py`, owns Control replacement.
+It examines the selected product and payload inventory before replacement.
+`--dry-run` reports the admitted plan without activation effects.
 An applied replacement coordinates prior retirement, saved configuration, recovery snapshots, and payload installation.
-
-The private Control workflow reports payload installation without service activation.
-Its retained composition coordinator owns legacy Host settlement, replacement, and activation.
-Complete-product activation uses the product journal path described below.
-Saved shared endpoints migrate to private settings. Explicit shared selections reject before effects.
+The private management executable accepts only the installer's `managed-retire`, `preflight-reset`, and `reset` requests.
 
 The managed root contains one ordinary `installation` directory.
-The `cli` module produces one native Control executable at `share/kast/libexec/kast-management`.
-Thin launchers select management, query, MCP, tool RPC, service, daemon, Codex, or installer entry points in that executable.
-The Control archive contains no `lib` directory, JARs, or class files.
-The producer guard rejects a second native executable and compares the canonical executable with its qualified producer.
-Only under `share/kast/mcp-dependencies/site-packages` can matching-target library headers be excluded from the executable count.
-These headers must identify Mach-O `MH_DYLIB` or `MH_BUNDLE` types (6 or 8), or ELF `ET_DYN` with a zero entry point.
-The Python `inspect_control` admission applies the same narrow directory boundary.
-It reads 32 header bytes and requires macOS ARM64 or Linux x86-64 library identity for the selected target.
-Short headers do not qualify for this exception.
-An executable-shaped `.so`, a foreign-target library, or a library outside that directory remains a rejection.
+The Control payload has one native executable, `share/kast/libexec/kast-management`, which must equal its Go producer's output.
+Thin launchers select management, query, MCP, service, daemon, Codex, or installer entry points through that executable.
+The `share/kast/jvm-control-v1` marker selects the JVM layout: the executable runs one JVM entry from JARs under `lib`.
+Verification rejects class files, JARs outside `lib`, a second native executable, and symbolic links.
 The verifier logs the bounded executable count before enforcing exactly one Control executable.
-Header regression tests exercise platform formats; they do not establish native Linux execution or complete-product qualification.
-It also rejects retired task payloads and `share/kast/knowledge`, including its descendants.
+The Python `inspect_control` admission applies the same layout rules and checks the executable's target header.
+Verification also rejects retired task payloads and `share/kast/knowledge`, including its descendants.
 The installed knowledge generator, extraction path, and retrieval implementation are retired; repository citation checks and module reports remain separate.
-Published-release admission keeps support for the historical pair of native executables when the new layout marker is absent.
+Published-release admission still accepts the earlier `native-control-v1` layout and the historical layout without either marker.
 `ManagedInstallationOwnedTree` admits exact destructive-recovery trees under the physical selected installation.
 Its admission rejects aliases and symlink substitutions before deletion.
 Unknown paths do not become owned because their names resemble Kast artifacts.
@@ -162,9 +142,8 @@ Unknown paths do not become owned because their names resemble Kast artifacts.
 That owner publishes verified runtime bytes and their separate immutable vendor base.
 It stages Control, saves exact management and command preimages, and publishes the existing replacement journal only after those records are durable.
 Recovery admits the recorded selection and retires the prior installation before moving payloads.
-The replacement receipt preserves provider registrations and recorded guidance.
 `ProductInstalled` reports `NOT_STARTED`; payload activation does not prove a loaded Host or workspace readiness.
-The coordinator then refreshes installed guidance and retains finite refresh notices.
+Activation writes no agent harness configuration.
 
 The installation manifest includes `codexHome` as the selected HOME's `.codex` path.
 The Kotlin client requires that field; an installer-only manifest check cannot prove client admission.
@@ -204,10 +183,6 @@ Those imports preserve the exact installed payload inventory.
 The legacy composition journal captures exact preimages for management, the public command, profile options, runtime state, and Host receipts.
 The typed journal records the selected artifacts and one `STOPPED`, `HOT_RELOAD`, or `NORMAL_RESTART` strategy.
 These retained strategies do not restore a public desktop or archive selection route.
-
-IDEA metadata admission accepts a regular canonical file owned by the current user or root.
-It rejects group-write permissions, world-write permissions, symbolic links, and more than one MiB of metadata.
-Managed records still need the current user as their owner.
 
 The coordinator fences public calls before Host settlement and payload replacement.
 It holds the admitted Host lock during the Control and Host commit sequence.
@@ -263,23 +238,22 @@ Read native lifecycle evidence before a claim about loaded components or workspa
 
 ## Focused tests
 
-- [InstallationWorkflowTest.kt](../../cli/src/test/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflowTest.kt)
-- [test-host-installation.py](../../packaging/test-host-installation.py)
-- [test-installer-entrypoint.py](../../packaging/test-installer-entrypoint.py)
-- [test-managed-installation.py](../../packaging/test-managed-installation.py)
+- [test-host-installation.py](../../packaging/tests/test-host-installation.py)
+- [test-installer-entrypoint.py](../../packaging/tests/test-installer-entrypoint.py)
+- [test-managed-installation.py](../../packaging/tests/test-managed-installation.py)
+- [test-managed-build-record.py](../../packaging/tests/test-managed-build-record.py)
 
 ## Source owners
 
 - [install.sh](../../install.sh)
-- [generate_bootstrap.py](../../packaging/generate_bootstrap.py)
-- [local_product_install.py](../../packaging/local_product_install.py)
-- [host-installation.py](../../packaging/host-installation.py)
-- [managed_product_installation.py](../../packaging/managed_product_installation.py)
-- [managed_installation.py](../../packaging/managed_installation.py)
-- [managed_release.py](../../packaging/managed_release.py)
-- [InstallationWorkflow.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt)
-- [ControlInstallationInput.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt)
-- [ControlInstallationRecovery.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationRecovery.kt)
+- [generate_bootstrap.py](../../packaging/internal/bootstrap/generate_bootstrap.py)
+- [local_product_install.py](../../packaging/internal/product/local_product_install.py)
+- [host-installation.py](../../packaging/internal/installation/host-installation.py)
+- [managed_product_installation.py](../../packaging/internal/product/managed_product_installation.py)
+- [managed_installation.py](../../packaging/internal/installation/managed_installation.py)
+- [managed_release.py](../../packaging/internal/installation/managed_release.py)
+- [InternalManagementInstall.kt](../../distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/InternalManagementInstall.kt)
+- [VerifyDistributionTasks.kt](../../build-logic/src/main/kotlin/support/tasks/verification/VerifyDistributionTasks.kt)
 - [ManagedInstallationOwnedTree.kt](../../distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ManagedInstallationOwnedTree.kt)
 - [ControlPayloadInventory.kt](../../distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/ControlPayloadInventory.kt)
 

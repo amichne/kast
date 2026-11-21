@@ -85,10 +85,10 @@ sources:
     resource: repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/RetainedGraphNodeRetrievalTest.kt
   - id: openwiki-source-c7caab29dec6e41d0046710e
     resource: repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackInvocationFlow.kt
-generated: { by: "amp", at: "2026-11-15T03:03:20.161Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T03:03:20.161Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Protocol
@@ -191,20 +191,14 @@ that evidence and plugin provenance. Control management and agent presentation
 identities do not enter the tuple. A hosted behavior break requires a declared
 protocol identity change even without a JSON shape change.
 
-The application lifecycle defines `refresh_host_bundle` for managed installation.
-Its `host_refresh_requested` response acknowledges a request.
-`settle_host_for_reload` prepares the exact cached main JAR before file exchange.
-The live capability is `HOST_PREPARED_RELOAD_REFRESH`.
-Ordinary settlement remains independent of reload preparation.
-`CanonicalHostedContract` fingerprints this request and response with the existing lifecycle types.
-The response carries the settled runtime identity. Loaded replacement identity remains separate evidence.
+The application lifecycle keeps `settle_host`, `resume_host`, and `stop_host` with exact Host and transaction selectors.
+The former reload commands, `settle_host_for_reload` and `refresh_host_bundle`, their `host_refresh_requested` acknowledgment, and the reload capabilities reject at decoding.
+`CanonicalHostedContract` fingerprints the lifecycle request and result descriptors.
 
-Runtime identity carries the closed `DESKTOP` or `MANAGED_HEADLESS` mode.
-Serialization includes the default `DESKTOP` value.
-`DESKTOP` and enabled automatic plugin reload are deprecated at warning level, not removed from the wire contract.
-Advertisements from 0.51.x that omit mode still decode as `DESKTOP`.
+Runtime identity records the IDEA home, profile, process identity, Host lifetime, and build identity.
+It has no Host mode or automatic plugin reload member; a former `autoReload` value rejects at decoding.
 The project endpoint can carry a managed application advertisement with its runtime identity and hosted compatibility.
-That schema needs `MANAGED_HEADLESS`, disabled auto reload, and positive process identity fields.
+That schema needs positive process identity fields.
 This advertisement supplies no semantic completion or workspace readiness proof.
 
 
@@ -212,7 +206,7 @@ Impact documents keep exact value-site basis, callable identity, source range, a
 
 The installed query output schema is derived from the actual complete, qualified and rejected CLI serializers. Item, failure and qualification schemas reuse the same serializer owners. The former independent source-window/query field lists have been removed, so schema admission and typed encoded output share one owner. Encoded-shape, schema and generation checks remain distinct from native qualification.
 
-Mutation without a key uses `kast.ide-hosted.runtime.v3` and daemon operation RPC version 3. Apply and recovery carry canonical requests, without private preparation, signing or approval assertions. Exact current native plan, source and recovery admission remains required. Older loaded Host contracts reject; receipt replay can keep admitted historical v1 evidence without granting current mutation authority.
+Mutation without a key uses `kast.ide-hosted.runtime.v3` and daemon operation RPC version 5. Apply and recovery carry canonical requests, without private preparation, signing or approval assertions. Exact current native plan, source and recovery admission remains required. Older loaded Host contracts reject; receipt replay can keep admitted historical v1 evidence without granting current mutation authority.
 
 Compact retained reference pages use typed `reference-edge` rows and a result-scoped `relation_graph`.
 Retained SYMBOLS pages use typed `exact-symbol-node` rows through the same projection.

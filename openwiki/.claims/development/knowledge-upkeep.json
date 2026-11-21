@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:dabce7d50d6c09ad7e37cc4ad295e87d6825bbe4b764e4112c6d468e6fdc609c",
+  "pageVersion": "sha256:e2df8823aba42003c6c5e72f8d1bc3111d83ae54f539571575e10fbd5607b9c9",
   "claims": [
     {
       "id": "claim_f1f223d6ff6c46a1a8c1642d015d3929",
@@ -8,11 +8,11 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/code_kb.py",
-          "version": "repo-file-v1:sha256:b664763ec093af466ba893058ec2d7f7e72beee86c6eea9a9269cb772f0368ff"
+          "version": "repo-file-v1:sha256:8e141ed74c8c120f13a3bcc92ba41fc904267a491ae93664591e7c3a33b9bb85"
         },
         {
-          "resource": "repo://build.gradle.kts#L757-L776",
-          "version": "repo-lines-v1:sha256:49750b9bcf0a0e582bd76e22d0016b992efa169cd730b00d50f9384f6bc438d1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiMjUzOGFhM2MyZWJkMDU4NzM3MTJiYjAwODRmYWFiNjVmYmNmNjUwNzhhZTQ4NzgxOWY2MTA4MDNjMmI3NTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJhYmQ0ZjAwYjM2ZGVmNDAyZjMzNDY3ZDdlOGQ0MDJhZDZlYjI1NmJjYWI0YTI4OWU0M2FlYTU2YWQ4NDQzMDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRkN2I4YzBjMTk4NDgwNTRkMDNjMGYwNGM3ZThkOTRjMTE5ODI5MDJlMzc0NDFhMDRmOWVkZDU2OTI4NzYyNjgifQ"
+          "resource": "repo://build.gradle.kts",
+          "version": "repo-file-v1:sha256:aaac0674d99471e186c80d15874f2421a620789f28c033e5e2ba8176e9a8b6af"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "evidence": [
         {
           "resource": "repo://.github/workflows/openwiki-update.yml",
-          "version": "repo-file-v1:sha256:a8644d120d09e2199554e201c6e23c96089d7df061c264655e93769d8e727522"
+          "version": "repo-file-v1:sha256:69b3e14c6521a3c19257786194c11cfda8ad0ae2c8d5a37066733ab63ce340b3"
         }
       ]
     },
@@ -31,12 +31,8 @@
       "statement": "Repository policy keeps authored engineering rules distinct from generated navigation and OpenWiki Claims, indexes, and provenance.",
       "evidence": [
         {
-          "resource": "repo://AGENTS.md#L119-L143",
-          "version": "repo-lines-v1:sha256:99649d8370ddfd034ca9b59ba695413e7090cf87b09dc1028578e4c1c245465a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2ZTI3ZDQ2MGI0NTc3N2E3YTU1ZTRmMTFhM2UwM2ZlMGQ2NmM5ZDI4M2Q4NjJmMTBlN2RiNTIxMzAyNTBmYmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNGFlMTFkNzVlZmE5OWUyMTcyMWZlOGVlNjZmMWM5OTZhMzczODZlMmQ3NjMwMjMyYjEyMTcxZjczYjM1Y2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjgyNjg0NzhjODc2ZGNhMjFmMTUwYjQyYzliZjQxZWVkMmQ1NmJiYjg5NzA3MmEyMTNhMjY4Y2NkNGQwZTQ3YWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNjYjhmNTA5NjZmMDU4MTEyNDEwNjJjZjhhOTFhNWJmMGJlNTY4MDBlZTQzOGZmOTAyMjc4NTc0MzRkYTJkN2QifQ"
-        },
-        {
-          "resource": "repo://AGENTS.md#L203-L210",
-          "version": "repo-lines-v1:sha256:831e864e2d2b37a3d042820d3da091b9f1fe5ef753dabef82f0be70227b01b3f:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjM5YmFhZTczYWVkMzJiNGRhNTc3YTM5ZGRhNTJhYTMyMmFjOWQ4Mjc4NTE2NjM3NzM2Y2I3YTkyMGFhZTY0MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTVkM2M3MDg2ODBmZDBiYTIzZDJhOTk1YmNjY2E3YWExMmViMTU2MzQxZDNiNDc1YzM4NDJlMjcwNjEyYjRlYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTNjYzRhNzEwYmYzMWEyN2Q3MTk2MDRmYTdkYTEyZWJhNGY5MTY4ZTZjYzRkOWY4NmQ4YjJjOTE5NTYzYzRjZCJ9"
+          "resource": "repo://AGENTS.md",
+          "version": "repo-file-v1:sha256:ef92c491513b911e84c5b79ef25a0a58cb7b354ce2f0db0fa6d4b4e485f5d54b"
         }
       ]
     },
@@ -45,12 +41,12 @@
       "statement": "The read-only native evidence adapter reuses OpenWiki 0.9.0 store, ignore policy, repository resolver and preflight, distinguishes completed current/stale/unresolved assessment from operational failure, and preserves page agreement and snapshot identity without finalization.",
       "evidence": [
         {
-          "resource": "repo://docs/tooling/markdown/evidence-assess.ts",
+          "resource": "repo://docs/internal/tooling/markdown/evidence-assess.ts",
           "version": "repo-file-v1:sha256:05bc615ed313f7e67b11d4a12656b96c09a5db54e6610dc8db1a3042822b9418"
         },
         {
-          "resource": "repo://docs/tooling/markdown/evidence-native.ts",
-          "version": "repo-file-v1:sha256:7dd01272f8838013bfc3a1836f8350e5bf9ef00e4b735a5d31258c677a00e65d"
+          "resource": "repo://docs/internal/tooling/markdown/evidence-native.ts",
+          "version": "repo-file-v1:sha256:e3c1ab11d1d17f13c55cdf3cab48e85d6ef17f32f0d31b6427e4cf94d5e71cb8"
         }
       ]
     },
@@ -60,11 +56,11 @@
       "evidence": [
         {
           "resource": "repo://.github/workflows/openwiki-update.yml",
-          "version": "repo-file-v1:sha256:a8644d120d09e2199554e201c6e23c96089d7df061c264655e93769d8e727522"
+          "version": "repo-file-v1:sha256:69b3e14c6521a3c19257786194c11cfda8ad0ae2c8d5a37066733ab63ce340b3"
         },
         {
-          "resource": "repo://docs/tooling/okf_public.py",
-          "version": "repo-file-v1:sha256:b7256b94941414dfe2bae0ba8ff03a5c57723be378a51adff7744784af4ed92d"
+          "resource": "repo://docs/internal/tooling/okf_public.py",
+          "version": "repo-file-v1:sha256:800e35c5255292aab87bce3f83e945b14f92005d96c7cc8c36867f25b78c4b5a"
         }
       ]
     },
@@ -73,8 +69,8 @@
       "statement": "Reader contracts derive navigation parents and both link directions from actual navigation and imported content, keep static footprint limits, and distinguish author review from reader evaluation and native task execution.",
       "evidence": [
         {
-          "resource": "repo://docs/tooling/reader_contracts.py",
-          "version": "repo-file-v1:sha256:3fa9ba5a5726b14abb7e3feb9a70694e47db0d7980d1ea30280bc474aba4885e"
+          "resource": "repo://docs/internal/tooling/reader_contracts.py",
+          "version": "repo-file-v1:sha256:79f881c47d431d722bf9bac34bac3071bf3d9f601978a997130b3fd2d4671141"
         }
       ]
     },
@@ -83,8 +79,8 @@
       "statement": "Publication admission binds imported authored bytes and canonical Claim statements or generated owner digests, assesses native scope and projection parity, and rejects missing, stale, unresolved, unassessed, mismatched or failed candidate obligations.",
       "evidence": [
         {
-          "resource": "repo://docs/tooling/publication.py",
-          "version": "repo-file-v1:sha256:662a7075691cf8344c08d118efeab4adf7aa5fe9d25c30c6f8869a10c41f8ddb"
+          "resource": "repo://docs/internal/tooling/publication.py",
+          "version": "repo-file-v1:sha256:56573ed917fdaaf1bd3e822ce7b2b63930cb189062b46a104f56d5321b6b2dd9"
         }
       ]
     },
@@ -94,19 +90,19 @@
       "evidence": [
         {
           "resource": "repo://.github/scripts/ci/verification_plan.py",
-          "version": "repo-file-v1:sha256:3280a2f2ce0e427d2576a6707d4c1a9e1406efd1d5d0de1714966e265d6deba3"
+          "version": "repo-file-v1:sha256:9c80d0225f68bdd869705bcd4dd1b495b9e21037b494aaaa0be232d6650c2cb2"
         },
         {
           "resource": "repo://.github/scripts/ci/verify_documentation.py",
-          "version": "repo-file-v1:sha256:e880a0b04cb54a76d05aface381c7a16048771a7fb3d1f51d1bcedd50b0806fa"
+          "version": "repo-file-v1:sha256:9ce1c0d0eb2507aede6983f658e7fe7de13a9c25e1d86607f8b6a7125b933e40"
         },
         {
-          "resource": "repo://docs/tooling/claim_evidence.py",
-          "version": "repo-file-v1:sha256:7bdf272ca66d26d2914db5da79c5b4152467be52b919c32b4d35ea5b18f43ad3"
+          "resource": "repo://docs/internal/tooling/claim_evidence.py",
+          "version": "repo-file-v1:sha256:7700f2888bf28d669b9b69f69b18bd4cbe4533189b85e03c478525f25d70c436"
         },
         {
-          "resource": "repo://docs/tooling/knowledge_check.py",
-          "version": "repo-file-v1:sha256:164771899e998b4803ff3477ce0cf325868368939dbc6d459a40469a26f21ce3"
+          "resource": "repo://docs/internal/tooling/knowledge_check.py",
+          "version": "repo-file-v1:sha256:8861af15791900461c0c5dfcad93cc75f2f647238a2f5a3ab975edaa62c6d412"
         }
       ]
     },
@@ -115,12 +111,12 @@
       "statement": "Reviewed public associations expire when their source commit is more than five days older than candidate HEAD, using commit timestamps rather than wall clock time.",
       "evidence": [
         {
-          "resource": "repo://docs/tooling/publication.py",
-          "version": "repo-file-v1:sha256:662a7075691cf8344c08d118efeab4adf7aa5fe9d25c30c6f8869a10c41f8ddb"
+          "resource": "repo://docs/internal/tooling/publication.py",
+          "version": "repo-file-v1:sha256:56573ed917fdaaf1bd3e822ce7b2b63930cb189062b46a104f56d5321b6b2dd9"
         },
         {
-          "resource": "repo://docs/tooling/test_publication.py",
-          "version": "repo-file-v1:sha256:1595633aec3aab447033a9d10000e5187a80e13703f53c713565db66a577c116"
+          "resource": "repo://docs/internal/tooling/test_publication.py",
+          "version": "repo-file-v1:sha256:497c3e61f6cc1bbbafddfe1dcb565337a1d134705b3e0db05769f135b027f70d"
         }
       ]
     },
@@ -130,21 +126,21 @@
       "evidence": [
         {
           "resource": "repo://bin/kast-knowledge-refresh",
-          "version": "repo-file-v1:sha256:20367b314bcd8cd6a52b5f9f7c9544bba50246fa51dd6a0b64232deade477bb6"
+          "version": "repo-file-v1:sha256:15b27a92880e9a4c643dbf731324626d27afaf0451ad8408be395262cffd3875"
         },
         {
-          "resource": "repo://docs/tooling/knowledge_refresh.py",
-          "version": "repo-file-v1:sha256:3a0efc651d4d2d5efbb2cffbf07e03c62ef8bf4b502aa63cb1074985dd066c3d"
+          "resource": "repo://docs/internal/tooling/knowledge_refresh.py",
+          "version": "repo-file-v1:sha256:c17eb4e75c683a148370deb49d2cb92648d1fcfb2cde70e0e14ea41ec3fd9ca4"
         },
         {
-          "resource": "repo://docs/tooling/test_knowledge_refresh.py",
-          "version": "repo-file-v1:sha256:813ef32cad1f30455dafc2b72474dee1d469bc9bab148e2c21af4922017c537b"
+          "resource": "repo://docs/internal/tooling/test_knowledge_refresh.py",
+          "version": "repo-file-v1:sha256:ad80bfe1f1ca73987240e6c1e3927452948ff2a1b4394988a5bba90598bfffb1"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-15T20:10:47.711Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

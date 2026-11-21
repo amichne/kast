@@ -32,7 +32,7 @@ sources:
 generated: { by: "codex", at: "2026-10-15T00:33:05.932Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-12T06:30:47.924Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Value impact and independent peer proof

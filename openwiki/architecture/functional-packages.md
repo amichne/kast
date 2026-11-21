@@ -51,10 +51,14 @@ code_sources:
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/command/workspace/IndexCommands.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolDocument.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationManifest.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
 - path: cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CliBoundaryDocuments.kt
-- path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/ToolRpcReply.kt
+- path: cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt
+- path: distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/CliOutput.kt
+- path: build-logic/src/main/kotlin/support/ProjectOutput.kt
+- path: build-logic/src/main/kotlin/support/tasks/idea/SelectedIdeaProductInfo.kt
 - path: diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticEnumeration.kt
 - path: diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/BoundedDiagnosticEnumeration.kt
 - path: diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt
@@ -106,19 +110,23 @@ code_sources:
 - path: workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/hosted/AdmittedHostedQuery.kt
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:10:47.711Z
+    at: 2026-11-21T22:16:17.145Z
 sources:
   - id: openwiki-source-48edfaeb8d917960adc80600
     resource: repo://build-logic/src/main/kotlin/support/architecture/policy/KastCleanSlateModules.kt
+  - id: openwiki-source-7904a856aedff77e554352c6
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt
   - id: openwiki-source-8f099dc46f272100d18b0f6f
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/CanonicalRoot.kt
+  - id: openwiki-source-9ed9cdcd1561e351be092797
+    resource: repo://frontend/cmd/kast/main.go
   - id: openwiki-source-7fa48d17b46dccf82f4b3238
     resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
   - id: openwiki-source-0d3b3349cf83bfefc48ef336
     resource: repo://topology/service/build.gradle.kts
-generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 ---
 
 # Functional package coverage
@@ -162,12 +170,13 @@ The retired indexer does not become an active semantic host because its director
 | `app-server` | `io.github.amichne.kast.appserver.ide` | [coordinator and workspace preparation](../transport/coordinator-and-workspace-preparation.md) |
 | `app-server` | `io.github.amichne.kast.appserver.protocol` | [invocations and durable records](../transport/invocations-and-durable-records.md) |
 | `app-server` | `io.github.amichne.kast.appserver.protocol.codex` | [codex hosts and framing](../transport/codex-hosts-and-framing.md) |
-| `app-server` | `io.github.amichne.kast.appserver.protocol.copilot` | [harness delivery](../transport/harness-delivery.md) |
+| `app-server` | `io.github.amichne.kast.appserver.protocol.copilot` | [invocations and durable records](../transport/invocations-and-durable-records.md) |
 | `app-server` | `io.github.amichne.kast.appserver.provider` | [coordinator and workspace preparation](../transport/coordinator-and-workspace-preparation.md) |
 | `app-server` | `io.github.amichne.kast.appserver.query` | [public admission](../queries/public-admission.md) |
 | `app-server` | `io.github.amichne.kast.appserver.runtime` | [coordinator and workspace preparation](../transport/coordinator-and-workspace-preparation.md) |
 | `app-server` | `io.github.amichne.kast.appserver.schema` | [public admission](../queries/public-admission.md) |
 | `app-server` | `io.github.amichne.kast.appserver.storage` | [invocations and durable records](../transport/invocations-and-durable-records.md) |
+| `build-logic` | `support` | [build and architecture](../development/build-and-architecture.md) |
 | `build-logic` | `conventions` | [build and architecture](../development/build-and-architecture.md) |
 | `build-logic` | `conventions.jsoncontracts` | [contracts and generation](../development/contracts-and-generation.md) |
 | `build-logic` | `support.architecture` | [build and architecture](../development/build-and-architecture.md) |
@@ -175,6 +184,7 @@ The retired indexer does not become an active semantic host because its director
 | `build-logic` | `support.architecture.knowledge` | [repository knowledge](../knowledge/installed-projection-and-retrieval.md) |
 | `build-logic` | `support.architecture.projection` | [build and architecture](../development/build-and-architecture.md) |
 | `build-logic` | `support.tasks` | [build and architecture](../development/build-and-architecture.md) |
+| `build-logic` | `support.tasks.idea` | [build and architecture](../development/build-and-architecture.md) |
 | `build-logic` | `support.tasks.nativefixtures` | [build and architecture](../development/build-and-architecture.md) |
 | `change/apply` | `io.github.amichne.kast.change.apply` | [planning and write admission](../changes/planning-and-write-admission.md) |
 | `change/contract` | `io.github.amichne.kast.change.contract` | [planning and write admission](../changes/planning-and-write-admission.md) |
@@ -183,23 +193,24 @@ The retired indexer does not become an active semantic host because its director
 | `change/protocol` | `io.github.amichne.kast.change.protocol` | [planning and write admission](../changes/planning-and-write-admission.md) |
 | `change/recovery` | `io.github.amichne.kast.change.recovery` | [receipts and recovery](../changes/receipts-and-recovery.md) |
 | `change/verify` | `io.github.amichne.kast.change.verify` | [receipts and recovery](../changes/receipts-and-recovery.md) |
-| `cli` | `io.github.amichne.kast.cli` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.bootstrap` | [contracts and generation](../development/contracts-and-generation.md) |
-| `cli` | `io.github.amichne.kast.cli.command` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.appserver` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.change` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.codex` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.ide` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.product` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.source` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.tool` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.command.workspace` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.direct` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
-| `cli` | `io.github.amichne.kast.cli.ide` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.appserver` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.change` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.codex` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.ide` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.product` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.source` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.tool` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.command.workspace` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.direct` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.ide` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
 | `cli` | `io.github.amichne.kast.cli.installation` | [installation and managed files](../distribution/installation-and-managed-files.md) |
-| `cli` | `io.github.amichne.kast.cli.mcp` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.mcp` | [direct MCP](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.publicshell` | [public tools](../contracts/public-tools.md) |
 | `cli` | `io.github.amichne.kast.cli.projection` | [contracts and generation](../development/contracts-and-generation.md) |
-| `cli` | `io.github.amichne.kast.cli.rpc` | [direct MCP and tool RPC](../transport/direct-mcp-and-tool-rpc.md) |
+| `cli` | `io.github.amichne.kast.cli.rpc` | [public tools](../contracts/public-tools.md) |
 | `diagnostic/contract` | `io.github.amichne.kast.diagnostic.contract` | [scans and progress](../semantics/diagnostics/scans-and-progress.md) |
 | `diagnostic/intellij` | `io.github.amichne.kast.diagnostic.intellij` | [scans and progress](../semantics/diagnostics/scans-and-progress.md) |
 | `diagnostic/service` | `io.github.amichne.kast.diagnostic.service` | [scans and progress](../semantics/diagnostics/scans-and-progress.md) |
@@ -210,6 +221,7 @@ The retired indexer does not become an active semantic host because its director
 | `distribution/contract` | `io.github.amichne.kast.distribution.contract.gradle` | [configuration](../contracts/configuration.md) |
 | `distribution/managed` | `io.github.amichne.kast.distribution.managed` | [installation and managed files](../distribution/installation-and-managed-files.md) |
 | `distribution/managed` | `io.github.amichne.kast.distribution.managed.endpoint` | [installation and managed files](../distribution/installation-and-managed-files.md) |
+| `distribution/output` | `io.github.amichne.kast.distribution.output` | [management and connections](../distribution/management-and-connections.md) |
 | `evidence/contract` | `io.github.amichne.kast.evidence.contract` | [receipts and recovery](../changes/receipts-and-recovery.md) |
 | `evidence/sqlite` | `io.github.amichne.kast.evidence.sqlite` | [receipts and recovery](../changes/receipts-and-recovery.md) |
 | `evidence/topology-sqlite` | `io.github.amichne.kast.evidence.sqlite` | [historical capture and storage](../topology/historical-capture-and-storage.md) |
@@ -252,10 +264,11 @@ The retired indexer does not become an active semantic host because its director
 
 ## Non-Kotlin functional owners
 
-The [harness adapters](../transport/harness-delivery.md) cover Copilot, Pi, and the shared JavaScript delivery code.
+The [Go frontend](../../frontend/cmd/kast/main.go) is the only user-facing executable; it starts the private JVM entry points.
+The [skill delivery explanation](../transport/harness-delivery.md) covers the exported skill and session context hooks.
 The [installation explanation](../distribution/installation-and-managed-files.md) covers shell entry points and offline Python helpers.
 The [release explanation](../distribution/release-candidates-and-promotion.md) covers CI selection, immutable candidates, and component publication.
-The [test guide](../development/testing-and-native-qualification.md) covers the observation harnesses and their fixtures.
+The [test guide](../development/testing-and-native-qualification.md) covers the Promptfoo semantic campaign and its fixtures.
 
 ## Coverage limits and upkeep
 
@@ -313,10 +326,12 @@ Directory indexes belong to OpenWiki and regenerate at finalization.
 - [IndexCommands.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/command/workspace/IndexCommands.kt)
 - [DirectToolDocument.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/direct/DirectToolDocument.kt)
 - [ExistingIdeCli.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/ide/ExistingIdeCli.kt)
-- [ControlInstallationInput.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt)
+- [InstallationManifest.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationManifest.kt)
 - [KastMcpMain.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt)
 - [CliBoundaryDocuments.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/projection/CliBoundaryDocuments.kt)
-- [KastToolRpcMain.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt)
+- [ToolRpcReply.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/ToolRpcReply.kt)
+- [KastPublicCliMain.kt](../../cli/src/main/kotlin/io/github/amichne/kast/cli/publicshell/KastPublicCliMain.kt)
+- [CliOutput.kt](../../distribution/output/src/main/kotlin/io/github/amichne/kast/distribution/output/CliOutput.kt)
 - [DiagnosticEnumeration.kt](../../diagnostic/contract/src/main/kotlin/io/github/amichne/kast/diagnostic/contract/DiagnosticEnumeration.kt)
 - [BoundedDiagnosticEnumeration.kt](../../diagnostic/intellij/src/main/kotlin/io/github/amichne/kast/diagnostic/intellij/BoundedDiagnosticEnumeration.kt)
 - [DiagnosticScanService.kt](../../diagnostic/service/src/main/kotlin/io/github/amichne/kast/diagnostic/service/DiagnosticScanService.kt)

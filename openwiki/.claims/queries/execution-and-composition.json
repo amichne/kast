@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:c4a691421858e82e1da7d9d43ec5b6df38cdf20c7b7a956aee0b236f2f4ae372",
+  "pageVersion": "sha256:63055d03bb7f3b1ab96209eeab2c4852715ebdb0d54bef9f1caeaed86761c1c1",
   "claims": [
     {
       "id": "claim_b7f827aae9f340ae985ef5bf0eb5ab82",
@@ -26,7 +26,7 @@
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt",
-          "version": "repo-file-v1:sha256:d394faa95619919027d4edd8301cb9689752d9b1265c0ed69139d06499c10ded"
+          "version": "repo-file-v1:sha256:0a96733dcd8324a774db7d5fe5171fd24e72bbed48a21a30e7fdfbb7d0ee2fb0"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryService.kt#L36-L36",
@@ -100,7 +100,7 @@
       "evidence": [
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt",
-          "version": "repo-file-v1:sha256:07d5a8b472c1552b79b1061a9cb345ae0eefddd0992a31f042d9bb62cac4aa5a"
+          "version": "repo-file-v1:sha256:92d3c33022109b480ffb5c2c4e8da9489620fa506abcd7f1687b0626ce501802"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryImpactTasks.kt#L40-L40",
@@ -111,6 +111,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T06:30:47.924Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

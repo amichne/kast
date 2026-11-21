@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:1f19a470ce92ef3ba8d773c1626bab93c0c5a2799a75a9349f60ba4cba6cf274",
+  "pageVersion": "sha256:c2f5559136d697e977a4799a860570c754e7e085a82c42bdb5ae3dce20ee77c9",
   "claims": [
     {
       "id": "claim_0f0af9dddde2411188f2130d7debe0f5",
@@ -55,20 +55,12 @@
       "statement": "Raw endpoint decoding rejects duplicate fields and trailing documents and retains a positive typed process owner through full current descriptor validation and exact root/socket binding; owner-envelope parsing alone never admits hosted compatibility.",
       "evidence": [
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt#L34-L39",
-          "version": "repo-lines-v1:sha256:ab2fe3730d418aa1ac20ad94d8816a514e4fa3016504698ea4bdf5ce28fa8779:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWU0ZTI0MjU1Y2IyMzA0NzBkYWEzOTQ5MGQwZTI0YjBmZjBhYTIxZTQ4YjY5NjZmMjdmODA1OWY0ZThmM2U2YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzVjYmQyMjRkM2Q1MDQzODQ2YmU2NjJkOTM5MDI5ZjRjYmM3NjM1ZDFjNzA5ZGMyZGY0ZTExZmQyYjNhZWQxZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTBhNThjNzI4ZjQ4NjQxZDM1NDcwOTQ4NGRlZjYwNGQwNjY4NmYwYjg0MzA5NGJmNzc0MWU5Mjk0ZTdkYmYxOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzQ2MjhlNTUyNWQ1ODlhNTNiMjg1NDFmZGRhYzJmOWExMGMwNjM0NzRlNjBmNDUxNWE1YTRkNDMxM2RjODFhNyJ9"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt",
+          "version": "repo-file-v1:sha256:91db93ff3c5da487008fc2efc626139b5ab4058a6b32ade3e32c4e606af4e0a6"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ExistingIdeDocuments.kt#L71-L95",
-          "version": "repo-lines-v1:sha256:06ab3c0b0c020a22ba076dd83f94a09b91f7e892ba2e2c00fb4f7c12f7c275dd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzYjk3YThmOTkxMDA4ZDdiYTNmMTA1Yzk3N2Q1NTMyOGI0ZDkzZDFmNzZjZGI4NGQ3ODk2YzYxMzhjMzRiMzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmMzhkMmYzOThmYWM5NWNiZTBhZGU4NzNiZTRlMTBjODg2NWRiYjJlYWVjOGI3MDBmOTJkNGIzMzFiNjYwMjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc0N2JlNzNkNzUxYjAzNmNlZWExZjFmNzFmMTg2ZGJkZTFkMGJiZjg2YjZiMjM2YTg0MTMxODA5Mzk3YzQ5YWEifQ"
-        },
-        {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt#L40-L110",
-          "version": "repo-lines-v1:sha256:bd1266489f653eaf2392379c65ea83c33181bce08687a90eebddfff1221b72a3:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgyMWFiMTg4NzU0YmVjY2M1ZDI1YzlmM2VkYzkwMDFkMGIzNTg5NzY5Mzk2ODIzOThiYzhlZmE5NmFhYmQ2MzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4MjdjNTA4YjZhOTZiZGM0OWZjYmJjY2E0M2I2YTc3ZTJhN2NlOWEzZTUyMzlmYWU4OTA3YTc4YzBlYWFjM2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ4ZjJiNDE5ZGEyNzg4MmY5NTUzYTA5YjY1YzIwODYxZGRmNmYwMTVkZjg4MWE1NTkwZWVhZWFkMGUzMzZmMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5MmE1ZmYyMTUwMjFiNGM4MDUwMjJlMzQ3NWY2YWE1ZWYxYmYyZjcyOWYwMTZjYjQ1ZWY5NzY4NTAwMzcxN2YifQ"
-        },
-        {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt#L9-L33",
-          "version": "repo-lines-v1:sha256:c657cd2203d9acdbb15b135e8ac9aaf6d1413dc9e3920203ff0ebd31d75a9bb1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzNDg2MjA4ZmViOTgyNDI5YTkyYmNjM2U3ZGUwOWY4MmE1YzY4MTE5OTY0Y2I1Y2U4YjQ3NTNlZDY3ZWRhNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MjJjNDJjZDE5YzZkMDNkODA4YzQ1MjcyMDU1MjgyNWI3ZWExYzViNDkxYjIxODUxMWNhYzc0MTVjZjlkOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1MWIyMjNhYzRmZDQ2ZGE0YTEyMTIyODAxMDU3N2JhNmExNTE4NmU5NjY4N2NhYzA2YjU3OGVjYzY2N2Q3YTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/HostedEndpointDocuments.kt",
+          "version": "repo-file-v1:sha256:fb4eb275fb490b70974b1d859b9e3dfa7bb7d30287a52a75c88e64297fadacf3"
         }
       ]
     },
@@ -106,7 +98,7 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt",
-          "version": "repo-file-v1:sha256:3094e3633160aed93176bdbe486eeaaf11c620eb813983c1398697a43b1a4b03"
+          "version": "repo-file-v1:sha256:09f9c6abbddfa0eac51db30cb9cf38c45178994e523040fab76d132d9e965fd1"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt",
@@ -134,7 +126,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt",
-          "version": "repo-file-v1:sha256:5aa47412a41473487e8b1b4772fff805a459fba94dc4c37ea5624a4d4a159779"
+          "version": "repo-file-v1:sha256:f520049f1d69008a9a513daa3eb67aaee07b31d5266bf855e11685dd2a37c727"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryProjectedEvidence.kt",
@@ -156,7 +148,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:b6414995f9abd6387463adbd581f924b138dc519c31d4a2518d3bb3c0a4f6c02"
+          "version": "repo-file-v1:sha256:c3d02d83af3bb042ddc2d3d7e01d5425a332ef04ed2a8ef6f954edff7269818f"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryRetentionProtocolTest.kt",
@@ -252,7 +244,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7"
+          "version": "repo-file-v1:sha256:1482841ff44989b173053027ad9a1b751604cb1a527a80051ac86d99db3a102b"
         },
         {
           "resource": "repo://workspace/intellij-read/src/main/kotlin/io/github/amichne/kast/workspace/intellij/read/IntellijReadObservation.kt",
@@ -274,7 +266,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:b6414995f9abd6387463adbd581f924b138dc519c31d4a2518d3bb3c0a4f6c02"
+          "version": "repo-file-v1:sha256:c3d02d83af3bb042ddc2d3d7e01d5425a332ef04ed2a8ef6f954edff7269818f"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/HostedCanonicalQuery.kt",
@@ -288,7 +280,7 @@
       "evidence": [
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijCallbackDependencyContract.kt",
-          "version": "repo-file-v1:sha256:cf7d133ef3f8d5c5a530a53d553af661ac560cae904616e31a796d8c1fa56ef7"
+          "version": "repo-file-v1:sha256:1482841ff44989b173053027ad9a1b751604cb1a527a80051ac86d99db3a102b"
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijSelectedCallbackSupplies.kt",
@@ -342,7 +334,7 @@
         },
         {
           "resource": "repo://relation/intellij/src/main/kotlin/io/github/amichne/kast/relation/intellij/IntellijKotlinLazyBinaryEvidence.kt",
-          "version": "repo-file-v1:sha256:33ca0f6959d0fcd0fe6608f66847b70d738050d32e38deacaef06f4105fa9946"
+          "version": "repo-file-v1:sha256:d83f461393cfd89ae9c12a8601ee1d88fca16bcc9df0def36044a80f9062fcaf"
         }
       ]
     },
@@ -355,8 +347,8 @@
           "version": "repo-lines-v1:sha256:a421474d9646efa48275a51991299a2d1a4ffa863329a28ac438c21a420a433e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5M2Q0N2FmYjdkNDBhODk5ZjFkN2E3NTUyOGZmNGZmZTYwMGQzMjYzYmYxMDY5NzlmMzk2MjhmNDdmZDBmMzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1MDJmNjllNDIyY2JhYmE2ZTk5OTgxMDE4YjcyYjM4YTA3OGU2MWY2YzkwMmEzOTBiMDc3ODY2ZTA5ZTZhNjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyNzQ3ZWJiYzY1MjI5MTk3MDUwMmMzMTc3YTVmNzczYzM5YTE3NzE0YTBhZDhkOWI0NTM3NjFmOWE0ZmQ3NmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiMDNhZWEyZmJiOGRmMzI2MWU2ODNmMTc3YjljZTI2NjRkNzdhYTE4ZGVmNzE4NjI2MzEyYWNmZTk0YTlmNWYifQ"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt#L8-L49",
-          "version": "repo-lines-v1:sha256:263f567afe15bb3cedffbb3676d0c70180aa28579f6b8dee03fd4dfd3e16a4b7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2ZDk2YzVjMTU1NzkxMjJjNzk0Y2JmZGFkZTVlZDJiNmIwNDdlNmM1OTViZWNmMzVjNzkwOTE1MjU5NWIxOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt#L8-L56",
+          "version": "repo-lines-v1:sha256:20aefd713a2a2698c0b159268894fe680891654bd8065b61478a206efbb088ff:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM2ZDk2YzVjMTU1NzkxMjJjNzk0Y2JmZGFkZTVlZDJiNmIwNDdlNmM1OTViZWNmMzVjNzkwOTE1MjU5NWIxOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNDM2ODM3NzE5NjVhODQ3N2VlOWQwYjExYjU2Y2ZkMTY5YTMwMTNlNDA5MjYzMzRlYWVkYWU3NTMyYzE3MTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -365,19 +357,19 @@
       "statement": "The production Host packages separate archives and descriptors for IDEA release lines 262 and 263.",
       "evidence": [
         {
-          "resource": "repo://build.gradle.kts#L246-L272",
-          "version": "repo-lines-v1:sha256:9068766bc806480d3ee0c88c13d71ad2590783774a18f47f4f74dccdea44cd0d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5YjI5ZGY1MmEzZDBhNGI1M2U5Njk4ZTJjODBiN2E4YmI0YTJlOGYwN2Y4MTM1NDY1OTM1OWRkYjlmZjg2NWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlOWQzNGFiOGRhZmRkZjg5N2Y5MDY5ZTdmNzQ1M2E3NmRmOTQzMjc3ZGMyNGI2NTZlNTMzMTZkNTYxY2U0YmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiNTUzNWExY2MyMTI3NWU2YTQxMWQ0ZDEyOGZmNzkxZDhlN2ViOTY5MWRhMTM4Y2NiYTkzYTlmNWFjYzBlN2YifQ"
+          "resource": "repo://build.gradle.kts#L268-L293",
+          "version": "repo-lines-v1:sha256:ddbf69c50000d63128bf26b94b28d28ef9fabd03b86282d8220a628931648fa8:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5YjI5ZGY1MmEzZDBhNGI1M2U5Njk4ZTJjODBiN2E4YmI0YTJlOGYwN2Y4MTM1NDY1OTM1OWRkYjlmZjg2NWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlOWQzNGFiOGRhZmRkZjg5N2Y5MDY5ZTdmNzQ1M2E3NmRmOTQzMjc3ZGMyNGI2NTZlNTMzMTZkNTYxY2U0YmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiNTUzNWExY2MyMTI3NWU2YTQxMWQ0ZDEyOGZmNzkxZDhlN2ViOTY5MWRhMTM4Y2NiYTkzYTlmNWFjYzBlN2YifQ"
         },
         {
-          "resource": "repo://gradle/libs.versions.toml#L13-L15",
+          "resource": "repo://gradle/libs.versions.toml#L14-L16",
           "version": "repo-lines-v1:sha256:a180f5d8bfc8458d8fa8d7a4c7620dd0ed11a64a54c57db75928121ed8f28e69:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMmYzMTI3NzAxYmNiY2E1OTlhZmQzOGM4MTM5MjQ0MTliOWU0MmIyYWNlNGE3ZmRlOWNmN2ZhODhlMGRjZjZlYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzhiMTYwMjE3ZTcwYTVhZmVhYWRlODk1ODg5YWFkMGQzODVkZTFjMjg0MmJiYTExM2I3MThmM2I0NGYyMWE3NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTFhOWYzYzQxZWEwODJkNmRhM2FjMTE0OGQzNDZhYWRlZDQwZjgwZGFlMWIyZTllNThhMzIzODQ3ODNlZDEzZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDNjNzkwZjM5MDg5YTkzNGIxNzI2N2I1ZDIzZDk4YmYxYjQ2NWIyZjc1ZTA1YmI5NGFlOWQxY2Y2MTEyODFjYSJ9"
         },
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L142-L148",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L145-L151",
           "version": "repo-lines-v1:sha256:0cc2ab74db17804167c7a6d0b53da6e128c898371abd3522f26f638069f18f18:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDkyMGY4NzJjNGFlNThlMWZiMTUyN2YzYjA5NzRlYWMxMWY0M2NhYzZkMjkxMDA5MjZhNGM1YmNjYTY5MGMzNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWEwMzVjZjYxOTdlOGU2MTkwNDUyMzBlY2U0YWM5ODE0MmFlYzI0ZDVmN2YxMTA4MmYyNzYwMDVlZTg3M2E0YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDdlNTE3MzE3YTgwYzQ1NmQwYzY3MTZkZmUzOWI1MzgzZGE2ZTQ4NDdkMzFiOGVhMWZhNTk3ZGNlZjhlOTUwZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmJhN2Y2MGNkZDkzYTM4YjQ1ZDYyYThlZmU1YTI1MTE4Y2ExOGYyZDNlNWFjNDQwMzQxNmIyMTlkNWE1NjhjOSJ9"
         },
         {
-          "resource": "repo://runtime/hosted/build.gradle.kts#L177-L211",
+          "resource": "repo://runtime/hosted/build.gradle.kts#L180-L214",
           "version": "repo-lines-v1:sha256:f7b953a6ea3ff19a23bc9edab436e771ae302989c7514823569f5f5820ee881f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MWVhZWZmMDczZGYwYTFiYjI1ZTYzODllMGEyN2QxYTQxNWRjZDhkOGJjOGYxY2E5MDQ3NjJiNWQ3NzM3OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MDJmZWE4MjFlNjZiYjIzODFhZTc4MzMyNTllYmU0NTcyZWFlYmViNjNiNmI5M2NkZWQzYWVkY2FkNzRlYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU0M2M5NDI1NzA4MjRkZWI2OTQxN2EzNDc4OTg0ZTNjNDRjZDc0NDAyNzM4MDk4Y2Y2ZDE5NTNhZTAzYzIxMTEifQ"
         }
       ]
@@ -405,7 +397,7 @@
       "statement": "Hosted read preparation saves project-owned documents, derives in-workspace refresh roots from the imported model, and waits for every non-empty flat and recursive refresh session before preparing PSI documents in a later EDT turn.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt#L215-L265",
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt#L226-L276",
           "version": "repo-lines-v1:sha256:28f360d3fb89e1d294d37b3826d66e856cea3cdfdb28d8f58912794ef0188190:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRhMTQ3NmJiY2I1MTNiOWZkMTYzMzVhM2YxMGVlNjNjYTVhMDE0N2I2Y2MyYjkxN2Q1ODYyNTc3ZjIwOWUzZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmMGQ3NTk1MGRmMGZmOWEzZWU5NjYzOWRjYzhmZjVlYWVkYjQwZDY4MmJlYTkyNjIyYjUyMGRkODg3ZDkzZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyZGExNjRjMDA3M2ZkYzQ3M2FjOWU5ZDFiNzAxNzg3MWI4NThkZTBhNGFkMzAwM2M1NjBhOTcyZGVmNmY4Y2MifQ"
         },
         {
@@ -429,14 +421,24 @@
       "statement": "Explicit file refresh remains a forced reconciliation: it marks the workspace root dirty recursively before invoking native refresh, whereas automatic read preparation does not force every descendant dirty.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt#L183-L206",
-          "version": "repo-lines-v1:sha256:28478ebc6a1c93d9a9c238859226db4f4e17a19aba40ee162947ed2b7c1e4b32:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwNzVmODc4ZTkyMzEwNzZjYzMwOTRmNmQ4MzY2OGQxM2ZkYWExOTRkODkwYzc5Nzc2MzZmNWMzM2I5OTMxNmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiZmI3ZTJkMmU3N2ViNmExOTAwODkyYjQzMjIyMTUzN2E3ZThmYmI4NjUzOGM5MjkyMDUyYzU4ZWIxZDJlMDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4OGEzMzlhNTE4ZjNlNWVhZjQwYzdiZTczZTFlMDgxZjM5OWU1NzUyMzE5ODM0MGJkYTY3Yzk0MTI1N2Q4OGEifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt#L183-L217",
+          "version": "repo-lines-v1:sha256:7f761a72726f4f6e43d65ac6ef5aff261f63f085a363146ac425714df04fa999:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwNzVmODc4ZTkyMzEwNzZjYzMwOTRmNmQ4MzY2OGQxM2ZkYWExOTRkODkwYzc5Nzc2MzZmNWMzM2I5OTMxNmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRiZmI3ZTJkMmU3N2ViNmExOTAwODkyYjQzMjIyMTUzN2E3ZThmYmI4NjUzOGM5MjkyMDUyYzU4ZWIxZDJlMDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE4OGEzMzlhNTE4ZjNlNWVhZjQwYzdiZTczZTFlMDgxZjM5OWU1NzUyMzE5ODM0MGJkYTY3Yzk0MTI1N2Q4OGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8f9ae3678af54169b00a9fee3c9a2afd",
+      "statement": "Managed semantic deployment admission requires the descriptor's application runtime identity to match the selected managed installation, its Gradle import environment identity and the descriptor's host PID before dispatch.",
+      "evidence": [
+        {
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/ManagedSemanticDeployment.kt",
+          "version": "repo-file-v1:sha256:b68398fdb8f1d66523ea19d63198566a1bbe40b857780679b5e03299d9edec72"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T21:34:35.265Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

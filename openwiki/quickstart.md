@@ -4,21 +4,28 @@ title: Kast repository guide
 description: Find Kast architecture, semantic contracts, runtime flows, installation and focused verification through source-bound OpenWiki concepts.
 tags: [kast, navigation, architecture, verification]
 sources:
+  - id: openwiki-source-7904a856aedff77e554352c6
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt
+  - id: openwiki-source-1c6c64417570ecf53e6c68a2
+    resource: repo://docs/public/reference/integrations.mdx
+  - id: openwiki-source-9ed9cdcd1561e351be092797
+    resource: repo://frontend/cmd/kast/main.go
   - id: openwiki-source-7fa48d17b46dccf82f4b3238
     resource: repo://runtime/hosted/build.gradle.kts
   - id: openwiki-source-e620d7484b72a53c7fa812cd
     resource: repo://settings.gradle.kts
   - id: openwiki-source-096cb7b190932815f87b4a1d
     resource: repo://workspace/contract/src/main/kotlin/io/github/amichne/kast/workspace/contract/epoch/SemanticReadAuthority.kt
-generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:10:47.711Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Kast repository guide
 
-Kast gives coding agents compiler-grounded reads and controlled changes through an existing IDEA project.
+Kast gives coding agents compiler-grounded reads and controlled changes through a managed headless IDEA Host for one exact workspace.
+Agents reach it through the Go CLI or native MCP, configured with dotagents.
 The active graph separates contracts, services, native adapters, hosted composition, transport, and distribution.
 Live topology dependencies support callback fact reuse inside the hosted runtime.
 Historical capture, SQLite storage, and graph queries have separate owners and evidence limits.
@@ -33,7 +40,7 @@ Examine consequential claims against cited source, contracts, schemas, and focus
 
 The [functional package map](architecture/functional-packages.md) assigns every active production package an explanation.
 Its inventory includes the Gradle modules and included build logic.
-The map also routes non-Kotlin adapters, installation helpers, release automation, and test harnesses.
+The map also routes the Go frontend, installation helpers, release automation, and the semantic campaign.
 Package coverage does not prove every branch or native effect.
 
 | Question | Start with | Continue with |
@@ -41,7 +48,7 @@ Package coverage does not prove every branch or native effect.
 | Which module owns an effect? | [Architecture](modules/architecture.md) | [Build roles](development/build-and-architecture.md), [kernel](modules/kernel.md) |
 | How does a public request enter? | [Public admission](queries/public-admission.md) | [Public tools](contracts/public-tools.md), [contract generation](development/contracts-and-generation.md) |
 | How does composition execute? | [Query execution](queries/execution-and-composition.md) | [TRACE and completion](queries/trace-and-completion.md), [impact proof](queries/impact-and-peer-proof.md) |
-| How does output continue? | [Retained output](queries/retention-and-presentation.md) | [Agent delivery](transport/harness-delivery.md), [tool RPC](transport/direct-mcp-and-tool-rpc.md) |
+| How does output continue? | [Retained output](queries/retention-and-presentation.md) | [Direct MCP](transport/direct-mcp-and-tool-rpc.md), [skill delivery](transport/harness-delivery.md) |
 | Which workspace facts permit a read? | [Read authority](semantics/workspace/read-authority.md) | [Model and freshness](semantics/workspace/model-and-freshness.md), [hosted publication](runtime/hosted-composition-and-publication.md) |
 | How does IDEA refresh occur? | [Lifecycle and refresh](runtime/idea-lifecycle-and-refresh.md) | [Coordinator preparation](transport/coordinator-and-workspace-preparation.md), [hosted query flow](flows/hosted-query.md) |
 | How does a private headless Host run? | [Managed headless Host](modules/runtime-hosts.md#managed-headless-host) | [Assembly](modules/distribution.md#managed-headless-assembly), [configuration](contracts/configuration.md#managed-headless-selection) |

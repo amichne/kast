@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4f21248840b6ccb6576cf18adcda86e0faeecb506284a6a40614b410a064ec34",
+  "pageVersion": "sha256:7166fd01023d4f86735f2a1e33c42b7ea5db0fcdf145621045ed068cf39d74a4",
   "claims": [
     {
       "id": "claim_07361b0d848e4ee7895255b78a26d60b",
@@ -112,7 +112,7 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolDocuments.kt",
-          "version": "repo-file-v1:sha256:ecef1a87982e573170c3a4db50be2f745cfd32d4bdbe2988b6e9684a09cf1354"
+          "version": "repo-file-v1:sha256:f7eab39b5e7eb78915f580185edb16d2cb85c6089fa3a49f78d2a9d5c4255f65"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/query/PublicToolMapping.kt",
@@ -131,6 +131,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T22:38:11.044Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

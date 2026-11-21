@@ -32,10 +32,10 @@ sources:
     resource: repo://source/intellij/src/main/kotlin/io/github/amichne/kast/source/intellij/IntellijSourceTraversal.kt
   - id: openwiki-source-d16ec0b0b90b8cd04743a4f3
     resource: repo://source/service/src/main/kotlin/io/github/amichne/kast/source/service/SourceReadService.kt
-generated: { by: "codex", at: "2026-11-03T05:45:59.282Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-11T06:28:10.019Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Source anchors and structural pages
@@ -111,6 +111,5 @@ A successful text read alone does not establish that every declaration in a requ
 Canonical selector decoding keeps epoch mismatch separate from unsupported content view.
 A mismatch contains admitted expected and observed epochs only when those epochs differ.
 Query and source rejection preserve that detail through their typed projections.
-Tool RPC can admit one initial READ_SOURCE in a query-session child and ends that session after its reply.
 A malformed source anchor returns local anchor detail and the issued-candidate recovery action.
 That advice does not create an anchor or establish source freshness.

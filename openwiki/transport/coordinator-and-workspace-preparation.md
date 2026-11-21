@@ -44,10 +44,10 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
   - id: openwiki-source-8f099dc46f272100d18b0f6f
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/CanonicalRoot.kt
-generated: { by: "amp", at: "2026-11-14T22:19:18.487Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-14T23:57:28.873Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Coordinator and workspace preparation
@@ -56,11 +56,11 @@ verified:
 
 `distribution/managed` owns `CanonicalRoot` and nearest Gradle-settings root discovery.
 Discovery resolves the physical directory and stops at a nested checkout boundary rather than borrowing another repository's settings.
-CLI, MCP, and tool RPC use `ManagedWorkspaceQuery` to select the installed product and private workspace generation before semantic execution.
+The CLI and MCP use `ManagedWorkspaceQuery` to select the installed product and private workspace generation before semantic execution.
 The first explicit preparation request grants trust only to that exact root. Retained-reference access requires an existing record.
 The request owns the query lease and private HOME; MCP initialization and session-start context remain passive.
 Saved installation and workspace configuration are admitted by the shared managed configuration owner.
-Queries do not acquire release assets or discover desktop IDEA installations.
+Queries do not acquire release assets or discover other IDEA installations.
 
 ## Admit one installed coordinator
 

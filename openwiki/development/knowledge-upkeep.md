@@ -27,30 +27,30 @@ sources:
     resource: repo://bin/kast-knowledge-refresh
   - id: openwiki-source-2a9daaac1604f238ef4c63fb
     resource: repo://build.gradle.kts
-  - id: openwiki-source-6def96ae23af4541fb39b31d
-    resource: repo://docs/tooling/claim_evidence.py
-  - id: openwiki-source-c4a5ef7d5c7661ac58d253ba
-    resource: repo://docs/tooling/knowledge_check.py
-  - id: openwiki-source-7cbb86f93a654c4731d1a6a0
-    resource: repo://docs/tooling/knowledge_refresh.py
-  - id: openwiki-source-6506da7d406f804b7ef3a6df
-    resource: repo://docs/tooling/markdown/evidence-assess.ts
-  - id: openwiki-source-13b7644050eecaa683409f39
-    resource: repo://docs/tooling/markdown/evidence-native.ts
-  - id: openwiki-source-7177b22fefe1052541d9b757
-    resource: repo://docs/tooling/okf_public.py
-  - id: openwiki-source-1dc1f7665b2e88f8623231f1
-    resource: repo://docs/tooling/publication.py
-  - id: openwiki-source-7268f9708ec0a94462a131a0
-    resource: repo://docs/tooling/reader_contracts.py
-  - id: openwiki-source-36d4f4364ef6c0647be956fd
-    resource: repo://docs/tooling/test_knowledge_refresh.py
-  - id: openwiki-source-ed23841223cbb1f8ea2721ef
-    resource: repo://docs/tooling/test_publication.py
+  - id: openwiki-source-1efe121af42f2fc26e7df7f4
+    resource: repo://docs/internal/tooling/claim_evidence.py
+  - id: openwiki-source-86bd4178cffc8b4b7341c007
+    resource: repo://docs/internal/tooling/knowledge_check.py
+  - id: openwiki-source-e590f6f6bbe5475569764eef
+    resource: repo://docs/internal/tooling/knowledge_refresh.py
+  - id: openwiki-source-d6a399eafbe6042a542bd7de
+    resource: repo://docs/internal/tooling/markdown/evidence-assess.ts
+  - id: openwiki-source-14466949c8513c86b18923e4
+    resource: repo://docs/internal/tooling/markdown/evidence-native.ts
+  - id: openwiki-source-e7a3fdbcaa88740817f05d27
+    resource: repo://docs/internal/tooling/okf_public.py
+  - id: openwiki-source-c6e40704692fd7d9e04644c0
+    resource: repo://docs/internal/tooling/publication.py
+  - id: openwiki-source-f894ee40fc30391f6767de2c
+    resource: repo://docs/internal/tooling/reader_contracts.py
+  - id: openwiki-source-4edb49b58f63dd3eba3235c3
+    resource: repo://docs/internal/tooling/test_knowledge_refresh.py
+  - id: openwiki-source-2dd53ab2c56b5f60be2b07d4
+    resource: repo://docs/internal/tooling/test_publication.py
 generated: { by: "amp", at: "2026-11-15T20:10:47.711Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T20:10:47.711Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Knowledge upkeep and coverage assessment

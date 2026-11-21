@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:cb1477fc244e836047f396c6161abf4c745f99468c8d35b111ae9e365b35b4a1",
+  "pageVersion": "sha256:ed22930b8760b6dc4b500fdd17eca730227399ad870227865a302b12daeff3a9",
   "claims": [
     {
       "id": "claim_55dc24a64b404afb9e68deda45662bd9",
@@ -32,15 +32,15 @@
     },
     {
       "id": "claim_b6b51d8c9f464eeb997d235146a096cc",
-      "statement": "The existing native project opener admits private project storage and omits a frame for managed headless mode. Desktop mode keeps normal new-frame opening.",
+      "statement": "The native project opener admits private project storage through the managed headless Host and opens without a frame; a headless application without that admission rejects with UNSUPPORTED_HOST_MODE.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt#L238-L252",
-          "version": "repo-lines-v1:sha256:ec2890a73471ab51cfebbd8d2ad0fccf33e01c4fd3d99802cfb2734de63d7da5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1NGJmOTU1ODk0NmZhNzI4NjE4OGY5YzE0ZTRjZjMyNjEwODI1MDJlNjFkMDRhNTI3ZDZiNTIwNDZhMTExNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiZjJkNzc3ODg4NTcxZjQ1NzM0ZTFlNTk5N2UyODEzNGM0OGNiN2FhNGY5YTg4MTk5NmQ1YjhiYTA5ZDBmYzcifQ"
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleNative.kt",
+          "version": "repo-file-v1:sha256:0bb309e2307b13d0e5f5ccfcb7a2f8b19f928e0600f1a18db33fbfda6d78b1c8"
         },
         {
           "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/IdeLifecycleProjectOpen.kt",
-          "version": "repo-file-v1:sha256:fb446dce5485481b7a7cc89cabd26a1aecf3780789fa0b77141c45dba0f57ef9"
+          "version": "repo-file-v1:sha256:d4e8e9c6ce24a95fda9b70fbd9b977b8ceae8f842314c92857f190bf89df8466"
         }
       ]
     },
@@ -77,7 +77,7 @@
       "statement": "Read preparation waits for every non-empty flat and recursive VFS refresh session before preparing project documents in a later EDT turn. Explicit FILE_REFRESH instead force-marks and recursively refreshes the single canonical workspace root.",
       "evidence": [
         {
-          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt#L194-L265",
+          "resource": "repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/workspace/IntellijWorkspaceRefreshPort.kt#L205-L276",
           "version": "repo-lines-v1:sha256:ed740387bf4d7c834972a98744e90cf6ded29764b0bd24ba563039450a239a51:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRlYWUzYmM3YzRkYzc5Zjc1ZDk1Nzk0YTU4ZDI0MGY5YTI2OWMyOGE4MTg3ODQ5NDZhYjJmZDdhMGMwNWE2NjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmZTlhODU3ZGNkNjZiNDdjMTA4ZWEwZTI4NDI0Y2QwNTZkNDNiMzcyNjk2ZWY3NDRjM2ExY2I5MzU1ZWU2NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcyZGExNjRjMDA3M2ZkYzQ3M2FjOWU5ZDFiNzAxNzg3MWI4NThkZTBhNGFkMzAwM2M1NjBhOTcyZGVmNmY4Y2MifQ"
         },
         {
@@ -99,6 +99,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-14T06:28:38.719Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:29ff34591aa836da626ca985e0f098e73623119410d063edb77ea4da4dfbe343",
+  "pageVersion": "sha256:01760898887a5988e110844f75fd8cd4cc94233e875baad88665ab7f67232853",
   "claims": [
     {
       "id": "claim_b9727187adfc4e2c9be8e3a620b37051",
@@ -54,7 +54,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:b6414995f9abd6387463adbd581f924b138dc519c31d4a2518d3bb3c0a4f6c02"
+          "version": "repo-file-v1:sha256:c3d02d83af3bb042ddc2d3d7e01d5425a332ef04ed2a8ef6f954edff7269818f"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CanonicalQueryRetentionProtocolTest.kt",
@@ -76,7 +76,7 @@
       "evidence": [
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryOutcomeProjection.kt",
-          "version": "repo-file-v1:sha256:5aa47412a41473487e8b1b4772fff805a459fba94dc4c37ea5624a4d4a159779"
+          "version": "repo-file-v1:sha256:f520049f1d69008a9a513daa3eb67aaee07b31d5266bf855e11685dd2a37c727"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/RetainedQueryPresentation.kt",
@@ -108,7 +108,7 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryPresentationExecution.kt",
-          "version": "repo-file-v1:sha256:3094e3633160aed93176bdbe486eeaaf11c620eb813983c1398697a43b1a4b03"
+          "version": "repo-file-v1:sha256:09f9c6abbddfa0eac51db30cb9cf38c45178994e523040fab76d132d9e965fd1"
         },
         {
           "resource": "repo://query/service/src/main/kotlin/io/github/amichne/kast/query/service/QueryValuePathOutputAdmission.kt",
@@ -196,7 +196,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAcquisition.kt",
-          "version": "repo-file-v1:sha256:a7a5640fe6b8ca73e837f042bb1cb0abac065bffd60a9e553fbda241730cc709"
+          "version": "repo-file-v1:sha256:a701a7559a98d424d5133c6e9d80a947d39b88baa945a7c2e2c06b84bd646de1"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryImpactSourceAdmission.kt",
@@ -210,7 +210,7 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactLedger.kt",
-          "version": "repo-file-v1:sha256:5e823ccf2a63a1cf786689892826daf1a4a057afa801cf6d70bafd9997d361a7"
+          "version": "repo-file-v1:sha256:b75bd5b8525c627dd29dc8a2b14b9461cb586435d360bc4cc4af20b09369ae16"
         },
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactSiteAccounting.kt",
@@ -232,11 +232,11 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRelationStorage.kt",
-          "version": "repo-file-v1:sha256:160102c45b3a3772fc1bd810b7d33f2b4603c61a33d1dc9e90646eb5385801d5"
+          "version": "repo-file-v1:sha256:af5bd1cb6b5b7698ccbb5e6311353de44b5a78f141ed5f1de336b3433bda16d7"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/ImpactModelEvidenceProjection.kt",
-          "version": "repo-file-v1:sha256:a6f52ce9480ce9d41d777e30cd2088ffa285f4377c848e3ba6cf80dd2a6d446b"
+          "version": "repo-file-v1:sha256:1beb7c082ced244251536a8367c38c794d662089a247769f265a506c0bf5bfce"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/QueryImpactBranchProjectionTest.kt",
@@ -250,7 +250,7 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRelationStorage.kt",
-          "version": "repo-file-v1:sha256:160102c45b3a3772fc1bd810b7d33f2b4603c61a33d1dc9e90646eb5385801d5"
+          "version": "repo-file-v1:sha256:af5bd1cb6b5b7698ccbb5e6311353de44b5a78f141ed5f1de336b3433bda16d7"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/CanonicalSymbolDocuments.kt",
@@ -290,11 +290,11 @@
       "evidence": [
         {
           "resource": "repo://query/contract/src/main/kotlin/io/github/amichne/kast/query/contract/QueryImpactRelationStorage.kt",
-          "version": "repo-file-v1:sha256:160102c45b3a3772fc1bd810b7d33f2b4603c61a33d1dc9e90646eb5385801d5"
+          "version": "repo-file-v1:sha256:af5bd1cb6b5b7698ccbb5e6311353de44b5a78f141ed5f1de336b3433bda16d7"
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryCallbackObservationProjection.kt",
-          "version": "repo-file-v1:sha256:827a993d069d142b3958a8e24b947519a73113610c86926e92efea1e02057233"
+          "version": "repo-file-v1:sha256:93208fd798a9e836ed2e9901c7ca01db81a321d189d55d298f69cce6d1f0bf7a"
         },
         {
           "resource": "repo://relation/contract/src/main/kotlin/io/github/amichne/kast/relation/contract/CallbackBindingCanonical.kt",
@@ -316,7 +316,7 @@
         },
         {
           "resource": "repo://query/protocol/src/main/kotlin/io/github/amichne/kast/query/protocol/QueryInvocationProjection.kt",
-          "version": "repo-file-v1:sha256:b6414995f9abd6387463adbd581f924b138dc519c31d4a2518d3bb3c0a4f6c02"
+          "version": "repo-file-v1:sha256:c3d02d83af3bb042ddc2d3d7e01d5425a332ef04ed2a8ef6f954edff7269818f"
         },
         {
           "resource": "repo://query/protocol/src/test/kotlin/io/github/amichne/kast/query/protocol/CompleteOnlyQueryTest.kt",
@@ -373,6 +373,6 @@
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-12T06:30:47.924Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }

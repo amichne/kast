@@ -5,11 +5,8 @@ description: Every external configuration input has declared ownership, parsing,
 resource: file://distribution/contract
 tags: [configuration, distribution, installation]
 code_sources:
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationRequest.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ControlInstallationInput.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementInstallation.kt
   - path: install.sh
-  - path: packaging/managed_installation.py
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/KastConfigurationCatalogue.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
   - path: distribution/contract/src/test/kotlin/io/github/amichne/kast/distribution/contract/configuration/RetiredRuntimeConfigurationTest.kt
@@ -17,9 +14,6 @@ code_sources:
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt
   - path: distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/InstalledWorkspaceConfigurationIngress.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagedWorkspaceQuery.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationJavaRuntime.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationValidation.kt
   - path: app-server/src/main/kotlin/io/github/amichne/kast/appserver/BrokerOperationalLimits.kt
   - path: app-server/src/test/kotlin/io/github/amichne/kast/appserver/provider/KastSchemaOutputBudgetTest.kt
   - path: kernel/src/main/kotlin/io/github/amichne/kast/kernel/ReadLimits.kt
@@ -37,31 +31,28 @@ code_sources:
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastServiceMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/KastMcpMain.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/direct/KastDirectToolSession.kt
-  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/rpc/KastToolRpcMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/KastManagementMain.kt
   - path: distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ManagementLifecycle.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/mcp/McpSingleChangeTool.kt
   - path: cli/src/main/kotlin/io/github/amichne/kast/cli/bootstrap/InstalledKastCliComposition.kt
   - path: cli/src/test/kotlin/io/github/amichne/kast/cli/SavedConfigurationAdmissionTest.kt
   - path: packaging/configuration-schema.json
-  - path: build-policy/configuration-ingress.json
-  - path: packaging/test-install-local.py
   - path: build.gradle.kts
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/bootstrap/ModelInputFailure.kt
   - path: distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/gradle/GradleImportEnvironment.kt
+  - path: config/configuration-ingress.json
+  - path: cli/src/main/control-launchers/bin/kast-mcp
+  - path: cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt
+  - path: packaging/tests/test-install-checkout.py
 sources:
   - id: openwiki-source-23800b7a30d62f442e3b56ae
     resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ide/IdeLifecycleDeployment.kt
-  - id: openwiki-source-0934da5590f6da4c7a9cd885
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationConfigurationMigration.kt
-  - id: openwiki-source-8f4d86f42434fcc1ce269879
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/InstallationWorkflow.kt
-  - id: openwiki-source-db07d240b5fb033a752d32dc
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/installation/ManagedControlAdapter.kt
-  - id: openwiki-source-f2c689f11ca37c5559bce314
-    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastNativeMain.kt
-  - id: openwiki-source-fb61cc58d2fa4809ff4d73bb
-    resource: repo://cli/src/main/native-launchers/bin/kast-mcp
+  - id: openwiki-source-258f82ccb40fa1447bd2ac21
+    resource: repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/ResolvedAppServerConfiguration.kt
+  - id: openwiki-source-9334c5b6f4494897095d1968
+    resource: repo://cli/src/main/control-launchers/bin/kast-mcp
+  - id: openwiki-source-7904a856aedff77e554352c6
+    resource: repo://cli/src/main/kotlin/io/github/amichne/kast/cli/KastControlMain.kt
   - id: openwiki-source-f6d88e313802a0e3d7a8ade3
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/ContainerModel.kt
   - id: openwiki-source-22e272ee16fcff0c22f636ab
@@ -80,6 +71,8 @@ sources:
     resource: repo://distribution/cli/src/main/kotlin/io/github/amichne/kast/distribution/cli/WorkspaceSeeding.kt
   - id: openwiki-source-5ec7d945181fa4fe6a508e08
     resource: repo://distribution/cli/src/test/kotlin/io/github/amichne/kast/distribution/cli/InstalledProductRuntimeTest.kt
+  - id: openwiki-source-67a59a046e50294202a48507
+    resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/BrokerPublicEndpointMode.kt
   - id: openwiki-source-fd4148a6ba46f590f554b6b6
     resource: repo://distribution/contract/src/main/kotlin/io/github/amichne/kast/distribution/contract/configuration/ConfigurationMetadata.kt
   - id: openwiki-source-15e8231ce806d461eb152470
@@ -108,10 +101,8 @@ sources:
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SavedConfigurationIngress.kt
   - id: openwiki-source-8677e434adb584035406f54a
     resource: repo://distribution/managed/src/main/kotlin/io/github/amichne/kast/distribution/managed/SelectedIdeInstallation.kt
-  - id: openwiki-source-1380068036b00bec817a6579
-    resource: repo://packaging/managed_installation.py
-  - id: openwiki-source-25977fc13c4ddf2c0840d6fd
-    resource: repo://packaging/test-install-checkout.py
+  - id: openwiki-source-12d7829bb8c1e9c898163e3a
+    resource: repo://packaging/tests/test-install-checkout.py
   - id: openwiki-source-f1b91cff1056c87a66c81c26
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostedApplicationAdmission.kt
   - id: openwiki-source-5bce5e00d8d37b48b461a27e
@@ -124,17 +115,17 @@ sources:
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/HostNativeSettlement.kt
   - id: openwiki-source-b063b188a00b030d97a5f66b
     resource: repo://runtime/hosted/src/main/kotlin/io/github/amichne/kast/runtime/hosted/lifecycle/ManagedHeadlessHost.kt
-generated: { by: "amp", at: "2026-11-15T18:33:44.464Z" }
+generated: { by: "codex", at: "2026-11-21T22:16:17.145Z" }
 verified:
   - by: openwiki/0.9.0
-    at: 2026-11-15T19:32:41.514Z
+    at: 2026-11-21T22:16:17.145Z
 ---
 
 # Installation configuration
 
-The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it from the ambient environment throughout the system. The installer validates its staged saved file through the same source, resolution, and app-server owner admissions without invoking a retired CLI command. The daemon admits its installed configuration and exact workspace before using the existing-IDE socket. Former CLI semantic and configuration commands are rejected at the private executable ingress. Invalid configuration rejects without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. Process-boundary checks cover daemon-demand failure and rejected former commands without creating runtime/cache directories.
+The Kotlin catalogue owns typed keys, value parsing, defaults, and consuming component ownership. Installed-runtime composition admits saved configuration, then projects it to runtime owners instead of reading it from the ambient environment throughout the system. The daemon admits its installed configuration and exact workspace before using the managed Host socket. Former CLI semantic and configuration commands are rejected at the private executable ingress. Invalid configuration rejects without starting a worker. The IDE separately retains validated JVM/environment read limits for its project-service lifetime. Process-boundary checks cover daemon-demand failure and rejected former commands without creating runtime/cache directories.
 
-Two checked artifacts enforce the boundary: [configuration-schema.json](../../packaging/configuration-schema.json) describes the external document and [configuration-ingress.json](../../build-policy/configuration-ingress.json) declares permitted ingress owners. Root verification rejects undeclared ambient reads.
+Two checked artifacts enforce the boundary: [configuration-schema.json](../../packaging/configuration-schema.json) describes the external document and [configuration-ingress.json](../../config/configuration-ingress.json) declares permitted ingress owners. Root verification rejects undeclared ambient reads.
 
 Launchers select their pinned installation configuration only when
 `KAST_CONFIGURATION_FILE` is absent. An inherited selector, including an older
@@ -148,22 +139,11 @@ path. Symlinks in the file or its ancestors reject. Bounded reads keep the
 selected configuration's provenance and check file identity again after reading.
 
 `KAST_APP_SERVER_PUBLIC_ENDPOINT` defaults to `private`.
-Installation admits only an explicit `private` selection.
-It migrates an admitted saved `codex-control` selection to `private` with finite provenance.
-Unknown, empty, or explicit shared selections reject before installation effects.
+App Server admission accepts `private` or `codex-control`; any other value rejects with `INVALID_PUBLIC_ENDPOINT`.
 Codex keeps its own App Server and discovery endpoint. Installation does not start a broker.
 
-The installer accepts the saved `KAST_READ_MODEL_MODULES` assignment only from an admitted `0.50.2` installation.
-It accepts one ASCII-decimal value from `1` through `2,147,483,646`.
-The prior manifest must name that version, the selected installation root, and its own configuration path.
-The installer removes this assignment before current configuration admission and keeps its typed migration fact.
-Migration rejects duplicates, invalid values, and manifests from other versions.
-The runtime catalogue rejects the removed key.
-
-Staging regenerates migrated configuration from current declarations.
-Unchanged Control-only settings keep the existing exact-copy path.
-Managed preparation preserves `CONFIGURATION_SOURCE_REJECTED`, `CONFIGURATION_RESOLUTION_REJECTED`, and `CONFIGURATION_OWNER_REJECTED` as distinct adapter failures.
-The migration record contains only the known key, source version, and admitted count.
+`KAST_READ_MODEL_MODULES` is not a catalogue declaration.
+Configuration resolution rejects a saved assignment of that key; no installer migration accepts it.
 
 See [distribution](../modules/distribution.md).
 
@@ -230,16 +210,15 @@ installation. Installation and installed management operations reject alternate 
 `XDG_DATA_HOME` does not select another installation. The root and installer bin
 paths keep their HOME-derived proofs in typed request values.
 
-The managed installer derives `KAST_INSTALL_PROFILE=persistent` for Control staging.
-The former checkout and session installation scripts are removed.
-`KAST_INSTALL_ROOT` and `KAST_BIN_DIR` are derived bindings, not saved
-user settings. These legacy adapter bindings do not select another public installation.
+`KAST_INSTALL_PROFILE`, `KAST_INSTALL_ROOT`, and `KAST_BIN_DIR` are derived catalogue declarations, not saved user settings.
+They do not select another public installation.
+The former checkout, local, and legacy shell installer entry points are absent; `install.sh` is the only public installer.
 
-The private daemon remains a declared raw-environment ingress owner. Public CLI, MCP, and tool RPC instead share managed request admission. MCP initialization is passive: the first explicit semantic request selects the exact canonical root and its private Host state. Retained reads require an existing record instead of creating a trust grant. These launchers add no Codex App Server request.
+The private daemon remains a declared raw-environment ingress owner. The public CLI and MCP instead share managed request admission. MCP initialization is passive: the first explicit semantic request selects the exact canonical root and its private Host state. Retained reads require an existing record instead of creating a trust grant. These launchers add no Codex App Server request.
 The private service-control entry point is also a declared raw-environment ingress owner. It selects the installed release's saved configuration only when no selector was supplied, then delegates registration, passive status, enable, disable, stop, bootstrap, or repair to the existing owners.
 
-Shipped Control launchers select modes in one native executable and need no JVM or bundled JVM libraries.
-The launchers pass `HOME` and `TMPDIR` as explicit native system properties when those variables contain values.
+Shipped Control launchers select an internal entry of one Control executable through `--internal-entrypoint`; `kast-mcp` selects `mcp`.
+The launchers pass nonempty `HOME` and `TMPDIR` values as the `user.home` and `java.io.tmpdir` system properties.
 
 ## Managed headless selection
 

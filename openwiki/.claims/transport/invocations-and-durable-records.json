@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4d6241b9008571e28a2a2b8402180d111d135594ff1d148453f359fa9983716d",
+  "pageVersion": "sha256:0b19483ea7f2a62ba84cbfd03022b92c31312cbeaddb1370d5c177c6d4c977f6",
   "claims": [
     {
       "id": "claim_c66596f4eaa14e3089be4959d60c6a0d",
@@ -22,10 +22,10 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt",
-          "version": "repo-file-v1:sha256:a00af59dd71f1f0943ad989532a0ebcdd62471b66d2935b85d962e0988e02850"
+          "version": "repo-file-v1:sha256:fead36ec24aab6e6db6a8854375ea53566c656af5c740e4e40d5b468bf503127"
         },
         {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt#L30-L30",
+          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/InvocationFence.kt#L29-L29",
           "version": "repo-lines-v1:sha256:b31ff540e829808cbebd704d9fedaaea5feeaba5aad6b206641c363daabe53a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjMxZmY1NDBlODI5ODA4Y2JlYmQ3MDRkOWZlZGFhZWE1ZmVlYWJhNWFhZDZiMjA2NjQxYzM2M2RhYWJlNTNhOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjMxZmY1NDBlODI5ODA4Y2JlYmQ3MDRkOWZlZGFhZWE1ZmVlYWJhNWFhZDZiMjA2NjQxYzM2M2RhYWJlNTNhOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTBiOTIxZTcyODYxMzQzZGZmM2Y2NmNjZTUwNzNmNWE3NDE2NDlhOTljMjBmZWEzZDk4NjMyOGJlNjRhZGFjNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGY2ZWQzZTZiMzRiODllNWVmZmNjMmE4NTkwZmI4NjAyZjkyZjI0NDY1ZGFmMDM5ZTk3NzA1YjQ0NDk3MzJmYyJ9"
         }
       ]
@@ -36,11 +36,11 @@
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/runtime/FileInvocationRecords.kt",
-          "version": "repo-file-v1:sha256:ab597c7fd752a271e348b6d3ebbdb2345a778bf62ef803a3e888d56a28126273"
+          "version": "repo-file-v1:sha256:984ec0c5bcf294cac39945696ad3d834ba3c102847057184ccaea1d5d18f7833"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt",
-          "version": "repo-file-v1:sha256:391a1aed173cc57e130251855726c244d199f653054d143d4d1072e938e904f5"
+          "version": "repo-file-v1:sha256:957775fe97d6762fffbf59ad0f75e07132028546240bdd531628604cfd2c4934"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/storage/PrivateRecordFiles.kt#L22-L22",
@@ -50,25 +50,21 @@
     },
     {
       "id": "claim_f28702d2eb28477d8cef3e9a8ec3a94b",
-      "statement": "Thread records preserve current installation and workspace binding while migrated legacy records need a new conversation.",
+      "statement": "Thread records preserve current installation and workspace binding in format v3 behind a layout marker; an unsupported layout version rejects as VERSION_UNSUPPORTED, and a store without the marker may hold only its lock or rejects as STORE_REJECTED.",
       "evidence": [
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt",
-          "version": "repo-file-v1:sha256:2c379f3776804c3f095a6378f82371813fb6c814d835ed3df730b1d9d527ffbc"
-        },
-        {
-          "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/FileThreadCatalogStore.kt#L16-L16",
-          "version": "repo-lines-v1:sha256:c0395487adb0c949439212c3ff1c1fe04a13ab25fbde49cfd89a725b161bb58a:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzAzOTU0ODdhZGIwYzk0OTQzOTIxMmMzZmYxYzFmZTA0YTEzYWIyNWZiZGU0OWNmZDg5YTcyNWIxNjFiYjU4YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzAzOTU0ODdhZGIwYzk0OTQzOTIxMmMzZmYxYzFmZTA0YTEzYWIyNWZiZGU0OWNmZDg5YTcyNWIxNjFiYjU4YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmRiYzg1NjM3YWJkYzkxNmY2M2U1ZDE3NWM1MWU1NDM1ZDY1ZjQ1NWZiNTBjNzE1MjZlZDBlNzc2ZjM2YjZkZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGZiOGRjYzhhOGM2ZDgxYmIzZTY1ZTliMjRkZmY1MmI5MzBmMzBmOTM3ODBkYTBmODRlYTQ2NmZiYWI3MjRiOSJ9"
+          "version": "repo-file-v1:sha256:23bf51c5fd584ac4416cff9207f818c0a5e2a1c0a4195a10e33f7cde30dbe63b"
         },
         {
           "resource": "repo://app-server/src/main/kotlin/io/github/amichne/kast/appserver/protocol/ThreadBindingDocuments.kt",
-          "version": "repo-file-v1:sha256:9453b88a6a3a8aef4ece9dde14b472c4016ea2156bc35d5c6ac8ab703734519c"
+          "version": "repo-file-v1:sha256:3bf14bc67e1e3034806dce7da047c9f45e0d5e5312eaa97f73c8e10d37fbb482"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.9.0",
-    "at": "2026-11-11T06:28:10.019Z"
+    "at": "2026-11-21T22:16:17.145Z"
   }
 }
